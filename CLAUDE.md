@@ -8,6 +8,13 @@
 将来的には「Image-first, Object-based, Graph Memory OS」へ拡張する設計。
 MVPでは「イメージで記憶設計する学習アプリ」として振る舞う。
 
+## 参照ファイル
+
+- プロジェクト全体の概要: @README.md
+- ディレクトリ構成・各層の責務・データフロー: @docs/architecture.md
+- コミットルール・コーディング規約: @.claude/rules/code-style.md
+- テスト方針: @.claude/rules/testing.md
+
 ## 構成（モノレポ）
 
 - `apps/frontend/` — Next.js 15 + TypeScript + Tailwind + shadcn/ui
