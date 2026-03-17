@@ -1,30 +1,79 @@
-# Code Style
+# Code Style — ImagePalace 固有ルール
 
-## General
+## 共通
 
-- Prefer `const` over `let`. Never use `var`
-- Use early returns to reduce nesting
-- Keep functions under 50 lines. Extract helpers when longer
-- Name booleans with `is`, `has`, `should` prefix
-- Name functions as verb+noun: `getUserById`, `validateInput`
+- インデント: スペース 2 つ（TypeScript / Ruby 共通）
+- 文字コード: UTF-8
+- 改行コード: LF（CRLF 禁止）
+- ファイル末尾に必ず改行を 1 行入れる
 
-## TypeScript
+## TypeScript / Next.js
 
-- Explicit return types on exported functions
-- Use `type` for object shapes, `interface` for extendable contracts
-- Prefer `unknown` over `any`. If `any` is unavoidable, add `// eslint-disable-next-line` with justification
-- Use discriminated unions over optional fields where state is mutually exclusive
-- Prefer `satisfies` over `as` for type assertions
+- `interface` を優先。拡張が不要な純粋なデータ型は `type` を使う
+- `any` 禁止。どうしても必要な場合は `// eslint-disable-next-line @typescript-eslint/no-explicit-any` + 理由コメント
+- `export default` は pages (`page.tsx`) と layouts (`layout.tsx`) のみ。それ以外は named export
+- `const` を優先。`let` は再代入が必須の場合のみ。`var` 禁止
+- 早期リターンを使ってネストを減らす
+- 関数は 50 行以内。超えたらヘルパーに切り出す
 
-## Error Handling
+### ディレクトリ規約（frontend）
 
-- Never swallow errors with empty catch blocks
-- Use Result pattern (`{ ok: true, data } | { ok: false, error }`) for expected failures
-- Throw only for unexpected/programmer errors
-- Always log errors with context (operation name, relevant IDs)
+```
+app/              # pages, layouts, route handlers のみ
+components/ui/    # shadcn/ui ベースの基本 UI コンポーネント
+components/features/  # ドメイン固有コンポーネント
+hooks/            # カスタム hooks
+lib/api/          # API クライアント（fetch をここに集約）
+stores/           # Zustand ストア
+types/            # 型定義（packages/types に移行前の一時置き場）
+```
 
-## Imports
+### インポート順序
 
-- Group imports: external libs → internal modules → relative imports
-- Use path aliases (`@/`) instead of deep relative paths (`../../../`)
-- No circular imports
+1. 外部ライブラリ（`react`, `next`, etc.）
+2. 内部モジュール（`@/components`, `@/lib`, etc.）
+3. 相対パス（`./`, `../`）
+
+- `@/` エイリアスを使う。`../../../` のような深い相対パス禁止
+
+## Ruby / Rails
+
+- RuboCop の設定に従う（CI で強制）
+- ビジネスロジックは `app/services/` に切り出す。コントローラーは薄く
+- N+1 クエリ禁止。`includes` / `preload` / `eager_load` で解決
+- マイグレーションで `change` が使えない場合は `up` / `down` を明示
+- 命名: `snake_case` 統一
+
+## 命名規則
+
+| 種別 | TypeScript | Ruby/Rails |
+|-----|-----------|-----------|
+| 変数・関数 | `camelCase` | `snake_case` |
+| クラス・型 | `PascalCase` | `PascalCase` |
+| 定数 | `UPPER_SNAKE_CASE` | `UPPER_SNAKE_CASE` |
+| ファイル（TS） | `kebab-case.ts` | — |
+| ファイル（Ruby） | — | `snake_case.rb` |
+| bool 変数 | `isXxx`, `hasXxx`, `shouldXxx` | `xxx?` メソッド |
+| 関数・メソッド | `getUserById`, `validateInput` | `get_user_by_id`, `validate_input` |
+
+## コミットメッセージ規則（Conventional Commits）
+
+形式: `<type>: <概要>（日本語OK）`
+
+type 一覧:
+- feat:     新機能
+- fix:      バグ修正
+- docs:     ドキュメントのみの変更
+- style:    コードの意味に影響しない変更（フォーマット等）
+- refactor: バグ修正・機能追加を含まないコード変更
+- test:     テストの追加・修正
+- chore:    ビルド・補助ツールの変更（依存関係更新等）
+- ci:       CI/CD 設定の変更
+
+例:
+- feat: 画像カード生成機能を追加
+- fix: 同一単語のキャッシュが効かない問題を修正
+- docs: アーキテクチャ設計書を更新
+- chore: Claude Code設定とプロジェクト指示書を追加
+
+PR タイトルも同じ形式で書く。
