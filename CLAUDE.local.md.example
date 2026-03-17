@@ -1,0 +1,13 @@
+# Personal Project Settings (copy to CLAUDE.local.md)
+
+## My Environment
+
+- Local API: http://localhost:3000
+- Local DB: postgresql://localhost:5432/dev
+- Test user: test@example.com
+
+## My Preferences
+
+- I prefer verbose git log output
+- Always explain what you changed after editing
+- Run tests after making changes

@@ -1,0 +1,23 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(docker *)",
+      "Bash(docker-compose *)",
+      "Bash(docker compose *)"
+    ]
+  },
+  "hooks": {
+    "PostToolUse": [
+      {
+        "matcher": "Edit|Write",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "\"$CLAUDE_PROJECT_DIR\"/.claude/hooks/lint-on-save.sh",
+            "timeout": 30
+          }
+        ]
+      }
+    ]
+  }
+}

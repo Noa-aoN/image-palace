@@ -1,0 +1,138 @@
+{
+  "permissions": {
+    "defaultMode": "default",
+    "allow": [
+      "Read",
+      "Glob",
+      "Grep",
+
+      "Bash(pnpm *)",
+      "Bash(npm run *)",
+      "Bash(npx *)",
+
+      "Bash(git status)",
+      "Bash(git diff *)",
+      "Bash(git log *)",
+      "Bash(git branch *)",
+      "Bash(git checkout *)",
+      "Bash(git switch *)",
+      "Bash(git add *)",
+      "Bash(git commit *)",
+      "Bash(git stash *)",
+      "Bash(git show *)",
+      "Bash(git blame *)",
+
+      "Bash(gh pr *)",
+      "Bash(gh issue *)",
+      "Bash(gh run *)",
+
+      "Bash(* --version)",
+      "Bash(* --help)",
+      "Bash(which *)",
+      "Bash(echo *)",
+      "Bash(cat package.json)",
+      "Bash(wc *)",
+      "Bash(date *)",
+      "Bash(ls *)"
+    ],
+    "deny": [
+      "Bash(git push --force *)",
+      "Bash(git push --force-with-lease *)",
+      "Bash(git reset --hard *)",
+      "Bash(git clean -fd *)",
+      "Bash(git clean -f *)",
+      "Bash(rm -rf *)",
+      "Bash(rm -r *)",
+      "Bash(rmdir *)",
+      "Bash(curl *)",
+      "Bash(wget *)",
+      "Bash(ssh *)",
+      "Bash(scp *)",
+      "Bash(sudo *)",
+      "Bash(chmod 777 *)",
+      "Bash(kill -9 *)",
+      "Bash(pkill *)",
+
+      "Read(.env*)",
+      "Read(**/*.pem)",
+      "Read(**/*.key)",
+      "Read(**/*secret*)",
+      "Read(**/*credential*)",
+      "Read(**/.ssh/*)",
+
+      "Edit(.env*)",
+      "Edit(**/*.pem)",
+      "Edit(**/*.key)",
+      "Edit(/.github/workflows/**)"
+    ]
+  },
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "\"$CLAUDE_PROJECT_DIR\"/.claude/hooks/block-dangerous-commands.sh",
+            "timeout": 10
+          }
+        ]
+      },
+      {
+        "matcher": "Edit|Write",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "\"$CLAUDE_PROJECT_DIR\"/.claude/hooks/block-protected-files.sh",
+            "timeout": 10
+          }
+        ]
+      }
+    ],
+    "PostToolUse": [
+      {
+        "matcher": "Edit|Write",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "\"$CLAUDE_PROJECT_DIR\"/.claude/hooks/lint-on-save.sh",
+            "timeout": 30
+          },
+          {
+            "type": "command",
+            "command": "\"$CLAUDE_PROJECT_DIR\"/.claude/hooks/format-on-save.sh",
+            "timeout": 30
+          }
+        ]
+      }
+    ],
+    "Stop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "\"$CLAUDE_PROJECT_DIR\"/.claude/hooks/notify-completion.sh",
+            "timeout": 10,
+            "async": true
+          }
+        ]
+      }
+    ],
+    "SessionStart": [
+      {
+        "matcher": "startup|resume",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "\"$CLAUDE_PROJECT_DIR\"/.claude/hooks/log-session.sh",
+            "timeout": 5,
+            "async": true
+          }
+        ]
+      }
+    ]
+  },
+  "env": {
+    "MAX_MCP_OUTPUT_TOKENS": "50000"
+  }
+}
