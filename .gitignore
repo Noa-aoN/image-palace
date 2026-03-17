@@ -1,0 +1,14 @@
+CLAUDE.local.md
+.claude/settings.local.json
+.claude/logs/
+
+# 自分で追加
+.mcp.json              # 実体はgitignore（.example だけ管理）
+.env
+.env.local
+.env.*.local
+
+# OS / エディタ
+.DS_Store
+*.log
+node_modules/
