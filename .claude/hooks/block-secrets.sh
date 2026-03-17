@@ -7,9 +7,12 @@ set -euo pipefail
 INPUT=$(cat)
 COMMAND=$(echo "$INPUT" | jq -r '.tool_input.command // ""')
 
-# git commit メッセージや heredoc の内容は誤検知を避けるため除外する
-# "git commit" より後ろはメッセージ本文なので検査対象から除く
-COMMAND_TO_CHECK=$(echo "$COMMAND" | sed 's/git commit.*/git commit/')
+# メッセージ本文・heredoc を含むコマンドは誤検知を避けるため
+# "git commit" と "gh pr create/edit" 以降のテキストを除外する
+COMMAND_TO_CHECK=$(echo "$COMMAND" \
+  | sed 's/git commit.*/git commit/' \
+  | sed 's/gh pr create.*/gh pr create/' \
+  | sed 's/gh pr edit.*/gh pr edit/')
 
 # ── force push ──────────────────────────────────────────────
 if echo "$COMMAND_TO_CHECK" | grep -qE 'git push.*(--force|-f\b)'; then
@@ -30,7 +33,6 @@ if echo "$COMMAND" | grep -qE '(cat|less|more|head|tail)\s+[^ ]*\.env'; then
 fi
 
 # ── 秘密情報をコマンド引数に直書き ──────────────────────────
-# OPENAI_API_KEY などを環境変数名=値 の形でコマンドに渡そうとしていないか確認
 if echo "$COMMAND_TO_CHECK" | grep -qE '(OPENAI_API_KEY|DATABASE_URL|SECRET_KEY_BASE|RAILS_MASTER_KEY)\s*=\s*[^\$\(]'; then
   echo '{"decision":"block","reason":"API キーや秘密情報をコマンドに直書きしないでください。環境変数ファイルを使用してください。"}'
   exit 0
