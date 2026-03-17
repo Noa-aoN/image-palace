@@ -3,7 +3,8 @@ CLAUDE.local.md
 .claude/logs/
 
 # 自分で追加
-.mcp.json              # 実体はgitignore（.example だけ管理）
+.mcp.json
+# 実体はgitignore（.example だけ管理）
 .env
 .env.local
 .env.*.local
