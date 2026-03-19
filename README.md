@@ -494,3 +494,10 @@ Obsidianは非常に強力な知識管理ツールであり、
 ## 画面遷移図
 
 https://www.figma.com/design/NHzX8vJUfrjjzulCK1qYXl/3.%E5%90%84%E7%94%BB%E9%9D%A2%E3%81%AEUI%E3%82%92%E3%83%87%E3%82%B6%E3%82%A4%E3%83%B3%E3%81%99%E3%82%8B?node-id=0-1&t=SO7b0sDugHUNHiOk-1
+
+---
+
+## ER図
+
+https://dbdiagram.io/d/image-palace-69bb5a9778c6c4bc7a1b13be
+（MVP）
