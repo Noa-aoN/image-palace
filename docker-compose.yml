@@ -2,8 +2,7 @@ services:
   web:
     build:
       context: ./backend
-      target: base        # rails new 後は builder または production に変更
-    command: sleep infinity   # rails new 後は bundle exec rails server に変更
+      target: production
     ports:
       - "3001:3001"
     env_file:

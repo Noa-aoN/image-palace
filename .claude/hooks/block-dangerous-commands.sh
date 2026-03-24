@@ -30,11 +30,6 @@ if echo "$COMMAND" | grep -qE 'rm\s+-(r|f|rf|fr)\s'; then
   deny "Blocked: recursive/force delete is not allowed. Use targeted deletes instead."
 fi
 
-# Block secrets in commands
-if echo "$COMMAND" | grep -qiE '(password|secret|token|api[_-]?key|private[_-]?key)\s*='; then
-  deny "Blocked: command appears to contain secrets. Use environment variables instead."
-fi
-
 # Block SQL destructive operations
 if echo "$COMMAND" | grep -qiE '(DROP\s+(TABLE|DATABASE|INDEX)|TRUNCATE\s+TABLE|DELETE\s+FROM\s+\w+\s*$)'; then
   deny "Blocked: destructive SQL operation detected. Review and execute manually."

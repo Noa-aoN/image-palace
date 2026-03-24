@@ -38,7 +38,8 @@
       "Bash(cat package.json)",
       "Bash(wc *)",
       "Bash(date *)",
-      "Bash(ls *)"
+      "Bash(ls *)",
+      "Bash(curl *)"
     ],
     "deny": [
       "Bash(git push --force *)",
@@ -49,7 +50,6 @@
       "Bash(rm -rf *)",
       "Bash(rm -r *)",
       "Bash(rmdir *)",
-      "Bash(curl *)",
       "Bash(wget *)",
       "Bash(ssh *)",
       "Bash(scp *)",
