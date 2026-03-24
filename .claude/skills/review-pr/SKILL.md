@@ -22,8 +22,18 @@ Perform a thorough code review:
 2. **Check correctness**: Verify logic, edge cases, and error handling
 3. **Check security**: Look for injection vulnerabilities, secret leaks, auth issues
 4. **Check performance**: Identify N+1 queries, unnecessary allocations, missing indexes
-5. **Check tests**: Verify adequate test coverage for new/changed code
+5. **Check tests**: Verify adequate test coverage for new/changed code（MVP リリース後に適用）
 6. **Check style**: Ensure consistency with project conventions
+
+### image-palace 固有チェック
+
+- [ ] N+1 クエリがないか（`includes` / `preload` / `eager_load` を使っているか）
+- [ ] `shared_media.normalized_prompt` のキャッシュ設計を壊していないか
+- [ ] OpenAI API キーがフロントエンドに露出していないか（`NEXT_PUBLIC_` 禁止）
+- [ ] Strong Parameters が使われているか
+- [ ] `objects` を `cards` と書いていないか（テーブル名の誤用）
+- [ ] S3 直配信になっていないか（CDN 経由のみ）
+- [ ] コミットメッセージが Conventional Commits 形式か
 
 ## Output Format
 

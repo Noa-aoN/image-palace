@@ -44,7 +44,7 @@ case "$FILE_PATH" in
 esac
 
 # Migrations already applied (customize path as needed)
-if echo "$FILE_PATH" | grep -qE 'migrations/[0-9]{4}.*\.(sql|ts|js)$'; then
+if echo "$FILE_PATH" | grep -qE '(db/migrate/[0-9]{14}_.*\.rb$|migrations/[0-9]{4}.*\.(sql|ts|js)$)'; then
   deny "Blocked: do not edit existing migrations. Create a new migration instead."
 fi
 
