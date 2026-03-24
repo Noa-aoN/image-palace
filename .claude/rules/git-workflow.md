@@ -3,9 +3,13 @@
 ## Branching
 
 - `main` is always deployable
-- Feature branches: `feat/<ticket-id>-<short-description>`
-- Bug fixes: `fix/<ticket-id>-<short-description>`
+- Feature branches: `feature/#<issue-number>-<short-description>`
+- Bug fixes: `fix/#<issue-number>-<short-description>`
 - Never push directly to `main`
+
+例:
+- `feature/#17-devise-token-auth`
+- `fix/#42-cache-miss-on-normalized-word`
 
 ## Commits
 

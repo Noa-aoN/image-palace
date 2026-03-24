@@ -67,9 +67,9 @@ apps/frontend/
 |-----|---------|
 | フレームワーク | Ruby on Rails 8 (API mode) |
 | DB | PostgreSQL (Neon) |
-| キャッシュ / ジョブキュー | Redis |
-| 非同期処理 | ActiveJob |
-| ストレージ | ActiveStorage + AWS S3 |
+| キャッシュ / ジョブキュー | Upstash Redis（Sidekiqキュー） |
+| 非同期処理 | Sidekiq（ActiveJob経由） |
+| ストレージ | ActiveStorage + Cloudflare R2 |
 | テスト | RSpec + FactoryBot |
 
 ### ディレクトリ規約
@@ -80,7 +80,7 @@ apps/backend/
 │   ├── controllers/api/v1/  # API エンドポイント（バージョニング）
 │   ├── models/              # ActiveRecord モデル
 │   ├── services/            # ビジネスロジック（Service オブジェクト）
-│   ├── jobs/                # ActiveJob
+│   ├── jobs/                # Sidekiq ジョブ（ActiveJob経由）
 │   └── serializers/         # JSON シリアライザ
 ├── config/
 │   └── routes.rb            # namespace :api, namespace :v1 で管理
@@ -161,16 +161,16 @@ docs/
   |                              |---> キャッシュあり: 即レスポンス|
   |                              |                                |
   |                              | キャッシュなし:                 |
-  |                              | ActiveJob をエンキュー          |
-  | 202 Accepted                 |----> Redis (job queue)         |
+  |                              | Sidekiq ジョブをエンキュー       |
+  | 202 Accepted                 |----> Upstash Redis (job queue) |
   |<-----------------------------|                                |
-  |  { status: "pending",        |      [ImageGenerationJob]      |
+  |  { status: "pending",        |      [GenerateCardImageJob]    |
   |    card_id: 123 }            |       |                        |
   |                              |       | OpenAI Images API      |
   |  ポーリング or WebSocket     |       |----------------------->|
   |  GET /api/v1/cards/123       |       | 画像 URL が返る         |
   |----------------------------->|       |<-----------------------|
-  |                              |       | S3 に保存              |
+  |                              |       | R2 に保存              |
   |                              |       | DB を completed に更新  |
   | 200 OK                       |       |                        |
   | { status: "completed",       |<------|                        |
@@ -181,8 +181,8 @@ docs/
 ### キャッシュ戦略
 
 - 同一単語（正規化済み）の画像は DB に保存し、再生成しない
-- S3 に保存した画像は CDN（CloudFront or Cloudflare Images）経由で配信
-- S3 直配信は禁止
+- Cloudflare R2 に保存した画像は Cloudflare CDN 経由で配信
+- R2 直配信は禁止
 
 ---
 
@@ -190,9 +190,9 @@ docs/
 
 | 環境 | Frontend | Backend | DB | CDN |
 |-----|---------|---------|-----|-----|
-| local | localhost:3001 | localhost:3000 | Docker PostgreSQL | なし（S3 直接） |
-| staging | Cloudflare Pages | Render or Railway | Neon (staging schema) | CloudFront |
-| production | Cloudflare Pages | Render or Railway → Cloud Run | Neon (production) | CloudFront |
+| local | localhost:3001 | localhost:3000 | Docker PostgreSQL | なし（R2 直接） |
+| staging | Cloudflare Workers | Fly.io | Neon (staging schema) | Cloudflare CDN |
+| production | Cloudflare Workers | Fly.io | Neon (production) | Cloudflare CDN |
 
 ### 環境変数管理
 
@@ -205,7 +205,7 @@ docs/
 
 1. **Graph Memory OS**: `docs/OS.md` に設計。カード間のリンク・グラフ構造
 2. **Mobile アプリ**: `apps/mobile/` に React Native または Flutter を追加
-3. **Cloud Run 移行**: バックエンドが月額 $100 超または急増時に Render/Railway から移行
+3. **Fly.io スケール**: リージョン追加・オートスケール設定でトラフィック増加に対応
 4. **マルチモーダル**: 画像だけでなく音声・動画メモリカードへの拡張
 5. **サブスク課金**: Stripe + 生成枚数制限の実装
 
@@ -246,6 +246,129 @@ docs/
 ### TODO（画面遷移図完成後に更新する項目）
 
 - [ ] 画面遷移図（Figma 完成後に `docs/design/` へ PDF エクスポート）
-- [ ] 認証フロー（認証方式確定後に追記）
-- [ ] API エンドポイント一覧（backend 実装開始後に追記）
+- [ ] 認証フロー（devise-token-auth 実装確定後に追記）
+- [ ] API エンドポイント一覧（backend 実装開始後に `docs/api.md` へ）
 - [ ] データモデル図（DB スキーマ確定後に追記）
+
+---
+
+## ディレクトリ構成（予定）
+
+```
+image-palace/
+├── CLAUDE.md                        # プロジェクト全体の指示書
+├── CLAUDE.local.md                  # 個人設定（gitignore）
+├── README.md
+├── .gitignore
+├── .env.example
+├── docker-compose.yml               # バックエンドのみ（ローカル開発）
+│
+├── .claude/
+│   ├── settings.json                # チーム共有
+│   ├── settings.local.json          # 個人設定（gitignore）
+│   ├── hooks/
+│   │   ├── lint-on-save.sh
+│   │   ├── block-protected-files.sh
+│   │   └── block-secrets.sh
+│   ├── rules/
+│   │   ├── code-style.md
+│   │   ├── testing.md
+│   │   ├── security.md
+│   │   ├── git-workflow.md
+│   │   └── frontend/
+│   │       ├── react.md
+│   │       └── styles.md
+│   └── skills/
+│       ├── deploy/SKILL.md
+│       ├── review-pr/SKILL.md
+│       ├── fix-issue/SKILL.md
+│       └── db-migrate/SKILL.md
+│
+├── docs/
+│   ├── architecture.md              # 技術選定・構成（このファイル）
+│   ├── api.md                       # APIエンドポイント一覧（実装後追記）
+│   ├── spec.md
+│   ├── OS.md
+│   ├── decisions/
+│   │   ├── infra-backend.md         # バックエンドインフラ選定
+│   │   ├── image-storage.md         # ストレージ・CDN戦略
+│   │   └── git-workflow.md
+│   └── design/
+│       └── README.md
+│
+├── backend/                         # Rails 8 APIモード
+│   ├── Gemfile
+│   ├── Dockerfile
+│   ├── fly.toml
+│   ├── .env.example
+│   ├── app/
+│   │   ├── controllers/api/v1/
+│   │   │   ├── auth/
+│   │   │   │   ├── registrations_controller.rb
+│   │   │   │   └── sessions_controller.rb
+│   │   │   ├── base_controller.rb
+│   │   │   └── objects_controller.rb
+│   │   ├── jobs/
+│   │   │   └── generate_card_image_job.rb
+│   │   ├── models/
+│   │   │   ├── user.rb
+│   │   │   ├── object.rb
+│   │   │   ├── medium.rb
+│   │   │   └── shared_medium.rb
+│   │   └── services/
+│   │       ├── normalize_prompt_service.rb
+│   │       ├── generate_image_service.rb
+│   │       └── upload_to_r2_service.rb
+│   ├── config/
+│   │   ├── initializers/
+│   │   │   ├── cors.rb
+│   │   │   ├── devise.rb
+│   │   │   └── sidekiq.rb
+│   │   ├── routes.rb
+│   │   └── storage.yml
+│   ├── db/
+│   │   ├── migrate/
+│   │   └── seeds.rb
+│   └── spec/                        # MVPリリース後に追加
+│
+├── frontend/                        # Next.js 15 App Router
+│   ├── package.json
+│   ├── next.config.ts
+│   ├── tailwind.config.ts
+│   ├── open-next.config.ts
+│   ├── wrangler.toml                # Cloudflare Workers用
+│   ├── middleware.ts                 # 認証ガード
+│   ├── .env.example
+│   └── src/
+│       ├── app/
+│       │   ├── (auth)/
+│       │   ├── (app)/
+│       │   │   ├── dashboard/
+│       │   │   └── objects/
+│       │   ├── layout.tsx
+│       │   └── page.tsx
+│       ├── components/
+│       │   ├── ui/                  # shadcn/ui
+│       │   └── features/
+│       ├── hooks/
+│       ├── lib/
+│       │   └── api/
+│       ├── stores/
+│       └── types/
+│
+└── .github/
+    └── workflows/                   # MVPリリース後
+```
+
+---
+
+## デプロイ構成
+
+| レイヤー | サービス | 備考 |
+|---|---|---|
+| フロントエンド | Cloudflare Workers（OpenNext経由） | Cloudflare Pagesではない（2024年12月以降の公式推奨） |
+| バックエンド | Fly.io | Rails 8 + Sidekiq 同居 |
+| DB | Neon（PostgreSQL） | スキーマ変更なしでRDS移行可能 |
+| Redis | Upstash Fixed Plan | Sidekiqキュー専用・PAYGは使わない |
+| 画像ストレージ | Cloudflare R2 | S3互換・転送完全無料 |
+| AI画像生成 | OpenAI DALL-E 3 | normalized_promptキャッシュで重複排除 |

@@ -10,6 +10,11 @@
       "Bash(npm run *)",
       "Bash(npx *)",
 
+      "Bash(rails *)",
+      "Bash(bundle exec *)",
+      "Bash(bundle install)",
+      "Bash(bundle update *)",
+
       "Bash(git status)",
       "Bash(git diff *)",
       "Bash(git log *)",
