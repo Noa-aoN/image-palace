@@ -67,8 +67,7 @@ apps/frontend/
 |-----|---------|
 | フレームワーク | Ruby on Rails 8 (API mode) |
 | DB | PostgreSQL (Neon) |
-| キャッシュ / ジョブキュー | Upstash Redis（Sidekiqキュー） |
-| 非同期処理 | Sidekiq（ActiveJob経由） |
+| 非同期処理 | Solid Queue（ActiveJob経由、DB-backed） |
 | ストレージ | ActiveStorage + Cloudflare R2 |
 | テスト | RSpec + FactoryBot |
 
@@ -80,7 +79,7 @@ apps/backend/
 │   ├── controllers/api/v1/  # API エンドポイント（バージョニング）
 │   ├── models/              # ActiveRecord モデル
 │   ├── services/            # ビジネスロジック（Service オブジェクト）
-│   ├── jobs/                # Sidekiq ジョブ（ActiveJob経由）
+│   ├── jobs/                # Solid Queue ジョブ（ActiveJob経由）
 │   └── serializers/         # JSON シリアライザ
 ├── config/
 │   └── routes.rb            # namespace :api, namespace :v1 で管理
@@ -161,8 +160,8 @@ docs/
   |                              |---> キャッシュあり: 即レスポンス|
   |                              |                                |
   |                              | キャッシュなし:                 |
-  |                              | Sidekiq ジョブをエンキュー       |
-  | 202 Accepted                 |----> Upstash Redis (job queue) |
+  |                              | Solid Queue ジョブをエンキュー   |
+  | 202 Accepted                 |----> Solid Queue (PostgreSQL)  |
   |<-----------------------------|                                |
   |  { status: "pending",        |      [GenerateCardImageJob]    |
   |    card_id: 123 }            |       |                        |
@@ -322,8 +321,7 @@ image-palace/
 │   ├── config/
 │   │   ├── initializers/
 │   │   │   ├── cors.rb
-│   │   │   ├── devise.rb
-│   │   │   └── sidekiq.rb
+│   │   │   └── devise.rb
 │   │   ├── routes.rb
 │   │   └── storage.yml
 │   ├── db/
@@ -367,8 +365,7 @@ image-palace/
 | レイヤー | サービス | 備考 |
 |---|---|---|
 | フロントエンド | Cloudflare Workers（OpenNext経由） | Cloudflare Pagesではない（2024年12月以降の公式推奨） |
-| バックエンド | Fly.io | Rails 8 + Sidekiq 同居 |
+| バックエンド | Fly.io | Rails 8 + Solid Queue 同居 |
 | DB | Neon（PostgreSQL） | スキーマ変更なしでRDS移行可能 |
-| Redis | Upstash Fixed Plan | Sidekiqキュー専用・PAYGは使わない |
 | 画像ストレージ | Cloudflare R2 | S3互換・転送完全無料 |
 | AI画像生成 | OpenAI DALL-E 3 | normalized_promptキャッシュで重複排除 |

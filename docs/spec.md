@@ -20,7 +20,7 @@
 | 想起 | 必要なときに知識を思い出すこと。このサービスが最終的に支援したい体験 |
 | 画像キャッシュ | 同一単語に対して2回目以降は保存済み画像を返す仕組み。API コスト削減が目的 |
 | 生成ステータス | カードの状態。`pending`（生成待ち）→ `processing`（生成中）→ `completed`（完了）/ `failed`（失敗） |
-| Sidekiq | Rails の非同期ジョブ実行基盤（ActiveJob経由）。Upstash Redis をキューに使用 |
+| Solid Queue | Rails 8 標準の非同期ジョブ実行基盤（ActiveJob経由）。PostgreSQL をキューに使用 |
 | 無料枠 | MVP における生成枚数の上限。超過後はサブスク課金が必要 |
 
 ---
@@ -48,7 +48,7 @@
 
 | 機能 | 説明 | 優先度 |
 |-----|------|-------|
-| 非同期生成 | Sidekiq + Upstash Redis で OpenAI API を非同期呼び出し | Must |
+| 非同期生成 | Solid Queue で OpenAI API を非同期呼び出し | Must |
 | キャッシュ再利用 | 同一単語（正規化済み）の画像は再生成しない | Must |
 | ポーリング更新 | フロントエンドが生成完了を定期確認 | Must |
 

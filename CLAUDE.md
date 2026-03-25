@@ -22,13 +22,13 @@ MVPでは「イメージで記憶設計する学習アプリ」として振る�
 
 - **モノレポ**: frontend / backend / 将来のmobileを横断して型・コンポーネントを共有するため
 - **Next.js App Router**: SSR + RSC でSEO対応しつつ画像表示を高速化
-- **Rails API mode**: チームが Ruby に慣れているため。Sidekiq で画像生成を非同期化
+- **Rails API mode**: チームが Ruby に慣れているため。Solid Queue で画像生成を非同期化
 - **PostgreSQL on Neon**: サーバーレスDBでコスト最小化。Fly.io との相性が良い
 - **OpenAI Images API（DALL-E 3）**: 画像生成の品質と手軽さのバランスが最良
 - **devise-token-auth**: Rails Token 認証。Next.js SPA との相性が良く、ヘッダーベースで CSRF リスクを回避
 - **Fly.io（MVP〜スケール）**: Render/Railway より柔軟。リージョン選択・スケールアウトが容易。Dockerfile さえあれば移行コストも低い
 - **Cloudflare R2 + CDN**: egress 無料で S3 より低コスト。ActiveStorage 経由でアップロード。直接 URL 配信は行わない
-- **Sidekiq + Upstash Redis**: Sidekiq を ActiveJob バックエンドに採用。Upstash は Fly.io との親和性が高くサーバーレスで運用コスト最小
+- **Solid Queue**: Rails 8 標準の DB-backed ジョブキュー。PostgreSQL を使うため Redis 不要でインフラがシンプル
 
 ## コマンド集
 

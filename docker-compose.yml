@@ -3,6 +3,7 @@ services:
     build:
       context: ./backend
       target: production
+    command: bash -c "rm -f tmp/pids/server.pid && bundle exec rails s -b 0.0.0.0 -p 3001"
     ports:
       - "3001:3001"
     env_file:
@@ -10,8 +11,6 @@ services:
     depends_on:
       db:
         condition: service_healthy
-      redis:
-        condition: service_started
     volumes:
       - ./backend:/app
 
@@ -31,13 +30,5 @@ services:
       timeout: 5s
       retries: 5
 
-  redis:
-    image: redis:7-alpine
-    volumes:
-      - redis_data:/data
-    ports:
-      - "6379:6379"
-
 volumes:
   postgres_data:
-  redis_data:
