@@ -58,10 +58,10 @@ npm run type-check          # tsc --noEmit
 
 ```
 users              ユーザー（devise-token-auth）
-objects            単語カードの実体（"card" ではなく "object" が正名称）
-object_types       objectの種別（word / concept / etc.）
-meanings           objectに紐づく意味・説明（任意）
-media              objectの画像（ActiveStorage + R2）
+items              単語カードの実体（"card" ではなく "item" が正名称）
+item_types         itemの種別（word / concept / etc.）
+meanings           itemに紐づく意味・説明（任意）
+media              itemの画像（ActiveStorage + R2）
 shared_media       正規化済みプロンプトをキーにした画像キャッシュ
 plans              料金プラン
 subscriptions      ユーザーのプラン契約
@@ -69,7 +69,7 @@ credit_transactions 生成クレジットの増減ログ
 payments           決済レコード
 ```
 
-> ⚠️ `cards` / `card_sets` テーブルは使わない。実体は `objects`。
+> ⚠️ `cards` / `card_sets` テーブルは使わない。実体は `items`。
 
 ---
 
