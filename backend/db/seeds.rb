@@ -12,3 +12,17 @@ item_types_data.each do |data|
     it.label = data[:label]
   end
 end
+
+# Planのseedデータ
+plans_data = [
+  { name: "free", price_cents: 0, interval: "month", metadata: {} },
+  { name: "pro", price_cents: 1000, interval: "month", metadata: {} }
+]
+
+plans_data.each do |data|
+  Plan.find_or_create_by!(name: data[:name]) do |plan|
+    plan.price_cents = data[:price_cents]
+    plan.interval = data[:interval]
+    plan.metadata = data[:metadata]
+  end
+end
