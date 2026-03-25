@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_03_25_103002) do
+ActiveRecord::Schema[8.1].define(version: 2026_03_25_103004) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
   enable_extension "pgcrypto"
@@ -46,6 +46,18 @@ ActiveRecord::Schema[8.1].define(version: 2026_03_25_103002) do
     t.index ["item_id"], name: "index_meanings_on_item_id"
   end
 
+  create_table "medias", id: :uuid, default: -> { "gen_random_uuid()" }, force: :cascade do |t|
+    t.datetime "created_at", null: false
+    t.uuid "item_id", null: false
+    t.string "media_type", null: false
+    t.jsonb "metadata", default: {}, null: false
+    t.integer "position"
+    t.datetime "updated_at", null: false
+    t.text "url", null: false
+    t.index ["item_id", "position"], name: "index_medias_on_item_id_and_position"
+    t.index ["item_id"], name: "index_medias_on_item_id"
+  end
+
   create_table "relations", id: :uuid, default: -> { "gen_random_uuid()" }, force: :cascade do |t|
     t.datetime "created_at", null: false
     t.uuid "from_item_id", null: false
@@ -67,6 +79,15 @@ ActiveRecord::Schema[8.1].define(version: 2026_03_25_103002) do
     t.datetime "updated_at", null: false
   end
 
+  create_table "shared_medias", id: :uuid, default: -> { "gen_random_uuid()" }, force: :cascade do |t|
+    t.datetime "created_at", null: false
+    t.jsonb "metadata", default: {}, null: false
+    t.datetime "updated_at", null: false
+    t.text "url"
+    t.uuid "user_id", null: false
+    t.index ["user_id"], name: "index_shared_medias_on_user_id"
+  end
+
   create_table "users", id: :uuid, default: -> { "gen_random_uuid()" }, force: :cascade do |t|
     t.datetime "created_at", null: false
     t.string "email", null: false
@@ -80,8 +101,10 @@ ActiveRecord::Schema[8.1].define(version: 2026_03_25_103002) do
   add_foreign_key "items", "item_types", on_delete: :restrict
   add_foreign_key "items", "users", on_delete: :cascade
   add_foreign_key "meanings", "items", on_delete: :cascade
+  add_foreign_key "medias", "items", on_delete: :cascade
   add_foreign_key "relations", "items", column: "from_item_id", on_delete: :cascade
   add_foreign_key "relations", "items", column: "to_item_id", on_delete: :cascade
   add_foreign_key "relations", "users", on_delete: :cascade
   add_foreign_key "settings", "users", on_delete: :cascade
+  add_foreign_key "shared_medias", "users", on_delete: :cascade
 end
