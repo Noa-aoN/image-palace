@@ -35,7 +35,7 @@ gem "devise"
 gem "devise_token_auth"
 
 # Background jobs
-gem "sidekiq"
+gem "solid_queue"
 
 # AWS S3 compatible storage (Cloudflare R2)
 gem "aws-sdk-s3"
