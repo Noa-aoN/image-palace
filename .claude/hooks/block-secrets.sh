@@ -1,7 +1,9 @@
 #!/bin/bash
-# PreToolUse hook: Block hardcoded secrets in bash commands
+# PreToolUse hook: Block secret exposure in Bash commands
 # Matcher: Bash
-# Registered in: .claude/settings.json (statusMessage: "セキュリティチェック中...")
+#
+# Blocks commands that write secrets to .env files.
+# .env.example files are ALLOWED (template values only, not real secrets).
 
 set -euo pipefail
 
@@ -23,20 +25,13 @@ deny() {
   exit 0
 }
 
-# Allow: .env.example への書き込み（プレースホルダー値）
-if echo "$COMMAND" | grep -qE '\.env\.example'; then
-  exit 0
-fi
-
-# Allow: config/master.key を読む操作（.env への RAILS_MASTER_KEY 設定）
-if echo "$COMMAND" | grep -q 'config/master\.key'; then
-  exit 0
-fi
-
-# Block: シークレット変数名に実値を直書きしているコマンド
-if echo "$COMMAND" | grep -qiE \
-  '(MASTER_KEY|API_KEY|SECRET_KEY|ACCESS_KEY|PRIVATE_KEY|AUTH_TOKEN|PASSWORD|DATABASE_PASSWORD)\s*=\s*\S'; then
-  deny "API キーや秘密情報をコマンドに直書きしないでください。環境変数ファイルを使用してください。"
+# Block output redirection to .env files.
+# Allow: .env.example, .env.test, .env.sample (template files, no real secrets).
+# Block: .env, .env.local, .env.production, .env.staging, etc.
+if echo "$COMMAND" | grep -qE '(>|>>)\s*[[:alnum:]_./-]*\.env(\.[a-z]+)?(\s|$)'; then
+  if ! echo "$COMMAND" | grep -qE '(>|>>)\s*[[:alnum:]_./-]*\.env\.(example|test|sample)(\s|$)'; then
+    deny "Blocked: writing to .env files is not allowed. Use .env.example for templates and set real secrets via environment variables."
+  fi
 fi
 
 exit 0
