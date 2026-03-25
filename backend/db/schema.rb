@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_03_25_103004) do
+ActiveRecord::Schema[8.1].define(version: 2026_03_25_103006) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
   enable_extension "pgcrypto"
@@ -58,6 +58,16 @@ ActiveRecord::Schema[8.1].define(version: 2026_03_25_103004) do
     t.index ["item_id"], name: "index_medias_on_item_id"
   end
 
+  create_table "plans", id: :uuid, default: -> { "gen_random_uuid()" }, force: :cascade do |t|
+    t.datetime "created_at", null: false
+    t.string "interval"
+    t.jsonb "metadata", default: {}, null: false
+    t.string "name", null: false
+    t.integer "price_cents"
+    t.datetime "updated_at", null: false
+    t.index ["name"], name: "index_plans_on_name", unique: true
+  end
+
   create_table "relations", id: :uuid, default: -> { "gen_random_uuid()" }, force: :cascade do |t|
     t.datetime "created_at", null: false
     t.uuid "from_item_id", null: false
@@ -88,6 +98,18 @@ ActiveRecord::Schema[8.1].define(version: 2026_03_25_103004) do
     t.index ["user_id"], name: "index_shared_medias_on_user_id"
   end
 
+  create_table "subscriptions", id: :uuid, default: -> { "gen_random_uuid()" }, force: :cascade do |t|
+    t.datetime "created_at", null: false
+    t.datetime "current_period_end"
+    t.uuid "plan_id", null: false
+    t.datetime "started_at", null: false
+    t.string "status"
+    t.datetime "updated_at", null: false
+    t.uuid "user_id", null: false
+    t.index ["plan_id"], name: "index_subscriptions_on_plan_id"
+    t.index ["user_id"], name: "index_subscriptions_on_user_id"
+  end
+
   create_table "users", id: :uuid, default: -> { "gen_random_uuid()" }, force: :cascade do |t|
     t.datetime "created_at", null: false
     t.string "email", null: false
@@ -107,4 +129,6 @@ ActiveRecord::Schema[8.1].define(version: 2026_03_25_103004) do
   add_foreign_key "relations", "users", on_delete: :cascade
   add_foreign_key "settings", "users", on_delete: :cascade
   add_foreign_key "shared_medias", "users", on_delete: :cascade
+  add_foreign_key "subscriptions", "plans", on_delete: :restrict
+  add_foreign_key "subscriptions", "users", on_delete: :cascade
 end
