@@ -1,10 +1,4 @@
 #!/bin/bash
-# PreToolUse hook: Block edits to protected files
-# Matcher: Edit|Write
-#
-# Prevents modification of lock files, generated code, and CI config.
-# Customize PROTECTED_PATTERNS for your project.
-
 set -euo pipefail
 
 INPUT=$(cat)
@@ -29,23 +23,32 @@ deny() {
   exit 0
 }
 
-# Lock files — should be managed by package managers only
+# Lock files
 case "$FILE_PATH" in
   */pnpm-lock.yaml|*/package-lock.json|*/yarn.lock|*/Gemfile.lock|*/poetry.lock|*/Cargo.lock)
-    deny "Blocked: lock files should not be edited manually. Run the package manager instead."
+    deny "Blocked: lock files should not be edited manually."
     ;;
 esac
 
 # Generated files
 case "$FILE_PATH" in
   */generated/*|*/.generated.*|*/dist/*|*/build/*)
-    deny "Blocked: this is a generated file. Edit the source instead."
+    deny "Blocked: generated file."
     ;;
 esac
 
-# Migrations already applied (customize path as needed)
-if echo "$FILE_PATH" | grep -qE '(db/migrate/[0-9]{14}_.*\.rb$|migrations/[0-9]{4}.*\.(sql|ts|js)$)'; then
-  deny "Blocked: do not edit existing migrations. Create a new migration instead."
+# Migration guard（改善版）
+if echo "$FILE_PATH" | grep -qE 'db/migrate/[0-9]{14}_.*\.rb$'; then
+  BASENAME=$(basename "$FILE_PATH")
+  VERSION=$(echo "$BASENAME" | cut -d_ -f1)
+
+  SCHEMA_FILE="backend/db/schema.rb"
+
+  if [ -f "$SCHEMA_FILE" ]; then
+    if grep -q "$VERSION" "$SCHEMA_FILE"; then
+      deny "Blocked: This migration has already been applied. Create a new migration instead."
+    fi
+  fi
 fi
 
 exit 0

@@ -1,9 +1,14 @@
-# This file should ensure the existence of records required to run the application in every environment (production,
-# development, test). The code here should be idempotent so that it can be executed at any point in every environment.
-# The data can then be loaded with the bin/rails db:seed command (or created alongside the database with db:setup).
-#
-# Example:
-#
-#   ["Action", "Comedy", "Drama", "Horror"].each do |genre_name|
-#     MovieGenre.find_or_create_by!(name: genre_name)
-#   end
+# ObjectTypesのseedデータ
+object_types_data = [
+  { name: "term", label: "単語" },
+  { name: "concept", label: "概念" },
+  { name: "entity", label: "実体" },
+  { name: "person", label: "人物" },
+  { name: "event", label: "出来事" }
+]
+
+object_types_data.each do |data|
+  ObjectType.find_or_create_by!(name: data[:name]) do |ot|
+    ot.label = data[:label]
+  end
+end
