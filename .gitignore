@@ -13,3 +13,7 @@ CLAUDE.local.md
 .DS_Store
 *.log
 node_modules/
+
+# コンテンツ生成
+docs/daily/
+docs/drafts/
