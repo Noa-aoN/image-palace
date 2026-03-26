@@ -35,7 +35,7 @@ ${GIT_LOG}
 EOF
 )
 
-RESPONSE=$(curl -s "https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash-latest:generateContent?key=${GEMINI_API_KEY}" \
+RESPONSE=$(curl -s "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${GEMINI_API_KEY}" \
   -H "Content-Type: application/json" \
   -d "$(jq -n \
     --arg content "$PROMPT" \
@@ -60,3 +60,6 @@ echo "" >> "$OUTPUT"
 echo "$RESPONSE" | jq -r '.candidates[0].content.parts[0].text' >> "$OUTPUT"
 
 echo "✅ 日誌生成: ${OUTPUT}"
+
+# デバッグ: モデル一覧を取得
+# curl -s "https://generativelanguage.googleapis.com/v1beta/models?key=${GEMINI_API_KEY}" | jq '.'
