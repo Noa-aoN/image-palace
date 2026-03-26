@@ -1,4 +1,12 @@
 class User < ApplicationRecord
+  # == Deviseモジュール ======================================================
+  devise :database_authenticatable, :registerable,
+         :recoverable, :rememberable, :validatable, :confirmable
+
+  # == devise-token-auth設定 ================================================
+  include DeviseTokenAuth::Concerns::User
+
+  # == 関連付け ==============================================================
   has_one :setting, dependent: :destroy
   has_many :items, dependent: :destroy
   has_many :relations, dependent: :destroy
