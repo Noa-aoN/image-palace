@@ -24,18 +24,24 @@ PROMPT=$(cat << EOF
 EOF
 )
 
-RESPONSE=$(curl -s https://api.anthropic.com/v1/messages \
-  -H "x-api-key: ${ANTHROPIC_API_KEY}" \
+RESPONSE=$(curl -s https://api.openai.com/v1/responses \
+  -H "Authorization: Bearer ${OPENAI_API_KEY}" \
   -H "Content-Type: application/json" \
   -d "$(jq -n \
     --arg content "$PROMPT" \
     '{
-      model: "claude-sonnet-4-6",
-      max_tokens: 3000,
-      messages: [{role: "user", content: $content}]
+      model: "gpt-4.1-mini",
+      input: $content
     }'
   )")
 
-echo "$RESPONSE" | jq -r '.content[0].text' > "$OUTPUT"
+# エラーハンドリング
+if echo "$RESPONSE" | jq -e '.error' > /dev/null 2>&1; then
+  echo "❌ API Error:"
+  echo "$RESPONSE" | jq '.error'
+  exit 1
+fi
+
+echo "$RESPONSE" | jq -r '.output[0].content[0].text' > "$OUTPUT"
 
 echo "✅ 記事生成: ${OUTPUT}"
