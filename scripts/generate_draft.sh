@@ -1,6 +1,14 @@
 #!/bin/bash
 set -euo pipefail
 
+# .env ファイルを自動読み込み
+if [ -f .env ]; then
+  source .env
+fi
+
+# 環境変数チェック
+: "${GEMINI_API_KEY:?GEMINI_API_KEY is not set. Please set it in .env file}"
+
 TOPIC="${1:-}"
 if [ -z "$TOPIC" ]; then
   echo "使い方: ./scripts/generate_draft.sh 'テーマ'"
@@ -24,18 +32,29 @@ PROMPT=$(cat << EOF
 EOF
 )
 
-RESPONSE=$(curl -s https://api.anthropic.com/v1/messages \
-  -H "x-api-key: ${ANTHROPIC_API_KEY}" \
+RESPONSE=$(curl -s "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${GEMINI_API_KEY}" \
   -H "Content-Type: application/json" \
   -d "$(jq -n \
     --arg content "$PROMPT" \
     '{
-      model: "claude-sonnet-4-6",
-      max_tokens: 3000,
-      messages: [{role: "user", content: $content}]
+      contents: [{
+        parts: [{
+          text: $content
+        }]
+      }]
     }'
   )")
 
-echo "$RESPONSE" | jq -r '.content[0].text' > "$OUTPUT"
+# エラーハンドリング
+if echo "$RESPONSE" | jq -e '.error' > /dev/null 2>&1; then
+  echo "❌ API Error:"
+  echo "$RESPONSE" | jq '.error'
+  exit 1
+fi
+
+echo "$RESPONSE" | jq -r '.candidates[0].content.parts[0].text' > "$OUTPUT"
 
 echo "✅ 記事生成: ${OUTPUT}"
+
+# デバッグ: モデル一覧を取得
+# curl -s "https://generativelanguage.googleapis.com/v1beta/models?key=${GEMINI_API_KEY}" | jq '.'
