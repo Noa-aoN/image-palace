@@ -1,6 +1,14 @@
 #!/bin/bash
 set -euo pipefail
 
+# .env ファイルを自動読み込み
+if [ -f .env ]; then
+  source .env
+fi
+
+# 環境変数チェック
+: "${OPENAI_API_KEY:?OPENAI_API_KEY is not set. Please set it in .env file}"
+
 TOPIC="${1:-}"
 if [ -z "$TOPIC" ]; then
   echo "使い方: ./scripts/generate_draft.sh 'テーマ'"
@@ -42,6 +50,6 @@ if echo "$RESPONSE" | jq -e '.error' > /dev/null 2>&1; then
   exit 1
 fi
 
-echo "$RESPONSE" | jq -r '.output[0].content[0].text' > "$OUTPUT"
+echo "$RESPONSE" | jq -r '.output_text' > "$OUTPUT"
 
 echo "✅ 記事生成: ${OUTPUT}"

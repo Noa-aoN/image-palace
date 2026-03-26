@@ -1,6 +1,14 @@
 #!/bin/bash
 set -euo pipefail
 
+# .env ファイルを自動読み込み
+if [ -f .env ]; then
+  source .env
+fi
+
+# 環境変数チェック
+: "${OPENAI_API_KEY:?OPENAI_API_KEY is not set. Please set it in .env file}"
+
 TODAY=$(date +%Y-%m-%d)
 OUTPUT="docs/daily/${TODAY}.md"
 
@@ -47,6 +55,6 @@ fi
 
 echo "# 開発日誌 ${TODAY}" > "$OUTPUT"
 echo "" >> "$OUTPUT"
-echo "$RESPONSE" | jq -r '.output[0].content[0].text' >> "$OUTPUT"
+echo "$RESPONSE" | jq -r '.output_text' >> "$OUTPUT"
 
 echo "✅ 日誌生成: ${OUTPUT}"
