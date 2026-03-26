@@ -7,7 +7,7 @@ if [ -f .env ]; then
 fi
 
 # 環境変数チェック
-: "${OPENAI_API_KEY:?OPENAI_API_KEY is not set. Please set it in .env file}"
+: "${GEMINI_API_KEY:?GEMINI_API_KEY is not set. Please set it in .env file}"
 
 TODAY=$(date +%Y-%m-%d)
 OUTPUT="docs/daily/${TODAY}.md"
@@ -35,14 +35,16 @@ ${GIT_LOG}
 EOF
 )
 
-RESPONSE=$(curl -s https://api.openai.com/v1/responses \
-  -H "Authorization: Bearer ${OPENAI_API_KEY}" \
+RESPONSE=$(curl -s "https://generativelanguage.googleapis.com/v1/models/gemini-1.5-flash:generateContent?key=${GEMINI_API_KEY}" \
   -H "Content-Type: application/json" \
   -d "$(jq -n \
     --arg content "$PROMPT" \
     '{
-      model: "gpt-4.1-mini",
-      input: $content
+      contents: [{
+        parts: [{
+          text: $content
+        }]
+      }]
     }'
   )")
 
@@ -55,6 +57,6 @@ fi
 
 echo "# 開発日誌 ${TODAY}" > "$OUTPUT"
 echo "" >> "$OUTPUT"
-echo "$RESPONSE" | jq -r '.output_text' >> "$OUTPUT"
+echo "$RESPONSE" | jq -r '.candidates[0].content.parts[0].text' >> "$OUTPUT"
 
 echo "✅ 日誌生成: ${OUTPUT}"

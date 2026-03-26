@@ -7,7 +7,7 @@ if [ -f .env ]; then
 fi
 
 # 環境変数チェック
-: "${OPENAI_API_KEY:?OPENAI_API_KEY is not set. Please set it in .env file}"
+: "${GEMINI_API_KEY:?GEMINI_API_KEY is not set. Please set it in .env file}"
 
 TOPIC="${1:-}"
 if [ -z "$TOPIC" ]; then
@@ -32,14 +32,16 @@ PROMPT=$(cat << EOF
 EOF
 )
 
-RESPONSE=$(curl -s https://api.openai.com/v1/responses \
-  -H "Authorization: Bearer ${OPENAI_API_KEY}" \
+RESPONSE=$(curl -s "https://generativelanguage.googleapis.com/v1/models/gemini-1.5-flash:generateContent?key=${GEMINI_API_KEY}" \
   -H "Content-Type: application/json" \
   -d "$(jq -n \
     --arg content "$PROMPT" \
     '{
-      model: "gpt-4.1-mini",
-      input: $content
+      contents: [{
+        parts: [{
+          text: $content
+        }]
+      }]
     }'
   )")
 
@@ -50,6 +52,6 @@ if echo "$RESPONSE" | jq -e '.error' > /dev/null 2>&1; then
   exit 1
 fi
 
-echo "$RESPONSE" | jq -r '.output_text' > "$OUTPUT"
+echo "$RESPONSE" | jq -r '.candidates[0].content.parts[0].text' > "$OUTPUT"
 
 echo "✅ 記事生成: ${OUTPUT}"
