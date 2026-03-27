@@ -41,5 +41,10 @@ module App
     # Skip views, helpers and assets when generating a new resource.
     config.api_only = true
     config.active_job.queue_adapter = :solid_queue
+
+    # OmniAuth セッション対応（OAuth フロー中のみセッションを使用）
+    # ログイン後は devise_token_auth によるトークン認証を使用
+    config.middleware.use ActionDispatch::Cookies
+    config.middleware.use ActionDispatch::Session::CookieStore
   end
 end

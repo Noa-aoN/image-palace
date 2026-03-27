@@ -33,6 +33,7 @@ gem "rack-cors"
 # Authentication
 gem "devise"
 gem "devise_token_auth"
+gem "omniauth-google-oauth2"
 
 # Background jobs
 gem "solid_queue"
