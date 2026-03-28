@@ -1,0 +1,31 @@
+app = "image-palace-api"
+primary_region = "nrt"
+
+[build]
+  dockerfile = "Dockerfile"
+
+[env]
+  RAILS_ENV           = "production"
+  RAILS_LOG_LEVEL     = "info"
+  PORT                = "8080"
+  SOLID_QUEUE_IN_PUMA = "1"
+
+[http_service]
+  internal_port        = 8080
+  force_https          = true
+  auto_stop_machines   = true
+  auto_start_machines  = true
+  min_machines_running = 0
+
+  [http_service.concurrency]
+    type       = "connections"
+    hard_limit = 25
+    soft_limit = 20
+
+[[vm]]
+  memory   = "512mb"
+  cpu_kind = "shared"
+  cpus     = 1
+
+[deploy]
+  release_command = "bundle exec rails db:migrate && bundle exec rails db:schema:load:queue"

@@ -120,7 +120,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_03_26_000001) do
     t.string "name"
     t.string "provider", default: "email", null: false
     t.string "role", default: "user", null: false
-    t.jsonb "tokens", default: {}, null: false
+    t.jsonb "tokens", default: {}
     t.string "uid", default: "", null: false
     t.string "unconfirmed_email"
     t.datetime "updated_at", null: false
