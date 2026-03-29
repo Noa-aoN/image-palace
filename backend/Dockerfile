@@ -27,9 +27,9 @@ FROM base AS production
 
 COPY --from=builder /usr/local/bundle /usr/local/bundle
 
-# キャッシュバスト用（fly deploy --build-arg CACHEBUST=$(date +%s) で使用）
-ARG CACHEBUST=1
 COPY . .
+# Depot キャッシュが古い database.yml を使う問題への対策
+COPY config/database.yml config/database.yml
 
 EXPOSE 8080
 CMD ["bash", "-c", "bundle exec rails server -b 0.0.0.0 -p ${PORT:-8080}"]
