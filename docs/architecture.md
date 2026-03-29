@@ -9,7 +9,7 @@
 ```
 image-palace/
 ├── apps/
-│   ├── frontend/      # Next.js 15 + TypeScript
+│   ├── frontend/      # Next.js 16 + TypeScript
 │   ├── backend/       # Rails 8 API mode
 │   └── mobile/        # 将来追加（現在空）
 ├── packages/
@@ -28,7 +28,7 @@ image-palace/
 
 | 項目 | 採用技術 |
 |-----|---------|
-| フレームワーク | Next.js 15 (App Router) |
+| フレームワーク | Next.js 16 (App Router) |
 | 言語 | TypeScript |
 | スタイリング | TailwindCSS |
 | UI コンポーネント | shadcn/ui |
@@ -329,7 +329,7 @@ image-palace/
 │   │   └── seeds.rb
 │   └── spec/                        # MVPリリース後に追加
 │
-├── frontend/                        # Next.js 15 App Router
+├── frontend/                        # Next.js 16 App Router
 │   ├── package.json
 │   ├── next.config.ts
 │   ├── tailwind.config.ts
