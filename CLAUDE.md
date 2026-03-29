@@ -118,6 +118,6 @@ payments           決済レコード
 ## Business Context
 
 - 同一単語の画像は生成結果をキャッシュしてAPIコスト削減（同じ単語を2回生成しない）
-- 画像生成は非同期（Sidekiq + Upstash Redis）。UIはポーリングまたはWebSocketで更新
+- 画像生成は非同期（Solid Queue）。UIはポーリングまたはWebSocketで更新
 - MVP は無料枠あり（生成枚数に上限）。将来はサブスク課金
 - OpenAI API キーはバックエンドのみに置く。フロントエンドから直接呼び出し禁止
