@@ -1,31 +1,37 @@
-app = "image-palace-api"
-primary_region = "nrt"
+# fly.toml app configuration file generated for image-palace-api on 2026-03-29T13:50:44+09:00
+#
+# See https://fly.io/docs/reference/configuration/ for information about how to use this file.
+#
+
+app = 'image-palace-api'
+primary_region = 'nrt'
 
 [build]
-  dockerfile = "Dockerfile"
+  dockerfile = 'Dockerfile'
+
+[deploy]
+  release_command = 'bundle exec rails db:migrate'
 
 [env]
-  RAILS_ENV           = "production"
-  RAILS_LOG_LEVEL     = "info"
-  PORT                = "8080"
-  SOLID_QUEUE_IN_PUMA = "1"
+  PORT = '8080'
+  RAILS_ENV = 'production'
+  RAILS_LOG_LEVEL = 'info'
+  SOLID_QUEUE_IN_PUMA = '1'
 
 [http_service]
-  internal_port        = 8080
-  force_https          = true
-  auto_stop_machines   = true
-  auto_start_machines  = true
+  internal_port = 8080
+  force_https = true
+  auto_stop_machines = 'stop'
+  auto_start_machines = true
   min_machines_running = 0
 
   [http_service.concurrency]
-    type       = "connections"
+    type = 'connections'
     hard_limit = 25
     soft_limit = 20
 
 [[vm]]
-  memory   = "512mb"
-  cpu_kind = "shared"
-  cpus     = 1
-
-[deploy]
-  release_command = "bundle exec rails db:migrate && bundle exec rails db:schema:load:queue"
+  memory = '512mb'
+  cpu_kind = 'shared'
+  cpus = 1
+  memory_mb = 512
