@@ -39,7 +39,7 @@ gem "omniauth-google-oauth2"
 gem "solid_queue"
 
 # AWS S3 compatible storage (Cloudflare R2)
-gem "aws-sdk-s3"
+# gem "aws-sdk-s3"
 
 group :development, :test do
   gem "dotenv-rails"

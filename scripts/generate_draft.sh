@@ -16,7 +16,8 @@ if [ -z "$TOPIC" ]; then
 fi
 
 DATE=$(date +%Y-%m-%d)
-OUTPUT="docs/drafts/${DATE}.md"
+SAFE_TOPIC=$(echo "$TOPIC" | sed -e 's/ /_/g' -e 's/\//_/g' -e 's/[^a-zA-Z0-9_ぁ-んァ-ヶー一-龠]//g')
+OUTPUT="docs/drafts/${DATE}_${SAFE_TOPIC}.md"
 
 PROMPT=$(cat << EOF
 以下のテーマについて、初学者向けの技術記事を書いてください。
