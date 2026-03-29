@@ -26,6 +26,9 @@ RUN bundle install --jobs 4 --retry 3
 FROM base AS production
 
 COPY --from=builder /usr/local/bundle /usr/local/bundle
+
+# キャッシュバスト用（fly deploy --build-arg CACHEBUST=$(date +%s) で使用）
+ARG CACHEBUST=1
 COPY . .
 
 EXPOSE 8080
