@@ -25,7 +25,9 @@ export async function signUp(
     password,
     password_confirmation: passwordConfirmation,
   })
-  return { user: res.data.data, tokens: extractTokens(res.headers as Record<string, string>) }
+  const tokens = extractTokens(res.headers as Record<string, string>)
+  if (!tokens.accessToken || !tokens.uid || !tokens.client) throw new Error('トークンの取得に失敗しました')
+  return { user: res.data.data, tokens }
 }
 
 export async function signIn(
@@ -36,7 +38,9 @@ export async function signIn(
     email,
     password,
   })
-  return { user: res.data.data, tokens: extractTokens(res.headers as Record<string, string>) }
+  const tokens = extractTokens(res.headers as Record<string, string>)
+  if (!tokens.accessToken || !tokens.uid || !tokens.client) throw new Error('トークンの取得に失敗しました')
+  return { user: res.data.data, tokens }
 }
 
 export async function signOut(): Promise<void> {
