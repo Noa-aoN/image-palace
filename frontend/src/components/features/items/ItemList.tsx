@@ -21,19 +21,22 @@ const STATUS_COLOR: Record<string, string> = {
 }
 
 function ItemCard({ item }: { item: Item }) {
+  const [imgError, setImgError] = useState(false)
+
   return (
     <Link href={`/items/${item.id}`} className="flex flex-col rounded-xl border border-border overflow-hidden bg-card hover:shadow-md transition-shadow">
       <div className="w-full aspect-square bg-muted flex items-center justify-center overflow-hidden">
-        {item.media?.url ? (
+        {item.media?.url && !imgError ? (
           // eslint-disable-next-line @next/next/no-img-element
           <img
             src={item.media.url}
             alt={item.title}
             className="w-full h-full object-cover"
+            onError={() => setImgError(true)}
           />
         ) : (
           <span className="text-muted-foreground text-xs">
-            {STATUS_LABEL[item.generation_status] ?? item.generation_status}
+            {imgError ? '期限切れ' : (STATUS_LABEL[item.generation_status] ?? item.generation_status)}
           </span>
         )}
       </div>

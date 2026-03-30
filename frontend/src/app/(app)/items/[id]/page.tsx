@@ -25,6 +25,7 @@ export default function ItemDetailPage() {
   const { id } = useParams<{ id: string }>()
   const [item, setItem] = useState<Item | null>(null)
   const [error, setError] = useState<string | null>(null)
+  const [imgError, setImgError] = useState(false)
 
   useEffect(() => {
     getItem(id)
@@ -51,16 +52,17 @@ export default function ItemDetailPage() {
         <Button variant="ghost" className="text-sm px-0">← マイカードへ戻る</Button>
       </Link>
 
-      {item.media?.url ? (
+      {item.media?.url && !imgError ? (
         // eslint-disable-next-line @next/next/no-img-element
         <img
           src={item.media.url}
           alt={item.title}
           className="w-full rounded-xl object-cover"
+          onError={() => setImgError(true)}
         />
       ) : (
         <div className="w-full aspect-square rounded-xl bg-muted flex items-center justify-center text-muted-foreground text-sm">
-          {STATUS_LABEL[item.generation_status] ?? item.generation_status}
+          {imgError ? '画像の有効期限切れ（R2移行後に解消されます）' : (STATUS_LABEL[item.generation_status] ?? item.generation_status)}
         </div>
       )}
 
