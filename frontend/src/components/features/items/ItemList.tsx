@@ -1,7 +1,6 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import Image from 'next/image'
 import Link from 'next/link'
 import { Button } from '@/components/ui/button'
 import { getItems } from '@/lib/api/items'
@@ -23,20 +22,19 @@ const STATUS_COLOR: Record<string, string> = {
 
 function ItemCard({ item }: { item: Item }) {
   return (
-    <div className="flex flex-col rounded-xl border border-border overflow-hidden bg-card">
-      <div className="relative w-full aspect-square bg-muted">
+    <Link href={`/items/${item.id}`} className="flex flex-col rounded-xl border border-border overflow-hidden bg-card hover:shadow-md transition-shadow">
+      <div className="w-full aspect-square bg-muted flex items-center justify-center overflow-hidden">
         {item.media?.url ? (
-          <Image
+          // eslint-disable-next-line @next/next/no-img-element
+          <img
             src={item.media.url}
             alt={item.title}
-            fill
-            className="object-cover"
-            sizes="(max-width: 768px) 50vw, (max-width: 1024px) 33vw, 25vw"
+            className="w-full h-full object-cover"
           />
         ) : (
-          <div className="absolute inset-0 flex items-center justify-center text-muted-foreground text-xs">
+          <span className="text-muted-foreground text-xs">
             {STATUS_LABEL[item.generation_status] ?? item.generation_status}
-          </div>
+          </span>
         )}
       </div>
       <div className="px-3 py-2 flex items-center justify-between gap-2">
@@ -47,7 +45,7 @@ function ItemCard({ item }: { item: Item }) {
           {STATUS_LABEL[item.generation_status] ?? item.generation_status}
         </span>
       </div>
-    </div>
+    </Link>
   )
 }
 

@@ -4,7 +4,6 @@ import { useState } from 'react'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
-import Image from 'next/image'
 import Link from 'next/link'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -85,14 +84,12 @@ export function CreateItemForm() {
           </CardHeader>
           <CardContent className="space-y-3">
             {createdItem.media?.url ? (
-              <div className="relative w-full aspect-square overflow-hidden rounded-lg">
-                <Image
-                  src={createdItem.media.url}
-                  alt={createdItem.title}
-                  fill
-                  className="object-cover"
-                />
-              </div>
+              // eslint-disable-next-line @next/next/no-img-element
+              <img
+                src={createdItem.media.url}
+                alt={createdItem.title}
+                className="w-full aspect-square object-cover rounded-lg"
+              />
             ) : createdItem.generation_status === 'failed' ? (
               <p className="text-sm text-destructive">画像の生成に失敗しました</p>
             ) : null}
@@ -108,8 +105,8 @@ export function CreateItemForm() {
               <Button variant="outline" size="sm" onClick={() => setCreatedItem(null)}>
                 続けて作成
               </Button>
-              <Link href="/dashboard">
-                <Button size="sm">ダッシュボードへ</Button>
+              <Link href="/items">
+                <Button size="sm">マイカードへ</Button>
               </Link>
             </div>
           </CardContent>
