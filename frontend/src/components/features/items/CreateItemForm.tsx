@@ -4,6 +4,7 @@ import { useState } from 'react'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
+import Image from 'next/image'
 import Link from 'next/link'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -83,6 +84,18 @@ export function CreateItemForm() {
             <CardTitle>作成しました</CardTitle>
           </CardHeader>
           <CardContent className="space-y-3">
+            {createdItem.media?.url ? (
+              <div className="relative w-full aspect-square overflow-hidden rounded-lg">
+                <Image
+                  src={createdItem.media.url}
+                  alt={createdItem.title}
+                  fill
+                  className="object-cover"
+                />
+              </div>
+            ) : createdItem.generation_status === 'failed' ? (
+              <p className="text-sm text-destructive">画像の生成に失敗しました</p>
+            ) : null}
             <div className="flex items-center justify-between">
               <span className="font-medium">{createdItem.title}</span>
               <span
@@ -91,7 +104,6 @@ export function CreateItemForm() {
                 {STATUS_LABEL[createdItem.generation_status] ?? createdItem.generation_status}
               </span>
             </div>
-            <p className="text-xs text-muted-foreground">ID: {createdItem.id}</p>
             <div className="flex gap-2 pt-1">
               <Button variant="outline" size="sm" onClick={() => setCreatedItem(null)}>
                 続けて作成
