@@ -83,6 +83,16 @@ export function CreateItemForm() {
             <CardTitle>作成しました</CardTitle>
           </CardHeader>
           <CardContent className="space-y-3">
+            {createdItem.media?.url ? (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img
+                src={createdItem.media.url}
+                alt={createdItem.title}
+                className="w-full aspect-square object-cover rounded-lg"
+              />
+            ) : createdItem.generation_status === 'failed' ? (
+              <p className="text-sm text-destructive">画像の生成に失敗しました</p>
+            ) : null}
             <div className="flex items-center justify-between">
               <span className="font-medium">{createdItem.title}</span>
               <span
@@ -91,13 +101,12 @@ export function CreateItemForm() {
                 {STATUS_LABEL[createdItem.generation_status] ?? createdItem.generation_status}
               </span>
             </div>
-            <p className="text-xs text-muted-foreground">ID: {createdItem.id}</p>
             <div className="flex gap-2 pt-1">
               <Button variant="outline" size="sm" onClick={() => setCreatedItem(null)}>
                 続けて作成
               </Button>
-              <Link href="/dashboard">
-                <Button size="sm">ダッシュボードへ</Button>
+              <Link href="/items">
+                <Button size="sm">マイカードへ</Button>
               </Link>
             </div>
           </CardContent>

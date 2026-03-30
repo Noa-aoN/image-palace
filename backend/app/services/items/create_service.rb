@@ -18,14 +18,27 @@ module Items
         generation_status: "pending"
       )
 
-      # generation_status は pending のまま返す
-      # 後続ブランチで GenerateCardImageJob.perform_later(item.id) を呼び出し、
-      # ジョブ側で processing → completed に更新する
+      generate_and_attach_image(item)
 
-      Result.new(item:)
+      Result.new(item: item.reload)
     end
 
     private
+
+    def generate_and_attach_image(item)
+      item.update!(generation_status: "processing")
+      result = GenerateImageService.call(prompt: item.title)
+      item.medias.create!(
+        url: result.url,
+        media_type: "image",
+        metadata: result.metadata,
+        position: 0
+      )
+      item.update!(generation_status: "completed")
+    rescue => e
+      item.update!(generation_status: "failed")
+      Rails.logger.error "[CreateService] 画像生成失敗 item_id=#{item.id} error=#{e.message}"
+    end
 
     def default_item_type_id
       type = ItemType.find_by(name: "term")

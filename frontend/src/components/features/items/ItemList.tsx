@@ -20,6 +20,38 @@ const STATUS_COLOR: Record<string, string> = {
   failed: 'bg-red-100 text-red-800',
 }
 
+function ItemCard({ item }: { item: Item }) {
+  const [imgError, setImgError] = useState(false)
+
+  return (
+    <Link href={`/items/${item.id}`} className="flex flex-col rounded-xl border border-border overflow-hidden bg-card hover:shadow-md transition-shadow">
+      <div className="w-full aspect-square bg-muted flex items-center justify-center overflow-hidden">
+        {item.media?.url && !imgError ? (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img
+            src={item.media.url}
+            alt={item.title}
+            className="w-full h-full object-cover"
+            onError={() => setImgError(true)}
+          />
+        ) : (
+          <span className="text-muted-foreground text-xs">
+            {imgError ? '期限切れ' : (STATUS_LABEL[item.generation_status] ?? item.generation_status)}
+          </span>
+        )}
+      </div>
+      <div className="px-3 py-2 flex items-center justify-between gap-2">
+        <span className="text-sm font-medium truncate">{item.title}</span>
+        <span
+          className={`shrink-0 rounded-full px-2 py-0.5 text-xs font-medium ${STATUS_COLOR[item.generation_status] ?? ''}`}
+        >
+          {STATUS_LABEL[item.generation_status] ?? item.generation_status}
+        </span>
+      </div>
+    </Link>
+  )
+}
+
 export function ItemList() {
   const [items, setItems] = useState<Item[]>([])
   const [loading, setLoading] = useState(true)
@@ -52,17 +84,10 @@ export function ItemList() {
   }
 
   return (
-    <ul className="divide-y divide-border rounded-xl border border-border overflow-hidden">
+    <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
       {items.map((item) => (
-        <li key={item.id} className="flex items-center justify-between px-4 py-3 bg-card">
-          <span className="font-medium text-sm">{item.title}</span>
-          <span
-            className={`rounded-full px-2 py-0.5 text-xs font-medium ${STATUS_COLOR[item.generation_status] ?? ''}`}
-          >
-            {STATUS_LABEL[item.generation_status] ?? item.generation_status}
-          </span>
-        </li>
+        <ItemCard key={item.id} item={item} />
       ))}
-    </ul>
+    </div>
   )
 }
