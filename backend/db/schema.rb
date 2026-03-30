@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_03_29_000000) do
+ActiveRecord::Schema[8.1].define(version: 2026_03_30_124212) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
   enable_extension "pgcrypto"
@@ -26,11 +26,13 @@ ActiveRecord::Schema[8.1].define(version: 2026_03_29_000000) do
   create_table "items", id: :uuid, default: -> { "gen_random_uuid()" }, force: :cascade do |t|
     t.text "content"
     t.datetime "created_at", null: false
+    t.string "generation_status", default: "pending", null: false
     t.uuid "item_type_id", null: false
     t.jsonb "metadata", default: {}, null: false
     t.string "title", null: false
     t.datetime "updated_at", null: false
     t.uuid "user_id", null: false
+    t.index ["generation_status"], name: "index_items_on_generation_status"
     t.index ["item_type_id"], name: "index_items_on_item_type_id"
     t.index ["user_id", "item_type_id"], name: "index_items_on_user_id_and_item_type_id"
     t.index ["user_id"], name: "index_items_on_user_id"
