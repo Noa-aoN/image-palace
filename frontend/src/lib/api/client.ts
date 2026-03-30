@@ -1,18 +1,5 @@
 import axios from 'axios'
-
-const TOKEN_KEY = 'auth-storage'
-
-function getTokens() {
-  if (typeof window === 'undefined') return null
-  try {
-    const raw = localStorage.getItem(TOKEN_KEY)
-    if (!raw) return null
-    const parsed = JSON.parse(raw)
-    return parsed?.state?.tokens ?? null
-  } catch {
-    return null
-  }
-}
+import { useAuthStore } from '@/stores/auth'
 
 export const apiClient = axios.create({
   baseURL: process.env.NEXT_PUBLIC_API_BASE_URL,
@@ -20,8 +7,8 @@ export const apiClient = axios.create({
 })
 
 apiClient.interceptors.request.use((config) => {
-  const tokens = getTokens()
-  if (tokens) {
+  const tokens = useAuthStore.getState().tokens
+  if (tokens?.accessToken && tokens.uid && tokens.client) {
     config.headers['access-token'] = tokens.accessToken
     config.headers['uid'] = tokens.uid
     config.headers['client'] = tokens.client
@@ -34,17 +21,21 @@ apiClient.interceptors.response.use(
   (response) => {
     const accessToken = response.headers['access-token']
     if (accessToken) {
-      // ストアを直接 import すると循環依存になるため、カスタムイベントで通知
-      const tokens = {
+      useAuthStore.getState().updateTokens({
         accessToken,
         uid: response.headers['uid'] ?? '',
         client: response.headers['client'] ?? '',
         tokenType: response.headers['token-type'] ?? 'Bearer',
         expiry: response.headers['expiry'] ?? '',
-      }
-      window.dispatchEvent(new CustomEvent('auth:tokens-updated', { detail: tokens }))
+      })
     }
     return response
   },
-  (error) => Promise.reject(error)
+  (error) => {
+    if (error.response?.status === 401) {
+      useAuthStore.getState().clearAuth()
+      window.location.href = '/login'
+    }
+    return Promise.reject(error)
+  }
 )
