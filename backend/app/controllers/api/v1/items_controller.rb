@@ -2,7 +2,9 @@ module Api
   module V1
     class ItemsController < BaseController
       def index
-        items = current_user.items.includes(:medias).order(created_at: :desc)
+        items = current_user.items
+                  .includes(medias: { file_attachment: :blob })
+                  .order(created_at: :desc)
         render json: { items: items.map { |i| serialize_item(i) } }
       end
 
@@ -14,7 +16,9 @@ module Api
       end
 
       def show
-        item = current_user.items.includes(:medias).find(params[:id])
+        item = current_user.items
+                 .includes(medias: { file_attachment: :blob })
+                 .find(params[:id])
         render json: serialize_item(item)
       end
 
@@ -25,14 +29,26 @@ module Api
       end
 
       def serialize_item(item)
-        media = item.medias.first
         {
           id: item.id,
           title: item.title,
           generation_status: item.generation_status,
-          media: media ? { id: media.id, url: media.url, media_type: media.media_type } : nil,
+          media: serialize_media(item.medias.first),
           created_at: item.created_at
         }
+      end
+
+      def serialize_media(media)
+        return nil unless media
+
+        url = if media.file.attached?
+          url_for(media.file)
+        else
+          media.url
+        end
+        return nil if url.blank?
+
+        { id: media.id, url: url, media_type: media.media_type }
       end
     end
   end
