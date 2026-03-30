@@ -37,6 +37,11 @@ export function Header() {
                 ダッシュボード
               </Button>
             </Link>
+            <Link href="/items">
+              <Button variant="ghost" className="text-sm">
+                マイカード
+              </Button>
+            </Link>
             <Link href="/items/new">
               <Button
                 variant="outline"
