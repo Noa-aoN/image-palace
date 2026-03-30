@@ -10,9 +10,10 @@ export function AuthGuard({ children }: { children: React.ReactNode }) {
 
   // lazy initializer で同期的に現在の hydration 状態を取得する。
   // useState に関数参照を渡すと React が初回のみ呼び出す（useEffect 不要）。
-  const [hasHydrated, setHasHydrated] = useState(
-    useAuthStore.persist.hasHydrated
-  )
+  const [hasHydrated, setHasHydrated] = useState(() => {
+    if (typeof window === 'undefined') return false
+    return useAuthStore.persist.hasHydrated()
+  })
 
   useEffect(() => {
     // onFinishHydration は外部システムへの購読なので、
