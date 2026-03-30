@@ -28,7 +28,11 @@ module Items
     private
 
     def default_item_type_id
-      ItemType.find_by!(name: "term").id
+      type = ItemType.find_by(name: "term")
+      unless type
+        raise ActiveRecord::RecordNotFound, "Default ItemType 'term' not found. Please run 'rails db:seed'."
+      end
+      type.id
     end
   end
 end
