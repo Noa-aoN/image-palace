@@ -27,17 +27,16 @@ Types: `feat` / `fix` / `chore` / `refactor` / `docs`
 ## Branch Naming
 
 ```
-feature/#$ARGUMENTS-{short-description}
-fix/#$ARGUMENTS-{short-description}
+<type>/$ARGUMENTS-{short-description}
 ```
 
-例: `feature/#17-devise-token-auth`
+例: `feature/17-devise-token-auth`
+**注意**: `#` はブランチ名に含めないでください。
 
-## Rules
+## Project Specific Rules
 
-- Keep changes minimal and focused on the issue
-- Do not refactor unrelated code
-- If the issue is unclear, explain what you understood and ask for clarification
-- If the fix requires breaking changes, explain the impact before proceeding
-- `objects` が単語カードの実体。`cards` / `card_sets` は使わない
-- OpenAI API キーはバックエンドのみ。フロントエンドから直接呼び出し禁止
+- **Terminology**: The entity for word cards is called 'items'. Never use 'objects', 'cards', or 'card_sets'.
+- **PR Titles**: Format is `[#$ARGUMENTS] Description`. Example: `[#14] Setup Fly.io deployment`.
+- **Tech Stack**: Backend is Rails 8 API. Frontend is Next.js (App Router) + Tailwind CSS + shadcn/ui.
+- **Deployment**: Backend is Fly.io.
+- **Security**: OpenAI API keys are for backend only. Never call from frontend directly.
