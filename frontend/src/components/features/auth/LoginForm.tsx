@@ -24,7 +24,7 @@ export function LoginForm() {
     try {
       const { user, tokens } = await signIn(email, password)
       setAuth(user, tokens)
-      router.push('/')
+      router.push('/dashboard')
     } catch {
       setError('メールアドレスまたはパスワードが正しくありません')
     } finally {

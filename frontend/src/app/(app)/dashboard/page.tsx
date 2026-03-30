@@ -1,0 +1,17 @@
+import Link from 'next/link'
+import { Button } from '@/components/ui/button'
+import { ItemList } from '@/components/features/items/ItemList'
+
+export default function DashboardPage() {
+  return (
+    <div className="max-w-2xl mx-auto px-6 py-12">
+      <div className="flex items-center justify-between mb-6">
+        <h1 className="text-xl font-semibold">マイカード</h1>
+        <Link href="/items/new">
+          <Button size="sm">+ カードを作成</Button>
+        </Link>
+      </div>
+      <ItemList />
+    </div>
+  )
+}
