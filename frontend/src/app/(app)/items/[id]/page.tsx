@@ -21,6 +21,8 @@ const STATUS_COLOR: Record<string, string> = {
   failed: 'bg-red-100 text-red-800',
 }
 
+const POLLING_STATUSES = new Set(['pending', 'processing'])
+
 export default function ItemDetailPage() {
   const { id } = useParams<{ id: string }>()
   const [item, setItem] = useState<Item | null>(null)
@@ -32,6 +34,19 @@ export default function ItemDetailPage() {
       .then(setItem)
       .catch(() => setError('カードの取得に失敗しました'))
   }, [id])
+
+  useEffect(() => {
+    if (!item) return
+    if (!POLLING_STATUSES.has(item.generation_status)) return
+
+    const timer = setInterval(() => {
+      getItem(id)
+        .then(setItem)
+        .catch(() => clearInterval(timer))
+    }, 2000)
+
+    return () => clearInterval(timer)
+  }, [id, item?.generation_status])
 
   if (error) {
     return (
@@ -62,7 +77,7 @@ export default function ItemDetailPage() {
         />
       ) : (
         <div className="w-full aspect-square rounded-xl bg-muted flex items-center justify-center text-muted-foreground text-sm">
-          {imgError ? '画像の有効期限切れ（R2移行後に解消されます）' : (STATUS_LABEL[item.generation_status] ?? item.generation_status)}
+          {imgError ? '画像を表示できません' : (STATUS_LABEL[item.generation_status] ?? item.generation_status)}
         </div>
       )}
 
