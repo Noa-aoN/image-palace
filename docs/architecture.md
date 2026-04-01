@@ -153,34 +153,39 @@ docs/
 ```
 [Frontend]                    [Backend]                      [外部サービス]
   |                              |                                |
-  | POST /api/v1/cards           |                                |
-  |  { word: "photosynthesis" }  |                                |
+  | POST /api/v1/items           |                                |
+  |  { title: "photosynthesis",  |                                |
+  |    force_generate: false }   |                                |
   |----------------------------->|                                |
-  |                              | 同一単語チェック（DB）          |
-  |                              |---> キャッシュあり: 即レスポンス|
-  |                              |                                |
-  |                              | キャッシュなし:                 |
+  |                              | item作成(pending)              |
   |                              | Solid Queue ジョブをエンキュー   |
   | 202 Accepted                 |----> Solid Queue (PostgreSQL)  |
   |<-----------------------------|                                |
-  |  { status: "pending",        |      [GenerateCardImageJob]    |
-  |    card_id: 123 }            |       |                        |
-  |                              |       | OpenAI Images API      |
-  |  ポーリング or WebSocket     |       |----------------------->|
-  |  GET /api/v1/cards/123       |       | 画像 URL が返る         |
-  |----------------------------->|       |<-----------------------|
-  |                              |       | R2 に保存              |
+  |  { status: "pending",        |      [GenerateImageJob]        |
+  |    item_id: "uuid" }         |       |                        |
+  |                              |       | normalized_promptで     |
+  |  ポーリング or WebSocket     |       | SharedMediaを検索        |
+  |  GET /api/v1/items/:id       |       |                        |
+  |----------------------------->|       | HIT: blob参照のみ       |
+  |                              |       | MISS: OpenAI API呼び出し|
+  |                              |       |----------------------->|
+  |                              |       | 画像 URL が返る         |
+  |                              |       |<-----------------------|
+  |                              |       | SharedMedia + R2に保存  |
   |                              |       | DB を completed に更新  |
   | 200 OK                       |       |                        |
   | { status: "completed",       |<------|                        |
-  |   image_url: "cdn://..." }   |                                |
+  |   media: { url: "..." } }    |                                |
   |<-----------------------------|                                |
 ```
 
 ### キャッシュ戦略
 
-- 同一単語（正規化済み）の画像は DB に保存し、再生成しない
-- Cloudflare R2 に保存した画像は Cloudflare CDN 経由で配信
+- `NormalizePromptService` で正規化したプロンプトをキーに `shared_media` を検索
+- HIT: 既存 blob を参照（R2アクセスなし、OpenAI APIなし）
+- MISS: OpenAI API → R2保存 → `shared_media` に記録
+- `force_generate: true` でキャッシュを無視して再生成可能
+- 画像URLは `CDN_BASE_URL` が設定されていれば CDN 経由、未設定なら ActiveStorage リダイレクト経由
 - R2 直配信は禁止
 
 ---

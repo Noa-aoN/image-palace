@@ -26,3 +26,11 @@ plans_data.each do |data|
     plan.metadata = data[:metadata]
   end
 end
+
+# テストユーザー（SEED_TEST_USER=1 が設定されている環境のみ作成）
+if ENV["SEED_TEST_USER"] == "true"
+  User.find_or_create_by!(email: "test@example.com") do |u|
+    u.password = "password"
+    u.password_confirmation = "password"
+  end
+end
