@@ -25,7 +25,7 @@ module Api
       private
 
       def item_params
-        params.require(:item).permit(:title, :item_type_id)
+        params.require(:item).permit(:title, :item_type_id, :force_generate)
       end
 
       def serialize_item(item)
