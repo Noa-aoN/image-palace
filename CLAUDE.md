@@ -75,9 +75,11 @@ payments           決済レコード
 
 ## キャッシュ設計（最重要）
 
-`shared_media.normalized_prompt` に UNIQUE 制約。
-同じ単語は世界中で1回しか OpenAI API を呼ばない。
-`GenerateCardImageJob` でキャッシュ HIT/MISS を判定する。
+`shared_media.normalized_prompt` をキャッシュキーとして使用。
+UNIQUE 制約なし（将来の複数画像選択に対応するため）。
+同じ単語は既存 shared_media があれば OpenAI API を呼ばない。
+`GenerateImageJob` でキャッシュ HIT/MISS を判定する。
+`force_generate: true` を指定するとキャッシュを無視して再生成する。
 
 ---
 

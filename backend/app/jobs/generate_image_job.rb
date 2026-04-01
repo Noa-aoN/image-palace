@@ -9,13 +9,16 @@ class GenerateImageJob < ApplicationJob
     return unless item
 
     item.update!(generation_status: "processing")
+    Rails.logger.info "[GenerateImageJob] START item_id=#{item.id} prompt=#{item.title}"
 
     normalized = NormalizePromptService.call(item.title)
     cached = force_generate ? nil : SharedMedia.for_prompt(normalized).first
 
     if cached
+      Rails.logger.info "[GenerateImageJob] CACHE HIT prompt=#{normalized} shared_media_id=#{cached.id}"
       attach_from_shared_media(item, cached)
     else
+      Rails.logger.info "[GenerateImageJob] CACHE MISS prompt=#{normalized}"
       result = GenerateImageService.call(prompt: item.title)
       shared_media = SharedMedia.create!(
         normalized_prompt: normalized,
@@ -27,9 +30,10 @@ class GenerateImageJob < ApplicationJob
     end
 
     item.update!(generation_status: "completed")
+    Rails.logger.info "[GenerateImageJob] COMPLETE item_id=#{item.id}"
   rescue => e
     item&.update(generation_status: "failed")
-    Rails.logger.error "[GenerateImageJob] 失敗 item_id=#{item_id} error=#{e.message}"
+    Rails.logger.error "[GenerateImageJob] ERROR item_id=#{item_id} error=#{e.message} backtrace=#{e.backtrace.first(3).join(' | ')}"
   end
 
   private
