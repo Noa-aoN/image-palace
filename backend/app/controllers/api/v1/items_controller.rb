@@ -25,7 +25,7 @@ module Api
       private
 
       def item_params
-        params.require(:item).permit(:title, :item_type_id)
+        params.require(:item).permit(:title, :item_type_id, :force_generate)
       end
 
       def serialize_item(item)
@@ -39,16 +39,16 @@ module Api
       end
 
       def serialize_media(media)
-        return nil unless media
+        return nil unless media&.file&.attached?
 
-        url = if media.file.attached?
-          url_for(media.file)
-        else
-          media.url
-        end
-        return nil if url.blank?
+        { id: media.id, url: media_url(media.file.blob), media_type: media.media_type }
+      end
 
-        { id: media.id, url: url, media_type: media.media_type }
+      def media_url(blob)
+        cdn_base = ENV["CDN_BASE_URL"]
+        return url_for(blob) if cdn_base.blank?
+
+        "#{cdn_base}/#{blob.key}"
       end
     end
   end

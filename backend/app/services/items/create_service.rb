@@ -17,7 +17,7 @@ module Items
         item_type_id: @params[:item_type_id] || default_item_type_id,
         generation_status: "pending"
       )
-      GenerateImageJob.perform_later(item.id)
+      GenerateImageJob.perform_later(item.id, force_generate: @params[:force_generate] == true)
       Result.new(item: item)
     end
 

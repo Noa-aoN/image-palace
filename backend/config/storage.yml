@@ -15,7 +15,9 @@ cloudflare_r2:
   endpoint: https://<%= ENV["R2_ACCOUNT_ID"] %>.r2.cloudflarestorage.com
   bucket: <%= ENV["R2_BUCKET_NAME"] %>
   force_path_style: true
-  upload_options:
+  request_checksum_calculation: "when_required"
+  response_checksum_validation: "when_required"
+  upload:
     checksum_algorithm: ~
 
 # Remember not to checkin your GCS keyfile to a repository
