@@ -12,7 +12,8 @@
 3. [Staging 環境](#staging-環境)
 4. [本番環境](#本番環境)
 5. [レイヤー別リファレンス](#レイヤー別リファレンス)
-6. [トラブルシューティング](#トラブルシューティング)
+6. [AI Skill の活用](#ai-skill-の活用)
+7. [トラブルシューティング](#トラブルシューティング)
 
 ---
 
@@ -219,6 +220,43 @@ GenerateImageJob.perform_later(item_id: item.id)
 | Cloudflare Workers デプロイ | `cd frontend && npm run deploy` |
 | Cloudflare Workers ログ | Cloudflare Dashboard > Workers > Logs |
 | Neon DB接続 | Neon Dashboard で接続URLを確認 |
+
+---
+
+## AI Skill の活用
+
+Claude Code の `/コマンド` で呼び出せる Skill を開発フローに組み込む。
+全 Skill の一覧・詳細は [`docs/playbook/skills.md`](./skills.md) を参照。
+
+### 標準的な開発サイクル
+
+```
+1. /brainstorming          設計・仕様を固める（コーディング前に必ず通す）
+2. 実装（または /fix-issue [Issue番号]）
+3. /code-review-expert     差分の自己レビュー（PR 作成前）
+4. PR 作成
+5. /review-pr [PR番号]     PR レビュー → 修正 → マージ
+```
+
+### リリース前チェック
+
+```
+/doc-review                docs が実装と一致しているか確認
+/deploy staging            staging デプロイ
+/deploy production         本番デプロイ（staging 確認後）
+```
+
+### よく使うシーン別
+
+| シーン | Skill |
+|---|---|
+| Issue を実装したい | `/fix-issue 17` |
+| マイグレーションを作りたい | `/db-migrate add_items_table` |
+| UI コンポーネントを作りたい | `/frontend-design [要件]` |
+| アクセシビリティを直したい | `/fixing-accessibility [ファイル]` |
+| ドキュメントが古い気がする | `/doc-review` |
+| コードの動きを理解したい | `/explain-code [対象]` |
+| 現在のブランチ状況を確認したい | `/status` |
 
 ---
 
