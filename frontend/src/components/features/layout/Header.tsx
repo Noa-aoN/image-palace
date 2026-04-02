@@ -15,6 +15,7 @@ import { signOut } from '@/lib/api/auth'
 export function AppHeader() {
   const router = useRouter()
   const clearAuth = useAuthStore((s) => s.clearAuth)
+  const isAuthenticated = useAuthStore((s) => s.isAuthenticated)
 
   const handleLogout = async () => {
     try {
@@ -28,20 +29,20 @@ export function AppHeader() {
 
   return (
     <header
-      className="h-20 flex items-center justify-between px-6 shrink-0 z-10"
+      className="h-14 flex items-center justify-between px-6 shrink-0 z-10"
       style={{
         backgroundColor: 'var(--ivory)',
         borderBottom: '1px solid var(--palace)',
       }}
     >
       {/* ロゴ */}
-      <Link href="/dashboard" className="flex items-center">
+      <Link href={isAuthenticated ? '/dashboard' : '/'} className="flex items-center">
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img
           src="/logo-palace.svg"
           alt="ImagePalace"
-          width={48}
-          height={48}
+          width={36}
+          height={36}
           className="block"
         />
       </Link>
@@ -49,7 +50,7 @@ export function AppHeader() {
       {/* ユーザーメニュー */}
       <DropdownMenu>
         <DropdownMenuTrigger className="rounded-full p-1 hover:bg-black/5 transition-colors">
-          <CircleUser size={40} strokeWidth={1.5} />
+          <CircleUser size={32} strokeWidth={1.5} />
         </DropdownMenuTrigger>
         <DropdownMenuContent align="end">
           <DropdownMenuItem onClick={handleLogout} className="cursor-pointer">

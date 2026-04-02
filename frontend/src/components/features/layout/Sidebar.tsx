@@ -1,5 +1,6 @@
 'use client'
 
+import { useEffect, useState } from 'react'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { ChevronRight, ChevronLeft, LayoutDashboard, GalleryHorizontal, Plus } from 'lucide-react'
@@ -20,10 +21,12 @@ const NAV_ITEMS: NavItem[] = [
 export function Sidebar() {
   const pathname = usePathname()
   const { sidebarExpanded, toggleSidebar } = useUiStore()
+  const [mounted, setMounted] = useState(false)
+  useEffect(() => setMounted(true), [])
 
   return (
     <aside
-      className="flex flex-col shrink-0 overflow-y-auto transition-[width] duration-200"
+      className={`flex flex-col shrink-0 overflow-y-auto ${mounted ? 'transition-[width] duration-200' : ''}`}
       style={{
         width: sidebarExpanded ? '240px' : '72px',
         backgroundColor: 'var(--ivory)',
