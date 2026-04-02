@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_03_30_134215) do
+ActiveRecord::Schema[8.1].define(version: 2026_04_01_150746) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
   enable_extension "pgcrypto"
@@ -122,9 +122,10 @@ ActiveRecord::Schema[8.1].define(version: 2026_03_30_134215) do
   create_table "shared_medias", id: :uuid, default: -> { "gen_random_uuid()" }, force: :cascade do |t|
     t.datetime "created_at", null: false
     t.jsonb "metadata", default: {}, null: false
+    t.string "normalized_prompt", default: "", null: false
     t.datetime "updated_at", null: false
-    t.text "url"
-    t.uuid "user_id", null: false
+    t.uuid "user_id"
+    t.index ["normalized_prompt"], name: "index_shared_medias_on_normalized_prompt"
     t.index ["user_id"], name: "index_shared_medias_on_user_id"
   end
 
@@ -290,7 +291,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_03_30_134215) do
   add_foreign_key "relations", "items", column: "to_item_id", on_delete: :cascade
   add_foreign_key "relations", "users", on_delete: :cascade
   add_foreign_key "settings", "users", on_delete: :cascade
-  add_foreign_key "shared_medias", "users", on_delete: :cascade
+  add_foreign_key "shared_medias", "users", on_delete: :nullify
   add_foreign_key "solid_queue_blocked_executions", "solid_queue_jobs", column: "job_id", on_delete: :cascade
   add_foreign_key "solid_queue_claimed_executions", "solid_queue_jobs", column: "job_id", on_delete: :cascade
   add_foreign_key "solid_queue_failed_executions", "solid_queue_jobs", column: "job_id", on_delete: :cascade

@@ -1,0 +1,30 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48" fill="none">
+  <!-- 中央タワー -->
+  <rect x="18" y="20" width="12" height="20" fill="currentColor"/>
+  <!-- 中央タワー 銃眼 -->
+  <rect x="18" y="16" width="3" height="5" fill="currentColor"/>
+  <rect x="22.5" y="16" width="3" height="5" fill="currentColor"/>
+  <rect x="27" y="16" width="3" height="5" fill="currentColor"/>
+  <!-- 中央アーチ入口 -->
+  <path d="M21 40 L21 32 Q24 28 27 32 L27 40 Z" fill="white"/>
+
+  <!-- 左タワー -->
+  <rect x="6" y="24" width="9" height="16" fill="currentColor"/>
+  <!-- 左タワー 銃眼 -->
+  <rect x="6" y="20" width="2.5" height="5" fill="currentColor"/>
+  <rect x="9.5" y="20" width="2.5" height="5" fill="currentColor"/>
+
+  <!-- 右タワー -->
+  <rect x="33" y="24" width="9" height="16" fill="currentColor"/>
+  <!-- 右タワー 銃眼 -->
+  <rect x="33" y="20" width="2.5" height="5" fill="currentColor"/>
+  <rect x="36.5" y="20" width="2.5" height="5" fill="currentColor"/>
+
+  <!-- 城壁（左） -->
+  <rect x="15" y="28" width="3" height="12" fill="currentColor"/>
+  <!-- 城壁（右） -->
+  <rect x="30" y="28" width="3" height="12" fill="currentColor"/>
+
+  <!-- 地面ライン -->
+  <rect x="4" y="40" width="40" height="2" rx="1" fill="currentColor"/>
+</svg>

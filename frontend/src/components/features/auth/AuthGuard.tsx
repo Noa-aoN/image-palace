@@ -25,7 +25,15 @@ export function AuthGuard({ children }: { children: React.ReactNode }) {
     if (hasHydrated && !isAuthenticated) router.replace('/login')
   }, [hasHydrated, isAuthenticated, router])
 
-  if (!hasHydrated) return null
+  // Hydration 完了前: ローディング表示（ヘッダー/サイドバーは外側で既に表示済み）
+  if (!hasHydrated) {
+    return (
+      <div className="flex items-center justify-center h-32">
+        <p className="text-sm text-muted-foreground">読み込み中...</p>
+      </div>
+    )
+  }
+
   if (!isAuthenticated) return null
   return <>{children}</>
 }
