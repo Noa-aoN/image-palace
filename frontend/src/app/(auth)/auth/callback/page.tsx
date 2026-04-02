@@ -1,22 +1,29 @@
 'use client'
 
-import { Suspense, useEffect } from 'react'
-import { useRouter, useSearchParams } from 'next/navigation'
+import { useEffect } from 'react'
+import { useRouter } from 'next/navigation'
 import { useAuthStore } from '@/stores/auth'
 import { apiClient } from '@/lib/api/client'
 import type { AuthTokens, User } from '@/types/auth'
 
-function AuthCallbackContent() {
+// トークンはURLフラグメント(#)で受け取る。
+// クエリパラメータ(?)ではなくフラグメントを使う理由:
+// - フラグメントはサーバーに送信されないためアクセスログに残らない
+// - Refererヘッダーにも含まれない
+// - useSearchParams() は不要なため Suspense ラッパーも不要
+export default function AuthCallbackPage() {
   const router = useRouter()
-  const searchParams = useSearchParams()
   const setAuth = useAuthStore((state) => state.setAuth)
 
   useEffect(() => {
-    const accessToken = searchParams.get('access-token')
-    const uid = searchParams.get('uid')
-    const client = searchParams.get('client')
-    const tokenType = searchParams.get('token-type') ?? 'Bearer'
-    const expiry = searchParams.get('expiry') ?? ''
+    const hash = window.location.hash.slice(1) // 先頭の # を除去
+    const params = new URLSearchParams(hash)
+
+    const accessToken = params.get('access-token')
+    const uid = params.get('uid')
+    const client = params.get('client')
+    const tokenType = params.get('token-type') ?? 'Bearer'
+    const expiry = params.get('expiry') ?? ''
 
     if (!accessToken || !uid || !client) {
       router.replace('/login')
@@ -42,19 +49,5 @@ function AuthCallbackContent() {
     <div className="flex flex-1 items-center justify-center">
       <p className="text-sm text-muted-foreground">認証中...</p>
     </div>
-  )
-}
-
-export default function AuthCallbackPage() {
-  return (
-    <Suspense
-      fallback={
-        <div className="flex flex-1 items-center justify-center">
-          <p className="text-sm text-muted-foreground">認証中...</p>
-        </div>
-      }
-    >
-      <AuthCallbackContent />
-    </Suspense>
   )
 }
