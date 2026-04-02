@@ -194,14 +194,20 @@ docs/
 
 | 環境 | Frontend | Backend | DB | CDN |
 |-----|---------|---------|-----|-----|
-| local | localhost:3001 | localhost:3000 | Docker PostgreSQL | なし（R2 直接） |
+| local | localhost:3000 | localhost:3001 | Docker PostgreSQL | なし（R2 直接） |
 | staging | Cloudflare Workers | Fly.io | Neon (staging schema) | Cloudflare CDN |
 | production | Cloudflare Workers | Fly.io | Neon (production) | Cloudflare CDN |
 
 ### 環境変数管理
 
-- ローカル: `.env.local`（コミットしない）
-- staging/production: ホスティングサービスのダッシュボードで管理
+**フロントエンド**
+- `.env.development`（コミットする）: 開発環境の非シークレット設定（`NEXT_PUBLIC_*`）
+- `.env.production`（コミットする）: 本番環境の非シークレット設定（`NEXT_PUBLIC_*`）
+- `.env.local`（コミットしない）: シークレット専用
+
+**バックエンド**
+- `.env`（コミットしない）: ローカル開発用。シークレット含む
+- staging/production: Fly.io secrets で管理
 
 ---
 

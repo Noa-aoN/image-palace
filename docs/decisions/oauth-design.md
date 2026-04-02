@@ -183,58 +183,40 @@ validates :uid, uniqueness: { scope: :provider }
 
 ---
 
-## フロントエンド実装時のメモ
+## 実装済み: フロントエンド連携フロー
 
-### OAuth フロー（フロント実装後）
+> 2026-04-02 実装完了
+
+### OAuth フロー
 
 ```
 1. ユーザーが「Googleでログイン」ボタンをクリック
-   → window.location.href = 'http://localhost:3001/api/v1/auth/google_oauth2'
+   → window.location.href = `${NEXT_PUBLIC_API_BASE_URL}/api/v1/auth/google_oauth2`
 
 2. Google 認証画面 → 許可
 
-3. バックエンドが FRONTEND_URL/auth/callback?token=xxx&... にリダイレクト
-   （コントローラの redirect_to 行をコメントアウト解除）
+3. バックエンドが `FRONTEND_URL/auth/callback?token=xxx&...` にリダイレクト
+   （URI.parse でスキーム・ホストを検証済み）
 
 4. フロントエンドの /auth/callback ページがクエリパラメータからトークンを取得
-   → Zustand ストアに保存 → 以降のリクエストに Authorization ヘッダーを付与
+   → validate_token で検証 → Zustand ストアに保存 → dashboard へ遷移
 ```
 
-### バックエンドの切り替え作業（フロント実装時）
+### 環境変数
 
-`backend/app/controllers/api/v1/auth/omniauth_callbacks_controller.rb` の
-`omniauth_success` メソッド内で以下を切り替える：
+| 変数 | ローカル | 本番 |
+|-----|---------|------|
+| `FRONTEND_URL` | `http://localhost:3000` | `https://image-palace-frontend.image-palace.workers.dev` |
+| `GOOGLE_OAUTH_CLIENT_ID` | `.env` | Fly.io secrets |
+| `GOOGLE_OAUTH_CLIENT_SECRET` | `.env` | Fly.io secrets |
 
-```ruby
-# 削除（開発確認用JSONレスポンス）
-render json: { data: { ... } }, status: :ok
-
-# 有効化（フロントエンドへリダイレクト）
-frontend_url = ENV.fetch('FRONTEND_URL', 'http://localhost:3000')
-redirect_to "#{frontend_url}/auth/callback?#{auth_header.to_query}", allow_other_host: true
-```
-
-### 環境変数の追加
-
-本番環境・stagingに以下を設定：
-```
-FRONTEND_URL=https://your-frontend-domain.com
-GOOGLE_OAUTH_CLIENT_ID=xxx.apps.googleusercontent.com
-GOOGLE_OAUTH_CLIENT_SECRET=xxx
-```
-
-Google Cloud Console の「承認済みのリダイレクト URI」に追加：
-- `https://your-backend-domain.com/omniauth/google_oauth2/callback`
-
-### フロントエンド実装ポイント
-
-- `/auth/callback` ページは `access-token`, `client`, `uid`, `token-type`, `expiry` をクエリパラメータから受け取る
-- `access-token` は次回以降のリクエストで `Authorization: Bearer <access-token>` ヘッダーとして使用
-- devise_token_auth はトークンローテーション方式のため、毎レスポンスのヘッダーからトークンを更新して保存する
+Google Cloud Console の「承認済みのリダイレクト URI」:
+- `https://image-palace-api.fly.dev/omniauth/google_oauth2/callback`
 
 ---
 
 ## 関連ファイル
 
-- 実装: `backend/app/models/user.rb`
-- 実装: `backend/app/controllers/api/v1/auth/omniauth_callbacks_controller.rb`
+- `backend/app/models/user.rb`
+- `backend/app/controllers/api/v1/auth/omniauth_callbacks_controller.rb`
+- `frontend/src/app/(auth)/auth/callback/page.tsx`
