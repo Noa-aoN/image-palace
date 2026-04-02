@@ -36,7 +36,10 @@ module Api
             return
           end
 
-          redirect_to "#{frontend_url}/auth/callback?#{auth_header.to_query}", allow_other_host: true
+          # トークンをURLフラグメント(#)で渡す。クエリパラメータ(?)だとサーバーログ・
+          # ブラウザ履歴・Refererヘッダーにトークンが残るため、フラグメントを使用する。
+          # フラグメントはサーバーに送信されないため、ログに残らない。
+          redirect_to "#{frontend_url}/auth/callback##{auth_header.to_query}", allow_other_host: true
         end
       end
     end
