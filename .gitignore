@@ -17,3 +17,7 @@ node_modules/
 # コンテンツ生成
 docs/daily/
 docs/drafts/
+
+# Cloudflare Workers ビルド成果物
+frontend/.open-next/
+frontend/.wrangler/
