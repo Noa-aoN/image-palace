@@ -12,4 +12,8 @@ binding = "WORKER_SELF_REFERENCE"
 service = "image-palace-frontend"
 
 [vars]
+# 注意: NEXT_PUBLIC_* 変数はビルド時に静的置換されるため、
+# ここに書いてもランタイムでは上書きされない。
+# 実際の値は .env.production で管理する。
+# （参考用として記載しているが、削除しても動作に影響なし）
 NEXT_PUBLIC_API_BASE_URL = "https://image-palace-api.fly.dev"
