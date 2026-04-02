@@ -29,20 +29,14 @@ module Api
           # レスポンスヘッダーにトークン情報を設定
           response.headers.merge!(auth_header)
 
-          # フロントエンド実装後はリダイレクトに切り替える:
-          # frontend_url = ENV.fetch('FRONTEND_URL', 'http://localhost:3000')
-          # redirect_to "#{frontend_url}/auth/callback?#{auth_header.to_query}", allow_other_host: true
+          frontend_url = ENV.fetch('FRONTEND_URL', 'http://localhost:3000')
+          parsed = URI.parse(frontend_url)
+          unless %w[http https].include?(parsed.scheme) && parsed.host.present?
+            render json: { error: 'FRONTEND_URL の設定が不正です' }, status: :internal_server_error
+            return
+          end
 
-          # 開発確認用: JSON レスポンス
-          render json: {
-            data: {
-              id: @user.id,
-              uid: @user.uid,
-              email: @user.email,
-              name: @user.name,
-              provider: @user.provider
-            }
-          }, status: :ok
+          redirect_to "#{frontend_url}/auth/callback?#{auth_header.to_query}", allow_other_host: true
         end
       end
     end
