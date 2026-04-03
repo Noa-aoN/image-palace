@@ -1,8 +1,18 @@
 class GenerateImageJob < ApplicationJob
   queue_as :default
 
+  # OpenAI レート制限・ネットワーク障害に対して指数バックオフでリトライ
+  # 15s → 60s → 240s の間隔で最大3回リトライ（計4回実行）
+  # 全リトライ消費後に failed にする
+  retry_on StandardError, wait: :polynomially_longer, attempts: 3 do |job, error|
+    item_id = job.arguments[0]
+    item = Item.find_by(id: item_id)
+    item&.update(generation_status: "failed")
+    Rails.logger.error "[GenerateImageJob] ALL RETRIES EXHAUSTED item_id=#{item_id} error=#{error.message}"
+  end
+
   OPEN_TIMEOUT = 10
-  READ_TIMEOUT = 30
+  READ_TIMEOUT = 60
 
   def perform(item_id, force_generate: false)
     item = Item.find_by(id: item_id)
@@ -31,9 +41,7 @@ class GenerateImageJob < ApplicationJob
 
     item.update!(generation_status: "completed")
     Rails.logger.info "[GenerateImageJob] COMPLETE item_id=#{item.id}"
-  rescue => e
-    item&.update(generation_status: "failed")
-    Rails.logger.error "[GenerateImageJob] ERROR item_id=#{item_id} error=#{e.message} backtrace=#{e.backtrace.first(3).join(' | ')}"
+    # rescue を置かない → 例外は retry_on に伝播させる
   end
 
   private

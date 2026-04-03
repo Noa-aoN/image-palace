@@ -9,7 +9,11 @@ Rails.application.routes.draw do
         }
       get 'health', to: 'health#show'
       get 'health/authenticated', to: 'health#show_authenticated'
-      resources :items, only: [:index, :create, :show, :destroy]
+      resources :items, only: [:index, :create, :show, :destroy] do
+        member do
+          post :retry
+        end
+      end
     end
   end
 end
