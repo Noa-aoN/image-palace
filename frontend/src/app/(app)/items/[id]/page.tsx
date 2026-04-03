@@ -93,34 +93,12 @@ export default function ItemDetailPage() {
     return <p className="max-w-lg mx-auto px-6 py-12 text-muted-foreground text-sm">読み込み中...</p>
   }
 
+  const navBtn = 'flex items-center justify-center w-8 h-8 rounded-full text-muted-foreground hover:text-foreground hover:bg-black/8 transition-colors shrink-0'
+
   return (
-    /* 左右ナビゲーションを端に置くため全幅の relative ラッパー */
     <div className="relative flex flex-col min-h-full">
-
-      {/* 左矢印: メインエリアの左端 */}
-      {prevId && (
-        <button
-          onClick={() => router.push(`/items/${prevId}`)}
-          className="absolute left-1 top-1/2 -translate-y-1/2 z-10 rounded-full p-2 text-muted-foreground hover:text-foreground hover:bg-black/8 transition-colors"
-          aria-label="前のカード"
-        >
-          <ChevronLeft size={28} strokeWidth={1.5} />
-        </button>
-      )}
-
-      {/* 右矢印: メインエリアの右端 */}
-      {nextId && (
-        <button
-          onClick={() => router.push(`/items/${nextId}`)}
-          className="absolute right-1 top-1/2 -translate-y-1/2 z-10 rounded-full p-2 text-muted-foreground hover:text-foreground hover:bg-black/8 transition-colors"
-          aria-label="次のカード"
-        >
-          <ChevronRight size={28} strokeWidth={1.5} />
-        </button>
-      )}
-
-      {/* カード詳細コンテンツ（中央寄せ） */}
       <div className="max-w-lg mx-auto w-full px-6 py-12 space-y-6">
+
         {/* ヘッダー行 */}
         <div className="flex items-center justify-between">
           <Link href="/items">
@@ -139,20 +117,49 @@ export default function ItemDetailPage() {
           </Button>
         </div>
 
-        {/* 画像（矢印は画像の外側・ページ端） */}
-        {item.media?.url && !imgError ? (
-          // eslint-disable-next-line @next/next/no-img-element
-          <img
-            src={item.media.url}
-            alt={item.title}
-            className="w-full rounded-xl object-cover"
-            onError={() => setImgError(true)}
-          />
-        ) : (
-          <div className="w-full aspect-square rounded-xl bg-muted flex items-center justify-center text-muted-foreground text-sm">
-            {imgError ? '画像を表示できません' : (STATUS_LABEL[item.generation_status] ?? item.generation_status)}
+        {/*
+          画像 + 左右ナビゲーション
+          ─ flex row で「矢印 | 画像 | 矢印」と並べる
+          ─ 矢印エリアは固定幅 (w-8)、画像は flex-1 で残りを埋める
+          ─ 画像の有無に関わらず矢印は画像中央に揃う
+          ─ スマホ・PCで同じ構造のままスケールする
+        */}
+        <div className="flex items-center gap-1 -mx-2">
+          {/* 左矢印エリア（常に幅を確保して画像がぶれない） */}
+          <div className="w-8 shrink-0 flex justify-center">
+            {prevId && (
+              <button onClick={() => router.push(`/items/${prevId}`)} className={navBtn} aria-label="前のカード">
+                <ChevronLeft size={22} strokeWidth={1.5} />
+              </button>
+            )}
           </div>
-        )}
+
+          {/* 画像 */}
+          <div className="flex-1 min-w-0">
+            {item.media?.url && !imgError ? (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img
+                src={item.media.url}
+                alt={item.title}
+                className="w-full rounded-xl object-cover"
+                onError={() => setImgError(true)}
+              />
+            ) : (
+              <div className="w-full aspect-square rounded-xl bg-muted flex items-center justify-center text-muted-foreground text-sm">
+                {imgError ? '画像を表示できません' : (STATUS_LABEL[item.generation_status] ?? item.generation_status)}
+              </div>
+            )}
+          </div>
+
+          {/* 右矢印エリア */}
+          <div className="w-8 shrink-0 flex justify-center">
+            {nextId && (
+              <button onClick={() => router.push(`/items/${nextId}`)} className={navBtn} aria-label="次のカード">
+                <ChevronRight size={22} strokeWidth={1.5} />
+              </button>
+            )}
+          </div>
+        </div>
 
         {/* タイトル + ステータス */}
         <div className="flex items-center justify-between gap-3">
@@ -180,13 +187,12 @@ export default function ItemDetailPage() {
         </p>
       </div>
 
-      {/* 位置インジケーター: コンテンツ最下部・中央 */}
+      {/* 位置インジケーター: ページ最下部・中央 */}
       {allIds.length > 1 && currentIndex >= 0 && (
         <div className="mt-auto pb-6 text-center text-xs text-muted-foreground">
           {currentIndex + 1} / {allIds.length}
         </div>
       )}
-
     </div>
   )
 }
