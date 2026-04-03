@@ -320,5 +320,10 @@ Devise.setup do |config|
   # changed. Defaults to true, so a user is signed in automatically after changing a password.
   # config.sign_in_after_change_password = true
 
-  OmniAuth.config.full_host = "https://image-palace-api.fly.dev"
+  OmniAuth.config.full_host = case Rails.env
+                               when 'production'
+                                 ENV.fetch('BACKEND_URL')
+                               else
+                                 'http://localhost:3001'
+                               end
 end
