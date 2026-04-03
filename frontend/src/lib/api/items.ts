@@ -15,3 +15,12 @@ export async function getItem(id: string): Promise<Item> {
   const res = await apiClient.get<Item>(`/api/v1/items/${id}`)
   return res.data
 }
+
+export async function deleteItem(id: string): Promise<void> {
+  await apiClient.delete(`/api/v1/items/${id}`)
+}
+
+export async function retryItem(id: string): Promise<Item> {
+  const res = await apiClient.post<Item>(`/api/v1/items/${id}/retry`)
+  return res.data
+}

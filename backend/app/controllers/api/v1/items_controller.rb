@@ -22,6 +22,23 @@ module Api
         render json: serialize_item(item)
       end
 
+      def destroy
+        item = current_user.items.find(params[:id])
+        item.destroy!
+        head :no_content
+      end
+
+      def retry
+        item = current_user.items.find(params[:id])
+        unless item.generation_status == "failed"
+          return render json: { error: "failed 状態のカードのみ再生成できます" }, status: :unprocessable_entity
+        end
+
+        item.update!(generation_status: "pending")
+        GenerateImageJob.perform_later(item.id, force_generate: false)
+        render json: serialize_item(item.reload), status: :accepted
+      end
+
       private
 
       def item_params
