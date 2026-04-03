@@ -1,7 +1,7 @@
 module Api
   module V1
     class ItemsController < BaseController
-      FREE_ITEM_LIMIT = 30
+      FREE_ITEM_LIMIT = 200
 
       def index
         items = current_user.items
