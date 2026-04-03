@@ -109,9 +109,9 @@ export function ItemList() {
   if (items.length === 0) {
     return (
       <div className="text-center py-16 space-y-4">
-        <p className="text-muted-foreground">カードはまだありません</p>
+        <p className="text-muted-foreground">まだカードがありません。単語を入れて、最初の記憶カードを作りましょう。</p>
         <Link href="/items/new">
-          <Button>最初のカードを作成する</Button>
+          <Button>カードを作成する</Button>
         </Link>
       </div>
     )

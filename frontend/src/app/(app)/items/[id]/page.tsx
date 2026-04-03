@@ -35,6 +35,7 @@ export default function ItemDetailPage() {
   const [deleting, setDeleting] = useState(false)
   const [confirmDelete, setConfirmDelete] = useState(false)
   const [retrying, setRetrying] = useState(false)
+  const [zoomed, setZoomed] = useState(false)
 
   const cachedItems = useItemsStore((s) => s.items)
 
@@ -69,6 +70,14 @@ export default function ItemDetailPage() {
     }, 2000)
     return () => clearInterval(timer)
   }, [id, generationStatus])
+
+  // Effect 4: モーダル表示中は ESC で閉じる
+  useEffect(() => {
+    if (!zoomed) return
+    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') setZoomed(false) }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [zoomed])
 
   const currentIndex = allIds.indexOf(id)
   const prevId = currentIndex > 0 ? allIds[currentIndex - 1] : null
@@ -180,7 +189,8 @@ export default function ItemDetailPage() {
               <img
                 src={item.media.url}
                 alt={item.title}
-                className="w-full rounded-xl object-cover"
+                className="w-full rounded-xl object-cover cursor-zoom-in"
+                onClick={() => setZoomed(true)}
                 onError={() => setImgError(true)}
               />
             ) : (
@@ -230,6 +240,21 @@ export default function ItemDetailPage() {
       {allIds.length > 1 && currentIndex >= 0 && (
         <div className="mt-auto pb-6 text-center text-xs text-muted-foreground">
           {currentIndex + 1} / {allIds.length}
+        </div>
+      )}
+
+      {/* 画像拡大モーダル */}
+      {zoomed && item.media?.url && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 cursor-zoom-out p-4"
+          onClick={() => setZoomed(false)}
+        >
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img
+            src={item.media.url}
+            alt={item.title}
+            className="max-w-full max-h-full object-contain rounded-xl"
+          />
         </div>
       )}
 

@@ -1,5 +1,10 @@
+import type { Metadata } from 'next'
 import Link from 'next/link'
 import { Button } from '@/components/ui/button'
+
+export const metadata: Metadata = {
+  title: { absolute: 'ImagePalace — 単語をイメージに変換して記憶できるサービス' },
+}
 
 export default function TopPage() {
   return (

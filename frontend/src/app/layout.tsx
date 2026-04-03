@@ -9,8 +9,19 @@ const geist = Geist({
 })
 
 export const metadata: Metadata = {
-  title: 'ImagePalace',
-  description: 'イメージで記憶設計をするアプリ',
+  title: {
+    default: 'ImagePalace',
+    template: '%s | ImagePalace',
+  },
+  description: '単語をAI画像に変換して記憶できるサービス。',
+  openGraph: {
+    title: 'ImagePalace',
+    description: '単語をAI画像に変換して記憶できるサービス。',
+    url: 'https://image-palace-frontend.image-palace.workers.dev',
+    siteName: 'ImagePalace',
+    locale: 'ja_JP',
+    type: 'website',
+  },
 }
 
 export default function RootLayout({

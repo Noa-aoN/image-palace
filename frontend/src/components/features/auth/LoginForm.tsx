@@ -78,7 +78,7 @@ export function LoginForm() {
         </div>
 
         {error && (
-          <p className="text-sm text-red-500">{error}</p>
+          <p className="text-sm text-destructive">{error}</p>
         )}
 
         <Button type="submit" disabled={loading} className="w-full mt-1">
