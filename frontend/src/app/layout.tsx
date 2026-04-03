@@ -1,5 +1,6 @@
 import type { Metadata } from 'next'
 import { Geist } from 'next/font/google'
+import Script from 'next/script'
 import './globals.css'
 import { AppHeader } from '@/components/features/layout/Header'
 
@@ -41,6 +42,11 @@ export default function RootLayout({
         <div className="flex-1 flex flex-col min-h-0">
           {children}
         </div>
+        <Script
+          src="https://static.cloudflareinsights.com/beacon.min.js"
+          data-cf-beacon='{"token": "4e38ecb6245142e79a3367465b6788e5"}'
+          strategy="afterInteractive"
+        />
       </body>
     </html>
   )

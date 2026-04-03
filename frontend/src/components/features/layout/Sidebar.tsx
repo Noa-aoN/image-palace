@@ -14,7 +14,7 @@ interface NavItem {
 const NAV_ITEMS: NavItem[] = [
   { href: '/dashboard', icon: <LayoutDashboard size={22} />, label: 'ダッシュボード' },
   { href: '/items', icon: <GalleryHorizontal size={22} />, label: 'マイカード' },
-  { href: '/items/new', icon: <Plus size={22} />, label: '+ カードを作成' },
+  { href: '/items/new', icon: <Plus size={22} />, label: 'カードを作成' },
 ]
 
 export function Sidebar() {
