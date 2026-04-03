@@ -29,7 +29,7 @@ export function SignupForm() {
     try {
       const { user, tokens } = await signUp(email, password, passwordConfirmation)
       setAuth(user, tokens)
-      router.push('/')
+      router.push('/dashboard')
     } catch (err: unknown) {
       const msg =
         (err as { response?: { data?: { errors?: { full_messages?: string[] } } } })

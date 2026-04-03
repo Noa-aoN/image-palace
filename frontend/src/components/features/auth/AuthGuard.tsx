@@ -8,17 +8,20 @@ export function AuthGuard({ children }: { children: React.ReactNode }) {
   const router = useRouter()
   const isAuthenticated = useAuthStore((s) => s.isAuthenticated)
 
-  // lazy initializer で同期的に現在の hydration 状態を取得する。
-  // useState に関数参照を渡すと React が初回のみ呼び出す（useEffect 不要）。
-  const [hasHydrated, setHasHydrated] = useState(() => {
-    if (typeof window === 'undefined') return false
-    return useAuthStore.persist.hasHydrated()
-  })
+  // SSR とクライアント初期レンダリングの両方で false から始める（hydration mismatch 防止）。
+  // useEffect 内でのみ window に依存した値を参照する。
+  const [hasHydrated, setHasHydrated] = useState(false)
 
   useEffect(() => {
-    // onFinishHydration は外部システムへの購読なので、
-    // コールバック内での setState は lint ルール上も問題ない。
-    return useAuthStore.persist.onFinishHydration(() => setHasHydrated(true))
+    const markHydrated = () => setHasHydrated(true)
+
+    if (useAuthStore.persist.hasHydrated()) {
+      // 既にhydration済みの場合はタイマー経由でsetStateをコールバックに委ねる
+      const id = setTimeout(markHydrated, 0)
+      return () => clearTimeout(id)
+    }
+
+    return useAuthStore.persist.onFinishHydration(markHydrated)
   }, [])
 
   useEffect(() => {
