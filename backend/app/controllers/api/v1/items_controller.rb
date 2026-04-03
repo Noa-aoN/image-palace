@@ -1,7 +1,7 @@
 module Api
   module V1
     class ItemsController < BaseController
-      FREE_ITEM_LIMIT = 200
+      FREE_ITEM_LIMIT_PER_MONTH = 100
 
       def index
         items = current_user.items
@@ -11,8 +11,9 @@ module Api
       end
 
       def create
-        if current_user.items.count >= FREE_ITEM_LIMIT
-          return render json: { error: "生成枚数の上限（#{FREE_ITEM_LIMIT}枚）に達しました" }, status: :unprocessable_entity
+        monthly_count = current_user.items.where(created_at: Time.current.beginning_of_month..).count
+        if monthly_count >= FREE_ITEM_LIMIT_PER_MONTH
+          return render json: { error: "今月の生成枚数の上限（#{FREE_ITEM_LIMIT_PER_MONTH}枚）に達しました" }, status: :unprocessable_entity
         end
 
         result = Items::CreateService.call(user: current_user, params: item_params)
