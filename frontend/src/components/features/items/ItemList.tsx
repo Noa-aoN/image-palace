@@ -59,8 +59,8 @@ function ItemCard({ item }: { item: Item }) {
 }
 
 export function ItemList() {
-  const [items, setItems] = useState<Item[]>([])
-  const [loading, setLoading] = useState(true)
+  const [items, setItems] = useState<Item[]>(() => useItemsStore.getState().items)
+  const [loading, setLoading] = useState(() => useItemsStore.getState().items.length === 0)
   const [error, setError] = useState<string | null>(null)
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null)
 
