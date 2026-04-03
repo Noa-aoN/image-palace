@@ -1,6 +1,8 @@
 module Api
   module V1
     class ItemsController < BaseController
+      FREE_ITEM_LIMIT = 30
+
       def index
         items = current_user.items
                   .includes(medias: { file_attachment: :blob })
@@ -9,6 +11,10 @@ module Api
       end
 
       def create
+        if current_user.items.count >= FREE_ITEM_LIMIT
+          return render json: { error: "生成枚数の上限（#{FREE_ITEM_LIMIT}枚）に達しました" }, status: :unprocessable_entity
+        end
+
         result = Items::CreateService.call(user: current_user, params: item_params)
         render json: serialize_item(result.item), status: :accepted
       rescue ActiveRecord::RecordInvalid => e

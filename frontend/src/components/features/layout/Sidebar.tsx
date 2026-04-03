@@ -30,7 +30,7 @@ export function Sidebar() {
       }}
     >
       {/* 折りたたみトグル */}
-      <div className="flex items-center justify-end px-3 pt-4 pb-2">
+      <div className={`flex items-center pt-4 pb-2 px-3 ${sidebarExpanded ? 'justify-end' : 'justify-center'}`}>
         <button
           onClick={toggleSidebar}
           className="rounded p-1.5 hover:bg-black/5 transition-colors"

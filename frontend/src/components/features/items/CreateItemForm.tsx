@@ -36,8 +36,13 @@ export function CreateItemForm() {
         setProgress({ done: i + 1, total: titles.length })
       }
       router.push('/items')
-    } catch {
-      setApiError('カードの作成に失敗しました。もう一度試してください。')
+    } catch (err: unknown) {
+      const axiosErr = err as { response?: { data?: { error?: string; errors?: string[] } } }
+      const msg =
+        axiosErr?.response?.data?.error ??
+        axiosErr?.response?.data?.errors?.[0] ??
+        'カードの作成に失敗しました。もう一度試してください。'
+      setApiError(msg)
     } finally {
       setSubmitting(false)
       setProgress(null)
