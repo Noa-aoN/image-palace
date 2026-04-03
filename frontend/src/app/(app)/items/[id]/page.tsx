@@ -6,6 +6,7 @@ import { useParams, useRouter } from 'next/navigation'
 import { Trash2, ChevronLeft, ChevronRight, RefreshCw } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { getItem, getItems, deleteItem, retryItem } from '@/lib/api/items'
+import { useItemsStore } from '@/stores/items'
 import type { Item } from '@/types/item'
 
 const STATUS_LABEL: Record<string, string> = {
@@ -35,12 +36,30 @@ export default function ItemDetailPage() {
   const [confirmDelete, setConfirmDelete] = useState(false)
   const [retrying, setRetrying] = useState(false)
 
+  const cachedItems = useItemsStore((s) => s.items)
+
+  // Effect 1: カード本体の取得（id 変化時のみ）
   useEffect(() => {
     setImgError(false)
     getItem(id).then(setItem).catch(() => setError('カードの取得に失敗しました'))
-    getItems().then((items) => setAllIds(items.map((i) => i.id))).catch(() => {})
   }, [id])
 
+  // Effect 2: allIds 管理（キャッシュが有効なら即反映、なければ fetch）
+  useEffect(() => {
+    const cacheValid = cachedItems.length > 0 && cachedItems.some((i) => i.id === id)
+    if (cacheValid) {
+      setAllIds(cachedItems.map((i) => i.id))
+    } else {
+      getItems()
+        .then((items) => {
+          setAllIds(items.map((i) => i.id))
+          useItemsStore.getState().setItems(items)
+        })
+        .catch(() => {})
+    }
+  }, [id, cachedItems])
+
+  // Effect 3: pending/processing 中はポーリング
   const generationStatus = item?.generation_status
   useEffect(() => {
     if (!generationStatus) return
@@ -93,10 +112,32 @@ export default function ItemDetailPage() {
     return <p className="max-w-lg mx-auto px-6 py-12 text-muted-foreground text-sm">読み込み中...</p>
   }
 
-  const navBtn = 'flex items-center justify-center w-8 h-8 rounded-full text-muted-foreground hover:text-foreground hover:bg-black/8 transition-colors shrink-0'
+  const navBtnBase = 'flex items-center justify-center rounded-full p-2 text-muted-foreground hover:text-foreground hover:bg-black/8 transition-colors'
 
   return (
     <div className="relative flex flex-col min-h-full">
+
+      {/* ── デスクトップ専用: 絶対配置でページ端 ── */}
+      {prevId && (
+        <button
+          onClick={() => router.push(`/items/${prevId}`)}
+          className={`hidden md:flex absolute left-1 top-1/2 -translate-y-1/2 z-10 ${navBtnBase}`}
+          aria-label="前のカード"
+        >
+          <ChevronLeft size={28} strokeWidth={1.5} />
+        </button>
+      )}
+      {nextId && (
+        <button
+          onClick={() => router.push(`/items/${nextId}`)}
+          className={`hidden md:flex absolute right-1 top-1/2 -translate-y-1/2 z-10 ${navBtnBase}`}
+          aria-label="次のカード"
+        >
+          <ChevronRight size={28} strokeWidth={1.5} />
+        </button>
+      )}
+
+      {/* ── カード詳細コンテンツ ── */}
       <div className="max-w-lg mx-auto w-full px-6 py-12 space-y-6">
 
         {/* ヘッダー行 */}
@@ -118,24 +159,22 @@ export default function ItemDetailPage() {
         </div>
 
         {/*
-          画像 + 左右ナビゲーション
-          ─ flex row で「矢印 | 画像 | 矢印」と並べる
-          ─ 矢印エリアは固定幅 (w-8)、画像は flex-1 で残りを埋める
-          ─ 画像の有無に関わらず矢印は画像中央に揃う
-          ─ スマホ・PCで同じ構造のままスケールする
+          ── 画像 + ナビゲーション ──
+          モバイル (<md): flex row で [←][画像][→]
+          デスクトップ (≥md): 矢印スロットを hidden にして画像フル幅
         */}
-        <div className="flex items-center gap-1 -mx-2">
-          {/* 左矢印エリア（常に幅を確保して画像がぶれない） */}
-          <div className="w-8 shrink-0 flex justify-center">
+        <div className="flex items-center gap-1 -mx-2 md:mx-0">
+          {/* 左矢印スロット: モバイルのみ表示 */}
+          <div className="w-8 shrink-0 flex justify-center md:hidden">
             {prevId && (
-              <button onClick={() => router.push(`/items/${prevId}`)} className={navBtn} aria-label="前のカード">
+              <button onClick={() => router.push(`/items/${prevId}`)} className={navBtnBase} aria-label="前のカード">
                 <ChevronLeft size={22} strokeWidth={1.5} />
               </button>
             )}
           </div>
 
           {/* 画像 */}
-          <div className="flex-1 min-w-0">
+          <div className="flex-1 min-w-0 md:flex-none md:w-full">
             {item.media?.url && !imgError ? (
               // eslint-disable-next-line @next/next/no-img-element
               <img
@@ -151,10 +190,10 @@ export default function ItemDetailPage() {
             )}
           </div>
 
-          {/* 右矢印エリア */}
-          <div className="w-8 shrink-0 flex justify-center">
+          {/* 右矢印スロット: モバイルのみ表示 */}
+          <div className="w-8 shrink-0 flex justify-center md:hidden">
             {nextId && (
-              <button onClick={() => router.push(`/items/${nextId}`)} className={navBtn} aria-label="次のカード">
+              <button onClick={() => router.push(`/items/${nextId}`)} className={navBtnBase} aria-label="次のカード">
                 <ChevronRight size={22} strokeWidth={1.5} />
               </button>
             )}
@@ -193,6 +232,7 @@ export default function ItemDetailPage() {
           {currentIndex + 1} / {allIds.length}
         </div>
       )}
+
     </div>
   )
 }

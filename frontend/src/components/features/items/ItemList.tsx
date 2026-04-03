@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from 'react'
 import Link from 'next/link'
 import { Button } from '@/components/ui/button'
 import { getItems } from '@/lib/api/items'
+import { useItemsStore } from '@/stores/items'
 import type { Item } from '@/types/item'
 
 const STATUS_LABEL: Record<string, string> = {
@@ -65,7 +66,10 @@ export function ItemList() {
 
   const fetchItems = () =>
     getItems()
-      .then(setItems)
+      .then((fetched) => {
+        setItems(fetched)
+        useItemsStore.getState().setItems(fetched)
+      })
       .catch(() => setError('カードの取得に失敗しました'))
 
   useEffect(() => {
