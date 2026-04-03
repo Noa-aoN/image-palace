@@ -35,14 +35,12 @@ export default function ItemDetailPage() {
   const [confirmDelete, setConfirmDelete] = useState(false)
   const [retrying, setRetrying] = useState(false)
 
-  // 初回: カード本体 + 全ID一覧を並行取得
   useEffect(() => {
     setImgError(false)
     getItem(id).then(setItem).catch(() => setError('カードの取得に失敗しました'))
     getItems().then((items) => setAllIds(items.map((i) => i.id))).catch(() => {})
   }, [id])
 
-  // pending/processing 中はポーリング
   const generationStatus = item?.generation_status
   useEffect(() => {
     if (!generationStatus) return
@@ -96,27 +94,52 @@ export default function ItemDetailPage() {
   }
 
   return (
-    <div className="max-w-lg mx-auto px-6 py-12 space-y-6">
-      {/* ヘッダー行 */}
-      <div className="flex items-center justify-between">
-        <Link href="/items">
-          <Button variant="ghost" className="text-sm px-0">← マイカードへ戻る</Button>
-        </Link>
-        <Button
-          variant={confirmDelete ? 'destructive' : 'ghost'}
-          size="sm"
-          onClick={handleDelete}
-          disabled={deleting}
-          className="flex items-center gap-1.5 text-sm"
-          onBlur={() => setConfirmDelete(false)}
-        >
-          <Trash2 size={14} />
-          {deleting ? '削除中...' : confirmDelete ? '本当に削除' : '削除'}
-        </Button>
-      </div>
+    /* 左右ナビゲーションを端に置くため全幅の relative ラッパー */
+    <div className="relative flex flex-col min-h-full">
 
-      {/* 画像 + 左右ナビゲーション */}
-      <div className="relative">
+      {/* 左矢印: メインエリアの左端 */}
+      {prevId && (
+        <button
+          onClick={() => router.push(`/items/${prevId}`)}
+          className="absolute left-1 top-1/2 -translate-y-1/2 z-10 rounded-full p-2 text-muted-foreground hover:text-foreground hover:bg-black/8 transition-colors"
+          aria-label="前のカード"
+        >
+          <ChevronLeft size={28} strokeWidth={1.5} />
+        </button>
+      )}
+
+      {/* 右矢印: メインエリアの右端 */}
+      {nextId && (
+        <button
+          onClick={() => router.push(`/items/${nextId}`)}
+          className="absolute right-1 top-1/2 -translate-y-1/2 z-10 rounded-full p-2 text-muted-foreground hover:text-foreground hover:bg-black/8 transition-colors"
+          aria-label="次のカード"
+        >
+          <ChevronRight size={28} strokeWidth={1.5} />
+        </button>
+      )}
+
+      {/* カード詳細コンテンツ（中央寄せ） */}
+      <div className="max-w-lg mx-auto w-full px-6 py-12 space-y-6">
+        {/* ヘッダー行 */}
+        <div className="flex items-center justify-between">
+          <Link href="/items">
+            <Button variant="ghost" className="text-sm px-0">← マイカードへ戻る</Button>
+          </Link>
+          <Button
+            variant={confirmDelete ? 'destructive' : 'ghost'}
+            size="sm"
+            onClick={handleDelete}
+            disabled={deleting}
+            className="flex items-center gap-1.5 text-sm"
+            onBlur={() => setConfirmDelete(false)}
+          >
+            <Trash2 size={14} />
+            {deleting ? '削除中...' : confirmDelete ? '本当に削除' : '削除'}
+          </Button>
+        </div>
+
+        {/* 画像（矢印は画像の外側・ページ端） */}
         {item.media?.url && !imgError ? (
           // eslint-disable-next-line @next/next/no-img-element
           <img
@@ -131,60 +154,39 @@ export default function ItemDetailPage() {
           </div>
         )}
 
-        {/* 左矢印 */}
-        {prevId && (
-          <button
-            onClick={() => router.push(`/items/${prevId}`)}
-            className="absolute left-2 top-1/2 -translate-y-1/2 rounded-full bg-black/40 hover:bg-black/60 text-white p-2 transition-colors"
-            aria-label="前のカード"
+        {/* タイトル + ステータス */}
+        <div className="flex items-center justify-between gap-3">
+          <h1 className="text-2xl font-semibold">{item.title}</h1>
+          <span className={`shrink-0 rounded-full px-3 py-1 text-sm font-medium ${STATUS_COLOR[item.generation_status] ?? ''}`}>
+            {STATUS_LABEL[item.generation_status] ?? item.generation_status}
+          </span>
+        </div>
+
+        {/* 失敗時: 再生成ボタン */}
+        {item.generation_status === 'failed' && (
+          <Button
+            variant="outline"
+            onClick={handleRetry}
+            disabled={retrying}
+            className="w-full flex items-center justify-center gap-2"
           >
-            <ChevronLeft size={22} />
-          </button>
+            <RefreshCw size={15} className={retrying ? 'animate-spin' : ''} />
+            {retrying ? '再生成を開始中...' : '再生成する（クレジット消費なし）'}
+          </Button>
         )}
 
-        {/* 右矢印 */}
-        {nextId && (
-          <button
-            onClick={() => router.push(`/items/${nextId}`)}
-            className="absolute right-2 top-1/2 -translate-y-1/2 rounded-full bg-black/40 hover:bg-black/60 text-white p-2 transition-colors"
-            aria-label="次のカード"
-          >
-            <ChevronRight size={22} />
-          </button>
-        )}
-
-        {/* ページ位置インジケーター */}
-        {allIds.length > 1 && currentIndex >= 0 && (
-          <div className="absolute bottom-3 left-1/2 -translate-x-1/2 rounded-full bg-black/40 text-white text-xs px-2.5 py-0.5">
-            {currentIndex + 1} / {allIds.length}
-          </div>
-        )}
+        <p className="text-sm text-muted-foreground">
+          作成日: {new Date(item.created_at).toLocaleDateString('ja-JP')}
+        </p>
       </div>
 
-      {/* タイトル + ステータス */}
-      <div className="flex items-center justify-between gap-3">
-        <h1 className="text-2xl font-semibold">{item.title}</h1>
-        <span className={`shrink-0 rounded-full px-3 py-1 text-sm font-medium ${STATUS_COLOR[item.generation_status] ?? ''}`}>
-          {STATUS_LABEL[item.generation_status] ?? item.generation_status}
-        </span>
-      </div>
-
-      {/* 失敗時: 再生成ボタン */}
-      {item.generation_status === 'failed' && (
-        <Button
-          variant="outline"
-          onClick={handleRetry}
-          disabled={retrying}
-          className="w-full flex items-center justify-center gap-2"
-        >
-          <RefreshCw size={15} className={retrying ? 'animate-spin' : ''} />
-          {retrying ? '再生成を開始中...' : '再生成する（クレジット消費なし）'}
-        </Button>
+      {/* 位置インジケーター: コンテンツ最下部・中央 */}
+      {allIds.length > 1 && currentIndex >= 0 && (
+        <div className="mt-auto pb-6 text-center text-xs text-muted-foreground">
+          {currentIndex + 1} / {allIds.length}
+        </div>
       )}
 
-      <p className="text-sm text-muted-foreground">
-        作成日: {new Date(item.created_at).toLocaleDateString('ja-JP')}
-      </p>
     </div>
   )
 }
