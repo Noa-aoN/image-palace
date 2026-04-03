@@ -2,9 +2,10 @@
 
 import { useEffect, useState } from 'react'
 import Link from 'next/link'
-import { useParams } from 'next/navigation'
+import { useParams, useRouter } from 'next/navigation'
+import { Trash2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
-import { getItem } from '@/lib/api/items'
+import { getItem, deleteItem } from '@/lib/api/items'
 import type { Item } from '@/types/item'
 
 const STATUS_LABEL: Record<string, string> = {
@@ -25,9 +26,12 @@ const POLLING_STATUSES = new Set(['pending', 'processing'])
 
 export default function ItemDetailPage() {
   const { id } = useParams<{ id: string }>()
+  const router = useRouter()
   const [item, setItem] = useState<Item | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [imgError, setImgError] = useState(false)
+  const [deleting, setDeleting] = useState(false)
+  const [confirmDelete, setConfirmDelete] = useState(false)
 
   useEffect(() => {
     getItem(id)
@@ -35,9 +39,10 @@ export default function ItemDetailPage() {
       .catch(() => setError('カードの取得に失敗しました'))
   }, [id])
 
+  const generationStatus = item?.generation_status
   useEffect(() => {
-    if (!item) return
-    if (!POLLING_STATUSES.has(item.generation_status)) return
+    if (!generationStatus) return
+    if (!POLLING_STATUSES.has(generationStatus)) return
 
     const timer = setInterval(() => {
       getItem(id)
@@ -46,7 +51,23 @@ export default function ItemDetailPage() {
     }, 2000)
 
     return () => clearInterval(timer)
-  }, [id, item?.generation_status])
+  }, [id, generationStatus])
+
+  const handleDelete = async () => {
+    if (!confirmDelete) {
+      setConfirmDelete(true)
+      return
+    }
+    setDeleting(true)
+    try {
+      await deleteItem(id)
+      router.push('/items')
+    } catch {
+      setError('削除に失敗しました')
+      setDeleting(false)
+      setConfirmDelete(false)
+    }
+  }
 
   if (error) {
     return (
@@ -63,9 +84,22 @@ export default function ItemDetailPage() {
 
   return (
     <div className="max-w-lg mx-auto px-6 py-12 space-y-6">
-      <Link href="/items">
-        <Button variant="ghost" className="text-sm px-0">← マイカードへ戻る</Button>
-      </Link>
+      <div className="flex items-center justify-between">
+        <Link href="/items">
+          <Button variant="ghost" className="text-sm px-0">← マイカードへ戻る</Button>
+        </Link>
+        <Button
+          variant={confirmDelete ? 'destructive' : 'ghost'}
+          size="sm"
+          onClick={handleDelete}
+          disabled={deleting}
+          className="flex items-center gap-1.5 text-sm"
+          onBlur={() => setConfirmDelete(false)}
+        >
+          <Trash2 size={14} />
+          {deleting ? '削除中...' : confirmDelete ? '本当に削除' : '削除'}
+        </Button>
+      </div>
 
       {item.media?.url && !imgError ? (
         // eslint-disable-next-line @next/next/no-img-element

@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import Link from 'next/link'
 import { Button } from '@/components/ui/button'
 import { getItems } from '@/lib/api/items'
@@ -20,11 +20,16 @@ const STATUS_COLOR: Record<string, string> = {
   failed: 'bg-red-100 text-red-800',
 }
 
+const POLLING_STATUSES = new Set(['pending', 'processing'])
+
 function ItemCard({ item }: { item: Item }) {
   const [imgError, setImgError] = useState(false)
 
   return (
-    <Link href={`/items/${item.id}`} className="flex flex-col rounded-xl border border-border overflow-hidden bg-card hover:shadow-md transition-shadow">
+    <Link
+      href={`/items/${item.id}`}
+      className="flex flex-col rounded-xl border border-border overflow-hidden bg-card hover:shadow-md transition-shadow"
+    >
       <div className="w-full aspect-square bg-muted flex items-center justify-center overflow-hidden">
         {item.media?.url && !imgError ? (
           // eslint-disable-next-line @next/next/no-img-element
@@ -35,7 +40,7 @@ function ItemCard({ item }: { item: Item }) {
             onError={() => setImgError(true)}
           />
         ) : (
-          <span className="text-muted-foreground text-xs">
+          <span className="text-muted-foreground text-xs px-2 text-center">
             {imgError ? '期限切れ' : (STATUS_LABEL[item.generation_status] ?? item.generation_status)}
           </span>
         )}
@@ -56,16 +61,41 @@ export function ItemList() {
   const [items, setItems] = useState<Item[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const timerRef = useRef<ReturnType<typeof setInterval> | null>(null)
 
-  useEffect(() => {
+  const fetchItems = () =>
     getItems()
       .then(setItems)
       .catch(() => setError('カードの取得に失敗しました'))
-      .finally(() => setLoading(false))
+
+  useEffect(() => {
+    fetchItems().finally(() => setLoading(false))
   }, [])
 
+  // pending/processing があればポーリング
+  useEffect(() => {
+    const hasPending = items.some((i) => POLLING_STATUSES.has(i.generation_status))
+    if (hasPending) {
+      timerRef.current = setInterval(fetchItems, 3000)
+    }
+    return () => {
+      if (timerRef.current) clearInterval(timerRef.current)
+    }
+  }, [items])
+
   if (loading) {
-    return <p className="text-muted-foreground text-sm">読み込み中...</p>
+    return (
+      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+        {Array.from({ length: 8 }).map((_, i) => (
+          <div key={i} className="rounded-xl border border-border overflow-hidden">
+            <div className="w-full aspect-square bg-muted animate-pulse" />
+            <div className="px-3 py-2">
+              <div className="h-3 bg-muted rounded animate-pulse w-3/4" />
+            </div>
+          </div>
+        ))}
+      </div>
+    )
   }
 
   if (error) {
@@ -74,7 +104,7 @@ export function ItemList() {
 
   if (items.length === 0) {
     return (
-      <div className="text-center py-12 space-y-4">
+      <div className="text-center py-16 space-y-4">
         <p className="text-muted-foreground">カードはまだありません</p>
         <Link href="/items/new">
           <Button>最初のカードを作成する</Button>

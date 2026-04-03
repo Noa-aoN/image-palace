@@ -2,59 +2,85 @@
 
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { useForm } from 'react-hook-form'
-import { zodResolver } from '@hookform/resolvers/zod'
-import { z } from 'zod'
 import { Button } from '@/components/ui/button'
-import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { createItem } from '@/lib/api/items'
 
-const schema = z.object({
-  title: z.string().min(1, '単語を入力してください'),
-})
-
-type FormValues = z.infer<typeof schema>
+function parseTitles(raw: string): string[] {
+  return raw
+    .split(/[\n,、]/)
+    .map((s) => s.trim())
+    .filter((s) => s.length > 0)
+}
 
 export function CreateItemForm() {
   const router = useRouter()
+  const [input, setInput] = useState('')
   const [apiError, setApiError] = useState<string | null>(null)
+  const [submitting, setSubmitting] = useState(false)
+  const [progress, setProgress] = useState<{ done: number; total: number } | null>(null)
 
-  const {
-    register,
-    handleSubmit,
-    formState: { errors, isSubmitting },
-  } = useForm<FormValues>({ resolver: zodResolver(schema) })
+  const titles = parseTitles(input)
+  const wordCount = titles.length
 
-  const onSubmit = async (values: FormValues) => {
+  const handleSubmit = async (e: React.SyntheticEvent<HTMLFormElement>) => {
+    e.preventDefault()
+    if (titles.length === 0) return
     setApiError(null)
+    setSubmitting(true)
+    setProgress({ done: 0, total: titles.length })
+
     try {
-      const item = await createItem(values.title)
-      router.push(`/items/${item.id}`)
+      for (let i = 0; i < titles.length; i++) {
+        await createItem(titles[i])
+        setProgress({ done: i + 1, total: titles.length })
+      }
+      router.push('/items')
     } catch {
       setApiError('カードの作成に失敗しました。もう一度試してください。')
+    } finally {
+      setSubmitting(false)
+      setProgress(null)
     }
   }
 
   return (
-    <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
-      <div className="space-y-1.5">
-        <Label htmlFor="title">単語</Label>
-        <Input
-          id="title"
-          placeholder="例: photosynthesis"
-          aria-invalid={!!errors.title}
-          {...register('title')}
+    <form onSubmit={handleSubmit} className="space-y-5">
+      <div className="space-y-2">
+        <Label htmlFor="titles">単語・概念を入力</Label>
+        <textarea
+          id="titles"
+          className="w-full min-h-[180px] rounded-lg border border-input bg-background px-3 py-2.5 text-sm placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring resize-y"
+          placeholder={"photosynthesis\nAPI\nmitosis\n\n改行・カンマ区切りで複数入力できます"}
+          value={input}
+          onChange={(e) => setInput(e.target.value)}
+          disabled={submitting}
         />
-        {errors.title && (
-          <p className="text-sm text-destructive">{errors.title.message}</p>
+        {wordCount > 0 && (
+          <p className="text-xs text-muted-foreground">
+            {wordCount}件の単語を認識しました
+          </p>
         )}
       </div>
 
       {apiError && <p className="text-sm text-destructive">{apiError}</p>}
 
-      <Button type="submit" disabled={isSubmitting} className="w-full">
-        {isSubmitting ? '作成中...' : 'カードを作成'}
+      {progress && (
+        <p className="text-sm text-muted-foreground">
+          作成中... {progress.done} / {progress.total}
+        </p>
+      )}
+
+      <Button
+        type="submit"
+        disabled={submitting || wordCount === 0}
+        className="w-full"
+      >
+        {submitting
+          ? `作成中... (${progress?.done ?? 0}/${progress?.total ?? wordCount})`
+          : wordCount > 1
+            ? `${wordCount}件のカードを作成`
+            : 'カードを作成'}
       </Button>
     </form>
   )

@@ -22,6 +22,12 @@ module Api
         render json: serialize_item(item)
       end
 
+      def destroy
+        item = current_user.items.find(params[:id])
+        item.destroy!
+        head :no_content
+      end
+
       private
 
       def item_params
