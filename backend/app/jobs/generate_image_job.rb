@@ -6,8 +6,7 @@ class GenerateImageJob < ApplicationJob
   # 全リトライ消費後に failed にする
   retry_on StandardError, wait: :polynomially_longer, attempts: 3 do |job, error|
     item_id = job.arguments[0]
-    item = Item.find_by(id: item_id)
-    item&.update(generation_status: "failed")
+    job.send(:mark_failed!, item_id, error)
     Rails.logger.error "[GenerateImageJob] ALL RETRIES EXHAUSTED item_id=#{item_id} error=#{error.message}"
   end
 
@@ -29,7 +28,7 @@ class GenerateImageJob < ApplicationJob
         return
       end
 
-      item.update!(generation_status: "processing")
+      item.update_generation_status!("processing")
       Rails.logger.info "[GenerateImageJob] START item_id=#{item.id} prompt=#{item.title}"
 
       normalized = NormalizePromptService.call(item.title)
@@ -53,13 +52,23 @@ class GenerateImageJob < ApplicationJob
         attach_from_shared_media(item, shared_media)
       end
 
-      item.update!(generation_status: "completed")
+      item.update_generation_status!("completed")
       Rails.logger.info "[GenerateImageJob] COMPLETE item_id=#{item.id}"
     end
     # rescue を置かない → 例外は retry_on に伝播させる
   end
 
   private
+
+  NETWORK_ERRORS = [
+    EOFError,
+    Errno::ECONNRESET,
+    Faraday::ConnectionFailed,
+    Faraday::SSLError,
+    Faraday::TimeoutError,
+    Net::ReadTimeout,
+    OpenSSL::SSL::SSLError
+  ].freeze
 
   def attach_from_shared_media(item, shared_media)
     media = item.primary_media || item.medias.build
@@ -94,5 +103,26 @@ class GenerateImageJob < ApplicationJob
     return true unless service.respond_to?(:path_for)
 
     File.exist?(service.path_for(blob.key))
+  end
+
+  def mark_failed!(item_id, error)
+    item = Item.find_by(id: item_id)
+    return unless item
+
+    item.mark_generation_failed!(
+      message: user_facing_error_message(error),
+      code: error.class.name
+    )
+  end
+
+  def user_facing_error_message(error)
+    case error
+    when Faraday::BadRequestError
+      "入力が曖昧なため画像を生成できませんでした。別の単語や具体的な表現でお試しください。"
+    when *NETWORK_ERRORS
+      "通信が不安定だったため画像を生成できませんでした。時間を置いて再試行してください。"
+    else
+      "画像生成に失敗しました。時間を置いて再試行してください。"
+    end
   end
 end

@@ -11,6 +11,7 @@ export interface Item {
   id: string
   title: string
   generation_status: GenerationStatus
+  generation_error?: string | null
   media: ItemMedia | null
   created_at: string
 }

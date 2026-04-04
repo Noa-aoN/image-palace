@@ -282,15 +282,20 @@ export default function ItemDetailPage() {
 
         {/* 失敗時: 再生成ボタン */}
         {item.generation_status === 'failed' && (
-          <Button
-            variant="outline"
-            onClick={handleRetry}
-            disabled={retrying}
-            className="w-full flex items-center justify-center gap-2"
-          >
-            <RefreshCw size={15} className={retrying ? 'animate-spin' : ''} />
-            {retrying ? '再生成を開始中...' : '再生成する（クレジット消費なし）'}
-          </Button>
+          <div className="space-y-3">
+            <Button
+              variant="outline"
+              onClick={handleRetry}
+              disabled={retrying}
+              className="w-full flex items-center justify-center gap-2"
+            >
+              <RefreshCw size={15} className={retrying ? 'animate-spin' : ''} />
+              {retrying ? '再生成を開始中...' : '再生成する（クレジット消費なし）'}
+            </Button>
+            {item.generation_error && (
+              <p className="text-sm leading-6 text-destructive">{item.generation_error}</p>
+            )}
+          </div>
         )}
 
         <p className="text-sm text-muted-foreground">

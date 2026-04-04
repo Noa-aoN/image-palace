@@ -43,7 +43,7 @@ module Api
           return render json: { error: "failed 状態のカードのみ再生成できます" }, status: :unprocessable_entity
         end
 
-        current_item.update!(generation_status: "pending")
+        current_item.update_generation_status!("pending")
         GenerateImageJob.perform_later(current_item.id, force_generate: false)
         render json: serialize_item(current_item.reload), status: :accepted
       end
@@ -59,6 +59,7 @@ module Api
           id: item.id,
           title: item.title,
           generation_status: item.generation_status,
+          generation_error: item.generation_error,
           media: serialize_media(item.primary_media),
           created_at: item.created_at
         }
@@ -105,7 +106,10 @@ module Api
         return item if media&.file&.attached? && blob_available?(media.file.blob)
         return item if item.updated_at >= MISSING_MEDIA_REPAIR_GRACE_PERIOD.ago
 
-        item.update!(generation_status: "failed")
+        item.mark_generation_failed!(
+          message: "画像ファイルが見つからなかったため、再生成が必要です。",
+          code: "missing_media"
+        )
         item.reload
       end
 
