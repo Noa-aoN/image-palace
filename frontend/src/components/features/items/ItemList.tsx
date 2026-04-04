@@ -1,7 +1,8 @@
 'use client'
 
-import { useEffect, useRef, useState } from 'react'
+import { startTransition, useEffect, useRef, useState } from 'react'
 import Link from 'next/link'
+import { useRouter } from 'next/navigation'
 import { Button } from '@/components/ui/button'
 import { getItems } from '@/lib/api/items'
 import { useItemsStore } from '@/stores/items'
@@ -24,16 +25,32 @@ const STATUS_COLOR: Record<string, string> = {
 const POLLING_STATUSES = new Set(['pending', 'processing'])
 
 function ItemCard({ item }: { item: Item }) {
+  const router = useRouter()
   const [imgError, setImgError] = useState(false)
+  const isGenerating = POLLING_STATUSES.has(item.generation_status)
+  const warmedRef = useRef(false)
 
   useEffect(() => {
     setImgError(false)
   }, [item.media?.thumb_url, item.media?.url])
 
+  const warmupDetail = () => {
+    if (warmedRef.current) return
+    warmedRef.current = true
+
+    startTransition(() => {
+      useItemsStore.getState().upsertItem(item)
+      router.prefetch(`/items/${item.id}`)
+    })
+  }
+
   return (
     <Link
       href={`/items/${item.id}`}
       className="flex flex-col rounded-xl border border-border overflow-hidden bg-card hover:shadow-md transition-shadow"
+      prefetch
+      onMouseEnter={warmupDetail}
+      onFocus={warmupDetail}
     >
       <div className="w-full aspect-square bg-muted flex items-center justify-center overflow-hidden">
         {item.media?.url && !imgError ? (
@@ -48,9 +65,14 @@ function ItemCard({ item }: { item: Item }) {
             onError={() => setImgError(true)}
           />
         ) : (
-          <span className="text-muted-foreground text-xs px-2 text-center">
-            {imgError ? '期限切れ' : (STATUS_LABEL[item.generation_status] ?? item.generation_status)}
-          </span>
+          <div className="relative flex h-full w-full items-center justify-center bg-muted">
+            {isGenerating && (
+              <div className="absolute inset-0 animate-pulse bg-[linear-gradient(135deg,rgba(255,255,255,0.22),transparent_40%,rgba(255,255,255,0.14))]" />
+            )}
+            <span className="relative z-10 text-muted-foreground text-xs px-2 text-center">
+              {imgError ? '期限切れ' : (STATUS_LABEL[item.generation_status] ?? item.generation_status)}
+            </span>
+          </div>
         )}
       </div>
       <div className="px-3 py-2 flex items-center justify-between gap-2">

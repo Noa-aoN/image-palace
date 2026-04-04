@@ -163,10 +163,20 @@ export default function ItemDetailPage() {
   }
 
   if (!item) {
-    return <p className="max-w-lg mx-auto px-6 py-12 text-muted-foreground text-sm">読み込み中...</p>
+    return (
+      <div className="max-w-lg mx-auto w-full px-6 py-12 space-y-6">
+        <div className="h-9 w-32 rounded bg-muted animate-pulse" />
+        <div className="aspect-square w-full rounded-xl bg-muted animate-pulse" />
+        <div className="flex items-center justify-between gap-3">
+          <div className="h-8 w-40 rounded bg-muted animate-pulse" />
+          <div className="h-8 w-16 rounded-full bg-muted animate-pulse" />
+        </div>
+      </div>
+    )
   }
 
   const navBtnBase = 'flex items-center justify-center rounded-full p-2 text-muted-foreground hover:text-foreground hover:bg-black/8 transition-colors'
+  const isGenerating = POLLING_STATUSES.has(item.generation_status)
 
   return (
     <div className="relative flex flex-col min-h-full">
@@ -241,8 +251,13 @@ export default function ItemDetailPage() {
                 onError={() => setImgError(true)}
               />
             ) : (
-              <div className="w-full aspect-square rounded-xl bg-muted flex items-center justify-center text-muted-foreground text-sm">
-                {imgError ? '画像を表示できません' : (STATUS_LABEL[item.generation_status] ?? item.generation_status)}
+              <div className="relative w-full aspect-square rounded-xl bg-muted flex items-center justify-center overflow-hidden text-muted-foreground text-sm">
+                {isGenerating && (
+                  <div className="absolute inset-0 animate-pulse bg-[linear-gradient(135deg,rgba(255,255,255,0.24),transparent_42%,rgba(255,255,255,0.14))]" />
+                )}
+                <span className="relative z-10">
+                  {imgError ? '画像を表示できません' : (STATUS_LABEL[item.generation_status] ?? item.generation_status)}
+                </span>
               </div>
             )}
           </div>
