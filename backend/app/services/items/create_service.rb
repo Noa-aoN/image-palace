@@ -1,5 +1,8 @@
 module Items
   class CreateService
+    FREE_ITEM_LIMIT_PER_MONTH = 100
+    class MonthlyLimitExceeded < StandardError; end
+
     Result = Struct.new(:item, keyword_init: true)
 
     def self.call(user:, params:)
@@ -12,11 +15,21 @@ module Items
     end
 
     def call
-      item = @user.items.create!(
-        title: @params[:title],
-        item_type_id: @params[:item_type_id] || default_item_type_id,
-        generation_status: "pending"
-      )
+      item = nil
+
+      @user.with_lock do
+        monthly_count = @user.items.where(created_at: Time.current.beginning_of_month..).count
+        if monthly_count >= FREE_ITEM_LIMIT_PER_MONTH
+          raise MonthlyLimitExceeded, "今月の生成枚数の上限（#{FREE_ITEM_LIMIT_PER_MONTH}枚）に達しました"
+        end
+
+        item = @user.items.create!(
+          title: @params[:title],
+          item_type_id: @params[:item_type_id] || default_item_type_id,
+          generation_status: "pending"
+        )
+      end
+
       GenerateImageJob.perform_later(item.id, force_generate: @params[:force_generate] == true)
       Result.new(item: item)
     end

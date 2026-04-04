@@ -7,7 +7,36 @@ class Item < ApplicationRecord
   has_many :to_relations, class_name: "Relation", foreign_key: :to_item_id, dependent: :destroy
 
   GENERATION_STATUSES = %w[pending processing completed failed].freeze
+  GENERATION_ERROR_KEYS = %w[generation_error generation_error_code].freeze
+
+  store_accessor :metadata, :generation_error, :generation_error_code
 
   validates :title, presence: true
   validates :generation_status, inclusion: { in: GENERATION_STATUSES }
+
+  def primary_media
+    if association(:medias).loaded?
+      medias.min_by { |media| [media.position || Float::INFINITY, media.created_at] }
+    else
+      medias.ordered.first || medias.first
+    end
+  end
+
+  def metadata_without_generation_error
+    (metadata || {}).except(*GENERATION_ERROR_KEYS)
+  end
+
+  def update_generation_status!(status)
+    update!(generation_status: status, metadata: metadata_without_generation_error)
+  end
+
+  def mark_generation_failed!(message:, code: nil)
+    update!(
+      generation_status: "failed",
+      metadata: metadata_without_generation_error.merge(
+        "generation_error" => message,
+        "generation_error_code" => code
+      ).compact
+    )
+  end
 end

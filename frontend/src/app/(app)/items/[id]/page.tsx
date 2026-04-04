@@ -28,47 +28,93 @@ const POLLING_STATUSES = new Set(['pending', 'processing'])
 export default function ItemDetailPage() {
   const { id } = useParams<{ id: string }>()
   const router = useRouter()
-  const [item, setItem] = useState<Item | null>(null)
+  const cachedItems = useItemsStore((s) => s.items)
+  const upsertItem = useItemsStore((s) => s.upsertItem)
+  const removeItem = useItemsStore((s) => s.removeItem)
+  const cachedItem = cachedItems.find((current) => current.id === id) ?? null
+  const [item, setItem] = useState<Item | null>(() => cachedItem)
   const [allIds, setAllIds] = useState<string[]>([])
   const [error, setError] = useState<string | null>(null)
   const [imgError, setImgError] = useState(false)
   const [deleting, setDeleting] = useState(false)
   const [confirmDelete, setConfirmDelete] = useState(false)
   const [retrying, setRetrying] = useState(false)
+  const [zoomed, setZoomed] = useState(false)
 
-  const cachedItems = useItemsStore((s) => s.items)
+  useEffect(() => {
+    if (cachedItem) {
+      setItem(cachedItem)
+    }
+  }, [cachedItem])
+
+  useEffect(() => {
+    setImgError(false)
+  }, [item?.media?.url])
 
   // Effect 1: カード本体の取得（id 変化時のみ）
   useEffect(() => {
     setImgError(false)
-    getItem(id).then(setItem).catch(() => setError('カードの取得に失敗しました'))
-  }, [id])
+    getItem(id)
+      .then((fetched) => {
+        setItem(fetched)
+        upsertItem(fetched)
+      })
+      .catch(() => setError('カードの取得に失敗しました'))
+  }, [id, upsertItem])
 
-  // Effect 2: allIds 管理（キャッシュが有効なら即反映、なければ fetch）
+  // Effect 2: allIds 管理（キャッシュがあればそれを優先）
   useEffect(() => {
-    const cacheValid = cachedItems.length > 0 && cachedItems.some((i) => i.id === id)
-    if (cacheValid) {
+    if (cachedItems.length > 0) {
       setAllIds(cachedItems.map((i) => i.id))
-    } else {
-      getItems()
-        .then((items) => {
-          setAllIds(items.map((i) => i.id))
-          useItemsStore.getState().setItems(items)
-        })
-        .catch(() => {})
+      return
     }
-  }, [id, cachedItems])
+
+    getItems()
+      .then((items) => {
+        setAllIds(items.map((current) => current.id))
+        useItemsStore.getState().setItems(items)
+      })
+      .catch(() => {})
+  }, [cachedItems])
 
   // Effect 3: pending/processing 中はポーリング
   const generationStatus = item?.generation_status
   useEffect(() => {
     if (!generationStatus) return
     if (!POLLING_STATUSES.has(generationStatus)) return
-    const timer = setInterval(() => {
-      getItem(id).then(setItem).catch(() => clearInterval(timer))
-    }, 2000)
-    return () => clearInterval(timer)
-  }, [id, generationStatus])
+    let cancelled = false
+    let timer: ReturnType<typeof setTimeout> | null = null
+
+    const poll = async () => {
+      try {
+        const fetched = await getItem(id)
+        if (cancelled) return
+
+        setItem(fetched)
+        upsertItem(fetched)
+
+        if (POLLING_STATUSES.has(fetched.generation_status)) {
+          timer = setTimeout(poll, 2000)
+        }
+      } catch {
+        if (timer) clearTimeout(timer)
+      }
+    }
+
+    timer = setTimeout(poll, 2000)
+    return () => {
+      cancelled = true
+      if (timer) clearTimeout(timer)
+    }
+  }, [id, generationStatus, upsertItem])
+
+  // Effect 4: モーダル表示中は ESC で閉じる
+  useEffect(() => {
+    if (!zoomed) return
+    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') setZoomed(false) }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [zoomed])
 
   const currentIndex = allIds.indexOf(id)
   const prevId = currentIndex > 0 ? allIds[currentIndex - 1] : null
@@ -79,6 +125,7 @@ export default function ItemDetailPage() {
     setDeleting(true)
     try {
       await deleteItem(id)
+      removeItem(id)
       router.push('/items')
     } catch {
       setError('削除に失敗しました')
@@ -89,11 +136,18 @@ export default function ItemDetailPage() {
 
   const handleRetry = async () => {
     setRetrying(true)
+    setError(null)
     try {
       const updated = await retryItem(id)
       setItem(updated)
-    } catch {
-      setError('再生成の開始に失敗しました')
+      upsertItem(updated)
+    } catch (err: unknown) {
+      const axiosErr = err as { response?: { data?: { error?: string; errors?: string[] } } }
+      const msg =
+        axiosErr?.response?.data?.error ??
+        axiosErr?.response?.data?.errors?.[0] ??
+        '再生成に失敗しました。もう一度試してください。'
+      setError(msg)
     } finally {
       setRetrying(false)
     }
@@ -109,10 +163,20 @@ export default function ItemDetailPage() {
   }
 
   if (!item) {
-    return <p className="max-w-lg mx-auto px-6 py-12 text-muted-foreground text-sm">読み込み中...</p>
+    return (
+      <div className="max-w-lg mx-auto w-full px-6 py-12 space-y-6">
+        <div className="h-9 w-32 rounded bg-muted animate-pulse" />
+        <div className="aspect-square w-full rounded-xl bg-muted animate-pulse" />
+        <div className="flex items-center justify-between gap-3">
+          <div className="h-8 w-40 rounded bg-muted animate-pulse" />
+          <div className="h-8 w-16 rounded-full bg-muted animate-pulse" />
+        </div>
+      </div>
+    )
   }
 
   const navBtnBase = 'flex items-center justify-center rounded-full p-2 text-muted-foreground hover:text-foreground hover:bg-black/8 transition-colors'
+  const isGenerating = POLLING_STATUSES.has(item.generation_status)
 
   return (
     <div className="relative flex flex-col min-h-full">
@@ -180,12 +244,20 @@ export default function ItemDetailPage() {
               <img
                 src={item.media.url}
                 alt={item.title}
-                className="w-full rounded-xl object-cover"
+                className="w-full rounded-xl object-cover cursor-zoom-in"
+                decoding="async"
+                fetchPriority="high"
+                onClick={() => setZoomed(true)}
                 onError={() => setImgError(true)}
               />
             ) : (
-              <div className="w-full aspect-square rounded-xl bg-muted flex items-center justify-center text-muted-foreground text-sm">
-                {imgError ? '画像を表示できません' : (STATUS_LABEL[item.generation_status] ?? item.generation_status)}
+              <div className="relative w-full aspect-square rounded-xl bg-muted flex items-center justify-center overflow-hidden text-muted-foreground text-sm">
+                {isGenerating && (
+                  <div className="absolute inset-0 animate-pulse bg-[linear-gradient(135deg,rgba(255,255,255,0.24),transparent_42%,rgba(255,255,255,0.14))]" />
+                )}
+                <span className="relative z-10">
+                  {imgError ? '画像を表示できません' : (STATUS_LABEL[item.generation_status] ?? item.generation_status)}
+                </span>
               </div>
             )}
           </div>
@@ -210,15 +282,20 @@ export default function ItemDetailPage() {
 
         {/* 失敗時: 再生成ボタン */}
         {item.generation_status === 'failed' && (
-          <Button
-            variant="outline"
-            onClick={handleRetry}
-            disabled={retrying}
-            className="w-full flex items-center justify-center gap-2"
-          >
-            <RefreshCw size={15} className={retrying ? 'animate-spin' : ''} />
-            {retrying ? '再生成を開始中...' : '再生成する（クレジット消費なし）'}
-          </Button>
+          <div className="space-y-3">
+            <Button
+              variant="outline"
+              onClick={handleRetry}
+              disabled={retrying}
+              className="w-full flex items-center justify-center gap-2"
+            >
+              <RefreshCw size={15} className={retrying ? 'animate-spin' : ''} />
+              {retrying ? '再生成を開始中...' : '再生成する（クレジット消費なし）'}
+            </Button>
+            {item.generation_error && (
+              <p className="text-sm leading-6 text-destructive">{item.generation_error}</p>
+            )}
+          </div>
         )}
 
         <p className="text-sm text-muted-foreground">
@@ -230,6 +307,21 @@ export default function ItemDetailPage() {
       {allIds.length > 1 && currentIndex >= 0 && (
         <div className="mt-auto pb-6 text-center text-xs text-muted-foreground">
           {currentIndex + 1} / {allIds.length}
+        </div>
+      )}
+
+      {/* 画像拡大モーダル */}
+      {zoomed && item.media?.url && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 cursor-zoom-out p-4"
+          onClick={() => setZoomed(false)}
+        >
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img
+            src={item.media.url}
+            alt={item.title}
+            className="max-w-full max-h-full object-contain rounded-xl"
+          />
         </div>
       )}
 
