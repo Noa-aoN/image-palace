@@ -42,30 +42,6 @@ export default function TopPage() {
         </div>
       </section>
 
-      {/* Features */}
-      <section className="px-6 py-16 max-w-3xl mx-auto w-full">
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-8 text-center">
-          <div className="space-y-2">
-            <p className="text-2xl font-bold" style={{ color: 'var(--palace)' }}>生成</p>
-            <p className="text-sm" style={{ color: '#4A4A4A' }}>
-              単語を入力するだけで AI が画像を自動生成。視覚的な記憶の手がかりをつくります。
-            </p>
-          </div>
-          <div className="space-y-2">
-            <p className="text-2xl font-bold" style={{ color: 'var(--palace)' }}>管理</p>
-            <p className="text-sm" style={{ color: '#4A4A4A' }}>
-              生成したカードはグリッド形式で一覧表示。いつでも見返して記憶を定着させます。
-            </p>
-          </div>
-          <div className="space-y-2">
-            <p className="text-2xl font-bold" style={{ color: 'var(--palace)' }}>想起</p>
-            <p className="text-sm" style={{ color: '#4A4A4A' }}>
-              必要なときに、必要な知識を思い出せる。あなただけの記憶の宮殿を育てましょう。
-            </p>
-          </div>
-        </div>
-      </section>
-
     </div>
   )
 }

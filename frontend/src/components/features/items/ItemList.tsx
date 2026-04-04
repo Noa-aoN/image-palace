@@ -62,30 +62,59 @@ export function ItemList() {
   const [items, setItems] = useState<Item[]>(() => useItemsStore.getState().items)
   const [loading, setLoading] = useState(() => useItemsStore.getState().items.length === 0)
   const [error, setError] = useState<string | null>(null)
-  const timerRef = useRef<ReturnType<typeof setInterval> | null>(null)
+  const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const itemsRef = useRef(items)
+  const requestInFlightRef = useRef(false)
 
-  const fetchItems = () =>
-    getItems()
-      .then((fetched) => {
-        setItems(fetched)
-        useItemsStore.getState().setItems(fetched)
-      })
-      .catch(() => setError('カードの取得に失敗しました'))
+  const fetchItems = async (): Promise<Item[] | null> => {
+    if (requestInFlightRef.current) return null
 
-  useEffect(() => {
-    fetchItems().finally(() => setLoading(false))
-  }, [])
-
-  // pending/processing があればポーリング
-  useEffect(() => {
-    const hasPending = items.some((i) => POLLING_STATUSES.has(i.generation_status))
-    if (hasPending) {
-      timerRef.current = setInterval(fetchItems, 3000)
+    requestInFlightRef.current = true
+    try {
+      const fetched = await getItems()
+      itemsRef.current = fetched
+      setItems(fetched)
+      useItemsStore.getState().setItems(fetched)
+      setError(null)
+      return fetched
+    } catch {
+      setError('カードの取得に失敗しました')
+      return null
+    } finally {
+      requestInFlightRef.current = false
     }
+  }
+
+  useEffect(() => {
+    let cancelled = false
+
+    const clearTimer = () => {
+      if (timerRef.current) {
+        clearTimeout(timerRef.current)
+        timerRef.current = null
+      }
+    }
+
+    const poll = async () => {
+      const fetched = await fetchItems()
+      if (cancelled) return
+
+      const latestItems = fetched ?? itemsRef.current
+      const hasPending = latestItems.some((item) => POLLING_STATUSES.has(item.generation_status))
+      if (hasPending) {
+        timerRef.current = setTimeout(poll, 3000)
+      }
+    }
+
+    poll().finally(() => {
+      if (!cancelled) setLoading(false)
+    })
+
     return () => {
-      if (timerRef.current) clearInterval(timerRef.current)
+      cancelled = true
+      clearTimer()
     }
-  }, [items])
+  }, [])
 
   if (loading) {
     return (

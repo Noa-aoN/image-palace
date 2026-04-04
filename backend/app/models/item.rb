@@ -10,4 +10,8 @@ class Item < ApplicationRecord
 
   validates :title, presence: true
   validates :generation_status, inclusion: { in: GENERATION_STATUSES }
+
+  def primary_media
+    medias.ordered.first || medias.first
+  end
 end

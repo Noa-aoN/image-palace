@@ -1,8 +1,20 @@
 import axios from 'axios'
 import { useAuthStore } from '@/stores/auth'
 
+function resolveApiBaseUrl(): string | undefined {
+  if (typeof window === 'undefined') {
+    return process.env.INTERNAL_API_BASE_URL ?? process.env.NEXT_PUBLIC_API_BASE_URL
+  }
+
+  return process.env.NEXT_PUBLIC_API_BASE_URL
+}
+
+export function getBrowserApiBaseUrl(): string {
+  return process.env.NEXT_PUBLIC_API_BASE_URL ?? ''
+}
+
 export const apiClient = axios.create({
-  baseURL: process.env.NEXT_PUBLIC_API_BASE_URL,
+  baseURL: resolveApiBaseUrl(),
   headers: { 'Content-Type': 'application/json' },
 })
 
