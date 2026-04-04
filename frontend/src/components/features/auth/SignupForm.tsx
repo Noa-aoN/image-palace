@@ -8,10 +8,12 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { signUp, googleOAuthUrl } from '@/lib/api/auth'
 import { useAuthStore } from '@/stores/auth'
+import { useItemsStore } from '@/stores/items'
 
 export function SignupForm() {
   const router = useRouter()
   const setAuth = useAuthStore((s) => s.setAuth)
+  const resetItems = useItemsStore((s) => s.resetItems)
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [passwordConfirmation, setPasswordConfirmation] = useState('')
@@ -28,6 +30,7 @@ export function SignupForm() {
     setLoading(true)
     try {
       const { user, tokens } = await signUp(email, password, passwordConfirmation)
+      resetItems()
       setAuth(user, tokens)
       router.push('/dashboard')
     } catch (err: unknown) {
@@ -98,7 +101,7 @@ export function SignupForm() {
         </div>
 
         {error && (
-          <p className="text-sm text-red-500">{error}</p>
+          <p className="text-sm text-destructive">{error}</p>
         )}
 
         <Button type="submit" disabled={loading} className="w-full mt-1">

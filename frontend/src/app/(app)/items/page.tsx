@@ -1,6 +1,9 @@
+import type { Metadata } from 'next'
 import Link from 'next/link'
 import { Button } from '@/components/ui/button'
 import { ItemList } from '@/components/features/items/ItemList'
+
+export const metadata: Metadata = { title: 'マイカード' }
 
 export default function ItemsPage() {
   return (

@@ -5,4 +5,6 @@ const nextConfig: NextConfig = {}
 
 export default nextConfig
 
-initOpenNextCloudflareForDev()
+if (process.env.ENABLE_OPENNEXT_CLOUDFLARE_DEV === "1") {
+  initOpenNextCloudflareForDev()
+}
