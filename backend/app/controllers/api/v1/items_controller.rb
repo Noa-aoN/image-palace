@@ -1,11 +1,22 @@
 module Api
   module V1
     class ItemsController < BaseController
+      before_action :set_item, only: [:show, :destroy, :retry]
+
       def index
         items = current_user.items
                   .includes(medias: { file_attachment: :blob })
                   .order(created_at: :desc)
         render json: { items: items.map { |i| serialize_item(repair_item_if_media_missing(i)) } }
+      end
+
+      def summary
+        render json: {
+          total_count: current_user.items.count,
+          pending_count: current_user.items.where(generation_status: "pending").count,
+          processing_count: current_user.items.where(generation_status: "processing").count,
+          failed_count: current_user.items.where(generation_status: "failed").count
+        }
       end
 
       def create
@@ -18,28 +29,23 @@ module Api
       end
 
       def show
-        item = current_user.items
-                 .includes(medias: { file_attachment: :blob })
-                 .find(params[:id])
         render json: serialize_item(repair_item_if_media_missing(item))
       end
 
       def destroy
-        item = current_user.items.find(params[:id])
         item.destroy!
         head :no_content
       end
 
       def retry
-        item = current_user.items.find(params[:id])
-        item = repair_item_if_media_missing(item)
-        unless item.generation_status == "failed"
+        current_item = repair_item_if_media_missing(item)
+        unless current_item.generation_status == "failed"
           return render json: { error: "failed 状態のカードのみ再生成できます" }, status: :unprocessable_entity
         end
 
-        item.update!(generation_status: "pending")
-        GenerateImageJob.perform_later(item.id, force_generate: false)
-        render json: serialize_item(item.reload), status: :accepted
+        current_item.update!(generation_status: "pending")
+        GenerateImageJob.perform_later(current_item.id, force_generate: false)
+        render json: serialize_item(current_item.reload), status: :accepted
       end
 
       private
@@ -62,7 +68,14 @@ module Api
         return nil unless media&.file&.attached?
         return nil unless blob_available?(media.file.blob)
 
-        { id: media.id, url: media_url(media.file.blob), media_type: media.media_type }
+        blob = media.file.blob
+
+        {
+          id: media.id,
+          url: media_url(blob),
+          thumb_url: thumbnail_url(blob),
+          media_type: media.media_type
+        }
       end
 
       def media_url(blob)
@@ -73,11 +86,24 @@ module Api
         "#{cdn_base}/#{blob.key}"
       end
 
+      def thumbnail_url(blob)
+        return media_url(blob) unless blob.image?
+        return media_url(blob) if blob.service_name == "local"
+
+        variant = blob.variant(resize_to_limit: [480, 480]).processed
+        url_for(variant)
+      rescue LoadError, StandardError
+        media_url(blob)
+      end
+
+      MISSING_MEDIA_REPAIR_GRACE_PERIOD = 30.seconds
+
       def repair_item_if_media_missing(item)
         return item unless item.generation_status == "completed"
 
         media = item.primary_media
         return item if media&.file&.attached? && blob_available?(media.file.blob)
+        return item if item.updated_at >= MISSING_MEDIA_REPAIR_GRACE_PERIOD.ago
 
         item.update!(generation_status: "failed")
         item.reload
@@ -91,6 +117,14 @@ module Api
 
         File.exist?(service.path_for(blob.key))
       end
+
+      def set_item
+        @item = current_user.items
+                            .includes(medias: { file_attachment: :blob })
+                            .find(params[:id])
+      end
+
+      attr_reader :item
     end
   end
 end

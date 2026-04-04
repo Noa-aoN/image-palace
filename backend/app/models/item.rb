@@ -12,6 +12,10 @@ class Item < ApplicationRecord
   validates :generation_status, inclusion: { in: GENERATION_STATUSES }
 
   def primary_media
-    medias.ordered.first || medias.first
+    if association(:medias).loaded?
+      medias.min_by { |media| [media.position || Float::INFINITY, media.created_at] }
+    else
+      medias.ordered.first || medias.first
+    end
   end
 end

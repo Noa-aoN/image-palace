@@ -28,7 +28,11 @@ const POLLING_STATUSES = new Set(['pending', 'processing'])
 export default function ItemDetailPage() {
   const { id } = useParams<{ id: string }>()
   const router = useRouter()
-  const [item, setItem] = useState<Item | null>(null)
+  const cachedItems = useItemsStore((s) => s.items)
+  const upsertItem = useItemsStore((s) => s.upsertItem)
+  const removeItem = useItemsStore((s) => s.removeItem)
+  const cachedItem = cachedItems.find((current) => current.id === id) ?? null
+  const [item, setItem] = useState<Item | null>(() => cachedItem)
   const [allIds, setAllIds] = useState<string[]>([])
   const [error, setError] = useState<string | null>(null)
   const [imgError, setImgError] = useState(false)
@@ -37,39 +41,72 @@ export default function ItemDetailPage() {
   const [retrying, setRetrying] = useState(false)
   const [zoomed, setZoomed] = useState(false)
 
-  const cachedItems = useItemsStore((s) => s.items)
+  useEffect(() => {
+    if (cachedItem) {
+      setItem(cachedItem)
+    }
+  }, [cachedItem])
+
+  useEffect(() => {
+    setImgError(false)
+  }, [item?.media?.url])
 
   // Effect 1: カード本体の取得（id 変化時のみ）
   useEffect(() => {
     setImgError(false)
-    getItem(id).then(setItem).catch(() => setError('カードの取得に失敗しました'))
-  }, [id])
+    getItem(id)
+      .then((fetched) => {
+        setItem(fetched)
+        upsertItem(fetched)
+      })
+      .catch(() => setError('カードの取得に失敗しました'))
+  }, [id, upsertItem])
 
-  // Effect 2: allIds 管理（キャッシュが有効なら即反映、なければ fetch）
+  // Effect 2: allIds 管理（キャッシュがあればそれを優先）
   useEffect(() => {
-    const cacheValid = cachedItems.length > 0 && cachedItems.some((i) => i.id === id)
-    if (cacheValid) {
+    if (cachedItems.length > 0) {
       setAllIds(cachedItems.map((i) => i.id))
-    } else {
-      getItems()
-        .then((items) => {
-          setAllIds(items.map((i) => i.id))
-          useItemsStore.getState().setItems(items)
-        })
-        .catch(() => {})
+      return
     }
-  }, [id, cachedItems])
+
+    getItems()
+      .then((items) => {
+        setAllIds(items.map((current) => current.id))
+        useItemsStore.getState().setItems(items)
+      })
+      .catch(() => {})
+  }, [cachedItems])
 
   // Effect 3: pending/processing 中はポーリング
   const generationStatus = item?.generation_status
   useEffect(() => {
     if (!generationStatus) return
     if (!POLLING_STATUSES.has(generationStatus)) return
-    const timer = setInterval(() => {
-      getItem(id).then(setItem).catch(() => clearInterval(timer))
-    }, 2000)
-    return () => clearInterval(timer)
-  }, [id, generationStatus])
+    let cancelled = false
+    let timer: ReturnType<typeof setTimeout> | null = null
+
+    const poll = async () => {
+      try {
+        const fetched = await getItem(id)
+        if (cancelled) return
+
+        setItem(fetched)
+        upsertItem(fetched)
+
+        if (POLLING_STATUSES.has(fetched.generation_status)) {
+          timer = setTimeout(poll, 2000)
+        }
+      } catch {
+        if (timer) clearTimeout(timer)
+      }
+    }
+
+    timer = setTimeout(poll, 2000)
+    return () => {
+      cancelled = true
+      if (timer) clearTimeout(timer)
+    }
+  }, [id, generationStatus, upsertItem])
 
   // Effect 4: モーダル表示中は ESC で閉じる
   useEffect(() => {
@@ -88,6 +125,7 @@ export default function ItemDetailPage() {
     setDeleting(true)
     try {
       await deleteItem(id)
+      removeItem(id)
       router.push('/items')
     } catch {
       setError('削除に失敗しました')
@@ -98,11 +136,18 @@ export default function ItemDetailPage() {
 
   const handleRetry = async () => {
     setRetrying(true)
+    setError(null)
     try {
       const updated = await retryItem(id)
       setItem(updated)
-    } catch {
-      setError('再生成の開始に失敗しました')
+      upsertItem(updated)
+    } catch (err: unknown) {
+      const axiosErr = err as { response?: { data?: { error?: string; errors?: string[] } } }
+      const msg =
+        axiosErr?.response?.data?.error ??
+        axiosErr?.response?.data?.errors?.[0] ??
+        '再生成に失敗しました。もう一度試してください。'
+      setError(msg)
     } finally {
       setRetrying(false)
     }
@@ -190,6 +235,8 @@ export default function ItemDetailPage() {
                 src={item.media.url}
                 alt={item.title}
                 className="w-full rounded-xl object-cover cursor-zoom-in"
+                decoding="async"
+                fetchPriority="high"
                 onClick={() => setZoomed(true)}
                 onError={() => setImgError(true)}
               />

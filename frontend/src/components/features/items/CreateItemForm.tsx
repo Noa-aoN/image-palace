@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation'
 import { Button } from '@/components/ui/button'
 import { Label } from '@/components/ui/label'
 import { createItem } from '@/lib/api/items'
+import { useItemsStore } from '@/stores/items'
 
 function parseTitles(raw: string): string[] {
   return raw
@@ -15,6 +16,7 @@ function parseTitles(raw: string): string[] {
 
 export function CreateItemForm() {
   const router = useRouter()
+  const upsertItem = useItemsStore((state) => state.upsertItem)
   const [input, setInput] = useState('')
   const [apiError, setApiError] = useState<string | null>(null)
   const [submitting, setSubmitting] = useState(false)
@@ -32,7 +34,8 @@ export function CreateItemForm() {
 
     try {
       for (let i = 0; i < titles.length; i++) {
-        await createItem(titles[i])
+        const item = await createItem(titles[i])
+        upsertItem(item)
         setProgress({ done: i + 1, total: titles.length })
       }
       router.push('/items')

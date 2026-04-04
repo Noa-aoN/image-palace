@@ -1,6 +1,13 @@
 import { apiClient } from './client'
 import type { Item } from '@/types/item'
 
+export interface ItemsSummary {
+  total_count: number
+  pending_count: number
+  processing_count: number
+  failed_count: number
+}
+
 export async function createItem(title: string): Promise<Item> {
   const res = await apiClient.post<Item>('/api/v1/items', { item: { title } })
   return res.data
@@ -13,6 +20,11 @@ export async function getItems(): Promise<Item[]> {
 
 export async function getItem(id: string): Promise<Item> {
   const res = await apiClient.get<Item>(`/api/v1/items/${id}`)
+  return res.data
+}
+
+export async function getItemsSummary(): Promise<ItemsSummary> {
+  const res = await apiClient.get<ItemsSummary>('/api/v1/items/summary')
   return res.data
 }
 

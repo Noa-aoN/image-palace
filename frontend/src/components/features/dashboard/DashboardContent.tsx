@@ -4,15 +4,15 @@ import { useEffect, useState } from 'react'
 import Link from 'next/link'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
-import { getItems } from '@/lib/api/items'
+import { getItemsSummary } from '@/lib/api/items'
 
 export function DashboardContent() {
-  const [cardCount, setCardCount] = useState<number | null>(null)
+  const [summary, setSummary] = useState<{ total_count: number; processing_count: number; failed_count: number } | null>(null)
 
   useEffect(() => {
-    getItems()
-      .then((items) => setCardCount(items.length))
-      .catch(() => setCardCount(0))
+    getItemsSummary()
+      .then((data) => setSummary(data))
+      .catch(() => setSummary({ total_count: 0, processing_count: 0, failed_count: 0 }))
   }, [])
 
   return (
@@ -24,7 +24,15 @@ export function DashboardContent() {
           <CardContent className="pt-6">
             <p className="text-sm text-muted-foreground">所持カード数</p>
             <p className="text-3xl font-bold mt-1">
-              {cardCount === null ? '...' : cardCount}
+              {summary === null ? '...' : summary.total_count}
+            </p>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="pt-6">
+            <p className="text-sm text-muted-foreground">生成中 / 失敗</p>
+            <p className="text-3xl font-bold mt-1">
+              {summary === null ? '...' : `${summary.processing_count} / ${summary.failed_count}`}
             </p>
           </CardContent>
         </Card>

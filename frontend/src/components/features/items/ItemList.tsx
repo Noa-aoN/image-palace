@@ -26,6 +26,10 @@ const POLLING_STATUSES = new Set(['pending', 'processing'])
 function ItemCard({ item }: { item: Item }) {
   const [imgError, setImgError] = useState(false)
 
+  useEffect(() => {
+    setImgError(false)
+  }, [item.media?.thumb_url, item.media?.url])
+
   return (
     <Link
       href={`/items/${item.id}`}
@@ -35,9 +39,12 @@ function ItemCard({ item }: { item: Item }) {
         {item.media?.url && !imgError ? (
           // eslint-disable-next-line @next/next/no-img-element
           <img
-            src={item.media.url}
+            src={item.media.thumb_url ?? item.media.url}
             alt={item.title}
             className="w-full h-full object-cover"
+            loading="lazy"
+            decoding="async"
+            sizes="(max-width: 768px) 50vw, (max-width: 1200px) 33vw, 25vw"
             onError={() => setImgError(true)}
           />
         ) : (
@@ -59,11 +66,11 @@ function ItemCard({ item }: { item: Item }) {
 }
 
 export function ItemList() {
-  const [items, setItems] = useState<Item[]>(() => useItemsStore.getState().items)
+  const items = useItemsStore((state) => state.items)
+  const setItems = useItemsStore((state) => state.setItems)
   const [loading, setLoading] = useState(() => useItemsStore.getState().items.length === 0)
   const [error, setError] = useState<string | null>(null)
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
-  const itemsRef = useRef(items)
   const requestInFlightRef = useRef(false)
 
   const fetchItems = async (): Promise<Item[] | null> => {
@@ -72,9 +79,7 @@ export function ItemList() {
     requestInFlightRef.current = true
     try {
       const fetched = await getItems()
-      itemsRef.current = fetched
       setItems(fetched)
-      useItemsStore.getState().setItems(fetched)
       setError(null)
       return fetched
     } catch {
@@ -99,7 +104,7 @@ export function ItemList() {
       const fetched = await fetchItems()
       if (cancelled) return
 
-      const latestItems = fetched ?? itemsRef.current
+      const latestItems = fetched ?? useItemsStore.getState().items
       const hasPending = latestItems.some((item) => POLLING_STATUSES.has(item.generation_status))
       if (hasPending) {
         timerRef.current = setTimeout(poll, 3000)
@@ -114,7 +119,7 @@ export function ItemList() {
       cancelled = true
       clearTimer()
     }
-  }, [])
+  }, [setItems])
 
   if (loading) {
     return (
