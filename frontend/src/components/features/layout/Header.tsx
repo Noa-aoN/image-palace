@@ -1,7 +1,7 @@
 'use client'
 
 import Link from 'next/link'
-import { useRouter } from 'next/navigation'
+import { usePathname, useRouter } from 'next/navigation'
 import { CircleUser } from 'lucide-react'
 import {
   DropdownMenu,
@@ -10,12 +10,19 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
 import { useAuthStore } from '@/stores/auth'
+import { useItemsStore } from '@/stores/items'
 import { signOut } from '@/lib/api/auth'
 
 export function AppHeader() {
+  const pathname = usePathname()
   const router = useRouter()
   const clearAuth = useAuthStore((s) => s.clearAuth)
+  const resetItems = useItemsStore((s) => s.resetItems)
   const isAuthenticated = useAuthStore((s) => s.isAuthenticated)
+  const hasHydrated = useAuthStore((s) => s.hasHydrated)
+  const isAuthPage = pathname?.startsWith('/login') || pathname?.startsWith('/signup') || pathname?.startsWith('/auth/')
+  const isLandingPage = pathname === '/'
+  const showUserMenu = hasHydrated && isAuthenticated
 
   const handleLogout = async () => {
     try {
@@ -23,6 +30,7 @@ export function AppHeader() {
     } catch {
       // トークン切れでもclearAuthは実行する
     }
+    resetItems()
     clearAuth()
     router.push('/login')
   }
@@ -47,17 +55,20 @@ export function AppHeader() {
         />
       </Link>
 
-      {/* ユーザーメニュー */}
-      <DropdownMenu>
-        <DropdownMenuTrigger className="rounded-full p-1 hover:bg-black/5 transition-colors">
-          <CircleUser size={32} strokeWidth={1.5} />
-        </DropdownMenuTrigger>
-        <DropdownMenuContent align="end">
-          <DropdownMenuItem onClick={handleLogout} className="cursor-pointer">
-            ログアウト
-          </DropdownMenuItem>
-        </DropdownMenuContent>
-      </DropdownMenu>
+      {showUserMenu ? (
+        <DropdownMenu>
+          <DropdownMenuTrigger className="rounded-full p-1 hover:bg-black/5 transition-colors">
+            <CircleUser size={32} strokeWidth={1.5} />
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end">
+            <DropdownMenuItem onClick={handleLogout} className="cursor-pointer">
+              ログアウト
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
+      ) : (
+        <div className="min-w-9" aria-hidden={isAuthPage || isLandingPage} />
+      )}
     </header>
   )
 }

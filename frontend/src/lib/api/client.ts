@@ -1,5 +1,6 @@
 import axios from 'axios'
 import { useAuthStore } from '@/stores/auth'
+import { useItemsStore } from '@/stores/items'
 
 function resolveApiBaseUrl(): string | undefined {
   if (typeof window === 'undefined') {
@@ -45,6 +46,7 @@ apiClient.interceptors.response.use(
   },
   (error) => {
     if (error.response?.status === 401) {
+      useItemsStore.getState().resetItems()
       useAuthStore.getState().clearAuth()
       window.location.href = '/login'
     }

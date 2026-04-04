@@ -8,8 +8,8 @@ export interface ItemsSummary {
   failed_count: number
 }
 
-export async function createItem(title: string): Promise<Item> {
-  const res = await apiClient.post<Item>('/api/v1/items', { item: { title } })
+export async function createItem(title: string, forceGenerate = false): Promise<Item> {
+  const res = await apiClient.post<Item>('/api/v1/items', { item: { title, force_generate: forceGenerate } })
   return res.data
 }
 

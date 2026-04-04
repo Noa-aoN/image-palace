@@ -8,10 +8,12 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { signIn, googleOAuthUrl } from '@/lib/api/auth'
 import { useAuthStore } from '@/stores/auth'
+import { useItemsStore } from '@/stores/items'
 
 export function LoginForm() {
   const router = useRouter()
   const setAuth = useAuthStore((s) => s.setAuth)
+  const resetItems = useItemsStore((s) => s.resetItems)
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [error, setError] = useState<string | null>(null)
@@ -23,6 +25,7 @@ export function LoginForm() {
     setLoading(true)
     try {
       const { user, tokens } = await signIn(email, password)
+      resetItems()
       setAuth(user, tokens)
       router.push('/dashboard')
     } catch {

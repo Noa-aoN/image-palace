@@ -166,6 +166,11 @@ export function ItemList() {
     return (
       <div className="text-center py-16 space-y-4">
         <p className="text-muted-foreground">まだカードがありません。単語を入れて、最初の記憶カードを作りましょう。</p>
+        <div className="mx-auto max-w-md rounded-xl border border-border/70 bg-muted/40 px-4 py-4 text-left">
+          <p className="text-sm font-medium">最初に試しやすい例</p>
+          <p className="mt-2 text-sm text-muted-foreground">富士山、光合成、API、細胞分裂</p>
+          <p className="mt-1 text-xs text-muted-foreground">具体的な単語から始めると、画像生成が安定しやすいです。</p>
+        </div>
         <Link href="/items/new">
           <Button>カードを作成する</Button>
         </Link>

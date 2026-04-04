@@ -3,6 +3,7 @@
 import { useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { useAuthStore } from '@/stores/auth'
+import { useItemsStore } from '@/stores/items'
 import { apiClient } from '@/lib/api/client'
 import type { AuthTokens, User } from '@/types/auth'
 
@@ -36,10 +37,12 @@ export default function AuthCallbackPage() {
     apiClient
       .get<{ data: User }>('/api/v1/auth/validate_token')
       .then((res) => {
+        useItemsStore.getState().resetItems()
         setAuth(res.data.data, tokens)
         router.replace('/dashboard')
       })
       .catch(() => {
+        useItemsStore.getState().resetItems()
         useAuthStore.getState().clearAuth()
         router.replace('/login')
       })

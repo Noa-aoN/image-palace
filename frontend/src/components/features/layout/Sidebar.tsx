@@ -20,6 +20,7 @@ const NAV_ITEMS: NavItem[] = [
 export function Sidebar() {
   const pathname = usePathname()
   const { sidebarExpanded, toggleSidebar } = useUiStore()
+
   return (
     <aside
       className="flex flex-col shrink-0 overflow-y-auto transition-[width] duration-200"
@@ -41,14 +42,16 @@ export function Sidebar() {
       </div>
 
       {/* ナビゲーション */}
-      <nav className="flex flex-col gap-1 px-2 pt-2">
+      <nav className={`flex flex-col gap-1 pt-2 ${sidebarExpanded ? 'px-2' : 'px-1.5'}`}>
         {NAV_ITEMS.map((item) => {
           const isActive = pathname === item.href || pathname.startsWith(item.href + '/')
           return (
             <Link
               key={item.href}
               href={item.href}
-              className="flex items-center gap-3 rounded-lg px-2 py-2.5 text-sm font-medium transition-colors hover:bg-black/5"
+              className={`flex rounded-lg py-2.5 text-sm font-medium transition-colors hover:bg-black/5 ${
+                sidebarExpanded ? 'items-center gap-3 px-2' : 'items-center justify-center px-0'
+              }`}
               style={{
                 color: isActive ? 'var(--palace)' : 'inherit',
                 backgroundColor: isActive ? 'rgba(198,167,94,0.1)' : undefined,

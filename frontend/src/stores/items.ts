@@ -6,6 +6,7 @@ interface ItemsState {
   setItems: (items: Item[]) => void
   upsertItem: (item: Item) => void
   removeItem: (id: string) => void
+  resetItems: () => void
 }
 
 export const useItemsStore = create<ItemsState>()((set) => ({
@@ -24,4 +25,5 @@ export const useItemsStore = create<ItemsState>()((set) => ({
     }),
   removeItem: (id) =>
     set((state) => ({ items: state.items.filter((item) => item.id !== id) })),
+  resetItems: () => set({ items: [] }),
 }))
