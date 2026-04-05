@@ -2,6 +2,11 @@ import axios from 'axios'
 import { useAuthStore } from '@/stores/auth'
 import { useItemsStore } from '@/stores/items'
 
+const AUTH_ERROR_EXCLUDED_PATHS = new Set([
+  '/api/v1/auth',
+  '/api/v1/auth/sign_in',
+])
+
 function resolveApiBaseUrl(): string | undefined {
   if (typeof window === 'undefined') {
     return process.env.INTERNAL_API_BASE_URL ?? process.env.NEXT_PUBLIC_API_BASE_URL
@@ -45,7 +50,11 @@ apiClient.interceptors.response.use(
     return response
   },
   (error) => {
-    if (error.response?.status === 401) {
+    const requestUrl = error.config?.url as string | undefined
+    const path = requestUrl ? new URL(requestUrl, resolveApiBaseUrl()).pathname : undefined
+    const shouldRedirectOnUnauthorized = path ? !AUTH_ERROR_EXCLUDED_PATHS.has(path) : true
+
+    if (error.response?.status === 401 && shouldRedirectOnUnauthorized) {
       useItemsStore.getState().resetItems()
       useAuthStore.getState().clearAuth()
       window.location.href = '/login'

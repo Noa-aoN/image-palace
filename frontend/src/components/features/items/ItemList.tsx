@@ -1,6 +1,6 @@
 'use client'
 
-import { startTransition, useEffect, useRef, useState } from 'react'
+import { startTransition, useEffect, useEffectEvent, useRef, useState } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { Button } from '@/components/ui/button'
@@ -26,13 +26,11 @@ const POLLING_STATUSES = new Set(['pending', 'processing'])
 
 function ItemCard({ item }: { item: Item }) {
   const router = useRouter()
-  const [imgError, setImgError] = useState(false)
+  const [failedImageUrl, setFailedImageUrl] = useState<string | null>(null)
   const isGenerating = POLLING_STATUSES.has(item.generation_status)
   const warmedRef = useRef(false)
-
-  useEffect(() => {
-    setImgError(false)
-  }, [item.media?.thumb_url, item.media?.url])
+  const imageUrl = item.media?.thumb_url ?? item.media?.url
+  const hasImageError = imageUrl !== undefined && failedImageUrl === imageUrl
 
   const warmupDetail = () => {
     if (warmedRef.current) return
@@ -53,16 +51,16 @@ function ItemCard({ item }: { item: Item }) {
       onFocus={warmupDetail}
     >
       <div className="w-full aspect-square bg-muted flex items-center justify-center overflow-hidden">
-        {item.media?.url && !imgError ? (
+        {item.media?.url && !hasImageError ? (
           // eslint-disable-next-line @next/next/no-img-element
           <img
-            src={item.media.thumb_url ?? item.media.url}
+            src={imageUrl}
             alt={item.title}
             className="w-full h-full object-cover"
             loading="lazy"
             decoding="async"
             sizes="(max-width: 768px) 50vw, (max-width: 1200px) 33vw, 25vw"
-            onError={() => setImgError(true)}
+            onError={() => setFailedImageUrl(imageUrl)}
           />
         ) : (
           <div className="relative flex h-full w-full items-center justify-center bg-muted">
@@ -70,7 +68,7 @@ function ItemCard({ item }: { item: Item }) {
               <div className="absolute inset-0 animate-pulse bg-[linear-gradient(135deg,rgba(255,255,255,0.22),transparent_40%,rgba(255,255,255,0.14))]" />
             )}
             <span className="relative z-10 text-muted-foreground text-xs px-2 text-center">
-              {imgError ? '期限切れ' : (STATUS_LABEL[item.generation_status] ?? item.generation_status)}
+              {hasImageError ? '期限切れ' : (STATUS_LABEL[item.generation_status] ?? item.generation_status)}
             </span>
           </div>
         )}
@@ -95,7 +93,7 @@ export function ItemList() {
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const requestInFlightRef = useRef(false)
 
-  const fetchItems = async (): Promise<Item[] | null> => {
+  const fetchItems = useEffectEvent(async (): Promise<Item[] | null> => {
     if (requestInFlightRef.current) return null
 
     requestInFlightRef.current = true
@@ -110,7 +108,7 @@ export function ItemList() {
     } finally {
       requestInFlightRef.current = false
     }
-  }
+  })
 
   useEffect(() => {
     let cancelled = false
@@ -141,7 +139,7 @@ export function ItemList() {
       cancelled = true
       clearTimer()
     }
-  }, [setItems])
+  }, [])
 
   if (loading) {
     return (
