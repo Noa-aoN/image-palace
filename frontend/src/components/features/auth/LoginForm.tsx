@@ -6,7 +6,9 @@ import Link from 'next/link'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
+import { PasswordField } from '@/components/features/auth/PasswordField'
 import { signIn, googleOAuthUrl } from '@/lib/api/auth'
+import { buildLoginErrorDetail, validateLoginField } from '@/lib/auth-errors'
 import { useAuthStore } from '@/stores/auth'
 import { useItemsStore } from '@/stores/items'
 
@@ -16,20 +18,52 @@ export function LoginForm() {
   const resetItems = useItemsStore((s) => s.resetItems)
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
-  const [error, setError] = useState<string | null>(null)
+  const [formError, setFormError] = useState<string | null>(null)
+  const [fieldErrors, setFieldErrors] = useState<{ email?: string; password?: string }>({})
   const [loading, setLoading] = useState(false)
+
+  function updateFieldError(field: 'email' | 'password', message?: string) {
+    setFieldErrors((current) => {
+      if (!message) {
+        const next = { ...current }
+        delete next[field]
+        return next
+      }
+
+      return {
+        ...current,
+        [field]: message,
+      }
+    })
+  }
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
-    setError(null)
+    const nextFieldErrors = {
+      email: validateLoginField('email', email),
+      password: validateLoginField('password', password),
+    }
+    const hasFieldErrors = Object.values(nextFieldErrors).some(Boolean)
+
+    setFieldErrors({
+      ...(nextFieldErrors.email ? { email: nextFieldErrors.email } : {}),
+      ...(nextFieldErrors.password ? { password: nextFieldErrors.password } : {}),
+    })
+
+    if (hasFieldErrors) {
+      setFormError(null)
+      return
+    }
+
+    setFormError(null)
     setLoading(true)
     try {
       const { user, tokens } = await signIn(email, password)
       resetItems()
       setAuth(user, tokens)
       router.push('/dashboard')
-    } catch {
-      setError('メールアドレスまたはパスワードが正しくありません')
+    } catch (err: unknown) {
+      setFormError(buildLoginErrorDetail(err).message)
     } finally {
       setLoading(false)
     }
@@ -64,24 +98,39 @@ export function LoginForm() {
             type="email"
             value={email}
             onChange={(e) => setEmail(e.target.value)}
+            onBlur={() => updateFieldError('email', validateLoginField('email', email))}
             required
             autoComplete="email"
+            aria-invalid={fieldErrors.email ? true : undefined}
           />
+          {fieldErrors.email && (
+            <p className="text-sm text-red-700">{fieldErrors.email}</p>
+          )}
         </div>
         <div className="flex flex-col gap-1.5">
           <Label htmlFor="password">パスワード</Label>
-          <Input
+          <PasswordField
             id="password"
-            type="password"
             value={password}
             onChange={(e) => setPassword(e.target.value)}
+            onBlur={() => updateFieldError('password', validateLoginField('password', password))}
             required
             autoComplete="current-password"
+            aria-invalid={fieldErrors.password ? true : undefined}
           />
+          {fieldErrors.password && (
+            <p className="text-sm text-red-700">{fieldErrors.password}</p>
+          )}
         </div>
 
-        {error && (
-          <p className="text-sm text-destructive">{error}</p>
+        {formError && (
+          <div
+            role="alert"
+            aria-live="polite"
+            className="rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700"
+          >
+            <p className="leading-5">{formError}</p>
+          </div>
         )}
 
         <Button type="submit" disabled={loading} className="w-full mt-1">
