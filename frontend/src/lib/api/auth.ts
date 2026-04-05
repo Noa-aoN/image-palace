@@ -1,4 +1,4 @@
-import { apiClient } from './client'
+import { apiClient, getBrowserApiBaseUrl } from './client'
 import type { User, AuthTokens } from '@/types/auth'
 
 interface AuthResponse {
@@ -48,5 +48,5 @@ export async function signOut(): Promise<void> {
 }
 
 export function googleOAuthUrl(): string {
-  return `${process.env.NEXT_PUBLIC_API_BASE_URL}/api/v1/auth/google_oauth2`
+  return `${getBrowserApiBaseUrl()}/api/v1/auth/google_oauth2`
 }

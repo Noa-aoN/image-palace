@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation'
 import { Button } from '@/components/ui/button'
 import { Label } from '@/components/ui/label'
 import { createItem } from '@/lib/api/items'
+import { useItemsStore } from '@/stores/items'
 
 function parseTitles(raw: string): string[] {
   return raw
@@ -15,7 +16,9 @@ function parseTitles(raw: string): string[] {
 
 export function CreateItemForm() {
   const router = useRouter()
+  const upsertItem = useItemsStore((state) => state.upsertItem)
   const [input, setInput] = useState('')
+  const [forceGenerate, setForceGenerate] = useState(false)
   const [apiError, setApiError] = useState<string | null>(null)
   const [submitting, setSubmitting] = useState(false)
   const [progress, setProgress] = useState<{ done: number; total: number } | null>(null)
@@ -32,12 +35,18 @@ export function CreateItemForm() {
 
     try {
       for (let i = 0; i < titles.length; i++) {
-        await createItem(titles[i])
+        const item = await createItem(titles[i], forceGenerate)
+        upsertItem(item)
         setProgress({ done: i + 1, total: titles.length })
       }
       router.push('/items')
-    } catch {
-      setApiError('カードの作成に失敗しました。もう一度試してください。')
+    } catch (err: unknown) {
+      const axiosErr = err as { response?: { data?: { error?: string; errors?: string[] } } }
+      const msg =
+        axiosErr?.response?.data?.error ??
+        axiosErr?.response?.data?.errors?.[0] ??
+        'カードの作成に失敗しました。もう一度試してください。'
+      setApiError(msg)
     } finally {
       setSubmitting(false)
       setProgress(null)
@@ -48,6 +57,10 @@ export function CreateItemForm() {
     <form onSubmit={handleSubmit} className="space-y-5">
       <div className="space-y-2">
         <Label htmlFor="titles">単語・概念を入力</Label>
+        <div className="rounded-xl border border-border/70 bg-muted/40 px-4 py-3 text-sm leading-6 text-muted-foreground">
+          <p>具体的な名詞や場面が思い浮かぶ言葉ほど、画像化に成功しやすいです。</p>
+          <p>例: <span className="font-medium text-foreground">富士山 / API / 光合成 / 細胞分裂</span></p>
+        </div>
         <textarea
           id="titles"
           className="w-full min-h-[180px] rounded-lg border border-input bg-background px-3 py-2.5 text-sm placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring resize-y"
@@ -61,7 +74,28 @@ export function CreateItemForm() {
             {wordCount}件の単語を認識しました
           </p>
         )}
+        {wordCount === 0 && (
+          <p className="text-xs text-muted-foreground">
+            抽象的すぎる語や意味のない文字列は失敗しやすいため、まずは具体的な単語から試してください。
+          </p>
+        )}
       </div>
+
+      <label className="flex items-start gap-3 rounded-xl border border-border/70 bg-background px-4 py-3">
+        <input
+          type="checkbox"
+          className="mt-1 h-4 w-4 rounded border-input"
+          checked={forceGenerate}
+          onChange={(e) => setForceGenerate(e.target.checked)}
+          disabled={submitting}
+        />
+        <span className="space-y-1">
+          <span className="block text-sm font-medium">既存キャッシュを使わずに生成する</span>
+          <span className="block text-xs text-muted-foreground">
+            同じ単語の保存済み画像があっても再生成します。通常はオフのままで問題ありません。
+          </span>
+        </span>
+      </label>
 
       {apiError && <p className="text-sm text-destructive">{apiError}</p>}
 

@@ -1,6 +1,9 @@
+import type { Metadata } from 'next'
 import Link from 'next/link'
 import { Button } from '@/components/ui/button'
 import { CreateItemForm } from '@/components/features/items/CreateItemForm'
+
+export const metadata: Metadata = { title: 'カードを作成' }
 
 export default function NewItemPage() {
   return (
