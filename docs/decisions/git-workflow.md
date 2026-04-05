@@ -1,18 +1,22 @@
 # 意思決定ログ: Git ワークフロー
 
 > 作成: 2026-03-17
-> 更新: 2026-03-29 (ブランチ命名規則の統合)
+> 更新: 2026-04-05 (solo 開発向け運用へ整理)
 
 ---
 
 ## 決定内容
 
-**develop → main の squash merge 方式を採用する。**
+**`main` を正本とし、`develop` はローカル中心の作業ベースとして使う。**
 
 ### 原則
 - `origin/main` を常に最新の正本とする
 - ローカル `main` は作業前後で `origin/main` に追従させる
-- 新しい作業ブランチは、最新化された `develop` から切る
+- ローカル `develop` は最新 `main` を取り込んだ作業ベースとして使う
+- 小さな変更は `develop` に直接コミットしてよい
+- 大きな変更は最新の `develop` から作業ブランチを切る
+- PR の向き先は常に `main` とする
+- `origin/develop` は通常更新しない。必要なときだけ push する
 
 ---
 
@@ -21,9 +25,9 @@
 | ブランチ | 用途 |
 |---------|------|
 | `main` | 常にデプロイ可能な状態を保つ。直接 push 禁止 |
-| `develop` | 日常的な小変更・ドキュメント更新はここに直接コミット |
-| `feature/<issue>-<name>` | 機能開発。`develop` から派生し、完成後に PR → squash merge |
-| `fix/<issue>-<name>` | バグ修正。`develop` から派生し、完成後に PR → squash merge |
+| `develop` | ローカル中心の作業ベース。小変更・ドキュメント更新はここに直接コミット |
+| `feature/<issue>-<name>` | 機能開発。`develop` から派生し、完成後に `main` へ PR |
+| `fix/<issue>-<name>` | バグ修正。`develop` から派生し、完成後に `main` へ PR |
 
 ### ブランチを分けるかどうかの判断基準
 
@@ -33,6 +37,17 @@
 | 小さなバグ修正（1〜3ファイル） | `develop` に直接コミット |
 | 新機能・大きなリファクタリング | `feature/` または `fix/` ブランチを切る |
 | 複数人が同時に作業する可能性がある変更 | 必ずブランチを切る |
+
+### 日常の基本手順
+
+1. `git fetch origin`
+2. `git checkout main`
+3. `git merge --ff-only origin/main`
+4. `git checkout develop`
+5. `git merge main`
+6. 小変更ならそのまま `develop` で作業する
+7. まとまった変更なら `git checkout -b feature/...` または `fix/...`
+8. PR は `main` に向けて作成する
 
 ---
 
@@ -71,7 +86,7 @@
 ### 案A: GitHub Flow（main ブランチのみ）
 
 - **内容**: `main` から直接 `feature/` を切り、PR でマージ
-- **却下理由**: 小さな変更のたびに PR を立てるのが手間。solo 開発の初期段階では過剰
+- **却下理由**: 小さな変更もすべて作業ブランチ化され、solo 開発ではオーバーヘッドが大きい
 
 ### 案B: Git Flow（main + develop + release）
 
@@ -83,12 +98,14 @@
 ## 採用理由
 
 - `develop` への直接コミットで小変更のオーバーヘッドを最小化
-- `feature/` ブランチ + squash merge で、`main` のコミット履歴をきれいに保つ
-- staging 環境は `develop` push で自動デプロイ → production は手動プロモートで安全性確保
+- `feature/` / `fix/` ブランチを必要なときだけ切ることで、変更単位を分けやすい
+- `main` を唯一の正本にすることで、PR とデプロイの判断が単純になる
+- `origin/develop` を毎回同期しないため、solo 開発での運用負荷が低い
 
 ---
 
 ## 今後の見直しトリガー
 
 - チームメンバーが増えて同時並行の機能開発が増えた場合
-- `develop` への直接コミットでコンフリクトが頻発した場合
+- `develop` への直接コミットで変更の混線が増えた場合
+- `origin/develop` を共有ブランチとして使う必要が出てきた場合
