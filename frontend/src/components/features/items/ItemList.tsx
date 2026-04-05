@@ -30,7 +30,8 @@ function ItemCard({ item }: { item: Item }) {
   const isGenerating = POLLING_STATUSES.has(item.generation_status)
   const warmedRef = useRef(false)
   const imageUrl = item.media?.thumb_url ?? item.media?.url
-  const hasImageError = imageUrl !== undefined && failedImageUrl === imageUrl
+  const resolvedImageUrl = imageUrl ?? null
+  const hasImageError = resolvedImageUrl !== null && failedImageUrl === resolvedImageUrl
 
   const warmupDetail = () => {
     if (warmedRef.current) return
@@ -51,16 +52,16 @@ function ItemCard({ item }: { item: Item }) {
       onFocus={warmupDetail}
     >
       <div className="w-full aspect-square bg-muted flex items-center justify-center overflow-hidden">
-        {item.media?.url && !hasImageError ? (
+        {resolvedImageUrl && !hasImageError ? (
           // eslint-disable-next-line @next/next/no-img-element
           <img
-            src={imageUrl}
+            src={resolvedImageUrl}
             alt={item.title}
             className="w-full h-full object-cover"
             loading="lazy"
             decoding="async"
             sizes="(max-width: 768px) 50vw, (max-width: 1200px) 33vw, 25vw"
-            onError={() => setFailedImageUrl(imageUrl)}
+            onError={() => setFailedImageUrl(resolvedImageUrl)}
           />
         ) : (
           <div className="relative flex h-full w-full items-center justify-center bg-muted">

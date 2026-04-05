@@ -14,6 +14,9 @@ export type LoginErrorDetail = {
 
 export function validateLoginField(field: 'email' | 'password', value: string): string | undefined {
   if (field === 'email' && !value.trim()) return 'メールアドレスを入力してください'
+  if (field === 'email' && !/^[^@\s]+@[^@\s]+$/.test(value.trim())) {
+    return 'メールアドレスの形式が正しくありません'
+  }
   if (field === 'password' && !value.trim()) return 'パスワードを入力してください'
   return undefined
 }
