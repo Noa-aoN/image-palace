@@ -3,13 +3,17 @@
 ## Branching
 
 - `main` is always deployable
-- Feature branches: `feature/#<issue-number>-<short-description>`
-- Bug fixes: `fix/#<issue-number>-<short-description>`
+- Local `develop` is the working base branch for solo development
+- Small changes may be committed directly to `develop`
+- Feature branches: `feature/<issue-number>-<short-description>`
+- Bug fixes: `fix/<issue-number>-<short-description>`
 - Never push directly to `main`
+- Open PRs against `main`
+- `origin/develop` does not need to be updated on every change
 
 例:
-- `feature/#17-devise-token-auth`
-- `fix/#42-cache-miss-on-normalized-word`
+- `feature/17-devise-token-auth`
+- `fix/42-cache-miss-on-normalized-word`
 
 ## Commits
 
@@ -89,7 +93,6 @@ closes #33
 ### その他
 
 - Keep PRs small (under 400 lines of diff when possible)
-- Request review from at least one team member
 - Squash merge to main
 
 ## Code Review
