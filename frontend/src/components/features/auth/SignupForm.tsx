@@ -6,7 +6,15 @@ import Link from 'next/link'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
+import { PasswordField } from '@/components/features/auth/PasswordField'
 import { signUp, googleOAuthUrl } from '@/lib/api/auth'
+import {
+  buildSignupErrorDetail,
+  type AuthFieldErrors,
+  validateSignupEmail,
+  validateSignupPassword,
+  validateSignupPasswordConfirmation,
+} from '@/lib/auth-errors'
 import { useAuthStore } from '@/stores/auth'
 import { useItemsStore } from '@/stores/items'
 
@@ -17,16 +25,51 @@ export function SignupForm() {
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [passwordConfirmation, setPasswordConfirmation] = useState('')
-  const [error, setError] = useState<string | null>(null)
+  const [summaryMessage, setSummaryMessage] = useState<string | null>(null)
+  const [formMessages, setFormMessages] = useState<string[]>([])
+  const [fieldErrors, setFieldErrors] = useState<AuthFieldErrors>({})
   const [loading, setLoading] = useState(false)
+
+  function updateFieldError(field: keyof AuthFieldErrors, message?: string) {
+    setFieldErrors((current) => {
+      if (!message) {
+        const next = { ...current }
+        delete next[field]
+        return next
+      }
+
+      return {
+        ...current,
+        [field]: message,
+      }
+    })
+  }
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
-    setError(null)
-    if (password !== passwordConfirmation) {
-      setError('パスワードが一致しません')
+    const nextFieldErrors = {
+      email: validateSignupEmail(email),
+      password: validateSignupPassword(password),
+      passwordConfirmation: validateSignupPasswordConfirmation(password, passwordConfirmation),
+    }
+    const hasFieldErrors = Object.values(nextFieldErrors).some(Boolean)
+
+    setFieldErrors({
+      ...(nextFieldErrors.email ? { email: nextFieldErrors.email } : {}),
+      ...(nextFieldErrors.password ? { password: nextFieldErrors.password } : {}),
+      ...(nextFieldErrors.passwordConfirmation
+        ? { passwordConfirmation: nextFieldErrors.passwordConfirmation }
+        : {}),
+    })
+
+    if (hasFieldErrors) {
+      setSummaryMessage('入力内容をご確認ください。')
+      setFormMessages([])
       return
     }
+
+    setSummaryMessage(null)
+    setFormMessages([])
     setLoading(true)
     try {
       const { user, tokens } = await signUp(email, password, passwordConfirmation)
@@ -34,11 +77,10 @@ export function SignupForm() {
       setAuth(user, tokens)
       router.push('/dashboard')
     } catch (err: unknown) {
-      const msg =
-        (err as { response?: { data?: { errors?: { full_messages?: string[] } } } })
-          ?.response?.data?.errors?.full_messages?.[0]
-        ?? '登録に失敗しました'
-      setError(msg)
+      const detail = buildSignupErrorDetail(err)
+      setSummaryMessage(detail.summaryMessage)
+      setFormMessages(detail.formMessages)
+      setFieldErrors(detail.fieldErrors)
     } finally {
       setLoading(false)
     }
@@ -73,35 +115,84 @@ export function SignupForm() {
             type="email"
             value={email}
             onChange={(e) => setEmail(e.target.value)}
+            onBlur={() => updateFieldError('email', validateSignupEmail(email))}
             required
             autoComplete="email"
+            aria-invalid={fieldErrors.email ? true : undefined}
           />
+          <p className="text-xs" style={{ color: '#4A4A4A' }}>
+            ほかのユーザーが使っていないメールアドレスを入力してください。
+          </p>
+          {fieldErrors.email && (
+            <p className="text-sm text-red-700">{fieldErrors.email}</p>
+          )}
         </div>
         <div className="flex flex-col gap-1.5">
           <Label htmlFor="password">パスワード</Label>
-          <Input
+          <PasswordField
             id="password"
-            type="password"
             value={password}
             onChange={(e) => setPassword(e.target.value)}
+            onBlur={() => {
+              updateFieldError('password', validateSignupPassword(password))
+              if (passwordConfirmation) {
+                updateFieldError(
+                  'passwordConfirmation',
+                  validateSignupPasswordConfirmation(password, passwordConfirmation)
+                )
+              }
+            }}
             required
             autoComplete="new-password"
+            minLength={8}
+            aria-invalid={fieldErrors.password ? true : undefined}
           />
+          <p className="text-xs" style={{ color: '#4A4A4A' }}>
+            8文字以上で設定してください。
+          </p>
+          {fieldErrors.password && (
+            <p className="text-sm text-red-700">{fieldErrors.password}</p>
+          )}
         </div>
         <div className="flex flex-col gap-1.5">
           <Label htmlFor="password-confirmation">パスワード（確認）</Label>
-          <Input
+          <PasswordField
             id="password-confirmation"
-            type="password"
             value={passwordConfirmation}
             onChange={(e) => setPasswordConfirmation(e.target.value)}
+            onBlur={() => updateFieldError(
+              'passwordConfirmation',
+              validateSignupPasswordConfirmation(password, passwordConfirmation)
+            )}
             required
             autoComplete="new-password"
+            minLength={8}
+            aria-invalid={fieldErrors.passwordConfirmation ? true : undefined}
+            showLabel="確認用パスワードを表示"
+            hideLabel="確認用パスワードを隠す"
           />
+          {fieldErrors.passwordConfirmation && (
+            <p className="text-sm text-red-700">{fieldErrors.passwordConfirmation}</p>
+          )}
         </div>
 
-        {error && (
-          <p className="text-sm text-destructive">{error}</p>
+        {(summaryMessage || formMessages.length > 0) && (
+          <div
+            role="alert"
+            aria-live="polite"
+            className="rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700"
+          >
+            {summaryMessage && <p className="font-medium">{summaryMessage}</p>}
+            {formMessages.length > 0 && (
+              <ul className="mt-1 list-disc pl-5">
+                {formMessages.map((message) => (
+                  <li key={message} className="leading-5">
+                    {message}
+                  </li>
+                ))}
+              </ul>
+            )}
+          </div>
         )}
 
         <Button type="submit" disabled={loading} className="w-full mt-1">
