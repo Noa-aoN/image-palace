@@ -101,6 +101,10 @@ cd backend
 fly deploy
 ```
 
+- `fly.toml` の `release_command` で `db:migrate db:seed` が自動実行される
+- `ActiveRecord::ConcurrentMigrationError` が出た場合は、すぐに再実行せず `fly releases --app image-palace-api` / `fly logs --app image-palace-api` で進行中の release を確認する
+- DB 変更のないデプロイに限り、必要なら `fly deploy --skip-release-command` を使う
+
 **DBマイグレーション（staging）:**
 ```bash
 cd backend
@@ -152,6 +156,18 @@ fly ssh console -C "rails db:migrate" --app image-palace-api-production
 fly releases --app image-palace-api
 fly deploy --image <previous-image>
 ```
+
+### migration lock が出たとき
+
+```bash
+fly releases --app image-palace-api
+fly logs --app image-palace-api
+```
+
+- `ConcurrentMigrationError` は、別の `db:migrate` が advisory lock を保持しているときに発生する
+- 連続して `fly deploy` を実行すると、前の release_command と競合することがある
+- DB スキーマ変更や seed 変更があるときは、lock の原因を解消してから通常の `fly deploy` をやり直す
+- DB 変更のないデプロイだけ、例外的に `fly deploy --skip-release-command` を選べる
 
 ---
 
