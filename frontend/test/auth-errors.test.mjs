@@ -34,10 +34,11 @@ test('validateSignupPasswordConfirmation returns mismatch message', () => {
   assert.equal(validateSignupPasswordConfirmation('password123', 'password123'), undefined)
 })
 
-test('validateLoginField only validates required fields', () => {
+test('validateLoginField validates required fields and email format', () => {
   assert.equal(validateLoginField('email', ''), 'メールアドレスを入力してください')
   assert.equal(validateLoginField('password', ''), 'パスワードを入力してください')
-  assert.equal(validateLoginField('email', 'aaa'), undefined)
+  assert.equal(validateLoginField('email', 'aaa'), 'メールアドレスの形式が正しくありません')
+  assert.equal(validateLoginField('email', 'aaa@aaa'), undefined)
 })
 
 test('buildLoginErrorDetail returns a short login message', () => {

@@ -9,6 +9,11 @@
 
 **develop → main の squash merge 方式を採用する。**
 
+### 原則
+- `origin/main` を常に最新の正本とする
+- ローカル `main` は作業前後で `origin/main` に追従させる
+- 新しい作業ブランチは、最新化された `develop` から切る
+
 ---
 
 ## ブランチ戦略

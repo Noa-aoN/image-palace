@@ -105,6 +105,9 @@ fly deploy
 
 - マイグレーションは `fly.toml` の `release_command` で自動実行される
 - デプロイ後の確認: `curl -s https://image-palace-api.fly.dev/up`
+- `ActiveRecord::ConcurrentMigrationError` が出た場合は、まず `fly releases --app image-palace-api` と `fly logs --app image-palace-api` で別の release_command が走っていないか確認する
+- DB スキーマ変更や seed 変更がないデプロイに限り、必要に応じて `fly deploy --skip-release-command` を使ってよい
+- DB 変更を含む場合は `--skip-release-command` を使わず、進行中の migration が解消してから再度 `fly deploy` する
 
 ### フロントエンド（Cloudflare Workers）
 
