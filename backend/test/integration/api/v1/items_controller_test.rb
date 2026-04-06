@@ -96,6 +96,33 @@ class Api::V1::ItemsControllerTest < ActionDispatch::IntegrationTest
     assert_equal 1, json_response["failed_count"]
   end
 
+  test "index does not return other users items" do
+    own_item = @user.items.create!(title: "自分のカード", item_type: @item_type, generation_status: "completed")
+    other_user = create_confirmed_user(email: "other-#{SecureRandom.hex(4)}@example.com")
+    other_item = other_user.items.create!(title: "他人のカード", item_type: @item_type, generation_status: "completed")
+
+    get "/api/v1/items", headers: @headers, as: :json
+
+    assert_response :success
+    item_ids = json_response.fetch("items").map { |item| item.fetch("id") }
+    assert_includes item_ids, own_item.id
+    assert_not_includes item_ids, other_item.id
+  end
+
+  test "show rejects access to another users item" do
+    other_user = create_confirmed_user(email: "private-#{SecureRandom.hex(4)}@example.com")
+    other_item = other_user.items.create!(
+      title: "他人のカード",
+      item_type: @item_type,
+      generation_status: "completed"
+    )
+
+    get "/api/v1/items/#{other_item.id}", headers: @headers, as: :json
+
+    assert_response :not_found
+    assert_equal "Not found", json_response["error"]
+  end
+
   test "show returns generation_error for failed items" do
     item = @user.items.create!(
       title: "aaaaaaa",

@@ -45,6 +45,22 @@ test('buildLoginErrorDetail returns a short login message', () => {
   assert.equal(buildLoginErrorDetail(new Error('invalid')).message, 'メールアドレスまたはパスワードが違います。')
 })
 
+test('buildLoginErrorDetail maps unauthorized to a Japanese retry message', () => {
+  const detail = buildLoginErrorDetail(axiosError({
+    error: 'Unauthorized',
+  }))
+
+  assert.equal(detail.message, 'ログインが必要です。もう一度お試しください。')
+})
+
+test('buildLoginErrorDetail maps unconfirmed-account messages to Japanese', () => {
+  const detail = buildLoginErrorDetail(axiosError({
+    errors: ["A confirmation email was sent to your account at 'test@example.com'. You must follow the instructions in the email before your account can be activated"],
+  }))
+
+  assert.equal(detail.message, 'メール確認が完了していません。受信したメールをご確認ください。')
+})
+
 test('buildSignupErrorDetail maps backend validation errors to summary and field errors', () => {
   const detail = buildSignupErrorDetail(axiosError({
     errors: {
@@ -61,6 +77,56 @@ test('buildSignupErrorDetail maps backend validation errors to summary and field
     email: 'メールアドレスの形式が正しくありません',
     password: 'パスワードは8文字以上で入力してください',
   })
+})
+
+test('buildSignupErrorDetail maps "Email is not an email" to the standard Japanese email message', () => {
+  const detail = buildSignupErrorDetail(axiosError({
+    errors: {
+      full_messages: ['Email is not an email'],
+    },
+  }))
+
+  assert.equal(detail.summaryMessage, '入力内容をご確認ください。')
+  assert.deepEqual(detail.formMessages, [])
+  assert.deepEqual(detail.fieldErrors, {
+    email: 'メールアドレスの形式が正しくありません',
+  })
+})
+
+test('buildSignupErrorDetail maps missing confirm_success_url to a Japanese configuration message', () => {
+  const detail = buildSignupErrorDetail(axiosError({
+    errors: {
+      full_messages: ["Missing 'confirm_success_url' parameter."],
+    },
+  }))
+
+  assert.equal(detail.summaryMessage, null)
+  assert.deepEqual(detail.formMessages, ['登録処理に必要な情報が不足しています。時間をおいて再度お試しください。'])
+  assert.deepEqual(detail.fieldErrors, {})
+})
+
+test('buildSignupErrorDetail maps redirect_url_not_allowed to a Japanese configuration message', () => {
+  const detail = buildSignupErrorDetail(axiosError({
+    errors: {
+      full_messages: ["Redirect to 'http://localhost:3000/login' not allowed."],
+    },
+  }))
+
+  assert.equal(detail.summaryMessage, null)
+  assert.deepEqual(detail.formMessages, ['認証設定に問題があります。時間をおいて再度お試しください。'])
+  assert.deepEqual(detail.fieldErrors, {})
+})
+
+test('buildSignupErrorDetail maps malformed signup payload errors to a Japanese retry message', () => {
+  const detail = buildSignupErrorDetail(axiosError({
+    errors: {
+      full_messages: ['Please submit proper sign up data in request body.'],
+    },
+  }))
+
+  assert.equal(detail.summaryMessage, null)
+  assert.deepEqual(detail.formMessages, ['入力内容を確認して、もう一度お試しください。'])
+  assert.deepEqual(detail.fieldErrors, {})
 })
 
 test('buildSignupErrorDetail keeps non-field communication errors in formMessages', () => {
