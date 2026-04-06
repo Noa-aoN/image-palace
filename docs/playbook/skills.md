@@ -38,6 +38,7 @@ Skill は `/コマンド名` で呼び出すだけで、設計・実装・レビ
 | Skill | 用途 | コマンド |
 |---|---|---|
 | `doc-review` | docs の正確性・最新性チェックと修正提案 | `/doc-review [パス]` |
+| `error-docs` | 最近の fix から `docs/errors` を調査・下書き生成 | `/error-docs [commit \| --recent N]` |
 
 ### フロントエンド品質
 
