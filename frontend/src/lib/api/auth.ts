@@ -5,6 +5,14 @@ interface AuthResponse {
   data: User
 }
 
+function buildConfirmSuccessUrl(): string {
+  if (typeof window !== 'undefined' && window.location.origin) {
+    return `${window.location.origin}/login`
+  }
+
+  return 'http://localhost:3000/login'
+}
+
 function extractTokens(headers: Record<string, string>): AuthTokens {
   return {
     accessToken: headers['access-token'] ?? '',
@@ -24,6 +32,7 @@ export async function signUp(
     email,
     password,
     password_confirmation: passwordConfirmation,
+    confirm_success_url: buildConfirmSuccessUrl(),
   })
   const tokens = extractTokens(res.headers as Record<string, string>)
   if (!tokens.accessToken || !tokens.uid || !tokens.client) throw new Error('トークンの取得に失敗しました')

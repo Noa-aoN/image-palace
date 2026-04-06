@@ -14,6 +14,7 @@
 5. [レイヤー別リファレンス](#レイヤー別リファレンス)
 6. [AI Skill の活用](#ai-skill-の活用)
 7. [トラブルシューティング](#トラブルシューティング)
+8. [認証の回帰防止](#認証の回帰防止)
 
 ---
 
@@ -356,3 +357,8 @@ docker compose exec backend rails solid_queue:start
 docker compose exec backend rails console
 > SolidQueue::Job.failed.last&.last_execution&.error
 ```
+
+## 認証の回帰防止
+
+- 認証まわりを変更するときは [`docs/playbook/auth-regression-checklist.md`](./auth-regression-checklist.md) を先に確認する
+- メール signup / login は backend 自動テストで固定し、Google OAuth は手動確認項目を必ず消化する

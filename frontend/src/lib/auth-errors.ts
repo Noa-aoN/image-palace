@@ -69,6 +69,10 @@ function mapSignupMessage(message: string): string {
     return 'メールアドレスの形式が正しくありません'
   }
 
+  if (normalized.includes('email') && normalized.includes('not an email')) {
+    return 'メールアドレスの形式が正しくありません'
+  }
+
   if (normalized.includes('password') && normalized.includes('too short')) {
     return 'パスワードは8文字以上で入力してください'
   }
@@ -83,6 +87,18 @@ function mapSignupMessage(message: string): string {
 
   if (normalized.includes('email') && normalized.includes("can't be blank")) {
     return 'メールアドレスを入力してください'
+  }
+
+  if (normalized.includes('missing') && normalized.includes('confirm_success_url')) {
+    return '登録処理に必要な情報が不足しています。時間をおいて再度お試しください。'
+  }
+
+  if (normalized.includes('redirect to') && normalized.includes('not allowed')) {
+    return '認証設定に問題があります。時間をおいて再度お試しください。'
+  }
+
+  if (normalized.includes('proper sign up data')) {
+    return '入力内容を確認して、もう一度お試しください。'
   }
 
   return message
@@ -146,6 +162,33 @@ export function buildLoginErrorDetail(error: unknown): LoginErrorDetail {
   if (axios.isAxiosError(error) && !error.response) {
     return {
       message: '通信に失敗しました。時間をおいてお試しください。',
+    }
+  }
+
+  const rawMessages = extractMessages(error)
+  const normalized = rawMessages.map((message) => message.toLowerCase())
+
+  if (normalized.some((message) => message.includes('unauthorized'))) {
+    return {
+      message: 'ログインが必要です。もう一度お試しください。',
+    }
+  }
+
+  if (normalized.some((message) => message.includes('not found'))) {
+    return {
+      message: '必要な情報が見つかりませんでした。時間をおいて再度お試しください。',
+    }
+  }
+
+  if (normalized.some((message) => message.includes('redirect to') && message.includes('not allowed'))) {
+    return {
+      message: '認証設定に問題があります。時間をおいて再度お試しください。',
+    }
+  }
+
+  if (normalized.some((message) => message.includes('confirmation email was sent'))) {
+    return {
+      message: 'メール確認が完了していません。受信したメールをご確認ください。',
     }
   }
 
