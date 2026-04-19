@@ -1,6 +1,8 @@
 CLAUDE.local.md
-.claude/settings.local.json
-.claude/logs/
+.claude/
+AGENTS.md
+CLAUDE.local.md.example
+scripts/
 
 # 自分で追加
 .mcp.json
