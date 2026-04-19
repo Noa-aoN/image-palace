@@ -18,9 +18,8 @@ skills-lock.json
 *.log
 node_modules/
 
-# コンテンツ生成
-docs/daily/
-docs/drafts/
+# コンテンツ生成・ドキュメント
+docs/
 
 # Cloudflare Workers ビルド成果物
 frontend/.open-next/
