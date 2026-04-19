@@ -4,6 +4,7 @@ CLAUDE.md
 AGENTS.md
 CLAUDE.local.md.example
 scripts/
+skills-lock.json
 
 # 自分で追加
 .mcp.json
