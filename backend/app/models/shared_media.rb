@@ -1,5 +1,5 @@
 class SharedMedia < ApplicationRecord
-  self.table_name = 'shared_medias'
+  self.table_name = "shared_medias"
 
   belongs_to :user, optional: true
   has_one_attached :file

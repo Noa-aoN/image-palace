@@ -9,8 +9,8 @@ module Api
         # そのリクエスト内では env['omniauth.auth'] が取得できるため、
         # セッション経由のリダイレクトを挟まずここで直接処理する。
         def redirect_callbacks
-          if request.env['omniauth.auth']
-            @auth_hash = request.env['omniauth.auth']
+          if request.env["omniauth.auth"]
+            @auth_hash = request.env["omniauth.auth"]
             omniauth_success
           else
             super
@@ -18,7 +18,7 @@ module Api
         end
 
         def omniauth_success
-          @auth_hash ||= request.env['omniauth.auth']
+          @auth_hash ||= request.env["omniauth.auth"]
 
           # ユーザーを取得または作成
           @user = User.find_for_oauth(@auth_hash)
@@ -29,10 +29,10 @@ module Api
           # レスポンスヘッダーにトークン情報を設定
           response.headers.merge!(auth_header)
 
-          frontend_url = ENV.fetch('FRONTEND_URL', 'http://localhost:3000')
+          frontend_url = ENV.fetch("FRONTEND_URL", "http://localhost:3000")
           parsed = URI.parse(frontend_url)
           unless %w[http https].include?(parsed.scheme) && parsed.host.present?
-            render json: { error: 'FRONTEND_URL の設定が不正です' }, status: :internal_server_error
+            render json: { error: "FRONTEND_URL の設定が不正です" }, status: :internal_server_error
             return
           end
 

@@ -24,3 +24,7 @@ docs/
 # Cloudflare Workers ビルド成果物
 frontend/.open-next/
 frontend/.wrangler/
+
+# Docker Compose のローカル個人設定（環境ごとの port 競合回避など）
+# https://docs.docker.com/compose/multiple-compose-files/extends/
+docker-compose.override.yml

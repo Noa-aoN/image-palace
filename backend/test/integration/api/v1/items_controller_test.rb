@@ -75,7 +75,7 @@ class Api::V1::ItemsControllerTest < ActionDispatch::IntegrationTest
 
     assert_response :success
     items = json_response["items"]
-    assert_equal [newer_item.id, older_item.id], items.map { |item| item["id"] }
+    assert_equal [ newer_item.id, older_item.id ], items.map { |item| item["id"] }
     assert_equal "failed", items.first["generation_status"]
     assert_equal "入力が曖昧なため画像を生成できませんでした。別の単語や具体的な表現でお試しください。", items.first["generation_error"]
     assert_nil items.last["generation_error"]

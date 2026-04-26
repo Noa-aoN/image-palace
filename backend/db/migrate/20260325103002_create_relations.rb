@@ -12,7 +12,7 @@ class CreateRelations < ActiveRecord::Migration[8.1]
     add_index :relations, :user_id
     add_index :relations, :from_item_id
     add_index :relations, :to_item_id
-    add_index :relations, [:user_id, :from_item_id, :to_item_id, :relation_type],
+    add_index :relations, [ :user_id, :from_item_id, :to_item_id, :relation_type ],
               name: "index_relations_on_unique_relation", unique: true
     add_check_constraint :relations,
       "from_item_id <> to_item_id",

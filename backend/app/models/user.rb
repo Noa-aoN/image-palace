@@ -2,7 +2,7 @@ class User < ApplicationRecord
   # == Deviseモジュール ======================================================
   devise :database_authenticatable, :registerable,
          :recoverable, :rememberable, :validatable, :confirmable,
-         :omniauthable, omniauth_providers: [:google_oauth2]
+         :omniauthable, omniauth_providers: [ :google_oauth2 ]
 
   # == devise-token-auth設定 ================================================
   include DeviseTokenAuth::Concerns::User
@@ -22,7 +22,7 @@ class User < ApplicationRecord
   # OAuthプロバイダーからユーザーを見出し作成
   def self.find_for_oauth(auth_hash)
     # provider + uid のみで既存ユーザーを検索
-    user = find_by(provider: auth_hash['provider'], uid: auth_hash['uid'])
+    user = find_by(provider: auth_hash["provider"], uid: auth_hash["uid"])
 
     if user
       # 既存ユーザーが見つかった場合 → そのまま返す
@@ -30,10 +30,10 @@ class User < ApplicationRecord
     else
       # 見つからない場合 → 新規ユーザー作成
       create!(
-        email: auth_hash['info']['email'],
-        provider: auth_hash['provider'],
-        uid: auth_hash['uid'],
-        name: auth_hash.dig('info', 'name'),
+        email: auth_hash["info"]["email"],
+        provider: auth_hash["provider"],
+        uid: auth_hash["uid"],
+        name: auth_hash.dig("info", "name"),
         password: Devise.friendly_token[0, 20],
         confirmed_at: Time.now
       )

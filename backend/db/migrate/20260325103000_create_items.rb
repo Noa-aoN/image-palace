@@ -12,7 +12,7 @@ class CreateItems < ActiveRecord::Migration[8.1]
 
     add_index :items, :user_id
     add_index :items, :item_type_id
-    add_index :items, [:user_id, :item_type_id]
+    add_index :items, [ :user_id, :item_type_id ]
     add_foreign_key :items, :users, on_delete: :cascade
     add_foreign_key :items, :item_types, on_delete: :restrict
   end

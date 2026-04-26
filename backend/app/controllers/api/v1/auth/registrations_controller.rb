@@ -21,18 +21,18 @@ module Api
 
         def auto_confirm_email_signup!
           return unless @resource.respond_to?(:skip_confirmation!)
-          return unless @resource.provider == 'email'
+          return unless @resource.provider == "email"
           return if DeviseTokenAuth.send_confirmation_email
 
           @resource.skip_confirmation!
         end
 
         def default_confirm_success_url
-          frontend_url = ENV.fetch('FRONTEND_URL', 'http://localhost:3000')
+          frontend_url = ENV.fetch("FRONTEND_URL", "http://localhost:3000")
           parsed = URI.parse(frontend_url)
 
           unless %w[http https].include?(parsed.scheme) && parsed.host.present?
-            raise ActionController::BadRequest, 'FRONTEND_URL の設定が不正です'
+            raise ActionController::BadRequest, "FRONTEND_URL の設定が不正です"
           end
 
           "#{frontend_url.chomp('/')}/login"

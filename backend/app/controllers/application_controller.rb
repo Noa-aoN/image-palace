@@ -11,6 +11,6 @@ class ApplicationController < ActionController::API
 
   def authenticate_user!(opts = {})
     set_user_by_token unless @resource
-    render json: { error: 'Unauthorized' }, status: :unauthorized unless @resource
+    render json: { error: "Unauthorized" }, status: :unauthorized unless @resource
   end
 end
