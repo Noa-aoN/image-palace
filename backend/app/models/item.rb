@@ -16,7 +16,7 @@ class Item < ApplicationRecord
 
   def primary_media
     if association(:medias).loaded?
-      medias.min_by { |media| [media.position || Float::INFINITY, media.created_at] }
+      medias.min_by { |media| [ media.position || Float::INFINITY, media.created_at ] }
     else
       medias.ordered.first || medias.first
     end

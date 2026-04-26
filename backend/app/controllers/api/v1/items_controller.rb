@@ -1,7 +1,7 @@
 module Api
   module V1
     class ItemsController < BaseController
-      before_action :set_item, only: [:show, :destroy, :retry]
+      before_action :set_item, only: [ :show, :destroy, :retry ]
 
       def index
         items = current_user.items
@@ -91,7 +91,7 @@ module Api
         return media_url(blob) unless blob.image?
         return media_url(blob) if blob.service_name == "local"
 
-        variant = blob.variant(resize_to_limit: [480, 480]).processed
+        variant = blob.variant(resize_to_limit: [ 480, 480 ]).processed
         url_for(variant)
       rescue LoadError, StandardError
         media_url(blob)

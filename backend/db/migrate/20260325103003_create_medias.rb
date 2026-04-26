@@ -11,7 +11,7 @@ class CreateMedias < ActiveRecord::Migration[8.1]
     end
 
     add_index :medias, :item_id
-    add_index :medias, [:item_id, :position]
+    add_index :medias, [ :item_id, :position ]
     add_foreign_key :medias, :items, on_delete: :cascade
   end
 end

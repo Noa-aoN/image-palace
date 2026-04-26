@@ -3,14 +3,14 @@ Rails.application.routes.draw do
 
   namespace :api do
     namespace :v1 do
-      mount_devise_token_auth_for 'User', at: 'auth',
+      mount_devise_token_auth_for "User", at: "auth",
         controllers: {
-          registrations: 'api/v1/auth/registrations',
-          omniauth_callbacks: 'api/v1/auth/omniauth_callbacks'
+          registrations: "api/v1/auth/registrations",
+          omniauth_callbacks: "api/v1/auth/omniauth_callbacks"
         }
-      get 'health', to: 'health#show'
-      get 'health/authenticated', to: 'health#show_authenticated'
-      resources :items, only: [:index, :create, :show, :destroy] do
+      get "health", to: "health#show"
+      get "health/authenticated", to: "health#show_authenticated"
+      resources :items, only: [ :index, :create, :show, :destroy ] do
         collection do
           get :summary
         end
