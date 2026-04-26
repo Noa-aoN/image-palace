@@ -5,6 +5,35 @@ RSpec.describe "Api::V1::Items", type: :request do
   let(:headers) { auth_headers_for(user) }
   let(:item_type) { ItemType.find_or_create_by!(name: "term") { |it| it.label = "単語" } }
 
+  describe "認証ガード" do
+    it "GET /api/v1/items returns 401 without auth headers" do
+      get "/api/v1/items", as: :json
+      expect(response).to have_http_status(:unauthorized)
+    end
+
+    it "POST /api/v1/items returns 401 without auth headers" do
+      post "/api/v1/items", params: { item: { title: "x" } }, as: :json
+      expect(response).to have_http_status(:unauthorized)
+    end
+
+    it "GET /api/v1/items/summary returns 401 without auth headers" do
+      get "/api/v1/items/summary", as: :json
+      expect(response).to have_http_status(:unauthorized)
+    end
+
+    it "GET /api/v1/items/:id returns 401 without auth headers" do
+      item = create(:item, user: user)
+      get "/api/v1/items/#{item.id}", as: :json
+      expect(response).to have_http_status(:unauthorized)
+    end
+
+    it "POST /api/v1/items/:id/retry returns 401 without auth headers" do
+      item = create(:item, user: user)
+      post "/api/v1/items/#{item.id}/retry", as: :json
+      expect(response).to have_http_status(:unauthorized)
+    end
+  end
+
   describe "POST /api/v1/items" do
     it "enqueues image generation and returns pending item" do
       expect {
