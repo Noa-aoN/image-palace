@@ -69,7 +69,7 @@ RSpec.describe "Api::V1::Items", type: :request do
         }.not_to have_enqueued_job
       end
 
-      expect(response).to have_http_status(:unprocessable_entity)
+      expect(response).to have_http_status(:unprocessable_content)
       expect(json_response["error"]).to eq("今月の生成枚数の上限（100枚）に達しました")
     end
   end
@@ -178,7 +178,7 @@ RSpec.describe "Api::V1::Items", type: :request do
         post "/api/v1/items/#{item.id}/retry", headers: headers, as: :json
       }.not_to have_enqueued_job
 
-      expect(response).to have_http_status(:unprocessable_entity)
+      expect(response).to have_http_status(:unprocessable_content)
       expect(json_response["error"]).to eq("failed 状態のカードのみ再生成できます")
     end
 
