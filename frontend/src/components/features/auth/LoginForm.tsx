@@ -138,7 +138,13 @@ export function LoginForm() {
         </Button>
       </form>
 
-      <p className="text-sm text-center mt-6" style={{ color: '#4A4A4A' }}>
+      <p className="text-sm text-center mt-4" style={{ color: '#4A4A4A' }}>
+        <Link href="/forgot-password" className="underline" style={{ color: '#111111' }}>
+          パスワードを忘れた方はこちら
+        </Link>
+      </p>
+
+      <p className="text-sm text-center mt-4" style={{ color: '#4A4A4A' }}>
         アカウントをお持ちでない方は{' '}
         <Link href="/signup" className="underline" style={{ color: '#111111' }}>
           新規登録

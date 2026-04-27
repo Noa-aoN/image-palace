@@ -83,6 +83,90 @@ RSpec.describe "Auth flow", type: :request do
     end
   end
 
+  describe "POST /api/v1/auth/password (request password reset)" do
+    it "accepts a reset request and enqueues a reset email for an existing user" do
+      user = create(:user, :confirmed, email: "reset-#{SecureRandom.hex(4)}@example.com")
+
+      expect {
+        post "/api/v1/auth/password", params: {
+          email: user.email,
+          redirect_url: "http://localhost:3000/reset-password"
+        }, as: :json
+      }.to change { ActionMailer::Base.deliveries.size }.by(1)
+
+      expect(response).to have_http_status(:success)
+
+      mail = ActionMailer::Base.deliveries.last
+      expect(mail.to).to include(user.email)
+      expect(mail.body.encoded).to include("reset_password_token")
+    end
+
+    it "rejects a reset request without a redirect_url" do
+      user = create(:user, :confirmed, email: "no-url-#{SecureRandom.hex(4)}@example.com")
+
+      post "/api/v1/auth/password", params: {
+        email: user.email
+      }, as: :json
+
+      expect(response).to have_http_status(:unauthorized).or have_http_status(:unprocessable_content)
+    end
+
+    it "returns not_found for an unknown email" do
+      post "/api/v1/auth/password", params: {
+        email: "missing-#{SecureRandom.hex(4)}@example.com",
+        redirect_url: "http://localhost:3000/reset-password"
+      }, as: :json
+
+      expect(response).to have_http_status(:not_found)
+    end
+  end
+
+  describe "PUT /api/v1/auth/password (apply password reset)" do
+    it "updates the password when authenticated with allow_password_change flag" do
+      user = create(:user, :confirmed, email: "apply-#{SecureRandom.hex(4)}@example.com")
+      user.update!(allow_password_change: true)
+      headers = user.create_new_auth_token
+
+      put "/api/v1/auth/password", params: {
+        password: "new-password-123",
+        password_confirmation: "new-password-123"
+      }, headers: headers, as: :json
+
+      expect(response).to have_http_status(:success)
+
+      user.reload
+      expect(user.valid_password?("new-password-123")).to be(true)
+
+      post "/api/v1/auth/sign_in", params: {
+        email: user.email,
+        password: "new-password-123"
+      }, as: :json
+      expect(response).to have_http_status(:success)
+    end
+
+    it "rejects the update without auth headers" do
+      put "/api/v1/auth/password", params: {
+        password: "another-password",
+        password_confirmation: "another-password"
+      }, as: :json
+
+      expect(response).to have_http_status(:unauthorized)
+    end
+
+    it "rejects when password and confirmation do not match" do
+      user = create(:user, :confirmed, email: "mismatch-reset-#{SecureRandom.hex(4)}@example.com")
+      user.update!(allow_password_change: true)
+      headers = user.create_new_auth_token
+
+      put "/api/v1/auth/password", params: {
+        password: "new-password-123",
+        password_confirmation: "new-password-456"
+      }, headers: headers, as: :json
+
+      expect(response).to have_http_status(:unprocessable_content)
+    end
+  end
+
   describe "POST /api/v1/auth/sign_in (login)" do
     it "logs in with email and password and returns auth headers" do
       user = create(:user, :confirmed, email: "login-#{SecureRandom.hex(4)}@example.com")

@@ -56,6 +56,47 @@ export async function signOut(): Promise<void> {
   await apiClient.delete('/api/v1/auth/sign_out')
 }
 
+function buildPasswordResetRedirectUrl(): string {
+  if (typeof window !== 'undefined' && window.location.origin) {
+    return `${window.location.origin}/reset-password`
+  }
+
+  return 'http://localhost:3000/reset-password'
+}
+
+export async function requestPasswordReset(email: string): Promise<void> {
+  await apiClient.post('/api/v1/auth/password', {
+    email,
+    redirect_url: buildPasswordResetRedirectUrl(),
+  })
+}
+
+export async function resetPassword(
+  password: string,
+  passwordConfirmation: string,
+  tokens: { accessToken: string; client: string; uid: string }
+): Promise<{ user: User; tokens: AuthTokens }> {
+  const res = await apiClient.put<AuthResponse>(
+    '/api/v1/auth/password',
+    {
+      password,
+      password_confirmation: passwordConfirmation,
+    },
+    {
+      headers: {
+        'access-token': tokens.accessToken,
+        client: tokens.client,
+        uid: tokens.uid,
+      },
+    }
+  )
+  const updatedTokens = extractTokens(res.headers as Record<string, string>)
+  if (!updatedTokens.accessToken || !updatedTokens.uid || !updatedTokens.client) {
+    throw new Error('トークンの取得に失敗しました')
+  }
+  return { user: res.data.data, tokens: updatedTokens }
+}
+
 export function googleOAuthUrl(): string {
   return `${getBrowserApiBaseUrl()}/api/v1/auth/google_oauth2`
 }
