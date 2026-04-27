@@ -12,6 +12,14 @@ export type LoginErrorDetail = {
   message: string
 }
 
+export type PasswordResetFieldErrors = Partial<Record<'password' | 'passwordConfirmation', string>>
+
+export type PasswordResetErrorDetail = {
+  summaryMessage: string | null
+  formMessages: string[]
+  fieldErrors: PasswordResetFieldErrors
+}
+
 export function validateLoginField(field: 'email' | 'password', value: string): string | undefined {
   if (field === 'email' && !value.trim()) return 'メールアドレスを入力してください'
   if (field === 'email' && !/^[^@\s]+@[^@\s]+$/.test(value.trim())) {
@@ -140,6 +148,114 @@ export function buildSignupErrorDetail(error: unknown): SignupErrorDetail {
   const rawMessages = extractMessages(error)
   const formMessages = rawMessages.map(mapSignupMessage)
   const fieldErrors = mapSignupFieldErrors(rawMessages)
+
+  if (formMessages.length > 0) {
+    const hasFieldErrors = Object.keys(fieldErrors).length > 0
+
+    return {
+      summaryMessage: hasFieldErrors ? '入力内容をご確認ください。' : null,
+      formMessages: hasFieldErrors ? [] : formMessages,
+      fieldErrors,
+    }
+  }
+
+  return {
+    summaryMessage: null,
+    formMessages: ['入力内容を確認して、もう一度お試しください。'],
+    fieldErrors: {},
+  }
+}
+
+export function validateForgotPasswordEmail(value: string): string | undefined {
+  if (!value.trim()) return 'メールアドレスを入力してください'
+  if (!/^[^@\s]+@[^@\s]+$/.test(value)) return 'メールアドレスの形式が正しくありません'
+  return undefined
+}
+
+export function validateResetPassword(value: string): string | undefined {
+  if (!value) return '新しいパスワードを入力してください'
+  if (value.length < 8) return 'パスワードは8文字以上で入力してください'
+  return undefined
+}
+
+export function validateResetPasswordConfirmation(
+  password: string,
+  passwordConfirmation: string
+): string | undefined {
+  if (!passwordConfirmation) return '確認用パスワードを入力してください'
+  if (password !== passwordConfirmation) return 'パスワードが一致していません'
+  return undefined
+}
+
+function mapResetPasswordMessage(message: string): string {
+  const normalized = message.toLowerCase()
+
+  if (normalized.includes('password') && normalized.includes('too short')) {
+    return 'パスワードは8文字以上で入力してください'
+  }
+
+  if (normalized.includes('password confirmation') && normalized.includes("doesn't match")) {
+    return 'パスワードが一致していません'
+  }
+
+  if (normalized.includes('password') && normalized.includes("can't be blank")) {
+    return '新しいパスワードを入力してください'
+  }
+
+  if (normalized.includes('reset password token') && normalized.includes('invalid')) {
+    return 'リセットリンクが無効、または期限切れです。再度パスワードリセットをお試しください。'
+  }
+
+  return message
+}
+
+function mapResetPasswordFieldErrors(messages: string[]): PasswordResetFieldErrors {
+  const fieldErrors: PasswordResetFieldErrors = {}
+
+  messages.forEach((message) => {
+    const normalized = message.toLowerCase()
+
+    if (normalized.includes('password confirmation')) {
+      fieldErrors.passwordConfirmation = mapResetPasswordMessage(message)
+      return
+    }
+
+    if (normalized.includes('password')) {
+      fieldErrors.password = mapResetPasswordMessage(message)
+    }
+  })
+
+  return fieldErrors
+}
+
+export function buildForgotPasswordErrorMessage(error: unknown): string {
+  if (axios.isAxiosError(error) && !error.response) {
+    return '通信に失敗しました。時間をおいてお試しください。'
+  }
+
+  return 'メール送信に失敗しました。時間をおいて再度お試しください。'
+}
+
+export function buildResetPasswordErrorDetail(error: unknown): PasswordResetErrorDetail {
+  if (axios.isAxiosError(error) && !error.response) {
+    return {
+      summaryMessage: null,
+      formMessages: ['通信に失敗しました。時間をおいてお試しください。'],
+      fieldErrors: {},
+    }
+  }
+
+  if (axios.isAxiosError(error) && error.response?.status === 401) {
+    return {
+      summaryMessage: null,
+      formMessages: ['リセットリンクが無効、または期限切れです。再度パスワードリセットをお試しください。'],
+      fieldErrors: {},
+    }
+  }
+
+  const rawMessages = extractMessages(error)
+  const formMessages = rawMessages.map(mapResetPasswordMessage)
+  const fieldErrors = mapResetPasswordFieldErrors(rawMessages)
 
   if (formMessages.length > 0) {
     const hasFieldErrors = Object.keys(fieldErrors).length > 0
