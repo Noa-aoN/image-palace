@@ -30,6 +30,13 @@ primary_region = 'nrt'
     hard_limit = 25
     soft_limit = 20
 
+  [[http_service.checks]]
+    grace_period = "10s"
+    interval = "30s"
+    method = "GET"
+    timeout = "5s"
+    path = "/up"
+
 [[vm]]
   memory = '1gb'
   cpu_kind = 'shared'
