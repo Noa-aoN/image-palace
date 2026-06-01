@@ -11,11 +11,17 @@ module Api
       end
 
       def summary
+        monthly_limit = Items::CreateService::FREE_ITEM_LIMIT_PER_MONTH
+        monthly_count = current_user.items.created_this_month.count
+
         render json: {
           total_count: current_user.items.count,
           pending_count: current_user.items.where(generation_status: "pending").count,
           processing_count: current_user.items.where(generation_status: "processing").count,
-          failed_count: current_user.items.where(generation_status: "failed").count
+          failed_count: current_user.items.where(generation_status: "failed").count,
+          monthly_count: monthly_count,
+          monthly_limit: monthly_limit,
+          monthly_remaining: [ monthly_limit - monthly_count, 0 ].max
         }
       end
 
