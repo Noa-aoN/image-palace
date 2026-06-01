@@ -18,7 +18,7 @@ module Items
       item = nil
 
       @user.with_lock do
-        monthly_count = @user.items.where(created_at: Time.current.beginning_of_month..).count
+        monthly_count = @user.items.created_this_month.count
         if monthly_count >= FREE_ITEM_LIMIT_PER_MONTH
           raise MonthlyLimitExceeded, "今月の生成枚数の上限（#{FREE_ITEM_LIMIT_PER_MONTH}枚）に達しました"
         end

@@ -14,6 +14,9 @@ class Item < ApplicationRecord
   validates :title, presence: true
   validates :generation_status, inclusion: { in: GENERATION_STATUSES }
 
+  # 当月（月初〜）に作成されたアイテム。月間生成上限の判定・残量表示に使う
+  scope :created_this_month, -> { where(created_at: Time.current.beginning_of_month..) }
+
   def primary_media
     if association(:medias).loaded?
       medias.min_by { |media| [ media.position || Float::INFINITY, media.created_at ] }
