@@ -8,10 +8,11 @@ class Item < ApplicationRecord
 
   GENERATION_STATUSES = %w[pending processing completed failed].freeze
   GENERATION_ERROR_KEYS = %w[generation_error generation_error_code].freeze
+  MAX_TITLE_LENGTH = 100
 
   store_accessor :metadata, :generation_error, :generation_error_code
 
-  validates :title, presence: true
+  validates :title, presence: true, length: { maximum: MAX_TITLE_LENGTH }
   validates :generation_status, inclusion: { in: GENERATION_STATUSES }
 
   def primary_media
