@@ -23,6 +23,11 @@ export async function getItem(id: string): Promise<Item> {
   return res.data
 }
 
+export async function updateItem(id: string, title: string): Promise<Item> {
+  const res = await apiClient.patch<Item>(`/api/v1/items/${id}`, { item: { title } })
+  return res.data
+}
+
 export async function getItemsSummary(): Promise<ItemsSummary> {
   const res = await apiClient.get<ItemsSummary>('/api/v1/items/summary')
   return res.data

@@ -32,6 +32,12 @@ RSpec.describe "Api::V1::Items", type: :request do
       post "/api/v1/items/#{item.id}/retry", as: :json
       expect(response).to have_http_status(:unauthorized)
     end
+
+    it "PATCH /api/v1/items/:id returns 401 without auth headers" do
+      item = create(:item, user: user)
+      patch "/api/v1/items/#{item.id}", params: { item: { title: "x" } }, as: :json
+      expect(response).to have_http_status(:unauthorized)
+    end
   end
 
   describe "POST /api/v1/items" do
@@ -167,6 +173,43 @@ RSpec.describe "Api::V1::Items", type: :request do
       expect(response).to have_http_status(:success)
       expect(json_response["generation_status"]).to eq("failed")
       expect(json_response["generation_error"]).to eq("入力が曖昧なため画像を生成できませんでした。別の単語や具体的な表現でお試しください。")
+    end
+  end
+
+  describe "PATCH /api/v1/items/:id" do
+    it "updates the title and keeps media and generation status" do
+      item = user.items.create!(title: "古いタイトル", item_type: item_type, generation_status: "completed")
+
+      expect {
+        patch "/api/v1/items/#{item.id}", params: { item: { title: "新しいタイトル" } }, headers: headers, as: :json
+      }.not_to have_enqueued_job(GenerateImageJob)
+
+      expect(response).to have_http_status(:success)
+      expect(item.reload.title).to eq("新しいタイトル")
+      expect(item.generation_status).to eq("completed")
+      expect(json_response["title"]).to eq("新しいタイトル")
+      expect(json_response["generation_status"]).to eq("completed")
+    end
+
+    it "returns validation error when title is blank" do
+      item = user.items.create!(title: "元タイトル", item_type: item_type, generation_status: "completed")
+
+      patch "/api/v1/items/#{item.id}", params: { item: { title: "" } }, headers: headers, as: :json
+
+      expect(response).to have_http_status(:unprocessable_content)
+      expect(json_response["errors"]).to be_present
+      expect(item.reload.title).to eq("元タイトル")
+    end
+
+    it "rejects updating another users item" do
+      other_user = create(:user, :confirmed)
+      other_item = other_user.items.create!(title: "他人のカード", item_type: item_type, generation_status: "completed")
+
+      patch "/api/v1/items/#{other_item.id}", params: { item: { title: "乗っ取り" } }, headers: headers, as: :json
+
+      expect(response).to have_http_status(:not_found)
+      expect(json_response["error"]).to eq("Not found")
+      expect(other_item.reload.title).to eq("他人のカード")
     end
   end
 

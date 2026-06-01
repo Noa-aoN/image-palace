@@ -1,7 +1,7 @@
 module Api
   module V1
     class ItemsController < BaseController
-      before_action :set_item, only: [ :show, :destroy, :retry ]
+      before_action :set_item, only: [ :show, :update, :destroy, :retry ]
 
       def index
         items = current_user.items
@@ -32,6 +32,14 @@ module Api
         render json: serialize_item(repair_item_if_media_missing(item))
       end
 
+      # タイトル等の編集。画像の再生成は伴わず、既存メディアと生成ステータスは保持する
+      def update
+        item.update!(item_update_params)
+        render json: serialize_item(item.reload)
+      rescue ActiveRecord::RecordInvalid => e
+        render json: { errors: e.record.errors.full_messages }, status: :unprocessable_entity
+      end
+
       def destroy
         item.destroy!
         head :no_content
@@ -52,6 +60,10 @@ module Api
 
       def item_params
         params.require(:item).permit(:title, :item_type_id, :force_generate)
+      end
+
+      def item_update_params
+        params.require(:item).permit(:title, :item_type_id)
       end
 
       def serialize_item(item)
