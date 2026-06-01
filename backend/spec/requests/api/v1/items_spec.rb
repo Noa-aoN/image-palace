@@ -58,6 +58,17 @@ RSpec.describe "Api::V1::Items", type: :request do
       expect(json_response["generation_error"]).to be_nil
     end
 
+    it "returns validation error when title is too long" do
+      expect {
+        post "/api/v1/items",
+          params: { item: { title: "あ" * (Item::MAX_TITLE_LENGTH + 1) } },
+          headers: headers, as: :json
+      }.not_to have_enqueued_job(GenerateImageJob)
+
+      expect(response).to have_http_status(:unprocessable_content)
+      expect(json_response["errors"]).to be_present
+    end
+
     it "returns validation error when monthly limit is exceeded" do
       freeze_time do
         Items::CreateService::FREE_ITEM_LIMIT_PER_MONTH.times do |index|

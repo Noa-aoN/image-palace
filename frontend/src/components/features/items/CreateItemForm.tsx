@@ -7,6 +7,8 @@ import { Label } from '@/components/ui/label'
 import { createItem } from '@/lib/api/items'
 import { useItemsStore } from '@/stores/items'
 
+const MAX_TITLE_LENGTH = 100
+
 function parseTitles(raw: string): string[] {
   return raw
     .split(/[\n,、]/)
@@ -25,10 +27,15 @@ export function CreateItemForm() {
 
   const titles = parseTitles(input)
   const wordCount = titles.length
+  const hasTooLongTitle = titles.some((t) => t.length > MAX_TITLE_LENGTH)
 
   const handleSubmit = async (e: React.SyntheticEvent<HTMLFormElement>) => {
     e.preventDefault()
     if (titles.length === 0) return
+    if (hasTooLongTitle) {
+      setApiError(`1単語あたり${MAX_TITLE_LENGTH}文字以内で入力してください。`)
+      return
+    }
     setApiError(null)
     setSubmitting(true)
     setProgress({ done: 0, total: titles.length })
@@ -79,6 +86,11 @@ export function CreateItemForm() {
             抽象的すぎる語や意味のない文字列は失敗しやすいため、まずは具体的な単語から試してください。
           </p>
         )}
+        {hasTooLongTitle && (
+          <p className="text-xs text-destructive">
+            1単語あたり{MAX_TITLE_LENGTH}文字を超えています。区切り直すか短くしてください。
+          </p>
+        )}
       </div>
 
       <label className="flex items-start gap-3 rounded-xl border border-border/70 bg-background px-4 py-3">
@@ -107,7 +119,7 @@ export function CreateItemForm() {
 
       <Button
         type="submit"
-        disabled={submitting || wordCount === 0}
+        disabled={submitting || wordCount === 0 || hasTooLongTitle}
         className="w-full"
       >
         {submitting
