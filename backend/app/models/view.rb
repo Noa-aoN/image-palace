@@ -2,6 +2,7 @@ class View < ApplicationRecord
   self.table_name = "views"
 
   belongs_to :user
+  has_many :collection_entries, as: :entry, dependent: :destroy
 
   NAME_MAX_LENGTH = 100
   # freeboard（フリーボード）。将来的にタイムライン等を追加する想定

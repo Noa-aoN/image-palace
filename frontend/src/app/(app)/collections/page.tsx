@@ -131,7 +131,7 @@ export default function CollectionsPage() {
               {collection.description && (
                 <p className="text-sm text-muted-foreground line-clamp-2">{collection.description}</p>
               )}
-              <span className="text-xs text-muted-foreground mt-auto">{collection.deck_count} デッキ</span>
+              <span className="text-xs text-muted-foreground mt-auto">{collection.entry_count} 件</span>
             </Link>
           ))}
         </div>

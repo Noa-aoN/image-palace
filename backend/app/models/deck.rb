@@ -4,6 +4,7 @@ class Deck < ApplicationRecord
   has_many :deck_items, dependent: :destroy
   has_many :items, through: :deck_items
   has_many :collection_decks, dependent: :destroy
+  has_many :collection_entries, as: :entry, dependent: :destroy
 
   NAME_MAX_LENGTH = 100
 

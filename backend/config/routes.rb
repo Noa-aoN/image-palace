@@ -27,8 +27,8 @@ Rails.application.routes.draw do
       end
       resources :collections, only: [ :index, :create, :show, :update, :destroy ] do
         member do
-          post "decks", action: :add_deck
-          delete "decks/:deck_id", action: :remove_deck
+          post "entries", action: :add_entry
+          delete "entries/:entry_type/:entry_id", action: :remove_entry
         end
       end
       resources :spaces, only: [ :index, :create, :show, :update, :destroy ] do

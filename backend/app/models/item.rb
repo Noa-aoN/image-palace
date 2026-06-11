@@ -7,6 +7,7 @@ class Item < ApplicationRecord
   has_many :collections, through: :collection_items
   has_many :deck_items, dependent: :destroy
   has_many :decks, through: :deck_items
+  has_many :collection_entries, as: :entry, dependent: :destroy
   has_many :from_relations, class_name: "Relation", foreign_key: :from_item_id, dependent: :destroy
   has_many :to_relations, class_name: "Relation", foreign_key: :to_item_id, dependent: :destroy
 

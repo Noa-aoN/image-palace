@@ -4,18 +4,19 @@ export interface Collection {
   id: string
   name: string
   description: string | null
-  deck_count: number
+  entry_count: number
   created_at: string
 }
 
-// コレクションに束ねられたデッキの軽量表現
-export interface CollectionDeck {
-  id: string
-  name: string
-  item_count: number
-  cover: ItemMedia | null
-}
+export type CollectionEntryType = 'Item' | 'Deck' | 'Space' | 'View'
+
+// コレクションにまとめられた要素（カード/デッキ/スペース/ビューの混在）
+export type CollectionEntry =
+  | { entry_type: 'Item'; id: string; title: string; media: ItemMedia | null }
+  | { entry_type: 'Deck'; id: string; name: string; item_count: number; cover: ItemMedia | null }
+  | { entry_type: 'Space'; id: string; name: string }
+  | { entry_type: 'View'; id: string; name: string }
 
 export interface CollectionDetail extends Collection {
-  decks: CollectionDeck[]
+  entries: CollectionEntry[]
 }

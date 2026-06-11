@@ -12,7 +12,7 @@ export interface RoomCollection {
   id: string
   name: string
   description: string | null
-  deck_count: number
+  entry_count: number
 }
 
 export interface RoomDetail extends Room {
