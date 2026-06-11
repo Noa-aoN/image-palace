@@ -1,0 +1,96 @@
+import type { Metadata } from 'next'
+import { LegalLayout, LegalSection } from '@/components/features/legal/LegalLayout'
+
+export const metadata: Metadata = {
+  title: 'プライバシーポリシー',
+  description: 'ImagePalace のプライバシーポリシーです。取得する個人情報と利用目的を記載しています。',
+  robots: { index: true, follow: true },
+}
+
+export default function PrivacyPage() {
+  return (
+    <LegalLayout title="プライバシーポリシー" updatedAt="最終更新日: 2026-06-11">
+      <p>
+        ImagePalace（以下「本サービス」といいます）は、利用者の個人情報を適切に取り扱うことを重要な責務と考え、
+        以下のとおりプライバシーポリシー（以下「本ポリシー」といいます）を定めます。
+      </p>
+
+      <LegalSection heading="1. 取得する情報">
+        <p>本サービスは、以下の情報を取得します。</p>
+        <ul className="list-disc pl-5 space-y-1">
+          <li>メールアドレス（アカウント登録・ログインのため）</li>
+          <li>外部認証サービス（Google 等）を利用した場合の、当該サービスから提供されるプロフィール情報（メールアドレス・表示名等）</li>
+          <li>利用者が入力した単語・概念などのテキスト、および生成された画像カード</li>
+          <li>画像生成回数・利用日時などの利用状況に関する情報</li>
+          <li>アクセス解析のための情報（アクセス日時、リファラ、ブラウザ種別等。個人を直接特定しない範囲）</li>
+        </ul>
+      </LegalSection>
+
+      <LegalSection heading="2. 利用目的">
+        <ul className="list-disc pl-5 space-y-1">
+          <li>本サービスの提供・本人確認・アカウント管理のため</li>
+          <li>画像生成機能の提供および生成回数の管理のため</li>
+          <li>本サービスの品質改善・新機能開発のため</li>
+          <li>不正利用の防止およびセキュリティ確保のため</li>
+          <li>利用者からのお問い合わせへの対応のため</li>
+        </ul>
+      </LegalSection>
+
+      <LegalSection heading="3. 外部サービスへの提供">
+        <p>
+          本サービスは、画像生成のために利用者が入力したテキストを、外部の AI 画像生成 API
+          （OpenAI 等）へ送信します。当該テキストは画像生成の目的の範囲で各提供者へ送信され、
+          各提供者のプライバシーポリシーに従って取り扱われます。
+        </p>
+        <p>
+          生成された画像は、クラウドストレージ（Cloudflare R2）に保存され、CDN を経由して配信されます。
+          また、アクセス解析のために Cloudflare のアクセス解析機能を利用しています。
+        </p>
+      </LegalSection>
+
+      <LegalSection heading="4. 第三者提供">
+        <p>
+          本サービスは、次の場合を除き、あらかじめ利用者の同意を得ることなく個人情報を第三者に提供しません。
+        </p>
+        <ul className="list-disc pl-5 space-y-1">
+          <li>法令に基づく場合</li>
+          <li>人の生命・身体または財産の保護のために必要な場合</li>
+          <li>サービス提供に必要な範囲で外部サービス（前項記載のもの）に委託する場合</li>
+        </ul>
+      </LegalSection>
+
+      <LegalSection heading="5. 保存期間">
+        <p>
+          取得した情報は、利用目的の達成に必要な期間、またはアカウントが有効な期間にわたり保存します。
+          利用者がアカウントを削除した場合、関連する情報は合理的な期間内に削除されます。
+        </p>
+      </LegalSection>
+
+      <LegalSection heading="6. 利用者の権利">
+        <p>
+          利用者は、自己の個人情報について、開示・訂正・利用停止・削除を求めることができます。
+          ご希望の場合は、後記のお問い合わせ窓口までご連絡ください。
+        </p>
+      </LegalSection>
+
+      <LegalSection heading="7. Cookie 等の利用">
+        <p>
+          本サービスは、ログイン状態の維持やアクセス解析のために Cookie および類似技術を利用することがあります。
+          利用者は、ブラウザの設定により Cookie を無効化できますが、その場合本サービスの一部機能が利用できなくなることがあります。
+        </p>
+      </LegalSection>
+
+      <LegalSection heading="8. 本ポリシーの変更">
+        <p>
+          本サービスは、必要に応じて本ポリシーを変更することがあります。変更後の内容は、本ページに掲載した時点から効力を生じます。
+        </p>
+      </LegalSection>
+
+      <LegalSection heading="9. お問い合わせ窓口">
+        <p>
+          本ポリシーに関するお問い合わせは、本サービスのお問い合わせ窓口までご連絡ください。
+        </p>
+      </LegalSection>
+    </LegalLayout>
+  )
+}
