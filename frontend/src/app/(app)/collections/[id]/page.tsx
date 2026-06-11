@@ -13,22 +13,32 @@ import type { Deck } from '@/types/deck'
 
 function DeckTile({
   deck,
+  href,
   action,
 }: {
   deck: CollectionDeck | Deck
+  // 指定時は表紙をデッキ詳細へのリンクにする
+  href?: string
   action: React.ReactNode
 }) {
   const coverUrl = deck.cover?.thumb_url ?? deck.cover?.url ?? null
+  const inner = coverUrl ? (
+    // eslint-disable-next-line @next/next/no-img-element
+    <img src={coverUrl} alt={deck.name} className="w-full h-full object-cover" loading="lazy" />
+  ) : (
+    <Library size={24} className="text-muted-foreground/50" />
+  )
   return (
     <div className="flex flex-col rounded-xl border border-border overflow-hidden bg-card">
-      <div className="relative w-full aspect-[4/3] bg-muted flex items-center justify-center overflow-hidden">
-        {coverUrl ? (
-          // eslint-disable-next-line @next/next/no-img-element
-          <img src={coverUrl} alt={deck.name} className="w-full h-full object-cover" loading="lazy" />
+      <div className="relative w-full aspect-[4/3] bg-muted overflow-hidden">
+        {href ? (
+          <Link href={href} className="flex h-full w-full items-center justify-center hover:opacity-95 transition-opacity">
+            {inner}
+          </Link>
         ) : (
-          <Library size={24} className="text-muted-foreground/50" />
+          <div className="flex h-full w-full items-center justify-center">{inner}</div>
         )}
-        <div className="absolute top-1 right-1">{action}</div>
+        <div className="absolute top-1 right-1 z-10">{action}</div>
       </div>
       <div className="px-3 py-2 flex items-center justify-between gap-1">
         <span className="text-sm font-medium truncate">{deck.name}</span>
@@ -269,6 +279,7 @@ export default function CollectionDetailPage() {
             <DeckTile
               key={deck.id}
               deck={deck}
+              href={`/decks/${deck.id}`}
               action={
                 <Button
                   variant="destructive"

@@ -151,7 +151,7 @@ export default function ItemDetailPage() {
     try {
       await deleteItem(id)
       removeItem(id)
-      router.push('/items')
+      router.push(backHref)
     } catch {
       setError('削除に失敗しました')
       setDeleting(false)
