@@ -18,6 +18,12 @@ Rails.application.routes.draw do
           post :retry
         end
       end
+      resources :collections, only: [ :index, :create, :show, :update, :destroy ] do
+        member do
+          post "items", action: :add_item
+          delete "items/:item_id", action: :remove_item
+        end
+      end
     end
   end
 end
