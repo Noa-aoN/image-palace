@@ -5,7 +5,7 @@ class GenerateImageService
     # "stability" => ImageGenerators::Stability
   }.freeze
 
-  Result = Struct.new(:url, :metadata, keyword_init: true)
+  Result = Struct.new(:image_data, :content_type, :metadata, keyword_init: true)
 
   def self.call(prompt:)
     new.call(prompt:)
@@ -18,6 +18,10 @@ class GenerateImageService
     end
 
     result = generator_class.new.generate(prompt:)
-    Result.new(url: result[:url], metadata: result[:metadata])
+    Result.new(
+      image_data: result[:image_data],
+      content_type: result[:content_type],
+      metadata: result[:metadata]
+    )
   end
 end
