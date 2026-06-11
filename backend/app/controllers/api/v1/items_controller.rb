@@ -8,6 +8,7 @@ module Api
 
       def index
         scope = current_user.items.order(created_at: :desc)
+        scope = scope.joins(:item_tags).where(item_tags: { tag_id: params[:tag_id] }) if params[:tag_id].present?
 
         per = pagination_per
         page = pagination_page
@@ -15,7 +16,7 @@ module Api
         total_pages = total_count.zero? ? 0 : (total_count.to_f / per).ceil
 
         items = scope
-                  .includes(:item_type, :meanings, medias: { file_attachment: :blob })
+                  .includes(:item_type, :meanings, :tags, medias: { file_attachment: :blob })
                   .limit(per)
                   .offset((page - 1) * per)
 
@@ -47,7 +48,8 @@ module Api
 
       def create
         result = Items::CreateService.call(user: current_user, params: item_params)
-        render json: serialize_item(result.item), status: :accepted
+        assign_tags!(result.item)
+        render json: serialize_item(result.item.reload), status: :accepted
       rescue Items::CreateService::MonthlyLimitExceeded => e
         render json: { error: e.message }, status: :unprocessable_entity
       rescue ActiveRecord::RecordInvalid => e
@@ -63,6 +65,7 @@ module Api
         Item.transaction do
           item.update!(item_update_params)
           upsert_meaning!
+          assign_tags!(item)
         end
         render json: serialize_item(item.reload)
       rescue ActiveRecord::RecordInvalid => e
@@ -125,6 +128,18 @@ module Api
         end
       end
 
+      # item[tags] にタグ名配列が渡された場合のみ、その内容でタグを設定する（未指定なら変更しない）。
+      # 存在しないタグ名は作成、外れたタグは関連解除する。
+      def assign_tags!(target)
+        names = params.dig(:item, :tags)
+        return if names.nil?
+
+        tags = Array(names).map { |n| n.to_s.strip }.reject(&:blank?).uniq(&:downcase).first(50).map do |name|
+          current_user.tags.find_or_create_by!(name: name)
+        end
+        target.tags = tags
+      end
+
       def serialize_item(item)
         {
           id: item.id,
@@ -133,6 +148,7 @@ module Api
           generation_error: item.generation_error,
           item_type: serialize_item_type(item.item_type),
           meaning: item.primary_meaning&.definition,
+          tags: item.tags.map { |t| { id: t.id, name: t.name } },
           media: serialize_media(item.primary_media),
           created_at: item.created_at
         }
@@ -203,7 +219,7 @@ module Api
 
       def set_item
         @item = current_user.items
-                            .includes(:item_type, :meanings, medias: { file_attachment: :blob })
+                            .includes(:item_type, :meanings, :tags, medias: { file_attachment: :blob })
                             .find(params[:id])
       end
 

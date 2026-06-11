@@ -21,6 +21,7 @@ export function CreateItemForm() {
   const router = useRouter()
   const upsertItem = useItemsStore((state) => state.upsertItem)
   const [input, setInput] = useState('')
+  const [tagsInput, setTagsInput] = useState('')
   const [forceGenerate, setForceGenerate] = useState(false)
   const [apiError, setApiError] = useState<string | null>(null)
   const [submitting, setSubmitting] = useState(false)
@@ -29,6 +30,7 @@ export function CreateItemForm() {
   const titles = parseTitles(input)
   const wordCount = titles.length
   const hasTooLongTitle = titles.some((t) => t.length > MAX_TITLE_LENGTH)
+  const tagNames = tagsInput.split(/[\s,、]+/).map((s) => s.trim()).filter(Boolean)
 
   const handleSubmit = async (e: React.SyntheticEvent<HTMLFormElement>) => {
     e.preventDefault()
@@ -43,7 +45,7 @@ export function CreateItemForm() {
 
     try {
       for (let i = 0; i < titles.length; i++) {
-        const item = await createItem(titles[i], forceGenerate)
+        const item = await createItem(titles[i], forceGenerate, tagNames.length ? tagNames : undefined)
         upsertItem(item)
         setProgress({ done: i + 1, total: titles.length })
       }
@@ -90,6 +92,24 @@ export function CreateItemForm() {
         {hasTooLongTitle && (
           <p className="text-xs text-destructive">
             1単語あたり{MAX_TITLE_LENGTH}文字を超えています。区切り直すか短くしてください。
+          </p>
+        )}
+      </div>
+
+      <div className="space-y-2">
+        <Label htmlFor="tags">タグ（任意）</Label>
+        <input
+          id="tags"
+          type="text"
+          value={tagsInput}
+          onChange={(e) => setTagsInput(e.target.value)}
+          disabled={submitting}
+          placeholder="スペース区切りで入力（例: 英語 IT）"
+          className="w-full rounded-lg border border-input bg-background px-3 py-2 text-sm placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+        />
+        {tagNames.length > 0 && (
+          <p className="text-xs text-muted-foreground">
+            {tagNames.length}個のタグを、作成するすべてのカードに付与します
           </p>
         )}
       </div>

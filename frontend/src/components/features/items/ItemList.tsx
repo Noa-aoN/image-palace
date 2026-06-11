@@ -6,8 +6,10 @@ import { useRouter } from 'next/navigation'
 import { ChevronLeft, ChevronRight } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { getItemsPage } from '@/lib/api/items'
+import { getTags } from '@/lib/api/tags'
 import { useItemsStore } from '@/stores/items'
 import type { Item } from '@/types/item'
+import type { Tag } from '@/types/tag'
 
 const PER_PAGE = 24
 
@@ -89,15 +91,30 @@ function ItemCard({ item }: { item: Item }) {
   )
 }
 
-export function ItemList() {
+export function ItemList({ initialTag = null }: { initialTag?: string | null }) {
   const items = useItemsStore((state) => state.items)
   const setItems = useItemsStore((state) => state.setItems)
   const [page, setPage] = useState(1)
   const [totalPages, setTotalPages] = useState(1)
   const [loading, setLoading] = useState(() => useItemsStore.getState().items.length === 0)
   const [error, setError] = useState<string | null>(null)
+  const [tags, setTags] = useState<Tag[]>([])
+  const [activeTag, setActiveTag] = useState<string | null>(initialTag)
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const requestInFlightRef = useRef(false)
+
+  // タグ一覧（絞り込みチップ用）
+  useEffect(() => {
+    let cancelled = false
+    getTags()
+      .then((data) => {
+        if (!cancelled) setTags(data)
+      })
+      .catch(() => {})
+    return () => {
+      cancelled = true
+    }
+  }, [])
 
   // 現在ページを取得し、ストア（＝詳細画面の前後ナビが参照）へ反映する
   const fetchPage = useEffectEvent(async (targetPage: number): Promise<Item[] | null> => {
@@ -105,7 +122,7 @@ export function ItemList() {
 
     requestInFlightRef.current = true
     try {
-      const { items: fetched, meta } = await getItemsPage(targetPage, PER_PAGE)
+      const { items: fetched, meta } = await getItemsPage(targetPage, PER_PAGE, activeTag ?? undefined)
       setItems(fetched)
       setTotalPages(Math.max(meta.total_pages, 1))
       setError(null)
@@ -117,6 +134,13 @@ export function ItemList() {
       requestInFlightRef.current = false
     }
   })
+
+  const selectTag = (tagId: string | null) => {
+    if (tagId === activeTag) return
+    setLoading(true)
+    setActiveTag(tagId)
+    setPage(1)
+  }
 
   useEffect(() => {
     let cancelled = false
@@ -152,7 +176,7 @@ export function ItemList() {
       cancelled = true
       clearTimer()
     }
-  }, [page])
+  }, [page, activeTag])
 
   const goToPage = (next: number) => {
     if (next < 1 || next > totalPages || next === page) return
@@ -162,17 +186,46 @@ export function ItemList() {
     }
   }
 
+  const chipBase = 'rounded-full px-3 py-1 text-sm whitespace-nowrap transition-colors border'
+  const tagFilter = tags.length > 0 ? (
+    <div className="flex gap-2 overflow-x-auto pb-1">
+      <button
+        onClick={() => selectTag(null)}
+        className={activeTag === null ? `${chipBase} border-transparent text-white` : `${chipBase} border-border text-muted-foreground hover:bg-muted`}
+        style={activeTag === null ? { backgroundColor: 'var(--palace)' } : undefined}
+      >
+        すべて
+      </button>
+      {tags.map((tag) => {
+        const active = activeTag === tag.id
+        return (
+          <button
+            key={tag.id}
+            onClick={() => selectTag(tag.id)}
+            className={active ? `${chipBase} border-transparent text-white` : `${chipBase} border-border text-muted-foreground hover:bg-muted`}
+            style={active ? { backgroundColor: 'var(--palace)' } : undefined}
+          >
+            {tag.name}（{tag.item_count}）
+          </button>
+        )
+      })}
+    </div>
+  ) : null
+
   if (loading) {
     return (
-      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-        {Array.from({ length: 8 }).map((_, i) => (
-          <div key={i} className="rounded-xl border border-border overflow-hidden">
-            <div className="w-full aspect-square bg-muted animate-pulse" />
-            <div className="px-3 py-2">
-              <div className="h-3 bg-muted rounded animate-pulse w-3/4" />
+      <div className="space-y-6">
+        {tagFilter}
+        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+          {Array.from({ length: 8 }).map((_, i) => (
+            <div key={i} className="rounded-xl border border-border overflow-hidden">
+              <div className="w-full aspect-square bg-muted animate-pulse" />
+              <div className="px-3 py-2">
+                <div className="h-3 bg-muted rounded animate-pulse w-3/4" />
+              </div>
             </div>
-          </div>
-        ))}
+          ))}
+        </div>
       </div>
     )
   }
@@ -182,6 +235,14 @@ export function ItemList() {
   }
 
   if (items.length === 0) {
+    if (activeTag) {
+      return (
+        <div className="space-y-6">
+          {tagFilter}
+          <p className="text-center text-muted-foreground py-12">このタグのカードはありません。</p>
+        </div>
+      )
+    }
     return (
       <div className="text-center py-16 space-y-4">
         <p className="text-muted-foreground">まだカードがありません。単語を入れて、最初の記憶カードを作りましょう。</p>
@@ -198,7 +259,8 @@ export function ItemList() {
   }
 
   return (
-    <div className="space-y-8">
+    <div className="space-y-6">
+      {tagFilter}
       <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
         {items.map((item) => (
           <ItemCard key={item.id} item={item} />

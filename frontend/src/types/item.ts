@@ -13,6 +13,11 @@ export interface ItemType {
   label: string
 }
 
+export interface ItemTag {
+  id: string
+  name: string
+}
+
 export interface Item {
   id: string
   title: string
@@ -20,6 +25,7 @@ export interface Item {
   generation_error?: string | null
   item_type?: ItemType | null
   meaning?: string | null
+  tags?: ItemTag[]
   media: ItemMedia | null
   created_at: string
 }

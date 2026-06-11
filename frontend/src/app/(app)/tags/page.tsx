@@ -1,0 +1,155 @@
+'use client'
+
+import { useEffect, useState } from 'react'
+import Link from 'next/link'
+import { Tag as TagIcon, Pencil, Check, X, Trash2 } from 'lucide-react'
+import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
+import { getTags, updateTag, deleteTag } from '@/lib/api/tags'
+import type { Tag } from '@/types/tag'
+
+function TagRow({ tag, onChanged }: { tag: Tag; onChanged: (next: Tag | null) => void }) {
+  const [editing, setEditing] = useState(false)
+  const [draft, setDraft] = useState(tag.name)
+  const [saving, setSaving] = useState(false)
+  const [confirmDelete, setConfirmDelete] = useState(false)
+  const [deleting, setDeleting] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+
+  const handleSave = async () => {
+    const name = draft.trim()
+    if (!name || name === tag.name) {
+      setEditing(false)
+      setDraft(tag.name)
+      return
+    }
+    setSaving(true)
+    setError(null)
+    try {
+      const updated = await updateTag(tag.id, name)
+      onChanged({ ...tag, name: updated.name })
+      setEditing(false)
+    } catch (err: unknown) {
+      const axiosErr = err as { response?: { data?: { errors?: string[] } } }
+      setError(axiosErr?.response?.data?.errors?.[0] ?? 'タグ名の更新に失敗しました')
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  const handleDelete = async () => {
+    if (!confirmDelete) { setConfirmDelete(true); return }
+    setDeleting(true)
+    try {
+      await deleteTag(tag.id)
+      onChanged(null)
+    } catch {
+      setError('削除に失敗しました')
+      setDeleting(false)
+      setConfirmDelete(false)
+    }
+  }
+
+  return (
+    <div className="flex items-center justify-between gap-2 rounded-xl border border-border bg-card px-4 py-3">
+      {editing ? (
+        <div className="flex items-center gap-2 flex-1 min-w-0">
+          <Input
+            value={draft}
+            onChange={(e) => setDraft(e.target.value)}
+            onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); handleSave() } if (e.key === 'Escape') { setEditing(false); setDraft(tag.name) } }}
+            disabled={saving}
+            autoFocus
+            aria-label="タグ名"
+            className="max-w-xs"
+          />
+          <Button size="sm" onClick={handleSave} disabled={saving} aria-label="保存"><Check size={16} /></Button>
+          <Button variant="ghost" size="sm" onClick={() => { setEditing(false); setDraft(tag.name) }} disabled={saving} aria-label="キャンセル"><X size={16} /></Button>
+        </div>
+      ) : (
+        <div className="flex items-center gap-2 min-w-0">
+          <TagIcon size={16} style={{ color: 'var(--palace)' }} />
+          <Link href={`/items?tag=${tag.id}`} className="font-medium text-sm truncate hover:underline">{tag.name}</Link>
+          <span className="text-xs text-muted-foreground shrink-0">{tag.item_count} 枚</span>
+        </div>
+      )}
+      {!editing && (
+        <div className="flex items-center gap-1 shrink-0">
+          <button onClick={() => { setDraft(tag.name); setEditing(true) }} className="text-muted-foreground hover:text-foreground transition-colors p-1.5" aria-label="タグ名を編集">
+            <Pencil size={15} />
+          </button>
+          <Button
+            variant={confirmDelete ? 'destructive' : 'ghost'}
+            size="sm"
+            onClick={handleDelete}
+            disabled={deleting}
+            onBlur={() => setConfirmDelete(false)}
+            className="flex items-center gap-1.5"
+          >
+            <Trash2 size={14} />
+            {deleting ? '削除中...' : confirmDelete ? '本当に削除' : '削除'}
+          </Button>
+        </div>
+      )}
+      {error && <p className="text-xs text-destructive">{error}</p>}
+    </div>
+  )
+}
+
+export default function TagsPage() {
+  const [tags, setTags] = useState<Tag[]>([])
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
+
+  useEffect(() => {
+    let cancelled = false
+    getTags()
+      .then((data) => {
+        if (!cancelled) setTags(data)
+      })
+      .catch(() => {
+        if (!cancelled) setError('タグの取得に失敗しました')
+      })
+      .finally(() => {
+        if (!cancelled) setLoading(false)
+      })
+    return () => {
+      cancelled = true
+    }
+  }, [])
+
+  return (
+    <div className="max-w-2xl mx-auto px-6 py-12">
+      <h1 className="text-xl font-semibold mb-2">タグ</h1>
+      <p className="text-sm text-muted-foreground mb-6">
+        タグはカードの詳細画面で付与できます。ここでは名前の変更・削除ができます。
+      </p>
+
+      {loading ? (
+        <div className="space-y-2">
+          {Array.from({ length: 5 }).map((_, i) => (
+            <div key={i} className="h-14 rounded-xl border border-border bg-muted animate-pulse" />
+          ))}
+        </div>
+      ) : error ? (
+        <p className="text-destructive text-sm">{error}</p>
+      ) : tags.length === 0 ? (
+        <p className="text-muted-foreground py-12 text-center">まだタグがありません。カード詳細でタグを付けると、ここに表示されます。</p>
+      ) : (
+        <div className="space-y-2">
+          {tags.map((tag) => (
+            <TagRow
+              key={tag.id}
+              tag={tag}
+              onChanged={(next) =>
+                setTags((current) =>
+                  next ? current.map((t) => (t.id === tag.id ? next : t)) : current.filter((t) => t.id !== tag.id)
+                )
+              }
+            />
+          ))}
+        </div>
+      )}
+    </div>
+  )
+}

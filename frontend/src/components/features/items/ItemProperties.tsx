@@ -26,6 +26,40 @@ export function ItemProperties({ item, onUpdated }: ItemPropertiesProps) {
   const [savingMeaning, setSavingMeaning] = useState(false)
   const [meaningError, setMeaningError] = useState<string | null>(null)
 
+  const [tagDraft, setTagDraft] = useState('')
+  const [savingTags, setSavingTags] = useState(false)
+  const [tagError, setTagError] = useState<string | null>(null)
+
+  const tags = item.tags ?? []
+
+  const saveTags = async (names: string[]) => {
+    setSavingTags(true)
+    setTagError(null)
+    try {
+      const updated = await updateItem(item.id, { tags: names })
+      onUpdated(updated)
+    } catch {
+      setTagError('タグの更新に失敗しました')
+    } finally {
+      setSavingTags(false)
+    }
+  }
+
+  const handleAddTag = async () => {
+    const name = tagDraft.trim()
+    if (!name) return
+    if (tags.some((t) => t.name.toLowerCase() === name.toLowerCase())) {
+      setTagDraft('')
+      return
+    }
+    setTagDraft('')
+    await saveTags([...tags.map((t) => t.name), name])
+  }
+
+  const handleRemoveTag = async (tagId: string) => {
+    await saveTags(tags.filter((t) => t.id !== tagId).map((t) => t.name))
+  }
+
   useEffect(() => {
     let cancelled = false
     getItemTypes()
@@ -156,6 +190,46 @@ export function ItemProperties({ item, onUpdated }: ItemPropertiesProps) {
         ) : (
           <p className="text-sm text-muted-foreground">未設定（鉛筆アイコンから追加できます）</p>
         )}
+      </div>
+
+      {/* タグ */}
+      <div className="space-y-2">
+        <div className="flex items-center gap-2">
+          <span className="text-sm font-medium">タグ</span>
+          {savingTags && <Loader2 size={14} className="animate-spin text-muted-foreground" />}
+        </div>
+        {tags.length > 0 && (
+          <div className="flex flex-wrap gap-1.5">
+            {tags.map((tag) => (
+              <span
+                key={tag.id}
+                className="inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-xs"
+                style={{ backgroundColor: 'rgba(198,167,94,0.15)', color: '#7a6432' }}
+              >
+                {tag.name}
+                <button
+                  onClick={() => handleRemoveTag(tag.id)}
+                  disabled={savingTags}
+                  aria-label={`タグ「${tag.name}」を外す`}
+                  className="hover:text-foreground transition-colors"
+                >
+                  <X size={12} />
+                </button>
+              </span>
+            ))}
+          </div>
+        )}
+        <input
+          value={tagDraft}
+          onChange={(e) => setTagDraft(e.target.value)}
+          onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); handleAddTag() } }}
+          onBlur={handleAddTag}
+          disabled={savingTags}
+          placeholder="タグを入力して Enter"
+          aria-label="タグを追加"
+          className="w-full max-w-xs rounded-lg border border-input bg-background px-3 py-1.5 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+        />
+        {tagError && <p className="text-xs text-destructive">{tagError}</p>}
       </div>
     </div>
   )
