@@ -11,16 +11,33 @@ import { getCollections } from '@/lib/api/collections'
 import type { RoomDetail, RoomCollection } from '@/types/room'
 import type { Collection } from '@/types/collection'
 
-function CollectionTile({ collection, action }: { collection: RoomCollection | Collection; action: React.ReactNode }) {
+function CollectionTile({
+  collection,
+  href,
+  action,
+}: {
+  collection: RoomCollection | Collection
+  href?: string
+  action: React.ReactNode
+}) {
+  const body = (
+    <div className="flex items-center gap-2 min-w-0">
+      <Layers size={16} style={{ color: 'var(--palace)' }} />
+      <div className="min-w-0">
+        <span className="font-medium text-sm truncate block">{collection.name}</span>
+        <span className="text-xs text-muted-foreground">{collection.entry_count} 件</span>
+      </div>
+    </div>
+  )
   return (
     <div className="flex items-center justify-between gap-2 rounded-xl border border-border bg-card px-4 py-3">
-      <div className="flex items-center gap-2 min-w-0">
-        <Layers size={16} style={{ color: 'var(--palace)' }} />
-        <div className="min-w-0">
-          <span className="font-medium text-sm truncate block">{collection.name}</span>
-          <span className="text-xs text-muted-foreground">{collection.item_count} 枚</span>
-        </div>
-      </div>
+      {href ? (
+        <Link href={href} className="min-w-0 flex-1 hover:opacity-80 transition-opacity">
+          {body}
+        </Link>
+      ) : (
+        body
+      )}
       <div className="shrink-0">{action}</div>
     </div>
   )
@@ -107,7 +124,7 @@ export default function RoomDetailPage() {
       setRoom({
         ...room,
         collections: [
-          { id: collection.id, name: collection.name, description: collection.description, item_count: collection.item_count },
+          { id: collection.id, name: collection.name, description: collection.description, entry_count: collection.entry_count },
           ...room.collections,
         ],
         collection_count: room.collection_count + 1,
@@ -260,6 +277,7 @@ export default function RoomDetailPage() {
               <CollectionTile
                 key={collection.id}
                 collection={collection}
+                href={`/collections/${collection.id}`}
                 action={
                   <Button
                     variant="destructive"

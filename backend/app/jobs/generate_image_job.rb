@@ -10,9 +10,6 @@ class GenerateImageJob < ApplicationJob
     Rails.logger.error "[GenerateImageJob] ALL RETRIES EXHAUSTED item_id=#{item_id} error=#{error.message}"
   end
 
-  OPEN_TIMEOUT = 10
-  READ_TIMEOUT = 60
-
   def perform(item_id, force_generate: false)
     item = Item.find_by(id: item_id)
     return unless item
@@ -48,7 +45,7 @@ class GenerateImageJob < ApplicationJob
           user_id: item.user_id,
           metadata: result.metadata
         )
-        download_and_attach(shared_media, result.url)
+        attach_image_data(shared_media, result.image_data, result.content_type)
         attach_from_shared_media(item, shared_media)
       end
 
@@ -83,16 +80,13 @@ class GenerateImageJob < ApplicationJob
     media.file.attach(shared_media.file.blob)
   end
 
-  def download_and_attach(shared_media, url)
-    require "open-uri"
+  def attach_image_data(shared_media, image_data, content_type)
     require "stringio"
 
-    payload = URI.open(url, open_timeout: OPEN_TIMEOUT, read_timeout: READ_TIMEOUT, &:read) # rubocop:disable Security/Open
-
     shared_media.file.attach(
-      io: StringIO.new(payload),
+      io: StringIO.new(image_data),
       filename: "#{SecureRandom.uuid}.png",
-      content_type: "image/png"
+      content_type: content_type.presence || "image/png"
     )
   end
 

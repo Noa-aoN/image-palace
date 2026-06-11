@@ -42,8 +42,9 @@ export default function RootLayout({
   children: React.ReactNode
 }>) {
   return (
-    <html lang="ja" className={`${geist.variable} h-full antialiased`}>
-      {/* suppressHydrationWarning: ブラウザ拡張が body 属性を追加することによる hydration mismatch を抑制 */}
+    // suppressHydrationWarning: ブラウザ拡張（レスポンシブ確認ツール等）が
+    // html/body に属性・クラス（例: mobile_mode）を注入することによる hydration mismatch を抑制
+    <html lang="ja" className={`${geist.variable} h-full antialiased`} suppressHydrationWarning>
       <body
         className="h-full flex flex-col"
         style={{ backgroundColor: 'var(--ivory)' }}

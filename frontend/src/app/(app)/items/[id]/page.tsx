@@ -2,13 +2,14 @@
 
 import { useEffect, useState } from 'react'
 import Link from 'next/link'
-import { useParams, useRouter } from 'next/navigation'
+import { useParams, useRouter, useSearchParams } from 'next/navigation'
 import { Trash2, ChevronLeft, ChevronRight, RefreshCw, Pencil, Check, X } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Spinner } from '@/components/ui/spinner'
 import { ItemProperties } from '@/components/features/items/ItemProperties'
 import { getItem, getItems, deleteItem, retryItem, updateItem } from '@/lib/api/items'
+import { getDeck } from '@/lib/api/decks'
 import { useItemsStore } from '@/stores/items'
 import type { Item } from '@/types/item'
 
@@ -31,6 +32,12 @@ const POLLING_STATUSES = new Set(['pending', 'processing'])
 export default function ItemDetailPage() {
   const { id } = useParams<{ id: string }>()
   const router = useRouter()
+  const searchParams = useSearchParams()
+  // デッキ経由で開いた場合の文脈（戻り先・前後移動の範囲をそのデッキに揃える）
+  const deckId = searchParams.get('deck')
+  const backHref = deckId ? `/decks/${deckId}` : '/items'
+  const backLabel = deckId ? '← デッキへ戻る' : '← マイカードへ戻る'
+  const itemHref = (targetId: string) => (deckId ? `/items/${targetId}?deck=${deckId}` : `/items/${targetId}`)
   const cachedItems = useItemsStore((s) => s.items)
   const upsertItem = useItemsStore((s) => s.upsertItem)
   const removeItem = useItemsStore((s) => s.removeItem)
@@ -76,13 +83,24 @@ export default function ItemDetailPage() {
       return
     }
 
+    // デッキ経由でストア未読込（リロード等）の場合はそのデッキのカードで前後移動する
+    if (deckId) {
+      getDeck(deckId)
+        .then((deck) => {
+          setAllIds(deck.items.map((i) => i.id))
+          useItemsStore.getState().setItems(deck.items)
+        })
+        .catch(() => {})
+      return
+    }
+
     getItems()
       .then((items) => {
         setAllIds(items.map((current) => current.id))
         useItemsStore.getState().setItems(items)
       })
       .catch(() => {})
-  }, [cachedItems])
+  }, [cachedItems, deckId])
 
   // Effect 3: pending/processing 中はポーリング
   const generationStatus = item?.generation_status
@@ -133,7 +151,7 @@ export default function ItemDetailPage() {
     try {
       await deleteItem(id)
       removeItem(id)
-      router.push('/items')
+      router.push(backHref)
     } catch {
       setError('削除に失敗しました')
       setDeleting(false)
@@ -204,7 +222,7 @@ export default function ItemDetailPage() {
     return (
       <div className="max-w-lg mx-auto px-6 py-12 text-center space-y-4">
         <p className="text-destructive">{error}</p>
-        <Link href="/items"><Button variant="outline">← マイカードへ戻る</Button></Link>
+        <Link href={backHref}><Button variant="outline">{backLabel}</Button></Link>
       </div>
     )
   }
@@ -231,7 +249,7 @@ export default function ItemDetailPage() {
       {/* ── デスクトップ専用: 絶対配置でページ端 ── */}
       {prevId && (
         <button
-          onClick={() => router.push(`/items/${prevId}`)}
+          onClick={() => router.push(itemHref(prevId))}
           className={`hidden md:flex absolute left-1 top-1/2 -translate-y-1/2 z-10 ${navBtnBase}`}
           aria-label="前のカード"
         >
@@ -240,7 +258,7 @@ export default function ItemDetailPage() {
       )}
       {nextId && (
         <button
-          onClick={() => router.push(`/items/${nextId}`)}
+          onClick={() => router.push(itemHref(nextId))}
           className={`hidden md:flex absolute right-1 top-1/2 -translate-y-1/2 z-10 ${navBtnBase}`}
           aria-label="次のカード"
         >
@@ -253,8 +271,8 @@ export default function ItemDetailPage() {
 
         {/* ヘッダー行 */}
         <div className="flex items-center justify-between">
-          <Link href="/items">
-            <Button variant="ghost" className="text-sm px-0">← マイカードへ戻る</Button>
+          <Link href={backHref}>
+            <Button variant="ghost" className="text-sm px-0">{backLabel}</Button>
           </Link>
           <Button
             variant={confirmDelete ? 'destructive' : 'ghost'}
@@ -278,7 +296,7 @@ export default function ItemDetailPage() {
           {/* 左矢印スロット: モバイルのみ表示 */}
           <div className="w-8 shrink-0 flex justify-center md:hidden">
             {prevId && (
-              <button onClick={() => router.push(`/items/${prevId}`)} className={navBtnBase} aria-label="前のカード">
+              <button onClick={() => router.push(itemHref(prevId))} className={navBtnBase} aria-label="前のカード">
                 <ChevronLeft size={22} strokeWidth={1.5} />
               </button>
             )}
@@ -312,7 +330,7 @@ export default function ItemDetailPage() {
           {/* 右矢印スロット: モバイルのみ表示 */}
           <div className="w-8 shrink-0 flex justify-center md:hidden">
             {nextId && (
-              <button onClick={() => router.push(`/items/${nextId}`)} className={navBtnBase} aria-label="次のカード">
+              <button onClick={() => router.push(itemHref(nextId))} className={navBtnBase} aria-label="次のカード">
                 <ChevronRight size={22} strokeWidth={1.5} />
               </button>
             )}

@@ -3,30 +3,88 @@
 import { useEffect, useState } from 'react'
 import Link from 'next/link'
 import { useParams, useRouter } from 'next/navigation'
-import { Trash2, Pencil, Check, X, Plus } from 'lucide-react'
+import { Trash2, Pencil, Check, X, Plus, GalleryHorizontal, Library, LayoutGrid, Frame } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
-import { getCollection, updateCollection, deleteCollection, addItemToCollection, removeItemFromCollection } from '@/lib/api/collections'
+import {
+  getCollection, updateCollection, deleteCollection,
+  addEntryToCollection, removeEntryFromCollection,
+} from '@/lib/api/collections'
 import { getItems } from '@/lib/api/items'
-import type { CollectionDetail } from '@/types/collection'
-import type { Item } from '@/types/item'
+import { getDecks } from '@/lib/api/decks'
+import { getSpaces } from '@/lib/api/spaces'
+import { getViews } from '@/lib/api/views'
+import type { CollectionDetail, CollectionEntry, CollectionEntryType } from '@/types/collection'
 
-function ItemThumb({ item, action }: { item: Item; action: React.ReactNode }) {
-  const imageUrl = item.media?.thumb_url ?? item.media?.url ?? null
+// 追加候補の正規化表現
+type Pickable = { id: string; label: string; image: string | null; sub?: string }
+
+const TYPE_META: Record<CollectionEntryType, { label: string; icon: React.ReactNode; path: string }> = {
+  Item: { label: 'カード', icon: <GalleryHorizontal size={16} />, path: 'items' },
+  Deck: { label: 'デッキ', icon: <Library size={16} />, path: 'decks' },
+  Space: { label: 'スペース', icon: <LayoutGrid size={16} />, path: 'spaces' },
+  View: { label: 'ビュー', icon: <Frame size={16} />, path: 'views' },
+}
+const TYPE_ORDER: CollectionEntryType[] = ['Item', 'Deck', 'Space', 'View']
+
+function entryHref(e: CollectionEntry): string {
+  return `/${TYPE_META[e.entry_type].path}/${e.id}`
+}
+function entryLabel(e: CollectionEntry): string {
+  return e.entry_type === 'Item' ? e.title : e.name
+}
+function entryImage(e: CollectionEntry): string | null {
+  if (e.entry_type === 'Item') return e.media?.thumb_url ?? e.media?.url ?? null
+  if (e.entry_type === 'Deck') return e.cover?.thumb_url ?? e.cover?.url ?? null
+  return null
+}
+
+function EntryTile({ entry, onRemove, busy }: { entry: CollectionEntry; onRemove: () => void; busy: boolean }) {
+  const image = entryImage(entry)
+  const hasImage = entry.entry_type === 'Item' || entry.entry_type === 'Deck'
+  const removeBtn = (
+    <Button
+      variant="destructive"
+      size="icon-sm"
+      onClick={onRemove}
+      disabled={busy}
+      aria-label="このエントリを外す"
+      className="rounded-full shadow"
+    >
+      <X size={14} />
+    </Button>
+  )
+
+  if (hasImage) {
+    const ratio = entry.entry_type === 'Item' ? 'aspect-square' : 'aspect-[4/3]'
+    return (
+      <div className="flex flex-col rounded-xl border border-border overflow-hidden bg-card">
+        <div className={`relative w-full ${ratio} bg-muted overflow-hidden`}>
+          <Link href={entryHref(entry)} className="flex h-full w-full items-center justify-center hover:opacity-95 transition-opacity">
+            {image ? (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img src={image} alt={entryLabel(entry)} className="w-full h-full object-cover" loading="lazy" />
+            ) : (
+              <span className="text-muted-foreground/60">{TYPE_META[entry.entry_type].icon}</span>
+            )}
+          </Link>
+          <div className="absolute top-1 right-1 z-10">{removeBtn}</div>
+        </div>
+        <div className="px-3 py-2">
+          <span className="text-sm font-medium truncate block">{entryLabel(entry)}</span>
+        </div>
+      </div>
+    )
+  }
+
+  // スペース / ビュー（画像なし・行タイル）
   return (
-    <div className="flex flex-col rounded-xl border border-border overflow-hidden bg-card">
-      <div className="relative w-full aspect-square bg-muted flex items-center justify-center overflow-hidden">
-        {imageUrl ? (
-          // eslint-disable-next-line @next/next/no-img-element
-          <img src={imageUrl} alt={item.title} className="w-full h-full object-cover" loading="lazy" />
-        ) : (
-          <span className="text-muted-foreground text-xs px-2 text-center">{item.title}</span>
-        )}
-        <div className="absolute top-1 right-1">{action}</div>
-      </div>
-      <div className="px-3 py-2">
-        <span className="text-sm font-medium truncate block">{item.title}</span>
-      </div>
+    <div className="flex items-center justify-between gap-2 rounded-xl border border-border bg-card px-4 py-3">
+      <Link href={entryHref(entry)} className="flex items-center gap-2 min-w-0 flex-1 hover:opacity-80 transition-opacity">
+        <span style={{ color: 'var(--palace)' }}>{TYPE_META[entry.entry_type].icon}</span>
+        <span className="font-medium text-sm truncate">{entryLabel(entry)}</span>
+      </Link>
+      {removeBtn}
     </div>
   )
 }
@@ -44,9 +102,15 @@ export default function CollectionDetailPage() {
   const [confirmDelete, setConfirmDelete] = useState(false)
   const [deleting, setDeleting] = useState(false)
 
-  const [picking, setPicking] = useState(false)
-  const [allItems, setAllItems] = useState<Item[]>([])
-  const [busyItemId, setBusyItemId] = useState<string | null>(null)
+  const [pickerType, setPickerType] = useState<CollectionEntryType | null>(null)
+  const [pickables, setPickables] = useState<Pickable[]>([])
+  const [pickerLoading, setPickerLoading] = useState(false)
+  const [busyKey, setBusyKey] = useState<string | null>(null)
+
+  const reload = async () => {
+    const data = await getCollection(id)
+    setCollection(data)
+  }
 
   useEffect(() => {
     let cancelled = false
@@ -62,14 +126,25 @@ export default function CollectionDetailPage() {
     }
   }, [id])
 
-  const openPicker = async () => {
-    setPicking(true)
-    if (allItems.length === 0) {
-      try {
-        setAllItems(await getItems())
-      } catch {
-        // 取得失敗時はピッカーを空表示にする
+  const openPicker = async (type: CollectionEntryType) => {
+    setPickerType(type)
+    setPickerLoading(true)
+    try {
+      let list: Pickable[] = []
+      if (type === 'Item') {
+        list = (await getItems()).map((i) => ({ id: i.id, label: i.title, image: i.media?.thumb_url ?? i.media?.url ?? null }))
+      } else if (type === 'Deck') {
+        list = (await getDecks()).map((d) => ({ id: d.id, label: d.name, image: d.cover?.thumb_url ?? d.cover?.url ?? null, sub: `${d.item_count}枚` }))
+      } else if (type === 'Space') {
+        list = (await getSpaces()).map((s) => ({ id: s.id, label: s.name, image: null }))
+      } else {
+        list = (await getViews()).map((v) => ({ id: v.id, label: v.name, image: null, sub: 'フリーボード' }))
       }
+      setPickables(list)
+    } catch {
+      setPickables([])
+    } finally {
+      setPickerLoading(false)
     }
   }
 
@@ -104,37 +179,32 @@ export default function CollectionDetailPage() {
     }
   }
 
-  const handleAdd = async (item: Item) => {
-    if (!collection) return
-    setBusyItemId(item.id)
+  const handleAdd = async (type: CollectionEntryType, entryId: string) => {
+    setBusyKey(`${type}:${entryId}`)
     try {
-      await addItemToCollection(id, item.id)
-      setCollection({
-        ...collection,
-        items: [item, ...collection.items],
-        item_count: collection.item_count + 1,
-      })
+      await addEntryToCollection(id, type, entryId)
+      await reload()
     } catch {
       setError('追加に失敗しました')
     } finally {
-      setBusyItemId(null)
+      setBusyKey(null)
     }
   }
 
-  const handleRemove = async (item: Item) => {
+  const handleRemove = async (entry: CollectionEntry) => {
     if (!collection) return
-    setBusyItemId(item.id)
+    setBusyKey(`${entry.entry_type}:${entry.id}`)
     try {
-      await removeItemFromCollection(id, item.id)
+      await removeEntryFromCollection(id, entry.entry_type, entry.id)
       setCollection({
         ...collection,
-        items: collection.items.filter((i) => i.id !== item.id),
-        item_count: Math.max(collection.item_count - 1, 0),
+        entries: collection.entries.filter((e) => !(e.entry_type === entry.entry_type && e.id === entry.id)),
+        entry_count: Math.max(collection.entry_count - 1, 0),
       })
     } catch {
-      setError('削除に失敗しました')
+      setError('除外に失敗しました')
     } finally {
-      setBusyItemId(null)
+      setBusyKey(null)
     }
   }
 
@@ -160,8 +230,10 @@ export default function CollectionDetailPage() {
     )
   }
 
-  const inCollectionIds = new Set(collection.items.map((i) => i.id))
-  const pickableItems = allItems.filter((i) => !inCollectionIds.has(i.id))
+  const inCollection = new Set(collection.entries.map((e) => `${e.entry_type}:${e.id}`))
+  const pickable = pickerType
+    ? pickables.filter((p) => !inCollection.has(`${pickerType}:${p.id}`))
+    : []
 
   return (
     <div className="max-w-5xl mx-auto px-6 py-12">
@@ -169,7 +241,7 @@ export default function CollectionDetailPage() {
         <Button variant="ghost" className="text-sm px-0 mb-4">← コレクション一覧へ</Button>
       </Link>
 
-      <div className="flex items-center justify-between gap-3 mb-6">
+      <div className="flex items-center justify-between gap-3 mb-2">
         {editing ? (
           <div className="flex items-center gap-2 flex-1">
             <Input
@@ -187,7 +259,7 @@ export default function CollectionDetailPage() {
         ) : (
           <div className="flex items-center gap-2 min-w-0">
             <h1 className="text-2xl font-semibold truncate">{collection.name}</h1>
-            <span className="text-sm text-muted-foreground shrink-0">{collection.item_count} 枚</span>
+            <span className="text-sm text-muted-foreground shrink-0">{collection.entry_count} 件</span>
             <button
               onClick={() => { setNameDraft(collection.name); setEditing(true) }}
               className="shrink-0 text-muted-foreground hover:text-foreground transition-colors"
@@ -209,41 +281,66 @@ export default function CollectionDetailPage() {
           {deleting ? '削除中...' : confirmDelete ? '本当に削除' : '削除'}
         </Button>
       </div>
+      <p className="text-sm text-muted-foreground mb-6">
+        カード・デッキ・スペース・ビューをまとめられます。
+      </p>
 
       {error && <p className="text-sm text-destructive mb-4">{error}</p>}
 
-      <div className="mb-6">
-        {!picking ? (
-          <Button variant="outline" size="sm" onClick={openPicker} className="flex items-center gap-1.5">
-            <Plus size={16} />
-            カードを追加
-          </Button>
-        ) : (
-          <div className="rounded-xl border border-border/70 bg-muted/30 p-4">
-            <div className="flex items-center justify-between mb-3">
-              <span className="text-sm font-medium">追加するカードを選択</span>
-              <Button variant="ghost" size="sm" onClick={() => setPicking(false)}>閉じる</Button>
-            </div>
-            {pickableItems.length === 0 ? (
-              <p className="text-sm text-muted-foreground">追加できるカードがありません。</p>
+      {/* 追加（種別を選んでから対象を選ぶ） */}
+      <div className="mb-8 rounded-xl border border-border/70 bg-muted/30 p-4">
+        <div className="flex flex-wrap items-center gap-2">
+          <span className="text-sm font-medium mr-1 flex items-center gap-1"><Plus size={14} />追加:</span>
+          {TYPE_ORDER.map((type) => (
+            <Button
+              key={type}
+              variant={pickerType === type ? 'default' : 'outline'}
+              size="sm"
+              onClick={() => openPicker(type)}
+              className="flex items-center gap-1.5"
+            >
+              {TYPE_META[type].icon}
+              {TYPE_META[type].label}
+            </Button>
+          ))}
+          {pickerType && (
+            <Button variant="ghost" size="sm" onClick={() => setPickerType(null)} className="ml-auto">閉じる</Button>
+          )}
+        </div>
+
+        {pickerType && (
+          <div className="mt-4">
+            {pickerLoading ? (
+              <p className="text-sm text-muted-foreground">読み込み中...</p>
+            ) : pickable.length === 0 ? (
+              <p className="text-sm text-muted-foreground">追加できる{TYPE_META[pickerType].label}がありません。</p>
             ) : (
-              <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-                {pickableItems.map((item) => (
-                  <ItemThumb
-                    key={item.id}
-                    item={item}
-                    action={
-                      <Button
-                        size="icon-sm"
-                        onClick={() => handleAdd(item)}
-                        disabled={busyItemId === item.id}
-                        aria-label="このカードを追加"
-                        className="rounded-full shadow"
-                      >
-                        <Plus size={14} />
-                      </Button>
-                    }
-                  />
+              <div className="flex flex-col gap-2 max-h-72 overflow-y-auto">
+                {pickable.map((p) => (
+                  <div key={p.id} className="flex items-center justify-between gap-2 rounded-lg bg-card border border-border px-3 py-2">
+                    <div className="flex items-center gap-2 min-w-0">
+                      {p.image ? (
+                        // eslint-disable-next-line @next/next/no-img-element
+                        <img src={p.image} alt="" className="h-9 w-9 rounded object-cover shrink-0" />
+                      ) : (
+                        <span className="h-9 w-9 rounded bg-muted flex items-center justify-center shrink-0" style={{ color: 'var(--palace)' }}>
+                          {TYPE_META[pickerType].icon}
+                        </span>
+                      )}
+                      <div className="min-w-0">
+                        <span className="text-sm font-medium truncate block">{p.label}</span>
+                        {p.sub && <span className="text-xs text-muted-foreground">{p.sub}</span>}
+                      </div>
+                    </div>
+                    <Button
+                      size="sm"
+                      onClick={() => handleAdd(pickerType, p.id)}
+                      disabled={busyKey === `${pickerType}:${p.id}`}
+                      className="shrink-0"
+                    >
+                      追加
+                    </Button>
+                  </div>
                 ))}
               </div>
             )}
@@ -251,30 +348,37 @@ export default function CollectionDetailPage() {
         )}
       </div>
 
-      {collection.items.length === 0 ? (
+      {/* エントリ（種別ごとに表示） */}
+      {collection.entries.length === 0 ? (
         <p className="text-center text-muted-foreground py-12">
-          まだカードがありません。「カードを追加」から追加してください。
+          まだ何もありません。上の「追加」からまとめましょう。
         </p>
       ) : (
-        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-          {collection.items.map((item) => (
-            <ItemThumb
-              key={item.id}
-              item={item}
-              action={
-                <Button
-                  variant="destructive"
-                  size="icon-sm"
-                  onClick={() => handleRemove(item)}
-                  disabled={busyItemId === item.id}
-                  aria-label="このカードを外す"
-                  className="rounded-full shadow"
-                >
-                  <X size={14} />
-                </Button>
-              }
-            />
-          ))}
+        <div className="space-y-8">
+          {TYPE_ORDER.map((type) => {
+            const entries = collection.entries.filter((e) => e.entry_type === type)
+            if (entries.length === 0) return null
+            const grid = type === 'Item' || type === 'Deck'
+            return (
+              <section key={type} className="space-y-3">
+                <h2 className="text-base font-semibold flex items-center gap-2">
+                  <span style={{ color: 'var(--palace)' }}>{TYPE_META[type].icon}</span>
+                  {TYPE_META[type].label}
+                  <span className="text-sm font-normal text-muted-foreground">{entries.length}</span>
+                </h2>
+                <div className={grid ? 'grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4' : 'grid grid-cols-1 sm:grid-cols-2 gap-3'}>
+                  {entries.map((entry) => (
+                    <EntryTile
+                      key={`${entry.entry_type}:${entry.id}`}
+                      entry={entry}
+                      onRemove={() => handleRemove(entry)}
+                      busy={busyKey === `${entry.entry_type}:${entry.id}`}
+                    />
+                  ))}
+                </div>
+              </section>
+            )
+          })}
         </div>
       )}
     </div>

@@ -1,5 +1,5 @@
 import { apiClient } from './client'
-import type { Collection, CollectionDetail } from '@/types/collection'
+import type { Collection, CollectionDetail, CollectionEntryType } from '@/types/collection'
 
 export async function getCollections(): Promise<Collection[]> {
   const res = await apiClient.get<{ collections: Collection[] }>('/api/v1/collections')
@@ -30,10 +30,21 @@ export async function deleteCollection(id: string): Promise<void> {
   await apiClient.delete(`/api/v1/collections/${id}`)
 }
 
-export async function addItemToCollection(collectionId: string, itemId: string): Promise<void> {
-  await apiClient.post(`/api/v1/collections/${collectionId}/items`, { item_id: itemId })
+export async function addEntryToCollection(
+  collectionId: string,
+  entryType: CollectionEntryType,
+  entryId: string
+): Promise<void> {
+  await apiClient.post(`/api/v1/collections/${collectionId}/entries`, {
+    entry_type: entryType,
+    entry_id: entryId,
+  })
 }
 
-export async function removeItemFromCollection(collectionId: string, itemId: string): Promise<void> {
-  await apiClient.delete(`/api/v1/collections/${collectionId}/items/${itemId}`)
+export async function removeEntryFromCollection(
+  collectionId: string,
+  entryType: CollectionEntryType,
+  entryId: string
+): Promise<void> {
+  await apiClient.delete(`/api/v1/collections/${collectionId}/entries/${entryType}/${entryId}`)
 }

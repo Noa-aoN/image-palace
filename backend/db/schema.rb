@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_06_11_000006) do
+ActiveRecord::Schema[8.1].define(version: 2026_06_12_000004) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
   enable_extension "pgcrypto"
@@ -43,6 +43,28 @@ ActiveRecord::Schema[8.1].define(version: 2026_06_11_000006) do
     t.index ["blob_id", "variation_digest"], name: "index_active_storage_variant_records_uniqueness", unique: true
   end
 
+  create_table "collection_decks", id: :uuid, default: -> { "gen_random_uuid()" }, force: :cascade do |t|
+    t.uuid "collection_id", null: false
+    t.datetime "created_at", null: false
+    t.uuid "deck_id", null: false
+    t.integer "position"
+    t.datetime "updated_at", null: false
+    t.index ["collection_id", "deck_id"], name: "index_collection_decks_on_collection_id_and_deck_id", unique: true
+    t.index ["collection_id"], name: "index_collection_decks_on_collection_id"
+  end
+
+  create_table "collection_entries", id: :uuid, default: -> { "gen_random_uuid()" }, force: :cascade do |t|
+    t.uuid "collection_id", null: false
+    t.datetime "created_at", null: false
+    t.uuid "entry_id", null: false
+    t.string "entry_type", null: false
+    t.integer "position"
+    t.datetime "updated_at", null: false
+    t.index ["collection_id", "entry_type", "entry_id"], name: "index_collection_entries_uniqueness", unique: true
+    t.index ["collection_id"], name: "index_collection_entries_on_collection_id"
+    t.index ["entry_type", "entry_id"], name: "index_collection_entries_on_entry_type_and_entry_id"
+  end
+
   create_table "collection_items", id: :uuid, default: -> { "gen_random_uuid()" }, force: :cascade do |t|
     t.uuid "collection_id", null: false
     t.datetime "created_at", null: false
@@ -61,6 +83,26 @@ ActiveRecord::Schema[8.1].define(version: 2026_06_11_000006) do
     t.uuid "user_id", null: false
     t.index ["user_id", "created_at"], name: "index_collections_on_user_id_and_created_at"
     t.index ["user_id"], name: "index_collections_on_user_id"
+  end
+
+  create_table "deck_items", id: :uuid, default: -> { "gen_random_uuid()" }, force: :cascade do |t|
+    t.datetime "created_at", null: false
+    t.uuid "deck_id", null: false
+    t.uuid "item_id", null: false
+    t.integer "position"
+    t.datetime "updated_at", null: false
+    t.index ["deck_id", "item_id"], name: "index_deck_items_on_deck_id_and_item_id", unique: true
+    t.index ["deck_id"], name: "index_deck_items_on_deck_id"
+  end
+
+  create_table "decks", id: :uuid, default: -> { "gen_random_uuid()" }, force: :cascade do |t|
+    t.uuid "cover_item_id"
+    t.datetime "created_at", null: false
+    t.string "name", null: false
+    t.datetime "updated_at", null: false
+    t.uuid "user_id", null: false
+    t.index ["user_id", "created_at"], name: "index_decks_on_user_id_and_created_at"
+    t.index ["user_id"], name: "index_decks_on_user_id"
   end
 
   create_table "item_types", id: :uuid, default: -> { "gen_random_uuid()" }, force: :cascade do |t|
@@ -348,9 +390,16 @@ ActiveRecord::Schema[8.1].define(version: 2026_06_11_000006) do
 
   add_foreign_key "active_storage_attachments", "active_storage_blobs", column: "blob_id"
   add_foreign_key "active_storage_variant_records", "active_storage_blobs", column: "blob_id"
+  add_foreign_key "collection_decks", "collections", on_delete: :cascade
+  add_foreign_key "collection_decks", "decks", on_delete: :cascade
+  add_foreign_key "collection_entries", "collections", on_delete: :cascade
   add_foreign_key "collection_items", "collections", on_delete: :cascade
   add_foreign_key "collection_items", "items", on_delete: :cascade
   add_foreign_key "collections", "users", on_delete: :cascade
+  add_foreign_key "deck_items", "decks", on_delete: :cascade
+  add_foreign_key "deck_items", "items", on_delete: :cascade
+  add_foreign_key "decks", "items", column: "cover_item_id", on_delete: :nullify
+  add_foreign_key "decks", "users", on_delete: :cascade
   add_foreign_key "items", "item_types", on_delete: :restrict
   add_foreign_key "items", "users", on_delete: :cascade
   add_foreign_key "meanings", "items", on_delete: :cascade

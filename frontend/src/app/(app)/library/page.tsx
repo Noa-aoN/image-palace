@@ -2,13 +2,15 @@
 
 import { useEffect, useState } from 'react'
 import Link from 'next/link'
-import { GalleryHorizontal, Layers, LayoutGrid, Frame, ChevronRight, Plus } from 'lucide-react'
+import { GalleryHorizontal, Library, Layers, LayoutGrid, Frame, ChevronRight, Plus } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { getItems, getItemsSummary } from '@/lib/api/items'
+import { getDecks } from '@/lib/api/decks'
 import { getCollections } from '@/lib/api/collections'
 import { getSpaces } from '@/lib/api/spaces'
 import { getViews } from '@/lib/api/views'
 import type { Item } from '@/types/item'
+import type { Deck } from '@/types/deck'
 import type { Collection } from '@/types/collection'
 import type { Space } from '@/types/space'
 import type { View } from '@/types/view'
@@ -80,6 +82,29 @@ function CardThumb({ item }: { item: Item }) {
   )
 }
 
+function DeckTile({ deck }: { deck: Deck }) {
+  const coverUrl = deck.cover?.thumb_url ?? deck.cover?.url ?? null
+  return (
+    <Link
+      href={`/decks/${deck.id}`}
+      className="shrink-0 w-40 flex flex-col rounded-xl border border-border overflow-hidden bg-card hover:shadow-md transition-shadow"
+    >
+      <div className="w-full aspect-[4/3] bg-muted flex items-center justify-center overflow-hidden">
+        {coverUrl ? (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img src={coverUrl} alt={deck.name} className="w-full h-full object-cover" loading="lazy" />
+        ) : (
+          <Library size={24} className="text-muted-foreground/50" />
+        )}
+      </div>
+      <div className="px-3 py-2 flex items-center justify-between gap-1">
+        <span className="text-sm font-medium truncate">{deck.name}</span>
+        <span className="text-xs text-muted-foreground shrink-0">{deck.item_count}</span>
+      </div>
+    </Link>
+  )
+}
+
 function CollectionTile({ collection }: { collection: Collection }) {
   return (
     <Link
@@ -90,7 +115,7 @@ function CollectionTile({ collection }: { collection: Collection }) {
         <Layers size={16} style={{ color: 'var(--palace)' }} />
         <span className="font-medium text-sm truncate">{collection.name}</span>
       </div>
-      <span className="text-xs text-muted-foreground mt-auto">{collection.item_count} 枚</span>
+      <span className="text-xs text-muted-foreground mt-auto">{collection.entry_count} 件</span>
     </Link>
   )
 }
@@ -144,6 +169,7 @@ function EmptyRail({ message, cta }: { message: string; cta?: React.ReactNode })
 export default function LibraryPage() {
   const [cards, setCards] = useState<Item[]>([])
   const [cardCount, setCardCount] = useState<number | undefined>(undefined)
+  const [decks, setDecks] = useState<Deck[]>([])
   const [collections, setCollections] = useState<Collection[]>([])
   const [spaces, setSpaces] = useState<Space[]>([])
   const [views, setViews] = useState<View[]>([])
@@ -151,11 +177,12 @@ export default function LibraryPage() {
 
   useEffect(() => {
     let cancelled = false
-    Promise.allSettled([getItems(), getItemsSummary(), getCollections(), getSpaces(), getViews()])
-      .then(([itemsRes, summaryRes, collectionsRes, spacesRes, viewsRes]) => {
+    Promise.allSettled([getItems(), getItemsSummary(), getDecks(), getCollections(), getSpaces(), getViews()])
+      .then(([itemsRes, summaryRes, decksRes, collectionsRes, spacesRes, viewsRes]) => {
         if (cancelled) return
         if (itemsRes.status === 'fulfilled') setCards(itemsRes.value.slice(0, PREVIEW_LIMIT))
         if (summaryRes.status === 'fulfilled') setCardCount(summaryRes.value.total_count)
+        if (decksRes.status === 'fulfilled') setDecks(decksRes.value)
         if (collectionsRes.status === 'fulfilled') setCollections(collectionsRes.value)
         if (spacesRes.status === 'fulfilled') setSpaces(spacesRes.value)
         if (viewsRes.status === 'fulfilled') setViews(viewsRes.value)
@@ -223,10 +250,31 @@ export default function LibraryPage() {
         )}
       </Shelf>
 
-      {/* コレクション / デッキ */}
+      {/* デッキ（カードを束ねる） */}
+      <Shelf
+        icon={<Library size={20} />}
+        title="デッキ"
+        count={decks.length}
+        href="/decks"
+      >
+        {decks.length === 0 ? (
+          <EmptyRail
+            message="まだデッキがありません。"
+            cta={<Link href="/decks"><Button size="sm">デッキを作成</Button></Link>}
+          />
+        ) : (
+          <Rail>
+            {decks.slice(0, PREVIEW_LIMIT).map((deck) => (
+              <DeckTile key={deck.id} deck={deck} />
+            ))}
+          </Rail>
+        )}
+      </Shelf>
+
+      {/* コレクション（デッキを束ねる） */}
       <Shelf
         icon={<Layers size={20} />}
-        title="コレクション / デッキ"
+        title="コレクション"
         count={collections.length}
         href="/collections"
       >
