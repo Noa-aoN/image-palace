@@ -146,7 +146,7 @@ export function ResetPasswordForm() {
 
       <form onSubmit={handleSubmit} className="flex flex-col gap-4">
         <div className="flex flex-col gap-1.5">
-          <Label htmlFor="password">新しいパスワード</Label>
+          <Label htmlFor="password" required>新しいパスワード</Label>
           <PasswordField
             id="password"
             value={password}
@@ -173,7 +173,7 @@ export function ResetPasswordForm() {
           )}
         </div>
         <div className="flex flex-col gap-1.5">
-          <Label htmlFor="password-confirmation">パスワード（確認）</Label>
+          <Label htmlFor="password-confirmation" required>パスワード（確認）</Label>
           <PasswordField
             id="password-confirmation"
             value={passwordConfirmation}

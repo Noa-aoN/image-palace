@@ -43,10 +43,14 @@ export function ForgotPasswordForm() {
         <h1 className="text-2xl font-bold mb-6 text-center" style={{ color: '#111111' }}>
           メールを送信しました
         </h1>
-        <p className="text-sm leading-6 mb-6" style={{ color: '#4A4A4A' }}>
+        <div
+          role="status"
+          aria-live="polite"
+          className="mb-6 rounded-lg border border-green-200 bg-green-50 px-3 py-2 text-sm leading-6 text-green-800"
+        >
           ご入力のメールアドレス宛に、パスワード再設定用のリンクをお送りしました。
           メールが届かない場合は、迷惑メールフォルダもご確認ください。
-        </p>
+        </div>
         <p className="text-sm text-center" style={{ color: '#4A4A4A' }}>
           <Link href="/login" className="underline" style={{ color: '#111111' }}>
             ログイン画面に戻る
@@ -67,7 +71,7 @@ export function ForgotPasswordForm() {
 
       <form onSubmit={handleSubmit} className="flex flex-col gap-4">
         <div className="flex flex-col gap-1.5">
-          <Label htmlFor="email">メールアドレス</Label>
+          <Label htmlFor="email" required>メールアドレス</Label>
           <Input
             id="email"
             type="email"
