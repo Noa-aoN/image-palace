@@ -8,6 +8,17 @@ RSpec.describe Item, type: :model do
       expect(item.errors[:title]).to include("can't be blank")
     end
 
+    it "accepts a title at the maximum length" do
+      item = build(:item, title: "あ" * Item::MAX_TITLE_LENGTH)
+      expect(item).to be_valid
+    end
+
+    it "rejects a title longer than the maximum length" do
+      item = build(:item, title: "あ" * (Item::MAX_TITLE_LENGTH + 1))
+      expect(item).to be_invalid
+      expect(item.errors[:title]).to be_present
+    end
+
     it "rejects an unknown generation_status" do
       item = build(:item, generation_status: "unknown")
       expect(item).to be_invalid

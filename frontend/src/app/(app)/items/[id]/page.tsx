@@ -3,9 +3,12 @@
 import { useEffect, useState } from 'react'
 import Link from 'next/link'
 import { useParams, useRouter } from 'next/navigation'
-import { Trash2, ChevronLeft, ChevronRight, RefreshCw } from 'lucide-react'
+import { Trash2, ChevronLeft, ChevronRight, RefreshCw, Pencil, Check, X } from 'lucide-react'
 import { Button } from '@/components/ui/button'
-import { getItem, getItems, deleteItem, retryItem } from '@/lib/api/items'
+import { Input } from '@/components/ui/input'
+import { Spinner } from '@/components/ui/spinner'
+import { ItemProperties } from '@/components/features/items/ItemProperties'
+import { getItem, getItems, deleteItem, retryItem, updateItem } from '@/lib/api/items'
 import { useItemsStore } from '@/stores/items'
 import type { Item } from '@/types/item'
 
@@ -40,6 +43,10 @@ export default function ItemDetailPage() {
   const [confirmDelete, setConfirmDelete] = useState(false)
   const [retrying, setRetrying] = useState(false)
   const [zoomed, setZoomed] = useState(false)
+  const [editing, setEditing] = useState(false)
+  const [titleDraft, setTitleDraft] = useState('')
+  const [saving, setSaving] = useState(false)
+  const [editError, setEditError] = useState<string | null>(null)
 
   useEffect(() => {
     if (cachedItem) {
@@ -153,6 +160,46 @@ export default function ItemDetailPage() {
     }
   }
 
+  const startEdit = () => {
+    setTitleDraft(item?.title ?? '')
+    setEditError(null)
+    setEditing(true)
+  }
+
+  const cancelEdit = () => {
+    setEditing(false)
+    setEditError(null)
+  }
+
+  const handleSaveTitle = async () => {
+    const trimmed = titleDraft.trim()
+    if (!trimmed) {
+      setEditError('タイトルを入力してください')
+      return
+    }
+    if (trimmed === item?.title) {
+      cancelEdit()
+      return
+    }
+    setSaving(true)
+    setEditError(null)
+    try {
+      const updated = await updateItem(id, { title: trimmed })
+      setItem(updated)
+      upsertItem(updated)
+      setEditing(false)
+    } catch (err: unknown) {
+      const axiosErr = err as { response?: { data?: { error?: string; errors?: string[] } } }
+      const msg =
+        axiosErr?.response?.data?.errors?.[0] ??
+        axiosErr?.response?.data?.error ??
+        '更新に失敗しました。もう一度試してください。'
+      setEditError(msg)
+    } finally {
+      setSaving(false)
+    }
+  }
+
   if (error) {
     return (
       <div className="max-w-lg mx-auto px-6 py-12 text-center space-y-4">
@@ -217,7 +264,7 @@ export default function ItemDetailPage() {
             className="flex items-center gap-1.5 text-sm"
             onBlur={() => setConfirmDelete(false)}
           >
-            <Trash2 size={14} />
+            {deleting ? <Spinner size={14} /> : <Trash2 size={14} />}
             {deleting ? '削除中...' : confirmDelete ? '本当に削除' : '削除'}
           </Button>
         </div>
@@ -273,12 +320,47 @@ export default function ItemDetailPage() {
         </div>
 
         {/* タイトル + ステータス */}
-        <div className="flex items-center justify-between gap-3">
-          <h1 className="text-2xl font-semibold">{item.title}</h1>
-          <span className={`shrink-0 rounded-full px-3 py-1 text-sm font-medium ${STATUS_COLOR[item.generation_status] ?? ''}`}>
-            {STATUS_LABEL[item.generation_status] ?? item.generation_status}
-          </span>
-        </div>
+        {editing ? (
+          <div className="space-y-2">
+            <div className="flex items-center gap-2">
+              <Input
+                value={titleDraft}
+                onChange={(e) => setTitleDraft(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') { e.preventDefault(); handleSaveTitle() }
+                  if (e.key === 'Escape') cancelEdit()
+                }}
+                disabled={saving}
+                autoFocus
+                aria-label="タイトル"
+                className="text-lg"
+              />
+              <Button size="sm" onClick={handleSaveTitle} disabled={saving} aria-label="保存" className="shrink-0">
+                {saving ? <Spinner size={16} /> : <Check size={16} />}
+              </Button>
+              <Button variant="ghost" size="sm" onClick={cancelEdit} disabled={saving} aria-label="キャンセル" className="shrink-0">
+                <X size={16} />
+              </Button>
+            </div>
+            {editError && <p className="text-sm text-destructive">{editError}</p>}
+          </div>
+        ) : (
+          <div className="flex items-center justify-between gap-3">
+            <div className="flex items-center gap-2 min-w-0">
+              <h1 className="text-2xl font-semibold truncate">{item.title}</h1>
+              <button
+                onClick={startEdit}
+                className="shrink-0 text-muted-foreground hover:text-foreground transition-colors"
+                aria-label="タイトルを編集"
+              >
+                <Pencil size={16} />
+              </button>
+            </div>
+            <span className={`shrink-0 rounded-full px-3 py-1 text-sm font-medium ${STATUS_COLOR[item.generation_status] ?? ''}`}>
+              {STATUS_LABEL[item.generation_status] ?? item.generation_status}
+            </span>
+          </div>
+        )}
 
         {/* 失敗時: 再生成ボタン */}
         {item.generation_status === 'failed' && (
@@ -297,6 +379,15 @@ export default function ItemDetailPage() {
             )}
           </div>
         )}
+
+        {/* プロパティ（種別・意味） */}
+        <ItemProperties
+          item={item}
+          onUpdated={(updated) => {
+            setItem(updated)
+            upsertItem(updated)
+          }}
+        />
 
         <p className="text-sm text-muted-foreground">
           作成日: {new Date(item.created_at).toLocaleDateString('ja-JP')}

@@ -109,7 +109,7 @@ export function SignupForm() {
 
       <form onSubmit={handleSubmit} className="flex flex-col gap-4">
         <div className="flex flex-col gap-1.5">
-          <Label htmlFor="email">メールアドレス</Label>
+          <Label htmlFor="email" required>メールアドレス</Label>
           <Input
             id="email"
             type="email"
@@ -128,7 +128,7 @@ export function SignupForm() {
           )}
         </div>
         <div className="flex flex-col gap-1.5">
-          <Label htmlFor="password">パスワード</Label>
+          <Label htmlFor="password" required>パスワード</Label>
           <PasswordField
             id="password"
             value={password}
@@ -155,7 +155,7 @@ export function SignupForm() {
           )}
         </div>
         <div className="flex flex-col gap-1.5">
-          <Label htmlFor="password-confirmation">パスワード（確認）</Label>
+          <Label htmlFor="password-confirmation" required>パスワード（確認）</Label>
           <PasswordField
             id="password-confirmation"
             value={passwordConfirmation}

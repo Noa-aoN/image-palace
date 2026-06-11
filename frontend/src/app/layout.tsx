@@ -3,13 +3,19 @@ import { Geist } from 'next/font/google'
 import Script from 'next/script'
 import './globals.css'
 import { AppHeader } from '@/components/features/layout/Header'
+import { CookieConsentBanner } from '@/components/features/consent/CookieConsentBanner'
+import { Analytics } from '@/components/features/consent/Analytics'
 
 const geist = Geist({
   variable: '--font-geist-sans',
   subsets: ['latin'],
 })
 
+// OG/Twitter 画像の絶対URL解決と og:url の基準にする
+const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL ?? 'https://image-palace-frontend.image-palace.workers.dev'
+
 export const metadata: Metadata = {
+  metadataBase: new URL(SITE_URL),
   title: {
     default: 'ImagePalace',
     template: '%s | ImagePalace',
@@ -18,10 +24,15 @@ export const metadata: Metadata = {
   openGraph: {
     title: 'ImagePalace',
     description: '単語をAI画像に変換して記憶できるサービス。',
-    url: 'https://image-palace-frontend.image-palace.workers.dev',
+    url: SITE_URL,
     siteName: 'ImagePalace',
     locale: 'ja_JP',
     type: 'website',
+  },
+  twitter: {
+    card: 'summary_large_image',
+    title: 'ImagePalace',
+    description: '単語をAI画像に変換して記憶できるサービス。',
   },
 }
 
@@ -42,6 +53,8 @@ export default function RootLayout({
         <div className="flex-1 flex flex-col min-h-0">
           {children}
         </div>
+        <CookieConsentBanner />
+        <Analytics />
         <Script
           src="https://static.cloudflareinsights.com/beacon.min.js"
           data-cf-beacon='{"token": "4e38ecb6245142e79a3367465b6788e5"}'

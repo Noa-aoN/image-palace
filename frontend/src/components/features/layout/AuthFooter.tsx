@@ -1,3 +1,5 @@
+import Link from 'next/link'
+
 export function AuthFooter() {
   return (
     <footer
@@ -5,9 +7,11 @@ export function AuthFooter() {
       style={{ borderTop: '1px solid var(--palace)' }}
     >
       <p>
-        <span>利用規約</span>
+        <Link href="/terms" className="hover:underline">利用規約</Link>
         <span className="mx-2" aria-hidden>|</span>
-        <span>プライバシーポリシー</span>
+        <Link href="/privacy" className="hover:underline">プライバシーポリシー</Link>
+        <span className="mx-2" aria-hidden>|</span>
+        <Link href="/cookie-settings" className="hover:underline">Cookie設定</Link>
         <span className="mx-2" aria-hidden>|</span>
         <span>お問い合わせ</span>
       </p>

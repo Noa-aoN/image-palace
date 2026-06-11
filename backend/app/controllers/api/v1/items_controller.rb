@@ -1,21 +1,47 @@
 module Api
   module V1
     class ItemsController < BaseController
-      before_action :set_item, only: [ :show, :destroy, :retry ]
+      before_action :set_item, only: [ :show, :update, :destroy, :retry ]
+
+      DEFAULT_PER_PAGE = 24
+      MAX_PER_PAGE = 100
 
       def index
-        items = current_user.items
-                  .includes(medias: { file_attachment: :blob })
-                  .order(created_at: :desc)
-        render json: { items: items.map { |i| serialize_item(repair_item_if_media_missing(i)) } }
+        scope = current_user.items.order(created_at: :desc)
+
+        per = pagination_per
+        page = pagination_page
+        total_count = scope.count
+        total_pages = total_count.zero? ? 0 : (total_count.to_f / per).ceil
+
+        items = scope
+                  .includes(:item_type, :meanings, medias: { file_attachment: :blob })
+                  .limit(per)
+                  .offset((page - 1) * per)
+
+        render json: {
+          items: items.map { |i| serialize_item(repair_item_if_media_missing(i)) },
+          meta: {
+            page: page,
+            per: per,
+            total_count: total_count,
+            total_pages: total_pages
+          }
+        }
       end
 
       def summary
+        monthly_limit = Items::CreateService::FREE_ITEM_LIMIT_PER_MONTH
+        monthly_count = current_user.items.created_this_month.count
+
         render json: {
           total_count: current_user.items.count,
           pending_count: current_user.items.where(generation_status: "pending").count,
           processing_count: current_user.items.where(generation_status: "processing").count,
-          failed_count: current_user.items.where(generation_status: "failed").count
+          failed_count: current_user.items.where(generation_status: "failed").count,
+          monthly_count: monthly_count,
+          monthly_limit: monthly_limit,
+          monthly_remaining: [ monthly_limit - monthly_count, 0 ].max
         }
       end
 
@@ -30,6 +56,17 @@ module Api
 
       def show
         render json: serialize_item(repair_item_if_media_missing(item))
+      end
+
+      # タイトル・種別・意味の編集。画像の再生成は伴わず、既存メディアと生成ステータスは保持する
+      def update
+        Item.transaction do
+          item.update!(item_update_params)
+          upsert_meaning!
+        end
+        render json: serialize_item(item.reload)
+      rescue ActiveRecord::RecordInvalid => e
+        render json: { errors: e.record.errors.full_messages }, status: :unprocessable_entity
       end
 
       def destroy
@@ -50,8 +87,42 @@ module Api
 
       private
 
+      # 1始まり。不正値・0以下は 1 に丸める
+      def pagination_page
+        page = params[:page].to_i
+        page < 1 ? 1 : page
+      end
+
+      # 1〜MAX_PER_PAGE にクランプ。未指定・不正値は DEFAULT_PER_PAGE
+      def pagination_per
+        per = params[:per].to_i
+        return DEFAULT_PER_PAGE if per <= 0
+
+        per.clamp(1, MAX_PER_PAGE)
+      end
+
       def item_params
         params.require(:item).permit(:title, :item_type_id, :force_generate)
+      end
+
+      def item_update_params
+        params.require(:item).permit(:title, :item_type_id)
+      end
+
+      # item[meaning] が渡された場合のみ日本語の意味を upsert する。
+      # 空文字なら既存の意味を削除する（未指定キーは無視）
+      def upsert_meaning!
+        item_param = params[:item]
+        return unless item_param.respond_to?(:key?) && item_param.key?(:meaning)
+
+        definition = item_param[:meaning].to_s.strip
+        meaning = item.meanings.find_or_initialize_by(language_code: "ja")
+
+        if definition.blank?
+          meaning.destroy! if meaning.persisted?
+        else
+          meaning.update!(definition: definition)
+        end
       end
 
       def serialize_item(item)
@@ -60,9 +131,17 @@ module Api
           title: item.title,
           generation_status: item.generation_status,
           generation_error: item.generation_error,
+          item_type: serialize_item_type(item.item_type),
+          meaning: item.primary_meaning&.definition,
           media: serialize_media(item.primary_media),
           created_at: item.created_at
         }
+      end
+
+      def serialize_item_type(item_type)
+        return nil unless item_type
+
+        { id: item_type.id, name: item_type.name, label: item_type.label }
       end
 
       def serialize_media(media)
@@ -124,7 +203,7 @@ module Api
 
       def set_item
         @item = current_user.items
-                            .includes(medias: { file_attachment: :blob })
+                            .includes(:item_type, :meanings, medias: { file_attachment: :blob })
                             .find(params[:id])
       end
 

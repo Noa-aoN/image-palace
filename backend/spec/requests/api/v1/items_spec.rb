@@ -32,6 +32,12 @@ RSpec.describe "Api::V1::Items", type: :request do
       post "/api/v1/items/#{item.id}/retry", as: :json
       expect(response).to have_http_status(:unauthorized)
     end
+
+    it "PATCH /api/v1/items/:id returns 401 without auth headers" do
+      item = create(:item, user: user)
+      patch "/api/v1/items/#{item.id}", params: { item: { title: "x" } }, as: :json
+      expect(response).to have_http_status(:unauthorized)
+    end
   end
 
   describe "POST /api/v1/items" do
@@ -50,6 +56,17 @@ RSpec.describe "Api::V1::Items", type: :request do
       expect(json_response["id"]).to eq(created_item.id)
       expect(json_response["generation_status"]).to eq("pending")
       expect(json_response["generation_error"]).to be_nil
+    end
+
+    it "returns validation error when title is too long" do
+      expect {
+        post "/api/v1/items",
+          params: { item: { title: "あ" * (Item::MAX_TITLE_LENGTH + 1) } },
+          headers: headers, as: :json
+      }.not_to have_enqueued_job(GenerateImageJob)
+
+      expect(response).to have_http_status(:unprocessable_content)
+      expect(json_response["errors"]).to be_present
     end
 
     it "returns validation error when monthly limit is exceeded" do
@@ -117,6 +134,47 @@ RSpec.describe "Api::V1::Items", type: :request do
       expect(item_ids).to include(own_item.id)
       expect(item_ids).not_to include(other_item.id)
     end
+
+    it "includes pagination meta" do
+      user.items.create!(title: "カード", item_type: item_type, generation_status: "completed")
+
+      get "/api/v1/items", headers: headers, as: :json
+
+      meta = json_response.fetch("meta")
+      expect(meta["page"]).to eq(1)
+      expect(meta["per"]).to eq(24)
+      expect(meta["total_count"]).to eq(1)
+      expect(meta["total_pages"]).to eq(1)
+    end
+
+    it "paginates with page and per params" do
+      5.times do |i|
+        user.items.create!(
+          title: "カード#{i}",
+          item_type: item_type,
+          generation_status: "completed",
+          created_at: i.days.ago
+        )
+      end
+
+      get "/api/v1/items", params: { page: 2, per: 2 }, headers: headers
+
+      expect(response).to have_http_status(:success)
+      expect(json_response.fetch("items").size).to eq(2)
+      meta = json_response.fetch("meta")
+      expect(meta["page"]).to eq(2)
+      expect(meta["per"]).to eq(2)
+      expect(meta["total_count"]).to eq(5)
+      expect(meta["total_pages"]).to eq(3)
+    end
+
+    it "clamps per to the max and normalizes invalid page" do
+      get "/api/v1/items", params: { page: 0, per: 999 }, headers: headers
+
+      meta = json_response.fetch("meta")
+      expect(meta["page"]).to eq(1)
+      expect(meta["per"]).to eq(100)
+    end
   end
 
   describe "GET /api/v1/items/summary" do
@@ -133,6 +191,27 @@ RSpec.describe "Api::V1::Items", type: :request do
       expect(json_response["pending_count"]).to eq(1)
       expect(json_response["processing_count"]).to eq(1)
       expect(json_response["failed_count"]).to eq(1)
+    end
+
+    it "returns monthly usage counting only items created this month" do
+      freeze_time do
+        2.times { |n| user.items.create!(title: "今月-#{n}", item_type: item_type, generation_status: "completed") }
+        user.items.create!(
+          title: "先月分",
+          item_type: item_type,
+          generation_status: "completed",
+          created_at: 1.month.ago,
+          updated_at: 1.month.ago
+        )
+
+        get "/api/v1/items/summary", headers: headers, as: :json
+      end
+
+      expect(response).to have_http_status(:success)
+      expect(json_response["monthly_count"]).to eq(2)
+      expect(json_response["monthly_limit"]).to eq(Items::CreateService::FREE_ITEM_LIMIT_PER_MONTH)
+      expect(json_response["monthly_remaining"]).to eq(Items::CreateService::FREE_ITEM_LIMIT_PER_MONTH - 2)
+      expect(json_response["total_count"]).to eq(3)
     end
   end
 
@@ -167,6 +246,90 @@ RSpec.describe "Api::V1::Items", type: :request do
       expect(response).to have_http_status(:success)
       expect(json_response["generation_status"]).to eq("failed")
       expect(json_response["generation_error"]).to eq("入力が曖昧なため画像を生成できませんでした。別の単語や具体的な表現でお試しください。")
+    end
+  end
+
+  describe "PATCH /api/v1/items/:id" do
+    it "updates the title and keeps media and generation status" do
+      item = user.items.create!(title: "古いタイトル", item_type: item_type, generation_status: "completed")
+
+      expect {
+        patch "/api/v1/items/#{item.id}", params: { item: { title: "新しいタイトル" } }, headers: headers, as: :json
+      }.not_to have_enqueued_job(GenerateImageJob)
+
+      expect(response).to have_http_status(:success)
+      expect(item.reload.title).to eq("新しいタイトル")
+      expect(item.generation_status).to eq("completed")
+      expect(json_response["title"]).to eq("新しいタイトル")
+      expect(json_response["generation_status"]).to eq("completed")
+    end
+
+    it "returns validation error when title is blank" do
+      item = user.items.create!(title: "元タイトル", item_type: item_type, generation_status: "completed")
+
+      patch "/api/v1/items/#{item.id}", params: { item: { title: "" } }, headers: headers, as: :json
+
+      expect(response).to have_http_status(:unprocessable_content)
+      expect(json_response["errors"]).to be_present
+      expect(item.reload.title).to eq("元タイトル")
+    end
+
+    it "rejects updating another users item" do
+      other_user = create(:user, :confirmed)
+      other_item = other_user.items.create!(title: "他人のカード", item_type: item_type, generation_status: "completed")
+
+      patch "/api/v1/items/#{other_item.id}", params: { item: { title: "乗っ取り" } }, headers: headers, as: :json
+
+      expect(response).to have_http_status(:not_found)
+      expect(json_response["error"]).to eq("Not found")
+      expect(other_item.reload.title).to eq("他人のカード")
+    end
+
+    it "updates the item_type and serializes it" do
+      concept = ItemType.find_or_create_by!(name: "concept") { |it| it.label = "概念" }
+      item = user.items.create!(title: "光合成", item_type: item_type, generation_status: "completed")
+
+      patch "/api/v1/items/#{item.id}", params: { item: { item_type_id: concept.id } }, headers: headers, as: :json
+
+      expect(response).to have_http_status(:success)
+      expect(item.reload.item_type_id).to eq(concept.id)
+      expect(json_response.dig("item_type", "name")).to eq("concept")
+      expect(json_response.dig("item_type", "label")).to eq("概念")
+    end
+
+    it "creates a meaning when one is provided" do
+      item = user.items.create!(title: "光合成", item_type: item_type, generation_status: "completed")
+
+      patch "/api/v1/items/#{item.id}",
+        params: { item: { meaning: "植物が光を使って養分を作る働き" } }, headers: headers, as: :json
+
+      expect(response).to have_http_status(:success)
+      expect(item.meanings.in_language("ja").first&.definition).to eq("植物が光を使って養分を作る働き")
+      expect(json_response["meaning"]).to eq("植物が光を使って養分を作る働き")
+    end
+
+    it "updates an existing meaning" do
+      item = user.items.create!(title: "光合成", item_type: item_type, generation_status: "completed")
+      item.meanings.create!(definition: "古い説明", language_code: "ja")
+
+      patch "/api/v1/items/#{item.id}",
+        params: { item: { meaning: "新しい説明" } }, headers: headers, as: :json
+
+      expect(response).to have_http_status(:success)
+      expect(item.meanings.in_language("ja").count).to eq(1)
+      expect(json_response["meaning"]).to eq("新しい説明")
+    end
+
+    it "removes the meaning when an empty value is provided" do
+      item = user.items.create!(title: "光合成", item_type: item_type, generation_status: "completed")
+      item.meanings.create!(definition: "消される説明", language_code: "ja")
+
+      patch "/api/v1/items/#{item.id}",
+        params: { item: { meaning: "" } }, headers: headers, as: :json
+
+      expect(response).to have_http_status(:success)
+      expect(item.meanings.in_language("ja").count).to eq(0)
+      expect(json_response["meaning"]).to be_nil
     end
   end
 

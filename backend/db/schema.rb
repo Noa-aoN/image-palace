@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_04_28_000000) do
+ActiveRecord::Schema[8.1].define(version: 2026_06_11_000006) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
   enable_extension "pgcrypto"
@@ -41,6 +41,26 @@ ActiveRecord::Schema[8.1].define(version: 2026_04_28_000000) do
     t.bigint "blob_id", null: false
     t.string "variation_digest", null: false
     t.index ["blob_id", "variation_digest"], name: "index_active_storage_variant_records_uniqueness", unique: true
+  end
+
+  create_table "collection_items", id: :uuid, default: -> { "gen_random_uuid()" }, force: :cascade do |t|
+    t.uuid "collection_id", null: false
+    t.datetime "created_at", null: false
+    t.uuid "item_id", null: false
+    t.integer "position"
+    t.datetime "updated_at", null: false
+    t.index ["collection_id", "item_id"], name: "index_collection_items_on_collection_id_and_item_id", unique: true
+    t.index ["collection_id"], name: "index_collection_items_on_collection_id"
+  end
+
+  create_table "collections", id: :uuid, default: -> { "gen_random_uuid()" }, force: :cascade do |t|
+    t.datetime "created_at", null: false
+    t.text "description"
+    t.string "name", null: false
+    t.datetime "updated_at", null: false
+    t.uuid "user_id", null: false
+    t.index ["user_id", "created_at"], name: "index_collections_on_user_id_and_created_at"
+    t.index ["user_id"], name: "index_collections_on_user_id"
   end
 
   create_table "item_types", id: :uuid, default: -> { "gen_random_uuid()" }, force: :cascade do |t|
@@ -110,6 +130,27 @@ ActiveRecord::Schema[8.1].define(version: 2026_04_28_000000) do
     t.index ["user_id", "from_item_id", "to_item_id", "relation_type"], name: "index_relations_on_unique_relation", unique: true
     t.index ["user_id"], name: "index_relations_on_user_id"
     t.check_constraint "from_item_id <> to_item_id", name: "check_no_self_relation"
+  end
+
+  create_table "room_collections", id: :uuid, default: -> { "gen_random_uuid()" }, force: :cascade do |t|
+    t.uuid "collection_id", null: false
+    t.datetime "created_at", null: false
+    t.integer "position"
+    t.uuid "room_id", null: false
+    t.datetime "updated_at", null: false
+    t.index ["room_id", "collection_id"], name: "index_room_collections_on_room_id_and_collection_id", unique: true
+    t.index ["room_id"], name: "index_room_collections_on_room_id"
+  end
+
+  create_table "rooms", id: :uuid, default: -> { "gen_random_uuid()" }, force: :cascade do |t|
+    t.datetime "created_at", null: false
+    t.string "layout_type", default: "shelf", null: false
+    t.string "name", null: false
+    t.integer "position"
+    t.uuid "space_id", null: false
+    t.datetime "updated_at", null: false
+    t.index ["space_id", "position"], name: "index_rooms_on_space_id_and_position"
+    t.index ["space_id"], name: "index_rooms_on_space_id"
   end
 
   create_table "settings", primary_key: "user_id", id: :uuid, default: nil, force: :cascade do |t|
@@ -250,6 +291,16 @@ ActiveRecord::Schema[8.1].define(version: 2026_04_28_000000) do
     t.index ["key"], name: "index_solid_queue_semaphores_on_key", unique: true
   end
 
+  create_table "spaces", id: :uuid, default: -> { "gen_random_uuid()" }, force: :cascade do |t|
+    t.datetime "created_at", null: false
+    t.text "description"
+    t.string "name", null: false
+    t.datetime "updated_at", null: false
+    t.uuid "user_id", null: false
+    t.index ["user_id", "created_at"], name: "index_spaces_on_user_id_and_created_at"
+    t.index ["user_id"], name: "index_spaces_on_user_id"
+  end
+
   create_table "subscriptions", id: :uuid, default: -> { "gen_random_uuid()" }, force: :cascade do |t|
     t.datetime "created_at", null: false
     t.datetime "current_period_end"
@@ -285,8 +336,21 @@ ActiveRecord::Schema[8.1].define(version: 2026_04_28_000000) do
     t.index ["reset_password_token"], name: "index_users_on_reset_password_token", unique: true
   end
 
+  create_table "views", id: :uuid, default: -> { "gen_random_uuid()" }, force: :cascade do |t|
+    t.datetime "created_at", null: false
+    t.string "name", null: false
+    t.datetime "updated_at", null: false
+    t.uuid "user_id", null: false
+    t.string "view_type", default: "freeboard", null: false
+    t.index ["user_id", "created_at"], name: "index_views_on_user_id_and_created_at"
+    t.index ["user_id"], name: "index_views_on_user_id"
+  end
+
   add_foreign_key "active_storage_attachments", "active_storage_blobs", column: "blob_id"
   add_foreign_key "active_storage_variant_records", "active_storage_blobs", column: "blob_id"
+  add_foreign_key "collection_items", "collections", on_delete: :cascade
+  add_foreign_key "collection_items", "items", on_delete: :cascade
+  add_foreign_key "collections", "users", on_delete: :cascade
   add_foreign_key "items", "item_types", on_delete: :restrict
   add_foreign_key "items", "users", on_delete: :cascade
   add_foreign_key "meanings", "items", on_delete: :cascade
@@ -294,6 +358,9 @@ ActiveRecord::Schema[8.1].define(version: 2026_04_28_000000) do
   add_foreign_key "relations", "items", column: "from_item_id", on_delete: :cascade
   add_foreign_key "relations", "items", column: "to_item_id", on_delete: :cascade
   add_foreign_key "relations", "users", on_delete: :cascade
+  add_foreign_key "room_collections", "collections", on_delete: :cascade
+  add_foreign_key "room_collections", "rooms", on_delete: :cascade
+  add_foreign_key "rooms", "spaces", on_delete: :cascade
   add_foreign_key "settings", "users", on_delete: :cascade
   add_foreign_key "shared_medias", "users", on_delete: :nullify
   add_foreign_key "solid_queue_blocked_executions", "solid_queue_jobs", column: "job_id", on_delete: :cascade
@@ -302,6 +369,8 @@ ActiveRecord::Schema[8.1].define(version: 2026_04_28_000000) do
   add_foreign_key "solid_queue_ready_executions", "solid_queue_jobs", column: "job_id", on_delete: :cascade
   add_foreign_key "solid_queue_recurring_executions", "solid_queue_jobs", column: "job_id", on_delete: :cascade
   add_foreign_key "solid_queue_scheduled_executions", "solid_queue_jobs", column: "job_id", on_delete: :cascade
+  add_foreign_key "spaces", "users", on_delete: :cascade
   add_foreign_key "subscriptions", "plans", on_delete: :restrict
   add_foreign_key "subscriptions", "users", on_delete: :cascade
+  add_foreign_key "views", "users", on_delete: :cascade
 end

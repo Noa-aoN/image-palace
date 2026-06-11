@@ -4,8 +4,11 @@ import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { Button } from '@/components/ui/button'
 import { Label } from '@/components/ui/label'
+import { Spinner } from '@/components/ui/spinner'
 import { createItem } from '@/lib/api/items'
 import { useItemsStore } from '@/stores/items'
+
+const MAX_TITLE_LENGTH = 100
 
 function parseTitles(raw: string): string[] {
   return raw
@@ -25,10 +28,15 @@ export function CreateItemForm() {
 
   const titles = parseTitles(input)
   const wordCount = titles.length
+  const hasTooLongTitle = titles.some((t) => t.length > MAX_TITLE_LENGTH)
 
   const handleSubmit = async (e: React.SyntheticEvent<HTMLFormElement>) => {
     e.preventDefault()
     if (titles.length === 0) return
+    if (hasTooLongTitle) {
+      setApiError(`1単語あたり${MAX_TITLE_LENGTH}文字以内で入力してください。`)
+      return
+    }
     setApiError(null)
     setSubmitting(true)
     setProgress({ done: 0, total: titles.length })
@@ -56,7 +64,7 @@ export function CreateItemForm() {
   return (
     <form onSubmit={handleSubmit} className="space-y-5">
       <div className="space-y-2">
-        <Label htmlFor="titles">単語・概念を入力</Label>
+        <Label htmlFor="titles" required>単語・概念を入力</Label>
         <div className="rounded-xl border border-border/70 bg-muted/40 px-4 py-3 text-sm leading-6 text-muted-foreground">
           <p>具体的な名詞や場面が思い浮かぶ言葉ほど、画像化に成功しやすいです。</p>
           <p>例: <span className="font-medium text-foreground">富士山 / API / 光合成 / 細胞分裂</span></p>
@@ -77,6 +85,11 @@ export function CreateItemForm() {
         {wordCount === 0 && (
           <p className="text-xs text-muted-foreground">
             抽象的すぎる語や意味のない文字列は失敗しやすいため、まずは具体的な単語から試してください。
+          </p>
+        )}
+        {hasTooLongTitle && (
+          <p className="text-xs text-destructive">
+            1単語あたり{MAX_TITLE_LENGTH}文字を超えています。区切り直すか短くしてください。
           </p>
         )}
       </div>
@@ -107,9 +120,10 @@ export function CreateItemForm() {
 
       <Button
         type="submit"
-        disabled={submitting || wordCount === 0}
-        className="w-full"
+        disabled={submitting || wordCount === 0 || hasTooLongTitle}
+        className="w-full flex items-center justify-center gap-2"
       >
+        {submitting && <Spinner size={15} />}
         {submitting
           ? `作成中... (${progress?.done ?? 0}/${progress?.total ?? wordCount})`
           : wordCount > 1
