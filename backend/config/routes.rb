@@ -24,7 +24,14 @@ Rails.application.routes.draw do
           delete "items/:item_id", action: :remove_item
         end
       end
-      resources :spaces, only: [ :index, :create, :show, :update, :destroy ]
+      resources :spaces, only: [ :index, :create, :show, :update, :destroy ] do
+        resources :rooms, only: [ :index, :create, :show, :update, :destroy ] do
+          member do
+            post "collections", action: :add_collection
+            delete "collections/:collection_id", action: :remove_collection
+          end
+        end
+      end
     end
   end
 end

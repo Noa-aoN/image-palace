@@ -3,11 +3,13 @@
 import { useEffect, useState } from 'react'
 import Link from 'next/link'
 import { useParams, useRouter } from 'next/navigation'
-import { Trash2, Pencil, Check, X } from 'lucide-react'
+import { Trash2, Pencil, Check, X, Plus, DoorOpen, ChevronRight } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { getSpace, updateSpace, deleteSpace } from '@/lib/api/spaces'
+import { getRooms, createRoom } from '@/lib/api/rooms'
 import type { Space } from '@/types/space'
+import type { Room } from '@/types/room'
 
 export default function SpaceDetailPage() {
   const { id } = useParams<{ id: string }>()
@@ -24,6 +26,12 @@ export default function SpaceDetailPage() {
   const [confirmDelete, setConfirmDelete] = useState(false)
   const [deleting, setDeleting] = useState(false)
 
+  const [rooms, setRooms] = useState<Room[]>([])
+  const [creatingRoom, setCreatingRoom] = useState(false)
+  const [roomName, setRoomName] = useState('')
+  const [roomSubmitting, setRoomSubmitting] = useState(false)
+  const [roomError, setRoomError] = useState<string | null>(null)
+
   useEffect(() => {
     let cancelled = false
     getSpace(id)
@@ -33,10 +41,39 @@ export default function SpaceDetailPage() {
       .catch(() => {
         if (!cancelled) setError('スペースの取得に失敗しました')
       })
+    getRooms(id)
+      .then((data) => {
+        if (!cancelled) setRooms(data)
+      })
+      .catch(() => {
+        // ルーム取得失敗は致命的でないため握りつぶす
+      })
     return () => {
       cancelled = true
     }
   }, [id])
+
+  const handleCreateRoom = async (e: React.FormEvent) => {
+    e.preventDefault()
+    const trimmed = roomName.trim()
+    if (!trimmed) {
+      setRoomError('ルーム名を入力してください')
+      return
+    }
+    setRoomSubmitting(true)
+    setRoomError(null)
+    try {
+      const created = await createRoom(id, trimmed)
+      setRooms((current) => [...current, created])
+      setRoomName('')
+      setCreatingRoom(false)
+    } catch (err: unknown) {
+      const axiosErr = err as { response?: { data?: { errors?: string[] } } }
+      setRoomError(axiosErr?.response?.data?.errors?.[0] ?? 'ルームの作成に失敗しました')
+    } finally {
+      setRoomSubmitting(false)
+    }
+  }
 
   const startEdit = () => {
     if (!space) return
@@ -161,13 +198,72 @@ export default function SpaceDetailPage() {
 
       {error && <p className="text-sm text-destructive mb-4">{error}</p>}
 
-      {/* ルーム: #115 で実装予定 */}
+      {/* ルーム */}
       <section className="space-y-3">
-        <h2 className="text-base font-semibold">ルーム</h2>
-        <div className="rounded-xl border border-dashed border-border bg-muted/30 px-5 py-6 text-sm text-muted-foreground">
-          <p className="font-medium text-foreground/70">近日対応予定</p>
-          <p className="mt-1">このスペース内に、コレクションやビューを配置するルームを作れるようになります。</p>
+        <div className="flex items-center justify-between">
+          <h2 className="text-base font-semibold">ルーム</h2>
+          {!creatingRoom && (
+            <Button variant="outline" size="sm" onClick={() => setCreatingRoom(true)} className="flex items-center gap-1.5">
+              <Plus size={14} />
+              ルームを追加
+            </Button>
+          )}
         </div>
+
+        {creatingRoom && (
+          <form onSubmit={handleCreateRoom} className="flex flex-col gap-2 sm:flex-row sm:items-start">
+            <div className="flex-1">
+              <Input
+                value={roomName}
+                onChange={(e) => setRoomName(e.target.value)}
+                placeholder="ルーム名（例: 単語、文法）"
+                autoFocus
+                disabled={roomSubmitting}
+                aria-label="ルーム名"
+              />
+              {roomError && <p className="mt-1 text-sm text-destructive">{roomError}</p>}
+            </div>
+            <div className="flex gap-2">
+              <Button type="submit" size="sm" disabled={roomSubmitting}>
+                {roomSubmitting ? '作成中...' : '作成'}
+              </Button>
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                onClick={() => { setCreatingRoom(false); setRoomName(''); setRoomError(null) }}
+                disabled={roomSubmitting}
+              >
+                キャンセル
+              </Button>
+            </div>
+          </form>
+        )}
+
+        {rooms.length === 0 ? (
+          <p className="text-sm text-muted-foreground py-2">
+            まだルームがありません。「ルームを追加」でテーマ別の空間を作りましょう。
+          </p>
+        ) : (
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            {rooms.map((room) => (
+              <Link
+                key={room.id}
+                href={`/spaces/${id}/rooms/${room.id}`}
+                className="flex items-center justify-between gap-2 rounded-xl border border-border bg-card px-4 py-3 hover:shadow-md transition-shadow"
+              >
+                <div className="flex items-center gap-2 min-w-0">
+                  <DoorOpen size={16} style={{ color: 'var(--palace)' }} />
+                  <span className="font-medium text-sm truncate">{room.name}</span>
+                </div>
+                <div className="flex items-center gap-1 shrink-0 text-xs text-muted-foreground">
+                  {room.collection_count} コレクション
+                  <ChevronRight size={14} />
+                </div>
+              </Link>
+            ))}
+          </div>
+        )}
       </section>
     </div>
   )
