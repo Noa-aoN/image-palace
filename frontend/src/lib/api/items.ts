@@ -1,5 +1,5 @@
 import { apiClient } from './client'
-import type { Item } from '@/types/item'
+import type { Item, ItemType } from '@/types/item'
 
 export interface ItemsSummary {
   total_count: number
@@ -26,9 +26,21 @@ export async function getItem(id: string): Promise<Item> {
   return res.data
 }
 
-export async function updateItem(id: string, title: string): Promise<Item> {
-  const res = await apiClient.patch<Item>(`/api/v1/items/${id}`, { item: { title } })
+export interface ItemUpdatePayload {
+  title?: string
+  item_type_id?: string
+  /** 空文字を渡すと意味は削除される */
+  meaning?: string
+}
+
+export async function updateItem(id: string, payload: ItemUpdatePayload): Promise<Item> {
+  const res = await apiClient.patch<Item>(`/api/v1/items/${id}`, { item: payload })
   return res.data
+}
+
+export async function getItemTypes(): Promise<ItemType[]> {
+  const res = await apiClient.get<{ item_types: ItemType[] }>('/api/v1/item_types')
+  return res.data.item_types
 }
 
 export async function getItemsSummary(): Promise<ItemsSummary> {

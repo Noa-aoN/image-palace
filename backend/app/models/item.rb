@@ -26,6 +26,15 @@ class Item < ApplicationRecord
     end
   end
 
+  # 表示・編集用の代表的な意味（日本語を優先）
+  def primary_meaning
+    if association(:meanings).loaded?
+      meanings.find { |m| m.language_code == "ja" } || meanings.first
+    else
+      meanings.in_language("ja").first || meanings.first
+    end
+  end
+
   def metadata_without_generation_error
     (metadata || {}).except(*GENERATION_ERROR_KEYS)
   end

@@ -5,7 +5,7 @@ module Api
 
       def index
         items = current_user.items
-                  .includes(medias: { file_attachment: :blob })
+                  .includes(:item_type, :meanings, medias: { file_attachment: :blob })
                   .order(created_at: :desc)
         render json: { items: items.map { |i| serialize_item(repair_item_if_media_missing(i)) } }
       end
@@ -38,9 +38,12 @@ module Api
         render json: serialize_item(repair_item_if_media_missing(item))
       end
 
-      # タイトル等の編集。画像の再生成は伴わず、既存メディアと生成ステータスは保持する
+      # タイトル・種別・意味の編集。画像の再生成は伴わず、既存メディアと生成ステータスは保持する
       def update
-        item.update!(item_update_params)
+        Item.transaction do
+          item.update!(item_update_params)
+          upsert_meaning!
+        end
         render json: serialize_item(item.reload)
       rescue ActiveRecord::RecordInvalid => e
         render json: { errors: e.record.errors.full_messages }, status: :unprocessable_entity
@@ -72,15 +75,39 @@ module Api
         params.require(:item).permit(:title, :item_type_id)
       end
 
+      # item[meaning] が渡された場合のみ日本語の意味を upsert する。
+      # 空文字なら既存の意味を削除する（未指定キーは無視）
+      def upsert_meaning!
+        item_param = params[:item]
+        return unless item_param.respond_to?(:key?) && item_param.key?(:meaning)
+
+        definition = item_param[:meaning].to_s.strip
+        meaning = item.meanings.find_or_initialize_by(language_code: "ja")
+
+        if definition.blank?
+          meaning.destroy! if meaning.persisted?
+        else
+          meaning.update!(definition: definition)
+        end
+      end
+
       def serialize_item(item)
         {
           id: item.id,
           title: item.title,
           generation_status: item.generation_status,
           generation_error: item.generation_error,
+          item_type: serialize_item_type(item.item_type),
+          meaning: item.primary_meaning&.definition,
           media: serialize_media(item.primary_media),
           created_at: item.created_at
         }
+      end
+
+      def serialize_item_type(item_type)
+        return nil unless item_type
+
+        { id: item_type.id, name: item_type.name, label: item_type.label }
       end
 
       def serialize_media(media)
@@ -142,7 +169,7 @@ module Api
 
       def set_item
         @item = current_user.items
-                            .includes(medias: { file_attachment: :blob })
+                            .includes(:item_type, :meanings, medias: { file_attachment: :blob })
                             .find(params[:id])
       end
 
