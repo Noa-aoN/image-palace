@@ -8,39 +8,51 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { getDeck, updateDeck, deleteDeck, addItemToDeck, removeItemFromDeck } from '@/lib/api/decks'
 import { getItems } from '@/lib/api/items'
+import { useItemsStore } from '@/stores/items'
 import type { DeckDetail } from '@/types/deck'
 import type { Item } from '@/types/item'
 
 function CardThumb({
   item,
+  href,
   isCover,
   topRight,
   bottomAction,
 }: {
   item: Item
+  // 指定時は画像をカード詳細へのリンクにする（マイカード同様の詳細遷移）
+  href?: string
   isCover?: boolean
   topRight?: React.ReactNode
   bottomAction?: React.ReactNode
 }) {
   const imageUrl = item.media?.thumb_url ?? item.media?.url ?? null
+  const inner = imageUrl ? (
+    // eslint-disable-next-line @next/next/no-img-element
+    <img src={imageUrl} alt={item.title} className="w-full h-full object-cover" loading="lazy" />
+  ) : (
+    <span className="text-muted-foreground text-xs px-2 text-center">{item.title}</span>
+  )
+
   return (
     <div className="flex flex-col rounded-xl border border-border overflow-hidden bg-card">
-      <div className="relative w-full aspect-square bg-muted flex items-center justify-center overflow-hidden">
-        {imageUrl ? (
-          // eslint-disable-next-line @next/next/no-img-element
-          <img src={imageUrl} alt={item.title} className="w-full h-full object-cover" loading="lazy" />
+      <div className="relative w-full aspect-square bg-muted overflow-hidden">
+        {href ? (
+          <Link href={href} className="flex h-full w-full items-center justify-center hover:opacity-95 transition-opacity">
+            {inner}
+          </Link>
         ) : (
-          <span className="text-muted-foreground text-xs px-2 text-center">{item.title}</span>
+          <div className="flex h-full w-full items-center justify-center">{inner}</div>
         )}
         {isCover && (
           <span
-            className="absolute left-1 top-1 rounded px-1.5 py-0.5 text-[10px] font-medium text-white"
+            className="absolute left-1 top-1 z-10 rounded px-1.5 py-0.5 text-[10px] font-medium text-white"
             style={{ backgroundColor: 'var(--palace)' }}
           >
             表紙
           </span>
         )}
-        {topRight && <div className="absolute top-1 right-1">{topRight}</div>}
+        {topRight && <div className="absolute top-1 right-1 z-10">{topRight}</div>}
       </div>
       <div className="px-2 py-1.5 flex items-center justify-between gap-1">
         <span className="text-xs font-medium truncate">{item.title}</span>
@@ -67,6 +79,8 @@ export default function DeckDetailPage() {
   const [allItems, setAllItems] = useState<Item[]>([])
   const [busyId, setBusyId] = useState<string | null>(null)
 
+  const setStoreItems = useItemsStore((s) => s.setItems)
+
   useEffect(() => {
     let cancelled = false
     getDeck(id)
@@ -80,6 +94,12 @@ export default function DeckDetailPage() {
       cancelled = true
     }
   }, [id])
+
+  // マイカード踏襲: カード詳細の左右移動がこのデッキのカード内になるよう、
+  // items ストアにデッキのカードを反映する
+  useEffect(() => {
+    if (deck) setStoreItems(deck.items)
+  }, [deck, setStoreItems])
 
   const openPicker = async () => {
     setPicking(true)
@@ -292,6 +312,7 @@ export default function DeckDetailPage() {
               <CardThumb
                 key={item.id}
                 item={item}
+                href={`/items/${item.id}`}
                 isCover={isCover}
                 topRight={
                   <Button
