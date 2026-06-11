@@ -12,6 +12,7 @@ import {
 import { useAuthStore } from '@/stores/auth'
 import { useItemsStore } from '@/stores/items'
 import { signOut } from '@/lib/api/auth'
+import { MobileNav } from '@/components/features/layout/MobileNav'
 
 export function AppHeader() {
   const pathname = usePathname()
@@ -43,17 +44,20 @@ export function AppHeader() {
         borderBottom: '1px solid var(--palace)',
       }}
     >
-      {/* ロゴ */}
-      <Link href={isAuthenticated ? '/dashboard' : '/'} className="flex items-center">
-        {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img
-          src="/logo-palace.svg"
-          alt="ImagePalace"
-          width={36}
-          height={36}
-          className="block"
-        />
-      </Link>
+      {/* 左: モバイルのハンバーガー（認証時のみ）＋ ロゴ */}
+      <div className="flex items-center gap-1">
+        {showUserMenu && <MobileNav />}
+        <Link href={isAuthenticated ? '/dashboard' : '/'} className="flex items-center">
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img
+            src="/logo-palace.svg"
+            alt="ImagePalace"
+            width={36}
+            height={36}
+            className="block"
+          />
+        </Link>
+      </div>
 
       {showUserMenu ? (
         <DropdownMenu>

@@ -2,24 +2,9 @@
 
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
-import { ChevronRight, ChevronLeft, LayoutDashboard, GalleryHorizontal, Plus, Layers, LibraryBig, LayoutGrid, Frame } from 'lucide-react'
+import { ChevronRight, ChevronLeft } from 'lucide-react'
 import { useUiStore } from '@/stores/ui'
-
-interface NavItem {
-  href: string
-  icon: React.ReactNode
-  label: string
-}
-
-const NAV_ITEMS: NavItem[] = [
-  { href: '/dashboard', icon: <LayoutDashboard size={22} />, label: 'ダッシュボード' },
-  { href: '/items', icon: <GalleryHorizontal size={22} />, label: 'マイカード' },
-  { href: '/library', icon: <LibraryBig size={22} />, label: 'ライブラリ' },
-  { href: '/collections', icon: <Layers size={22} />, label: 'コレクション' },
-  { href: '/spaces', icon: <LayoutGrid size={22} />, label: 'スペース' },
-  { href: '/views', icon: <Frame size={22} />, label: 'ビュー' },
-  { href: '/items/new', icon: <Plus size={22} />, label: 'カードを作成' },
-]
+import { NAV_ITEMS } from './nav-items'
 
 export function Sidebar() {
   const pathname = usePathname()
@@ -27,7 +12,8 @@ export function Sidebar() {
 
   return (
     <aside
-      className="flex flex-col shrink-0 overflow-y-auto transition-[width] duration-200"
+      // モバイル（<md）では非表示にし、ヘッダーのハンバーガー（MobileNav）を使う
+      className="hidden md:flex flex-col shrink-0 overflow-y-auto transition-[width] duration-200"
       style={{
         width: sidebarExpanded ? '240px' : '72px',
         backgroundColor: 'var(--ivory)',
