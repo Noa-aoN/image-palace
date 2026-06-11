@@ -11,6 +11,8 @@ export function LandingFooter() {
         <span className="mx-2" aria-hidden>|</span>
         <Link href="/privacy" className="hover:underline">プライバシーポリシー</Link>
         <span className="mx-2" aria-hidden>|</span>
+        <Link href="/cookie-settings" className="hover:underline">Cookie設定</Link>
+        <span className="mx-2" aria-hidden>|</span>
         <span>お問い合わせ</span>
       </p>
       <p className="mt-1">© 2026 ImagePalace</p>
