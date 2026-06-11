@@ -312,7 +312,7 @@ export default function DeckDetailPage() {
               <CardThumb
                 key={item.id}
                 item={item}
-                href={`/items/${item.id}`}
+                href={`/items/${item.id}?deck=${id}`}
                 isCover={isCover}
                 topRight={
                   <Button
