@@ -134,6 +134,47 @@ RSpec.describe "Api::V1::Items", type: :request do
       expect(item_ids).to include(own_item.id)
       expect(item_ids).not_to include(other_item.id)
     end
+
+    it "includes pagination meta" do
+      user.items.create!(title: "カード", item_type: item_type, generation_status: "completed")
+
+      get "/api/v1/items", headers: headers, as: :json
+
+      meta = json_response.fetch("meta")
+      expect(meta["page"]).to eq(1)
+      expect(meta["per"]).to eq(24)
+      expect(meta["total_count"]).to eq(1)
+      expect(meta["total_pages"]).to eq(1)
+    end
+
+    it "paginates with page and per params" do
+      5.times do |i|
+        user.items.create!(
+          title: "カード#{i}",
+          item_type: item_type,
+          generation_status: "completed",
+          created_at: i.days.ago
+        )
+      end
+
+      get "/api/v1/items", params: { page: 2, per: 2 }, headers: headers
+
+      expect(response).to have_http_status(:success)
+      expect(json_response.fetch("items").size).to eq(2)
+      meta = json_response.fetch("meta")
+      expect(meta["page"]).to eq(2)
+      expect(meta["per"]).to eq(2)
+      expect(meta["total_count"]).to eq(5)
+      expect(meta["total_pages"]).to eq(3)
+    end
+
+    it "clamps per to the max and normalizes invalid page" do
+      get "/api/v1/items", params: { page: 0, per: 999 }, headers: headers
+
+      meta = json_response.fetch("meta")
+      expect(meta["page"]).to eq(1)
+      expect(meta["per"]).to eq(100)
+    end
   end
 
   describe "GET /api/v1/items/summary" do

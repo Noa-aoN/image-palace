@@ -16,9 +16,26 @@ export async function createItem(title: string, forceGenerate = false): Promise<
   return res.data
 }
 
+export interface PaginationMeta {
+  page: number
+  per: number
+  total_count: number
+  total_pages: number
+}
+
+export interface ItemsPage {
+  items: Item[]
+  meta: PaginationMeta
+}
+
 export async function getItems(): Promise<Item[]> {
   const res = await apiClient.get<{ items: Item[] }>('/api/v1/items')
   return res.data.items
+}
+
+export async function getItemsPage(page: number, per: number): Promise<ItemsPage> {
+  const res = await apiClient.get<ItemsPage>('/api/v1/items', { params: { page, per } })
+  return res.data
 }
 
 export async function getItem(id: string): Promise<Item> {

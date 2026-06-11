@@ -3,11 +3,31 @@ module Api
     class ItemsController < BaseController
       before_action :set_item, only: [ :show, :update, :destroy, :retry ]
 
+      DEFAULT_PER_PAGE = 24
+      MAX_PER_PAGE = 100
+
       def index
-        items = current_user.items
+        scope = current_user.items.order(created_at: :desc)
+
+        per = pagination_per
+        page = pagination_page
+        total_count = scope.count
+        total_pages = total_count.zero? ? 0 : (total_count.to_f / per).ceil
+
+        items = scope
                   .includes(medias: { file_attachment: :blob })
-                  .order(created_at: :desc)
-        render json: { items: items.map { |i| serialize_item(repair_item_if_media_missing(i)) } }
+                  .limit(per)
+                  .offset((page - 1) * per)
+
+        render json: {
+          items: items.map { |i| serialize_item(repair_item_if_media_missing(i)) },
+          meta: {
+            page: page,
+            per: per,
+            total_count: total_count,
+            total_pages: total_pages
+          }
+        }
       end
 
       def summary
@@ -63,6 +83,20 @@ module Api
       end
 
       private
+
+      # 1始まり。不正値・0以下は 1 に丸める
+      def pagination_page
+        page = params[:page].to_i
+        page < 1 ? 1 : page
+      end
+
+      # 1〜MAX_PER_PAGE にクランプ。未指定・不正値は DEFAULT_PER_PAGE
+      def pagination_per
+        per = params[:per].to_i
+        return DEFAULT_PER_PAGE if per <= 0
+
+        per.clamp(1, MAX_PER_PAGE)
+      end
 
       def item_params
         params.require(:item).permit(:title, :item_type_id, :force_generate)

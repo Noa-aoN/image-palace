@@ -3,10 +3,13 @@
 import { startTransition, useEffect, useEffectEvent, useRef, useState } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
+import { ChevronLeft, ChevronRight } from 'lucide-react'
 import { Button } from '@/components/ui/button'
-import { getItems } from '@/lib/api/items'
+import { getItemsPage } from '@/lib/api/items'
 import { useItemsStore } from '@/stores/items'
 import type { Item } from '@/types/item'
+
+const PER_PAGE = 24
 
 const STATUS_LABEL: Record<string, string> = {
   pending: '生成待ち',
@@ -89,18 +92,22 @@ function ItemCard({ item }: { item: Item }) {
 export function ItemList() {
   const items = useItemsStore((state) => state.items)
   const setItems = useItemsStore((state) => state.setItems)
+  const [page, setPage] = useState(1)
+  const [totalPages, setTotalPages] = useState(1)
   const [loading, setLoading] = useState(() => useItemsStore.getState().items.length === 0)
   const [error, setError] = useState<string | null>(null)
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const requestInFlightRef = useRef(false)
 
-  const fetchItems = useEffectEvent(async (): Promise<Item[] | null> => {
+  // 現在ページを取得し、ストア（＝詳細画面の前後ナビが参照）へ反映する
+  const fetchPage = useEffectEvent(async (targetPage: number): Promise<Item[] | null> => {
     if (requestInFlightRef.current) return null
 
     requestInFlightRef.current = true
     try {
-      const fetched = await getItems()
+      const { items: fetched, meta } = await getItemsPage(targetPage, PER_PAGE)
       setItems(fetched)
+      setTotalPages(Math.max(meta.total_pages, 1))
       setError(null)
       return fetched
     } catch {
@@ -121,10 +128,15 @@ export function ItemList() {
       }
     }
 
+    // ページ切り替え時は前ページの生成中ポーリングを止める
+    clearTimer()
+    setLoading(true)
+
     const poll = async () => {
-      const fetched = await fetchItems()
+      const fetched = await fetchPage(page)
       if (cancelled) return
 
+      // 表示中ページに生成中カードがある間だけポーリングを継続する
       const latestItems = fetched ?? useItemsStore.getState().items
       const hasPending = latestItems.some((item) => POLLING_STATUSES.has(item.generation_status))
       if (hasPending) {
@@ -140,7 +152,15 @@ export function ItemList() {
       cancelled = true
       clearTimer()
     }
-  }, [])
+  }, [page])
+
+  const goToPage = (next: number) => {
+    if (next < 1 || next > totalPages || next === page) return
+    setPage(next)
+    if (typeof window !== 'undefined') {
+      window.scrollTo({ top: 0, behavior: 'smooth' })
+    }
+  }
 
   if (loading) {
     return (
@@ -178,10 +198,40 @@ export function ItemList() {
   }
 
   return (
-    <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-      {items.map((item) => (
-        <ItemCard key={item.id} item={item} />
-      ))}
+    <div className="space-y-8">
+      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+        {items.map((item) => (
+          <ItemCard key={item.id} item={item} />
+        ))}
+      </div>
+
+      {totalPages > 1 && (
+        <nav className="flex items-center justify-center gap-4" aria-label="ページネーション">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => goToPage(page - 1)}
+            disabled={page <= 1}
+            className="flex items-center gap-1"
+          >
+            <ChevronLeft size={16} />
+            前へ
+          </Button>
+          <span className="text-sm text-muted-foreground tabular-nums" aria-current="page">
+            {page} / {totalPages}
+          </span>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => goToPage(page + 1)}
+            disabled={page >= totalPages}
+            className="flex items-center gap-1"
+          >
+            次へ
+            <ChevronRight size={16} />
+          </Button>
+        </nav>
+      )}
     </div>
   )
 }
