@@ -44,5 +44,22 @@ RSpec.describe GenerateImageJob, type: :job do
       expect(item.generation_error_code).to be_nil
       expect(item.primary_media.file).to be_attached
     end
+
+    it "attaches the generated image bytes on cache miss" do
+      result = GenerateImageService::Result.new(
+        image_data: "\x89PNG\r\n\x1A\nfake-png-bytes",
+        content_type: "image/png",
+        metadata: { "provider" => "openai", "model" => "gpt-image-1" }
+      )
+      allow(GenerateImageService).to receive(:call).and_return(result)
+
+      described_class.perform_now(item.id)
+
+      item.reload
+      expect(GenerateImageService).to have_received(:call).with(prompt: item.title)
+      expect(item.generation_status).to eq("completed")
+      expect(item.primary_media.file).to be_attached
+      expect(item.primary_media.metadata["model"]).to eq("gpt-image-1")
+    end
   end
 end
