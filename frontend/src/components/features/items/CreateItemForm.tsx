@@ -4,6 +4,7 @@ import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { Button } from '@/components/ui/button'
 import { Label } from '@/components/ui/label'
+import { Spinner } from '@/components/ui/spinner'
 import { createItem } from '@/lib/api/items'
 import { useItemsStore } from '@/stores/items'
 
@@ -120,8 +121,9 @@ export function CreateItemForm() {
       <Button
         type="submit"
         disabled={submitting || wordCount === 0 || hasTooLongTitle}
-        className="w-full"
+        className="w-full flex items-center justify-center gap-2"
       >
+        {submitting && <Spinner size={15} />}
         {submitting
           ? `作成中... (${progress?.done ?? 0}/${progress?.total ?? wordCount})`
           : wordCount > 1
