@@ -1,0 +1,100 @@
+require "rails_helper"
+
+RSpec.describe "Api::V1::Views", type: :request do
+  let(:user) { create(:user, :confirmed) }
+  let(:headers) { auth_headers_for(user) }
+
+  describe "認証ガード" do
+    it "GET /api/v1/views returns 401 without auth headers" do
+      get "/api/v1/views", as: :json
+      expect(response).to have_http_status(:unauthorized)
+    end
+  end
+
+  describe "GET /api/v1/views" do
+    it "returns the user's views" do
+      user.views.create!(name: "関係図")
+      user.views.create!(name: "タイムライン")
+
+      get "/api/v1/views", headers: headers, as: :json
+
+      expect(response).to have_http_status(:success)
+      names = json_response.fetch("views").map { |v| v["name"] }
+      expect(names).to contain_exactly("関係図", "タイムライン")
+    end
+
+    it "does not return other users views" do
+      user.views.create!(name: "自分")
+      other = create(:user, :confirmed)
+      other.views.create!(name: "他人")
+
+      get "/api/v1/views", headers: headers, as: :json
+
+      names = json_response.fetch("views").map { |v| v["name"] }
+      expect(names).to include("自分")
+      expect(names).not_to include("他人")
+    end
+  end
+
+  describe "POST /api/v1/views" do
+    it "creates a view with default view_type" do
+      expect {
+        post "/api/v1/views", params: { view: { name: "新ビュー" } }, headers: headers, as: :json
+      }.to change { user.views.count }.by(1)
+
+      expect(response).to have_http_status(:created)
+      expect(json_response["name"]).to eq("新ビュー")
+      expect(json_response["view_type"]).to eq("freeboard")
+    end
+
+    it "returns validation error when name is blank" do
+      post "/api/v1/views", params: { view: { name: "" } }, headers: headers, as: :json
+
+      expect(response).to have_http_status(:unprocessable_content)
+      expect(json_response["errors"]).to be_present
+    end
+  end
+
+  describe "GET /api/v1/views/:id" do
+    it "returns the view" do
+      view = user.views.create!(name: "関係図")
+
+      get "/api/v1/views/#{view.id}", headers: headers, as: :json
+
+      expect(response).to have_http_status(:success)
+      expect(json_response["name"]).to eq("関係図")
+    end
+
+    it "rejects access to another users view" do
+      other = create(:user, :confirmed)
+      other_view = other.views.create!(name: "他人")
+
+      get "/api/v1/views/#{other_view.id}", headers: headers, as: :json
+
+      expect(response).to have_http_status(:not_found)
+    end
+  end
+
+  describe "PATCH /api/v1/views/:id" do
+    it "updates the view" do
+      view = user.views.create!(name: "旧名")
+
+      patch "/api/v1/views/#{view.id}", params: { view: { name: "新名" } }, headers: headers, as: :json
+
+      expect(response).to have_http_status(:success)
+      expect(view.reload.name).to eq("新名")
+    end
+  end
+
+  describe "DELETE /api/v1/views/:id" do
+    it "deletes the view" do
+      view = user.views.create!(name: "消す")
+
+      expect {
+        delete "/api/v1/views/#{view.id}", headers: headers, as: :json
+      }.to change { user.views.count }.by(-1)
+
+      expect(response).to have_http_status(:no_content)
+    end
+  end
+end

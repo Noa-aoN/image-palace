@@ -7,9 +7,11 @@ import { Button } from '@/components/ui/button'
 import { getItems, getItemsSummary } from '@/lib/api/items'
 import { getCollections } from '@/lib/api/collections'
 import { getSpaces } from '@/lib/api/spaces'
+import { getViews } from '@/lib/api/views'
 import type { Item } from '@/types/item'
 import type { Collection } from '@/types/collection'
 import type { Space } from '@/types/space'
+import type { View } from '@/types/view'
 
 const PREVIEW_LIMIT = 12
 
@@ -110,28 +112,24 @@ function SpaceTile({ space }: { space: Space }) {
   )
 }
 
+function ViewTile({ view }: { view: View }) {
+  return (
+    <Link
+      href={`/views/${view.id}`}
+      className="shrink-0 w-44 flex flex-col gap-2 rounded-xl border border-border bg-card px-4 py-3 hover:shadow-md transition-shadow"
+    >
+      <div className="flex items-center gap-2">
+        <Frame size={16} style={{ color: 'var(--palace)' }} />
+        <span className="font-medium text-sm truncate">{view.name}</span>
+      </div>
+      <span className="text-xs text-muted-foreground mt-auto">フリーボード</span>
+    </Link>
+  )
+}
+
 // 横スクロールのレール
 function Rail({ children }: { children: React.ReactNode }) {
   return <div className="flex gap-3 overflow-x-auto pb-2">{children}</div>
-}
-
-function ComingSoonShelf({
-  icon,
-  title,
-  description,
-}: {
-  icon: React.ReactNode
-  title: string
-  description: string
-}) {
-  return (
-    <Shelf icon={icon} title={title}>
-      <div className="rounded-xl border border-dashed border-border bg-muted/30 px-5 py-6 text-sm text-muted-foreground">
-        <p className="font-medium text-foreground/70">近日対応予定</p>
-        <p className="mt-1">{description}</p>
-      </div>
-    </Shelf>
-  )
 }
 
 function EmptyRail({ message, cta }: { message: string; cta?: React.ReactNode }) {
@@ -148,17 +146,19 @@ export default function LibraryPage() {
   const [cardCount, setCardCount] = useState<number | undefined>(undefined)
   const [collections, setCollections] = useState<Collection[]>([])
   const [spaces, setSpaces] = useState<Space[]>([])
+  const [views, setViews] = useState<View[]>([])
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
     let cancelled = false
-    Promise.allSettled([getItems(), getItemsSummary(), getCollections(), getSpaces()])
-      .then(([itemsRes, summaryRes, collectionsRes, spacesRes]) => {
+    Promise.allSettled([getItems(), getItemsSummary(), getCollections(), getSpaces(), getViews()])
+      .then(([itemsRes, summaryRes, collectionsRes, spacesRes, viewsRes]) => {
         if (cancelled) return
         if (itemsRes.status === 'fulfilled') setCards(itemsRes.value.slice(0, PREVIEW_LIMIT))
         if (summaryRes.status === 'fulfilled') setCardCount(summaryRes.value.total_count)
         if (collectionsRes.status === 'fulfilled') setCollections(collectionsRes.value)
         if (spacesRes.status === 'fulfilled') setSpaces(spacesRes.value)
+        if (viewsRes.status === 'fulfilled') setViews(viewsRes.value)
       })
       .finally(() => {
         if (!cancelled) setLoading(false)
@@ -265,12 +265,26 @@ export default function LibraryPage() {
         )}
       </Shelf>
 
-      {/* ビュー（フリーボード）: #112 / #113 */}
-      <ComingSoonShelf
+      {/* ビュー（フリーボード） */}
+      <Shelf
         icon={<Frame size={20} />}
         title="ビュー"
-        description="カードを自由配置するフリーボード表示に対応予定です。"
-      />
+        count={views.length}
+        href="/views"
+      >
+        {views.length === 0 ? (
+          <EmptyRail
+            message="まだビューがありません。"
+            cta={<Link href="/views"><Button size="sm">ビューを作成</Button></Link>}
+          />
+        ) : (
+          <Rail>
+            {views.slice(0, PREVIEW_LIMIT).map((view) => (
+              <ViewTile key={view.id} view={view} />
+            ))}
+          </Rail>
+        )}
+      </Shelf>
     </div>
   )
 }

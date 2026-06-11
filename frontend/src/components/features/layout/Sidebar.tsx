@@ -2,7 +2,7 @@
 
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
-import { ChevronRight, ChevronLeft, LayoutDashboard, GalleryHorizontal, Plus, Layers, LibraryBig, LayoutGrid } from 'lucide-react'
+import { ChevronRight, ChevronLeft, LayoutDashboard, GalleryHorizontal, Plus, Layers, LibraryBig, LayoutGrid, Frame } from 'lucide-react'
 import { useUiStore } from '@/stores/ui'
 
 interface NavItem {
@@ -17,6 +17,7 @@ const NAV_ITEMS: NavItem[] = [
   { href: '/library', icon: <LibraryBig size={22} />, label: 'ライブラリ' },
   { href: '/collections', icon: <Layers size={22} />, label: 'コレクション' },
   { href: '/spaces', icon: <LayoutGrid size={22} />, label: 'スペース' },
+  { href: '/views', icon: <Frame size={22} />, label: 'ビュー' },
   { href: '/items/new', icon: <Plus size={22} />, label: 'カードを作成' },
 ]
 

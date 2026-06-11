@@ -32,6 +32,7 @@ Rails.application.routes.draw do
           end
         end
       end
+      resources :views, only: [ :index, :create, :show, :update, :destroy ]
     end
   end
 end
