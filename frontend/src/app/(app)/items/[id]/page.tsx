@@ -6,6 +6,7 @@ import { useParams, useRouter } from 'next/navigation'
 import { Trash2, ChevronLeft, ChevronRight, RefreshCw, Pencil, Check, X } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
+import { Spinner } from '@/components/ui/spinner'
 import { getItem, getItems, deleteItem, retryItem, updateItem } from '@/lib/api/items'
 import { useItemsStore } from '@/stores/items'
 import type { Item } from '@/types/item'
@@ -262,7 +263,7 @@ export default function ItemDetailPage() {
             className="flex items-center gap-1.5 text-sm"
             onBlur={() => setConfirmDelete(false)}
           >
-            <Trash2 size={14} />
+            {deleting ? <Spinner size={14} /> : <Trash2 size={14} />}
             {deleting ? '削除中...' : confirmDelete ? '本当に削除' : '削除'}
           </Button>
         </div>
@@ -334,7 +335,7 @@ export default function ItemDetailPage() {
                 className="text-lg"
               />
               <Button size="sm" onClick={handleSaveTitle} disabled={saving} aria-label="保存" className="shrink-0">
-                <Check size={16} />
+                {saving ? <Spinner size={16} /> : <Check size={16} />}
               </Button>
               <Button variant="ghost" size="sm" onClick={cancelEdit} disabled={saving} aria-label="キャンセル" className="shrink-0">
                 <X size={16} />
