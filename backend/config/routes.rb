@@ -24,6 +24,7 @@ Rails.application.routes.draw do
           delete "items/:item_id", action: :remove_item
         end
       end
+      resources :spaces, only: [ :index, :create, :show, :update, :destroy ]
     end
   end
 end

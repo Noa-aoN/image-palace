@@ -6,8 +6,10 @@ import { GalleryHorizontal, Layers, LayoutGrid, Frame, ChevronRight, Plus } from
 import { Button } from '@/components/ui/button'
 import { getItems, getItemsSummary } from '@/lib/api/items'
 import { getCollections } from '@/lib/api/collections'
+import { getSpaces } from '@/lib/api/spaces'
 import type { Item } from '@/types/item'
 import type { Collection } from '@/types/collection'
+import type { Space } from '@/types/space'
 
 const PREVIEW_LIMIT = 12
 
@@ -91,6 +93,23 @@ function CollectionTile({ collection }: { collection: Collection }) {
   )
 }
 
+function SpaceTile({ space }: { space: Space }) {
+  return (
+    <Link
+      href={`/spaces/${space.id}`}
+      className="shrink-0 w-44 flex flex-col gap-2 rounded-xl border border-border bg-card px-4 py-3 hover:shadow-md transition-shadow"
+    >
+      <div className="flex items-center gap-2">
+        <LayoutGrid size={16} style={{ color: 'var(--palace)' }} />
+        <span className="font-medium text-sm truncate">{space.name}</span>
+      </div>
+      {space.description && (
+        <span className="text-xs text-muted-foreground line-clamp-2">{space.description}</span>
+      )}
+    </Link>
+  )
+}
+
 // 横スクロールのレール
 function Rail({ children }: { children: React.ReactNode }) {
   return <div className="flex gap-3 overflow-x-auto pb-2">{children}</div>
@@ -128,16 +147,18 @@ export default function LibraryPage() {
   const [cards, setCards] = useState<Item[]>([])
   const [cardCount, setCardCount] = useState<number | undefined>(undefined)
   const [collections, setCollections] = useState<Collection[]>([])
+  const [spaces, setSpaces] = useState<Space[]>([])
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
     let cancelled = false
-    Promise.allSettled([getItems(), getItemsSummary(), getCollections()])
-      .then(([itemsRes, summaryRes, collectionsRes]) => {
+    Promise.allSettled([getItems(), getItemsSummary(), getCollections(), getSpaces()])
+      .then(([itemsRes, summaryRes, collectionsRes, spacesRes]) => {
         if (cancelled) return
         if (itemsRes.status === 'fulfilled') setCards(itemsRes.value.slice(0, PREVIEW_LIMIT))
         if (summaryRes.status === 'fulfilled') setCardCount(summaryRes.value.total_count)
         if (collectionsRes.status === 'fulfilled') setCollections(collectionsRes.value)
+        if (spacesRes.status === 'fulfilled') setSpaces(spacesRes.value)
       })
       .finally(() => {
         if (!cancelled) setLoading(false)
@@ -223,12 +244,26 @@ export default function LibraryPage() {
         )}
       </Shelf>
 
-      {/* スペース（ルーム）: #114 / #115 */}
-      <ComingSoonShelf
+      {/* スペース */}
+      <Shelf
         icon={<LayoutGrid size={20} />}
         title="スペース"
-        description="カードを整理する空間（ルーム）を作成できるようになります。"
-      />
+        count={spaces.length}
+        href="/spaces"
+      >
+        {spaces.length === 0 ? (
+          <EmptyRail
+            message="まだスペースがありません。"
+            cta={<Link href="/spaces"><Button size="sm">スペースを作成</Button></Link>}
+          />
+        ) : (
+          <Rail>
+            {spaces.slice(0, PREVIEW_LIMIT).map((space) => (
+              <SpaceTile key={space.id} space={space} />
+            ))}
+          </Rail>
+        )}
+      </Shelf>
 
       {/* ビュー（フリーボード）: #112 / #113 */}
       <ComingSoonShelf
