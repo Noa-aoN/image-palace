@@ -115,7 +115,7 @@ function CollectionTile({ collection }: { collection: Collection }) {
         <Layers size={16} style={{ color: 'var(--palace)' }} />
         <span className="font-medium text-sm truncate">{collection.name}</span>
       </div>
-      <span className="text-xs text-muted-foreground mt-auto">{collection.item_count} 枚</span>
+      <span className="text-xs text-muted-foreground mt-auto">{collection.deck_count} デッキ</span>
     </Link>
   )
 }

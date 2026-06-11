@@ -30,10 +30,10 @@ export async function deleteCollection(id: string): Promise<void> {
   await apiClient.delete(`/api/v1/collections/${id}`)
 }
 
-export async function addItemToCollection(collectionId: string, itemId: string): Promise<void> {
-  await apiClient.post(`/api/v1/collections/${collectionId}/items`, { item_id: itemId })
+export async function addDeckToCollection(collectionId: string, deckId: string): Promise<void> {
+  await apiClient.post(`/api/v1/collections/${collectionId}/decks`, { deck_id: deckId })
 }
 
-export async function removeItemFromCollection(collectionId: string, itemId: string): Promise<void> {
-  await apiClient.delete(`/api/v1/collections/${collectionId}/items/${itemId}`)
+export async function removeDeckFromCollection(collectionId: string, deckId: string): Promise<void> {
+  await apiClient.delete(`/api/v1/collections/${collectionId}/decks/${deckId}`)
 }

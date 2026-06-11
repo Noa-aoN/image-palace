@@ -3,29 +3,36 @@
 import { useEffect, useState } from 'react'
 import Link from 'next/link'
 import { useParams, useRouter } from 'next/navigation'
-import { Trash2, Pencil, Check, X, Plus } from 'lucide-react'
+import { Trash2, Pencil, Check, X, Plus, Library } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
-import { getCollection, updateCollection, deleteCollection, addItemToCollection, removeItemFromCollection } from '@/lib/api/collections'
-import { getItems } from '@/lib/api/items'
-import type { CollectionDetail } from '@/types/collection'
-import type { Item } from '@/types/item'
+import { getCollection, updateCollection, deleteCollection, addDeckToCollection, removeDeckFromCollection } from '@/lib/api/collections'
+import { getDecks } from '@/lib/api/decks'
+import type { CollectionDetail, CollectionDeck } from '@/types/collection'
+import type { Deck } from '@/types/deck'
 
-function ItemThumb({ item, action }: { item: Item; action: React.ReactNode }) {
-  const imageUrl = item.media?.thumb_url ?? item.media?.url ?? null
+function DeckTile({
+  deck,
+  action,
+}: {
+  deck: CollectionDeck | Deck
+  action: React.ReactNode
+}) {
+  const coverUrl = deck.cover?.thumb_url ?? deck.cover?.url ?? null
   return (
     <div className="flex flex-col rounded-xl border border-border overflow-hidden bg-card">
-      <div className="relative w-full aspect-square bg-muted flex items-center justify-center overflow-hidden">
-        {imageUrl ? (
+      <div className="relative w-full aspect-[4/3] bg-muted flex items-center justify-center overflow-hidden">
+        {coverUrl ? (
           // eslint-disable-next-line @next/next/no-img-element
-          <img src={imageUrl} alt={item.title} className="w-full h-full object-cover" loading="lazy" />
+          <img src={coverUrl} alt={deck.name} className="w-full h-full object-cover" loading="lazy" />
         ) : (
-          <span className="text-muted-foreground text-xs px-2 text-center">{item.title}</span>
+          <Library size={24} className="text-muted-foreground/50" />
         )}
         <div className="absolute top-1 right-1">{action}</div>
       </div>
-      <div className="px-3 py-2">
-        <span className="text-sm font-medium truncate block">{item.title}</span>
+      <div className="px-3 py-2 flex items-center justify-between gap-1">
+        <span className="text-sm font-medium truncate">{deck.name}</span>
+        <span className="text-xs text-muted-foreground shrink-0">{deck.item_count} 枚</span>
       </div>
     </div>
   )
@@ -45,8 +52,8 @@ export default function CollectionDetailPage() {
   const [deleting, setDeleting] = useState(false)
 
   const [picking, setPicking] = useState(false)
-  const [allItems, setAllItems] = useState<Item[]>([])
-  const [busyItemId, setBusyItemId] = useState<string | null>(null)
+  const [allDecks, setAllDecks] = useState<Deck[]>([])
+  const [busyDeckId, setBusyDeckId] = useState<string | null>(null)
 
   useEffect(() => {
     let cancelled = false
@@ -64,9 +71,9 @@ export default function CollectionDetailPage() {
 
   const openPicker = async () => {
     setPicking(true)
-    if (allItems.length === 0) {
+    if (allDecks.length === 0) {
       try {
-        setAllItems(await getItems())
+        setAllDecks(await getDecks())
       } catch {
         // 取得失敗時はピッカーを空表示にする
       }
@@ -104,37 +111,37 @@ export default function CollectionDetailPage() {
     }
   }
 
-  const handleAdd = async (item: Item) => {
+  const handleAdd = async (deck: Deck) => {
     if (!collection) return
-    setBusyItemId(item.id)
+    setBusyDeckId(deck.id)
     try {
-      await addItemToCollection(id, item.id)
+      await addDeckToCollection(id, deck.id)
       setCollection({
         ...collection,
-        items: [item, ...collection.items],
-        item_count: collection.item_count + 1,
+        decks: [{ id: deck.id, name: deck.name, item_count: deck.item_count, cover: deck.cover }, ...collection.decks],
+        deck_count: collection.deck_count + 1,
       })
     } catch {
       setError('追加に失敗しました')
     } finally {
-      setBusyItemId(null)
+      setBusyDeckId(null)
     }
   }
 
-  const handleRemove = async (item: Item) => {
+  const handleRemove = async (deck: CollectionDeck) => {
     if (!collection) return
-    setBusyItemId(item.id)
+    setBusyDeckId(deck.id)
     try {
-      await removeItemFromCollection(id, item.id)
+      await removeDeckFromCollection(id, deck.id)
       setCollection({
         ...collection,
-        items: collection.items.filter((i) => i.id !== item.id),
-        item_count: Math.max(collection.item_count - 1, 0),
+        decks: collection.decks.filter((d) => d.id !== deck.id),
+        deck_count: Math.max(collection.deck_count - 1, 0),
       })
     } catch {
-      setError('削除に失敗しました')
+      setError('除外に失敗しました')
     } finally {
-      setBusyItemId(null)
+      setBusyDeckId(null)
     }
   }
 
@@ -153,15 +160,15 @@ export default function CollectionDetailPage() {
         <div className="h-8 w-48 rounded bg-muted animate-pulse" />
         <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
           {Array.from({ length: 4 }).map((_, i) => (
-            <div key={i} className="aspect-square rounded-xl bg-muted animate-pulse" />
+            <div key={i} className="aspect-[4/3] rounded-xl bg-muted animate-pulse" />
           ))}
         </div>
       </div>
     )
   }
 
-  const inCollectionIds = new Set(collection.items.map((i) => i.id))
-  const pickableItems = allItems.filter((i) => !inCollectionIds.has(i.id))
+  const inCollectionIds = new Set(collection.decks.map((d) => d.id))
+  const pickableDecks = allDecks.filter((d) => !inCollectionIds.has(d.id))
 
   return (
     <div className="max-w-5xl mx-auto px-6 py-12">
@@ -169,7 +176,7 @@ export default function CollectionDetailPage() {
         <Button variant="ghost" className="text-sm px-0 mb-4">← コレクション一覧へ</Button>
       </Link>
 
-      <div className="flex items-center justify-between gap-3 mb-6">
+      <div className="flex items-center justify-between gap-3 mb-2">
         {editing ? (
           <div className="flex items-center gap-2 flex-1">
             <Input
@@ -187,7 +194,7 @@ export default function CollectionDetailPage() {
         ) : (
           <div className="flex items-center gap-2 min-w-0">
             <h1 className="text-2xl font-semibold truncate">{collection.name}</h1>
-            <span className="text-sm text-muted-foreground shrink-0">{collection.item_count} 枚</span>
+            <span className="text-sm text-muted-foreground shrink-0">{collection.deck_count} デッキ</span>
             <button
               onClick={() => { setNameDraft(collection.name); setEditing(true) }}
               className="shrink-0 text-muted-foreground hover:text-foreground transition-colors"
@@ -209,6 +216,7 @@ export default function CollectionDetailPage() {
           {deleting ? '削除中...' : confirmDelete ? '本当に削除' : '削除'}
         </Button>
       </div>
+      <p className="text-sm text-muted-foreground mb-6">デッキを束ねるコレクションです。</p>
 
       {error && <p className="text-sm text-destructive mb-4">{error}</p>}
 
@@ -216,28 +224,28 @@ export default function CollectionDetailPage() {
         {!picking ? (
           <Button variant="outline" size="sm" onClick={openPicker} className="flex items-center gap-1.5">
             <Plus size={16} />
-            カードを追加
+            デッキを追加
           </Button>
         ) : (
           <div className="rounded-xl border border-border/70 bg-muted/30 p-4">
             <div className="flex items-center justify-between mb-3">
-              <span className="text-sm font-medium">追加するカードを選択</span>
+              <span className="text-sm font-medium">追加するデッキを選択</span>
               <Button variant="ghost" size="sm" onClick={() => setPicking(false)}>閉じる</Button>
             </div>
-            {pickableItems.length === 0 ? (
-              <p className="text-sm text-muted-foreground">追加できるカードがありません。</p>
+            {pickableDecks.length === 0 ? (
+              <p className="text-sm text-muted-foreground">追加できるデッキがありません。</p>
             ) : (
               <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-                {pickableItems.map((item) => (
-                  <ItemThumb
-                    key={item.id}
-                    item={item}
+                {pickableDecks.map((deck) => (
+                  <DeckTile
+                    key={deck.id}
+                    deck={deck}
                     action={
                       <Button
                         size="icon-sm"
-                        onClick={() => handleAdd(item)}
-                        disabled={busyItemId === item.id}
-                        aria-label="このカードを追加"
+                        onClick={() => handleAdd(deck)}
+                        disabled={busyDeckId === deck.id}
+                        aria-label="このデッキを追加"
                         className="rounded-full shadow"
                       >
                         <Plus size={14} />
@@ -251,23 +259,23 @@ export default function CollectionDetailPage() {
         )}
       </div>
 
-      {collection.items.length === 0 ? (
+      {collection.decks.length === 0 ? (
         <p className="text-center text-muted-foreground py-12">
-          まだカードがありません。「カードを追加」から追加してください。
+          まだデッキがありません。「デッキを追加」から束ねてください。
         </p>
       ) : (
         <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-          {collection.items.map((item) => (
-            <ItemThumb
-              key={item.id}
-              item={item}
+          {collection.decks.map((deck) => (
+            <DeckTile
+              key={deck.id}
+              deck={deck}
               action={
                 <Button
                   variant="destructive"
                   size="icon-sm"
-                  onClick={() => handleRemove(item)}
-                  disabled={busyItemId === item.id}
-                  aria-label="このカードを外す"
+                  onClick={() => handleRemove(deck)}
+                  disabled={busyDeckId === deck.id}
+                  aria-label="このデッキを外す"
                   className="rounded-full shadow"
                 >
                   <X size={14} />

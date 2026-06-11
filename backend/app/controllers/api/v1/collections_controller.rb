@@ -3,25 +3,25 @@ module Api
     class CollectionsController < BaseController
       include ItemSerialization
 
-      before_action :set_collection, only: [ :show, :update, :destroy, :add_item, :remove_item ]
+      before_action :set_collection, only: [ :show, :update, :destroy, :add_deck, :remove_deck ]
 
       def index
         collections = current_user.collections
                                   .recent
-                                  .left_joins(:collection_items)
-                                  .select("collections.*, COUNT(collection_items.id) AS item_count")
+                                  .left_joins(:collection_decks)
+                                  .select("collections.*, COUNT(collection_decks.id) AS deck_count")
                                   .group("collections.id")
 
         render json: { collections: collections.map { |c| serialize_collection(c) } }
       end
 
       def show
-        items = @collection.items
-                           .includes(:item_type, medias: { file_attachment: :blob })
-                           .order("collection_items.created_at DESC")
+        decks = @collection.decks
+                           .includes(deck_items: { item: { medias: { file_attachment: :blob } } })
+                           .order("collection_decks.created_at DESC")
 
         render json: serialize_collection(@collection).merge(
-          items: items.map { |item| serialize_item(item) }
+          decks: decks.map { |deck| serialize_deck(deck) }
         )
       end
 
@@ -45,19 +45,18 @@ module Api
         head :no_content
       end
 
-      # POST /api/v1/collections/:id/items { item_id }
-      def add_item
-        item = current_user.items.find(params[:item_id])
-        @collection.collection_items.find_or_create_by!(item: item)
+      # POST /api/v1/collections/:id/decks { deck_id }
+      def add_deck
+        deck = current_user.decks.find(params[:deck_id])
+        @collection.collection_decks.find_or_create_by!(deck: deck)
         head :no_content
       rescue ActiveRecord::RecordInvalid => e
         render json: { errors: e.record.errors.full_messages }, status: :unprocessable_entity
       end
 
-      # DELETE /api/v1/collections/:id/items/:item_id
-      def remove_item
-        collection_item = @collection.collection_items.find_by(item_id: params[:item_id])
-        collection_item&.destroy!
+      # DELETE /api/v1/collections/:id/decks/:deck_id
+      def remove_deck
+        @collection.collection_decks.find_by(deck_id: params[:deck_id])&.destroy!
         head :no_content
       end
 
@@ -76,18 +75,27 @@ module Api
           id: collection.id,
           name: collection.name,
           description: collection.description,
-          item_count: collection_item_count(collection),
+          deck_count: collection_deck_count(collection),
           created_at: collection.created_at
         }
       end
 
-      # index では SELECT COUNT で item_count を取得済み。それ以外は関連件数を数える
-      def collection_item_count(collection)
-        if collection.has_attribute?(:item_count)
-          collection.item_count
+      # index では SELECT COUNT で deck_count を取得済み。それ以外は関連件数を数える
+      def collection_deck_count(collection)
+        if collection.has_attribute?(:deck_count)
+          collection.deck_count
         else
-          collection.collection_items.size
+          collection.collection_decks.size
         end
+      end
+
+      def serialize_deck(deck)
+        {
+          id: deck.id,
+          name: deck.name,
+          item_count: deck.deck_items.size,
+          cover: serialize_media(deck.cover&.primary_media)
+        }
       end
     end
   end

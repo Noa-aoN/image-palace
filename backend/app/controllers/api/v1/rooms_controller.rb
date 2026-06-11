@@ -82,7 +82,7 @@ module Api
           id: collection.id,
           name: collection.name,
           description: collection.description,
-          item_count: collection.collection_items.size
+          deck_count: collection.collection_decks.size
         }
       end
     end

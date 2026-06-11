@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_06_12_000002) do
+ActiveRecord::Schema[8.1].define(version: 2026_06_12_000003) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
   enable_extension "pgcrypto"
@@ -41,6 +41,16 @@ ActiveRecord::Schema[8.1].define(version: 2026_06_12_000002) do
     t.bigint "blob_id", null: false
     t.string "variation_digest", null: false
     t.index ["blob_id", "variation_digest"], name: "index_active_storage_variant_records_uniqueness", unique: true
+  end
+
+  create_table "collection_decks", id: :uuid, default: -> { "gen_random_uuid()" }, force: :cascade do |t|
+    t.uuid "collection_id", null: false
+    t.datetime "created_at", null: false
+    t.uuid "deck_id", null: false
+    t.integer "position"
+    t.datetime "updated_at", null: false
+    t.index ["collection_id", "deck_id"], name: "index_collection_decks_on_collection_id_and_deck_id", unique: true
+    t.index ["collection_id"], name: "index_collection_decks_on_collection_id"
   end
 
   create_table "collection_items", id: :uuid, default: -> { "gen_random_uuid()" }, force: :cascade do |t|
@@ -368,6 +378,8 @@ ActiveRecord::Schema[8.1].define(version: 2026_06_12_000002) do
 
   add_foreign_key "active_storage_attachments", "active_storage_blobs", column: "blob_id"
   add_foreign_key "active_storage_variant_records", "active_storage_blobs", column: "blob_id"
+  add_foreign_key "collection_decks", "collections", on_delete: :cascade
+  add_foreign_key "collection_decks", "decks", on_delete: :cascade
   add_foreign_key "collection_items", "collections", on_delete: :cascade
   add_foreign_key "collection_items", "items", on_delete: :cascade
   add_foreign_key "collections", "users", on_delete: :cascade

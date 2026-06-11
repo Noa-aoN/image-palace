@@ -3,6 +3,7 @@ class Deck < ApplicationRecord
   belongs_to :cover_item, class_name: "Item", optional: true
   has_many :deck_items, dependent: :destroy
   has_many :items, through: :deck_items
+  has_many :collection_decks, dependent: :destroy
 
   NAME_MAX_LENGTH = 100
 

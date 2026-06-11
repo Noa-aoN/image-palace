@@ -18,7 +18,7 @@ function CollectionTile({ collection, action }: { collection: RoomCollection | C
         <Layers size={16} style={{ color: 'var(--palace)' }} />
         <div className="min-w-0">
           <span className="font-medium text-sm truncate block">{collection.name}</span>
-          <span className="text-xs text-muted-foreground">{collection.item_count} 枚</span>
+          <span className="text-xs text-muted-foreground">{collection.deck_count} デッキ</span>
         </div>
       </div>
       <div className="shrink-0">{action}</div>
@@ -107,7 +107,7 @@ export default function RoomDetailPage() {
       setRoom({
         ...room,
         collections: [
-          { id: collection.id, name: collection.name, description: collection.description, item_count: collection.item_count },
+          { id: collection.id, name: collection.name, description: collection.description, deck_count: collection.deck_count },
           ...room.collections,
         ],
         collection_count: room.collection_count + 1,
