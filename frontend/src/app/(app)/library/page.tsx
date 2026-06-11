@@ -1,76 +1,143 @@
 'use client'
 
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useState } from 'react'
 import Link from 'next/link'
-import { Search } from 'lucide-react'
-import { Input } from '@/components/ui/input'
-import { getItems } from '@/lib/api/items'
-import { getCollections, getCollection } from '@/lib/api/collections'
+import { GalleryHorizontal, Layers, LayoutGrid, Frame, ChevronRight, Plus } from 'lucide-react'
+import { Button } from '@/components/ui/button'
+import { getItems, getItemsSummary } from '@/lib/api/items'
+import { getCollections } from '@/lib/api/collections'
 import type { Item } from '@/types/item'
 import type { Collection } from '@/types/collection'
 
-// 「すべてのカード」を表す擬似コレクションID
-const ALL = 'all'
+const PREVIEW_LIMIT = 12
 
-function LibraryCard({ item }: { item: Item }) {
+// シェルフ共通の枠（見出し＋「すべて見る」＋横スクロールの中身）
+function Shelf({
+  icon,
+  title,
+  count,
+  href,
+  action,
+  children,
+}: {
+  icon: React.ReactNode
+  title: string
+  count?: number
+  href?: string
+  action?: React.ReactNode
+  children: React.ReactNode
+}) {
+  return (
+    <section className="space-y-3">
+      <div className="flex items-center justify-between gap-3">
+        <div className="flex items-center gap-2">
+          <span style={{ color: 'var(--palace)' }}>{icon}</span>
+          <h2 className="text-base font-semibold">{title}</h2>
+          {typeof count === 'number' && (
+            <span className="text-sm text-muted-foreground">{count}</span>
+          )}
+        </div>
+        <div className="flex items-center gap-2">
+          {action}
+          {href && (
+            <Link
+              href={href}
+              className="flex items-center gap-0.5 text-sm hover:underline"
+              style={{ color: 'var(--palace)' }}
+            >
+              すべて見る
+              <ChevronRight size={15} />
+            </Link>
+          )}
+        </div>
+      </div>
+      {children}
+    </section>
+  )
+}
+
+function CardThumb({ item }: { item: Item }) {
   const imageUrl = item.media?.thumb_url ?? item.media?.url ?? null
   return (
     <Link
       href={`/items/${item.id}`}
-      className="flex flex-col rounded-xl border border-border overflow-hidden bg-card hover:shadow-md transition-shadow"
+      className="shrink-0 w-32 flex flex-col rounded-xl border border-border overflow-hidden bg-card hover:shadow-md transition-shadow"
     >
       <div className="w-full aspect-square bg-muted flex items-center justify-center overflow-hidden">
         {imageUrl ? (
           // eslint-disable-next-line @next/next/no-img-element
           <img src={imageUrl} alt={item.title} className="w-full h-full object-cover" loading="lazy" />
         ) : (
-          <span className="text-muted-foreground text-xs px-2 text-center">{item.title}</span>
+          <span className="text-muted-foreground text-[11px] px-2 text-center">{item.title}</span>
         )}
       </div>
-      <div className="px-3 py-2">
-        <span className="text-sm font-medium truncate block">{item.title}</span>
-      </div>
+      <span className="px-2 py-1.5 text-xs font-medium truncate">{item.title}</span>
     </Link>
   )
 }
 
+function CollectionTile({ collection }: { collection: Collection }) {
+  return (
+    <Link
+      href={`/collections/${collection.id}`}
+      className="shrink-0 w-44 flex flex-col gap-2 rounded-xl border border-border bg-card px-4 py-3 hover:shadow-md transition-shadow"
+    >
+      <div className="flex items-center gap-2">
+        <Layers size={16} style={{ color: 'var(--palace)' }} />
+        <span className="font-medium text-sm truncate">{collection.name}</span>
+      </div>
+      <span className="text-xs text-muted-foreground mt-auto">{collection.item_count} 枚</span>
+    </Link>
+  )
+}
+
+// 横スクロールのレール
+function Rail({ children }: { children: React.ReactNode }) {
+  return <div className="flex gap-3 overflow-x-auto pb-2">{children}</div>
+}
+
+function ComingSoonShelf({
+  icon,
+  title,
+  description,
+}: {
+  icon: React.ReactNode
+  title: string
+  description: string
+}) {
+  return (
+    <Shelf icon={icon} title={title}>
+      <div className="rounded-xl border border-dashed border-border bg-muted/30 px-5 py-6 text-sm text-muted-foreground">
+        <p className="font-medium text-foreground/70">近日対応予定</p>
+        <p className="mt-1">{description}</p>
+      </div>
+    </Shelf>
+  )
+}
+
+function EmptyRail({ message, cta }: { message: string; cta?: React.ReactNode }) {
+  return (
+    <div className="rounded-xl border border-border/70 bg-muted/30 px-5 py-6 text-sm text-muted-foreground flex items-center justify-between gap-3">
+      <span>{message}</span>
+      {cta}
+    </div>
+  )
+}
+
 export default function LibraryPage() {
+  const [cards, setCards] = useState<Item[]>([])
+  const [cardCount, setCardCount] = useState<number | undefined>(undefined)
   const [collections, setCollections] = useState<Collection[]>([])
-  const [activeCollection, setActiveCollection] = useState<string>(ALL)
-  const [items, setItems] = useState<Item[]>([])
   const [loading, setLoading] = useState(true)
-  const [query, setQuery] = useState('')
 
-  // コレクション一覧（フィルタ用）
-  useEffect(() => {
-    getCollections()
-      .then(setCollections)
-      .catch(() => {
-        // フィルタは無くても致命的でないため握りつぶす
-      })
-  }, [])
-
-  // フィルタ切り替え。再取得中はスケルトンを出すため loading を立てる
-  const selectCollection = (id: string) => {
-    if (id === activeCollection) return
-    setLoading(true)
-    setActiveCollection(id)
-  }
-
-  // 選択中のコレクション（すべて or 特定）に応じてカードを取得
   useEffect(() => {
     let cancelled = false
-    const fetcher =
-      activeCollection === ALL
-        ? getItems()
-        : getCollection(activeCollection).then((c) => c.items)
-
-    fetcher
-      .then((data) => {
-        if (!cancelled) setItems(data)
-      })
-      .catch(() => {
-        if (!cancelled) setItems([])
+    Promise.allSettled([getItems(), getItemsSummary(), getCollections()])
+      .then(([itemsRes, summaryRes, collectionsRes]) => {
+        if (cancelled) return
+        if (itemsRes.status === 'fulfilled') setCards(itemsRes.value.slice(0, PREVIEW_LIMIT))
+        if (summaryRes.status === 'fulfilled') setCardCount(summaryRes.value.total_count)
+        if (collectionsRes.status === 'fulfilled') setCollections(collectionsRes.value)
       })
       .finally(() => {
         if (!cancelled) setLoading(false)
@@ -78,80 +145,97 @@ export default function LibraryPage() {
     return () => {
       cancelled = true
     }
-  }, [activeCollection])
+  }, [])
 
-  // タイトルによるクライアント側絞り込み（サーバ検索は #106 で対応予定）
-  const filteredItems = useMemo(() => {
-    const q = query.trim().toLowerCase()
-    if (!q) return items
-    return items.filter((item) => item.title.toLowerCase().includes(q))
-  }, [items, query])
-
-  const chipBase = 'rounded-full px-3 py-1 text-sm whitespace-nowrap transition-colors border'
-  const chipClass = (active: boolean) =>
-    active
-      ? `${chipBase} border-transparent text-white`
-      : `${chipBase} border-border text-muted-foreground hover:bg-muted`
+  if (loading) {
+    return (
+      <div className="max-w-5xl mx-auto px-6 py-12 space-y-10">
+        {Array.from({ length: 3 }).map((_, i) => (
+          <div key={i} className="space-y-3">
+            <div className="h-5 w-32 rounded bg-muted animate-pulse" />
+            <div className="flex gap-3">
+              {Array.from({ length: 5 }).map((_, j) => (
+                <div key={j} className="h-32 w-32 rounded-xl bg-muted animate-pulse shrink-0" />
+              ))}
+            </div>
+          </div>
+        ))}
+      </div>
+    )
+  }
 
   return (
-    <div className="max-w-5xl mx-auto px-6 py-12">
-      <h1 className="text-xl font-semibold mb-6">ライブラリ</h1>
-
-      {/* 検索 */}
-      <div className="relative mb-4">
-        <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
-        <Input
-          value={query}
-          onChange={(e) => setQuery(e.target.value)}
-          placeholder="カードのタイトルで絞り込む"
-          aria-label="カード検索"
-          className="pl-9"
-        />
-      </div>
-
-      {/* コレクション別フィルタ */}
-      <div className="flex gap-2 overflow-x-auto pb-2 mb-6">
-        <button
-          onClick={() => selectCollection(ALL)}
-          className={chipClass(activeCollection === ALL)}
-          style={activeCollection === ALL ? { backgroundColor: 'var(--palace)' } : undefined}
-        >
-          すべて
-        </button>
-        {collections.map((collection) => {
-          const active = activeCollection === collection.id
-          return (
-            <button
-              key={collection.id}
-              onClick={() => selectCollection(collection.id)}
-              className={chipClass(active)}
-              style={active ? { backgroundColor: 'var(--palace)' } : undefined}
-            >
-              {collection.name}（{collection.item_count}）
-            </button>
-          )
-        })}
-      </div>
-
-      {loading ? (
-        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-          {Array.from({ length: 8 }).map((_, i) => (
-            <div key={i} className="aspect-square rounded-xl bg-muted animate-pulse" />
-          ))}
-        </div>
-      ) : filteredItems.length === 0 ? (
-        <p className="text-center text-muted-foreground py-16">
-          {query.trim()
-            ? '一致するカードがありません。'
-            : 'カードがありません。'}
+    <div className="max-w-5xl mx-auto px-6 py-12 space-y-12">
+      <div>
+        <h1 className="text-xl font-semibold">ライブラリ</h1>
+        <p className="mt-1 text-sm text-muted-foreground">
+          カード・コレクションなど、形式ごとに知識を棚で見渡せます。
         </p>
-      ) : (
-        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-          {filteredItems.map((item) => (
-            <LibraryCard key={item.id} item={item} />
-          ))}
-        </div>
-      )}
+      </div>
+
+      {/* カード */}
+      <Shelf
+        icon={<GalleryHorizontal size={20} />}
+        title="カード"
+        count={cardCount}
+        href="/items"
+        action={
+          <Link href="/items/new">
+            <Button variant="outline" size="sm" className="flex items-center gap-1">
+              <Plus size={14} />
+              作成
+            </Button>
+          </Link>
+        }
+      >
+        {cards.length === 0 ? (
+          <EmptyRail
+            message="まだカードがありません。"
+            cta={<Link href="/items/new"><Button size="sm">カードを作成</Button></Link>}
+          />
+        ) : (
+          <Rail>
+            {cards.map((item) => (
+              <CardThumb key={item.id} item={item} />
+            ))}
+          </Rail>
+        )}
+      </Shelf>
+
+      {/* コレクション / デッキ */}
+      <Shelf
+        icon={<Layers size={20} />}
+        title="コレクション / デッキ"
+        count={collections.length}
+        href="/collections"
+      >
+        {collections.length === 0 ? (
+          <EmptyRail
+            message="まだコレクションがありません。"
+            cta={<Link href="/collections"><Button size="sm">コレクションを作成</Button></Link>}
+          />
+        ) : (
+          <Rail>
+            {collections.slice(0, PREVIEW_LIMIT).map((collection) => (
+              <CollectionTile key={collection.id} collection={collection} />
+            ))}
+          </Rail>
+        )}
+      </Shelf>
+
+      {/* スペース（ルーム）: #114 / #115 */}
+      <ComingSoonShelf
+        icon={<LayoutGrid size={20} />}
+        title="スペース"
+        description="カードを整理する空間（ルーム）を作成できるようになります。"
+      />
+
+      {/* ビュー（フリーボード）: #112 / #113 */}
+      <ComingSoonShelf
+        icon={<Frame size={20} />}
+        title="ビュー"
+        description="カードを自由配置するフリーボード表示に対応予定です。"
+      />
     </div>
   )
 }
