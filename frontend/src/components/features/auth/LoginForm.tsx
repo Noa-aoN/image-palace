@@ -92,7 +92,7 @@ export function LoginForm() {
 
       <form onSubmit={handleSubmit} className="flex flex-col gap-4">
         <div className="flex flex-col gap-1.5">
-          <Label htmlFor="email">メールアドレス</Label>
+          <Label htmlFor="email" required>メールアドレス</Label>
           <Input
             id="email"
             type="email"
@@ -108,7 +108,7 @@ export function LoginForm() {
           )}
         </div>
         <div className="flex flex-col gap-1.5">
-          <Label htmlFor="password">パスワード</Label>
+          <Label htmlFor="password" required>パスワード</Label>
           <PasswordField
             id="password"
             value={password}
