@@ -7,11 +7,19 @@ export interface ItemMedia {
   media_type: string
 }
 
+export interface ItemType {
+  id: string
+  name: string
+  label: string
+}
+
 export interface Item {
   id: string
   title: string
   generation_status: GenerationStatus
   generation_error?: string | null
+  item_type?: ItemType | null
+  meaning?: string | null
   media: ItemMedia | null
   created_at: string
 }

@@ -18,6 +18,7 @@ Rails.application.routes.draw do
           post :retry
         end
       end
+      resources :item_types, only: [ :index ]
     end
   end
 end

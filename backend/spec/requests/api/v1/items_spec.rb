@@ -284,6 +284,53 @@ RSpec.describe "Api::V1::Items", type: :request do
       expect(json_response["error"]).to eq("Not found")
       expect(other_item.reload.title).to eq("他人のカード")
     end
+
+    it "updates the item_type and serializes it" do
+      concept = ItemType.find_or_create_by!(name: "concept") { |it| it.label = "概念" }
+      item = user.items.create!(title: "光合成", item_type: item_type, generation_status: "completed")
+
+      patch "/api/v1/items/#{item.id}", params: { item: { item_type_id: concept.id } }, headers: headers, as: :json
+
+      expect(response).to have_http_status(:success)
+      expect(item.reload.item_type_id).to eq(concept.id)
+      expect(json_response.dig("item_type", "name")).to eq("concept")
+      expect(json_response.dig("item_type", "label")).to eq("概念")
+    end
+
+    it "creates a meaning when one is provided" do
+      item = user.items.create!(title: "光合成", item_type: item_type, generation_status: "completed")
+
+      patch "/api/v1/items/#{item.id}",
+        params: { item: { meaning: "植物が光を使って養分を作る働き" } }, headers: headers, as: :json
+
+      expect(response).to have_http_status(:success)
+      expect(item.meanings.in_language("ja").first&.definition).to eq("植物が光を使って養分を作る働き")
+      expect(json_response["meaning"]).to eq("植物が光を使って養分を作る働き")
+    end
+
+    it "updates an existing meaning" do
+      item = user.items.create!(title: "光合成", item_type: item_type, generation_status: "completed")
+      item.meanings.create!(definition: "古い説明", language_code: "ja")
+
+      patch "/api/v1/items/#{item.id}",
+        params: { item: { meaning: "新しい説明" } }, headers: headers, as: :json
+
+      expect(response).to have_http_status(:success)
+      expect(item.meanings.in_language("ja").count).to eq(1)
+      expect(json_response["meaning"]).to eq("新しい説明")
+    end
+
+    it "removes the meaning when an empty value is provided" do
+      item = user.items.create!(title: "光合成", item_type: item_type, generation_status: "completed")
+      item.meanings.create!(definition: "消される説明", language_code: "ja")
+
+      patch "/api/v1/items/#{item.id}",
+        params: { item: { meaning: "" } }, headers: headers, as: :json
+
+      expect(response).to have_http_status(:success)
+      expect(item.meanings.in_language("ja").count).to eq(0)
+      expect(json_response["meaning"]).to be_nil
+    end
   end
 
   describe "POST /api/v1/items/:id/retry" do

@@ -7,6 +7,7 @@ import { Trash2, ChevronLeft, ChevronRight, RefreshCw, Pencil, Check, X } from '
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Spinner } from '@/components/ui/spinner'
+import { ItemProperties } from '@/components/features/items/ItemProperties'
 import { getItem, getItems, deleteItem, retryItem, updateItem } from '@/lib/api/items'
 import { useItemsStore } from '@/stores/items'
 import type { Item } from '@/types/item'
@@ -183,7 +184,7 @@ export default function ItemDetailPage() {
     setSaving(true)
     setEditError(null)
     try {
-      const updated = await updateItem(id, trimmed)
+      const updated = await updateItem(id, { title: trimmed })
       setItem(updated)
       upsertItem(updated)
       setEditing(false)
@@ -378,6 +379,15 @@ export default function ItemDetailPage() {
             )}
           </div>
         )}
+
+        {/* プロパティ（種別・意味） */}
+        <ItemProperties
+          item={item}
+          onUpdated={(updated) => {
+            setItem(updated)
+            upsertItem(updated)
+          }}
+        />
 
         <p className="text-sm text-muted-foreground">
           作成日: {new Date(item.created_at).toLocaleDateString('ja-JP')}
