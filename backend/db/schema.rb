@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_06_11_000006) do
+ActiveRecord::Schema[8.1].define(version: 2026_06_12_000002) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
   enable_extension "pgcrypto"
@@ -61,6 +61,26 @@ ActiveRecord::Schema[8.1].define(version: 2026_06_11_000006) do
     t.uuid "user_id", null: false
     t.index ["user_id", "created_at"], name: "index_collections_on_user_id_and_created_at"
     t.index ["user_id"], name: "index_collections_on_user_id"
+  end
+
+  create_table "deck_items", id: :uuid, default: -> { "gen_random_uuid()" }, force: :cascade do |t|
+    t.datetime "created_at", null: false
+    t.uuid "deck_id", null: false
+    t.uuid "item_id", null: false
+    t.integer "position"
+    t.datetime "updated_at", null: false
+    t.index ["deck_id", "item_id"], name: "index_deck_items_on_deck_id_and_item_id", unique: true
+    t.index ["deck_id"], name: "index_deck_items_on_deck_id"
+  end
+
+  create_table "decks", id: :uuid, default: -> { "gen_random_uuid()" }, force: :cascade do |t|
+    t.uuid "cover_item_id"
+    t.datetime "created_at", null: false
+    t.string "name", null: false
+    t.datetime "updated_at", null: false
+    t.uuid "user_id", null: false
+    t.index ["user_id", "created_at"], name: "index_decks_on_user_id_and_created_at"
+    t.index ["user_id"], name: "index_decks_on_user_id"
   end
 
   create_table "item_types", id: :uuid, default: -> { "gen_random_uuid()" }, force: :cascade do |t|
@@ -351,6 +371,10 @@ ActiveRecord::Schema[8.1].define(version: 2026_06_11_000006) do
   add_foreign_key "collection_items", "collections", on_delete: :cascade
   add_foreign_key "collection_items", "items", on_delete: :cascade
   add_foreign_key "collections", "users", on_delete: :cascade
+  add_foreign_key "deck_items", "decks", on_delete: :cascade
+  add_foreign_key "deck_items", "items", on_delete: :cascade
+  add_foreign_key "decks", "items", column: "cover_item_id", on_delete: :nullify
+  add_foreign_key "decks", "users", on_delete: :cascade
   add_foreign_key "items", "item_types", on_delete: :restrict
   add_foreign_key "items", "users", on_delete: :cascade
   add_foreign_key "meanings", "items", on_delete: :cascade

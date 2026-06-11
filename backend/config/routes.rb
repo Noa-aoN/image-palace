@@ -19,6 +19,12 @@ Rails.application.routes.draw do
         end
       end
       resources :item_types, only: [ :index ]
+      resources :decks, only: [ :index, :create, :show, :update, :destroy ] do
+        member do
+          post "items", action: :add_item
+          delete "items/:item_id", action: :remove_item
+        end
+      end
       resources :collections, only: [ :index, :create, :show, :update, :destroy ] do
         member do
           post "items", action: :add_item
