@@ -29,6 +29,7 @@ export function ItemProperties({ item, onUpdated }: ItemPropertiesProps) {
   const [meaningError, setMeaningError] = useState<string | null>(null)
 
   const [tagDraft, setTagDraft] = useState('')
+  const [tagFocused, setTagFocused] = useState(false)
   const [savingTags, setSavingTags] = useState(false)
   const [tagError, setTagError] = useState<string | null>(null)
   const [allTags, setAllTags] = useState<Tag[]>([])
@@ -45,8 +46,16 @@ export function ItemProperties({ item, onUpdated }: ItemPropertiesProps) {
     loadAllTags()
   }, [])
 
-  // 既に付いているタグは候補から除外する
-  const tagSuggestions = allTags.filter((t) => !tags.some((cur) => cur.name.toLowerCase() === t.name.toLowerCase()))
+  // 1文字以上の入力に該当し、まだ付いていないタグだけを候補に出す
+  const tagQuery = tagDraft.trim().toLowerCase()
+  const tagSuggestions = tagQuery.length >= 1
+    ? allTags.filter(
+        (t) =>
+          t.name.toLowerCase().includes(tagQuery) &&
+          !tags.some((cur) => cur.name.toLowerCase() === t.name.toLowerCase())
+      )
+    : []
+  const showTagSuggestions = tagFocused && tagSuggestions.length > 0
 
   const saveTags = async (names: string[]) => {
     setSavingTags(true)
@@ -62,14 +71,11 @@ export function ItemProperties({ item, onUpdated }: ItemPropertiesProps) {
     }
   }
 
-  const handleAddTag = async () => {
-    const name = tagDraft.trim()
+  const addTagName = async (raw: string) => {
+    const name = raw.trim()
     if (!name) return
-    if (tags.some((t) => t.name.toLowerCase() === name.toLowerCase())) {
-      setTagDraft('')
-      return
-    }
     setTagDraft('')
+    if (tags.some((t) => t.name.toLowerCase() === name.toLowerCase())) return
     await saveTags([...tags.map((t) => t.name), name])
   }
 
@@ -236,22 +242,43 @@ export function ItemProperties({ item, onUpdated }: ItemPropertiesProps) {
             ))}
           </div>
         )}
-        <input
-          value={tagDraft}
-          onChange={(e) => setTagDraft(e.target.value)}
-          onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); handleAddTag() } }}
-          onBlur={handleAddTag}
-          disabled={savingTags}
-          placeholder="タグを入力して Enter"
-          aria-label="タグを追加"
-          list="tag-suggestions"
-          className="w-full max-w-xs rounded-lg border border-input bg-background px-3 py-1.5 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-        />
-        <datalist id="tag-suggestions">
-          {tagSuggestions.map((t) => (
-            <option key={t.id} value={t.name} />
-          ))}
-        </datalist>
+        <div className="relative max-w-xs">
+          <input
+            value={tagDraft}
+            onChange={(e) => setTagDraft(e.target.value)}
+            onFocus={() => setTagFocused(true)}
+            onBlur={() => setTagFocused(false)}
+            onKeyDown={(e) => {
+              // IME変換確定の Enter では追加しない（確定後、再度 Enter で設定）
+              if (e.key !== 'Enter') return
+              if (e.nativeEvent.isComposing) return
+              e.preventDefault()
+              addTagName(tagDraft)
+            }}
+            disabled={savingTags}
+            placeholder="タグを入力して Enter"
+            aria-label="タグを追加"
+            autoComplete="off"
+            className="w-full rounded-lg border border-input bg-background px-3 py-1.5 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+          />
+          {showTagSuggestions && (
+            <ul className="absolute z-20 mt-1 w-full max-h-48 overflow-y-auto rounded-lg border border-border bg-card shadow-lg">
+              {tagSuggestions.map((t) => (
+                <li key={t.id}>
+                  <button
+                    type="button"
+                    // blur より先に発火させてクリックを成立させる
+                    onMouseDown={(e) => { e.preventDefault(); addTagName(t.name) }}
+                    className="flex w-full items-center justify-between gap-2 px-3 py-1.5 text-left text-sm hover:bg-muted"
+                  >
+                    <span className="truncate">{t.name}</span>
+                    <span className="text-xs text-muted-foreground shrink-0">{t.item_count}</span>
+                  </button>
+                </li>
+              ))}
+            </ul>
+          )}
+        </div>
         {tagError && <p className="text-xs text-destructive">{tagError}</p>}
       </div>
     </div>
