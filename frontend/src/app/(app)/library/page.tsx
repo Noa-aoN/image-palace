@@ -2,18 +2,20 @@
 
 import { useEffect, useState } from 'react'
 import Link from 'next/link'
-import { GalleryHorizontal, Library, Layers, LayoutGrid, Frame, ChevronRight, Plus } from 'lucide-react'
+import { GalleryHorizontal, Library, Layers, LayoutGrid, Frame, ChevronRight, Plus, Search, X } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { getItems, getItemsSummary } from '@/lib/api/items'
 import { getDecks } from '@/lib/api/decks'
 import { getCollections } from '@/lib/api/collections'
 import { getSpaces } from '@/lib/api/spaces'
 import { getViews } from '@/lib/api/views'
+import { searchLibrary } from '@/lib/api/search'
 import type { Item } from '@/types/item'
 import type { Deck } from '@/types/deck'
 import type { Collection } from '@/types/collection'
 import type { Space } from '@/types/space'
 import type { View } from '@/types/view'
+import type { SearchResults, SearchCard, SearchDeck } from '@/types/search'
 
 const PREVIEW_LIMIT = 12
 
@@ -166,6 +168,203 @@ function EmptyRail({ message, cta }: { message: string; cta?: React.ReactNode })
   )
 }
 
+// 横断検索のグループ見出し
+function ResultGroup({
+  icon,
+  title,
+  count,
+  children,
+}: {
+  icon: React.ReactNode
+  title: string
+  count: number
+  children: React.ReactNode
+}) {
+  return (
+    <section className="space-y-3">
+      <div className="flex items-center gap-2">
+        <span style={{ color: 'var(--palace)' }}>{icon}</span>
+        <h2 className="text-base font-semibold">{title}</h2>
+        <span className="text-sm text-muted-foreground">{count}</span>
+      </div>
+      {children}
+    </section>
+  )
+}
+
+function SearchCardTile({ card }: { card: SearchCard }) {
+  const imageUrl = card.media?.thumb_url ?? card.media?.url ?? null
+  return (
+    <Link
+      href={`/items/${card.id}`}
+      className="shrink-0 w-32 flex flex-col rounded-xl border border-border overflow-hidden bg-card hover:shadow-md transition-shadow"
+    >
+      <div className="w-full aspect-square bg-muted flex items-center justify-center overflow-hidden">
+        {imageUrl ? (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img src={imageUrl} alt={card.title} className="w-full h-full object-cover" loading="lazy" />
+        ) : (
+          <span className="text-muted-foreground text-[11px] px-2 text-center">{card.title}</span>
+        )}
+      </div>
+      <span className="px-2 py-1.5 text-xs font-medium truncate">{card.title}</span>
+    </Link>
+  )
+}
+
+function SearchDeckTile({ deck }: { deck: SearchDeck }) {
+  const coverUrl = deck.cover?.thumb_url ?? deck.cover?.url ?? null
+  return (
+    <Link
+      href={`/decks/${deck.id}`}
+      className="shrink-0 w-40 flex flex-col rounded-xl border border-border overflow-hidden bg-card hover:shadow-md transition-shadow"
+    >
+      <div className="w-full aspect-[4/3] bg-muted flex items-center justify-center overflow-hidden">
+        {coverUrl ? (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img src={coverUrl} alt={deck.name} className="w-full h-full object-cover" loading="lazy" />
+        ) : (
+          <Library size={24} className="text-muted-foreground/50" />
+        )}
+      </div>
+      <div className="px-3 py-2 flex items-center justify-between gap-1">
+        <span className="text-sm font-medium truncate">{deck.name}</span>
+        <span className="text-xs text-muted-foreground shrink-0">{deck.item_count}</span>
+      </div>
+    </Link>
+  )
+}
+
+function SearchNamedTile({
+  href,
+  icon,
+  name,
+  sub,
+}: {
+  href: string
+  icon: React.ReactNode
+  name: string
+  sub?: string
+}) {
+  return (
+    <Link
+      href={href}
+      className="shrink-0 w-44 flex flex-col gap-2 rounded-xl border border-border bg-card px-4 py-3 hover:shadow-md transition-shadow"
+    >
+      <div className="flex items-center gap-2">
+        <span style={{ color: 'var(--palace)' }}>{icon}</span>
+        <span className="font-medium text-sm truncate">{name}</span>
+      </div>
+      {sub && <span className="text-xs text-muted-foreground mt-auto">{sub}</span>}
+    </Link>
+  )
+}
+
+// 横断検索の結果表示
+function SearchResultsView({
+  results,
+  searching,
+}: {
+  results: SearchResults | null
+  searching: boolean
+}) {
+  const total = results
+    ? results.items.length +
+      results.decks.length +
+      results.collections.length +
+      results.spaces.length +
+      results.views.length
+    : 0
+
+  if (!results || (searching && total === 0)) {
+    return (
+      <div className="space-y-3">
+        <div className="h-5 w-32 rounded bg-muted animate-pulse" />
+        <div className="flex gap-3">
+          {Array.from({ length: 4 }).map((_, i) => (
+            <div key={i} className="h-32 w-32 rounded-xl bg-muted animate-pulse shrink-0" />
+          ))}
+        </div>
+      </div>
+    )
+  }
+
+  if (total === 0) {
+    return (
+      <div className="rounded-xl border border-border/70 bg-muted/30 px-5 py-10 text-center text-sm text-muted-foreground">
+        一致する項目が見つかりませんでした。
+      </div>
+    )
+  }
+
+  return (
+    <div className="space-y-10">
+      {results.items.length > 0 && (
+        <ResultGroup icon={<GalleryHorizontal size={18} />} title="カード" count={results.items.length}>
+          <Rail>
+            {results.items.map((card) => (
+              <SearchCardTile key={card.id} card={card} />
+            ))}
+          </Rail>
+        </ResultGroup>
+      )}
+      {results.decks.length > 0 && (
+        <ResultGroup icon={<Library size={18} />} title="デッキ" count={results.decks.length}>
+          <Rail>
+            {results.decks.map((deck) => (
+              <SearchDeckTile key={deck.id} deck={deck} />
+            ))}
+          </Rail>
+        </ResultGroup>
+      )}
+      {results.collections.length > 0 && (
+        <ResultGroup icon={<Layers size={18} />} title="コレクション" count={results.collections.length}>
+          <Rail>
+            {results.collections.map((collection) => (
+              <SearchNamedTile
+                key={collection.id}
+                href={`/collections/${collection.id}`}
+                icon={<Layers size={16} />}
+                name={collection.name}
+                sub={`${collection.entry_count} 件`}
+              />
+            ))}
+          </Rail>
+        </ResultGroup>
+      )}
+      {results.spaces.length > 0 && (
+        <ResultGroup icon={<LayoutGrid size={18} />} title="スペース" count={results.spaces.length}>
+          <Rail>
+            {results.spaces.map((space) => (
+              <SearchNamedTile
+                key={space.id}
+                href={`/spaces/${space.id}`}
+                icon={<LayoutGrid size={16} />}
+                name={space.name}
+              />
+            ))}
+          </Rail>
+        </ResultGroup>
+      )}
+      {results.views.length > 0 && (
+        <ResultGroup icon={<Frame size={18} />} title="ビュー" count={results.views.length}>
+          <Rail>
+            {results.views.map((view) => (
+              <SearchNamedTile
+                key={view.id}
+                href={`/views/${view.id}`}
+                icon={<Frame size={16} />}
+                name={view.name}
+                sub="フリーボード"
+              />
+            ))}
+          </Rail>
+        </ResultGroup>
+      )}
+    </div>
+  )
+}
+
 export default function LibraryPage() {
   const [cards, setCards] = useState<Item[]>([])
   const [cardCount, setCardCount] = useState<number | undefined>(undefined)
@@ -174,6 +373,9 @@ export default function LibraryPage() {
   const [spaces, setSpaces] = useState<Space[]>([])
   const [views, setViews] = useState<View[]>([])
   const [loading, setLoading] = useState(true)
+  const [query, setQuery] = useState('')
+  const [results, setResults] = useState<SearchResults | null>(null)
+  const [searching, setSearching] = useState(false)
 
   useEffect(() => {
     let cancelled = false
@@ -194,6 +396,41 @@ export default function LibraryPage() {
       cancelled = true
     }
   }, [])
+
+  // 横断検索（デバウンス）
+  useEffect(() => {
+    const q = query.trim()
+    if (!q) return
+    let cancelled = false
+    const handle = setTimeout(() => {
+      searchLibrary(q)
+        .then((res) => {
+          if (!cancelled) setResults(res)
+        })
+        .catch(() => {
+          if (!cancelled) setResults({ items: [], decks: [], collections: [], spaces: [], views: [] })
+        })
+        .finally(() => {
+          if (!cancelled) setSearching(false)
+        })
+    }, 300)
+    return () => {
+      cancelled = true
+      clearTimeout(handle)
+    }
+  }, [query])
+
+  const handleQueryChange = (value: string) => {
+    setQuery(value)
+    setSearching(value.trim().length > 0)
+  }
+
+  const clearQuery = () => {
+    setQuery('')
+    setSearching(false)
+  }
+
+  const hasQuery = query.trim().length > 0
 
   if (loading) {
     return (
@@ -221,6 +458,36 @@ export default function LibraryPage() {
         </p>
       </div>
 
+      {/* 横断検索 */}
+      <div className="relative">
+        <Search
+          size={18}
+          className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground"
+        />
+        <input
+          type="search"
+          value={query}
+          onChange={(e) => handleQueryChange(e.target.value)}
+          placeholder="カード・デッキ・コレクション・スペース・ビューを横断検索"
+          className="w-full rounded-xl border border-border bg-card py-2.5 pl-10 pr-10 text-sm outline-none focus:border-[var(--palace)] focus:ring-1 focus:ring-[var(--palace)]"
+          aria-label="ライブラリ横断検索"
+        />
+        {hasQuery && (
+          <button
+            type="button"
+            onClick={clearQuery}
+            aria-label="検索をクリア"
+            className="absolute right-2.5 top-1/2 -translate-y-1/2 rounded-md p-1 text-muted-foreground hover:bg-muted hover:text-foreground"
+          >
+            <X size={16} />
+          </button>
+        )}
+      </div>
+
+      {hasQuery ? (
+        <SearchResultsView results={results} searching={searching} />
+      ) : (
+        <>
       {/* カード */}
       <Shelf
         icon={<GalleryHorizontal size={20} />}
@@ -333,6 +600,8 @@ export default function LibraryPage() {
           </Rail>
         )}
       </Shelf>
+        </>
+      )}
     </div>
   )
 }
