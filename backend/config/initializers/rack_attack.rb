@@ -34,6 +34,21 @@ class Rack::Attack
     req.ip if req.post? && req.path == "/api/v1/items"
   end
 
+  # 意味生成（OpenAI Chat 呼び出しの高コスト操作）: 1 IP あたり 60 秒間で 10 回まで。
+  throttle("item_meaning/ip", limit: 10, period: 60.seconds) do |req|
+    req.ip if req.post? && req.path.match?(%r{\A/api/v1/items/[^/]+/meaning\z})
+  end
+
+  # 失敗カードの再生成（画像生成ジョブを再投入）: 1 IP あたり 60 秒間で 20 回まで。
+  throttle("item_retry/ip", limit: 20, period: 60.seconds) do |req|
+    req.ip if req.post? && req.path.match?(%r{\A/api/v1/items/[^/]+/retry\z})
+  end
+
+  # データエクスポート（全データを返す重い操作）: 1 IP あたり 5 分間で 10 回まで。
+  throttle("account_export/ip", limit: 10, period: 5.minutes) do |req|
+    req.ip if req.get? && req.path == "/api/v1/account/export"
+  end
+
   ### スロットル時のレスポンス ###
 
   # 429 を JSON で返す。フロントエンドが一貫してエラー表示できるようにする。
