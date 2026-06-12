@@ -33,6 +33,10 @@ gem "rack-cors"
 # API レート制限（ブルートフォース・乱用・画像生成コストの抑制）
 gem "rack-attack"
 
+# エラーモニタリング（本番のみ有効。SENTRY_DSN 未設定なら no-op）
+gem "sentry-ruby"
+gem "sentry-rails"
+
 # Authentication
 gem "devise"
 gem "devise_token_auth"
