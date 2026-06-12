@@ -46,15 +46,13 @@ export function ItemProperties({ item, onUpdated }: ItemPropertiesProps) {
     loadAllTags()
   }, [])
 
-  // 1文字以上の入力に該当し、まだ付いていないタグだけを候補に出す
+  // まだ付いていない既存タグを候補に出す。
+  // 未入力（フォーカスのみ）ならよく使われる順、入力中は該当するものを絞り込む。
   const tagQuery = tagDraft.trim().toLowerCase()
-  const tagSuggestions = tagQuery.length >= 1
-    ? allTags.filter(
-        (t) =>
-          t.name.toLowerCase().includes(tagQuery) &&
-          !tags.some((cur) => cur.name.toLowerCase() === t.name.toLowerCase())
-      )
-    : []
+  const tagSuggestions = allTags
+    .filter((t) => !tags.some((cur) => cur.name.toLowerCase() === t.name.toLowerCase()))
+    .filter((t) => tagQuery.length === 0 || t.name.toLowerCase().includes(tagQuery))
+    .sort((a, b) => b.item_count - a.item_count)
   const showTagSuggestions = tagFocused && tagSuggestions.length > 0
 
   const saveTags = async (names: string[]) => {
