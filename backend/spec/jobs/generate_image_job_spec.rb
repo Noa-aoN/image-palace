@@ -61,5 +61,23 @@ RSpec.describe GenerateImageJob, type: :job do
       expect(item.primary_media.file).to be_attached
       expect(item.primary_media.metadata["model"]).to eq("gpt-image-1")
     end
+
+    it "生成画像を WebP に変換して保存する" do
+      skip "libvips 未インストール環境のためスキップ" unless vips_available?
+
+      png = Vips::Image.black(1024, 1024).pngsave_buffer
+      result = GenerateImageService::Result.new(
+        image_data: png,
+        content_type: "image/png",
+        metadata: { "provider" => "openai", "model" => "gpt-image-1" }
+      )
+      allow(GenerateImageService).to receive(:call).and_return(result)
+
+      described_class.perform_now(item.id)
+
+      blob = item.reload.primary_media.file.blob
+      expect(blob.content_type).to eq("image/webp")
+      expect(blob.filename.to_s).to end_with(".webp")
+    end
   end
 end

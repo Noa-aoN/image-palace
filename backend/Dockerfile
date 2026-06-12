@@ -8,6 +8,7 @@ RUN apt-get update -qq && \
       build-essential \
       libpq-dev \
       libyaml-dev \
+      libvips42 \
       pkg-config \
       curl \
     && rm -rf /var/lib/apt/lists/*

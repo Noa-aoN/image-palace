@@ -83,10 +83,13 @@ class GenerateImageJob < ApplicationJob
   def attach_image_data(shared_media, image_data, content_type)
     require "stringio"
 
+    # 保存前にリサイズ + WebP 変換でストレージ・配信コストを抑える
+    optimized = OptimizeImageService.call(image_data: image_data, content_type: content_type)
+
     shared_media.file.attach(
-      io: StringIO.new(image_data),
-      filename: "#{SecureRandom.uuid}.png",
-      content_type: content_type.presence || "image/png"
+      io: StringIO.new(optimized.data),
+      filename: "#{SecureRandom.uuid}.#{optimized.extension}",
+      content_type: optimized.content_type
     )
   end
 
