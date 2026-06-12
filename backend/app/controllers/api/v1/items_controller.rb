@@ -1,7 +1,7 @@
 module Api
   module V1
     class ItemsController < BaseController
-      before_action :set_item, only: [ :show, :update, :destroy, :retry ]
+      before_action :set_item, only: [ :show, :update, :destroy, :retry, :meaning ]
 
       DEFAULT_PER_PAGE = 24
       MAX_PER_PAGE = 100
@@ -108,6 +108,15 @@ module Api
         render json: serialize_item(current_item.reload), status: :accepted
       end
 
+      # 意味・説明を AI で生成（同期）。詳細画面の「意味を生成」ボタンから呼ばれる。
+      def meaning
+        GenerateMeaningService.call(item: item)
+        render json: serialize_item(item.reload), status: :ok
+      rescue GenerateMeaningService::GenerationError, KeyError, Faraday::Error => e
+        Rails.logger.warn "[ItemsController#meaning] failed item_id=#{item.id}: #{e.class}: #{e.message}"
+        render json: { error: "意味の生成に失敗しました。時間を置いて再度お試しください。" }, status: :unprocessable_entity
+      end
+
       private
 
       # 1始まり。不正値・0以下は 1 に丸める
@@ -168,6 +177,7 @@ module Api
           generation_error: item.generation_error,
           item_type: serialize_item_type(item.item_type),
           meaning: item.primary_meaning&.definition,
+          meaning_example: item.primary_meaning&.example_sentence,
           tags: item.tags.map { |t| { id: t.id, name: t.name } },
           media: serialize_media(item.primary_media),
           created_at: item.created_at
