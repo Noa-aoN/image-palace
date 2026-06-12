@@ -14,4 +14,8 @@ production:
   adapter: postgresql
   encoding: unicode
   pool: <%= ENV.fetch("RAILS_MAX_THREADS", 5) %>
+  # Neon（プール接続）ではセッションが維持されアドバイザリロックが残留し、
+  # マイグレーションがデッドロックするため無効化する。
+  # Fly の release_command は単一マシンで実行されるため同時実行の心配はない。
+  advisory_locks: false
   url: <%= ENV["DATABASE_URL"] %>
