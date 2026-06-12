@@ -1,9 +1,9 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { Loader2, Pencil, Check, X } from 'lucide-react'
+import { Loader2, Pencil, Check, X, Sparkles } from 'lucide-react'
 import { Button } from '@/components/ui/button'
-import { getItemTypes, updateItem } from '@/lib/api/items'
+import { getItemTypes, updateItem, generateMeaning } from '@/lib/api/items'
 import { getTags } from '@/lib/api/tags'
 import type { Item, ItemType } from '@/types/item'
 import type { Tag } from '@/types/tag'
@@ -27,6 +27,20 @@ export function ItemProperties({ item, onUpdated }: ItemPropertiesProps) {
   const [meaningDraft, setMeaningDraft] = useState('')
   const [savingMeaning, setSavingMeaning] = useState(false)
   const [meaningError, setMeaningError] = useState<string | null>(null)
+  const [generatingMeaning, setGeneratingMeaning] = useState(false)
+
+  const handleGenerateMeaning = async () => {
+    setGeneratingMeaning(true)
+    setMeaningError(null)
+    try {
+      const updated = await generateMeaning(item.id)
+      onUpdated(updated)
+    } catch {
+      setMeaningError('意味の生成に失敗しました。時間を置いて再度お試しください。')
+    } finally {
+      setGeneratingMeaning(false)
+    }
+  }
 
   const [tagDraft, setTagDraft] = useState('')
   const [tagFocused, setTagFocused] = useState(false)
@@ -167,13 +181,25 @@ export function ItemProperties({ item, onUpdated }: ItemPropertiesProps) {
         <div className="flex items-center justify-between">
           <span className="text-sm font-medium">意味・説明</span>
           {!editingMeaning && (
-            <button
-              onClick={startEditMeaning}
-              className="text-muted-foreground hover:text-foreground transition-colors"
-              aria-label="意味・説明を編集"
-            >
-              <Pencil size={15} />
-            </button>
+            <div className="flex items-center gap-2">
+              <button
+                onClick={handleGenerateMeaning}
+                disabled={generatingMeaning}
+                className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground transition-colors disabled:opacity-50"
+                aria-label="AIで意味・説明を生成"
+                title="AIで生成"
+              >
+                {generatingMeaning ? <Loader2 size={14} className="animate-spin" /> : <Sparkles size={14} />}
+                {item.meaning ? '再生成' : 'AIで生成'}
+              </button>
+              <button
+                onClick={startEditMeaning}
+                className="text-muted-foreground hover:text-foreground transition-colors"
+                aria-label="意味・説明を編集"
+              >
+                <Pencil size={15} />
+              </button>
+            </div>
           )}
         </div>
 
@@ -207,10 +233,18 @@ export function ItemProperties({ item, onUpdated }: ItemPropertiesProps) {
             {meaningError && <p className="text-xs text-destructive">{meaningError}</p>}
           </div>
         ) : item.meaning ? (
-          <p className="text-sm leading-relaxed whitespace-pre-wrap text-foreground">{item.meaning}</p>
+          <div className="space-y-1.5">
+            <p className="text-sm leading-relaxed whitespace-pre-wrap text-foreground">{item.meaning}</p>
+            {item.meaning_example && (
+              <p className="text-xs leading-relaxed text-muted-foreground border-l-2 border-border pl-2">
+                例: {item.meaning_example}
+              </p>
+            )}
+          </div>
         ) : (
-          <p className="text-sm text-muted-foreground">未設定（鉛筆アイコンから追加できます）</p>
+          <p className="text-sm text-muted-foreground">未設定（「AIで生成」または鉛筆アイコンから追加できます）</p>
         )}
+        {!editingMeaning && meaningError && <p className="text-xs text-destructive">{meaningError}</p>}
       </div>
 
       {/* タグ */}

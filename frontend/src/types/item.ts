@@ -25,6 +25,7 @@ export interface Item {
   generation_error?: string | null
   item_type?: ItemType | null
   meaning?: string | null
+  meaning_example?: string | null
   style?: string | null
   tags?: ItemTag[]
   media: ItemMedia | null

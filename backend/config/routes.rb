@@ -13,6 +13,7 @@ Rails.application.routes.draw do
       get "search", to: "search#index"
       get "account/export", to: "account#export"
       delete "account", to: "account#destroy"
+      resource :settings, only: [ :show, :update ]
       resources :items, only: [ :index, :create, :show, :update, :destroy ] do
         collection do
           get :summary
@@ -20,6 +21,7 @@ Rails.application.routes.draw do
         end
         member do
           post :retry
+          post :meaning
         end
       end
       resources :item_types, only: [ :index ]

@@ -33,6 +33,8 @@ module Items
       end
 
       GenerateImageJob.perform_later(item.id, force_generate: @params[:force_generate] == true)
+      # ユーザー設定で「意味の自動生成」が ON の場合のみ、意味生成も非同期で実行する
+      GenerateMeaningJob.perform_later(item.id) if @user.setting&.auto_generate_meanings
       Result.new(item: item)
     end
 

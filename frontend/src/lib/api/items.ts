@@ -115,3 +115,9 @@ export async function retryItem(id: string): Promise<Item> {
   const res = await apiClient.post<Item>(`/api/v1/items/${id}/retry`)
   return res.data
 }
+
+// AI による意味・説明の生成（同期）。生成済みの場合は再生成。
+export async function generateMeaning(id: string): Promise<Item> {
+  const res = await apiClient.post<Item>(`/api/v1/items/${id}/meaning`)
+  return res.data
+}

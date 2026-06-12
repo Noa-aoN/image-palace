@@ -34,6 +34,22 @@ RSpec.describe Items::CreateService, type: :service do
       expect(result.item.custom_prompt).to eq("wearing a hat")
     end
 
+    it "意味の自動生成設定が ON のとき GenerateMeaningJob もエンキューする" do
+      create(:setting, user: user, auto_generate_meanings: true)
+
+      expect {
+        described_class.call(user: user, params: { title: "光合成" })
+      }.to have_enqueued_job(GenerateMeaningJob)
+    end
+
+    it "意味の自動生成設定が OFF のとき GenerateMeaningJob はエンキューしない" do
+      create(:setting, user: user, auto_generate_meanings: false)
+
+      expect {
+        described_class.call(user: user, params: { title: "光合成" })
+      }.not_to have_enqueued_job(GenerateMeaningJob)
+    end
+
     it "raises monthly limit exceeded when the user already created 100 items this month" do
       freeze_time do
         described_class::FREE_ITEM_LIMIT_PER_MONTH.times do |index|

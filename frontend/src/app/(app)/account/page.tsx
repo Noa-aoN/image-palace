@@ -1,10 +1,11 @@
 'use client'
 
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { Download, Trash2, AlertTriangle } from 'lucide-react'
+import { Download, Trash2, AlertTriangle, Sparkles, Loader2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { exportAccountData, deleteAccount } from '@/lib/api/account'
+import { getSettings, updateSettings } from '@/lib/api/settings'
 import { useAuthStore } from '@/stores/auth'
 import { useItemsStore } from '@/stores/items'
 
@@ -12,6 +13,36 @@ export default function AccountPage() {
   const router = useRouter()
   const clearAuth = useAuthStore((s) => s.clearAuth)
   const resetItems = useItemsStore((s) => s.resetItems)
+
+  const [autoMeanings, setAutoMeanings] = useState<boolean | null>(null)
+  const [savingSettings, setSavingSettings] = useState(false)
+
+  useEffect(() => {
+    let cancelled = false
+    getSettings()
+      .then((s) => {
+        if (!cancelled) setAutoMeanings(s.auto_generate_meanings)
+      })
+      .catch(() => {})
+    return () => {
+      cancelled = true
+    }
+  }, [])
+
+  const toggleAutoMeanings = async () => {
+    if (autoMeanings === null || savingSettings) return
+    const next = !autoMeanings
+    setSavingSettings(true)
+    setAutoMeanings(next)
+    try {
+      const s = await updateSettings({ auto_generate_meanings: next })
+      setAutoMeanings(s.auto_generate_meanings)
+    } catch {
+      setAutoMeanings(!next) // 失敗したら元に戻す
+    } finally {
+      setSavingSettings(false)
+    }
+  }
 
   const [exporting, setExporting] = useState(false)
   const [exportError, setExportError] = useState<string | null>(null)
@@ -59,8 +90,47 @@ export default function AccountPage() {
     <div className="max-w-2xl mx-auto px-6 py-12 space-y-10">
       <div>
         <h1 className="text-xl font-semibold">アカウント設定</h1>
-        <p className="mt-1 text-sm text-muted-foreground">データのエクスポートとアカウントの削除ができます。</p>
+        <p className="mt-1 text-sm text-muted-foreground">生成オプション・データのエクスポート・アカウントの削除ができます。</p>
       </div>
+
+      {/* 生成オプション */}
+      <section className="space-y-3 rounded-xl border border-border bg-card p-5">
+        <div className="flex items-center gap-2">
+          <Sparkles size={18} style={{ color: 'var(--palace)' }} />
+          <h2 className="text-base font-semibold">生成オプション</h2>
+        </div>
+        <div className="flex items-start justify-between gap-4">
+          <div>
+            <p className="text-sm font-medium">カード作成時に意味・説明を自動生成</p>
+            <p className="mt-1 text-sm text-muted-foreground">
+              ONにすると、新しいカードを作るたびに AI が意味・説明を自動生成します（生成コストがかかります）。
+              OFF の場合は、各カードの詳細画面から個別に生成できます。
+            </p>
+          </div>
+          <button
+            type="button"
+            role="switch"
+            aria-checked={autoMeanings === true}
+            aria-label="意味・説明の自動生成"
+            disabled={autoMeanings === null || savingSettings}
+            onClick={toggleAutoMeanings}
+            className={`relative mt-0.5 inline-flex h-6 w-11 shrink-0 items-center rounded-full transition-colors disabled:opacity-50 ${
+              autoMeanings ? 'bg-[var(--palace)]' : 'bg-muted'
+            }`}
+          >
+            <span
+              className={`inline-block h-5 w-5 transform rounded-full bg-white shadow transition-transform ${
+                autoMeanings ? 'translate-x-5' : 'translate-x-0.5'
+              }`}
+            />
+          </button>
+        </div>
+        {savingSettings && (
+          <p className="flex items-center gap-1 text-xs text-muted-foreground">
+            <Loader2 size={12} className="animate-spin" /> 保存中…
+          </p>
+        )}
+      </section>
 
       {/* データエクスポート */}
       <section className="space-y-3 rounded-xl border border-border bg-card p-5">
