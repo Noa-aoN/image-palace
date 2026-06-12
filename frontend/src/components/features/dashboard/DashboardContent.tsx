@@ -2,9 +2,16 @@
 
 import { useEffect, useState } from 'react'
 import Link from 'next/link'
+import { PenLine, Sparkles, GalleryVerticalEnd } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
 import { getItemsSummary, type ItemsSummary } from '@/lib/api/items'
+
+const GETTING_STARTED = [
+  { icon: <PenLine size={20} />, text: '覚えたい単語や概念を入力する' },
+  { icon: <Sparkles size={20} />, text: 'AIが画像カードに変換する' },
+  { icon: <GalleryVerticalEnd size={20} />, text: 'カードで見返し、デッキやタグで整理する' },
+]
 
 const EMPTY_SUMMARY: ItemsSummary = {
   total_count: 0,
@@ -29,6 +36,46 @@ export function DashboardContent() {
     summary && summary.monthly_limit > 0
       ? Math.min(100, Math.round((summary.monthly_count / summary.monthly_limit) * 100))
       : 0
+
+  // 新規ユーザー（カード0件）には統計の代わりに始め方ガイドを表示
+  if (summary !== null && summary.total_count === 0) {
+    return (
+      <div className="max-w-2xl mx-auto px-6 py-12 space-y-8">
+        <div>
+          <h1 className="text-2xl font-semibold">ようこそ、ImagePalace へ</h1>
+          <p className="mt-2 text-muted-foreground">
+            単語をAI画像のカードに変えて、思い出しやすい記憶をつくりましょう。まずは1枚作ってみてください。
+          </p>
+        </div>
+
+        <Card>
+          <CardContent className="pt-6 space-y-4">
+            <p className="text-sm font-medium">使い方</p>
+            <ol className="space-y-3">
+              {GETTING_STARTED.map((step, i) => (
+                <li key={i} className="flex items-center gap-3">
+                  <span
+                    className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full"
+                    style={{ backgroundColor: 'rgba(198,167,94,0.15)', color: 'var(--palace)' }}
+                  >
+                    {step.icon}
+                  </span>
+                  <span className="text-sm">{step.text}</span>
+                </li>
+              ))}
+            </ol>
+            <div className="rounded-lg border border-border/70 bg-muted/40 px-4 py-3">
+              <p className="text-sm font-medium">最初に試しやすい例</p>
+              <p className="mt-1 text-sm text-muted-foreground">富士山、光合成、API、細胞分裂</p>
+            </div>
+            <Link href="/items/new">
+              <Button size="lg" className="w-full sm:w-auto">最初のカードを作成する</Button>
+            </Link>
+          </CardContent>
+        </Card>
+      </div>
+    )
+  }
 
   return (
     <div className="max-w-2xl mx-auto px-6 py-12 space-y-8">
