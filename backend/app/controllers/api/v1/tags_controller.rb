@@ -13,6 +13,14 @@ module Api
         render json: { tags: tags.map { |t| serialize_tag(t) } }
       end
 
+      def create
+        tag = current_user.tags.build(tag_params)
+        tag.save!
+        render json: serialize_tag(tag), status: :created
+      rescue ActiveRecord::RecordInvalid => e
+        render json: { errors: e.record.errors.full_messages }, status: :unprocessable_entity
+      end
+
       def update
         @tag.update!(tag_params)
         render json: serialize_tag(@tag)

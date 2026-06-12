@@ -6,6 +6,11 @@ export async function getTags(): Promise<Tag[]> {
   return res.data.tags
 }
 
+export async function createTag(name: string): Promise<Tag> {
+  const res = await apiClient.post<Tag>('/api/v1/tags', { tag: { name } })
+  return res.data
+}
+
 export async function updateTag(id: string, name: string): Promise<Tag> {
   const res = await apiClient.patch<Tag>(`/api/v1/tags/${id}`, { tag: { name } })
   return res.data

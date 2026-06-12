@@ -19,7 +19,7 @@ Rails.application.routes.draw do
         end
       end
       resources :item_types, only: [ :index ]
-      resources :tags, only: [ :index, :update, :destroy ]
+      resources :tags, only: [ :index, :create, :update, :destroy ]
       resources :decks, only: [ :index, :create, :show, :update, :destroy ] do
         member do
           post "items", action: :add_item

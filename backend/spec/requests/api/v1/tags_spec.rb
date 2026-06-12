@@ -44,6 +44,33 @@ RSpec.describe "Api::V1::Tags", type: :request do
     end
   end
 
+  describe "POST /api/v1/tags" do
+    it "creates a standalone tag" do
+      expect {
+        post "/api/v1/tags", params: { tag: { name: "新タグ" } }, headers: headers, as: :json
+      }.to change { user.tags.count }.by(1)
+
+      expect(response).to have_http_status(:created)
+      expect(json_response["name"]).to eq("新タグ")
+      expect(json_response["item_count"]).to eq(0)
+    end
+
+    it "returns validation error for a duplicate name" do
+      user.tags.create!(name: "既存")
+
+      post "/api/v1/tags", params: { tag: { name: "既存" } }, headers: headers, as: :json
+
+      expect(response).to have_http_status(:unprocessable_content)
+      expect(json_response["errors"]).to be_present
+    end
+
+    it "returns validation error when name is blank" do
+      post "/api/v1/tags", params: { tag: { name: "" } }, headers: headers, as: :json
+
+      expect(response).to have_http_status(:unprocessable_content)
+    end
+  end
+
   describe "PATCH /api/v1/tags/:id" do
     it "renames a tag" do
       tag = user.tags.create!(name: "旧名")

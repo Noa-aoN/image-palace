@@ -2,10 +2,10 @@
 
 import { useEffect, useState } from 'react'
 import Link from 'next/link'
-import { Tag as TagIcon, Pencil, Check, X, Trash2 } from 'lucide-react'
+import { Tag as TagIcon, Pencil, Check, X, Trash2, Plus } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
-import { getTags, updateTag, deleteTag } from '@/lib/api/tags'
+import { getTags, createTag, updateTag, deleteTag } from '@/lib/api/tags'
 import type { Tag } from '@/types/tag'
 
 function TagRow({ tag, onChanged }: { tag: Tag; onChanged: (next: Tag | null) => void }) {
@@ -101,6 +101,28 @@ export default function TagsPage() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
+  const [newName, setNewName] = useState('')
+  const [creating, setCreating] = useState(false)
+  const [createError, setCreateError] = useState<string | null>(null)
+
+  const handleCreate = async (e: React.FormEvent) => {
+    e.preventDefault()
+    const name = newName.trim()
+    if (!name) return
+    setCreating(true)
+    setCreateError(null)
+    try {
+      const created = await createTag(name)
+      setTags((current) => [...current, created].sort((a, b) => a.name.localeCompare(b.name, 'ja')))
+      setNewName('')
+    } catch (err: unknown) {
+      const axiosErr = err as { response?: { data?: { errors?: string[] } } }
+      setCreateError(axiosErr?.response?.data?.errors?.[0] ?? 'タグの作成に失敗しました')
+    } finally {
+      setCreating(false)
+    }
+  }
+
   useEffect(() => {
     let cancelled = false
     getTags()
@@ -122,8 +144,25 @@ export default function TagsPage() {
     <div className="max-w-2xl mx-auto px-6 py-12">
       <h1 className="text-xl font-semibold mb-2">タグ</h1>
       <p className="text-sm text-muted-foreground mb-6">
-        タグはカードの詳細画面で付与できます。ここでは名前の変更・削除ができます。
+        タグの新規作成・名前の変更・削除ができます。カードへの付与はカード詳細画面から行えます。
       </p>
+
+      <form onSubmit={handleCreate} className="mb-8 flex flex-col gap-2 sm:flex-row sm:items-start">
+        <div className="flex-1">
+          <Input
+            value={newName}
+            onChange={(e) => setNewName(e.target.value)}
+            placeholder="新しいタグ名（例: 英語、IT）"
+            disabled={creating}
+            aria-label="新しいタグ名"
+          />
+          {createError && <p className="mt-1 text-sm text-destructive">{createError}</p>}
+        </div>
+        <Button type="submit" size="sm" disabled={creating || !newName.trim()} className="flex items-center gap-1.5">
+          <Plus size={16} />
+          {creating ? '作成中...' : '作成'}
+        </Button>
+      </form>
 
       {loading ? (
         <div className="space-y-2">
