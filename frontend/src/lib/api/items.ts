@@ -35,15 +35,21 @@ export async function getItems(): Promise<Item[]> {
   return res.data.items
 }
 
-export async function getItemsPage(
-  page: number,
-  per: number,
-  tagId?: string,
+export interface ItemsPageOptions {
+  tagId?: string
   query?: string
-): Promise<ItemsPage> {
+  sort?: string
+  direction?: string
+  status?: string
+}
+
+export async function getItemsPage(page: number, per: number, opts: ItemsPageOptions = {}): Promise<ItemsPage> {
   const params: Record<string, string | number> = { page, per }
-  if (tagId) params.tag_id = tagId
-  if (query && query.trim()) params.q = query.trim()
+  if (opts.tagId) params.tag_id = opts.tagId
+  if (opts.query && opts.query.trim()) params.q = opts.query.trim()
+  if (opts.sort) params.sort = opts.sort
+  if (opts.direction) params.direction = opts.direction
+  if (opts.status) params.status = opts.status
   const res = await apiClient.get<ItemsPage>('/api/v1/items', { params })
   return res.data
 }

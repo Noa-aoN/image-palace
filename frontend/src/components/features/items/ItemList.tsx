@@ -101,6 +101,8 @@ export function ItemList({ initialTag = null }: { initialTag?: string | null }) 
   const [error, setError] = useState<string | null>(null)
   const [tags, setTags] = useState<Tag[]>([])
   const [activeTag, setActiveTag] = useState<string | null>(initialTag)
+  const [sortKey, setSortKey] = useState('created_at:desc')
+  const [statusFilter, setStatusFilter] = useState('')
   const [query, setQuery] = useState('')
   const [appliedQuery, setAppliedQuery] = useState('')
   const [suggestions, setSuggestions] = useState<ItemSuggestion[]>([])
@@ -174,7 +176,14 @@ export function ItemList({ initialTag = null }: { initialTag?: string | null }) 
 
     requestInFlightRef.current = true
     try {
-      const { items: fetched, meta } = await getItemsPage(targetPage, PER_PAGE, activeTag ?? undefined, appliedQuery || undefined)
+      const [sort, direction] = sortKey.split(':')
+      const { items: fetched, meta } = await getItemsPage(targetPage, PER_PAGE, {
+        tagId: activeTag ?? undefined,
+        query: appliedQuery || undefined,
+        sort,
+        direction,
+        status: statusFilter || undefined,
+      })
       setItems(fetched)
       setTotalPages(Math.max(meta.total_pages, 1))
       setError(null)
@@ -191,6 +200,20 @@ export function ItemList({ initialTag = null }: { initialTag?: string | null }) 
     if (tagId === activeTag) return
     setLoading(true)
     setActiveTag(tagId)
+    setPage(1)
+  }
+
+  const changeSort = (value: string) => {
+    if (value === sortKey) return
+    setLoading(true)
+    setSortKey(value)
+    setPage(1)
+  }
+
+  const changeStatus = (value: string) => {
+    if (value === statusFilter) return
+    setLoading(true)
+    setStatusFilter(value)
     setPage(1)
   }
 
@@ -228,7 +251,7 @@ export function ItemList({ initialTag = null }: { initialTag?: string | null }) 
       cancelled = true
       clearTimer()
     }
-  }, [page, activeTag, appliedQuery])
+  }, [page, activeTag, appliedQuery, sortKey, statusFilter])
 
   const goToPage = (next: number) => {
     if (next < 1 || next > totalPages || next === page) return
@@ -315,10 +338,39 @@ export function ItemList({ initialTag = null }: { initialTag?: string | null }) 
     </div>
   )
 
+  const sortFilterControls = (
+    <div className="flex flex-wrap items-center gap-2">
+      <select
+        value={sortKey}
+        onChange={(e) => changeSort(e.target.value)}
+        aria-label="並び替え"
+        className="h-9 rounded-lg border border-input bg-background px-3 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+      >
+        <option value="created_at:desc">新しい順</option>
+        <option value="created_at:asc">古い順</option>
+        <option value="title:asc">名前順（あ→ん）</option>
+        <option value="title:desc">名前順（ん→あ）</option>
+      </select>
+      <select
+        value={statusFilter}
+        onChange={(e) => changeStatus(e.target.value)}
+        aria-label="ステータスで絞り込み"
+        className="h-9 rounded-lg border border-input bg-background px-3 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+      >
+        <option value="">すべての状態</option>
+        <option value="completed">完了</option>
+        <option value="processing">生成中</option>
+        <option value="pending">生成待ち</option>
+        <option value="failed">失敗</option>
+      </select>
+    </div>
+  )
+
   const filterBar = (
     <div className="space-y-3">
       {searchBox}
       {tagFilter}
+      {sortFilterControls}
     </div>
   )
 
@@ -345,12 +397,16 @@ export function ItemList({ initialTag = null }: { initialTag?: string | null }) 
   }
 
   if (items.length === 0) {
-    if (activeTag || appliedQuery) {
+    if (activeTag || appliedQuery || statusFilter) {
       return (
         <div className="space-y-6">
           {filterBar}
           <p className="text-center text-muted-foreground py-12">
-            {appliedQuery ? `「${appliedQuery}」に一致するカードはありません。` : 'このタグのカードはありません。'}
+            {appliedQuery
+              ? `「${appliedQuery}」に一致するカードはありません。`
+              : statusFilter
+                ? 'この条件のカードはありません。'
+                : 'このタグのカードはありません。'}
           </p>
         </div>
       )

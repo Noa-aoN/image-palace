@@ -5,14 +5,19 @@ module Api
 
       DEFAULT_PER_PAGE = 24
       MAX_PER_PAGE = 100
+      # 並び替えのホワイトリスト（ユーザー入力を直接 ORDER BY に渡さない）
+      SORTABLE_COLUMNS = { "created_at" => "items.created_at", "title" => "items.title" }.freeze
+      SORT_DIRECTIONS = %w[asc desc].freeze
 
       def index
-        scope = current_user.items.order(created_at: :desc)
+        scope = current_user.items
+        scope = scope.where(generation_status: params[:status]) if Item::GENERATION_STATUSES.include?(params[:status])
         scope = scope.joins(:item_tags).where(item_tags: { tag_id: params[:tag_id] }) if params[:tag_id].present?
         if params[:q].present?
           like = "%#{ActiveRecord::Base.sanitize_sql_like(params[:q].strip)}%"
           scope = scope.where("items.title ILIKE ?", like)
         end
+        scope = scope.order(sort_clause)
 
         per = pagination_per
         page = pagination_page
@@ -109,6 +114,13 @@ module Api
       end
 
       private
+
+      # 並び替え句を組み立てる。カラム・方向は許可リストからのみ採用し、安定化のため created_at を副キーにする
+      def sort_clause
+        column = SORTABLE_COLUMNS.fetch(params[:sort], "items.created_at")
+        direction = SORT_DIRECTIONS.include?(params[:direction]) ? params[:direction] : "desc"
+        Arel.sql("#{column} #{direction}, items.created_at DESC")
+      end
 
       # 1始まり。不正値・0以下は 1 に丸める
       def pagination_page
