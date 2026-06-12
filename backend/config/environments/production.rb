@@ -25,10 +25,14 @@ Rails.application.configure do
   config.assume_ssl = true
 
   # Force all access to the app over SSL, use Strict-Transport-Security, and use secure cookies.
-  # config.force_ssl = true
+  config.force_ssl = true
 
-  # Skip http-to-https redirect for the default health check endpoint.
-  # config.ssl_options = { redirect: { exclude: ->(request) { request.path == "/up" } } }
+  # Skip http-to-https redirect for health check endpoints（Fly の内部ヘルスチェックは HTTP で来るため除外）。
+  config.ssl_options = {
+    redirect: {
+      exclude: ->(request) { request.path == "/up" || request.path.start_with?("/api/v1/health") }
+    }
+  }
 
   # Log to STDOUT with the current request id as a default log tag.
   config.log_tags = [ :request_id ]
@@ -76,12 +80,22 @@ Rails.application.configure do
   # Only use :id for inspections in production.
   config.active_record.attributes_for_inspect = [ :id ]
 
-  # Enable DNS rebinding protection and other `Host` header attacks.
-  # config.hosts = [
-  #   "example.com",     # Allow requests from example.com
-  #   /.*\.example\.com/ # Allow requests from subdomains like `www.example.com`
-  # ]
-  #
-  # Skip DNS rebinding protection for the default health check endpoint.
-  # config.host_authorization = { exclude: ->(request) { request.path == "/up" } }
+  # Host ヘッダ攻撃（DNS rebinding 等）対策。許可するホストを本番ドメインに限定する。
+  config.hosts = [
+    "image-palace-api.fly.dev"
+  ]
+  # BACKEND_URL が設定されていればそのホストも許可（独自ドメイン移行時の保険）。
+  if ENV["BACKEND_URL"].present?
+    begin
+      backend_host = URI.parse(ENV["BACKEND_URL"]).host
+      config.hosts << backend_host if backend_host.present?
+    rescue URI::InvalidURIError
+      # 不正な URL は無視する
+    end
+  end
+
+  # ヘルスチェックは Host 認可の対象外にする（Fly 内部チェックは公開ドメイン以外の Host で来るため）。
+  config.host_authorization = {
+    exclude: ->(request) { request.path == "/up" || request.path.start_with?("/api/v1/health") }
+  }
 end

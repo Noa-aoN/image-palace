@@ -28,19 +28,22 @@ class GenerateImageJob < ApplicationJob
       item.update_generation_status!("processing")
       # スタイル・カスタム指示を反映した有効プロンプト。キャッシュキーと生成の両方に使う
       effective_prompt = PromptBuilderService.effective_prompt(item)
-      Rails.logger.info "[GenerateImageJob] START item_id=#{item.id} prompt=#{effective_prompt}"
-
       normalized = NormalizePromptService.call(effective_prompt)
+      # プロンプト全文はユーザー入力（個人情報・機密語句を含み得る）なのでログに残さない。
+      # 相関用にハッシュの先頭と長さだけ記録する。
+      prompt_key = Digest::SHA256.hexdigest(normalized)[0, 8]
+      Rails.logger.info "[GenerateImageJob] START item_id=#{item.id} prompt_key=#{prompt_key} prompt_len=#{effective_prompt.length}"
+
       cached = force_generate ? nil : SharedMedia.for_prompt(normalized).detect { |shared| blob_available?(shared.file.blob) }
 
       if cached
-        Rails.logger.info "[GenerateImageJob] CACHE HIT prompt=#{normalized} shared_media_id=#{cached.id}"
+        Rails.logger.info "[GenerateImageJob] CACHE HIT prompt_key=#{prompt_key} shared_media_id=#{cached.id}"
         attach_from_shared_media(item, cached)
       else
         if !force_generate && SharedMedia.for_prompt(normalized).exists?
-          Rails.logger.warn "[GenerateImageJob] CACHE STALE prompt=#{normalized}"
+          Rails.logger.warn "[GenerateImageJob] CACHE STALE prompt_key=#{prompt_key}"
         end
-        Rails.logger.info "[GenerateImageJob] CACHE MISS prompt=#{normalized}"
+        Rails.logger.info "[GenerateImageJob] CACHE MISS prompt_key=#{prompt_key}"
         result = GenerateImageService.call(prompt: effective_prompt)
         shared_media = SharedMedia.create!(
           normalized_prompt: normalized,

@@ -1,6 +1,17 @@
+# 許可オリジンは CORS_ORIGINS（カンマ区切り）で管理する。
+# 認証トークン（access-token 等）を expose しているため、本番でのワイルドカード '*' は危険。除外する。
+cors_origins = ENV.fetch("CORS_ORIGINS", "http://localhost:3000")
+                  .split(",").map(&:strip).reject(&:blank?)
+
+if Rails.env.production? && cors_origins.delete("*")
+  Rails.logger.warn(
+    "[CORS] 本番で '*' が指定されたため除外しました。CORS_ORIGINS に明示的なオリジンを設定してください。"
+  )
+end
+
 Rails.application.config.middleware.insert_before 0, Rack::Cors do
   allow do
-    origins ENV.fetch("CORS_ORIGINS", "http://localhost:3000")
+    origins(*cors_origins)
     resource "/api/*",
       headers: :any,
       methods: [ :get, :post, :put, :patch, :delete, :options ],
