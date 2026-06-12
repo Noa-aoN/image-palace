@@ -6,6 +6,7 @@ import {
   Layers,
   LayoutGrid,
   Frame,
+  Tag,
   Plus,
 } from 'lucide-react'
 
@@ -24,5 +25,6 @@ export const NAV_ITEMS: NavItem[] = [
   { href: '/collections', icon: <Layers size={22} />, label: 'コレクション' },
   { href: '/spaces', icon: <LayoutGrid size={22} />, label: 'スペース' },
   { href: '/views', icon: <Frame size={22} />, label: 'ビュー' },
+  { href: '/tags', icon: <Tag size={22} />, label: 'タグ' },
   { href: '/items/new', icon: <Plus size={22} />, label: 'カードを作成' },
 ]

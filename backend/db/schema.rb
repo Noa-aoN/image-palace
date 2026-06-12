@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_06_12_000004) do
+ActiveRecord::Schema[8.1].define(version: 2026_06_12_000006) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
   enable_extension "pgcrypto"
@@ -103,6 +103,16 @@ ActiveRecord::Schema[8.1].define(version: 2026_06_12_000004) do
     t.uuid "user_id", null: false
     t.index ["user_id", "created_at"], name: "index_decks_on_user_id_and_created_at"
     t.index ["user_id"], name: "index_decks_on_user_id"
+  end
+
+  create_table "item_tags", id: :uuid, default: -> { "gen_random_uuid()" }, force: :cascade do |t|
+    t.datetime "created_at", null: false
+    t.uuid "item_id", null: false
+    t.uuid "tag_id", null: false
+    t.datetime "updated_at", null: false
+    t.index ["item_id", "tag_id"], name: "index_item_tags_on_item_id_and_tag_id", unique: true
+    t.index ["item_id"], name: "index_item_tags_on_item_id"
+    t.index ["tag_id"], name: "index_item_tags_on_tag_id"
   end
 
   create_table "item_types", id: :uuid, default: -> { "gen_random_uuid()" }, force: :cascade do |t|
@@ -355,6 +365,15 @@ ActiveRecord::Schema[8.1].define(version: 2026_06_12_000004) do
     t.index ["user_id"], name: "index_subscriptions_on_user_id"
   end
 
+  create_table "tags", id: :uuid, default: -> { "gen_random_uuid()" }, force: :cascade do |t|
+    t.datetime "created_at", null: false
+    t.string "name", null: false
+    t.datetime "updated_at", null: false
+    t.uuid "user_id", null: false
+    t.index ["user_id", "name"], name: "index_tags_on_user_id_and_name", unique: true
+    t.index ["user_id"], name: "index_tags_on_user_id"
+  end
+
   create_table "users", id: :uuid, default: -> { "gen_random_uuid()" }, force: :cascade do |t|
     t.boolean "allow_password_change", default: false, null: false
     t.datetime "confirmation_sent_at"
@@ -400,6 +419,8 @@ ActiveRecord::Schema[8.1].define(version: 2026_06_12_000004) do
   add_foreign_key "deck_items", "items", on_delete: :cascade
   add_foreign_key "decks", "items", column: "cover_item_id", on_delete: :nullify
   add_foreign_key "decks", "users", on_delete: :cascade
+  add_foreign_key "item_tags", "items", on_delete: :cascade
+  add_foreign_key "item_tags", "tags", on_delete: :cascade
   add_foreign_key "items", "item_types", on_delete: :restrict
   add_foreign_key "items", "users", on_delete: :cascade
   add_foreign_key "meanings", "items", on_delete: :cascade
@@ -421,5 +442,6 @@ ActiveRecord::Schema[8.1].define(version: 2026_06_12_000004) do
   add_foreign_key "spaces", "users", on_delete: :cascade
   add_foreign_key "subscriptions", "plans", on_delete: :restrict
   add_foreign_key "subscriptions", "users", on_delete: :cascade
+  add_foreign_key "tags", "users", on_delete: :cascade
   add_foreign_key "views", "users", on_delete: :cascade
 end

@@ -11,8 +11,10 @@ export interface ItemsSummary {
   monthly_remaining: number
 }
 
-export async function createItem(title: string, forceGenerate = false): Promise<Item> {
-  const res = await apiClient.post<Item>('/api/v1/items', { item: { title, force_generate: forceGenerate } })
+export async function createItem(title: string, forceGenerate = false, tags?: string[]): Promise<Item> {
+  const res = await apiClient.post<Item>('/api/v1/items', {
+    item: { title, force_generate: forceGenerate, ...(tags ? { tags } : {}) },
+  })
   return res.data
 }
 
@@ -33,8 +35,16 @@ export async function getItems(): Promise<Item[]> {
   return res.data.items
 }
 
-export async function getItemsPage(page: number, per: number): Promise<ItemsPage> {
-  const res = await apiClient.get<ItemsPage>('/api/v1/items', { params: { page, per } })
+export async function getItemsPage(
+  page: number,
+  per: number,
+  tagId?: string,
+  query?: string
+): Promise<ItemsPage> {
+  const params: Record<string, string | number> = { page, per }
+  if (tagId) params.tag_id = tagId
+  if (query && query.trim()) params.q = query.trim()
+  const res = await apiClient.get<ItemsPage>('/api/v1/items', { params })
   return res.data
 }
 
@@ -48,6 +58,8 @@ export interface ItemUpdatePayload {
   item_type_id?: string
   /** 空文字を渡すと意味は削除される */
   meaning?: string
+  /** タグ名の配列で置き換える（未指定なら変更しない） */
+  tags?: string[]
 }
 
 export async function updateItem(id: string, payload: ItemUpdatePayload): Promise<Item> {

@@ -4,7 +4,9 @@ import { useEffect, useState } from 'react'
 import { Loader2, Pencil, Check, X } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { getItemTypes, updateItem } from '@/lib/api/items'
+import { getTags } from '@/lib/api/tags'
 import type { Item, ItemType } from '@/types/item'
+import type { Tag } from '@/types/tag'
 
 type ItemPropertiesProps = {
   item: Item
@@ -25,6 +27,59 @@ export function ItemProperties({ item, onUpdated }: ItemPropertiesProps) {
   const [meaningDraft, setMeaningDraft] = useState('')
   const [savingMeaning, setSavingMeaning] = useState(false)
   const [meaningError, setMeaningError] = useState<string | null>(null)
+
+  const [tagDraft, setTagDraft] = useState('')
+  const [tagFocused, setTagFocused] = useState(false)
+  const [savingTags, setSavingTags] = useState(false)
+  const [tagError, setTagError] = useState<string | null>(null)
+  const [allTags, setAllTags] = useState<Tag[]>([])
+
+  const tags = item.tags ?? []
+
+  // 既存タグ（入力候補用）
+  const loadAllTags = () => {
+    getTags()
+      .then(setAllTags)
+      .catch(() => {})
+  }
+  useEffect(() => {
+    loadAllTags()
+  }, [])
+
+  // まだ付いていない既存タグを候補に出す。
+  // 未入力（フォーカスのみ）ならよく使われる順、入力中は該当するものを絞り込む。
+  const tagQuery = tagDraft.trim().toLowerCase()
+  const tagSuggestions = allTags
+    .filter((t) => !tags.some((cur) => cur.name.toLowerCase() === t.name.toLowerCase()))
+    .filter((t) => tagQuery.length === 0 || t.name.toLowerCase().includes(tagQuery))
+    .sort((a, b) => b.item_count - a.item_count)
+  const showTagSuggestions = tagFocused && tagSuggestions.length > 0
+
+  const saveTags = async (names: string[]) => {
+    setSavingTags(true)
+    setTagError(null)
+    try {
+      const updated = await updateItem(item.id, { tags: names })
+      onUpdated(updated)
+      loadAllTags()
+    } catch {
+      setTagError('タグの更新に失敗しました')
+    } finally {
+      setSavingTags(false)
+    }
+  }
+
+  const addTagName = async (raw: string) => {
+    const name = raw.trim()
+    if (!name) return
+    setTagDraft('')
+    if (tags.some((t) => t.name.toLowerCase() === name.toLowerCase())) return
+    await saveTags([...tags.map((t) => t.name), name])
+  }
+
+  const handleRemoveTag = async (tagId: string) => {
+    await saveTags(tags.filter((t) => t.id !== tagId).map((t) => t.name))
+  }
 
   useEffect(() => {
     let cancelled = false
@@ -156,6 +211,73 @@ export function ItemProperties({ item, onUpdated }: ItemPropertiesProps) {
         ) : (
           <p className="text-sm text-muted-foreground">未設定（鉛筆アイコンから追加できます）</p>
         )}
+      </div>
+
+      {/* タグ */}
+      <div className="space-y-2">
+        <div className="flex items-center gap-2">
+          <span className="text-sm font-medium">タグ</span>
+          {savingTags && <Loader2 size={14} className="animate-spin text-muted-foreground" />}
+        </div>
+        {tags.length > 0 && (
+          <div className="flex flex-wrap gap-1.5">
+            {tags.map((tag) => (
+              <span
+                key={tag.id}
+                className="inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-xs"
+                style={{ backgroundColor: 'rgba(198,167,94,0.15)', color: '#7a6432' }}
+              >
+                {tag.name}
+                <button
+                  onClick={() => handleRemoveTag(tag.id)}
+                  disabled={savingTags}
+                  aria-label={`タグ「${tag.name}」を外す`}
+                  className="hover:text-foreground transition-colors"
+                >
+                  <X size={12} />
+                </button>
+              </span>
+            ))}
+          </div>
+        )}
+        <div className="relative max-w-xs">
+          <input
+            value={tagDraft}
+            onChange={(e) => setTagDraft(e.target.value)}
+            onFocus={() => setTagFocused(true)}
+            onBlur={() => setTagFocused(false)}
+            onKeyDown={(e) => {
+              // IME変換確定の Enter では追加しない（確定後、再度 Enter で設定）
+              if (e.key !== 'Enter') return
+              if (e.nativeEvent.isComposing) return
+              e.preventDefault()
+              addTagName(tagDraft)
+            }}
+            disabled={savingTags}
+            placeholder="タグを入力して Enter"
+            aria-label="タグを追加"
+            autoComplete="off"
+            className="w-full rounded-lg border border-input bg-background px-3 py-1.5 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+          />
+          {showTagSuggestions && (
+            <ul className="absolute z-20 mt-1 w-full max-h-48 overflow-y-auto rounded-lg border border-border bg-card shadow-lg">
+              {tagSuggestions.map((t) => (
+                <li key={t.id}>
+                  <button
+                    type="button"
+                    // blur より先に発火させてクリックを成立させる
+                    onMouseDown={(e) => { e.preventDefault(); addTagName(t.name) }}
+                    className="flex w-full items-center justify-between gap-2 px-3 py-1.5 text-left text-sm hover:bg-muted"
+                  >
+                    <span className="truncate">{t.name}</span>
+                    <span className="text-xs text-muted-foreground shrink-0">{t.item_count}</span>
+                  </button>
+                </li>
+              ))}
+            </ul>
+          )}
+        </div>
+        {tagError && <p className="text-xs text-destructive">{tagError}</p>}
       </div>
     </div>
   )

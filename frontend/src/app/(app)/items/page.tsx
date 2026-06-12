@@ -5,7 +5,12 @@ import { ItemList } from '@/components/features/items/ItemList'
 
 export const metadata: Metadata = { title: 'マイカード' }
 
-export default function ItemsPage() {
+export default async function ItemsPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ tag?: string }>
+}) {
+  const { tag } = await searchParams
   return (
     <div className="max-w-5xl mx-auto px-6 py-12">
       <div className="flex items-center justify-between mb-6">
@@ -14,7 +19,7 @@ export default function ItemsPage() {
           <Button size="sm">+ カードを作成</Button>
         </Link>
       </div>
-      <ItemList />
+      <ItemList initialTag={tag ?? null} />
     </div>
   )
 }

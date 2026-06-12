@@ -175,6 +175,41 @@ RSpec.describe "Api::V1::Items", type: :request do
       expect(meta["page"]).to eq(1)
       expect(meta["per"]).to eq(100)
     end
+
+    it "filters by tag_id" do
+      tag = user.tags.create!(name: "英語")
+      tagged = user.items.create!(title: "apple", item_type: item_type, generation_status: "completed")
+      tagged.tags << tag
+      user.items.create!(title: "他", item_type: item_type, generation_status: "completed")
+
+      get "/api/v1/items", params: { tag_id: tag.id }, headers: headers
+
+      expect(response).to have_http_status(:success)
+      titles = json_response.fetch("items").map { |i| i["title"] }
+      expect(titles).to eq([ "apple" ])
+    end
+
+    it "searches by title (case-insensitive, partial match)" do
+      user.items.create!(title: "Photosynthesis", item_type: item_type, generation_status: "completed")
+      user.items.create!(title: "光合成", item_type: item_type, generation_status: "completed")
+      user.items.create!(title: "API", item_type: item_type, generation_status: "completed")
+
+      get "/api/v1/items", params: { q: "photo" }, headers: headers
+
+      expect(response).to have_http_status(:success)
+      titles = json_response.fetch("items").map { |i| i["title"] }
+      expect(titles).to eq([ "Photosynthesis" ])
+    end
+
+    it "escapes like wildcards in the query" do
+      user.items.create!(title: "100%", item_type: item_type, generation_status: "completed")
+      user.items.create!(title: "abc", item_type: item_type, generation_status: "completed")
+
+      get "/api/v1/items", params: { q: "%" }, headers: headers
+
+      titles = json_response.fetch("items").map { |i| i["title"] }
+      expect(titles).to eq([ "100%" ])
+    end
   end
 
   describe "GET /api/v1/items/summary" do
@@ -262,6 +297,27 @@ RSpec.describe "Api::V1::Items", type: :request do
       expect(item.generation_status).to eq("completed")
       expect(json_response["title"]).to eq("新しいタイトル")
       expect(json_response["generation_status"]).to eq("completed")
+    end
+
+    it "sets tags from names (creating new tags and detaching removed ones)" do
+      item = user.items.create!(title: "apple", item_type: item_type, generation_status: "completed")
+      item.tags << user.tags.create!(name: "古い")
+
+      patch "/api/v1/items/#{item.id}", params: { item: { tags: [ "英語", "果物" ] } }, headers: headers, as: :json
+
+      expect(response).to have_http_status(:success)
+      expect(item.reload.tags.map(&:name)).to contain_exactly("英語", "果物")
+      expect(json_response["tags"].map { |t| t["name"] }).to contain_exactly("英語", "果物")
+      expect(user.tags.where(name: "英語")).to exist
+    end
+
+    it "deduplicates tag names case-insensitively" do
+      item = user.items.create!(title: "apple", item_type: item_type, generation_status: "completed")
+
+      patch "/api/v1/items/#{item.id}", params: { item: { tags: [ "Tag", "tag", " tag " ] } }, headers: headers, as: :json
+
+      expect(response).to have_http_status(:success)
+      expect(item.reload.tags.count).to eq(1)
     end
 
     it "returns validation error when title is blank" do
