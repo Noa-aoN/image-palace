@@ -35,6 +35,22 @@ module Api
         }
       end
 
+      SUGGEST_LIMIT = 8
+
+      # 検索オートコンプリート用の軽量サジェスト（タイトルのみ）
+      def suggest
+        q = params[:q].to_s.strip
+        return render(json: { suggestions: [] }) if q.blank?
+
+        like = "%#{ActiveRecord::Base.sanitize_sql_like(q)}%"
+        items = current_user.items
+                            .where("items.title ILIKE ?", like)
+                            .order(created_at: :desc)
+                            .limit(SUGGEST_LIMIT)
+
+        render json: { suggestions: items.map { |i| { id: i.id, title: i.title } } }
+      end
+
       def summary
         monthly_limit = Items::CreateService::FREE_ITEM_LIMIT_PER_MONTH
         monthly_count = current_user.items.created_this_month.count

@@ -48,6 +48,20 @@ export async function getItemsPage(
   return res.data
 }
 
+export interface ItemSuggestion {
+  id: string
+  title: string
+}
+
+export async function getItemSuggestions(query: string): Promise<ItemSuggestion[]> {
+  const q = query.trim()
+  if (!q) return []
+  const res = await apiClient.get<{ suggestions: ItemSuggestion[] }>('/api/v1/items/suggest', {
+    params: { q },
+  })
+  return res.data.suggestions
+}
+
 export async function getItem(id: string): Promise<Item> {
   const res = await apiClient.get<Item>(`/api/v1/items/${id}`)
   return res.data

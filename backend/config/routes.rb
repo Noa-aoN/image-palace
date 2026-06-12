@@ -14,6 +14,7 @@ Rails.application.routes.draw do
       resources :items, only: [ :index, :create, :show, :update, :destroy ] do
         collection do
           get :summary
+          get :suggest
         end
         member do
           post :retry
