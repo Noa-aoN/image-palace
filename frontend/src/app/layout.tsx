@@ -5,6 +5,7 @@ import './globals.css'
 import { AppHeader } from '@/components/features/layout/Header'
 import { CookieConsentBanner } from '@/components/features/consent/CookieConsentBanner'
 import { Analytics } from '@/components/features/consent/Analytics'
+import { SentryInit } from '@/components/features/monitoring/SentryInit'
 
 const geist = Geist({
   variable: '--font-geist-sans',
@@ -50,6 +51,7 @@ export default function RootLayout({
         style={{ backgroundColor: 'var(--ivory)' }}
         suppressHydrationWarning
       >
+        <SentryInit />
         <AppHeader />
         <div className="flex-1 flex flex-col min-h-0">
           {children}
