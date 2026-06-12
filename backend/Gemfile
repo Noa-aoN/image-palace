@@ -30,6 +30,9 @@ gem "image_processing", "~> 1.2"
 # Use Rack CORS for handling Cross-Origin Resource Sharing (CORS), making cross-origin Ajax possible
 gem "rack-cors"
 
+# API レート制限（ブルートフォース・乱用・画像生成コストの抑制）
+gem "rack-attack"
+
 # Authentication
 gem "devise"
 gem "devise_token_auth"
