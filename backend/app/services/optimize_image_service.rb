@@ -1,7 +1,5 @@
 # frozen_string_literal: true
 
-require "vips"
-
 # 生成画像を保存前に最適化するサービス。
 # - 長辺を MAX_DIMENSION 以内にリサイズ（拡大はしない）
 # - WebP へ変換し、ストレージ容量・配信コスト・表示パフォーマンスを改善する
@@ -23,6 +21,10 @@ class OptimizeImageService
   end
 
   def call
+    # libvips はネイティブライブラリ依存のため遅延 require する。
+    # 未インストール環境でもアプリ起動を妨げないよう、ここで読み込む。
+    require "vips"
+
     image = Vips::Image.new_from_buffer(@image_data, "")
 
     # 長辺が MAX_DIMENSION を超える場合のみ縮小する（拡大はしない）
@@ -32,7 +34,8 @@ class OptimizeImageService
     data = image.webpsave_buffer(Q: WEBP_QUALITY, strip: true)
 
     Result.new(data: data, content_type: "image/webp", extension: "webp")
-  rescue StandardError => e
+  rescue StandardError, LoadError => e
+    # LoadError: libvips 未インストール。StandardError: 不正な画像など。いずれも元画像でフォールバックする。
     Rails.logger.warn "[OptimizeImageService] 最適化に失敗したため元画像を使用します: #{e.class}: #{e.message}"
     Result.new(
       data: @image_data,

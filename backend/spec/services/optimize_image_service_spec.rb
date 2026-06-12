@@ -1,6 +1,8 @@
 require "rails_helper"
 
 RSpec.describe OptimizeImageService do
+  before { skip "libvips 未インストール環境のためスキップ" unless vips_available? }
+
   def png_bytes(width, height)
     Vips::Image.black(width, height).pngsave_buffer
   end

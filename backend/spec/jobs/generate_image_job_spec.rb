@@ -63,6 +63,8 @@ RSpec.describe GenerateImageJob, type: :job do
     end
 
     it "生成画像を WebP に変換して保存する" do
+      skip "libvips 未インストール環境のためスキップ" unless vips_available?
+
       png = Vips::Image.black(1024, 1024).pngsave_buffer
       result = GenerateImageService::Result.new(
         image_data: png,
