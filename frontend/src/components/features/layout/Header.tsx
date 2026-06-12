@@ -65,6 +65,9 @@ export function AppHeader() {
             <CircleUser size={32} strokeWidth={1.5} />
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end">
+            <DropdownMenuItem onClick={() => router.push('/account')} className="cursor-pointer">
+              アカウント設定
+            </DropdownMenuItem>
             <DropdownMenuItem onClick={handleLogout} className="cursor-pointer">
               ログアウト
             </DropdownMenuItem>
