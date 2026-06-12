@@ -7,6 +7,7 @@ import { Label } from '@/components/ui/label'
 import { Spinner } from '@/components/ui/spinner'
 import { createItem } from '@/lib/api/items'
 import { useItemsStore } from '@/stores/items'
+import { STYLE_OPTIONS, CUSTOM_PROMPT_MAX_LENGTH } from '@/lib/item-styles'
 
 const MAX_TITLE_LENGTH = 100
 
@@ -22,6 +23,8 @@ export function CreateItemForm() {
   const upsertItem = useItemsStore((state) => state.upsertItem)
   const [input, setInput] = useState('')
   const [tagsInput, setTagsInput] = useState('')
+  const [style, setStyle] = useState('')
+  const [customPrompt, setCustomPrompt] = useState('')
   const [forceGenerate, setForceGenerate] = useState(false)
   const [apiError, setApiError] = useState<string | null>(null)
   const [submitting, setSubmitting] = useState(false)
@@ -45,7 +48,10 @@ export function CreateItemForm() {
 
     try {
       for (let i = 0; i < titles.length; i++) {
-        const item = await createItem(titles[i], forceGenerate, tagNames.length ? tagNames : undefined)
+        const item = await createItem(titles[i], forceGenerate, tagNames.length ? tagNames : undefined, {
+          style: style || undefined,
+          customPrompt: customPrompt.trim() || undefined,
+        })
         upsertItem(item)
         setProgress({ done: i + 1, total: titles.length })
       }
@@ -112,6 +118,47 @@ export function CreateItemForm() {
             {tagNames.length}個のタグを、作成するすべてのカードに付与します
           </p>
         )}
+      </div>
+
+      {/* スタイル（プリセット） */}
+      <div className="space-y-2">
+        <Label>スタイル（任意）</Label>
+        <div className="flex flex-wrap gap-2">
+          {STYLE_OPTIONS.map((opt) => {
+            const active = style === opt.value
+            return (
+              <button
+                key={opt.value || 'default'}
+                type="button"
+                onClick={() => setStyle(opt.value)}
+                disabled={submitting}
+                className={`rounded-full border px-3 py-1 text-sm transition-colors disabled:opacity-50 ${
+                  active ? 'border-transparent text-white' : 'border-border text-muted-foreground hover:bg-muted'
+                }`}
+                style={active ? { backgroundColor: 'var(--palace)' } : undefined}
+              >
+                {opt.label}
+              </button>
+            )
+          })}
+        </div>
+        <p className="text-xs text-muted-foreground">作成するすべてのカードに同じスタイルが適用されます。</p>
+      </div>
+
+      {/* カスタム指示（自由入力） */}
+      <div className="space-y-2">
+        <Label htmlFor="custom-prompt">追加の指示（任意）</Label>
+        <input
+          id="custom-prompt"
+          type="text"
+          value={customPrompt}
+          onChange={(e) => setCustomPrompt(e.target.value)}
+          disabled={submitting}
+          maxLength={CUSTOM_PROMPT_MAX_LENGTH}
+          placeholder="例: 背景は白、やさしい色合いで"
+          className="w-full rounded-lg border border-input bg-background px-3 py-2 text-sm placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+        />
+        <p className="text-xs text-muted-foreground">プロンプトに追記され、画像の雰囲気を調整できます。</p>
       </div>
 
       <label className="flex items-start gap-3 rounded-xl border border-border/70 bg-background px-4 py-3">

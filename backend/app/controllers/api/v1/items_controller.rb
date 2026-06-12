@@ -134,7 +134,7 @@ module Api
       end
 
       def item_params
-        params.require(:item).permit(:title, :item_type_id, :force_generate)
+        params.require(:item).permit(:title, :item_type_id, :force_generate, :style, :custom_prompt)
       end
 
       def item_update_params
@@ -178,6 +178,7 @@ module Api
           item_type: serialize_item_type(item.item_type),
           meaning: item.primary_meaning&.definition,
           meaning_example: item.primary_meaning&.example_sentence,
+          style: item.style,
           tags: item.tags.map { |t| { id: t.id, name: t.name } },
           media: serialize_media(item.primary_media),
           created_at: item.created_at

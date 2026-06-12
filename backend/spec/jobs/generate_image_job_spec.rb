@@ -79,5 +79,38 @@ RSpec.describe GenerateImageJob, type: :job do
       expect(blob.content_type).to eq("image/webp")
       expect(blob.filename.to_s).to end_with(".webp")
     end
+
+    it "スタイル指定がある場合は有効プロンプト（スタイル修飾込み）で生成する" do
+      styled = create(:item, :processing, user: user, title: "cat", style: "watercolor")
+      result = GenerateImageService::Result.new(
+        image_data: "\x89PNG\r\n\x1A\nfake", content_type: "image/png", metadata: {}
+      )
+      allow(GenerateImageService).to receive(:call).and_return(result)
+
+      described_class.perform_now(styled.id)
+
+      expect(GenerateImageService).to have_received(:call) do |prompt:|
+        expect(prompt).to include("cat")
+        expect(prompt).to include("watercolor")
+      end
+    end
+
+    it "同一タイトルでもスタイルが違えば別キャッシュ（既存の素の画像を再利用しない）" do
+      # 素のタイトル "cat" のキャッシュを用意
+      create(:shared_media, :with_file,
+        user: user,
+        normalized_prompt: NormalizePromptService.call("cat"),
+        metadata: {})
+      styled = create(:item, :processing, user: user, title: "cat", style: "anime")
+      result = GenerateImageService::Result.new(
+        image_data: "\x89PNG\r\n\x1A\nfake", content_type: "image/png", metadata: {}
+      )
+      allow(GenerateImageService).to receive(:call).and_return(result)
+
+      described_class.perform_now(styled.id)
+
+      # スタイル付きは別キーなのでキャッシュHITせず生成が呼ばれる
+      expect(GenerateImageService).to have_received(:call)
+    end
   end
 end

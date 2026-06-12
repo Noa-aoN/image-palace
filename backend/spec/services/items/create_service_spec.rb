@@ -27,6 +27,13 @@ RSpec.describe Items::CreateService, type: :service do
       expect(enqueued_jobs.last[:args][1].with_indifferent_access[:force_generate]).to be true
     end
 
+    it "スタイルとカスタムプロンプトを保存する" do
+      result = described_class.call(user: user, params: { title: "cat", style: "watercolor", custom_prompt: "wearing a hat" })
+
+      expect(result.item.style).to eq("watercolor")
+      expect(result.item.custom_prompt).to eq("wearing a hat")
+    end
+
     it "意味の自動生成設定が ON のとき GenerateMeaningJob もエンキューする" do
       create(:setting, user: user, auto_generate_meanings: true)
 
