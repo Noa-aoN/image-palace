@@ -3,7 +3,7 @@
 import { startTransition, useEffect, useEffectEvent, useRef, useState } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
-import { ChevronLeft, ChevronRight } from 'lucide-react'
+import { ChevronLeft, ChevronRight, Search, X } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { getItemsPage } from '@/lib/api/items'
 import { getTags } from '@/lib/api/tags'
@@ -100,8 +100,19 @@ export function ItemList({ initialTag = null }: { initialTag?: string | null }) 
   const [error, setError] = useState<string | null>(null)
   const [tags, setTags] = useState<Tag[]>([])
   const [activeTag, setActiveTag] = useState<string | null>(initialTag)
+  const [query, setQuery] = useState('')
+  const [appliedQuery, setAppliedQuery] = useState('')
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const requestInFlightRef = useRef(false)
+
+  // 入力をデバウンスして検索に反映（変更時は1ページ目に戻す）
+  useEffect(() => {
+    const handle = setTimeout(() => {
+      setAppliedQuery(query.trim())
+      setPage(1)
+    }, 300)
+    return () => clearTimeout(handle)
+  }, [query])
 
   // タグ一覧（絞り込みチップ用）
   useEffect(() => {
@@ -122,7 +133,7 @@ export function ItemList({ initialTag = null }: { initialTag?: string | null }) 
 
     requestInFlightRef.current = true
     try {
-      const { items: fetched, meta } = await getItemsPage(targetPage, PER_PAGE, activeTag ?? undefined)
+      const { items: fetched, meta } = await getItemsPage(targetPage, PER_PAGE, activeTag ?? undefined, appliedQuery || undefined)
       setItems(fetched)
       setTotalPages(Math.max(meta.total_pages, 1))
       setError(null)
@@ -176,7 +187,7 @@ export function ItemList({ initialTag = null }: { initialTag?: string | null }) 
       cancelled = true
       clearTimer()
     }
-  }, [page, activeTag])
+  }, [page, activeTag, appliedQuery])
 
   const goToPage = (next: number) => {
     if (next < 1 || next > totalPages || next === page) return
@@ -212,10 +223,39 @@ export function ItemList({ initialTag = null }: { initialTag?: string | null }) 
     </div>
   ) : null
 
+  const searchBox = (
+    <div className="relative">
+      <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
+      <input
+        value={query}
+        onChange={(e) => setQuery(e.target.value)}
+        placeholder="カードを検索（単語名）"
+        aria-label="カード検索"
+        className="w-full rounded-lg border border-input bg-background pl-9 pr-9 py-2 text-sm placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+      />
+      {query && (
+        <button
+          onClick={() => setQuery('')}
+          aria-label="検索をクリア"
+          className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors p-1"
+        >
+          <X size={15} />
+        </button>
+      )}
+    </div>
+  )
+
+  const filterBar = (
+    <div className="space-y-3">
+      {searchBox}
+      {tagFilter}
+    </div>
+  )
+
   if (loading) {
     return (
       <div className="space-y-6">
-        {tagFilter}
+        {filterBar}
         <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
           {Array.from({ length: 8 }).map((_, i) => (
             <div key={i} className="rounded-xl border border-border overflow-hidden">
@@ -235,11 +275,13 @@ export function ItemList({ initialTag = null }: { initialTag?: string | null }) 
   }
 
   if (items.length === 0) {
-    if (activeTag) {
+    if (activeTag || appliedQuery) {
       return (
         <div className="space-y-6">
-          {tagFilter}
-          <p className="text-center text-muted-foreground py-12">このタグのカードはありません。</p>
+          {filterBar}
+          <p className="text-center text-muted-foreground py-12">
+            {appliedQuery ? `「${appliedQuery}」に一致するカードはありません。` : 'このタグのカードはありません。'}
+          </p>
         </div>
       )
     }
@@ -260,7 +302,7 @@ export function ItemList({ initialTag = null }: { initialTag?: string | null }) 
 
   return (
     <div className="space-y-6">
-      {tagFilter}
+      {filterBar}
       <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
         {items.map((item) => (
           <ItemCard key={item.id} item={item} />

@@ -188,6 +188,28 @@ RSpec.describe "Api::V1::Items", type: :request do
       titles = json_response.fetch("items").map { |i| i["title"] }
       expect(titles).to eq([ "apple" ])
     end
+
+    it "searches by title (case-insensitive, partial match)" do
+      user.items.create!(title: "Photosynthesis", item_type: item_type, generation_status: "completed")
+      user.items.create!(title: "光合成", item_type: item_type, generation_status: "completed")
+      user.items.create!(title: "API", item_type: item_type, generation_status: "completed")
+
+      get "/api/v1/items", params: { q: "photo" }, headers: headers
+
+      expect(response).to have_http_status(:success)
+      titles = json_response.fetch("items").map { |i| i["title"] }
+      expect(titles).to eq([ "Photosynthesis" ])
+    end
+
+    it "escapes like wildcards in the query" do
+      user.items.create!(title: "100%", item_type: item_type, generation_status: "completed")
+      user.items.create!(title: "abc", item_type: item_type, generation_status: "completed")
+
+      get "/api/v1/items", params: { q: "%" }, headers: headers
+
+      titles = json_response.fetch("items").map { |i| i["title"] }
+      expect(titles).to eq([ "100%" ])
+    end
   end
 
   describe "GET /api/v1/items/summary" do

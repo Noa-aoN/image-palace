@@ -9,6 +9,10 @@ module Api
       def index
         scope = current_user.items.order(created_at: :desc)
         scope = scope.joins(:item_tags).where(item_tags: { tag_id: params[:tag_id] }) if params[:tag_id].present?
+        if params[:q].present?
+          like = "%#{ActiveRecord::Base.sanitize_sql_like(params[:q].strip)}%"
+          scope = scope.where("items.title ILIKE ?", like)
+        end
 
         per = pagination_per
         page = pagination_page
