@@ -11,9 +11,25 @@ export interface ItemsSummary {
   monthly_remaining: number
 }
 
-export async function createItem(title: string, forceGenerate = false, tags?: string[]): Promise<Item> {
+export interface CreateItemOptions {
+  style?: string
+  customPrompt?: string
+}
+
+export async function createItem(
+  title: string,
+  forceGenerate = false,
+  tags?: string[],
+  options?: CreateItemOptions
+): Promise<Item> {
   const res = await apiClient.post<Item>('/api/v1/items', {
-    item: { title, force_generate: forceGenerate, ...(tags ? { tags } : {}) },
+    item: {
+      title,
+      force_generate: forceGenerate,
+      ...(tags ? { tags } : {}),
+      ...(options?.style ? { style: options.style } : {}),
+      ...(options?.customPrompt ? { custom_prompt: options.customPrompt } : {}),
+    },
   })
   return res.data
 }

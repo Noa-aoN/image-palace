@@ -26,9 +26,11 @@ class GenerateImageJob < ApplicationJob
       end
 
       item.update_generation_status!("processing")
-      Rails.logger.info "[GenerateImageJob] START item_id=#{item.id} prompt=#{item.title}"
+      # スタイル・カスタム指示を反映した有効プロンプト。キャッシュキーと生成の両方に使う
+      effective_prompt = PromptBuilderService.effective_prompt(item)
+      Rails.logger.info "[GenerateImageJob] START item_id=#{item.id} prompt=#{effective_prompt}"
 
-      normalized = NormalizePromptService.call(item.title)
+      normalized = NormalizePromptService.call(effective_prompt)
       cached = force_generate ? nil : SharedMedia.for_prompt(normalized).detect { |shared| blob_available?(shared.file.blob) }
 
       if cached
@@ -39,7 +41,7 @@ class GenerateImageJob < ApplicationJob
           Rails.logger.warn "[GenerateImageJob] CACHE STALE prompt=#{normalized}"
         end
         Rails.logger.info "[GenerateImageJob] CACHE MISS prompt=#{normalized}"
-        result = GenerateImageService.call(prompt: item.title)
+        result = GenerateImageService.call(prompt: effective_prompt)
         shared_media = SharedMedia.create!(
           normalized_prompt: normalized,
           user_id: item.user_id,

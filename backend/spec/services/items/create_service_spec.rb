@@ -27,6 +27,13 @@ RSpec.describe Items::CreateService, type: :service do
       expect(enqueued_jobs.last[:args][1].with_indifferent_access[:force_generate]).to be true
     end
 
+    it "スタイルとカスタムプロンプトを保存する" do
+      result = described_class.call(user: user, params: { title: "cat", style: "watercolor", custom_prompt: "wearing a hat" })
+
+      expect(result.item.style).to eq("watercolor")
+      expect(result.item.custom_prompt).to eq("wearing a hat")
+    end
+
     it "raises monthly limit exceeded when the user already created 100 items this month" do
       freeze_time do
         described_class::FREE_ITEM_LIMIT_PER_MONTH.times do |index|

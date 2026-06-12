@@ -26,7 +26,9 @@ module Items
         item = @user.items.create!(
           title: @params[:title],
           item_type_id: @params[:item_type_id] || default_item_type_id,
-          generation_status: "pending"
+          generation_status: "pending",
+          style: @params[:style].presence,
+          custom_prompt: @params[:custom_prompt].presence
         )
       end
 

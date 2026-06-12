@@ -17,10 +17,12 @@ class Item < ApplicationRecord
   GENERATION_ERROR_KEYS = %w[generation_error generation_error_code].freeze
   MAX_TITLE_LENGTH = 100
 
-  store_accessor :metadata, :generation_error, :generation_error_code
+  store_accessor :metadata, :generation_error, :generation_error_code, :style, :custom_prompt
 
   validates :title, presence: true, length: { maximum: MAX_TITLE_LENGTH }
   validates :generation_status, inclusion: { in: GENERATION_STATUSES }
+  validates :style, inclusion: { in: PromptBuilderService::STYLES }, allow_blank: true
+  validates :custom_prompt, length: { maximum: PromptBuilderService::CUSTOM_PROMPT_MAX_LENGTH }, allow_blank: true
 
   # 当月（月初〜）に作成されたアイテム。月間生成上限の判定・残量表示に使う
   scope :created_this_month, -> { where(created_at: Time.current.beginning_of_month..) }
