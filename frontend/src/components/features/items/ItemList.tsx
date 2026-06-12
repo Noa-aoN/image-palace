@@ -5,7 +5,7 @@ import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { ChevronLeft, ChevronRight, Search, X } from 'lucide-react'
 import { Button } from '@/components/ui/button'
-import { getItemsPage } from '@/lib/api/items'
+import { getItemsPage, getItemSuggestions, type ItemSuggestion } from '@/lib/api/items'
 import { getTags } from '@/lib/api/tags'
 import { useItemsStore } from '@/stores/items'
 import type { Item } from '@/types/item'
@@ -92,6 +92,7 @@ function ItemCard({ item }: { item: Item }) {
 }
 
 export function ItemList({ initialTag = null }: { initialTag?: string | null }) {
+  const router = useRouter()
   const items = useItemsStore((state) => state.items)
   const setItems = useItemsStore((state) => state.setItems)
   const [page, setPage] = useState(1)
@@ -102,6 +103,10 @@ export function ItemList({ initialTag = null }: { initialTag?: string | null }) 
   const [activeTag, setActiveTag] = useState<string | null>(initialTag)
   const [query, setQuery] = useState('')
   const [appliedQuery, setAppliedQuery] = useState('')
+  const [suggestions, setSuggestions] = useState<ItemSuggestion[]>([])
+  const [suggestFocused, setSuggestFocused] = useState(false)
+  const [suggestOpen, setSuggestOpen] = useState(true)
+  const [activeIndex, setActiveIndex] = useState(-1)
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const requestInFlightRef = useRef(false)
 
@@ -113,6 +118,42 @@ export function ItemList({ initialTag = null }: { initialTag?: string | null }) 
     }, 300)
     return () => clearTimeout(handle)
   }, [query])
+
+  // オートコンプリート候補（軽量サジェスト・短めのデバウンス）
+  useEffect(() => {
+    const q = query.trim()
+    const handle = setTimeout(() => {
+      if (!q) { setSuggestions([]); return }
+      getItemSuggestions(q).then(setSuggestions).catch(() => setSuggestions([]))
+    }, 180)
+    return () => clearTimeout(handle)
+  }, [query])
+
+  const showSuggestions = suggestFocused && suggestOpen && suggestions.length > 0
+
+  const goToSuggestion = (s: ItemSuggestion) => {
+    setSuggestOpen(false)
+    router.push(`/items/${s.id}`)
+  }
+
+  const onSearchKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.nativeEvent.isComposing) return
+    if (!showSuggestions) return
+    if (e.key === 'ArrowDown') {
+      e.preventDefault()
+      setActiveIndex((i) => Math.min(i + 1, suggestions.length - 1))
+    } else if (e.key === 'ArrowUp') {
+      e.preventDefault()
+      setActiveIndex((i) => Math.max(i - 1, -1))
+    } else if (e.key === 'Enter') {
+      if (activeIndex >= 0 && activeIndex < suggestions.length) {
+        e.preventDefault()
+        goToSuggestion(suggestions[activeIndex])
+      }
+    } else if (e.key === 'Escape') {
+      setSuggestOpen(false)
+    }
+  }
 
   // タグ一覧（絞り込みチップ用）
   useEffect(() => {
@@ -228,19 +269,48 @@ export function ItemList({ initialTag = null }: { initialTag?: string | null }) 
       <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
       <input
         value={query}
-        onChange={(e) => setQuery(e.target.value)}
+        onChange={(e) => { setQuery(e.target.value); setSuggestOpen(true); setActiveIndex(-1) }}
+        onFocus={() => setSuggestFocused(true)}
+        onBlur={() => setSuggestFocused(false)}
+        onKeyDown={onSearchKeyDown}
         placeholder="カードを検索（単語名）"
         aria-label="カード検索"
+        role="combobox"
+        aria-expanded={showSuggestions}
+        aria-controls="card-suggestions"
+        aria-autocomplete="list"
+        autoComplete="off"
         className="w-full rounded-lg border border-input bg-background pl-9 pr-9 py-2 text-sm placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
       />
       {query && (
         <button
-          onClick={() => setQuery('')}
+          onClick={() => { setQuery(''); setSuggestions([]) }}
           aria-label="検索をクリア"
           className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors p-1"
         >
           <X size={15} />
         </button>
+      )}
+      {showSuggestions && (
+        <ul
+          id="card-suggestions"
+          role="listbox"
+          className="absolute z-30 mt-1 w-full max-h-72 overflow-y-auto rounded-lg border border-border bg-card shadow-lg"
+        >
+          {suggestions.map((s, i) => (
+            <li key={s.id} role="option" aria-selected={i === activeIndex}>
+              <button
+                type="button"
+                onMouseDown={(e) => { e.preventDefault(); goToSuggestion(s) }}
+                onMouseEnter={() => setActiveIndex(i)}
+                className={`flex w-full items-center gap-2 px-3 py-2 text-left text-sm ${i === activeIndex ? 'bg-muted' : 'hover:bg-muted'}`}
+              >
+                <Search size={14} className="shrink-0 text-muted-foreground" />
+                <span className="truncate">{s.title}</span>
+              </button>
+            </li>
+          ))}
+        </ul>
       )}
     </div>
   )

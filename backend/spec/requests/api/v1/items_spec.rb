@@ -212,6 +212,38 @@ RSpec.describe "Api::V1::Items", type: :request do
     end
   end
 
+  describe "GET /api/v1/items/suggest" do
+    it "returns matching titles for autocomplete" do
+      user.items.create!(title: "Photosynthesis", item_type: item_type, generation_status: "completed")
+      user.items.create!(title: "API", item_type: item_type, generation_status: "completed")
+
+      get "/api/v1/items/suggest", params: { q: "photo" }, headers: headers
+
+      expect(response).to have_http_status(:success)
+      suggestions = json_response.fetch("suggestions")
+      expect(suggestions.map { |s| s["title"] }).to eq([ "Photosynthesis" ])
+      expect(suggestions.first.keys).to contain_exactly("id", "title")
+    end
+
+    it "returns an empty list for a blank query" do
+      user.items.create!(title: "apple", item_type: item_type, generation_status: "completed")
+
+      get "/api/v1/items/suggest", params: { q: "" }, headers: headers
+
+      expect(response).to have_http_status(:success)
+      expect(json_response.fetch("suggestions")).to eq([])
+    end
+
+    it "does not return other users items" do
+      other = create(:user, :confirmed)
+      other.items.create!(title: "secret", item_type: item_type, generation_status: "completed")
+
+      get "/api/v1/items/suggest", params: { q: "secret" }, headers: headers
+
+      expect(json_response.fetch("suggestions")).to be_empty
+    end
+  end
+
   describe "GET /api/v1/items/summary" do
     it "returns counts grouped by generation status" do
       user.items.create!(title: "pending", item_type: item_type, generation_status: "pending")
