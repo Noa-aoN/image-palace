@@ -4,7 +4,9 @@ import { useEffect, useState } from 'react'
 import { Loader2, Pencil, Check, X } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { getItemTypes, updateItem } from '@/lib/api/items'
+import { getTags } from '@/lib/api/tags'
 import type { Item, ItemType } from '@/types/item'
+import type { Tag } from '@/types/tag'
 
 type ItemPropertiesProps = {
   item: Item
@@ -29,8 +31,22 @@ export function ItemProperties({ item, onUpdated }: ItemPropertiesProps) {
   const [tagDraft, setTagDraft] = useState('')
   const [savingTags, setSavingTags] = useState(false)
   const [tagError, setTagError] = useState<string | null>(null)
+  const [allTags, setAllTags] = useState<Tag[]>([])
 
   const tags = item.tags ?? []
+
+  // 既存タグ（入力候補用）
+  const loadAllTags = () => {
+    getTags()
+      .then(setAllTags)
+      .catch(() => {})
+  }
+  useEffect(() => {
+    loadAllTags()
+  }, [])
+
+  // 既に付いているタグは候補から除外する
+  const tagSuggestions = allTags.filter((t) => !tags.some((cur) => cur.name.toLowerCase() === t.name.toLowerCase()))
 
   const saveTags = async (names: string[]) => {
     setSavingTags(true)
@@ -38,6 +54,7 @@ export function ItemProperties({ item, onUpdated }: ItemPropertiesProps) {
     try {
       const updated = await updateItem(item.id, { tags: names })
       onUpdated(updated)
+      loadAllTags()
     } catch {
       setTagError('タグの更新に失敗しました')
     } finally {
@@ -227,8 +244,14 @@ export function ItemProperties({ item, onUpdated }: ItemPropertiesProps) {
           disabled={savingTags}
           placeholder="タグを入力して Enter"
           aria-label="タグを追加"
+          list="tag-suggestions"
           className="w-full max-w-xs rounded-lg border border-input bg-background px-3 py-1.5 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
         />
+        <datalist id="tag-suggestions">
+          {tagSuggestions.map((t) => (
+            <option key={t.id} value={t.name} />
+          ))}
+        </datalist>
         {tagError && <p className="text-xs text-destructive">{tagError}</p>}
       </div>
     </div>
