@@ -39,10 +39,13 @@ Rails.application.routes.draw do
         end
       end
       resources :spaces, only: [ :index, :create, :show, :update, :destroy ] do
-        resources :rooms, only: [ :index, :create, :show, :update, :destroy ] do
-          member do
-            post "collections", action: :add_collection
-            delete "collections/:collection_id", action: :remove_collection
+        member do
+          post "collections", action: :add_collection
+          delete "collections/:collection_id", action: :remove_collection
+        end
+        resources :points, controller: "space_points", only: [ :create, :update, :destroy ] do
+          collection do
+            patch :reorder
           end
         end
       end

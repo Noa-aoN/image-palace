@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_06_13_000001) do
+ActiveRecord::Schema[8.1].define(version: 2026_06_13_000013) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
   enable_extension "pgcrypto"
@@ -184,25 +184,24 @@ ActiveRecord::Schema[8.1].define(version: 2026_06_13_000001) do
     t.check_constraint "from_item_id <> to_item_id", name: "check_no_self_relation"
   end
 
-  create_table "room_collections", id: :uuid, default: -> { "gen_random_uuid()" }, force: :cascade do |t|
-    t.uuid "collection_id", null: false
+  create_table "road_points", id: :uuid, default: -> { "gen_random_uuid()" }, force: :cascade do |t|
     t.datetime "created_at", null: false
-    t.integer "position"
-    t.uuid "room_id", null: false
+    t.uuid "item_id"
+    t.integer "position", default: 0, null: false
+    t.uuid "road_id", null: false
     t.datetime "updated_at", null: false
-    t.index ["room_id", "collection_id"], name: "index_room_collections_on_room_id_and_collection_id", unique: true
-    t.index ["room_id"], name: "index_room_collections_on_room_id"
+    t.index ["road_id", "position"], name: "index_road_points_on_road_id_and_position"
+    t.index ["road_id"], name: "index_road_points_on_road_id"
   end
 
-  create_table "rooms", id: :uuid, default: -> { "gen_random_uuid()" }, force: :cascade do |t|
+  create_table "roads", id: :uuid, default: -> { "gen_random_uuid()" }, force: :cascade do |t|
     t.datetime "created_at", null: false
-    t.string "layout_type", default: "shelf", null: false
     t.string "name", null: false
     t.integer "position"
     t.uuid "space_id", null: false
     t.datetime "updated_at", null: false
-    t.index ["space_id", "position"], name: "index_rooms_on_space_id_and_position"
-    t.index ["space_id"], name: "index_rooms_on_space_id"
+    t.index ["space_id", "position"], name: "index_roads_on_space_id_and_position"
+    t.index ["space_id"], name: "index_roads_on_space_id"
   end
 
   create_table "settings", primary_key: "user_id", id: :uuid, default: nil, force: :cascade do |t|
@@ -344,10 +343,31 @@ ActiveRecord::Schema[8.1].define(version: 2026_06_13_000001) do
     t.index ["key"], name: "index_solid_queue_semaphores_on_key", unique: true
   end
 
+  create_table "space_collections", id: :uuid, default: -> { "gen_random_uuid()" }, force: :cascade do |t|
+    t.uuid "collection_id", null: false
+    t.datetime "created_at", null: false
+    t.integer "position"
+    t.uuid "space_id", null: false
+    t.datetime "updated_at", null: false
+    t.index ["space_id", "collection_id"], name: "index_space_collections_on_space_id_and_collection_id", unique: true
+    t.index ["space_id"], name: "index_space_collections_on_space_id"
+  end
+
+  create_table "space_points", id: :uuid, default: -> { "gen_random_uuid()" }, force: :cascade do |t|
+    t.datetime "created_at", null: false
+    t.uuid "item_id"
+    t.integer "position", default: 0, null: false
+    t.uuid "space_id", null: false
+    t.datetime "updated_at", null: false
+    t.index ["space_id", "position"], name: "index_space_points_on_space_id_and_position"
+    t.index ["space_id"], name: "index_space_points_on_space_id"
+  end
+
   create_table "spaces", id: :uuid, default: -> { "gen_random_uuid()" }, force: :cascade do |t|
     t.datetime "created_at", null: false
     t.text "description"
     t.string "name", null: false
+    t.string "space_type", default: "room", null: false
     t.datetime "updated_at", null: false
     t.uuid "user_id", null: false
     t.index ["user_id", "created_at"], name: "index_spaces_on_user_id_and_created_at"
@@ -441,9 +461,9 @@ ActiveRecord::Schema[8.1].define(version: 2026_06_13_000001) do
   add_foreign_key "relations", "items", column: "from_item_id", on_delete: :cascade
   add_foreign_key "relations", "items", column: "to_item_id", on_delete: :cascade
   add_foreign_key "relations", "users", on_delete: :cascade
-  add_foreign_key "room_collections", "collections", on_delete: :cascade
-  add_foreign_key "room_collections", "rooms", on_delete: :cascade
-  add_foreign_key "rooms", "spaces", on_delete: :cascade
+  add_foreign_key "road_points", "items", on_delete: :nullify
+  add_foreign_key "road_points", "roads", on_delete: :cascade
+  add_foreign_key "roads", "spaces", on_delete: :cascade
   add_foreign_key "settings", "users", on_delete: :cascade
   add_foreign_key "shared_medias", "users", on_delete: :nullify
   add_foreign_key "solid_queue_blocked_executions", "solid_queue_jobs", column: "job_id", on_delete: :cascade
@@ -452,6 +472,10 @@ ActiveRecord::Schema[8.1].define(version: 2026_06_13_000001) do
   add_foreign_key "solid_queue_ready_executions", "solid_queue_jobs", column: "job_id", on_delete: :cascade
   add_foreign_key "solid_queue_recurring_executions", "solid_queue_jobs", column: "job_id", on_delete: :cascade
   add_foreign_key "solid_queue_scheduled_executions", "solid_queue_jobs", column: "job_id", on_delete: :cascade
+  add_foreign_key "space_collections", "collections", on_delete: :cascade
+  add_foreign_key "space_collections", "spaces", on_delete: :cascade
+  add_foreign_key "space_points", "items", on_delete: :nullify
+  add_foreign_key "space_points", "spaces", on_delete: :cascade
   add_foreign_key "spaces", "users", on_delete: :cascade
   add_foreign_key "subscriptions", "plans", on_delete: :restrict
   add_foreign_key "subscriptions", "users", on_delete: :cascade

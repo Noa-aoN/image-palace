@@ -46,6 +46,20 @@ RSpec.describe "Api::V1::Spaces", type: :request do
       expect(response).to have_http_status(:created)
       expect(json_response["name"]).to eq("英語学習")
       expect(json_response["description"]).to eq("TOEIC対策")
+      expect(json_response["space_type"]).to eq("room")
+    end
+
+    it "creates a road-type space" do
+      post "/api/v1/spaces", params: { space: { name: "通勤路", space_type: "road" } }, headers: headers, as: :json
+
+      expect(response).to have_http_status(:created)
+      expect(json_response["space_type"]).to eq("road")
+    end
+
+    it "rejects an unknown space_type" do
+      post "/api/v1/spaces", params: { space: { name: "x", space_type: "bogus" } }, headers: headers, as: :json
+
+      expect(response).to have_http_status(:unprocessable_content)
     end
 
     it "returns validation error when name is blank" do

@@ -5,7 +5,7 @@ class Collection < ApplicationRecord
   # 旧: デッキ専用・カード直結。移行のため残置（UI 非公開）
   has_many :collection_decks, dependent: :destroy
   has_many :collection_items, dependent: :destroy
-  has_many :room_collections, dependent: :destroy
+  has_many :space_collections, dependent: :destroy
 
   NAME_MAX_LENGTH = 100
 

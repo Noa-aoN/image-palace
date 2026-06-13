@@ -2,10 +2,11 @@
 
 import { useEffect, useState } from 'react'
 import Link from 'next/link'
-import { LayoutGrid, Plus } from 'lucide-react'
+import { Plus, Route, DoorOpen } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { getSpaces, createSpace } from '@/lib/api/spaces'
+import { SPACE_TYPES, spaceTypeLabel } from '@/lib/space-types'
 import type { Space } from '@/types/space'
 
 export default function SpacesPage() {
@@ -15,6 +16,7 @@ export default function SpacesPage() {
 
   const [creating, setCreating] = useState(false)
   const [name, setName] = useState('')
+  const [spaceType, setSpaceType] = useState('room')
   const [submitting, setSubmitting] = useState(false)
   const [createError, setCreateError] = useState<string | null>(null)
 
@@ -45,9 +47,10 @@ export default function SpacesPage() {
     setSubmitting(true)
     setCreateError(null)
     try {
-      const created = await createSpace(trimmed)
+      const created = await createSpace(trimmed, spaceType)
       setSpaces((current) => [created, ...current])
       setName('')
+      setSpaceType('room')
       setCreating(false)
     } catch (err: unknown) {
       const axiosErr = err as { response?: { data?: { errors?: string[] } } }
@@ -69,16 +72,29 @@ export default function SpacesPage() {
         )}
       </div>
       <p className="text-sm text-muted-foreground mb-6">
-        学習テーマの大枠。コレクションやビューを束ねる上位の空間です。
+        記憶の場所。種別を選んで作ります — ルーム（棚にコレクションを並べる）/ ロード（順路にカードを置く連結法）。
       </p>
 
       {creating && (
         <form onSubmit={handleCreate} className="mb-8 flex flex-col gap-2 sm:flex-row sm:items-start">
+          <select
+            value={spaceType}
+            onChange={(e) => setSpaceType(e.target.value)}
+            disabled={submitting}
+            aria-label="スペースの種別"
+            className="h-9 rounded-lg border border-input bg-background px-3 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+          >
+            {SPACE_TYPES.map((t) => (
+              <option key={t} value={t}>
+                {spaceTypeLabel(t)}
+              </option>
+            ))}
+          </select>
           <div className="flex-1">
             <Input
               value={name}
               onChange={(e) => setName(e.target.value)}
-              placeholder="スペース名（例: 英語学習、Rails習得）"
+              placeholder={spaceType === 'road' ? 'ロード名（例: 通勤路、家の中）' : 'ルーム名（例: 英単語、文法）'}
               autoFocus
               disabled={submitting}
               aria-label="スペース名"
@@ -126,8 +142,13 @@ export default function SpacesPage() {
               className="flex flex-col gap-2 rounded-xl border border-border bg-card px-5 py-4 hover:shadow-md transition-shadow"
             >
               <div className="flex items-center gap-2">
-                <LayoutGrid size={18} style={{ color: 'var(--palace)' }} />
+                {space.space_type === 'road' ? (
+                  <Route size={18} style={{ color: 'var(--palace)' }} />
+                ) : (
+                  <DoorOpen size={18} style={{ color: 'var(--palace)' }} />
+                )}
                 <span className="font-medium truncate">{space.name}</span>
+                <span className="ml-auto shrink-0 text-xs text-muted-foreground">{spaceTypeLabel(space.space_type)}</span>
               </div>
               {space.description && (
                 <p className="text-sm text-muted-foreground line-clamp-2">{space.description}</p>
