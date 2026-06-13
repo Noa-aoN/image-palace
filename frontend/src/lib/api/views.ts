@@ -46,8 +46,8 @@ export async function removeViewItem(viewId: string, itemId: string): Promise<vo
   await apiClient.delete(`/api/v1/views/${viewId}/items/${itemId}`)
 }
 
-export async function createView(name: string): Promise<View> {
-  const res = await apiClient.post<View>('/api/v1/views', { view: { name } })
+export async function createView(name: string, viewType: string = 'freeboard'): Promise<View> {
+  const res = await apiClient.post<View>('/api/v1/views', { view: { name, view_type: viewType } })
   return res.data
 }
 

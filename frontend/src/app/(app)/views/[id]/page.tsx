@@ -7,6 +7,7 @@ import { Trash2, Pencil, Check, X } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { getViewDetail, updateView, deleteView } from '@/lib/api/views'
+import { viewTypeLabel } from '@/lib/view-types'
 import type { ViewDetail } from '@/types/view'
 import { FreeboardCanvas } from '@/components/features/views/FreeboardCanvas'
 
@@ -110,7 +111,7 @@ export default function ViewEditorPage() {
         ) : (
           <div className="flex items-center gap-2 min-w-0">
             <h1 className="text-2xl font-semibold truncate">{view.name}</h1>
-            <span className="text-sm text-muted-foreground shrink-0">フリーボード</span>
+            <span className="text-sm text-muted-foreground shrink-0">{viewTypeLabel(view.view_type)}</span>
             <button
               onClick={() => { setNameDraft(view.name); setEditing(true) }}
               className="shrink-0 text-muted-foreground hover:text-foreground transition-colors"
@@ -139,8 +140,9 @@ export default function ViewEditorPage() {
       {view.view_type === 'freeboard' ? (
         <FreeboardCanvas viewId={view.id} initialItems={view.items} />
       ) : (
-        <div className="flex-1 min-h-[40vh] flex items-center justify-center rounded-xl border border-border text-sm text-muted-foreground">
-          未対応のビュータイプです（{view.view_type}）。
+        <div className="flex-1 min-h-[40vh] flex flex-col items-center justify-center gap-2 rounded-xl border border-border text-center">
+          <p className="text-base font-medium">{viewTypeLabel(view.view_type)}は準備中です</p>
+          <p className="text-sm text-muted-foreground">この種別の編集画面は今後実装予定です。</p>
         </div>
       )}
     </div>
