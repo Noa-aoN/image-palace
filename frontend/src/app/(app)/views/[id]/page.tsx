@@ -3,17 +3,18 @@
 import { useEffect, useState } from 'react'
 import Link from 'next/link'
 import { useParams, useRouter } from 'next/navigation'
-import { Trash2, Pencil, Check, X, MousePointer2 } from 'lucide-react'
+import { Trash2, Pencil, Check, X } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
-import { getView, updateView, deleteView } from '@/lib/api/views'
-import type { View } from '@/types/view'
+import { getViewDetail, updateView, deleteView } from '@/lib/api/views'
+import type { ViewDetail } from '@/types/view'
+import { FreeboardCanvas } from '@/components/features/views/FreeboardCanvas'
 
 export default function ViewEditorPage() {
   const { id } = useParams<{ id: string }>()
   const router = useRouter()
 
-  const [view, setView] = useState<View | null>(null)
+  const [view, setView] = useState<ViewDetail | null>(null)
   const [error, setError] = useState<string | null>(null)
 
   const [editing, setEditing] = useState(false)
@@ -24,7 +25,7 @@ export default function ViewEditorPage() {
 
   useEffect(() => {
     let cancelled = false
-    getView(id)
+    getViewDetail(id)
       .then((data) => {
         if (!cancelled) setView(data)
       })
@@ -45,7 +46,7 @@ export default function ViewEditorPage() {
     setSaving(true)
     try {
       const updated = await updateView(id, { name: trimmed })
-      setView(updated)
+      setView((prev) => (prev ? { ...prev, name: updated.name } : prev))
       setEditing(false)
     } catch {
       setError('ビュー名の更新に失敗しました')
@@ -134,27 +135,14 @@ export default function ViewEditorPage() {
 
       {error && <p className="text-sm text-destructive mb-4">{error}</p>}
 
-      {/*
-        ボードキャンバス（雛形）
-        ドラッグ&ドロップ配置・座標保存・ズーム/パンは #113 で実装予定。
-        ここではフリーボードの領域だけを用意している。
-      */}
-      <div
-        className="relative flex-1 min-h-[60vh] rounded-xl border border-border overflow-hidden"
-        style={{
-          backgroundColor: 'var(--ivory-dark)',
-          backgroundImage: 'radial-gradient(rgba(0,0,0,0.08) 1px, transparent 1px)',
-          backgroundSize: '24px 24px',
-        }}
-      >
-        <div className="absolute inset-0 flex flex-col items-center justify-center text-center px-6">
-          <MousePointer2 size={28} className="mb-3" style={{ color: 'var(--palace)' }} />
-          <p className="text-sm font-medium text-foreground/70">フリーボードは実装中です</p>
-          <p className="mt-1 max-w-md text-sm text-muted-foreground">
-            ここにカードをドラッグ&amp;ドロップで自由配置し、関係性を視覚化できるようになります（#113）。
-          </p>
+      {/* ビュータイプごとの描画。今はフリーボードのみ（将来タイムライン等を追加） */}
+      {view.view_type === 'freeboard' ? (
+        <FreeboardCanvas viewId={view.id} initialItems={view.items} />
+      ) : (
+        <div className="flex-1 min-h-[40vh] flex items-center justify-center rounded-xl border border-border text-sm text-muted-foreground">
+          未対応のビュータイプです（{view.view_type}）。
         </div>
-      </div>
+      )}
     </div>
   )
 }

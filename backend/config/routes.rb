@@ -46,7 +46,13 @@ Rails.application.routes.draw do
           end
         end
       end
-      resources :views, only: [ :index, :create, :show, :update, :destroy ]
+      resources :views, only: [ :index, :create, :show, :update, :destroy ] do
+        member do
+          post "items", action: :add_item
+          patch "items/:item_id", action: :update_item
+          delete "items/:item_id", action: :remove_item
+        end
+      end
     end
   end
 end

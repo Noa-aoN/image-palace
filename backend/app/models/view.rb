@@ -3,6 +3,8 @@ class View < ApplicationRecord
 
   belongs_to :user
   has_many :collection_entries, as: :entry, dependent: :destroy
+  has_many :view_items, dependent: :destroy
+  has_many :items, through: :view_items
 
   NAME_MAX_LENGTH = 100
   # freeboard（フリーボード）。将来的にタイムライン等を追加する想定
