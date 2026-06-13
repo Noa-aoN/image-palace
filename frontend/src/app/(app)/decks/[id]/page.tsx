@@ -198,9 +198,9 @@ export default function DeckDetailPage() {
 
   if (!deck) {
     return (
-      <div className="max-w-5xl mx-auto px-6 py-12 space-y-6">
+      <div className="max-w-7xl mx-auto px-6 py-12 space-y-6">
         <div className="h-8 w-48 rounded bg-muted animate-pulse" />
-        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
           {Array.from({ length: 4 }).map((_, i) => (
             <div key={i} className="aspect-square rounded-xl bg-muted animate-pulse" />
           ))}
@@ -213,7 +213,7 @@ export default function DeckDetailPage() {
   const pickableItems = allItems.filter((i) => !inDeckIds.has(i.id))
 
   return (
-    <div className="max-w-5xl mx-auto px-6 py-12">
+    <div className="max-w-7xl mx-auto px-6 py-12">
       <Link href="/decks">
         <Button variant="ghost" className="text-sm px-0 mb-4">← デッキ一覧へ</Button>
       </Link>
@@ -276,7 +276,7 @@ export default function DeckDetailPage() {
             {pickableItems.length === 0 ? (
               <p className="text-sm text-muted-foreground">追加できるカードがありません。</p>
             ) : (
-              <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+              <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
                 {pickableItems.map((item) => (
                   <CardThumb
                     key={item.id}
@@ -305,7 +305,7 @@ export default function DeckDetailPage() {
           まだカードがありません。「カードを追加」から追加してください。
         </p>
       ) : (
-        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
           {deck.items.map((item) => {
             const isCover = deck.cover_item_id === item.id
             return (

@@ -12,6 +12,8 @@ class Item < ApplicationRecord
   has_many :tags, through: :item_tags
   has_many :from_relations, class_name: "Relation", foreign_key: :from_item_id, dependent: :destroy
   has_many :to_relations, class_name: "Relation", foreign_key: :to_item_id, dependent: :destroy
+  has_many :view_items, dependent: :destroy
+  has_many :views, through: :view_items
 
   GENERATION_STATUSES = %w[pending processing completed failed].freeze
   GENERATION_ERROR_KEYS = %w[generation_error generation_error_code].freeze

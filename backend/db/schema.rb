@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_06_12_143300) do
+ActiveRecord::Schema[8.1].define(version: 2026_06_13_000001) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
   enable_extension "pgcrypto"
@@ -398,6 +398,18 @@ ActiveRecord::Schema[8.1].define(version: 2026_06_12_143300) do
     t.index ["reset_password_token"], name: "index_users_on_reset_password_token", unique: true
   end
 
+  create_table "view_items", id: :uuid, default: -> { "gen_random_uuid()" }, force: :cascade do |t|
+    t.datetime "created_at", null: false
+    t.uuid "item_id", null: false
+    t.datetime "updated_at", null: false
+    t.uuid "view_id", null: false
+    t.float "x", default: 0.0, null: false
+    t.float "y", default: 0.0, null: false
+    t.integer "z_index", default: 0, null: false
+    t.index ["view_id", "item_id"], name: "index_view_items_on_view_id_and_item_id", unique: true
+    t.index ["view_id"], name: "index_view_items_on_view_id"
+  end
+
   create_table "views", id: :uuid, default: -> { "gen_random_uuid()" }, force: :cascade do |t|
     t.datetime "created_at", null: false
     t.string "name", null: false
@@ -444,5 +456,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_06_12_143300) do
   add_foreign_key "subscriptions", "plans", on_delete: :restrict
   add_foreign_key "subscriptions", "users", on_delete: :cascade
   add_foreign_key "tags", "users", on_delete: :cascade
+  add_foreign_key "view_items", "items", on_delete: :cascade
+  add_foreign_key "view_items", "views", on_delete: :cascade
   add_foreign_key "views", "users", on_delete: :cascade
 end
