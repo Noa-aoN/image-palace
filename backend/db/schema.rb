@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_06_13_000001) do
+ActiveRecord::Schema[8.1].define(version: 2026_06_13_000003) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
   enable_extension "pgcrypto"
@@ -182,6 +182,26 @@ ActiveRecord::Schema[8.1].define(version: 2026_06_13_000001) do
     t.index ["user_id", "from_item_id", "to_item_id", "relation_type"], name: "index_relations_on_unique_relation", unique: true
     t.index ["user_id"], name: "index_relations_on_user_id"
     t.check_constraint "from_item_id <> to_item_id", name: "check_no_self_relation"
+  end
+
+  create_table "road_points", id: :uuid, default: -> { "gen_random_uuid()" }, force: :cascade do |t|
+    t.datetime "created_at", null: false
+    t.uuid "item_id"
+    t.integer "position", default: 0, null: false
+    t.uuid "road_id", null: false
+    t.datetime "updated_at", null: false
+    t.index ["road_id", "position"], name: "index_road_points_on_road_id_and_position"
+    t.index ["road_id"], name: "index_road_points_on_road_id"
+  end
+
+  create_table "roads", id: :uuid, default: -> { "gen_random_uuid()" }, force: :cascade do |t|
+    t.datetime "created_at", null: false
+    t.string "name", null: false
+    t.integer "position"
+    t.uuid "space_id", null: false
+    t.datetime "updated_at", null: false
+    t.index ["space_id", "position"], name: "index_roads_on_space_id_and_position"
+    t.index ["space_id"], name: "index_roads_on_space_id"
   end
 
   create_table "room_collections", id: :uuid, default: -> { "gen_random_uuid()" }, force: :cascade do |t|
@@ -441,6 +461,9 @@ ActiveRecord::Schema[8.1].define(version: 2026_06_13_000001) do
   add_foreign_key "relations", "items", column: "from_item_id", on_delete: :cascade
   add_foreign_key "relations", "items", column: "to_item_id", on_delete: :cascade
   add_foreign_key "relations", "users", on_delete: :cascade
+  add_foreign_key "road_points", "items", on_delete: :nullify
+  add_foreign_key "road_points", "roads", on_delete: :cascade
+  add_foreign_key "roads", "spaces", on_delete: :cascade
   add_foreign_key "room_collections", "collections", on_delete: :cascade
   add_foreign_key "room_collections", "rooms", on_delete: :cascade
   add_foreign_key "rooms", "spaces", on_delete: :cascade

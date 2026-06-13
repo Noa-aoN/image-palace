@@ -45,6 +45,13 @@ Rails.application.routes.draw do
             delete "collections/:collection_id", action: :remove_collection
           end
         end
+        resources :roads, only: [ :index, :create, :show, :update, :destroy ] do
+          resources :points, controller: "road_points", only: [ :create, :update, :destroy ] do
+            collection do
+              patch :reorder
+            end
+          end
+        end
       end
       resources :views, only: [ :index, :create, :show, :update, :destroy ] do
         member do

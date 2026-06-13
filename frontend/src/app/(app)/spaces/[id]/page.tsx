@@ -3,13 +3,15 @@
 import { useEffect, useState } from 'react'
 import Link from 'next/link'
 import { useParams, useRouter } from 'next/navigation'
-import { Trash2, Pencil, Check, X, Plus, DoorOpen, ChevronRight } from 'lucide-react'
+import { Trash2, Pencil, Check, X, Plus, DoorOpen, ChevronRight, Route } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { getSpace, updateSpace, deleteSpace } from '@/lib/api/spaces'
 import { getRooms, createRoom } from '@/lib/api/rooms'
+import { getRoads, createRoad } from '@/lib/api/roads'
 import type { Space } from '@/types/space'
 import type { Room } from '@/types/room'
+import type { Road } from '@/types/road'
 
 export default function SpaceDetailPage() {
   const { id } = useParams<{ id: string }>()
@@ -32,6 +34,12 @@ export default function SpaceDetailPage() {
   const [roomSubmitting, setRoomSubmitting] = useState(false)
   const [roomError, setRoomError] = useState<string | null>(null)
 
+  const [roads, setRoads] = useState<Road[]>([])
+  const [creatingRoad, setCreatingRoad] = useState(false)
+  const [roadName, setRoadName] = useState('')
+  const [roadSubmitting, setRoadSubmitting] = useState(false)
+  const [roadError, setRoadError] = useState<string | null>(null)
+
   useEffect(() => {
     let cancelled = false
     getSpace(id)
@@ -48,10 +56,37 @@ export default function SpaceDetailPage() {
       .catch(() => {
         // ルーム取得失敗は致命的でないため握りつぶす
       })
+    getRoads(id)
+      .then((data) => {
+        if (!cancelled) setRoads(data)
+      })
+      .catch(() => {})
     return () => {
       cancelled = true
     }
   }, [id])
+
+  const handleCreateRoad = async (e: React.FormEvent) => {
+    e.preventDefault()
+    const trimmed = roadName.trim()
+    if (!trimmed) {
+      setRoadError('ロード名を入力してください')
+      return
+    }
+    setRoadSubmitting(true)
+    setRoadError(null)
+    try {
+      const created = await createRoad(id, trimmed)
+      setRoads((current) => [...current, created])
+      setRoadName('')
+      setCreatingRoad(false)
+    } catch (err: unknown) {
+      const axiosErr = err as { response?: { data?: { errors?: string[] } } }
+      setRoadError(axiosErr?.response?.data?.errors?.[0] ?? 'ロードの作成に失敗しました')
+    } finally {
+      setRoadSubmitting(false)
+    }
+  }
 
   const handleCreateRoom = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -258,6 +293,77 @@ export default function SpaceDetailPage() {
                 </div>
                 <div className="flex items-center gap-1 shrink-0 text-xs text-muted-foreground">
                   {room.collection_count} コレクション
+                  <ChevronRight size={14} />
+                </div>
+              </Link>
+            ))}
+          </div>
+        )}
+      </section>
+
+      {/* ロード（連結法/ジャーニー） */}
+      <section className="space-y-3 mt-10">
+        <div className="flex items-center justify-between">
+          <div>
+            <h2 className="text-base font-semibold">ロード</h2>
+            <p className="text-xs text-muted-foreground">序数のあるポイントを並べ、各点にカードを置く道（連結法）。</p>
+          </div>
+          {!creatingRoad && (
+            <Button variant="outline" size="sm" onClick={() => setCreatingRoad(true)} className="flex items-center gap-1.5 shrink-0">
+              <Plus size={14} />
+              ロードを追加
+            </Button>
+          )}
+        </div>
+
+        {creatingRoad && (
+          <form onSubmit={handleCreateRoad} className="flex flex-col gap-2 sm:flex-row sm:items-start">
+            <div className="flex-1">
+              <Input
+                value={roadName}
+                onChange={(e) => setRoadName(e.target.value)}
+                placeholder="ロード名（例: 通勤路、家の中）"
+                autoFocus
+                disabled={roadSubmitting}
+                aria-label="ロード名"
+              />
+              {roadError && <p className="mt-1 text-sm text-destructive">{roadError}</p>}
+            </div>
+            <div className="flex gap-2">
+              <Button type="submit" size="sm" disabled={roadSubmitting}>
+                {roadSubmitting ? '作成中...' : '作成'}
+              </Button>
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                onClick={() => { setCreatingRoad(false); setRoadName(''); setRoadError(null) }}
+                disabled={roadSubmitting}
+              >
+                キャンセル
+              </Button>
+            </div>
+          </form>
+        )}
+
+        {roads.length === 0 ? (
+          <p className="text-sm text-muted-foreground py-2">
+            まだロードがありません。「ロードを追加」で順路を作りましょう。
+          </p>
+        ) : (
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            {roads.map((road) => (
+              <Link
+                key={road.id}
+                href={`/spaces/${id}/roads/${road.id}`}
+                className="flex items-center justify-between gap-2 rounded-xl border border-border bg-card px-4 py-3 hover:shadow-md transition-shadow"
+              >
+                <div className="flex items-center gap-2 min-w-0">
+                  <Route size={16} style={{ color: 'var(--palace)' }} />
+                  <span className="font-medium text-sm truncate">{road.name}</span>
+                </div>
+                <div className="flex items-center gap-1 shrink-0 text-xs text-muted-foreground">
+                  {road.point_count} ポイント
                   <ChevronRight size={14} />
                 </div>
               </Link>
