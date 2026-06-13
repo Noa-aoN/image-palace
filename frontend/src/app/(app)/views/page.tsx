@@ -6,6 +6,7 @@ import { Frame, Plus } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { getViews, createView } from '@/lib/api/views'
+import { VIEW_TYPES, viewTypeLabel } from '@/lib/view-types'
 import type { View } from '@/types/view'
 
 export default function ViewsPage() {
@@ -15,6 +16,7 @@ export default function ViewsPage() {
 
   const [creating, setCreating] = useState(false)
   const [name, setName] = useState('')
+  const [viewType, setViewType] = useState('freeboard')
   const [submitting, setSubmitting] = useState(false)
   const [createError, setCreateError] = useState<string | null>(null)
 
@@ -45,9 +47,10 @@ export default function ViewsPage() {
     setSubmitting(true)
     setCreateError(null)
     try {
-      const created = await createView(trimmed)
+      const created = await createView(trimmed, viewType)
       setViews((current) => [created, ...current])
       setName('')
+      setViewType('freeboard')
       setCreating(false)
     } catch (err: unknown) {
       const axiosErr = err as { response?: { data?: { errors?: string[] } } }
@@ -85,6 +88,20 @@ export default function ViewsPage() {
             />
             {createError && <p className="mt-1 text-sm text-destructive">{createError}</p>}
           </div>
+          <select
+            value={viewType}
+            onChange={(e) => setViewType(e.target.value)}
+            disabled={submitting}
+            aria-label="ビューの種別"
+            className="h-9 rounded-lg border border-input bg-background px-3 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+          >
+            {VIEW_TYPES.map((t) => (
+              <option key={t} value={t}>
+                {viewTypeLabel(t)}
+                {t !== 'freeboard' ? '（準備中）' : ''}
+              </option>
+            ))}
+          </select>
           <div className="flex gap-2">
             <Button type="submit" size="sm" disabled={submitting}>
               {submitting ? '作成中...' : '作成'}
@@ -129,7 +146,7 @@ export default function ViewsPage() {
                 <Frame size={18} style={{ color: 'var(--palace)' }} />
                 <span className="font-medium truncate">{view.name}</span>
               </div>
-              <span className="text-xs text-muted-foreground">フリーボード</span>
+              <span className="text-xs text-muted-foreground">{viewTypeLabel(view.view_type)}</span>
             </Link>
           ))}
         </div>

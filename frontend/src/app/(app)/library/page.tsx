@@ -15,6 +15,7 @@ import type { Deck } from '@/types/deck'
 import type { Collection } from '@/types/collection'
 import type { Space } from '@/types/space'
 import type { View } from '@/types/view'
+import { viewTypeLabel } from '@/lib/view-types'
 import type { SearchResults, SearchCard, SearchDeck } from '@/types/search'
 
 const PREVIEW_LIMIT = 12
@@ -149,7 +150,7 @@ function ViewTile({ view }: { view: View }) {
         <Frame size={16} style={{ color: 'var(--palace)' }} />
         <span className="font-medium text-sm truncate">{view.name}</span>
       </div>
-      <span className="text-xs text-muted-foreground mt-auto">フリーボード</span>
+      <span className="text-xs text-muted-foreground mt-auto">{viewTypeLabel(view.view_type)}</span>
     </Link>
   )
 }
@@ -355,7 +356,7 @@ function SearchResultsView({
                 href={`/views/${view.id}`}
                 icon={<Frame size={16} />}
                 name={view.name}
-                sub="フリーボード"
+                sub="ビュー"
               />
             ))}
           </Rail>
