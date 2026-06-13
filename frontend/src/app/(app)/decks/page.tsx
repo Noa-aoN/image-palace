@@ -81,7 +81,7 @@ export default function DecksPage() {
   }
 
   return (
-    <div className="max-w-5xl mx-auto px-6 py-12">
+    <div className="max-w-7xl mx-auto px-6 py-12">
       <div className="flex items-center justify-between mb-2">
         <h1 className="text-xl font-semibold">デッキ</h1>
         {!creating && (
@@ -126,7 +126,7 @@ export default function DecksPage() {
       )}
 
       {loading ? (
-        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
           {Array.from({ length: 8 }).map((_, i) => (
             <div key={i} className="aspect-[4/3] rounded-xl border border-border bg-muted animate-pulse" />
           ))}
@@ -141,7 +141,7 @@ export default function DecksPage() {
           {!creating && <Button onClick={() => setCreating(true)}>最初のデッキを作成</Button>}
         </div>
       ) : (
-        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
           {decks.map((deck) => (
             <DeckCard key={deck.id} deck={deck} />
           ))}

@@ -219,9 +219,9 @@ export default function CollectionDetailPage() {
 
   if (!collection) {
     return (
-      <div className="max-w-5xl mx-auto px-6 py-12 space-y-6">
+      <div className="max-w-7xl mx-auto px-6 py-12 space-y-6">
         <div className="h-8 w-48 rounded bg-muted animate-pulse" />
-        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
           {Array.from({ length: 4 }).map((_, i) => (
             <div key={i} className="aspect-square rounded-xl bg-muted animate-pulse" />
           ))}
@@ -236,7 +236,7 @@ export default function CollectionDetailPage() {
     : []
 
   return (
-    <div className="max-w-5xl mx-auto px-6 py-12">
+    <div className="max-w-7xl mx-auto px-6 py-12">
       <Link href="/collections">
         <Button variant="ghost" className="text-sm px-0 mb-4">← コレクション一覧へ</Button>
       </Link>
@@ -366,7 +366,7 @@ export default function CollectionDetailPage() {
                   {TYPE_META[type].label}
                   <span className="text-sm font-normal text-muted-foreground">{entries.length}</span>
                 </h2>
-                <div className={grid ? 'grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4' : 'grid grid-cols-1 sm:grid-cols-2 gap-3'}>
+                <div className={grid ? 'grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4' : 'grid grid-cols-1 sm:grid-cols-2 gap-3'}>
                   {entries.map((entry) => (
                     <EntryTile
                       key={`${entry.entry_type}:${entry.id}`}

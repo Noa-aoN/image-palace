@@ -434,7 +434,7 @@ export default function LibraryPage() {
 
   if (loading) {
     return (
-      <div className="max-w-5xl mx-auto px-6 py-12 space-y-10">
+      <div className="max-w-7xl mx-auto px-6 py-12 space-y-10">
         {Array.from({ length: 3 }).map((_, i) => (
           <div key={i} className="space-y-3">
             <div className="h-5 w-32 rounded bg-muted animate-pulse" />
@@ -450,7 +450,7 @@ export default function LibraryPage() {
   }
 
   return (
-    <div className="max-w-5xl mx-auto px-6 py-12 space-y-12">
+    <div className="max-w-7xl mx-auto px-6 py-12 space-y-12">
       <div>
         <h1 className="text-xl font-semibold">ライブラリ</h1>
         <p className="mt-1 text-sm text-muted-foreground">

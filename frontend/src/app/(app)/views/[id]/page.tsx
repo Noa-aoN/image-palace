@@ -79,7 +79,7 @@ export default function ViewEditorPage() {
 
   if (!view) {
     return (
-      <div className="max-w-5xl mx-auto px-6 py-12 space-y-4">
+      <div className="max-w-7xl mx-auto px-6 py-12 space-y-4">
         <div className="h-8 w-48 rounded bg-muted animate-pulse" />
         <div className="h-[60vh] w-full rounded-xl bg-muted animate-pulse" />
       </div>
@@ -87,7 +87,7 @@ export default function ViewEditorPage() {
   }
 
   return (
-    <div className="flex flex-col min-h-full px-6 py-12 max-w-6xl mx-auto w-full">
+    <div className="flex flex-col min-h-full px-6 py-12 max-w-7xl mx-auto w-full">
       <Link href="/views">
         <Button variant="ghost" className="text-sm px-0 mb-4 self-start">← ビュー一覧へ</Button>
       </Link>
