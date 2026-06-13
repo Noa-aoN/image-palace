@@ -14,6 +14,7 @@ import { getItems } from '@/lib/api/items'
 import { getDecks } from '@/lib/api/decks'
 import { getSpaces } from '@/lib/api/spaces'
 import { getViews } from '@/lib/api/views'
+import { viewTypeLabel } from '@/lib/view-types'
 import type { CollectionDetail, CollectionEntry, CollectionEntryType } from '@/types/collection'
 
 // 追加候補の正規化表現
@@ -138,7 +139,7 @@ export default function CollectionDetailPage() {
       } else if (type === 'Space') {
         list = (await getSpaces()).map((s) => ({ id: s.id, label: s.name, image: null }))
       } else {
-        list = (await getViews()).map((v) => ({ id: v.id, label: v.name, image: null, sub: 'フリーボード' }))
+        list = (await getViews()).map((v) => ({ id: v.id, label: v.name, image: null, sub: viewTypeLabel(v.view_type) }))
       }
       setPickables(list)
     } catch {

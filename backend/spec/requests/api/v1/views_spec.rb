@@ -47,6 +47,19 @@ RSpec.describe "Api::V1::Views", type: :request do
       expect(json_response["view_type"]).to eq("freeboard")
     end
 
+    it "creates a view with the given view_type" do
+      post "/api/v1/views", params: { view: { name: "年表", view_type: "timeline" } }, headers: headers, as: :json
+
+      expect(response).to have_http_status(:created)
+      expect(json_response["view_type"]).to eq("timeline")
+    end
+
+    it "rejects an unknown view_type" do
+      post "/api/v1/views", params: { view: { name: "x", view_type: "bogus" } }, headers: headers, as: :json
+
+      expect(response).to have_http_status(:unprocessable_content)
+    end
+
     it "returns validation error when name is blank" do
       post "/api/v1/views", params: { view: { name: "" } }, headers: headers, as: :json
 
