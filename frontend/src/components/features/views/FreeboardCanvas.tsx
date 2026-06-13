@@ -1,6 +1,6 @@
 'use client'
 
-import { useCallback, useMemo, useState } from 'react'
+import { useCallback, useMemo, useRef, useState } from 'react'
 import {
   Background,
   BackgroundVariant,
@@ -22,6 +22,9 @@ import { BoardActionsContext, CardNode, type CardNodeType } from './CardNode'
 import { AddCardsPanel } from './AddCardsPanel'
 
 const nodeTypes = { card: CardNode }
+// カードノードのおおよそのサイズ（中央寄せ計算用）
+const CARD_W = 144
+const CARD_H = 172
 
 function toNode(placement: ViewItemPlacement): CardNodeType {
   return {
@@ -39,9 +42,10 @@ type FreeboardCanvasProps = {
 }
 
 function Canvas({ viewId, initialItems }: FreeboardCanvasProps) {
+  const boardRef = useRef<HTMLDivElement>(null)
   const [nodes, setNodes, onNodesChange] = useNodesState<CardNodeType>(initialItems.map(toNode))
   const [panelOpen, setPanelOpen] = useState(false)
-  const { screenToFlowPosition } = useReactFlow()
+  const { screenToFlowPosition, setCenter, getZoom } = useReactFlow()
 
   const placedIds = useMemo(() => new Set(nodes.map((n) => n.id)), [nodes])
 
@@ -67,13 +71,17 @@ function Canvas({ viewId, initialItems }: FreeboardCanvasProps) {
   const handleAdd = useCallback(
     (item: Item) => {
       if (placedIds.has(item.id)) return
-      // 現在のビューポート中央あたりに配置する
-      const center =
-        typeof window === 'undefined'
-          ? { x: 0, y: 0 }
-          : screenToFlowPosition({ x: window.innerWidth / 2, y: window.innerHeight / 2 })
-      const x = Math.round(center.x)
-      const y = Math.round(center.y)
+
+      // 表示中のボード中央の座標に置く（ボード要素の中心 → フロー座標）
+      const rect = boardRef.current?.getBoundingClientRect()
+      const screenCenter = rect
+        ? { x: rect.left + rect.width / 2, y: rect.top + rect.height / 2 }
+        : { x: window.innerWidth / 2, y: window.innerHeight / 2 }
+      const flow = screenToFlowPosition(screenCenter)
+      // 連続追加で完全に重ならないよう少しずつずらす
+      const offset = (nodes.length % 6) * 26
+      const x = Math.round(flow.x - CARD_W / 2 + offset)
+      const y = Math.round(flow.y - CARD_H / 2 + offset)
 
       const placement: ViewItemPlacement = {
         item_id: item.id,
@@ -83,20 +91,26 @@ function Canvas({ viewId, initialItems }: FreeboardCanvasProps) {
         item: { id: item.id, title: item.title, generation_status: item.generation_status, media: item.media },
       }
       setNodes((ns) => [...ns, toNode(placement)])
+      // 追加したカードへパンして必ず見えるようにする
+      setCenter(x + CARD_W / 2, y + CARD_H / 2, { zoom: getZoom(), duration: 350 })
 
       addViewItem(viewId, item.id, x, y).catch(() => {
         // 失敗したらロールバック
         setNodes((ns) => ns.filter((n) => n.id !== item.id))
       })
     },
-    [viewId, placedIds, screenToFlowPosition, setNodes]
+    [viewId, placedIds, nodes.length, screenToFlowPosition, setCenter, getZoom, setNodes]
   )
 
   const boardActions = useMemo(() => ({ onRemove: handleRemove }), [handleRemove])
 
   return (
     <BoardActionsContext.Provider value={boardActions}>
-      <div className="relative flex-1 min-h-[60vh] overflow-hidden rounded-xl border border-border">
+      <div
+        ref={boardRef}
+        className="relative flex-1 min-h-[60vh] overflow-hidden rounded-xl border border-border"
+        style={{ backgroundColor: 'var(--ivory-dark)' }}
+      >
         <ReactFlow
           nodes={nodes}
           nodeTypes={nodeTypes}
@@ -107,8 +121,9 @@ function Canvas({ viewId, initialItems }: FreeboardCanvasProps) {
           minZoom={0.2}
           maxZoom={2}
           proOptions={{ hideAttribution: true }}
+          style={{ backgroundColor: 'transparent' }}
         >
-          <Background variant={BackgroundVariant.Dots} gap={24} size={1} />
+          <Background variant={BackgroundVariant.Dots} gap={22} size={2.4} color="#ffffff" />
           <Controls showInteractive={false} />
           <MiniMap pannable zoomable />
         </ReactFlow>
