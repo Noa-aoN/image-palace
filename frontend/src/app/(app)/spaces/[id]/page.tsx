@@ -29,16 +29,14 @@ export default function SpaceDetailPage() {
   const [deleting, setDeleting] = useState(false)
 
   const [rooms, setRooms] = useState<Room[]>([])
-  const [creatingRoom, setCreatingRoom] = useState(false)
-  const [roomName, setRoomName] = useState('')
-  const [roomSubmitting, setRoomSubmitting] = useState(false)
-  const [roomError, setRoomError] = useState<string | null>(null)
-
   const [roads, setRoads] = useState<Road[]>([])
-  const [creatingRoad, setCreatingRoad] = useState(false)
-  const [roadName, setRoadName] = useState('')
-  const [roadSubmitting, setRoadSubmitting] = useState(false)
-  const [roadError, setRoadError] = useState<string | null>(null)
+
+  // スペースに追加するコンテンツの統一フォーム（種別を選んで作成）
+  const [creating, setCreating] = useState(false)
+  const [newType, setNewType] = useState<'room' | 'road'>('room')
+  const [newName, setNewName] = useState('')
+  const [submitting, setSubmitting] = useState(false)
+  const [createError, setCreateError] = useState<string | null>(null)
 
   useEffect(() => {
     let cancelled = false
@@ -66,47 +64,30 @@ export default function SpaceDetailPage() {
     }
   }, [id])
 
-  const handleCreateRoad = async (e: React.FormEvent) => {
+  const handleCreateChild = async (e: React.FormEvent) => {
     e.preventDefault()
-    const trimmed = roadName.trim()
+    const trimmed = newName.trim()
     if (!trimmed) {
-      setRoadError('ロード名を入力してください')
+      setCreateError('名前を入力してください')
       return
     }
-    setRoadSubmitting(true)
-    setRoadError(null)
+    setSubmitting(true)
+    setCreateError(null)
     try {
-      const created = await createRoad(id, trimmed)
-      setRoads((current) => [...current, created])
-      setRoadName('')
-      setCreatingRoad(false)
+      if (newType === 'room') {
+        const created = await createRoom(id, trimmed)
+        setRooms((current) => [...current, created])
+      } else {
+        const created = await createRoad(id, trimmed)
+        setRoads((current) => [...current, created])
+      }
+      setNewName('')
+      setCreating(false)
     } catch (err: unknown) {
       const axiosErr = err as { response?: { data?: { errors?: string[] } } }
-      setRoadError(axiosErr?.response?.data?.errors?.[0] ?? 'ロードの作成に失敗しました')
+      setCreateError(axiosErr?.response?.data?.errors?.[0] ?? '作成に失敗しました')
     } finally {
-      setRoadSubmitting(false)
-    }
-  }
-
-  const handleCreateRoom = async (e: React.FormEvent) => {
-    e.preventDefault()
-    const trimmed = roomName.trim()
-    if (!trimmed) {
-      setRoomError('ルーム名を入力してください')
-      return
-    }
-    setRoomSubmitting(true)
-    setRoomError(null)
-    try {
-      const created = await createRoom(id, trimmed)
-      setRooms((current) => [...current, created])
-      setRoomName('')
-      setCreatingRoom(false)
-    } catch (err: unknown) {
-      const axiosErr = err as { response?: { data?: { errors?: string[] } } }
-      setRoomError(axiosErr?.response?.data?.errors?.[0] ?? 'ルームの作成に失敗しました')
-    } finally {
-      setRoomSubmitting(false)
+      setSubmitting(false)
     }
   }
 
@@ -233,51 +214,61 @@ export default function SpaceDetailPage() {
 
       {error && <p className="text-sm text-destructive mb-4">{error}</p>}
 
-      {/* ルーム */}
-      <section className="space-y-3">
-        <div className="flex items-center justify-between">
-          <h2 className="text-base font-semibold">ルーム</h2>
-          {!creatingRoom && (
-            <Button variant="outline" size="sm" onClick={() => setCreatingRoom(true)} className="flex items-center gap-1.5">
-              <Plus size={14} />
-              ルームを追加
-            </Button>
-          )}
-        </div>
-
-        {creatingRoom && (
-          <form onSubmit={handleCreateRoom} className="flex flex-col gap-2 sm:flex-row sm:items-start">
+      {/* コンテンツ追加（種別を選択） */}
+      <div className="mb-8">
+        {!creating ? (
+          <Button variant="outline" size="sm" onClick={() => setCreating(true)} className="flex items-center gap-1.5">
+            <Plus size={14} />
+            追加
+          </Button>
+        ) : (
+          <form onSubmit={handleCreateChild} className="flex flex-col gap-2 sm:flex-row sm:items-start">
+            <select
+              value={newType}
+              onChange={(e) => setNewType(e.target.value as 'room' | 'road')}
+              disabled={submitting}
+              aria-label="種別"
+              className="h-9 rounded-lg border border-input bg-background px-3 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+            >
+              <option value="room">ルーム</option>
+              <option value="road">ロード</option>
+            </select>
             <div className="flex-1">
               <Input
-                value={roomName}
-                onChange={(e) => setRoomName(e.target.value)}
-                placeholder="ルーム名（例: 単語、文法）"
+                value={newName}
+                onChange={(e) => setNewName(e.target.value)}
+                placeholder={newType === 'room' ? 'ルーム名（例: 単語、文法）' : 'ロード名（例: 通勤路、家の中）'}
                 autoFocus
-                disabled={roomSubmitting}
-                aria-label="ルーム名"
+                disabled={submitting}
+                aria-label="名前"
               />
-              {roomError && <p className="mt-1 text-sm text-destructive">{roomError}</p>}
+              {createError && <p className="mt-1 text-sm text-destructive">{createError}</p>}
             </div>
             <div className="flex gap-2">
-              <Button type="submit" size="sm" disabled={roomSubmitting}>
-                {roomSubmitting ? '作成中...' : '作成'}
+              <Button type="submit" size="sm" disabled={submitting}>
+                {submitting ? '作成中...' : '作成'}
               </Button>
               <Button
                 type="button"
                 variant="ghost"
                 size="sm"
-                onClick={() => { setCreatingRoom(false); setRoomName(''); setRoomError(null) }}
-                disabled={roomSubmitting}
+                onClick={() => { setCreating(false); setNewName(''); setCreateError(null) }}
+                disabled={submitting}
               >
                 キャンセル
               </Button>
             </div>
           </form>
         )}
+      </div>
+
+      {/* ルーム */}
+      <section className="space-y-3">
+        <h2 className="text-base font-semibold">ルーム</h2>
 
         {rooms.length === 0 ? (
           <p className="text-sm text-muted-foreground py-2">
-            まだルームがありません。「ルームを追加」でテーマ別の空間を作りましょう。
+            まだルームがありません。上の「追加」から種別「ルーム」で作成できます。
           </p>
         ) : (
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
@@ -303,52 +294,14 @@ export default function SpaceDetailPage() {
 
       {/* ロード（連結法/ジャーニー） */}
       <section className="space-y-3 mt-10">
-        <div className="flex items-center justify-between">
-          <div>
-            <h2 className="text-base font-semibold">ロード</h2>
-            <p className="text-xs text-muted-foreground">序数のあるポイントを並べ、各点にカードを置く道（連結法）。</p>
-          </div>
-          {!creatingRoad && (
-            <Button variant="outline" size="sm" onClick={() => setCreatingRoad(true)} className="flex items-center gap-1.5 shrink-0">
-              <Plus size={14} />
-              ロードを追加
-            </Button>
-          )}
+        <div>
+          <h2 className="text-base font-semibold">ロード</h2>
+          <p className="text-xs text-muted-foreground">序数のあるポイントを並べ、各点にカードを置く道（連結法）。</p>
         </div>
-
-        {creatingRoad && (
-          <form onSubmit={handleCreateRoad} className="flex flex-col gap-2 sm:flex-row sm:items-start">
-            <div className="flex-1">
-              <Input
-                value={roadName}
-                onChange={(e) => setRoadName(e.target.value)}
-                placeholder="ロード名（例: 通勤路、家の中）"
-                autoFocus
-                disabled={roadSubmitting}
-                aria-label="ロード名"
-              />
-              {roadError && <p className="mt-1 text-sm text-destructive">{roadError}</p>}
-            </div>
-            <div className="flex gap-2">
-              <Button type="submit" size="sm" disabled={roadSubmitting}>
-                {roadSubmitting ? '作成中...' : '作成'}
-              </Button>
-              <Button
-                type="button"
-                variant="ghost"
-                size="sm"
-                onClick={() => { setCreatingRoad(false); setRoadName(''); setRoadError(null) }}
-                disabled={roadSubmitting}
-              >
-                キャンセル
-              </Button>
-            </div>
-          </form>
-        )}
 
         {roads.length === 0 ? (
           <p className="text-sm text-muted-foreground py-2">
-            まだロードがありません。「ロードを追加」で順路を作りましょう。
+            まだロードがありません。上の「追加」から種別「ロード」で作成できます。
           </p>
         ) : (
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
