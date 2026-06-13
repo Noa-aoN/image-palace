@@ -108,7 +108,7 @@ function Canvas({ viewId, initialItems }: FreeboardCanvasProps) {
     <BoardActionsContext.Provider value={boardActions}>
       <div
         ref={boardRef}
-        className="relative flex-1 min-h-[60vh] overflow-hidden rounded-xl border border-border"
+        className="relative h-[72vh] w-full overflow-hidden rounded-xl border border-border"
         style={{ backgroundColor: 'var(--ivory-dark)' }}
       >
         <ReactFlow
