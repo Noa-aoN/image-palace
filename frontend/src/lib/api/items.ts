@@ -127,3 +127,9 @@ export async function generateMeaning(id: string): Promise<Item> {
   const res = await apiClient.post<Item>(`/api/v1/items/${id}/meaning`)
   return res.data
 }
+
+// AI による分類タグの生成（同期）。既存タグは消さず union で追加する。
+export async function generateTags(id: string): Promise<Item> {
+  const res = await apiClient.post<Item>(`/api/v1/items/${id}/tags`)
+  return res.data
+}

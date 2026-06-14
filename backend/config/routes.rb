@@ -22,6 +22,7 @@ Rails.application.routes.draw do
         member do
           post :retry
           post :meaning
+          post "tags", action: :generate_tags
         end
       end
       resources :item_types, only: [ :index ]

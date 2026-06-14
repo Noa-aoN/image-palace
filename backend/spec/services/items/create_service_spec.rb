@@ -50,6 +50,22 @@ RSpec.describe Items::CreateService, type: :service do
       }.not_to have_enqueued_job(GenerateMeaningJob)
     end
 
+    it "タグの自動生成設定が ON のとき GenerateTagsJob もエンキューする" do
+      create(:setting, user: user, auto_generate_tags: true)
+
+      expect {
+        described_class.call(user: user, params: { title: "光合成" })
+      }.to have_enqueued_job(GenerateTagsJob)
+    end
+
+    it "タグの自動生成設定が OFF のとき GenerateTagsJob はエンキューしない" do
+      create(:setting, user: user, auto_generate_tags: false)
+
+      expect {
+        described_class.call(user: user, params: { title: "光合成" })
+      }.not_to have_enqueued_job(GenerateTagsJob)
+    end
+
     it "不適切なプロンプトはアイテムを作らずジョブも積まずにブロックする" do
       expect {
         expect {

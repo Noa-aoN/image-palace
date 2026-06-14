@@ -15,6 +15,7 @@ RSpec.describe "Api::V1::Settings", type: :request do
 
       expect(response).to have_http_status(:success)
       expect(json_response["auto_generate_meanings"]).to be(false)
+      expect(json_response["auto_generate_tags"]).to be(false)
       expect(user.reload.setting).to be_present
     end
   end
@@ -26,6 +27,14 @@ RSpec.describe "Api::V1::Settings", type: :request do
       expect(response).to have_http_status(:success)
       expect(json_response["auto_generate_meanings"]).to be(true)
       expect(user.reload.setting.auto_generate_meanings).to be(true)
+    end
+
+    it "タグの自動生成設定を更新する" do
+      patch "/api/v1/settings", params: { setting: { auto_generate_tags: true } }, headers: headers
+
+      expect(response).to have_http_status(:success)
+      expect(json_response["auto_generate_tags"]).to be(true)
+      expect(user.reload.setting.auto_generate_tags).to be(true)
     end
   end
 end

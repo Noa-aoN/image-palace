@@ -466,4 +466,47 @@ RSpec.describe "Api::V1::Items", type: :request do
       expect(enqueued_jobs.last[:args][0]).to eq(item.id)
     end
   end
+
+  describe "POST /api/v1/items/:id/tags" do
+    it "AI生成タグを既存タグへ union 付与して返す" do
+      item = user.items.create!(title: "光合成", item_type: item_type, generation_status: "completed")
+      item.tags << user.tags.create!(name: "お気に入り")
+      allow(GenerateTagsService).to receive(:call) do |item:|
+        item.tags = (item.tags + [ item.user.tags.find_or_create_by!(name: "生物学") ]).uniq
+        item
+      end
+
+      post "/api/v1/items/#{item.id}/tags", headers: headers, as: :json
+
+      expect(response).to have_http_status(:ok)
+      expect(json_response["tags"].map { |t| t["name"] }).to match_array(%w[お気に入り 生物学])
+    end
+
+    it "他人のカードには 404" do
+      other = create(:user, :confirmed)
+      item = other.items.create!(title: "他人", item_type: item_type, generation_status: "completed")
+
+      post "/api/v1/items/#{item.id}/tags", headers: headers, as: :json
+
+      expect(response).to have_http_status(:not_found)
+    end
+
+    it "生成に失敗したら 422" do
+      item = user.items.create!(title: "光合成", item_type: item_type, generation_status: "completed")
+      allow(GenerateTagsService).to receive(:call).and_raise(GenerateTagsService::GenerationError, "失敗")
+
+      post "/api/v1/items/#{item.id}/tags", headers: headers, as: :json
+
+      expect(response).to have_http_status(:unprocessable_content)
+      expect(json_response["error"]).to be_present
+    end
+
+    it "認証なしでは 401" do
+      item = user.items.create!(title: "光合成", item_type: item_type, generation_status: "completed")
+
+      post "/api/v1/items/#{item.id}/tags", as: :json
+
+      expect(response).to have_http_status(:unauthorized)
+    end
+  end
 end
