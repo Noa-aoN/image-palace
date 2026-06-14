@@ -4,21 +4,27 @@ RSpec.describe PromptBuilderService do
   let(:user) { create(:user, :confirmed) }
 
   describe ".effective_prompt" do
-    it "スタイルもカスタムも無ければタイトルそのまま" do
+    it "スタイルもカスタムも無ければベーステンプレートでタイトルを包む" do
       item = build(:item, user: user, title: "cat")
-      expect(described_class.effective_prompt(item)).to eq("cat")
+      result = described_class.effective_prompt(item)
+      expect(result).to include('"cat"')
+      expect(result).to include("memorable")
+      expect(result).to include("no text")
     end
 
-    it "スタイルプリセットの修飾句を付与する" do
+    it "スタイルプリセットの修飾句を末尾に付与する" do
       item = build(:item, user: user, title: "cat", style: "watercolor")
       result = described_class.effective_prompt(item)
-      expect(result).to start_with("cat,")
+      expect(result).to include('"cat"')
       expect(result).to include("watercolor")
+      expect(result).to end_with("in a soft watercolor painting style")
     end
 
     it "カスタム指示を末尾に付与する" do
       item = build(:item, user: user, title: "cat", custom_prompt: "wearing a hat")
-      expect(described_class.effective_prompt(item)).to eq("cat, wearing a hat")
+      result = described_class.effective_prompt(item)
+      expect(result).to include('"cat"')
+      expect(result).to end_with(", wearing a hat")
     end
 
     it "スタイルとカスタムの両方を付与する" do
