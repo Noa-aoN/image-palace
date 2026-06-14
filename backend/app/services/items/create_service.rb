@@ -2,6 +2,8 @@ module Items
   class CreateService
     FREE_ITEM_LIMIT_PER_MONTH = 100
     class MonthlyLimitExceeded < StandardError; end
+    # ブロックリストに該当する不適切なプロンプトを生成前に弾く
+    class ContentBlocked < StandardError; end
 
     Result = Struct.new(:item, keyword_init: true)
 
@@ -15,6 +17,8 @@ module Items
     end
 
     def call
+      moderate!
+
       item = nil
 
       @user.with_lock do
@@ -41,6 +45,22 @@ module Items
     end
 
     private
+
+    # タイトルとカスタムプロンプト（どちらも OpenAI に渡るユーザー入力）を生成前に検査する。
+    # 違反語を含む場合はアイテムを作らず・ジョブも積まずに ContentBlocked を投げ、監査ログを残す。
+    def moderate!
+      [ @params[:title], @params[:custom_prompt] ].each do |text|
+        next if text.blank?
+
+        result = Moderation::PromptModerator.call(text)
+        next if result.allowed?
+
+        Rails.logger.warn(
+          "[Moderation] BLOCKED user_id=#{@user.id} category=#{result.category} term=#{result.term}"
+        )
+        raise ContentBlocked, "入力に利用できない表現が含まれているため作成できませんでした。別の単語でお試しください。"
+      end
+    end
 
     def default_item_type_id
       type = ItemType.find_by(name: "term")

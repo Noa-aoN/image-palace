@@ -89,6 +89,16 @@ RSpec.describe "Api::V1::Items", type: :request do
       expect(response).to have_http_status(:unprocessable_content)
       expect(json_response["error"]).to eq("今月の生成枚数の上限（100枚）に達しました")
     end
+
+    it "不適切なプロンプトは 422 を返し、アイテムを作らずジョブも積まない" do
+      expect {
+        post "/api/v1/items", params: { item: { title: "a cute loli" } }, headers: headers, as: :json
+      }.not_to have_enqueued_job(GenerateImageJob)
+
+      expect(response).to have_http_status(:unprocessable_content)
+      expect(json_response["error"]).to be_present
+      expect(user.items.count).to eq(0)
+    end
   end
 
   describe "GET /api/v1/items" do
