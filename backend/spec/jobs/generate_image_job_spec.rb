@@ -16,6 +16,16 @@ RSpec.describe GenerateImageJob, type: :job do
       expect(item.generation_error).to eq("入力が曖昧なため画像を生成できませんでした。別の単語や具体的な表現でお試しください。")
     end
 
+    it "コンテンツポリシー違反の 400 には専用メッセージを保存する" do
+      error = Faraday::BadRequestError.new("400 Bad Request: your request was rejected by the safety system (moderation_blocked)")
+
+      described_class.new.send(:mark_failed!, item.id, error)
+
+      item.reload
+      expect(item.generation_status).to eq("failed")
+      expect(item.generation_error).to eq("入力がコンテンツポリシーに反するため画像を生成できませんでした。別の単語でお試しください。")
+    end
+
     it "stores a retry hint for network failures" do
       error = Faraday::SSLError.new("SSL_read: unexpected eof while reading")
 

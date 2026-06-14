@@ -50,6 +50,22 @@ RSpec.describe Items::CreateService, type: :service do
       }.not_to have_enqueued_job(GenerateMeaningJob)
     end
 
+    it "不適切なプロンプトはアイテムを作らずジョブも積まずにブロックする" do
+      expect {
+        expect {
+          described_class.call(user: user, params: { title: "a cute loli" })
+        }.to raise_error(described_class::ContentBlocked)
+      }.not_to change { user.items.count }
+
+      expect(enqueued_jobs).to be_empty
+    end
+
+    it "カスタムプロンプトに違反語が含まれる場合もブロックする" do
+      expect {
+        described_class.call(user: user, params: { title: "cat", custom_prompt: "in a rape scene" })
+      }.to raise_error(described_class::ContentBlocked)
+    end
+
     it "raises monthly limit exceeded when the user already created 100 items this month" do
       freeze_time do
         described_class::FREE_ITEM_LIMIT_PER_MONTH.times do |index|

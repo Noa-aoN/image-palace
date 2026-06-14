@@ -77,6 +77,8 @@ module Api
         render json: serialize_item(result.item.reload), status: :accepted
       rescue Items::CreateService::MonthlyLimitExceeded => e
         render json: { error: e.message }, status: :unprocessable_entity
+      rescue Items::CreateService::ContentBlocked => e
+        render json: { error: e.message }, status: :unprocessable_entity
       rescue ActiveRecord::RecordInvalid => e
         render json: { errors: e.record.errors.full_messages }, status: :unprocessable_entity
       end

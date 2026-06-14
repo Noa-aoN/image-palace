@@ -117,10 +117,19 @@ class GenerateImageJob < ApplicationJob
     )
   end
 
+  # OpenAI のコンテンツポリシー違反は 400 系で返り、本文に moderation_blocked /
+  # content_policy_violation / safety system 等のマーカーを含む。事前のブロックリストを
+  # すり抜けた入力の最終防衛として、専用のユーザー向けメッセージに振り分ける。
+  CONTENT_POLICY_MARKERS = /moderation_blocked|content[_ ]?policy|safety system/i
+
   def user_facing_error_message(error)
     case error
     when Faraday::BadRequestError
-      "入力が曖昧なため画像を生成できませんでした。別の単語や具体的な表現でお試しください。"
+      if CONTENT_POLICY_MARKERS.match?(error.message.to_s)
+        "入力がコンテンツポリシーに反するため画像を生成できませんでした。別の単語でお試しください。"
+      else
+        "入力が曖昧なため画像を生成できませんでした。別の単語や具体的な表現でお試しください。"
+      end
     when *NETWORK_ERRORS
       "通信が不安定だったため画像を生成できませんでした。時間を置いて再試行してください。"
     else
