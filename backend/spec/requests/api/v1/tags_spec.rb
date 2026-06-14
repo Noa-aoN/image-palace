@@ -42,6 +42,19 @@ RSpec.describe "Api::V1::Tags", type: :request do
       expect(names).to include("自分")
       expect(names).not_to include("他人")
     end
+
+    it "ピン留めしたタグを先頭に、各グループ内は名前順で返す" do
+      user.tags.create!(name: "い未ピン")
+      user.tags.create!(name: "あ未ピン")
+      user.tags.create!(name: "んピン", pinned: true)
+      user.tags.create!(name: "あピン", pinned: true)
+
+      get "/api/v1/tags", headers: headers, as: :json
+
+      names = json_response.fetch("tags").map { |t| t["name"] }
+      expect(names).to eq(%w[あピン んピン あ未ピン い未ピン])
+      expect(json_response.fetch("tags").first["pinned"]).to be(true)
+    end
   end
 
   describe "POST /api/v1/tags" do
@@ -79,6 +92,21 @@ RSpec.describe "Api::V1::Tags", type: :request do
 
       expect(response).to have_http_status(:success)
       expect(tag.reload.name).to eq("新名")
+    end
+
+    it "ピン留めを切り替える" do
+      tag = user.tags.create!(name: "タグ")
+
+      patch "/api/v1/tags/#{tag.id}", params: { tag: { pinned: true } }, headers: headers, as: :json
+
+      expect(response).to have_http_status(:success)
+      expect(json_response["pinned"]).to be(true)
+      expect(tag.reload.pinned).to be(true)
+
+      patch "/api/v1/tags/#{tag.id}", params: { tag: { pinned: false } }, headers: headers, as: :json
+
+      expect(json_response["pinned"]).to be(false)
+      expect(tag.reload.pinned).to be(false)
     end
   end
 
