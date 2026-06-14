@@ -18,6 +18,12 @@ class PromptBuilderService
   STYLES = STYLE_MODIFIERS.keys.freeze
   CUSTOM_PROMPT_MAX_LENGTH = 300
 
+  # gpt-image-1 本来の表現力（質感・リアルさ）を活かすため、構図や背景は指定せず
+  # タイトルをそのまま主役に置く。唯一、生成画像に紛れ込みがちな文字を避けるための
+  # 軽い指示だけを末尾に添える。この文面はキャッシュキー（normalized_prompt）の一部に
+  # なるため、変更すると既存キャッシュは自動で無効化される。
+  NO_TEXT_HINT = "avoid any text, letters, or numbers"
+
   def self.effective_prompt(item)
     parts = [ item.title.to_s.strip ]
 
@@ -27,6 +33,7 @@ class PromptBuilderService
     custom = item.custom_prompt.to_s.strip
     parts << custom if custom.present?
 
+    parts << NO_TEXT_HINT
     parts.join(", ")
   end
 end
