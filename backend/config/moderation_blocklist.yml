@@ -1,0 +1,33 @@
+# プロンプトモデレーション用ブロックリスト（監査・運用で随時更新する）
+#
+# - カテゴリごとに「禁止語」を列挙する。判定は NormalizePromptService で
+#   正規化（NFKC・小文字化・空白圧縮）したテキストに対して行う。
+# - latin: 半角英数のみで構成された語。前後を単語境界として部分一致を避ける
+#   （例: "sex" は "sussex" にマッチさせない）。
+# - cjk: 日本語など単語境界を持たない語。部分一致で判定する。
+# - ここに列挙するのは OpenAI のコンテンツポリシーで明確に禁止される
+#   カテゴリ（児童性的搾取・露骨な性的表現・残虐描写・憎悪扇動）に限る。
+#   表現の自由度を不必要に狭めないよう、過度な一般語は載せない。
+latin:
+  - child porn
+  - childporn
+  - cp porn
+  - underage sex
+  - loli
+  - lolicon
+  - shota
+  - bestiality
+  - rape
+  - gore
+  - beheading
+  - dismemberment
+  - nazi
+  - kkk
+cjk:
+  - 児童ポルノ
+  - 幼児ポルノ
+  - 児童性的
+  - レイプ
+  - 強姦
+  - 獣姦
+  - 斬首

@@ -6,7 +6,9 @@ export async function getSettings(): Promise<UserSettings> {
   return res.data
 }
 
-export async function updateSettings(payload: Partial<Pick<UserSettings, 'auto_generate_meanings'>>): Promise<UserSettings> {
+export async function updateSettings(
+  payload: Partial<Pick<UserSettings, 'auto_generate_meanings' | 'auto_generate_tags'>>
+): Promise<UserSettings> {
   const res = await apiClient.patch<UserSettings>('/api/v1/settings', { setting: payload })
   return res.data
 }
