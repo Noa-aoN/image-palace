@@ -1,11 +1,15 @@
 require "rails_helper"
 
 RSpec.describe "Rack::Attack throttling", type: :request do
+  # スロットルは period 秒ごとの離散バケットでカウントするため、リクエスト列が
+  # バケット境界をまたぐとカウントが分割されてフレークする。freeze_time で 1 バケットに固定する。
   describe "ログイン試行のスロットル" do
     it "10 回を超えると 429 を返す" do
-      11.times do
-        post "/api/v1/auth/sign_in",
-          params: { email: "nobody@example.com", password: "wrong-password" }, as: :json
+      freeze_time do
+        11.times do
+          post "/api/v1/auth/sign_in",
+            params: { email: "nobody@example.com", password: "wrong-password" }, as: :json
+        end
       end
 
       expect(response).to have_http_status(:too_many_requests)
@@ -14,9 +18,11 @@ RSpec.describe "Rack::Attack throttling", type: :request do
     end
 
     it "上限内のリクエストはスロットルしない" do
-      10.times do
-        post "/api/v1/auth/sign_in",
-          params: { email: "nobody@example.com", password: "wrong-password" }, as: :json
+      freeze_time do
+        10.times do
+          post "/api/v1/auth/sign_in",
+            params: { email: "nobody@example.com", password: "wrong-password" }, as: :json
+        end
       end
 
       expect(response).not_to have_http_status(:too_many_requests)
@@ -25,10 +31,12 @@ RSpec.describe "Rack::Attack throttling", type: :request do
 
   describe "新規登録のスロットル" do
     it "5 回を超えると 429 を返す" do
-      6.times do |i|
-        post "/api/v1/auth",
-          params: { email: "spam#{i}@example.com", password: "password123", password_confirmation: "password123" },
-          as: :json
+      freeze_time do
+        6.times do |i|
+          post "/api/v1/auth",
+            params: { email: "spam#{i}@example.com", password: "password123", password_confirmation: "password123" },
+            as: :json
+        end
       end
 
       expect(response).to have_http_status(:too_many_requests)
