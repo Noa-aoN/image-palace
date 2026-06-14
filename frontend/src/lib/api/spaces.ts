@@ -1,18 +1,24 @@
 import { apiClient } from './client'
-import type { Space } from '@/types/space'
+import type { Space, SpaceDetail, SpacePoint } from '@/types/space'
 
 export async function getSpaces(): Promise<Space[]> {
   const res = await apiClient.get<{ spaces: Space[] }>('/api/v1/spaces')
   return res.data.spaces
 }
 
-export async function getSpace(id: string): Promise<Space> {
-  const res = await apiClient.get<Space>(`/api/v1/spaces/${id}`)
+export async function getSpace(id: string): Promise<SpaceDetail> {
+  const res = await apiClient.get<SpaceDetail>(`/api/v1/spaces/${id}`)
   return res.data
 }
 
-export async function createSpace(name: string, description?: string): Promise<Space> {
-  const res = await apiClient.post<Space>('/api/v1/spaces', { space: { name, description } })
+export async function createSpace(
+  name: string,
+  spaceType: string = 'room',
+  description?: string
+): Promise<Space> {
+  const res = await apiClient.post<Space>('/api/v1/spaces', {
+    space: { name, space_type: spaceType, description },
+  })
   return res.data
 }
 
@@ -26,4 +32,36 @@ export async function updateSpace(
 
 export async function deleteSpace(id: string): Promise<void> {
   await apiClient.delete(`/api/v1/spaces/${id}`)
+}
+
+// room 種別: コレクションの配置
+export async function addCollectionToSpace(spaceId: string, collectionId: string): Promise<void> {
+  await apiClient.post(`/api/v1/spaces/${spaceId}/collections`, { collection_id: collectionId })
+}
+
+export async function removeCollectionFromSpace(spaceId: string, collectionId: string): Promise<void> {
+  await apiClient.delete(`/api/v1/spaces/${spaceId}/collections/${collectionId}`)
+}
+
+// road 種別: 序数ポイント
+export async function addSpacePoint(spaceId: string): Promise<SpacePoint> {
+  const res = await apiClient.post<SpacePoint>(`/api/v1/spaces/${spaceId}/points`, {})
+  return res.data
+}
+
+export async function updateSpacePoint(
+  spaceId: string,
+  pointId: string,
+  payload: { item_id?: string | null; position?: number }
+): Promise<SpacePoint> {
+  const res = await apiClient.patch<SpacePoint>(`/api/v1/spaces/${spaceId}/points/${pointId}`, payload)
+  return res.data
+}
+
+export async function removeSpacePoint(spaceId: string, pointId: string): Promise<void> {
+  await apiClient.delete(`/api/v1/spaces/${spaceId}/points/${pointId}`)
+}
+
+export async function reorderSpacePoints(spaceId: string, orderedIds: string[]): Promise<void> {
+  await apiClient.patch(`/api/v1/spaces/${spaceId}/points/reorder`, { ordered_ids: orderedIds })
 }

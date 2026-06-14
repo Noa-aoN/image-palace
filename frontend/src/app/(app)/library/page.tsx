@@ -16,6 +16,7 @@ import type { Collection } from '@/types/collection'
 import type { Space } from '@/types/space'
 import type { View } from '@/types/view'
 import { viewTypeLabel } from '@/lib/view-types'
+import { spaceTypeLabel } from '@/lib/space-types'
 import type { SearchResults, SearchCard, SearchDeck } from '@/types/search'
 
 const PREVIEW_LIMIT = 12
@@ -132,6 +133,7 @@ function SpaceTile({ space }: { space: Space }) {
       <div className="flex items-center gap-2">
         <LayoutGrid size={16} style={{ color: 'var(--palace)' }} />
         <span className="font-medium text-sm truncate">{space.name}</span>
+        <span className="ml-auto shrink-0 text-xs text-muted-foreground">{spaceTypeLabel(space.space_type)}</span>
       </div>
       {space.description && (
         <span className="text-xs text-muted-foreground line-clamp-2">{space.description}</span>
