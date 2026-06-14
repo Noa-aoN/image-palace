@@ -35,6 +35,8 @@ module Items
       GenerateImageJob.perform_later(item.id, force_generate: @params[:force_generate] == true)
       # ユーザー設定で「意味の自動生成」が ON の場合のみ、意味生成も非同期で実行する
       GenerateMeaningJob.perform_later(item.id) if @user.setting&.auto_generate_meanings
+      # ユーザー設定で「タグの自動生成」が ON の場合のみ、タグ生成も非同期で実行する
+      GenerateTagsJob.perform_later(item.id) if @user.setting&.auto_generate_tags
       Result.new(item: item)
     end
 

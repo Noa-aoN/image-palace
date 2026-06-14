@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react'
 import { Loader2, Pencil, Check, X, Sparkles } from 'lucide-react'
 import { Button } from '@/components/ui/button'
-import { getItemTypes, updateItem, generateMeaning } from '@/lib/api/items'
+import { getItemTypes, updateItem, generateMeaning, generateTags } from '@/lib/api/items'
 import { getTags } from '@/lib/api/tags'
 import type { Item, ItemType } from '@/types/item'
 import type { Tag } from '@/types/tag'
@@ -47,6 +47,7 @@ export function ItemProperties({ item, onUpdated }: ItemPropertiesProps) {
   const [savingTags, setSavingTags] = useState(false)
   const [tagError, setTagError] = useState<string | null>(null)
   const [allTags, setAllTags] = useState<Tag[]>([])
+  const [generatingTags, setGeneratingTags] = useState(false)
 
   const tags = item.tags ?? []
 
@@ -93,6 +94,21 @@ export function ItemProperties({ item, onUpdated }: ItemPropertiesProps) {
 
   const handleRemoveTag = async (tagId: string) => {
     await saveTags(tags.filter((t) => t.id !== tagId).map((t) => t.name))
+  }
+
+  // AI でタグを生成。既存タグは消さず union で追加される（サーバー側で実施）。
+  const handleGenerateTags = async () => {
+    setGeneratingTags(true)
+    setTagError(null)
+    try {
+      const updated = await generateTags(item.id)
+      onUpdated(updated)
+      loadAllTags()
+    } catch {
+      setTagError('タグの生成に失敗しました。時間を置いて再度お試しください。')
+    } finally {
+      setGeneratingTags(false)
+    }
   }
 
   useEffect(() => {
@@ -249,9 +265,21 @@ export function ItemProperties({ item, onUpdated }: ItemPropertiesProps) {
 
       {/* タグ */}
       <div className="space-y-2">
-        <div className="flex items-center gap-2">
-          <span className="text-sm font-medium">タグ</span>
-          {savingTags && <Loader2 size={14} className="animate-spin text-muted-foreground" />}
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <span className="text-sm font-medium">タグ</span>
+            {savingTags && <Loader2 size={14} className="animate-spin text-muted-foreground" />}
+          </div>
+          <button
+            onClick={handleGenerateTags}
+            disabled={generatingTags || savingTags}
+            className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground transition-colors disabled:opacity-50"
+            aria-label="AIでタグを生成"
+            title="AIで生成"
+          >
+            {generatingTags ? <Loader2 size={14} className="animate-spin" /> : <Sparkles size={14} />}
+            AIで生成
+          </button>
         </div>
         {tags.length > 0 && (
           <div className="flex flex-wrap gap-1.5">

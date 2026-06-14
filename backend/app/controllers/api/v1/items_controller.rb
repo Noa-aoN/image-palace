@@ -1,7 +1,7 @@
 module Api
   module V1
     class ItemsController < BaseController
-      before_action :set_item, only: [ :show, :update, :destroy, :retry, :meaning ]
+      before_action :set_item, only: [ :show, :update, :destroy, :retry, :meaning, :generate_tags ]
 
       DEFAULT_PER_PAGE = 24
       MAX_PER_PAGE = 100
@@ -120,6 +120,16 @@ module Api
       rescue GenerateMeaningService::GenerationError, KeyError, Faraday::Error => e
         Rails.logger.warn "[ItemsController#meaning] failed item_id=#{item.id}: #{e.class}: #{e.message}"
         render json: { error: "意味の生成に失敗しました。時間を置いて再度お試しください。" }, status: :unprocessable_entity
+      end
+
+      # タグを AI で生成（同期）。詳細画面の「AIで生成」ボタンから呼ばれる。
+      # 既存タグは消さず union で追加する。
+      def generate_tags
+        GenerateTagsService.call(item: item)
+        render json: serialize_item(item.reload), status: :ok
+      rescue GenerateTagsService::GenerationError, KeyError, Faraday::Error => e
+        Rails.logger.warn "[ItemsController#generate_tags] failed item_id=#{item.id}: #{e.class}: #{e.message}"
+        render json: { error: "タグの生成に失敗しました。時間を置いて再度お試しください。" }, status: :unprocessable_entity
       end
 
       private

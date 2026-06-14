@@ -15,13 +15,16 @@ export default function AccountPage() {
   const resetItems = useItemsStore((s) => s.resetItems)
 
   const [autoMeanings, setAutoMeanings] = useState<boolean | null>(null)
+  const [autoTags, setAutoTags] = useState<boolean | null>(null)
   const [savingSettings, setSavingSettings] = useState(false)
 
   useEffect(() => {
     let cancelled = false
     getSettings()
       .then((s) => {
-        if (!cancelled) setAutoMeanings(s.auto_generate_meanings)
+        if (cancelled) return
+        setAutoMeanings(s.auto_generate_meanings)
+        setAutoTags(s.auto_generate_tags)
       })
       .catch(() => {})
     return () => {
@@ -39,6 +42,21 @@ export default function AccountPage() {
       setAutoMeanings(s.auto_generate_meanings)
     } catch {
       setAutoMeanings(!next) // 失敗したら元に戻す
+    } finally {
+      setSavingSettings(false)
+    }
+  }
+
+  const toggleAutoTags = async () => {
+    if (autoTags === null || savingSettings) return
+    const next = !autoTags
+    setSavingSettings(true)
+    setAutoTags(next)
+    try {
+      const s = await updateSettings({ auto_generate_tags: next })
+      setAutoTags(s.auto_generate_tags)
+    } catch {
+      setAutoTags(!next) // 失敗したら元に戻す
     } finally {
       setSavingSettings(false)
     }
@@ -121,6 +139,32 @@ export default function AccountPage() {
             <span
               className={`inline-block h-5 w-5 transform rounded-full bg-white shadow transition-transform ${
                 autoMeanings ? 'translate-x-5' : 'translate-x-0.5'
+              }`}
+            />
+          </button>
+        </div>
+        <div className="flex items-start justify-between gap-4 border-t border-border pt-3">
+          <div>
+            <p className="text-sm font-medium">カード作成時にタグを自動生成</p>
+            <p className="mt-1 text-sm text-muted-foreground">
+              ONにすると、新しいカードを作るたびに AI が分類用タグを自動生成します（生成コストがかかります）。
+              OFF の場合は、各カードの詳細画面から個別に生成できます。既存のタグは消さず追加されます。
+            </p>
+          </div>
+          <button
+            type="button"
+            role="switch"
+            aria-checked={autoTags === true}
+            aria-label="タグの自動生成"
+            disabled={autoTags === null || savingSettings}
+            onClick={toggleAutoTags}
+            className={`relative mt-0.5 inline-flex h-6 w-11 shrink-0 items-center rounded-full transition-colors disabled:opacity-50 ${
+              autoTags ? 'bg-[var(--palace)]' : 'bg-muted'
+            }`}
+          >
+            <span
+              className={`inline-block h-5 w-5 transform rounded-full bg-white shadow transition-transform ${
+                autoTags ? 'translate-x-5' : 'translate-x-0.5'
               }`}
             />
           </button>
