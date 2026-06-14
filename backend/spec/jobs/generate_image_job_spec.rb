@@ -42,7 +42,7 @@ RSpec.describe GenerateImageJob, type: :job do
     it "clears stale generation_error when cached media completes the item" do
       create(:shared_media, :with_file,
         user: user,
-        normalized_prompt: NormalizePromptService.call(item.title),
+        normalized_prompt: NormalizePromptService.call(PromptBuilderService.effective_prompt(item)),
         metadata: { "provider" => "openai" })
       item.mark_generation_failed!(message: "古い失敗理由", code: "old_error")
 
@@ -66,7 +66,7 @@ RSpec.describe GenerateImageJob, type: :job do
       described_class.perform_now(item.id)
 
       item.reload
-      expect(GenerateImageService).to have_received(:call).with(prompt: item.title)
+      expect(GenerateImageService).to have_received(:call).with(prompt: PromptBuilderService.effective_prompt(item))
       expect(item.generation_status).to eq("completed")
       expect(item.primary_media.file).to be_attached
       expect(item.primary_media.metadata["model"]).to eq("gpt-image-1")
