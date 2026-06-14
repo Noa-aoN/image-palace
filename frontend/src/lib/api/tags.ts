@@ -16,6 +16,11 @@ export async function updateTag(id: string, name: string): Promise<Tag> {
   return res.data
 }
 
+export async function setTagPinned(id: string, pinned: boolean): Promise<Tag> {
+  const res = await apiClient.patch<Tag>(`/api/v1/tags/${id}`, { tag: { pinned } })
+  return res.data
+}
+
 export async function deleteTag(id: string): Promise<void> {
   await apiClient.delete(`/api/v1/tags/${id}`)
 }

@@ -2,11 +2,16 @@
 
 import { useEffect, useState } from 'react'
 import Link from 'next/link'
-import { Tag as TagIcon, Pencil, Check, X, Trash2, Plus } from 'lucide-react'
+import { Tag as TagIcon, Pencil, Check, X, Trash2, Plus, Pin } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
-import { getTags, createTag, updateTag, deleteTag } from '@/lib/api/tags'
+import { getTags, createTag, updateTag, deleteTag, setTagPinned } from '@/lib/api/tags'
 import type { Tag } from '@/types/tag'
+
+// ピン留めを先頭に、各グループ内は日本語の名前順で並べる
+function sortTags(a: Tag, b: Tag): number {
+  return Number(b.pinned) - Number(a.pinned) || a.name.localeCompare(b.name, 'ja')
+}
 
 function TagRow({ tag, onChanged }: { tag: Tag; onChanged: (next: Tag | null) => void }) {
   const [editing, setEditing] = useState(false)
@@ -14,7 +19,21 @@ function TagRow({ tag, onChanged }: { tag: Tag; onChanged: (next: Tag | null) =>
   const [saving, setSaving] = useState(false)
   const [confirmDelete, setConfirmDelete] = useState(false)
   const [deleting, setDeleting] = useState(false)
+  const [pinning, setPinning] = useState(false)
   const [error, setError] = useState<string | null>(null)
+
+  const handleTogglePin = async () => {
+    setPinning(true)
+    setError(null)
+    try {
+      const updated = await setTagPinned(tag.id, !tag.pinned)
+      onChanged({ ...tag, pinned: updated.pinned })
+    } catch {
+      setError('ピン留めの更新に失敗しました')
+    } finally {
+      setPinning(false)
+    }
+  }
 
   const handleSave = async () => {
     const name = draft.trim()
@@ -51,7 +70,11 @@ function TagRow({ tag, onChanged }: { tag: Tag; onChanged: (next: Tag | null) =>
   }
 
   return (
-    <div className="flex items-center justify-between gap-2 rounded-xl border border-border bg-card px-4 py-3">
+    <div
+      className={`flex items-center justify-between gap-2 rounded-xl border px-4 py-3 ${
+        tag.pinned ? 'border-[var(--palace)]/40 bg-[var(--palace)]/5' : 'border-border bg-card'
+      }`}
+    >
       {editing ? (
         <div className="flex items-center gap-2 flex-1 min-w-0">
           <Input
@@ -75,6 +98,17 @@ function TagRow({ tag, onChanged }: { tag: Tag; onChanged: (next: Tag | null) =>
       )}
       {!editing && (
         <div className="flex items-center gap-1 shrink-0">
+          <button
+            onClick={handleTogglePin}
+            disabled={pinning}
+            className="transition-colors p-1.5 disabled:opacity-50"
+            style={tag.pinned ? { color: 'var(--palace)' } : undefined}
+            aria-label={tag.pinned ? 'ピン留めを外す' : 'ピン留めする'}
+            aria-pressed={tag.pinned}
+            title={tag.pinned ? 'ピン留めを外す' : 'ピン留め'}
+          >
+            <Pin size={15} fill={tag.pinned ? 'currentColor' : 'none'} className={tag.pinned ? '' : 'text-muted-foreground hover:text-foreground'} />
+          </button>
           <button onClick={() => { setDraft(tag.name); setEditing(true) }} className="text-muted-foreground hover:text-foreground transition-colors p-1.5" aria-label="タグ名を編集">
             <Pencil size={15} />
           </button>
@@ -113,7 +147,7 @@ export default function TagsPage() {
     setCreateError(null)
     try {
       const created = await createTag(name)
-      setTags((current) => [...current, created].sort((a, b) => a.name.localeCompare(b.name, 'ja')))
+      setTags((current) => [...current, created].sort(sortTags))
       setNewName('')
     } catch (err: unknown) {
       const axiosErr = err as { response?: { data?: { errors?: string[] } } }
@@ -127,7 +161,7 @@ export default function TagsPage() {
     let cancelled = false
     getTags()
       .then((data) => {
-        if (!cancelled) setTags(data)
+        if (!cancelled) setTags([...data].sort(sortTags))
       })
       .catch(() => {
         if (!cancelled) setError('タグの取得に失敗しました')
@@ -181,9 +215,12 @@ export default function TagsPage() {
               key={tag.id}
               tag={tag}
               onChanged={(next) =>
-                setTags((current) =>
-                  next ? current.map((t) => (t.id === tag.id ? next : t)) : current.filter((t) => t.id !== tag.id)
-                )
+                setTags((current) => {
+                  const updated = next
+                    ? current.map((t) => (t.id === tag.id ? next : t))
+                    : current.filter((t) => t.id !== tag.id)
+                  return [...updated].sort(sortTags)
+                })
               }
             />
           ))}
