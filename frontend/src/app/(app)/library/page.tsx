@@ -93,7 +93,7 @@ function DeckTile({ deck }: { deck: Deck }) {
       href={`/decks/${deck.id}`}
       className="shrink-0 w-40 flex flex-col rounded-xl border border-border overflow-hidden bg-card hover:shadow-md transition-shadow"
     >
-      <div className="w-full aspect-[4/3] bg-muted flex items-center justify-center overflow-hidden">
+      <div className="w-full aspect-square bg-muted flex items-center justify-center overflow-hidden">
         {coverUrl ? (
           // eslint-disable-next-line @next/next/no-img-element
           <img src={coverUrl} alt={deck.name} className="w-full h-full object-cover" loading="lazy" />
@@ -222,7 +222,7 @@ function SearchDeckTile({ deck }: { deck: SearchDeck }) {
       href={`/decks/${deck.id}`}
       className="shrink-0 w-40 flex flex-col rounded-xl border border-border overflow-hidden bg-card hover:shadow-md transition-shadow"
     >
-      <div className="w-full aspect-[4/3] bg-muted flex items-center justify-center overflow-hidden">
+      <div className="w-full aspect-square bg-muted flex items-center justify-center overflow-hidden">
         {coverUrl ? (
           // eslint-disable-next-line @next/next/no-img-element
           <img src={coverUrl} alt={deck.name} className="w-full h-full object-cover" loading="lazy" />
