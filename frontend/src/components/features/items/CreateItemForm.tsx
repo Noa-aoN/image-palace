@@ -1,13 +1,16 @@
 'use client'
 
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { Button } from '@/components/ui/button'
 import { Label } from '@/components/ui/label'
 import { Spinner } from '@/components/ui/spinner'
 import { createItem } from '@/lib/api/items'
+import { getDecks, createDeck } from '@/lib/api/decks'
+import { getSettings } from '@/lib/api/settings'
 import { useItemsStore } from '@/stores/items'
 import { STYLE_OPTIONS, CUSTOM_PROMPT_MAX_LENGTH } from '@/lib/item-styles'
+import type { Deck } from '@/types/deck'
 
 const MAX_TITLE_LENGTH = 100
 
@@ -26,9 +29,26 @@ export function CreateItemForm() {
   const [style, setStyle] = useState('')
   const [customPrompt, setCustomPrompt] = useState('')
   const [forceGenerate, setForceGenerate] = useState(false)
+  const [generateMeaning, setGenerateMeaning] = useState(false)
+  const [decks, setDecks] = useState<Deck[]>([])
+  const [createNewDeck, setCreateNewDeck] = useState(false)
+  const [newDeckName, setNewDeckName] = useState('')
+  const [selectedDeckIds, setSelectedDeckIds] = useState<string[]>([])
   const [apiError, setApiError] = useState<string | null>(null)
   const [submitting, setSubmitting] = useState(false)
   const [progress, setProgress] = useState<{ done: number; total: number } | null>(null)
+
+  // 既存デッキ一覧と、意味自動生成のデフォルト値（ユーザー設定）を読み込む
+  useEffect(() => {
+    getDecks().then(setDecks).catch(() => {})
+    getSettings()
+      .then((s) => setGenerateMeaning(s.auto_generate_meanings))
+      .catch(() => {})
+  }, [])
+
+  const toggleDeck = (id: string) => {
+    setSelectedDeckIds((prev) => (prev.includes(id) ? prev.filter((d) => d !== id) : [...prev, id]))
+  }
 
   const titles = parseTitles(input)
   const wordCount = titles.length
@@ -47,10 +67,21 @@ export function CreateItemForm() {
     setProgress({ done: 0, total: titles.length })
 
     try {
+      // 送信先デッキ ID を組み立てる。新規デッキを作る場合は先に作成する
+      // （名前未入力ならデフォルトのナンバリング名を付ける）。
+      const targetDeckIds = [...selectedDeckIds]
+      if (createNewDeck) {
+        const name = newDeckName.trim() || `デッキ ${decks.length + 1}`
+        const created = await createDeck(name)
+        targetDeckIds.push(created.id)
+      }
+
       for (let i = 0; i < titles.length; i++) {
         const item = await createItem(titles[i], forceGenerate, tagNames.length ? tagNames : undefined, {
           style: style || undefined,
           customPrompt: customPrompt.trim() || undefined,
+          generateMeaning,
+          deckIds: targetDeckIds.length ? targetDeckIds : undefined,
         })
         upsertItem(item)
         setProgress({ done: i + 1, total: titles.length })
@@ -176,6 +207,76 @@ export function CreateItemForm() {
           </span>
         </span>
       </label>
+
+      {/* 意味・説明の自動生成 */}
+      <label className="flex items-start gap-3 rounded-xl border border-border/70 bg-background px-4 py-3">
+        <input
+          type="checkbox"
+          className="mt-1 h-4 w-4 rounded border-input"
+          checked={generateMeaning}
+          onChange={(e) => setGenerateMeaning(e.target.checked)}
+          disabled={submitting}
+        />
+        <span className="space-y-1">
+          <span className="block text-sm font-medium">各カードの意味・説明をAIで自動生成する</span>
+          <span className="block text-xs text-muted-foreground">
+            作成するすべてのカードについて、意味・説明をAIで生成します。あとから個別に生成・編集することもできます。
+          </span>
+        </span>
+      </label>
+
+      {/* デッキへの追加 */}
+      <div className="space-y-3 rounded-xl border border-border/70 bg-background px-4 py-3">
+        <Label>デッキ（任意）</Label>
+
+        <label className="flex items-start gap-3">
+          <input
+            type="checkbox"
+            className="mt-1 h-4 w-4 rounded border-input"
+            checked={createNewDeck}
+            onChange={(e) => setCreateNewDeck(e.target.checked)}
+            disabled={submitting}
+          />
+          <span className="flex-1 space-y-2">
+            <span className="block text-sm font-medium">今回のカードで新しいデッキを作成する</span>
+            {createNewDeck && (
+              <input
+                type="text"
+                value={newDeckName}
+                onChange={(e) => setNewDeckName(e.target.value)}
+                disabled={submitting}
+                placeholder={`デッキ名（未入力なら「デッキ ${decks.length + 1}」）`}
+                className="w-full rounded-lg border border-input bg-background px-3 py-2 text-sm placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+              />
+            )}
+          </span>
+        </label>
+
+        {decks.length > 0 && (
+          <div className="space-y-2 border-t border-border/60 pt-3">
+            <span className="block text-sm font-medium">既存のデッキに追加する</span>
+            <div className="flex flex-wrap gap-2">
+              {decks.map((deck) => {
+                const active = selectedDeckIds.includes(deck.id)
+                return (
+                  <button
+                    key={deck.id}
+                    type="button"
+                    onClick={() => toggleDeck(deck.id)}
+                    disabled={submitting}
+                    className={`rounded-full border px-3 py-1 text-sm transition-colors disabled:opacity-50 ${
+                      active ? 'border-transparent text-white' : 'border-border text-muted-foreground hover:bg-muted'
+                    }`}
+                    style={active ? { backgroundColor: 'var(--palace)' } : undefined}
+                  >
+                    {deck.name}
+                  </button>
+                )
+              })}
+            </div>
+          </div>
+        )}
+      </div>
 
       {apiError && <p className="text-sm text-destructive">{apiError}</p>}
 

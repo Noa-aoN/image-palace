@@ -14,6 +14,10 @@ export interface ItemsSummary {
 export interface CreateItemOptions {
   style?: string
   customPrompt?: string
+  /** 各カードの意味・説明を AI で自動生成するか（未指定ならユーザー設定に従う） */
+  generateMeaning?: boolean
+  /** 作成したカードを追加するデッキ ID の配列 */
+  deckIds?: string[]
 }
 
 export async function createItem(
@@ -29,6 +33,8 @@ export async function createItem(
       ...(tags ? { tags } : {}),
       ...(options?.style ? { style: options.style } : {}),
       ...(options?.customPrompt ? { custom_prompt: options.customPrompt } : {}),
+      ...(options?.generateMeaning !== undefined ? { generate_meaning: options.generateMeaning } : {}),
+      ...(options?.deckIds && options.deckIds.length ? { deck_ids: options.deckIds } : {}),
     },
   })
   return res.data

@@ -37,14 +37,24 @@ module Items
       end
 
       GenerateImageJob.perform_later(item.id, force_generate: @params[:force_generate] == true)
-      # ユーザー設定で「意味の自動生成」が ON の場合のみ、意味生成も非同期で実行する
-      GenerateMeaningJob.perform_later(item.id) if @user.setting&.auto_generate_meanings
+      # 意味の自動生成: 作成時に generate_meaning が明示指定されればそれを優先し、
+      # 指定がなければユーザー設定（auto_generate_meanings）にフォールバックする
+      GenerateMeaningJob.perform_later(item.id) if generate_meaning?
       # ユーザー設定で「タグの自動生成」が ON の場合のみ、タグ生成も非同期で実行する
       GenerateTagsJob.perform_later(item.id) if @user.setting&.auto_generate_tags
       Result.new(item: item)
     end
 
     private
+
+    # 作成時に generate_meaning が渡された場合はその真偽値を、なければユーザー設定を使う
+    def generate_meaning?
+      if @params.key?(:generate_meaning)
+        ActiveModel::Type::Boolean.new.cast(@params[:generate_meaning])
+      else
+        @user.setting&.auto_generate_meanings
+      end
+    end
 
     # タイトルとカスタムプロンプト（どちらも OpenAI に渡るユーザー入力）を生成前に検査する。
     # 違反語を含む場合はアイテムを作らず・ジョブも積まずに ContentBlocked を投げ、監査ログを残す。
