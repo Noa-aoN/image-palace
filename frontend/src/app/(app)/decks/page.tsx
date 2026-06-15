@@ -15,7 +15,7 @@ function DeckCard({ deck }: { deck: Deck }) {
       href={`/decks/${deck.id}`}
       className="flex flex-col rounded-xl border border-border overflow-hidden bg-card hover:shadow-md transition-shadow"
     >
-      <div className="w-full aspect-[4/3] bg-muted flex items-center justify-center overflow-hidden">
+      <div className="w-full aspect-square bg-muted flex items-center justify-center overflow-hidden">
         {coverUrl ? (
           // eslint-disable-next-line @next/next/no-img-element
           <img src={coverUrl} alt={deck.name} className="w-full h-full object-cover" loading="lazy" />
@@ -128,7 +128,7 @@ export default function DecksPage() {
       {loading ? (
         <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
           {Array.from({ length: 8 }).map((_, i) => (
-            <div key={i} className="aspect-[4/3] rounded-xl border border-border bg-muted animate-pulse" />
+            <div key={i} className="aspect-square rounded-xl border border-border bg-muted animate-pulse" />
           ))}
         </div>
       ) : error ? (
