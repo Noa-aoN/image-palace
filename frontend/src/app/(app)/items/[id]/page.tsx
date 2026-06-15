@@ -3,12 +3,13 @@
 import { useEffect, useState } from 'react'
 import Link from 'next/link'
 import { useParams, useRouter, useSearchParams } from 'next/navigation'
-import { Trash2, ChevronLeft, ChevronRight, RefreshCw, Pencil, Check, X } from 'lucide-react'
+import { Trash2, ChevronLeft, ChevronRight, Pencil, Check, X } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Spinner } from '@/components/ui/spinner'
 import { ItemProperties } from '@/components/features/items/ItemProperties'
-import { getItem, getItems, deleteItem, retryItem, updateItem } from '@/lib/api/items'
+import { RegeneratePanel } from '@/components/features/items/RegeneratePanel'
+import { getItem, getItems, deleteItem, updateItem } from '@/lib/api/items'
 import { getDeck } from '@/lib/api/decks'
 import { useItemsStore } from '@/stores/items'
 import type { Item } from '@/types/item'
@@ -48,7 +49,6 @@ export default function ItemDetailPage() {
   const [imgError, setImgError] = useState(false)
   const [deleting, setDeleting] = useState(false)
   const [confirmDelete, setConfirmDelete] = useState(false)
-  const [retrying, setRetrying] = useState(false)
   const [zoomed, setZoomed] = useState(false)
   const [editing, setEditing] = useState(false)
   const [titleDraft, setTitleDraft] = useState('')
@@ -156,25 +156,6 @@ export default function ItemDetailPage() {
       setError('削除に失敗しました')
       setDeleting(false)
       setConfirmDelete(false)
-    }
-  }
-
-  const handleRetry = async () => {
-    setRetrying(true)
-    setError(null)
-    try {
-      const updated = await retryItem(id)
-      setItem(updated)
-      upsertItem(updated)
-    } catch (err: unknown) {
-      const axiosErr = err as { response?: { data?: { error?: string; errors?: string[] } } }
-      const msg =
-        axiosErr?.response?.data?.error ??
-        axiosErr?.response?.data?.errors?.[0] ??
-        '再生成に失敗しました。もう一度試してください。'
-      setError(msg)
-    } finally {
-      setRetrying(false)
     }
   }
 
@@ -380,22 +361,15 @@ export default function ItemDetailPage() {
           </div>
         )}
 
-        {/* 失敗時: 再生成ボタン */}
-        {item.generation_status === 'failed' && (
-          <div className="space-y-3">
-            <Button
-              variant="outline"
-              onClick={handleRetry}
-              disabled={retrying}
-              className="w-full flex items-center justify-center gap-2"
-            >
-              <RefreshCw size={15} className={retrying ? 'animate-spin' : ''} />
-              {retrying ? '再生成を開始中...' : '再生成する（クレジット消費なし）'}
-            </Button>
-            {item.generation_error && (
-              <p className="text-sm leading-6 text-destructive">{item.generation_error}</p>
-            )}
-          </div>
+        {/* 再生成パネル: failed・completed どちらからも指示付きで再生成できる */}
+        {(item.generation_status === 'failed' || item.generation_status === 'completed') && (
+          <RegeneratePanel
+            item={item}
+            onUpdated={(updated) => {
+              setItem(updated)
+              upsertItem(updated)
+            }}
+          />
         )}
 
         {/* プロパティ（種別・意味） */}

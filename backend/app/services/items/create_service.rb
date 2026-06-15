@@ -40,8 +40,9 @@ module Items
       # 意味の自動生成: 作成時に generate_meaning が明示指定されればそれを優先し、
       # 指定がなければユーザー設定（auto_generate_meanings）にフォールバックする
       GenerateMeaningJob.perform_later(item.id) if generate_meaning?
-      # ユーザー設定で「タグの自動生成」が ON の場合のみ、タグ生成も非同期で実行する
-      GenerateTagsJob.perform_later(item.id) if @user.setting&.auto_generate_tags
+      # タグの自動生成: generate_tags が明示指定されればそれを優先し、
+      # 指定がなければユーザー設定（auto_generate_tags）にフォールバックする
+      GenerateTagsJob.perform_later(item.id) if generate_tags?
       Result.new(item: item)
     end
 
@@ -53,6 +54,15 @@ module Items
         ActiveModel::Type::Boolean.new.cast(@params[:generate_meaning])
       else
         @user.setting&.auto_generate_meanings
+      end
+    end
+
+    # 作成時に generate_tags が渡された場合はその真偽値を、なければユーザー設定を使う
+    def generate_tags?
+      if @params.key?(:generate_tags)
+        ActiveModel::Type::Boolean.new.cast(@params[:generate_tags])
+      else
+        @user.setting&.auto_generate_tags
       end
     end
 

@@ -30,6 +30,7 @@ export function CreateItemForm() {
   const [customPrompt, setCustomPrompt] = useState('')
   const [forceGenerate, setForceGenerate] = useState(false)
   const [generateMeaning, setGenerateMeaning] = useState(false)
+  const [generateTags, setGenerateTags] = useState(false)
   const [decks, setDecks] = useState<Deck[]>([])
   const [createNewDeck, setCreateNewDeck] = useState(false)
   const [newDeckName, setNewDeckName] = useState('')
@@ -42,7 +43,10 @@ export function CreateItemForm() {
   useEffect(() => {
     getDecks().then(setDecks).catch(() => {})
     getSettings()
-      .then((s) => setGenerateMeaning(s.auto_generate_meanings))
+      .then((s) => {
+        setGenerateMeaning(s.auto_generate_meanings)
+        setGenerateTags(s.auto_generate_tags)
+      })
       .catch(() => {})
   }, [])
 
@@ -81,6 +85,7 @@ export function CreateItemForm() {
           style: style || undefined,
           customPrompt: customPrompt.trim() || undefined,
           generateMeaning,
+          generateTags,
           deckIds: targetDeckIds.length ? targetDeckIds : undefined,
         })
         upsertItem(item)
@@ -221,6 +226,23 @@ export function CreateItemForm() {
           <span className="block text-sm font-medium">各カードの意味・説明をAIで自動生成する</span>
           <span className="block text-xs text-muted-foreground">
             作成するすべてのカードについて、意味・説明をAIで生成します。あとから個別に生成・編集することもできます。
+          </span>
+        </span>
+      </label>
+
+      {/* タグの自動生成 */}
+      <label className="flex items-start gap-3 rounded-xl border border-border/70 bg-background px-4 py-3">
+        <input
+          type="checkbox"
+          className="mt-1 h-4 w-4 rounded border-input"
+          checked={generateTags}
+          onChange={(e) => setGenerateTags(e.target.checked)}
+          disabled={submitting}
+        />
+        <span className="space-y-1">
+          <span className="block text-sm font-medium">各カードのタグをAIで自動生成する</span>
+          <span className="block text-xs text-muted-foreground">
+            作成するすべてのカードについて、分類タグをAIで生成します。手入力したタグがあれば、それに追加されます。
           </span>
         </span>
       </label>
