@@ -2,26 +2,21 @@
 
 import { useEffect, useState } from 'react'
 import Link from 'next/link'
-import { Library, Plus } from 'lucide-react'
+import { Plus } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { getDecks, createDeck } from '@/lib/api/decks'
+import { DeckCover } from '@/components/features/decks/DeckCover'
 import type { Deck } from '@/types/deck'
 
 function DeckCard({ deck }: { deck: Deck }) {
-  const coverUrl = deck.cover?.thumb_url ?? deck.cover?.url ?? null
   return (
     <Link
       href={`/decks/${deck.id}`}
       className="flex flex-col rounded-xl border border-border overflow-hidden bg-card hover:shadow-md transition-shadow"
     >
-      <div className="w-full aspect-square bg-muted flex items-center justify-center overflow-hidden">
-        {coverUrl ? (
-          // eslint-disable-next-line @next/next/no-img-element
-          <img src={coverUrl} alt={deck.name} className="w-full h-full object-cover" loading="lazy" />
-        ) : (
-          <Library size={28} className="text-muted-foreground/50" />
-        )}
+      <div className="w-full aspect-square bg-muted overflow-hidden">
+        <DeckCover deck={deck} />
       </div>
       <div className="px-4 py-3 flex items-center justify-between gap-2">
         <span className="font-medium truncate">{deck.name}</span>

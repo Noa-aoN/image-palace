@@ -3,14 +3,35 @@
 import { useEffect, useState } from 'react'
 import Link from 'next/link'
 import { useParams, useRouter } from 'next/navigation'
-import { Trash2, Pencil, Check, X, Plus, Star } from 'lucide-react'
+import { Trash2, Pencil, Check, X, Plus, Star, GalleryHorizontal, LayoutGrid, ImageUp } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
-import { getDeck, updateDeck, deleteDeck, addItemToDeck, removeItemFromDeck } from '@/lib/api/decks'
+import {
+  getDeck,
+  updateDeck,
+  deleteDeck,
+  addItemToDeck,
+  removeItemFromDeck,
+  uploadDeckCover,
+  removeDeckCover,
+} from '@/lib/api/decks'
 import { getItems } from '@/lib/api/items'
+import { DeckCover } from '@/components/features/decks/DeckCover'
 import { useItemsStore } from '@/stores/items'
-import type { DeckDetail } from '@/types/deck'
+import type { DeckDetail, DeckCoverType } from '@/types/deck'
 import type { Item } from '@/types/item'
+
+const COVER_OPTIONS = [
+  { type: 'first_card', label: '先頭カード', icon: <GalleryHorizontal size={14} /> },
+  { type: 'collage', label: 'コラージュ', icon: <LayoutGrid size={14} /> },
+  { type: 'custom', label: 'カスタム画像', icon: <ImageUp size={14} /> },
+] as const
+
+const COVER_HELP: Record<DeckCoverType, string> = {
+  first_card: 'デッキの先頭カードを表示します（カードの「表紙」ボタンで先頭を指定、一覧ではホバーで左右に切替）。',
+  collage: 'デッキのカード最大4枚をコラージュ表示します（不足分はプレースホルダ）。',
+  custom: 'アップロードした画像をカバーに使います。',
+}
 
 function CardThumb({
   item,
@@ -187,6 +208,51 @@ export default function DeckDetailPage() {
     }
   }
 
+  // カバー表示モードの変更・カスタム画像のアップロード/削除
+  const [coverBusy, setCoverBusy] = useState(false)
+
+  const handleSetCoverType = async (coverType: DeckCoverType) => {
+    if (!deck || deck.cover_type === coverType) return
+    setCoverBusy(true)
+    setError(null)
+    try {
+      const updated = await updateDeck(id, { cover_type: coverType })
+      setDeck({ ...deck, ...updated })
+    } catch {
+      setError('カバー表示の変更に失敗しました')
+    } finally {
+      setCoverBusy(false)
+    }
+  }
+
+  const handleUploadCover = async (file: File) => {
+    if (!deck) return
+    setCoverBusy(true)
+    setError(null)
+    try {
+      const updated = await uploadDeckCover(id, file)
+      setDeck({ ...deck, ...updated })
+    } catch {
+      setError('画像のアップロードに失敗しました')
+    } finally {
+      setCoverBusy(false)
+    }
+  }
+
+  const handleRemoveCover = async () => {
+    if (!deck) return
+    setCoverBusy(true)
+    setError(null)
+    try {
+      const updated = await removeDeckCover(id)
+      setDeck({ ...deck, ...updated })
+    } catch {
+      setError('画像の削除に失敗しました')
+    } finally {
+      setCoverBusy(false)
+    }
+  }
+
   if (error && !deck) {
     return (
       <div className="max-w-lg mx-auto px-6 py-12 text-center space-y-4">
@@ -257,6 +323,67 @@ export default function DeckDetailPage() {
           <Trash2 size={14} />
           {deleting ? '削除中...' : confirmDelete ? '本当に削除' : '削除'}
         </Button>
+      </div>
+
+      {/* カバー（表紙）設定 */}
+      <div className="mb-6 rounded-xl border border-border/70 bg-muted/20 p-4">
+        <div className="flex flex-col gap-4 sm:flex-row">
+          <div className="w-28 shrink-0">
+            <div className="w-full aspect-square overflow-hidden rounded-lg border border-border bg-muted">
+              <DeckCover deck={deck} />
+            </div>
+          </div>
+          <div className="flex-1 space-y-3">
+            <div>
+              <p className="mb-1.5 text-sm font-medium">カバー表示</p>
+              <div className="flex flex-wrap gap-2">
+                {COVER_OPTIONS.map((opt) => {
+                  const active = deck.cover_type === opt.type
+                  return (
+                    <button
+                      key={opt.type}
+                      onClick={() => handleSetCoverType(opt.type)}
+                      disabled={coverBusy}
+                      aria-pressed={active}
+                      className={`flex items-center gap-1.5 rounded-lg border px-3 py-1.5 text-sm transition-colors disabled:opacity-50 ${
+                        active ? 'border-[var(--palace)] bg-[var(--palace)]/5 text-[var(--palace)]' : 'border-border hover:bg-black/5'
+                      }`}
+                    >
+                      {opt.icon}
+                      {opt.label}
+                    </button>
+                  )
+                })}
+              </div>
+            </div>
+            <p className="text-xs text-muted-foreground">{COVER_HELP[deck.cover_type]}</p>
+            {deck.cover_type === 'custom' && (
+              <div className="flex items-center gap-2">
+                <label className="inline-flex cursor-pointer items-center gap-1.5 rounded-lg border border-border px-3 py-1.5 text-sm hover:bg-black/5">
+                  <ImageUp size={14} />
+                  {deck.cover_image ? '画像を変更' : '画像を選択'}
+                  <input
+                    type="file"
+                    accept="image/*"
+                    className="hidden"
+                    disabled={coverBusy}
+                    onChange={(e) => {
+                      const file = e.target.files?.[0]
+                      if (file) handleUploadCover(file)
+                      e.target.value = ''
+                    }}
+                  />
+                </label>
+                {deck.cover_image && (
+                  <Button variant="ghost" size="sm" onClick={handleRemoveCover} disabled={coverBusy} className="flex items-center gap-1.5">
+                    <Trash2 size={14} />
+                    削除
+                  </Button>
+                )}
+              </div>
+            )}
+          </div>
+        </div>
       </div>
 
       {error && <p className="text-sm text-destructive mb-4">{error}</p>}
