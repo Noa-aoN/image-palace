@@ -50,6 +50,22 @@ RSpec.describe Items::CreateService, type: :service do
       }.not_to have_enqueued_job(GenerateMeaningJob)
     end
 
+    it "generate_meaning が true のとき設定 OFF でも GenerateMeaningJob をエンキューする" do
+      create(:setting, user: user, auto_generate_meanings: false)
+
+      expect {
+        described_class.call(user: user, params: { title: "光合成", generate_meaning: true })
+      }.to have_enqueued_job(GenerateMeaningJob)
+    end
+
+    it "generate_meaning が false のとき設定 ON でも GenerateMeaningJob はエンキューしない" do
+      create(:setting, user: user, auto_generate_meanings: true)
+
+      expect {
+        described_class.call(user: user, params: { title: "光合成", generate_meaning: false })
+      }.not_to have_enqueued_job(GenerateMeaningJob)
+    end
+
     it "タグの自動生成設定が ON のとき GenerateTagsJob もエンキューする" do
       create(:setting, user: user, auto_generate_tags: true)
 

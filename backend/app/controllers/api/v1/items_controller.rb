@@ -74,6 +74,7 @@ module Api
       def create
         result = Items::CreateService.call(user: current_user, params: item_params)
         assign_tags!(result.item)
+        assign_decks!(result.item)
         render json: serialize_item(result.item.reload), status: :accepted
       rescue Items::CreateService::MonthlyLimitExceeded => e
         render json: { error: e.message }, status: :unprocessable_entity
@@ -158,7 +159,7 @@ module Api
       end
 
       def item_params
-        params.require(:item).permit(:title, :item_type_id, :force_generate, :style, :custom_prompt)
+        params.require(:item).permit(:title, :item_type_id, :force_generate, :style, :custom_prompt, :generate_meaning, deck_ids: [])
       end
 
       def item_update_params
@@ -191,6 +192,18 @@ module Api
           current_user.tags.find_or_create_by!(name: name)
         end
         target.tags = tags
+      end
+
+      # item[deck_ids] が渡された場合、そのデッキに作成したカードを追加する。
+      # current_user のデッキのみ対象（他人のデッキには追加できない）。重複追加は無視する。
+      def assign_decks!(target)
+        ids = params.dig(:item, :deck_ids)
+        return if ids.blank?
+
+        deck_ids = Array(ids).map { |id| id.to_s.strip }.reject(&:blank?).uniq
+        current_user.decks.where(id: deck_ids).find_each do |deck|
+          deck.deck_items.find_or_create_by!(item: target)
+        end
       end
 
       def serialize_item(item)
