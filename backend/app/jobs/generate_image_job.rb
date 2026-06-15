@@ -57,7 +57,13 @@ class GenerateImageJob < ApplicationJob
       item.update_generation_status!("completed")
       Rails.logger.info "[GenerateImageJob] COMPLETE item_id=#{item.id}"
     end
-    # rescue を置かない → 例外は retry_on に伝播させる
+  rescue StandardError => e
+    # 400（ポリシー違反・曖昧な入力）や請求上限・クォータ枯渇はリトライしても回復しないため、
+    # retry_on に渡さず即 failed にする。回復し得るエラー（通信・レート制限等）のみ再送出する。
+    raise unless non_retryable?(e)
+
+    Rails.logger.warn "[GenerateImageJob] NON-RETRYABLE item_id=#{item_id} code=#{openai_error_code(e) || e.class} -> failed"
+    mark_failed!(item_id, e)
   end
 
   private
@@ -122,10 +128,17 @@ class GenerateImageJob < ApplicationJob
   # すり抜けた入力の最終防衛として、専用のユーザー向けメッセージに振り分ける。
   CONTENT_POLICY_MARKERS = /moderation_blocked|content[_ ]?policy|safety system/i
 
+  # 請求上限・クォータ枯渇。リトライしても回復せず運営者の対応が必要なエラーコード。
+  QUOTA_ERROR_CODES = %w[
+    billing_hard_limit_reached billing_limit_reached billing_limit_user_error insufficient_quota
+  ].freeze
+
   def user_facing_error_message(error)
+    return quota_error_message if quota_error?(error)
+
     case error
     when Faraday::BadRequestError
-      if CONTENT_POLICY_MARKERS.match?(error.message.to_s)
+      if content_policy_violation?(error)
         "入力がコンテンツポリシーに反するため画像を生成できませんでした。別の単語でお試しください。"
       else
         "入力が曖昧なため画像を生成できませんでした。別の単語や具体的な表現でお試しください。"
@@ -135,5 +148,48 @@ class GenerateImageJob < ApplicationJob
     else
       "画像生成に失敗しました。時間を置いて再試行してください。"
     end
+  end
+
+  def quota_error_message
+    "現在、画像生成を一時的に利用できません。時間をおいて再度お試しいただくか、運営者にお問い合わせください。"
+  end
+
+  # リトライしても回復しないエラー（即 failed にする）。
+  # 400 はリクエスト自体が拒否されており、請求/クォータ枯渇はステータスに依らず回復しない。
+  def non_retryable?(error)
+    error.is_a?(Faraday::BadRequestError) || quota_error?(error)
+  end
+
+  def quota_error?(error)
+    QUOTA_ERROR_CODES.include?(openai_error_code(error).to_s)
+  end
+
+  # メッセージ本文・レスポンス本文のどちらかにポリシー違反マーカーがあれば true。
+  def content_policy_violation?(error)
+    body = openai_error_body(error)
+    marker = "#{error.message} #{body&.dig('error', 'code')} #{body&.dig('error', 'message')}"
+    CONTENT_POLICY_MARKERS.match?(marker)
+  end
+
+  # Faraday エラーのレスポンス本文（OpenAI の JSON）を Hash で返す。取得できなければ nil。
+  def openai_error_body(error)
+    return nil unless error.respond_to?(:response) && error.response.is_a?(Hash)
+
+    body = error.response[:body]
+    body = parse_json(body) if body.is_a?(String)
+    body.is_a?(Hash) ? body : nil
+  end
+
+  def openai_error_code(error)
+    body = openai_error_body(error)
+    return nil unless body
+
+    body.dig("error", "code") || body.dig("error", "type")
+  end
+
+  def parse_json(str)
+    JSON.parse(str)
+  rescue JSON::ParserError
+    nil
   end
 end
