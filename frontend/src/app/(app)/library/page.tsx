@@ -10,6 +10,7 @@ import { getCollections } from '@/lib/api/collections'
 import { getSpaces } from '@/lib/api/spaces'
 import { getViews } from '@/lib/api/views'
 import { searchLibrary } from '@/lib/api/search'
+import { DeckCover } from '@/components/features/decks/DeckCover'
 import type { Item } from '@/types/item'
 import type { Deck } from '@/types/deck'
 import type { Collection } from '@/types/collection'
@@ -87,19 +88,13 @@ function CardThumb({ item }: { item: Item }) {
 }
 
 function DeckTile({ deck }: { deck: Deck }) {
-  const coverUrl = deck.cover?.thumb_url ?? deck.cover?.url ?? null
   return (
     <Link
       href={`/decks/${deck.id}`}
       className="shrink-0 w-40 flex flex-col rounded-xl border border-border overflow-hidden bg-card hover:shadow-md transition-shadow"
     >
-      <div className="w-full aspect-square bg-muted flex items-center justify-center overflow-hidden">
-        {coverUrl ? (
-          // eslint-disable-next-line @next/next/no-img-element
-          <img src={coverUrl} alt={deck.name} className="w-full h-full object-cover" loading="lazy" />
-        ) : (
-          <Library size={24} className="text-muted-foreground/50" />
-        )}
+      <div className="w-full aspect-square bg-muted overflow-hidden">
+        <DeckCover deck={deck} />
       </div>
       <div className="px-3 py-2 flex items-center justify-between gap-1">
         <span className="text-sm font-medium truncate">{deck.name}</span>

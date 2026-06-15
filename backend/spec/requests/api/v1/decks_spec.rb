@@ -154,6 +154,79 @@ RSpec.describe "Api::V1::Decks", type: :request do
     end
   end
 
+  describe "カバー表示モード（cover_type）" do
+    it "既定は first_card で cover_type/cover_images/cover_image を返す" do
+      deck = user.decks.create!(name: "英単語")
+      deck.items << create_item("a")
+
+      get "/api/v1/decks", headers: headers, as: :json
+
+      d = json_response.fetch("decks").find { |x| x["name"] == "英単語" }
+      expect(d["cover_type"]).to eq("first_card")
+      expect(d).to have_key("cover_images")
+      expect(d["cover_image"]).to be_nil
+    end
+
+    it "cover_type を collage に変更できる" do
+      deck = user.decks.create!(name: "デッキ")
+
+      patch "/api/v1/decks/#{deck.id}", params: { deck: { cover_type: "collage" } }, headers: headers, as: :json
+
+      expect(response).to have_http_status(:success)
+      expect(deck.reload.cover_type).to eq("collage")
+      expect(json_response["cover_type"]).to eq("collage")
+    end
+
+    it "不正な cover_type は弾く" do
+      deck = user.decks.create!(name: "デッキ")
+
+      patch "/api/v1/decks/#{deck.id}", params: { deck: { cover_type: "bogus" } }, headers: headers, as: :json
+
+      expect(response).to have_http_status(:unprocessable_content)
+    end
+  end
+
+  describe "custom カバー画像" do
+    def png_upload
+      file = Tempfile.new([ "cover", ".png" ])
+      file.binmode
+      file.write("\x89PNG\r\n\x1a\n".b + ("0" * 64).b)
+      file.rewind
+      Rack::Test::UploadedFile.new(file.path, "image/png")
+    end
+
+    it "アップロードすると cover_type=custom になり cover_image を返す" do
+      deck = user.decks.create!(name: "デッキ")
+
+      post "/api/v1/decks/#{deck.id}/cover_image", params: { cover_image: png_upload }, headers: headers
+
+      expect(response).to have_http_status(:success)
+      expect(deck.reload.cover_type).to eq("custom")
+      expect(deck.cover_image).to be_attached
+      expect(json_response["cover_image"]).to be_present
+    end
+
+    it "画像未指定なら 422" do
+      deck = user.decks.create!(name: "デッキ")
+
+      post "/api/v1/decks/#{deck.id}/cover_image", headers: headers
+
+      expect(response).to have_http_status(:unprocessable_content)
+    end
+
+    it "削除すると first_card に戻り cover_image が外れる" do
+      deck = user.decks.create!(name: "デッキ")
+      deck.cover_image.attach(io: StringIO.new("x"), filename: "c.png", content_type: "image/png")
+      deck.update!(cover_type: "custom")
+
+      delete "/api/v1/decks/#{deck.id}/cover_image", headers: headers
+
+      expect(response).to have_http_status(:success)
+      expect(deck.reload.cover_type).to eq("first_card")
+      expect(deck.cover_image).not_to be_attached
+    end
+  end
+
   describe "DELETE /api/v1/decks/:id" do
     it "deletes the deck" do
       deck = user.decks.create!(name: "消す")
