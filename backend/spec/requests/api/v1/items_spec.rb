@@ -432,15 +432,15 @@ RSpec.describe "Api::V1::Items", type: :request do
   end
 
   describe "POST /api/v1/items/:id/retry" do
-    it "rejects items that are not failed" do
-      item = user.items.create!(title: "富士山", item_type: item_type, generation_status: "completed")
+    it "rejects items that are still generating" do
+      item = user.items.create!(title: "富士山", item_type: item_type, generation_status: "processing")
 
       expect {
         post "/api/v1/items/#{item.id}/retry", headers: headers, as: :json
       }.not_to have_enqueued_job
 
       expect(response).to have_http_status(:unprocessable_content)
-      expect(json_response["error"]).to eq("failed 状態のカードのみ再生成できます")
+      expect(json_response["error"]).to eq("生成が完了または失敗したカードのみ再生成できます")
     end
 
     it "clears generation_error and enqueues image generation" do
@@ -456,14 +456,52 @@ RSpec.describe "Api::V1::Items", type: :request do
 
       expect {
         post "/api/v1/items/#{item.id}/retry", headers: headers, as: :json
-      }.to have_enqueued_job(GenerateImageJob)
+      }.to have_enqueued_job(GenerateImageJob).with(item.id, force_generate: false)
 
       expect(response).to have_http_status(:accepted)
       expect(item.reload.generation_status).to eq("pending")
       expect(item.generation_error).to be_nil
       expect(item.generation_error_code).to be_nil
       expect(json_response["generation_error"]).to be_nil
-      expect(enqueued_jobs.last[:args][0]).to eq(item.id)
+    end
+
+    it "生成成功済み（completed）でもキャッシュを使わず再生成できる" do
+      item = user.items.create!(title: "富士山", item_type: item_type, generation_status: "completed")
+
+      expect {
+        post "/api/v1/items/#{item.id}/retry", headers: headers, as: :json
+      }.to have_enqueued_job(GenerateImageJob).with(item.id, force_generate: true)
+
+      expect(response).to have_http_status(:accepted)
+      expect(item.reload.generation_status).to eq("pending")
+    end
+
+    it "指示（custom_prompt / style）を渡すと item に反映して再生成する" do
+      item = user.items.create!(title: "りんご", item_type: item_type, generation_status: "completed")
+
+      expect {
+        post "/api/v1/items/#{item.id}/retry",
+          params: { item: { custom_prompt: "断面を見せて", style: "watercolor" } },
+          headers: headers, as: :json
+      }.to have_enqueued_job(GenerateImageJob).with(item.id, force_generate: true)
+
+      expect(response).to have_http_status(:accepted)
+      item.reload
+      expect(item.custom_prompt).to eq("断面を見せて")
+      expect(item.style).to eq("watercolor")
+    end
+
+    it "指示が不適切な場合は 422 を返し、再生成しない" do
+      item = user.items.create!(title: "りんご", item_type: item_type, generation_status: "completed")
+
+      expect {
+        post "/api/v1/items/#{item.id}/retry",
+          params: { item: { custom_prompt: "in a rape scene" } },
+          headers: headers, as: :json
+      }.not_to have_enqueued_job(GenerateImageJob)
+
+      expect(response).to have_http_status(:unprocessable_content)
+      expect(item.reload.generation_status).to eq("completed")
     end
   end
 

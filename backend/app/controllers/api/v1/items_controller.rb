@@ -105,15 +105,27 @@ module Api
         head :no_content
       end
 
+      # 再生成。failed だけでなく completed（生成成功済み）からも再生成できる。
+      # 任意で custom_prompt / style の指示を受け取り、曖昧な入力の補足やニュアンス調整に使う。
       def retry
         current_item = repair_item_if_media_missing(item)
-        unless current_item.generation_status == "failed"
-          return render json: { error: "failed 状態のカードのみ再生成できます" }, status: :unprocessable_entity
+        unless %w[failed completed].include?(current_item.generation_status)
+          return render json: { error: "生成が完了または失敗したカードのみ再生成できます" }, status: :unprocessable_entity
         end
 
+        was_completed = current_item.generation_status == "completed"
+        instructions = regeneration_instructions
+        apply_regeneration_instructions!(current_item, instructions)
+
+        # completed の再生成や指示の変更時はキャッシュを使わず新しい画像を生成する
+        force = was_completed || instructions.present?
         current_item.update_generation_status!("pending")
-        GenerateImageJob.perform_later(current_item.id, force_generate: false)
+        GenerateImageJob.perform_later(current_item.id, force_generate: force)
         render json: serialize_item(current_item.reload), status: :accepted
+      rescue Items::CreateService::ContentBlocked => e
+        render json: { error: e.message }, status: :unprocessable_entity
+      rescue ActiveRecord::RecordInvalid => e
+        render json: { errors: e.record.errors.full_messages }, status: :unprocessable_entity
       end
 
       # 意味・説明を AI で生成（同期）。詳細画面の「意味を生成」ボタンから呼ばれる。
@@ -159,7 +171,39 @@ module Api
       end
 
       def item_params
-        params.require(:item).permit(:title, :item_type_id, :force_generate, :style, :custom_prompt, :generate_meaning, deck_ids: [])
+        params.require(:item).permit(
+          :title, :item_type_id, :force_generate, :style, :custom_prompt,
+          :generate_meaning, :generate_tags, deck_ids: []
+        )
+      end
+
+      # 再生成時の指示（custom_prompt / style）。指定されたキーのみを返す。
+      def regeneration_instructions
+        item_param = params[:item]
+        return {} unless item_param.respond_to?(:permit)
+
+        item_param.permit(:custom_prompt, :style).to_h.symbolize_keys.reject { |_, v| v.nil? }
+      end
+
+      # 指示が渡された場合のみ、custom_prompt をモデレーションして item に反映する
+      def apply_regeneration_instructions!(target, instructions)
+        return if instructions.empty?
+
+        moderate_instruction!(instructions[:custom_prompt])
+        target.update!(instructions)
+      end
+
+      def moderate_instruction!(text)
+        return if text.blank?
+
+        result = Moderation::PromptModerator.call(text)
+        return if result.allowed?
+
+        Rails.logger.warn(
+          "[Moderation] BLOCKED user_id=#{current_user.id} category=#{result.category} term=#{result.term}"
+        )
+        raise Items::CreateService::ContentBlocked,
+              "入力に利用できない表現が含まれているため再生成できませんでした。別の表現でお試しください。"
       end
 
       def item_update_params
@@ -216,6 +260,7 @@ module Api
           meaning: item.primary_meaning&.definition,
           meaning_example: item.primary_meaning&.example_sentence,
           style: item.style,
+          custom_prompt: item.custom_prompt,
           tags: item.tags.map { |t| { id: t.id, name: t.name } },
           media: serialize_media(item.primary_media),
           created_at: item.created_at

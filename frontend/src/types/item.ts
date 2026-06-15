@@ -27,6 +27,7 @@ export interface Item {
   meaning?: string | null
   meaning_example?: string | null
   style?: string | null
+  custom_prompt?: string | null
   tags?: ItemTag[]
   media: ItemMedia | null
   created_at: string

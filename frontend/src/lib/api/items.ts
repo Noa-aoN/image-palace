@@ -16,6 +16,8 @@ export interface CreateItemOptions {
   customPrompt?: string
   /** 各カードの意味・説明を AI で自動生成するか（未指定ならユーザー設定に従う） */
   generateMeaning?: boolean
+  /** 各カードのタグを AI で自動生成するか（未指定ならユーザー設定に従う） */
+  generateTags?: boolean
   /** 作成したカードを追加するデッキ ID の配列 */
   deckIds?: string[]
 }
@@ -34,6 +36,7 @@ export async function createItem(
       ...(options?.style ? { style: options.style } : {}),
       ...(options?.customPrompt ? { custom_prompt: options.customPrompt } : {}),
       ...(options?.generateMeaning !== undefined ? { generate_meaning: options.generateMeaning } : {}),
+      ...(options?.generateTags !== undefined ? { generate_tags: options.generateTags } : {}),
       ...(options?.deckIds && options.deckIds.length ? { deck_ids: options.deckIds } : {}),
     },
   })
@@ -123,8 +126,22 @@ export async function deleteItem(id: string): Promise<void> {
   await apiClient.delete(`/api/v1/items/${id}`)
 }
 
-export async function retryItem(id: string): Promise<Item> {
-  const res = await apiClient.post<Item>(`/api/v1/items/${id}/retry`)
+export interface RegenerateOptions {
+  /** 入力補足・ニュアンス調整の指示（プロンプトに追記される） */
+  customPrompt?: string
+  /** スタイルプリセット */
+  style?: string
+}
+
+// 再生成。failed・completed どちらからも呼べる。任意で指示を渡すとプロンプトに反映される。
+export async function retryItem(id: string, options?: RegenerateOptions): Promise<Item> {
+  const payload: Record<string, string> = {}
+  if (options?.customPrompt !== undefined) payload.custom_prompt = options.customPrompt
+  if (options?.style !== undefined) payload.style = options.style
+  const res = await apiClient.post<Item>(
+    `/api/v1/items/${id}/retry`,
+    Object.keys(payload).length ? { item: payload } : undefined
+  )
   return res.data
 }
 
