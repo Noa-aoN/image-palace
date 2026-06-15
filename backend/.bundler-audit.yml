@@ -1,0 +1,16 @@
+# bundle-audit の除外設定
+#
+# devise 4.9.4 → 5.x は devise_token_auth(1.2.6) が `devise < 5` を固定しているため
+# 現時点でアップグレード不可（devise5 対応版が未リリース）。
+# devise_token_auth が devise5 対応したら除外を解除して 5.x へ上げること。
+#
+# 下記2件は、このアプリ構成では実効リスクが低いと評価したうえで除外している。
+ignore:
+  # Timeoutable のセッションタイムアウト処理での Open Redirect。
+  # 本アプリは :timeoutable を使っていない（User の devise モジュール非対象）ため非該当。
+  - CVE-2026-40295
+  - GHSA-jp94-3292-c3xv
+  # Confirmable のメール変更レース条件。
+  # メール変更は registrations#update で明示的にブロック済み（攻撃面を除去）。
+  # 正式なメール変更機能は #80 で再確認フロー込みで設計予定。
+  - GHSA-57hq-95w6-v4fc
