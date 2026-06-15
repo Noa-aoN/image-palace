@@ -36,6 +36,45 @@ RSpec.describe GenerateImageJob, type: :job do
       expect(item.generation_error_code).to eq("Faraday::SSLError")
       expect(item.generation_error).to eq("通信が不安定だったため画像を生成できませんでした。時間を置いて再試行してください。")
     end
+
+    it "請求上限（billing hard limit）には運営者問い合わせ用メッセージを保存する" do
+      error = Faraday::BadRequestError.new(
+        "400 Bad Request",
+        { status: 400, body: { "error" => { "code" => "billing_hard_limit_reached" } } }
+      )
+
+      described_class.new.send(:mark_failed!, item.id, error)
+
+      item.reload
+      expect(item.generation_status).to eq("failed")
+      expect(item.generation_error).to eq(
+        "現在、画像生成を一時的に利用できません。時間をおいて再度お試しいただくか、運営者にお問い合わせください。"
+      )
+    end
+  end
+
+  describe "リトライ制御" do
+    it "請求上限エラーはリトライせず即 failed にする" do
+      error = Faraday::BadRequestError.new(
+        "400 Bad Request",
+        { status: 400, body: { "error" => { "code" => "billing_hard_limit_reached" } } }
+      )
+      allow(GenerateImageService).to receive(:call).and_raise(error)
+
+      expect {
+        described_class.perform_now(item.id)
+      }.not_to have_enqueued_job(GenerateImageJob)
+
+      expect(item.reload.generation_status).to eq("failed")
+    end
+
+    it "通信エラーはリトライする（再エンキューされる）" do
+      allow(GenerateImageService).to receive(:call).and_raise(Faraday::TimeoutError.new("timeout"))
+
+      expect {
+        described_class.perform_now(item.id)
+      }.to have_enqueued_job(GenerateImageJob)
+    end
   end
 
   describe ".perform_now" do
