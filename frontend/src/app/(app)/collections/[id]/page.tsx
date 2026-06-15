@@ -57,7 +57,8 @@ function EntryTile({ entry, onRemove, busy }: { entry: CollectionEntry; onRemove
   )
 
   if (hasImage) {
-    const ratio = entry.entry_type === 'Item' ? 'aspect-square' : 'aspect-[4/3]'
+    // デッキ等のカバーも含め、タイルは一律で正方形に揃える（生成画像・デッキページと同比率）
+    const ratio = 'aspect-square'
     return (
       <div className="flex flex-col rounded-xl border border-border overflow-hidden bg-card">
         <div className={`relative w-full ${ratio} bg-muted overflow-hidden`}>
