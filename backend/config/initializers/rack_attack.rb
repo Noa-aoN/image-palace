@@ -39,6 +39,11 @@ class Rack::Attack
     req.ip if req.post? && req.path.match?(%r{\A/api/v1/items/[^/]+/meaning\z})
   end
 
+  # タグ生成（OpenAI Chat 呼び出しの高コスト操作）: 1 IP あたり 60 秒間で 10 回まで。
+  throttle("item_tags/ip", limit: 10, period: 60.seconds) do |req|
+    req.ip if req.post? && req.path.match?(%r{\A/api/v1/items/[^/]+/tags\z})
+  end
+
   # 失敗カードの再生成（画像生成ジョブを再投入）: 1 IP あたり 60 秒間で 20 回まで。
   throttle("item_retry/ip", limit: 20, period: 60.seconds) do |req|
     req.ip if req.post? && req.path.match?(%r{\A/api/v1/items/[^/]+/retry\z})
