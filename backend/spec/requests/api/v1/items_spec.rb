@@ -580,4 +580,46 @@ RSpec.describe "Api::V1::Items", type: :request do
       expect(json_response.dig("media", "generation_info")).to be_nil
     end
   end
+
+  describe "DELETE /api/v1/items/bulk_destroy" do
+    it "指定した自分のカードを一括削除し deleted_ids を返す" do
+      a = create(:item, user: user)
+      b = create(:item, user: user)
+      keep = create(:item, user: user)
+
+      expect {
+        delete "/api/v1/items/bulk_destroy", params: { ids: [ a.id, b.id ] }, headers: headers, as: :json
+      }.to change { user.items.count }.by(-2)
+
+      expect(response).to have_http_status(:ok)
+      expect(json_response["deleted_ids"]).to match_array([ a.id, b.id ])
+      expect(Item.exists?(keep.id)).to be true
+    end
+
+    it "他人のカード ID は無視する" do
+      other = create(:user, :confirmed)
+      mine = create(:item, user: user)
+      theirs = create(:item, user: other)
+
+      delete "/api/v1/items/bulk_destroy", params: { ids: [ mine.id, theirs.id ] }, headers: headers, as: :json
+
+      expect(json_response["deleted_ids"]).to eq([ mine.id ])
+      expect(Item.exists?(theirs.id)).to be true
+    end
+
+    it "ids が空なら何も削除しない" do
+      create(:item, user: user)
+
+      expect {
+        delete "/api/v1/items/bulk_destroy", params: { ids: [] }, headers: headers, as: :json
+      }.not_to(change { Item.count })
+
+      expect(json_response["deleted_ids"]).to eq([])
+    end
+
+    it "認証なしでは 401" do
+      delete "/api/v1/items/bulk_destroy", params: { ids: [] }, as: :json
+      expect(response).to have_http_status(:unauthorized)
+    end
+  end
 end

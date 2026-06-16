@@ -3,9 +3,10 @@
 import { startTransition, useEffect, useEffectEvent, useRef, useState } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
-import { ChevronLeft, ChevronRight, Search, X } from 'lucide-react'
+import { ChevronLeft, ChevronRight, Search, X, Trash2, CheckSquare, Square } from 'lucide-react'
 import { Button } from '@/components/ui/button'
-import { getItemsPage, getItemSuggestions, type ItemSuggestion } from '@/lib/api/items'
+import { Spinner } from '@/components/ui/spinner'
+import { getItemsPage, getItemSuggestions, bulkDeleteItems, type ItemSuggestion } from '@/lib/api/items'
 import { getTags } from '@/lib/api/tags'
 import { useItemsStore } from '@/stores/items'
 import type { Item } from '@/types/item'
@@ -29,7 +30,14 @@ const STATUS_COLOR: Record<string, string> = {
 
 const POLLING_STATUSES = new Set(['pending', 'processing'])
 
-function ItemCard({ item }: { item: Item }) {
+type ItemCardProps = {
+  item: Item
+  selectionMode: boolean
+  selected: boolean
+  onToggle: (id: string) => void
+}
+
+function ItemCard({ item, selectionMode, selected, onToggle }: ItemCardProps) {
   const router = useRouter()
   const [failedImageUrl, setFailedImageUrl] = useState<string | null>(null)
   const isGenerating = POLLING_STATUSES.has(item.generation_status)
@@ -48,14 +56,8 @@ function ItemCard({ item }: { item: Item }) {
     })
   }
 
-  return (
-    <Link
-      href={`/items/${item.id}`}
-      className="flex flex-col rounded-xl border border-border overflow-hidden bg-card hover:shadow-md transition-shadow"
-      prefetch
-      onMouseEnter={warmupDetail}
-      onFocus={warmupDetail}
-    >
+  const inner = (
+    <>
       <div className="w-full aspect-square bg-muted flex items-center justify-center overflow-hidden">
         {resolvedImageUrl && !hasImageError ? (
           // eslint-disable-next-line @next/next/no-img-element
@@ -87,6 +89,40 @@ function ItemCard({ item }: { item: Item }) {
           {STATUS_LABEL[item.generation_status] ?? item.generation_status}
         </span>
       </div>
+    </>
+  )
+
+  // 選択モード中はナビゲーションせず、クリックで選択をトグルする
+  if (selectionMode) {
+    return (
+      <button
+        type="button"
+        onClick={() => onToggle(item.id)}
+        aria-pressed={selected}
+        className={`relative flex flex-col rounded-xl border overflow-hidden bg-card text-left transition-shadow ${
+          selected ? 'border-[var(--palace)] ring-2 ring-[var(--palace)]' : 'border-border hover:shadow-md'
+        }`}
+      >
+        <span
+          className={`absolute left-2 top-2 z-10 rounded-md ${selected ? 'text-[var(--palace)]' : 'text-white'}`}
+          style={{ filter: 'drop-shadow(0 1px 2px rgba(0,0,0,0.5))' }}
+        >
+          {selected ? <CheckSquare size={22} /> : <Square size={22} />}
+        </span>
+        {inner}
+      </button>
+    )
+  }
+
+  return (
+    <Link
+      href={`/items/${item.id}`}
+      className="flex flex-col rounded-xl border border-border overflow-hidden bg-card hover:shadow-md transition-shadow"
+      prefetch
+      onMouseEnter={warmupDetail}
+      onFocus={warmupDetail}
+    >
+      {inner}
     </Link>
   )
 }
@@ -95,6 +131,7 @@ export function ItemList({ initialTag = null }: { initialTag?: string | null }) 
   const router = useRouter()
   const items = useItemsStore((state) => state.items)
   const setItems = useItemsStore((state) => state.setItems)
+  const removeItemFromStore = useItemsStore((state) => state.removeItem)
   const [page, setPage] = useState(1)
   const [totalPages, setTotalPages] = useState(1)
   const [loading, setLoading] = useState(() => useItemsStore.getState().items.length === 0)
@@ -111,6 +148,55 @@ export function ItemList({ initialTag = null }: { initialTag?: string | null }) 
   const [activeIndex, setActiveIndex] = useState(-1)
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const requestInFlightRef = useRef(false)
+
+  // 選択モード・一括削除
+  const [selectionMode, setSelectionMode] = useState(false)
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set())
+  const [confirmBulkDelete, setConfirmBulkDelete] = useState(false)
+  const [deleting, setDeleting] = useState(false)
+  const [actionError, setActionError] = useState<string | null>(null)
+  const [refreshToken, setRefreshToken] = useState(0)
+
+  const toggleSelect = (id: string) => {
+    setSelectedIds((prev) => {
+      const next = new Set(prev)
+      if (next.has(id)) next.delete(id)
+      else next.add(id)
+      return next
+    })
+  }
+
+  const exitSelection = () => {
+    setSelectionMode(false)
+    setSelectedIds(new Set())
+    setConfirmBulkDelete(false)
+    setActionError(null)
+  }
+
+  const allSelected = items.length > 0 && items.every((i) => selectedIds.has(i.id))
+  const toggleSelectAll = () => {
+    setSelectedIds(allSelected ? new Set() : new Set(items.map((i) => i.id)))
+  }
+
+  const handleBulkDelete = async () => {
+    if (selectedIds.size === 0) return
+    if (!confirmBulkDelete) { setConfirmBulkDelete(true); return }
+
+    const ids = [...selectedIds]
+    setDeleting(true)
+    setActionError(null)
+    try {
+      const deleted = await bulkDeleteItems(ids)
+      deleted.forEach(removeItemFromStore)
+      exitSelection()
+      setRefreshToken((t) => t + 1)
+    } catch {
+      setActionError('カードの削除に失敗しました。もう一度お試しください。')
+      setConfirmBulkDelete(false)
+    } finally {
+      setDeleting(false)
+    }
+  }
 
   // 入力をデバウンスして検索に反映（変更時は1ページ目に戻す）
   useEffect(() => {
@@ -251,7 +337,7 @@ export function ItemList({ initialTag = null }: { initialTag?: string | null }) 
       cancelled = true
       clearTimer()
     }
-  }, [page, activeTag, appliedQuery, sortKey, statusFilter])
+  }, [page, activeTag, appliedQuery, sortKey, statusFilter, refreshToken])
 
   const goToPage = (next: number) => {
     if (next < 1 || next > totalPages || next === page) return
@@ -426,12 +512,58 @@ export function ItemList({ initialTag = null }: { initialTag?: string | null }) 
     )
   }
 
+  const selectionBar = !selectionMode ? (
+    <div className="flex justify-end">
+      <Button variant="outline" size="sm" onClick={() => setSelectionMode(true)}>
+        選択
+      </Button>
+    </div>
+  ) : (
+    <div className="space-y-2">
+      <div className="flex flex-wrap items-center gap-3 rounded-lg border border-border bg-muted/40 px-3 py-2">
+        <button
+          type="button"
+          onClick={toggleSelectAll}
+          className="flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors"
+        >
+          {allSelected ? <CheckSquare size={16} /> : <Square size={16} />}
+          {allSelected ? 'すべて解除' : 'すべて選択'}
+        </button>
+        <span className="text-sm text-muted-foreground">{selectedIds.size}件を選択中</span>
+        <div className="ml-auto flex items-center gap-2">
+          <Button
+            variant={confirmBulkDelete ? 'destructive' : 'outline'}
+            size="sm"
+            onClick={handleBulkDelete}
+            disabled={deleting || selectedIds.size === 0}
+            onBlur={() => setConfirmBulkDelete(false)}
+            className="flex items-center gap-1.5"
+          >
+            {deleting ? <Spinner size={14} /> : <Trash2 size={14} />}
+            {deleting ? '削除中...' : confirmBulkDelete ? `本当に削除（${selectedIds.size}件）` : '削除'}
+          </Button>
+          <Button variant="ghost" size="sm" onClick={exitSelection} disabled={deleting}>
+            キャンセル
+          </Button>
+        </div>
+      </div>
+      {actionError && <p className="text-sm text-destructive">{actionError}</p>}
+    </div>
+  )
+
   return (
     <div className="space-y-6">
       {filterBar}
+      {selectionBar}
       <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
         {items.map((item) => (
-          <ItemCard key={item.id} item={item} />
+          <ItemCard
+            key={item.id}
+            item={item}
+            selectionMode={selectionMode}
+            selected={selectedIds.has(item.id)}
+            onToggle={toggleSelect}
+          />
         ))}
       </div>
 

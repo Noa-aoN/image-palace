@@ -105,6 +105,18 @@ module Api
         head :no_content
       end
 
+      # 一括削除。current_user のカードのみ対象（他人のカードは無視）。
+      # destroy_all で各レコードのコールバックを走らせ、画像（ActiveStorage）も片付ける。
+      BULK_DESTROY_LIMIT = 200
+
+      def bulk_destroy
+        ids = Array(params[:ids]).map { |id| id.to_s.strip }.reject(&:blank?).uniq.first(BULK_DESTROY_LIMIT)
+        return render(json: { deleted_ids: [] }, status: :ok) if ids.empty?
+
+        deleted = current_user.items.where(id: ids).destroy_all
+        render json: { deleted_ids: deleted.map(&:id) }, status: :ok
+      end
+
       # 再生成。failed だけでなく completed（生成成功済み）からも再生成できる。
       # 任意で custom_prompt / style の指示を受け取り、曖昧な入力の補足やニュアンス調整に使う。
       def retry
