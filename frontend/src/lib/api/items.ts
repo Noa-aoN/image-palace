@@ -126,6 +126,14 @@ export async function deleteItem(id: string): Promise<void> {
   await apiClient.delete(`/api/v1/items/${id}`)
 }
 
+// 一括削除。自分のカードのみ削除され、実際に削除された ID の配列を返す。
+export async function bulkDeleteItems(ids: string[]): Promise<string[]> {
+  const res = await apiClient.delete<{ deleted_ids: string[] }>('/api/v1/items/bulk_destroy', {
+    data: { ids },
+  })
+  return res.data.deleted_ids
+}
+
 export interface RegenerateOptions {
   /** 入力補足・ニュアンス調整の指示（プロンプトに追記される） */
   customPrompt?: string
