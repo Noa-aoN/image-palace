@@ -547,4 +547,37 @@ RSpec.describe "Api::V1::Items", type: :request do
       expect(response).to have_http_status(:unauthorized)
     end
   end
+
+  describe "GET /api/v1/items/:id の生成情報（media.generation_info）" do
+    it "ホワイトリストしたキーだけを generation_info で返す" do
+      item = create(:item, :completed, user: user)
+      create(:media, :with_file, item: item, metadata: {
+        "provider" => "openai",
+        "model" => "gpt-image-1",
+        "quality" => "medium",
+        "size" => "1024x1024",
+        "revised_prompt" => "a red apple on a table",
+        "internal_secret" => "should-not-leak"
+      })
+
+      get "/api/v1/items/#{item.id}", headers: headers
+
+      expect(response).to have_http_status(:ok)
+      info = json_response.dig("media", "generation_info")
+      expect(info["model"]).to eq("gpt-image-1")
+      expect(info["provider"]).to eq("openai")
+      expect(info["revised_prompt"]).to eq("a red apple on a table")
+      expect(info).not_to have_key("internal_secret")
+    end
+
+    it "メタ情報が無い場合は generation_info が nil" do
+      item = create(:item, :completed, user: user)
+      create(:media, :with_file, item: item, metadata: {})
+
+      get "/api/v1/items/#{item.id}", headers: headers
+
+      expect(response).to have_http_status(:ok)
+      expect(json_response.dig("media", "generation_info")).to be_nil
+    end
+  end
 end
