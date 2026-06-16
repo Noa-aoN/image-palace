@@ -283,8 +283,24 @@ module Api
           id: media.id,
           url: media_url(blob),
           thumb_url: thumbnail_url(blob),
-          media_type: media.media_type
+          media_type: media.media_type,
+          generation_info: media_generation_info(media)
         }
+      end
+
+      # 画像生成時のメタ情報を、ホワイトリストしたキーだけで返す（内部キーは出さない）。
+      # 全て空なら nil（旧データ・キャッシュ由来でメタが無いカードは項目を出さない）。
+      GENERATION_INFO_KEYS = %w[provider model quality size revised_prompt].freeze
+
+      def media_generation_info(media)
+        metadata = media.metadata
+        return nil if metadata.blank?
+
+        info = GENERATION_INFO_KEYS.each_with_object({}) do |key, acc|
+          value = metadata[key]
+          acc[key] = value if value.present?
+        end
+        info.presence
       end
 
       def media_url(blob)

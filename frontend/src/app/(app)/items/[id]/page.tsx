@@ -9,6 +9,7 @@ import { Input } from '@/components/ui/input'
 import { Spinner } from '@/components/ui/spinner'
 import { ItemProperties } from '@/components/features/items/ItemProperties'
 import { RegeneratePanel } from '@/components/features/items/RegeneratePanel'
+import { GenerationInfo } from '@/components/features/items/GenerationInfo'
 import { getItem, getItems, deleteItem, updateItem } from '@/lib/api/items'
 import { getDeck } from '@/lib/api/decks'
 import { useItemsStore } from '@/stores/items'
@@ -360,6 +361,11 @@ export default function ItemDetailPage() {
             </span>
           </div>
         )}
+
+        {/* 生成情報: メタ情報なので常時表示せず ⓘ ボタンのクリックで開く */}
+        <div className="flex justify-end">
+          <GenerationInfo item={item} />
+        </div>
 
         {/* 再生成パネル: failed・completed どちらからも指示付きで再生成できる */}
         {(item.generation_status === 'failed' || item.generation_status === 'completed') && (
