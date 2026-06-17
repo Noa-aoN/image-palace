@@ -1,5 +1,5 @@
 import { apiClient } from './client'
-import type { View, ViewDetail, ViewItemPlacement } from '@/types/view'
+import type { View, ViewDetail, ViewItemPlacement, SpaceMapPoint } from '@/types/view'
 
 export async function getViews(): Promise<View[]> {
   const res = await apiClient.get<{ views: View[] }>('/api/v1/views')
@@ -46,9 +46,33 @@ export async function removeViewItem(viewId: string, itemId: string): Promise<vo
   await apiClient.delete(`/api/v1/views/${viewId}/items/${itemId}`)
 }
 
-export async function createView(name: string, viewType: string = 'freeboard'): Promise<View> {
-  const res = await apiClient.post<View>('/api/v1/views', { view: { name, view_type: viewType } })
+export async function createView(
+  name: string,
+  viewType: string = 'freeboard',
+  spaceId?: string
+): Promise<View> {
+  const res = await apiClient.post<View>('/api/v1/views', {
+    view: { name, view_type: viewType, space_id: spaceId },
+  })
   return res.data
+}
+
+// space_map: スペースのポイントにカードを配置する
+export async function placeCardOnPoint(
+  viewId: string,
+  spacePointId: string,
+  itemId: string
+): Promise<SpaceMapPoint> {
+  const res = await apiClient.post<SpaceMapPoint>(
+    `/api/v1/views/${viewId}/points/${spacePointId}`,
+    { item_id: itemId }
+  )
+  return res.data
+}
+
+// space_map: ポイントの配置を外す
+export async function clearPointPlacement(viewId: string, spacePointId: string): Promise<void> {
+  await apiClient.delete(`/api/v1/views/${viewId}/points/${spacePointId}`)
 }
 
 export async function updateView(id: string, payload: { name?: string }): Promise<View> {
