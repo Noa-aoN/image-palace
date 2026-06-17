@@ -167,6 +167,19 @@ RSpec.describe "Auth flow", type: :request do
     end
   end
 
+  describe "GET /api/v1/auth/:provider (OmniAuth リクエストフェーズ)" do
+    # 本番で /api/v1/auth/google_oauth2 が devise_token_auth の redirect ルート内の
+    # CGI.parse で NoMethodError(500) になり、Google 認証を開始できなかった回帰を防ぐ。
+    # CGI.parse が利用可能であれば、Google へのリダイレクト(3xx)が返る。
+    it "google_oauth2 開始時に 500 を出さずリダイレクトする" do
+      # devise_token_auth の redirect ルートは QUERY_STRING を CGI.parse する。
+      # 実運用と同様にクエリ文字列を付与して、その経路（本番で 500 になっていた箇所）を通す。
+      get "/api/v1/auth/google_oauth2", params: { auth_origin_url: "http://localhost:3000" }
+
+      expect(response).to have_http_status(:redirect)
+    end
+  end
+
   describe "POST /api/v1/auth/sign_in (login)" do
     it "logs in with email and password and returns auth headers" do
       user = create(:user, :confirmed, email: "login-#{SecureRandom.hex(4)}@example.com")
