@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_06_15_000001) do
+ActiveRecord::Schema[8.1].define(version: 2026_06_17_200611) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
   enable_extension "pgcrypto"
@@ -337,7 +337,10 @@ ActiveRecord::Schema[8.1].define(version: 2026_06_15_000001) do
 
   create_table "space_points", id: :uuid, default: -> { "gen_random_uuid()" }, force: :cascade do |t|
     t.datetime "created_at", null: false
+    t.string "generation_status", default: "pending", null: false
     t.uuid "item_id"
+    t.jsonb "metadata", default: {}, null: false
+    t.string "name"
     t.integer "position", default: 0, null: false
     t.uuid "space_id", null: false
     t.datetime "updated_at", null: false

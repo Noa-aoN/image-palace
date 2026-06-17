@@ -12,6 +12,30 @@ module ItemSerialization
     }
   end
 
+  # スペースのポイント（序数＋ポイント名＋そのポイント画像）。割当カードも返す（暫定）。
+  def serialize_point(point)
+    {
+      id: point.id,
+      position: point.position,
+      name: point.name,
+      generation_status: point.generation_status,
+      generation_error: point.generation_error,
+      image: serialize_point_image(point),
+      item: point.item ? serialize_item(point.item) : nil
+    }
+  end
+
+  def serialize_point_image(point)
+    return nil unless point.image.attached?
+    return nil unless blob_available?(point.image.blob)
+
+    blob = point.image.blob
+    {
+      url: media_url(blob),
+      thumb_url: thumbnail_url(blob)
+    }
+  end
+
   def serialize_media(media)
     return nil unless media&.file&.attached?
     return nil unless blob_available?(media.file.blob)

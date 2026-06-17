@@ -71,7 +71,10 @@ module Api
       def serialize_space_detail(space)
         base = serialize_space(space)
         if space.space_type == "road"
-          points = space.space_points.ordered.includes(item: [ :item_type, { medias: { file_attachment: :blob } } ])
+          points = space.space_points.ordered.includes(
+            { item: [ :item_type, { medias: { file_attachment: :blob } } ] },
+            { image_attachment: :blob }
+          )
           base.merge(points: points.map { |p| serialize_point(p) })
         else
           collections = space.collections.recent
@@ -85,14 +88,6 @@ module Api
           name: collection.name,
           description: collection.description,
           entry_count: collection.collection_entries.size
-        }
-      end
-
-      def serialize_point(point)
-        {
-          id: point.id,
-          position: point.position,
-          item: point.item ? serialize_item(point.item) : nil
         }
       end
     end

@@ -1,26 +1,38 @@
 module Api
   module V1
-    # road 種別スペースのポイント（序数の点）。空ポイント作成 → 既存カードを割当。
+    # スペースのポイント（loci の点）。序数＋ポイント名を持ち、名前から画像を生成する。
+    # road は序数順、room は間取り（x/y）で配置する想定。カードの割当も保持する（暫定）。
     class SpacePointsController < BaseController
       include ItemSerialization
 
       before_action :set_space
       before_action :set_point, only: [ :update, :destroy ]
 
-      # 末尾に空ポイントを追加
+      # 末尾にポイントを追加。name があればそのポイントの画像生成を開始する。
       def create
-        max = @space.space_points.maximum(:position) || 0
-        point = @space.space_points.create!(position: max + 1)
+        name = stripped_name
+        return render_limit_exceeded if name.present? && monthly_limit_reached?
+
+        point = @space.space_points.create!(position: next_position, name: name)
+        enqueue_generation(point) if point.name.present?
         render json: serialize_point(point), status: :created
       rescue ActiveRecord::RecordInvalid => e
         render json: { errors: e.record.errors.full_messages }, status: :unprocessable_entity
       end
 
-      # カードの割当/クリア（item_id）・序数の変更（position）
+      # カードの割当/クリア（item_id）・序数の変更（position）・ポイント名の変更（name）。
+      # 名前が新たに付く/変わると画像を（再）生成する。
       def update
         assign_item if params.key?(:item_id)
         @point.position = params[:position] if params.key?(:position)
+
+        will_generate = name_will_generate?
+        return render_limit_exceeded if will_generate && monthly_limit_reached?
+
+        @point.name = stripped_name if params.key?(:name)
+        @point.generation_status = "pending" if will_generate
         @point.save!
+        enqueue_generation(@point) if will_generate
         render json: serialize_point(@point.reload)
       rescue ActiveRecord::RecordInvalid => e
         render json: { errors: e.record.errors.full_messages }, status: :unprocessable_entity
@@ -57,12 +69,35 @@ module Api
         @point.item = item_id.present? ? current_user.items.find(item_id) : nil
       end
 
-      def serialize_point(point)
-        {
-          id: point.id,
-          position: point.position,
-          item: point.item ? serialize_item(point.item) : nil
-        }
+      def stripped_name
+        params[:name].to_s.strip if params.key?(:name)
+      end
+
+      # update で名前が「空でない値」に新しく変わるか（＝画像生成が必要か）
+      def name_will_generate?
+        return false unless params.key?(:name)
+
+        name = stripped_name
+        name.present? && name != @point.name
+      end
+
+      def next_position
+        (@space.space_points.maximum(:position) || 0) + 1
+      end
+
+      def enqueue_generation(point)
+        GeneratePointImageJob.perform_later(point.id)
+      end
+
+      # カード＋名前付きポイントの合算が月間上限に達しているか
+      def monthly_limit_reached?
+        current_user.monthly_generation_count >= Items::CreateService::FREE_ITEM_LIMIT_PER_MONTH
+      end
+
+      def render_limit_exceeded
+        render json: {
+          error: "今月の生成枚数の上限（#{Items::CreateService::FREE_ITEM_LIMIT_PER_MONTH}枚）に達しました"
+        }, status: :unprocessable_entity
       end
     end
   end
