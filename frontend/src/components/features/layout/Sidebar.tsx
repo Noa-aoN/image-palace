@@ -4,7 +4,7 @@ import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { ChevronRight, ChevronLeft } from 'lucide-react'
 import { useUiStore } from '@/stores/ui'
-import { NAV_ITEMS } from './nav-items'
+import { NAV_GROUPS } from './nav-items'
 
 export function Sidebar() {
   const pathname = usePathname()
@@ -31,32 +31,42 @@ export function Sidebar() {
         </button>
       </div>
 
-      {/* ナビゲーション */}
-      <nav className={`flex flex-col gap-1 pt-2 ${sidebarExpanded ? 'px-2' : 'px-1.5'}`}>
-        {NAV_ITEMS.map((item) => {
-          const isActive = pathname === item.href || pathname.startsWith(item.href + '/')
-          return (
-            <Link
-              key={item.href}
-              href={item.href}
-              className={`flex rounded-lg py-2.5 text-sm font-medium transition-colors hover:bg-black/5 ${
-                sidebarExpanded ? 'items-center gap-3 px-2' : 'items-center justify-center px-0'
-              }`}
-              style={{
-                color: isActive ? 'var(--palace)' : 'inherit',
-                backgroundColor: isActive ? 'rgba(198,167,94,0.1)' : undefined,
-                whiteSpace: 'nowrap',
-                overflow: 'hidden',
-              }}
-              title={!sidebarExpanded ? item.label : undefined}
-            >
-              <span className="shrink-0">{item.icon}</span>
-              {sidebarExpanded && (
-                <span className="truncate">{item.label}</span>
-              )}
-            </Link>
-          )
-        })}
+      {/* ナビゲーション（グループ間は区切り線で整理） */}
+      <nav className={`flex flex-col pt-2 ${sidebarExpanded ? 'px-2' : 'px-1.5'}`}>
+        {NAV_GROUPS.map((group, groupIndex) => (
+          <div key={groupIndex} className="flex flex-col gap-1">
+            {groupIndex > 0 && (
+              <hr
+                className={`my-2 border-0 border-t ${sidebarExpanded ? 'mx-2' : 'mx-1'}`}
+                style={{ borderColor: 'var(--palace)', opacity: 0.2 }}
+              />
+            )}
+            {group.items.map((item) => {
+              const isActive = pathname === item.href || pathname.startsWith(item.href + '/')
+              return (
+                <Link
+                  key={item.href}
+                  href={item.href}
+                  className={`flex rounded-lg py-2.5 text-sm font-medium transition-colors hover:bg-black/5 ${
+                    sidebarExpanded ? 'items-center gap-3 px-2' : 'items-center justify-center px-0'
+                  }`}
+                  style={{
+                    color: isActive ? 'var(--palace)' : 'inherit',
+                    backgroundColor: isActive ? 'rgba(198,167,94,0.1)' : undefined,
+                    whiteSpace: 'nowrap',
+                    overflow: 'hidden',
+                  }}
+                  title={!sidebarExpanded ? item.label : undefined}
+                >
+                  <span className="shrink-0">{item.icon}</span>
+                  {sidebarExpanded && (
+                    <span className="truncate">{item.label}</span>
+                  )}
+                </Link>
+              )
+            })}
+          </div>
+        ))}
       </nav>
     </aside>
   )
