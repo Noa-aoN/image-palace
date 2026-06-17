@@ -18,6 +18,13 @@ require "rails/test_unit/railtie"
 # you've limited to :test, :development, or :production.
 Bundler.require(*Rails.groups)
 
+# devise_token_auth が OmniAuth へ橋渡しする redirect ルート内で `CGI.parse` を使うが、
+# Rails 8 / 新しめの Ruby では `cgi/escape` 等の一部のみがロードされ `CGI.parse`
+# (cgi/core) が未定義になり `NoMethodError: undefined method 'parse' for class CGI`
+# で OAuth 開始エンドポイント (/api/v1/auth/:provider) が 500 になる。
+# 全環境で確実に `CGI.parse` を利用可能にするため、起動時に cgi を明示的に require する。
+require "cgi"
+
 module App
   class Application < Rails::Application
     # Initialize configuration defaults for originally generated Rails version.
