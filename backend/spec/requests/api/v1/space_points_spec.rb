@@ -81,6 +81,17 @@ RSpec.describe "Api::V1::SpacePoints", type: :request do
           params: { name: "玄関" }, headers: headers, as: :json
       }.to have_enqueued_job(GeneratePointImageJob)
     end
+
+    it "間取り座標（x/y）を更新できる" do
+      point = create(:space_point, space: space, position: 1)
+
+      patch "/api/v1/spaces/#{space.id}/points/#{point.id}",
+        params: { x: 120.5, y: 80 }, headers: headers, as: :json
+
+      expect(response).to have_http_status(:ok)
+      expect(point.reload.x).to eq(120.5)
+      expect(point.y).to eq(80.0)
+    end
   end
 
   describe "月間生成数の合算" do

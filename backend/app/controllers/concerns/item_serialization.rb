@@ -20,6 +20,8 @@ module ItemSerialization
       name: point.name,
       generation_status: point.generation_status,
       generation_error: point.generation_error,
+      x: point.x,
+      y: point.y,
       image: serialize_point_image(point),
       item: point.item ? serialize_item(point.item) : nil
     }

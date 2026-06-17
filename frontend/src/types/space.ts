@@ -36,6 +36,8 @@ export interface SpacePoint {
   name: string | null
   generation_status: GenerationStatus
   generation_error?: string | null
+  x: number // room 種別の間取り配置座標
+  y: number
   image: SpacePointImage | null // ポイント名から生成した画像
   item: SpacePointCard | null // 割り当てたカード（任意）
 }

@@ -17,6 +17,7 @@ import {
 } from '@/lib/api/spaces'
 import { getItemsPage } from '@/lib/api/items'
 import { spaceTypeLabel } from '@/lib/space-types'
+import { RoomCanvas } from '@/components/features/views/RoomCanvas'
 import type { SpaceDetail, SpacePoint } from '@/types/space'
 import type { Item } from '@/types/item'
 
@@ -361,6 +362,11 @@ export default function SpaceDetailPage() {
       setError('カードの割り当てに失敗しました')
     }
   }
+  // room キャンバスでのドラッグ確定時に座標を state へ反映（保存は RoomCanvas が行う）
+  const handleMovePointXY = useCallback((pointId: string, x: number, y: number) => {
+    setPoints((ps) => ps.map((p) => (p.id === pointId ? { ...p, x, y } : p)))
+  }, [setPoints])
+
   const handleClearCard = async (pointId: string) => {
     try {
       const updated = await updateSpacePoint(id, pointId, { item_id: null })
@@ -413,7 +419,7 @@ export default function SpaceDetailPage() {
   const isRoad = space.space_type === 'road'
   const intro = isRoad
     ? '序数のあるポイントを並べ、各点に「名前から画像を生成」または「カードを割り当て」できます（連結法/ジャーニー法）。'
-    : '部屋のポイントに「名前から画像を生成」または「カードを割り当て」できます（間取り配置は今後対応）。'
+    : '部屋のポイントをドラッグで間取りに配置できます。各ポイントの名前・生成・カード割り当ては下のリストで設定します。'
 
   return (
     <div className="max-w-3xl mx-auto px-6 py-12">
@@ -470,6 +476,7 @@ export default function SpaceDetailPage() {
 
       <section className="space-y-3">
         <p className="text-sm text-muted-foreground">{intro}</p>
+        {!isRoad && <RoomCanvas spaceId={id} points={points} onMoved={handleMovePointXY} />}
         {points.length === 0 ? (
           <p className="text-sm text-muted-foreground py-4">まだポイントがありません。「ポイントを追加」で点を作りましょう。</p>
         ) : (

@@ -20,11 +20,13 @@ module Api
         render json: { errors: e.record.errors.full_messages }, status: :unprocessable_entity
       end
 
-      # カードの割当/クリア（item_id）・序数の変更（position）・ポイント名の変更（name）。
-      # 名前が新たに付く/変わると画像を（再）生成する。
+      # カードの割当/クリア（item_id）・序数の変更（position）・ポイント名の変更（name）・
+      # 間取り座標の変更（x/y、room のドラッグ配置）。名前が新たに付く/変わると画像を（再）生成する。
       def update
         assign_item if params.key?(:item_id)
         @point.position = params[:position] if params.key?(:position)
+        @point.x = params[:x] if params.key?(:x)
+        @point.y = params[:y] if params.key?(:y)
 
         will_generate = name_will_generate?
         return render_limit_exceeded if will_generate && monthly_limit_reached?
