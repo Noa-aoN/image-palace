@@ -52,7 +52,7 @@ export async function addSpacePoint(spaceId: string): Promise<SpacePoint> {
 export async function updateSpacePoint(
   spaceId: string,
   pointId: string,
-  payload: { item_id?: string | null; position?: number }
+  payload: { item_id?: string | null; position?: number; name?: string }
 ): Promise<SpacePoint> {
   const res = await apiClient.patch<SpacePoint>(`/api/v1/spaces/${spaceId}/points/${pointId}`, payload)
   return res.data

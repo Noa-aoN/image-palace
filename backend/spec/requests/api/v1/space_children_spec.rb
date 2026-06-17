@@ -9,22 +9,29 @@ RSpec.describe "Api::V1::Spaces children", type: :request do
     let(:space) { create(:space, user: user, space_type: "room") }
     let(:collection) { user.collections.create!(name: "英単語") }
 
-    it "コレクションを追加・取得・削除できる" do
+    # 詳細表示はポイントベースに統一したが、コレクション棚の追加・削除 API は温存している。
+    it "コレクションを追加・削除できる" do
       post "/api/v1/spaces/#{space.id}/collections", params: { collection_id: collection.id }, headers: headers
       expect(response).to have_http_status(:no_content)
-
-      get "/api/v1/spaces/#{space.id}", headers: headers
-      expect(json_response["collections"].map { |c| c["name"] }).to eq([ "英単語" ])
+      expect(space.collections.reload.map(&:name)).to eq([ "英単語" ])
 
       delete "/api/v1/spaces/#{space.id}/collections/#{collection.id}", headers: headers
       expect(response).to have_http_status(:no_content)
-      expect(space.collections.count).to eq(0)
+      expect(space.collections.reload.count).to eq(0)
     end
 
     it "他ユーザーのコレクションは追加できない（404）" do
       other_collection = create(:user, :confirmed).collections.create!(name: "他人")
       post "/api/v1/spaces/#{space.id}/collections", params: { collection_id: other_collection.id }, headers: headers
       expect(response).to have_http_status(:not_found)
+    end
+
+    it "room の詳細はポイントを返す（ポイントベースに統一）" do
+      create(:space_point, space: space, position: 1, name: "玄関")
+
+      get "/api/v1/spaces/#{space.id}", headers: headers
+
+      expect(json_response["points"].map { |p| p["name"] }).to eq([ "玄関" ])
     end
   end
 
