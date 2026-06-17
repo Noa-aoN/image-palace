@@ -58,6 +58,9 @@ Rails.application.routes.draw do
           post "items", action: :add_item
           patch "items/:item_id", action: :update_item
           delete "items/:item_id", action: :remove_item
+          # space_map 種別: スペースのポイントへカードを配置/クリア
+          post "points/:space_point_id", action: :place_on_point
+          delete "points/:space_point_id", action: :clear_point
         end
       end
     end
