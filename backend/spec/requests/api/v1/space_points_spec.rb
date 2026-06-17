@@ -64,13 +64,22 @@ RSpec.describe "Api::V1::SpacePoints", type: :request do
       expect(json_response["generation_status"]).to eq("pending")
     end
 
-    it "同じ名前なら再生成しない" do
+    it "同じ名前で生成済みなら再生成しない" do
       point = create(:space_point, space: space, name: "玄関", generation_status: "completed")
 
       expect {
         patch "/api/v1/spaces/#{space.id}/points/#{point.id}",
           params: { name: "玄関" }, headers: headers, as: :json
       }.not_to have_enqueued_job(GeneratePointImageJob)
+    end
+
+    it "前回失敗したポイントは同じ名前でも再試行できる" do
+      point = create(:space_point, space: space, name: "玄関", generation_status: "failed")
+
+      expect {
+        patch "/api/v1/spaces/#{space.id}/points/#{point.id}",
+          params: { name: "玄関" }, headers: headers, as: :json
+      }.to have_enqueued_job(GeneratePointImageJob)
     end
   end
 

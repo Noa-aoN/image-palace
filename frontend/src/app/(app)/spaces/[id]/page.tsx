@@ -157,7 +157,7 @@ function PointRow({
   point,
   index,
   total,
-  onRename,
+  onGenerate,
   onMove,
   onRemove,
   onAssignClick,
@@ -166,24 +166,25 @@ function PointRow({
   point: SpacePoint
   index: number
   total: number
-  onRename: (pointId: string, name: string) => void
+  onGenerate: (pointId: string, name: string) => void
   onMove: (index: number, dir: -1 | 1) => void
   onRemove: (pointId: string) => void
   onAssignClick: (pointId: string) => void
   onClearCard: (pointId: string) => void
 }) {
-  // ドラフトは初期表示時の名前で初期化。ポーリングで name は変わらず、リネーム後の
-  // サーバ返却値もこの値と一致するため、同期し直す必要はない（key=point.id で安定）。
+  // ドラフトは初期表示時の名前で初期化（key=point.id で安定）。
+  // 生成は「生成」ボタンを押したときだけ実行する（入力やフォーカス外しでは走らせない）。
   const [draft, setDraft] = useState(point.name ?? '')
 
-  const commitName = () => {
-    const trimmed = draft.trim()
-    if (trimmed === (point.name ?? '')) return
-    onRename(point.id, trimmed)
-  }
-
+  const trimmed = draft.trim()
   const generating = !!point.name && POLLING_STATUSES.has(point.generation_status)
   const failed = !!point.name && point.generation_status === 'failed'
+  // 名前があり、生成中でなく、「同じ名前で既に生成済み」でないときに生成可能
+  // （＝新規・名前変更・失敗からの再試行）
+  const canGenerate =
+    trimmed.length > 0 &&
+    !generating &&
+    !(trimmed === (point.name ?? '') && point.generation_status === 'completed')
 
   return (
     <li className="rounded-xl border border-border bg-card px-3 py-2.5">
@@ -197,14 +198,13 @@ function PointRow({
         <input
           value={draft}
           onChange={(e) => setDraft(e.target.value)}
-          onBlur={commitName}
-          onKeyDown={(e) => {
-            if (e.key === 'Enter') e.currentTarget.blur()
-          }}
-          placeholder="ポイント名（例: 玄関）— 入力で画像を生成"
+          placeholder="ポイント名（例: 玄関）"
           aria-label={`ポイント${index + 1}の名前`}
           className="min-w-0 flex-1 rounded-lg border border-input bg-background px-2.5 py-1.5 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
         />
+        <Button size="sm" onClick={() => onGenerate(point.id, trimmed)} disabled={!canGenerate} className="shrink-0">
+          {generating ? '生成中…' : '生成'}
+        </Button>
         <div className="flex shrink-0 items-center gap-1">
           <button onClick={() => onMove(index, -1)} disabled={index === 0} aria-label="上へ" className="rounded p-1 text-muted-foreground hover:bg-muted disabled:opacity-30"><ChevronUp size={16} /></button>
           <button onClick={() => onMove(index, 1)} disabled={index === total - 1} aria-label="下へ" className="rounded p-1 text-muted-foreground hover:bg-muted disabled:opacity-30"><ChevronDown size={16} /></button>
@@ -217,7 +217,7 @@ function PointRow({
         <div className="min-w-0 flex-1 space-y-1">
           {generating && <p className="text-xs text-muted-foreground">画像を生成中…</p>}
           {failed && (
-            <p className="text-xs text-destructive">{point.generation_error ?? '生成に失敗しました。名前を変えて再入力してください。'}</p>
+            <p className="text-xs text-destructive">{point.generation_error ?? '生成に失敗しました。もう一度「生成」を押してください。'}</p>
           )}
           <div className="flex items-center justify-between gap-2">
             <AssignedCard item={point.item} />
@@ -341,12 +341,13 @@ export default function SpaceDetailPage() {
       setBusyPoint(false)
     }
   }
-  const handleRenamePoint = async (pointId: string, name: string) => {
+  // 「生成」ボタン押下時のみ呼ばれる。名前を送ると同時に画像生成が始まる。
+  const handleGeneratePoint = async (pointId: string, name: string) => {
     try {
       const updated = await updateSpacePoint(id, pointId, { name })
       setPoints((ps) => ps.map((p) => (p.id === pointId ? updated : p)))
     } catch {
-      setError('ポイント名の更新に失敗しました')
+      setError('画像生成の開始に失敗しました')
     }
   }
   const handleAssign = async (item: Item) => {
@@ -479,7 +480,7 @@ export default function SpaceDetailPage() {
                 point={point}
                 index={index}
                 total={points.length}
-                onRename={handleRenamePoint}
+                onGenerate={handleGeneratePoint}
                 onMove={movePoint}
                 onRemove={handleRemovePoint}
                 onAssignClick={setPickerPointId}

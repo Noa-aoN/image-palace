@@ -73,12 +73,16 @@ module Api
         params[:name].to_s.strip if params.key?(:name)
       end
 
-      # update で名前が「空でない値」に新しく変わるか（＝画像生成が必要か）
+      # 「生成」ボタン押下時に画像生成を走らせるか。
+      # 名前があり、かつ「名前が変わった」または「前回失敗からの再試行」のとき生成する。
+      # 同じ名前で生成済み（completed）の場合は再生成しない（同一プロンプトはキャッシュで同結果）。
       def name_will_generate?
         return false unless params.key?(:name)
 
         name = stripped_name
-        name.present? && name != @point.name
+        return false if name.blank?
+
+        name != @point.name || @point.generation_status == "failed"
       end
 
       def next_position
