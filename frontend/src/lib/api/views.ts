@@ -1,5 +1,6 @@
 import { apiClient } from './client'
 import type { View, ViewDetail, ViewItemPlacement, SpaceMapPoint } from '@/types/view'
+import type { CoverType } from '@/types/cover'
 
 export async function getViews(): Promise<View[]> {
   const res = await apiClient.get<{ views: View[] }>('/api/v1/views')
@@ -75,8 +76,23 @@ export async function clearPointPlacement(viewId: string, spacePointId: string):
   await apiClient.delete(`/api/v1/views/${viewId}/points/${spacePointId}`)
 }
 
-export async function updateView(id: string, payload: { name?: string }): Promise<View> {
+export async function updateView(
+  id: string,
+  payload: { name?: string; cover_item_id?: string | null; cover_type?: CoverType }
+): Promise<View> {
   const res = await apiClient.patch<View>(`/api/v1/views/${id}`, { view: payload })
+  return res.data
+}
+
+export async function uploadViewCover(id: string, file: File): Promise<View> {
+  const form = new FormData()
+  form.append('cover_image', file)
+  const res = await apiClient.post<View>(`/api/v1/views/${id}/cover_image`, form)
+  return res.data
+}
+
+export async function removeViewCover(id: string): Promise<View> {
+  const res = await apiClient.delete<View>(`/api/v1/views/${id}/cover_image`)
   return res.data
 }
 

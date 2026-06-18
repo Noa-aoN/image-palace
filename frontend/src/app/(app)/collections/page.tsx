@@ -2,10 +2,11 @@
 
 import { useEffect, useState } from 'react'
 import Link from 'next/link'
-import { Library, Plus } from 'lucide-react'
+import { Plus } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { getCollections, createCollection } from '@/lib/api/collections'
+import { EntityCover } from '@/components/features/shared/EntityCover'
 import type { Collection } from '@/types/collection'
 
 export default function CollectionsPage() {
@@ -100,9 +101,9 @@ export default function CollectionsPage() {
       )}
 
       {loading ? (
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-          {Array.from({ length: 6 }).map((_, i) => (
-            <div key={i} className="h-24 rounded-xl border border-border bg-muted animate-pulse" />
+        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
+          {Array.from({ length: 8 }).map((_, i) => (
+            <div key={i} className="aspect-square rounded-xl border border-border bg-muted animate-pulse" />
           ))}
         </div>
       ) : error ? (
@@ -117,21 +118,20 @@ export default function CollectionsPage() {
           )}
         </div>
       ) : (
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
           {collections.map((collection) => (
             <Link
               key={collection.id}
               href={`/collections/${collection.id}`}
-              className="flex flex-col gap-2 rounded-xl border border-border bg-card px-5 py-4 hover:shadow-md transition-shadow"
+              className="flex flex-col rounded-xl border border-border overflow-hidden bg-card hover:shadow-md transition-shadow"
             >
-              <div className="flex items-center gap-2">
-                <Library size={18} style={{ color: 'var(--palace)' }} />
+              <div className="px-4 py-3 flex items-center justify-between gap-2">
                 <span className="font-medium truncate">{collection.name}</span>
+                <span className="text-xs text-muted-foreground shrink-0">{collection.entry_count} 件</span>
               </div>
-              {collection.description && (
-                <p className="text-sm text-muted-foreground line-clamp-2">{collection.description}</p>
-              )}
-              <span className="text-xs text-muted-foreground mt-auto">{collection.entry_count} 件</span>
+              <div className="w-full aspect-square bg-muted overflow-hidden">
+                <EntityCover cover={collection} />
+              </div>
             </Link>
           ))}
         </div>

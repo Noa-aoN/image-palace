@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_06_18_020000) do
+ActiveRecord::Schema[8.1].define(version: 2026_06_19_000003) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
   enable_extension "pgcrypto"
@@ -76,11 +76,14 @@ ActiveRecord::Schema[8.1].define(version: 2026_06_18_020000) do
   end
 
   create_table "collections", id: :uuid, default: -> { "gen_random_uuid()" }, force: :cascade do |t|
+    t.uuid "cover_item_id"
+    t.string "cover_type", default: "first_card", null: false
     t.datetime "created_at", null: false
     t.text "description"
     t.string "name", null: false
     t.datetime "updated_at", null: false
     t.uuid "user_id", null: false
+    t.index ["cover_item_id"], name: "index_collections_on_cover_item_id"
     t.index ["user_id", "created_at"], name: "index_collections_on_user_id_and_created_at"
     t.index ["user_id"], name: "index_collections_on_user_id"
   end
@@ -351,12 +354,15 @@ ActiveRecord::Schema[8.1].define(version: 2026_06_18_020000) do
   end
 
   create_table "spaces", id: :uuid, default: -> { "gen_random_uuid()" }, force: :cascade do |t|
+    t.uuid "cover_space_point_id"
+    t.string "cover_type", default: "first_card", null: false
     t.datetime "created_at", null: false
     t.text "description"
     t.string "name", null: false
     t.string "space_type", default: "room", null: false
     t.datetime "updated_at", null: false
     t.uuid "user_id", null: false
+    t.index ["cover_space_point_id"], name: "index_spaces_on_cover_space_point_id"
     t.index ["user_id", "created_at"], name: "index_spaces_on_user_id_and_created_at"
     t.index ["user_id"], name: "index_spaces_on_user_id"
   end
@@ -422,12 +428,15 @@ ActiveRecord::Schema[8.1].define(version: 2026_06_18_020000) do
   end
 
   create_table "views", id: :uuid, default: -> { "gen_random_uuid()" }, force: :cascade do |t|
+    t.uuid "cover_item_id"
+    t.string "cover_type", default: "first_card", null: false
     t.datetime "created_at", null: false
     t.string "name", null: false
     t.uuid "space_id"
     t.datetime "updated_at", null: false
     t.uuid "user_id", null: false
     t.string "view_type", default: "freeboard", null: false
+    t.index ["cover_item_id"], name: "index_views_on_cover_item_id"
     t.index ["space_id"], name: "index_views_on_space_id"
     t.index ["user_id", "created_at"], name: "index_views_on_user_id_and_created_at"
     t.index ["user_id"], name: "index_views_on_user_id"
@@ -440,6 +449,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_06_18_020000) do
   add_foreign_key "collection_entries", "collections", on_delete: :cascade
   add_foreign_key "collection_items", "collections", on_delete: :cascade
   add_foreign_key "collection_items", "items", on_delete: :cascade
+  add_foreign_key "collections", "items", column: "cover_item_id", on_delete: :nullify
   add_foreign_key "collections", "users", on_delete: :cascade
   add_foreign_key "deck_items", "decks", on_delete: :cascade
   add_foreign_key "deck_items", "items", on_delete: :cascade
@@ -466,6 +476,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_06_18_020000) do
   add_foreign_key "space_collections", "spaces", on_delete: :cascade
   add_foreign_key "space_points", "items", on_delete: :nullify
   add_foreign_key "space_points", "spaces", on_delete: :cascade
+  add_foreign_key "spaces", "space_points", column: "cover_space_point_id", on_delete: :nullify
   add_foreign_key "spaces", "users", on_delete: :cascade
   add_foreign_key "subscriptions", "plans", on_delete: :restrict
   add_foreign_key "subscriptions", "users", on_delete: :cascade
@@ -473,6 +484,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_06_18_020000) do
   add_foreign_key "view_items", "items", on_delete: :cascade
   add_foreign_key "view_items", "space_points", on_delete: :cascade
   add_foreign_key "view_items", "views", on_delete: :cascade
+  add_foreign_key "views", "items", column: "cover_item_id", on_delete: :nullify
   add_foreign_key "views", "spaces", on_delete: :nullify
   add_foreign_key "views", "users", on_delete: :cascade
 end

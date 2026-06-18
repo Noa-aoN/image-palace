@@ -1,10 +1,17 @@
 import type { ItemMedia, GenerationStatus } from './item'
+import type { CoverType, CoverImage } from './cover'
 
 export interface Space {
   id: string
   name: string
   description: string | null
   space_type: string
+  // カバー（カバー候補はポイントの生成画像。表紙は SpacePoint を指定）
+  cover_type: CoverType
+  cover_space_point_id: string | null
+  cover: CoverImage | null
+  cover_images: CoverImage[]
+  cover_image: CoverImage | null
   created_at: string
 }
 

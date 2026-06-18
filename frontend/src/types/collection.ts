@@ -1,10 +1,16 @@
 import type { ItemMedia } from './item'
+import type { CoverType, CoverImage } from './cover'
 
 export interface Collection {
   id: string
   name: string
   description: string | null
   entry_count: number
+  cover_type: CoverType
+  cover_item_id: string | null
+  cover: ItemMedia | null
+  cover_images: ItemMedia[]
+  cover_image: CoverImage | null
   created_at: string
 }
 

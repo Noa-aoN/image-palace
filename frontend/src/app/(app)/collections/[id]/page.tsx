@@ -9,13 +9,17 @@ import { Input } from '@/components/ui/input'
 import {
   getCollection, updateCollection, deleteCollection,
   addEntryToCollection, removeEntryFromCollection,
+  uploadCollectionCover, removeCollectionCover,
 } from '@/lib/api/collections'
 import { getItems } from '@/lib/api/items'
 import { getDecks } from '@/lib/api/decks'
 import { getSpaces } from '@/lib/api/spaces'
 import { getViews } from '@/lib/api/views'
 import { viewTypeLabel } from '@/lib/view-types'
+import { EntityCover } from '@/components/features/shared/EntityCover'
+import { CoverSettings } from '@/components/features/shared/CoverSettings'
 import type { CollectionDetail, CollectionEntry, CollectionEntryType } from '@/types/collection'
+import type { CoverType } from '@/types/cover'
 
 // 追加候補の正規化表現
 type Pickable = { id: string; label: string; image: string | null; sub?: string }
@@ -181,6 +185,45 @@ export default function CollectionDetailPage() {
     }
   }
 
+  // カバー設定（デッキ踏襲）
+  const [coverBusy, setCoverBusy] = useState(false)
+  const handleSetCoverType = async (coverType: CoverType) => {
+    if (!collection || collection.cover_type === coverType) return
+    setCoverBusy(true)
+    try {
+      const updated = await updateCollection(id, { cover_type: coverType })
+      setCollection({ ...collection, ...updated })
+    } catch {
+      setError('カバー表示の変更に失敗しました')
+    } finally {
+      setCoverBusy(false)
+    }
+  }
+  const handleUploadCover = async (file: File) => {
+    if (!collection) return
+    setCoverBusy(true)
+    try {
+      const updated = await uploadCollectionCover(id, file)
+      setCollection({ ...collection, ...updated })
+    } catch {
+      setError('画像のアップロードに失敗しました')
+    } finally {
+      setCoverBusy(false)
+    }
+  }
+  const handleRemoveCover = async () => {
+    if (!collection) return
+    setCoverBusy(true)
+    try {
+      const updated = await removeCollectionCover(id)
+      setCollection({ ...collection, ...updated })
+    } catch {
+      setError('画像の削除に失敗しました')
+    } finally {
+      setCoverBusy(false)
+    }
+  }
+
   const handleAdd = async (type: CollectionEntryType, entryId: string) => {
     setBusyKey(`${type}:${entryId}`)
     try {
@@ -286,6 +329,24 @@ export default function CollectionDetailPage() {
       <p className="text-sm text-muted-foreground mb-6">
         カード・デッキ・スペース・ビューをまとめられます。
       </p>
+
+      {/* カバー（ヘッダー）設定 */}
+      <div className="mb-8 flex flex-col gap-4 sm:flex-row sm:items-start">
+        <div className="aspect-square w-40 shrink-0 overflow-hidden rounded-xl border border-border bg-muted">
+          <EntityCover cover={collection} />
+        </div>
+        <div className="flex-1">
+          <CoverSettings
+            coverType={collection.cover_type}
+            busy={coverBusy}
+            hasCustom={!!collection.cover_image}
+            helpText="先頭: コレクション内カードの先頭 / コラージュ: 最大4枚 / カスタム: アップロード画像"
+            onSelectType={handleSetCoverType}
+            onUpload={handleUploadCover}
+            onRemove={handleRemoveCover}
+          />
+        </div>
+      </div>
 
       {error && <p className="text-sm text-destructive mb-4">{error}</p>}
 
