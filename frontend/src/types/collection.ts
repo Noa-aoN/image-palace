@@ -20,8 +20,8 @@ export type CollectionEntryType = 'Item' | 'Deck' | 'Space' | 'View'
 export type CollectionEntry =
   | { entry_type: 'Item'; id: string; title: string; media: ItemMedia | null }
   | { entry_type: 'Deck'; id: string; name: string; item_count: number; cover: ItemMedia | null }
-  | { entry_type: 'Space'; id: string; name: string }
-  | { entry_type: 'View'; id: string; name: string }
+  | { entry_type: 'Space'; id: string; name: string; cover: CoverImage | null }
+  | { entry_type: 'View'; id: string; name: string; cover: ItemMedia | null }
 
 export interface CollectionDetail extends Collection {
   entries: CollectionEntry[]
