@@ -35,6 +35,7 @@ function CardNodeComponent({ id, data }: NodeProps<CardNodeType>) {
       >
         <X size={13} />
       </button>
+      <div className="truncate px-2 py-1.5 text-xs font-medium">{item.title}</div>
       <div className="flex aspect-square w-full items-center justify-center overflow-hidden bg-muted">
         {imageUrl ? (
           // eslint-disable-next-line @next/next/no-img-element
@@ -43,7 +44,6 @@ function CardNodeComponent({ id, data }: NodeProps<CardNodeType>) {
           <span className="px-2 text-center text-[11px] text-muted-foreground">{item.title}</span>
         )}
       </div>
-      <div className="truncate px-2 py-1.5 text-xs font-medium">{item.title}</div>
     </div>
   )
 }

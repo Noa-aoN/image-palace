@@ -57,6 +57,10 @@ function CardThumb({
 
   return (
     <div className="flex flex-col rounded-xl border border-border overflow-hidden bg-card">
+      <div className="px-2 py-1.5 flex items-center justify-between gap-1">
+        <span className="text-xs font-medium truncate">{item.title}</span>
+        {bottomAction}
+      </div>
       <div className="relative w-full aspect-square bg-muted overflow-hidden">
         {href ? (
           <Link href={href} className="flex h-full w-full items-center justify-center hover:opacity-95 transition-opacity">
@@ -74,10 +78,6 @@ function CardThumb({
           </span>
         )}
         {topRight && <div className="absolute top-1 right-1 z-10">{topRight}</div>}
-      </div>
-      <div className="px-2 py-1.5 flex items-center justify-between gap-1">
-        <span className="text-xs font-medium truncate">{item.title}</span>
-        {bottomAction}
       </div>
     </div>
   )

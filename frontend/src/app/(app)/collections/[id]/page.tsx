@@ -61,6 +61,9 @@ function EntryTile({ entry, onRemove, busy }: { entry: CollectionEntry; onRemove
     const ratio = 'aspect-square'
     return (
       <div className="flex flex-col rounded-xl border border-border overflow-hidden bg-card">
+        <div className="px-3 py-2">
+          <span className="text-sm font-medium truncate block">{entryLabel(entry)}</span>
+        </div>
         <div className={`relative w-full ${ratio} bg-muted overflow-hidden`}>
           <Link href={entryHref(entry)} className="flex h-full w-full items-center justify-center hover:opacity-95 transition-opacity">
             {image ? (
@@ -71,9 +74,6 @@ function EntryTile({ entry, onRemove, busy }: { entry: CollectionEntry; onRemove
             )}
           </Link>
           <div className="absolute top-1 right-1 z-10">{removeBtn}</div>
-        </div>
-        <div className="px-3 py-2">
-          <span className="text-sm font-medium truncate block">{entryLabel(entry)}</span>
         </div>
       </div>
     )

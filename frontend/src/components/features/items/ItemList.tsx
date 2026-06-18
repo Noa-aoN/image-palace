@@ -58,6 +58,15 @@ function ItemCard({ item, selectionMode, selected, onToggle }: ItemCardProps) {
 
   const inner = (
     <>
+      {/* テキストを上・画像を下に配置 */}
+      <div className="px-3 py-2 flex items-center justify-between gap-2">
+        <span className="text-sm font-medium truncate">{item.title}</span>
+        <span
+          className={`shrink-0 rounded-full px-2 py-0.5 text-xs font-medium ${STATUS_COLOR[item.generation_status] ?? ''}`}
+        >
+          {STATUS_LABEL[item.generation_status] ?? item.generation_status}
+        </span>
+      </div>
       <div className="w-full aspect-square bg-muted flex items-center justify-center overflow-hidden">
         {resolvedImageUrl && !hasImageError ? (
           // eslint-disable-next-line @next/next/no-img-element
@@ -80,14 +89,6 @@ function ItemCard({ item, selectionMode, selected, onToggle }: ItemCardProps) {
             </span>
           </div>
         )}
-      </div>
-      <div className="px-3 py-2 flex items-center justify-between gap-2">
-        <span className="text-sm font-medium truncate">{item.title}</span>
-        <span
-          className={`shrink-0 rounded-full px-2 py-0.5 text-xs font-medium ${STATUS_COLOR[item.generation_status] ?? ''}`}
-        >
-          {STATUS_LABEL[item.generation_status] ?? item.generation_status}
-        </span>
       </div>
     </>
   )
