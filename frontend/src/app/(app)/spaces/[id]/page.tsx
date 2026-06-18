@@ -1,30 +1,30 @@
 'use client'
 
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import Link from 'next/link'
 import { useParams, useRouter } from 'next/navigation'
-import { Trash2, Pencil, Check, X, Plus, Layers, ChevronUp, ChevronDown, Search } from 'lucide-react'
+import { Trash2, Pencil, Check, X, Plus, ChevronUp, ChevronDown, Search, Loader2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import {
   getSpace,
   updateSpace,
   deleteSpace,
-  addCollectionToSpace,
-  removeCollectionFromSpace,
   addSpacePoint,
   updateSpacePoint,
   removeSpacePoint,
   reorderSpacePoints,
 } from '@/lib/api/spaces'
-import { getCollections } from '@/lib/api/collections'
 import { getItemsPage } from '@/lib/api/items'
 import { spaceTypeLabel } from '@/lib/space-types'
-import type { SpaceDetail, SpaceCollectionRef, SpacePoint } from '@/types/space'
-import type { Collection } from '@/types/collection'
+import { RoomCanvas } from '@/components/features/views/RoomCanvas'
+import type { SpaceDetail, SpacePoint } from '@/types/space'
 import type { Item } from '@/types/item'
 
-// road 種別: カード割当の検索ピッカー（モーダル）
+// 生成中とみなすステータス（ポーリング継続条件）
+const POLLING_STATUSES = new Set(['pending', 'processing'])
+
+// road / room 種別: カード割当の検索ピッカー（モーダル）
 function AssignCardModal({ onSelect, onClose }: { onSelect: (item: Item) => void; onClose: () => void }) {
   const [items, setItems] = useState<Item[]>([])
   const [query, setQuery] = useState('')
@@ -114,21 +114,124 @@ function AssignCardModal({ onSelect, onClose }: { onSelect: (item: Item) => void
   )
 }
 
-function PointBody({ item }: { item: SpacePoint['item'] }) {
-  if (!item) return <span className="text-sm text-muted-foreground">空（カード未割当）</span>
+// ポイント名から生成した画像（生成中はスピナー、失敗はメッセージ）
+function PointImageCell({ point }: { point: SpacePoint }) {
+  const generating = !!point.name && POLLING_STATUSES.has(point.generation_status)
+  const imageUrl = point.image?.thumb_url ?? point.image?.url ?? null
+
+  return (
+    <div className="flex h-16 w-16 shrink-0 items-center justify-center overflow-hidden rounded-md bg-muted">
+      {imageUrl ? (
+        // eslint-disable-next-line @next/next/no-img-element
+        <img src={imageUrl} alt={point.name ?? 'ポイント画像'} className="h-full w-full object-cover" loading="lazy" />
+      ) : generating ? (
+        <Loader2 size={18} className="animate-spin text-muted-foreground" />
+      ) : (
+        <span className="px-1 text-center text-[9px] text-muted-foreground">
+          {point.name ? '画像なし' : '名前で生成'}
+        </span>
+      )}
+    </div>
+  )
+}
+
+// 割り当てカードの表示
+function AssignedCard({ item }: { item: SpacePoint['item'] }) {
+  if (!item) return <span className="text-xs text-muted-foreground">カード未割当</span>
   const imageUrl = item.media?.thumb_url ?? item.media?.url ?? null
   return (
-    <div className="flex items-center gap-2 min-w-0">
-      <div className="h-12 w-12 shrink-0 overflow-hidden rounded-md bg-muted flex items-center justify-center">
+    <div className="flex min-w-0 items-center gap-2">
+      <div className="flex h-9 w-9 shrink-0 items-center justify-center overflow-hidden rounded bg-muted">
         {imageUrl ? (
           // eslint-disable-next-line @next/next/no-img-element
           <img src={imageUrl} alt={item.title} className="h-full w-full object-cover" loading="lazy" />
         ) : (
-          <span className="px-1 text-center text-[9px] text-muted-foreground">{item.title}</span>
+          <span className="px-0.5 text-center text-[8px] text-muted-foreground">{item.title}</span>
         )}
       </div>
-      <span className="truncate text-sm font-medium">{item.title}</span>
+      <span className="truncate text-xs font-medium">{item.title}</span>
     </div>
+  )
+}
+
+function PointRow({
+  point,
+  index,
+  total,
+  onGenerate,
+  onMove,
+  onRemove,
+  onAssignClick,
+  onClearCard,
+}: {
+  point: SpacePoint
+  index: number
+  total: number
+  onGenerate: (pointId: string, name: string) => void
+  onMove: (index: number, dir: -1 | 1) => void
+  onRemove: (pointId: string) => void
+  onAssignClick: (pointId: string) => void
+  onClearCard: (pointId: string) => void
+}) {
+  // ドラフトは初期表示時の名前で初期化（key=point.id で安定）。
+  // 生成は「生成」ボタンを押したときだけ実行する（入力やフォーカス外しでは走らせない）。
+  const [draft, setDraft] = useState(point.name ?? '')
+
+  const trimmed = draft.trim()
+  const generating = !!point.name && POLLING_STATUSES.has(point.generation_status)
+  const failed = !!point.name && point.generation_status === 'failed'
+  // 名前があり、生成中でなく、「同じ名前で既に生成済み」でないときに生成可能
+  // （＝新規・名前変更・失敗からの再試行）
+  const canGenerate =
+    trimmed.length > 0 &&
+    !generating &&
+    !(trimmed === (point.name ?? '') && point.generation_status === 'completed')
+
+  return (
+    <li className="rounded-xl border border-border bg-card px-3 py-2.5">
+      <div className="flex items-center gap-3">
+        <span
+          className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-sm font-semibold text-white"
+          style={{ backgroundColor: 'var(--palace)' }}
+        >
+          {index + 1}
+        </span>
+        <input
+          value={draft}
+          onChange={(e) => setDraft(e.target.value)}
+          placeholder="ポイント名（例: 玄関）"
+          aria-label={`ポイント${index + 1}の名前`}
+          className="min-w-0 flex-1 rounded-lg border border-input bg-background px-2.5 py-1.5 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+        />
+        <Button size="sm" onClick={() => onGenerate(point.id, trimmed)} disabled={!canGenerate} className="shrink-0">
+          {generating ? '生成中…' : '生成'}
+        </Button>
+        <div className="flex shrink-0 items-center gap-1">
+          <button onClick={() => onMove(index, -1)} disabled={index === 0} aria-label="上へ" className="rounded p-1 text-muted-foreground hover:bg-muted disabled:opacity-30"><ChevronUp size={16} /></button>
+          <button onClick={() => onMove(index, 1)} disabled={index === total - 1} aria-label="下へ" className="rounded p-1 text-muted-foreground hover:bg-muted disabled:opacity-30"><ChevronDown size={16} /></button>
+          <button onClick={() => onRemove(point.id)} aria-label="ポイントを削除" className="rounded p-1 text-muted-foreground hover:bg-muted hover:text-destructive"><Trash2 size={15} /></button>
+        </div>
+      </div>
+
+      <div className="mt-2.5 flex items-center gap-3 pl-10">
+        <PointImageCell point={point} />
+        <div className="min-w-0 flex-1 space-y-1">
+          {generating && <p className="text-xs text-muted-foreground">画像を生成中…</p>}
+          {failed && (
+            <p className="text-xs text-destructive">{point.generation_error ?? '生成に失敗しました。もう一度「生成」を押してください。'}</p>
+          )}
+          <div className="flex items-center justify-between gap-2">
+            <AssignedCard item={point.item} />
+            <div className="flex shrink-0 items-center gap-1">
+              <Button variant="outline" size="sm" onClick={() => onAssignClick(point.id)}>
+                {point.item ? '変更' : 'カードを割当'}
+              </Button>
+              {point.item && <Button variant="ghost" size="sm" onClick={() => onClearCard(point.id)}>クリア</Button>}
+            </div>
+          </div>
+        </div>
+      </div>
+    </li>
   )
 }
 
@@ -146,14 +249,10 @@ export default function SpaceDetailPage() {
   const [confirmDelete, setConfirmDelete] = useState(false)
   const [deleting, setDeleting] = useState(false)
 
-  // room
-  const [picking, setPicking] = useState(false)
-  const [allCollections, setAllCollections] = useState<Collection[]>([])
-  const [busyId, setBusyId] = useState<string | null>(null)
-
-  // road
+  // ポイント
   const [pickerPointId, setPickerPointId] = useState<string | null>(null)
   const [busyPoint, setBusyPoint] = useState(false)
+  const pollRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   useEffect(() => {
     let cancelled = false
@@ -169,12 +268,29 @@ export default function SpaceDetailPage() {
     }
   }, [id])
 
-  const setCollections = useCallback((updater: (cs: SpaceCollectionRef[]) => SpaceCollectionRef[]) => {
-    setSpace((prev) => (prev ? { ...prev, collections: updater(prev.collections ?? []) } : prev))
-  }, [])
   const setPoints = useCallback((updater: (ps: SpacePoint[]) => SpacePoint[]) => {
     setSpace((prev) => (prev ? { ...prev, points: updater(prev.points ?? []) } : prev))
   }, [])
+
+  // ポイント画像生成のポーリング: 生成中のポイントがある間、3秒ごとにスペースを再取得する
+  useEffect(() => {
+    const points = space?.points ?? []
+    const hasPending = points.some((p) => p.name && POLLING_STATUSES.has(p.generation_status))
+    if (!hasPending) return
+
+    pollRef.current = setTimeout(async () => {
+      try {
+        const fresh = await getSpace(id)
+        setSpace(fresh)
+      } catch {
+        // 一時的な失敗は次のポーリングで回復を試みる
+      }
+    }, 3000)
+
+    return () => {
+      if (pollRef.current) clearTimeout(pollRef.current)
+    }
+  }, [space?.points, id])
 
   const startEdit = () => {
     if (!space) return
@@ -214,44 +330,7 @@ export default function SpaceDetailPage() {
     }
   }
 
-  // --- room: collections ---
-  const openPicker = async () => {
-    setPicking(true)
-    if (allCollections.length === 0) {
-      try {
-        setAllCollections(await getCollections())
-      } catch {
-        // 取得失敗時は空表示
-      }
-    }
-  }
-  const handleAddCollection = async (collection: Collection) => {
-    setBusyId(collection.id)
-    try {
-      await addCollectionToSpace(id, collection.id)
-      setCollections((cs) => [
-        { id: collection.id, name: collection.name, description: collection.description, entry_count: collection.entry_count },
-        ...cs,
-      ])
-    } catch {
-      setError('追加に失敗しました')
-    } finally {
-      setBusyId(null)
-    }
-  }
-  const handleRemoveCollection = async (collectionId: string) => {
-    setBusyId(collectionId)
-    try {
-      await removeCollectionFromSpace(id, collectionId)
-      setCollections((cs) => cs.filter((c) => c.id !== collectionId))
-    } catch {
-      setError('除外に失敗しました')
-    } finally {
-      setBusyId(null)
-    }
-  }
-
-  // --- road: points ---
+  // --- ポイント操作 ---
   const handleAddPoint = async () => {
     setBusyPoint(true)
     try {
@@ -261,6 +340,15 @@ export default function SpaceDetailPage() {
       setError('ポイントの追加に失敗しました')
     } finally {
       setBusyPoint(false)
+    }
+  }
+  // 「生成」ボタン押下時のみ呼ばれる。名前を送ると同時に画像生成が始まる。
+  const handleGeneratePoint = async (pointId: string, name: string) => {
+    try {
+      const updated = await updateSpacePoint(id, pointId, { name })
+      setPoints((ps) => ps.map((p) => (p.id === pointId ? updated : p)))
+    } catch {
+      setError('画像生成の開始に失敗しました')
     }
   }
   const handleAssign = async (item: Item) => {
@@ -274,7 +362,12 @@ export default function SpaceDetailPage() {
       setError('カードの割り当てに失敗しました')
     }
   }
-  const handleClearPoint = async (pointId: string) => {
+  // room キャンバスでのドラッグ確定時に座標を state へ反映（保存は RoomCanvas が行う）
+  const handleMovePointXY = useCallback((pointId: string, x: number, y: number) => {
+    setPoints((ps) => ps.map((p) => (p.id === pointId ? { ...p, x, y } : p)))
+  }, [setPoints])
+
+  const handleClearCard = async (pointId: string) => {
     try {
       const updated = await updateSpacePoint(id, pointId, { item_id: null })
       setPoints((ps) => ps.map((p) => (p.id === pointId ? updated : p)))
@@ -322,10 +415,11 @@ export default function SpaceDetailPage() {
     )
   }
 
-  const collections = space.collections ?? []
   const points = space.points ?? []
-  const placedCollectionIds = new Set(collections.map((c) => c.id))
-  const pickable = allCollections.filter((c) => !placedCollectionIds.has(c.id))
+  const isRoad = space.space_type === 'road'
+  const intro = isRoad
+    ? '序数のあるポイントを並べ、各点に「名前から画像を生成」または「カードを割り当て」できます（連結法/ジャーニー法）。'
+    : '部屋のポイントをドラッグで間取りに配置できます。各ポイントの名前・生成・カード割り当ては下のリストで設定します。'
 
   return (
     <div className="max-w-3xl mx-auto px-6 py-12">
@@ -380,101 +474,34 @@ export default function SpaceDetailPage() {
 
       {error && <p className="text-sm text-destructive mb-4">{error}</p>}
 
-      {space.space_type === 'road' ? (
-        <section className="space-y-3">
-          <p className="text-sm text-muted-foreground">
-            序数のあるポイントを並べ、各点にカードを割り当てます（連結法/ジャーニー法）。
-          </p>
-          {points.length === 0 ? (
-            <p className="text-sm text-muted-foreground py-4">まだポイントがありません。「ポイントを追加」で順路の点を作りましょう。</p>
-          ) : (
-            <ol className="space-y-2">
-              {points.map((point, index) => (
-                <li key={point.id} className="flex items-center gap-3 rounded-xl border border-border bg-card px-3 py-2.5">
-                  <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-sm font-semibold text-white" style={{ backgroundColor: 'var(--palace)' }}>
-                    {index + 1}
-                  </span>
-                  <div className="min-w-0 flex-1"><PointBody item={point.item} /></div>
-                  <div className="flex shrink-0 items-center gap-1">
-                    <Button variant="outline" size="sm" onClick={() => setPickerPointId(point.id)}>
-                      {point.item ? '変更' : 'カードを割当'}
-                    </Button>
-                    {point.item && <Button variant="ghost" size="sm" onClick={() => handleClearPoint(point.id)}>クリア</Button>}
-                    <button onClick={() => movePoint(index, -1)} disabled={index === 0} aria-label="上へ" className="rounded p-1 text-muted-foreground hover:bg-muted disabled:opacity-30"><ChevronUp size={16} /></button>
-                    <button onClick={() => movePoint(index, 1)} disabled={index === points.length - 1} aria-label="下へ" className="rounded p-1 text-muted-foreground hover:bg-muted disabled:opacity-30"><ChevronDown size={16} /></button>
-                    <button onClick={() => handleRemovePoint(point.id)} aria-label="ポイントを削除" className="rounded p-1 text-muted-foreground hover:bg-muted hover:text-destructive"><Trash2 size={15} /></button>
-                  </div>
-                </li>
-              ))}
-            </ol>
-          )}
-          <div className="pt-1">
-            <Button variant="outline" size="sm" onClick={handleAddPoint} disabled={busyPoint} className="flex items-center gap-1.5">
-              <Plus size={14} />ポイントを追加
-            </Button>
-          </div>
-        </section>
-      ) : (
-        <section className="space-y-3">
-          <div className="flex items-center justify-between">
-            <h2 className="text-base font-semibold">コレクション</h2>
-            {!picking && (
-              <Button variant="outline" size="sm" onClick={openPicker} className="flex items-center gap-1.5">
-                <Plus size={14} />コレクションを配置
-              </Button>
-            )}
-          </div>
-
-          {picking && (
-            <div className="rounded-xl border border-border/70 bg-muted/30 p-4">
-              <div className="flex items-center justify-between mb-3">
-                <span className="text-sm font-medium">配置するコレクションを選択</span>
-                <Button variant="ghost" size="sm" onClick={() => setPicking(false)}>閉じる</Button>
-              </div>
-              {pickable.length === 0 ? (
-                <p className="text-sm text-muted-foreground">配置できるコレクションがありません。</p>
-              ) : (
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                  {pickable.map((collection) => (
-                    <div key={collection.id} className="flex items-center justify-between gap-2 rounded-xl border border-border bg-card px-4 py-3">
-                      <div className="flex items-center gap-2 min-w-0">
-                        <Layers size={16} style={{ color: 'var(--palace)' }} />
-                        <span className="font-medium text-sm truncate">{collection.name}</span>
-                      </div>
-                      <Button size="icon-sm" onClick={() => handleAddCollection(collection)} disabled={busyId === collection.id} aria-label="配置" className="rounded-full shrink-0">
-                        <Plus size={14} />
-                      </Button>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div>
-          )}
-
-          {collections.length === 0 ? (
-            <p className="text-sm text-muted-foreground py-2">まだコレクションが配置されていません。</p>
-          ) : (
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-              {collections.map((collection) => (
-                <div key={collection.id} className="flex items-center justify-between gap-2 rounded-xl border border-border bg-card px-4 py-3">
-                  <Link href={`/collections/${collection.id}`} className="min-w-0 flex-1 hover:opacity-80 transition-opacity">
-                    <div className="flex items-center gap-2 min-w-0">
-                      <Layers size={16} style={{ color: 'var(--palace)' }} />
-                      <div className="min-w-0">
-                        <span className="font-medium text-sm truncate block">{collection.name}</span>
-                        <span className="text-xs text-muted-foreground">{collection.entry_count} 件</span>
-                      </div>
-                    </div>
-                  </Link>
-                  <Button variant="destructive" size="icon-sm" onClick={() => handleRemoveCollection(collection.id)} disabled={busyId === collection.id} aria-label="外す" className="rounded-full shrink-0">
-                    <X size={14} />
-                  </Button>
-                </div>
-              ))}
-            </div>
-          )}
-        </section>
-      )}
+      <section className="space-y-3">
+        <p className="text-sm text-muted-foreground">{intro}</p>
+        {!isRoad && <RoomCanvas spaceId={id} points={points} onMoved={handleMovePointXY} />}
+        {points.length === 0 ? (
+          <p className="text-sm text-muted-foreground py-4">まだポイントがありません。「ポイントを追加」で点を作りましょう。</p>
+        ) : (
+          <ol className="space-y-2">
+            {points.map((point, index) => (
+              <PointRow
+                key={point.id}
+                point={point}
+                index={index}
+                total={points.length}
+                onGenerate={handleGeneratePoint}
+                onMove={movePoint}
+                onRemove={handleRemovePoint}
+                onAssignClick={setPickerPointId}
+                onClearCard={handleClearCard}
+              />
+            ))}
+          </ol>
+        )}
+        <div className="pt-1">
+          <Button variant="outline" size="sm" onClick={handleAddPoint} disabled={busyPoint} className="flex items-center gap-1.5">
+            <Plus size={14} />ポイントを追加
+          </Button>
+        </div>
+      </section>
 
       {pickerPointId && <AssignCardModal onSelect={handleAssign} onClose={() => setPickerPointId(null)} />}
     </div>

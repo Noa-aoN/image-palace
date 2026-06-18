@@ -6,8 +6,11 @@ import { Frame, Plus } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { getViews, createView } from '@/lib/api/views'
-import { VIEW_TYPES, viewTypeLabel } from '@/lib/view-types'
+import { getSpaces } from '@/lib/api/spaces'
+import { VIEW_TYPES, viewTypeLabel, IMPLEMENTED_VIEW_TYPES } from '@/lib/view-types'
+import { spaceTypeLabel } from '@/lib/space-types'
 import type { View } from '@/types/view'
+import type { Space } from '@/types/space'
 
 export default function ViewsPage() {
   const [views, setViews] = useState<View[]>([])
@@ -19,6 +22,18 @@ export default function ViewsPage() {
   const [viewType, setViewType] = useState('freeboard')
   const [submitting, setSubmitting] = useState(false)
   const [createError, setCreateError] = useState<string | null>(null)
+
+  // space_map 用: 配置先スペースの候補と選択
+  const [spaces, setSpaces] = useState<Space[]>([])
+  const [selectedSpaceId, setSelectedSpaceId] = useState('')
+
+  // スペース配置を選んだら配置先スペースの候補を読み込む
+  useEffect(() => {
+    if (viewType !== 'space_map' || spaces.length > 0) return
+    getSpaces()
+      .then(setSpaces)
+      .catch(() => setCreateError('スペースの取得に失敗しました'))
+  }, [viewType, spaces.length])
 
   useEffect(() => {
     let cancelled = false
@@ -44,13 +59,22 @@ export default function ViewsPage() {
       setCreateError('ビュー名を入力してください')
       return
     }
+    if (viewType === 'space_map' && !selectedSpaceId) {
+      setCreateError('配置先のスペースを選択してください')
+      return
+    }
     setSubmitting(true)
     setCreateError(null)
     try {
-      const created = await createView(trimmed, viewType)
+      const created = await createView(
+        trimmed,
+        viewType,
+        viewType === 'space_map' ? selectedSpaceId : undefined
+      )
       setViews((current) => [created, ...current])
       setName('')
       setViewType('freeboard')
+      setSelectedSpaceId('')
       setCreating(false)
     } catch (err: unknown) {
       const axiosErr = err as { response?: { data?: { errors?: string[] } } }
@@ -98,10 +122,24 @@ export default function ViewsPage() {
             {VIEW_TYPES.map((t) => (
               <option key={t} value={t}>
                 {viewTypeLabel(t)}
-                {t !== 'freeboard' ? '（準備中）' : ''}
+                {IMPLEMENTED_VIEW_TYPES.has(t) ? '' : '（準備中）'}
               </option>
             ))}
           </select>
+          {viewType === 'space_map' && (
+            <select
+              value={selectedSpaceId}
+              onChange={(e) => setSelectedSpaceId(e.target.value)}
+              disabled={submitting}
+              aria-label="配置先のスペース"
+              className="h-9 rounded-lg border border-input bg-background px-3 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+            >
+              <option value="">スペースを選択…</option>
+              {spaces.map((s) => (
+                <option key={s.id} value={s.id}>{s.name}（{spaceTypeLabel(s.space_type)}）</option>
+              ))}
+            </select>
+          )}
           <div className="flex gap-2">
             <Button type="submit" size="sm" disabled={submitting}>
               {submitting ? '作成中...' : '作成'}

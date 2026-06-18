@@ -58,7 +58,8 @@ module Api
 
       def summary
         monthly_limit = Items::CreateService::FREE_ITEM_LIMIT_PER_MONTH
-        monthly_count = current_user.items.created_this_month.count
+        # カード＋名前付きスペースポイントの合算（月間生成上限を共有）
+        monthly_count = current_user.monthly_generation_count
 
         render json: {
           total_count: current_user.items.count,

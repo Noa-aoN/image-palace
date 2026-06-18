@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_06_15_000001) do
+ActiveRecord::Schema[8.1].define(version: 2026_06_18_020000) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
   enable_extension "pgcrypto"
@@ -337,10 +337,15 @@ ActiveRecord::Schema[8.1].define(version: 2026_06_15_000001) do
 
   create_table "space_points", id: :uuid, default: -> { "gen_random_uuid()" }, force: :cascade do |t|
     t.datetime "created_at", null: false
+    t.string "generation_status", default: "pending", null: false
     t.uuid "item_id"
+    t.jsonb "metadata", default: {}, null: false
+    t.string "name"
     t.integer "position", default: 0, null: false
     t.uuid "space_id", null: false
     t.datetime "updated_at", null: false
+    t.float "x", default: 0.0, null: false
+    t.float "y", default: 0.0, null: false
     t.index ["space_id", "position"], name: "index_space_points_on_space_id_and_position"
     t.index ["space_id"], name: "index_space_points_on_space_id"
   end
@@ -404,21 +409,26 @@ ActiveRecord::Schema[8.1].define(version: 2026_06_15_000001) do
   create_table "view_items", id: :uuid, default: -> { "gen_random_uuid()" }, force: :cascade do |t|
     t.datetime "created_at", null: false
     t.uuid "item_id", null: false
+    t.uuid "space_point_id"
     t.datetime "updated_at", null: false
     t.uuid "view_id", null: false
     t.float "x", default: 0.0, null: false
     t.float "y", default: 0.0, null: false
     t.integer "z_index", default: 0, null: false
-    t.index ["view_id", "item_id"], name: "index_view_items_on_view_id_and_item_id", unique: true
+    t.index ["space_point_id"], name: "index_view_items_on_space_point_id"
+    t.index ["view_id", "item_id"], name: "index_view_items_on_view_and_item_freeboard", unique: true, where: "(space_point_id IS NULL)"
+    t.index ["view_id", "space_point_id"], name: "index_view_items_on_view_and_space_point", unique: true, where: "(space_point_id IS NOT NULL)"
     t.index ["view_id"], name: "index_view_items_on_view_id"
   end
 
   create_table "views", id: :uuid, default: -> { "gen_random_uuid()" }, force: :cascade do |t|
     t.datetime "created_at", null: false
     t.string "name", null: false
+    t.uuid "space_id"
     t.datetime "updated_at", null: false
     t.uuid "user_id", null: false
     t.string "view_type", default: "freeboard", null: false
+    t.index ["space_id"], name: "index_views_on_space_id"
     t.index ["user_id", "created_at"], name: "index_views_on_user_id_and_created_at"
     t.index ["user_id"], name: "index_views_on_user_id"
   end
@@ -461,6 +471,8 @@ ActiveRecord::Schema[8.1].define(version: 2026_06_15_000001) do
   add_foreign_key "subscriptions", "users", on_delete: :cascade
   add_foreign_key "tags", "users", on_delete: :cascade
   add_foreign_key "view_items", "items", on_delete: :cascade
+  add_foreign_key "view_items", "space_points", on_delete: :cascade
   add_foreign_key "view_items", "views", on_delete: :cascade
+  add_foreign_key "views", "spaces", on_delete: :nullify
   add_foreign_key "views", "users", on_delete: :cascade
 end

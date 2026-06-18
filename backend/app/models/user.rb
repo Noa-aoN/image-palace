@@ -16,12 +16,19 @@ class User < ApplicationRecord
   has_many :decks, dependent: :destroy
   has_many :collections, dependent: :destroy
   has_many :spaces, dependent: :destroy
+  has_many :space_points, through: :spaces
   has_many :views, dependent: :destroy
   has_many :tags, dependent: :destroy
   has_many :relations, dependent: :destroy
   has_many :shared_medias, dependent: :destroy
   has_many :subscriptions, dependent: :destroy
   has_one :active_subscription, -> { where(status: "active") }, class_name: "Subscription"
+
+  # 当月の生成数。カード（items）と、名前付きスペースポイント（画像生成を伴う）を
+  # 合算して数える。月間生成上限（月100枚）は両者で共有する。
+  def monthly_generation_count
+    items.created_this_month.count + space_points.named.created_this_month.count
+  end
 
   # == クラスメソッド =========================================================
   # OAuthプロバイダーからユーザーを見出し作成
