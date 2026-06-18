@@ -156,8 +156,10 @@ module Api
           base.merge(title: obj.title, media: serialize_media(obj.primary_media))
         when "Deck"
           base.merge(name: obj.name, item_count: obj.deck_items.size, cover: serialize_media(obj.cover&.primary_media))
-        when "Space", "View"
-          base.merge(name: obj.name)
+        when "Space"
+          base.merge(name: obj.name, cover: obj.cover_point ? serialize_point_image(obj.cover_point) : nil)
+        when "View"
+          base.merge(name: obj.name, cover: serialize_media(obj.cover&.primary_media))
         end
       end
     end

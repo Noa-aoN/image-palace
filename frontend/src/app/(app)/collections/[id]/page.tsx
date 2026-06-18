@@ -40,13 +40,13 @@ function entryLabel(e: CollectionEntry): string {
 }
 function entryImage(e: CollectionEntry): string | null {
   if (e.entry_type === 'Item') return e.media?.thumb_url ?? e.media?.url ?? null
-  if (e.entry_type === 'Deck') return e.cover?.thumb_url ?? e.cover?.url ?? null
-  return null
+  // Deck / Space / View はそれぞれのカバー画像
+  return e.cover?.thumb_url ?? e.cover?.url ?? null
 }
 
+// 全種別を正方形カバータイルに統一（名前=上・カバー=下、カバーが無ければ種別アイコン）
 function EntryTile({ entry, onRemove, busy }: { entry: CollectionEntry; onRemove: () => void; busy: boolean }) {
   const image = entryImage(entry)
-  const hasImage = entry.entry_type === 'Item' || entry.entry_type === 'Deck'
   const removeBtn = (
     <Button
       variant="destructive"
@@ -60,37 +60,22 @@ function EntryTile({ entry, onRemove, busy }: { entry: CollectionEntry; onRemove
     </Button>
   )
 
-  if (hasImage) {
-    // デッキ等のカバーも含め、タイルは一律で正方形に揃える（生成画像・デッキページと同比率）
-    const ratio = 'aspect-square'
-    return (
-      <div className="flex flex-col rounded-xl border border-border overflow-hidden bg-card">
-        <div className="px-3 py-2">
-          <span className="text-sm font-medium truncate block">{entryLabel(entry)}</span>
-        </div>
-        <div className={`relative w-full ${ratio} bg-muted overflow-hidden`}>
-          <Link href={entryHref(entry)} className="flex h-full w-full items-center justify-center hover:opacity-95 transition-opacity">
-            {image ? (
-              // eslint-disable-next-line @next/next/no-img-element
-              <img src={image} alt={entryLabel(entry)} className="w-full h-full object-cover" loading="lazy" />
-            ) : (
-              <span className="text-muted-foreground/60">{TYPE_META[entry.entry_type].icon}</span>
-            )}
-          </Link>
-          <div className="absolute top-1 right-1 z-10">{removeBtn}</div>
-        </div>
-      </div>
-    )
-  }
-
-  // スペース / ビュー（画像なし・行タイル）
   return (
-    <div className="flex items-center justify-between gap-2 rounded-xl border border-border bg-card px-4 py-3">
-      <Link href={entryHref(entry)} className="flex items-center gap-2 min-w-0 flex-1 hover:opacity-80 transition-opacity">
-        <span style={{ color: 'var(--palace)' }}>{TYPE_META[entry.entry_type].icon}</span>
-        <span className="font-medium text-sm truncate">{entryLabel(entry)}</span>
-      </Link>
-      {removeBtn}
+    <div className="flex flex-col rounded-xl border border-border overflow-hidden bg-card">
+      <div className="px-3 py-2">
+        <span className="text-sm font-medium truncate block">{entryLabel(entry)}</span>
+      </div>
+      <div className="relative w-full aspect-square bg-muted overflow-hidden">
+        <Link href={entryHref(entry)} className="flex h-full w-full items-center justify-center hover:opacity-95 transition-opacity">
+          {image ? (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img src={image} alt={entryLabel(entry)} className="w-full h-full object-cover" loading="lazy" />
+          ) : (
+            <span className="text-muted-foreground/60">{TYPE_META[entry.entry_type].icon}</span>
+          )}
+        </Link>
+        <div className="absolute top-1 right-1 z-10">{removeBtn}</div>
+      </div>
     </div>
   )
 }
@@ -421,7 +406,6 @@ export default function CollectionDetailPage() {
           {TYPE_ORDER.map((type) => {
             const entries = collection.entries.filter((e) => e.entry_type === type)
             if (entries.length === 0) return null
-            const grid = type === 'Item' || type === 'Deck'
             return (
               <section key={type} className="space-y-3">
                 <h2 className="text-base font-semibold flex items-center gap-2">
@@ -429,7 +413,7 @@ export default function CollectionDetailPage() {
                   {TYPE_META[type].label}
                   <span className="text-sm font-normal text-muted-foreground">{entries.length}</span>
                 </h2>
-                <div className={grid ? 'grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4' : 'grid grid-cols-1 sm:grid-cols-2 gap-3'}>
+                <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
                   {entries.map((entry) => (
                     <EntryTile
                       key={`${entry.entry_type}:${entry.id}`}
