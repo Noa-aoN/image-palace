@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import Link from 'next/link'
-import { Layers, Plus } from 'lucide-react'
+import { Library, Plus } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { getCollections, createCollection } from '@/lib/api/collections'
@@ -125,7 +125,7 @@ export default function CollectionsPage() {
               className="flex flex-col gap-2 rounded-xl border border-border bg-card px-5 py-4 hover:shadow-md transition-shadow"
             >
               <div className="flex items-center gap-2">
-                <Layers size={18} style={{ color: 'var(--palace)' }} />
+                <Library size={18} style={{ color: 'var(--palace)' }} />
                 <span className="font-medium truncate">{collection.name}</span>
               </div>
               {collection.description && (

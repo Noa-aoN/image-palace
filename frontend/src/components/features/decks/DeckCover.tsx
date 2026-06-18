@@ -1,7 +1,7 @@
 'use client'
 
 import { useState } from 'react'
-import { Library, ChevronLeft, ChevronRight } from 'lucide-react'
+import { Layers, ChevronLeft, ChevronRight } from 'lucide-react'
 import type { Deck } from '@/types/deck'
 import type { ItemMedia } from '@/types/item'
 
@@ -14,7 +14,7 @@ function mediaUrl(m: ItemMedia | { thumb_url?: string; url?: string } | null | u
 function Placeholder() {
   return (
     <div className="flex h-full w-full items-center justify-center bg-muted">
-      <Library size={24} className="text-muted-foreground/50" />
+      <Layers size={24} className="text-muted-foreground/50" />
     </div>
   )
 }
@@ -88,7 +88,7 @@ function Collage({ images, name }: { images: ItemMedia[]; name: string }) {
           <img key={m?.id ?? i} src={url} alt={name} className="h-full w-full object-cover" loading="lazy" />
         ) : (
           <div key={i} className="flex items-center justify-center bg-muted">
-            <Library size={14} className="text-muted-foreground/40" />
+            <Layers size={14} className="text-muted-foreground/40" />
           </div>
         )
       })}

@@ -27,12 +27,12 @@ export const NAV_GROUPS: NavGroup[] = [
   {
     items: [
       { href: '/dashboard', icon: <LayoutDashboard size={22} />, label: 'ダッシュボード' },
-      { href: '/items', icon: <GalleryHorizontal size={22} />, label: 'マイカード' },
       { href: '/library', icon: <LibraryBig size={22} />, label: 'ライブラリ' },
-      { href: '/decks', icon: <Library size={22} />, label: 'デッキ' },
-      { href: '/collections', icon: <Layers size={22} />, label: 'コレクション' },
-      { href: '/spaces', icon: <LayoutGrid size={22} />, label: 'スペース' },
-      { href: '/views', icon: <Frame size={22} />, label: 'ビュー' },
+      { href: '/items', icon: <GalleryHorizontal size={22} />, label: 'マイカード' },
+      { href: '/decks', icon: <Layers size={22} />, label: 'デッキ' },
+      { href: '/collections', icon: <Library size={22} />, label: 'コレクション' },
+      { href: '/spaces', icon: <Frame size={22} />, label: 'スペース' },
+      { href: '/views', icon: <LayoutGrid size={22} />, label: 'ビュー' },
       { href: '/tags', icon: <Tag size={22} />, label: 'タグ' },
     ],
   },

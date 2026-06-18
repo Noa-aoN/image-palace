@@ -2,7 +2,7 @@
 
 import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
-import { CircleUser } from 'lucide-react'
+import { CircleUser, Castle } from 'lucide-react'
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -47,15 +47,9 @@ export function AppHeader() {
       {/* 左: モバイルのハンバーガー（認証時のみ）＋ ロゴ */}
       <div className="flex items-center gap-1">
         {showUserMenu && <MobileNav />}
-        <Link href={isAuthenticated ? '/dashboard' : '/'} className="flex items-center">
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img
-            src="/logo-palace.svg"
-            alt="ImagePalace"
-            width={36}
-            height={36}
-            className="block"
-          />
+        <Link href={isAuthenticated ? '/dashboard' : '/'} className="flex items-center" aria-label="ImagePalace ホーム">
+          {/* ロゴは仮置き（宮殿アイコン）。正式ロゴ確定までのプレースホルダ */}
+          <Castle size={32} style={{ color: 'var(--palace)' }} />
         </Link>
       </div>
 

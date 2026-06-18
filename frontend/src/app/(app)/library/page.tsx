@@ -111,7 +111,7 @@ function CollectionTile({ collection }: { collection: Collection }) {
       className="shrink-0 w-44 flex flex-col gap-2 rounded-xl border border-border bg-card px-4 py-3 hover:shadow-md transition-shadow"
     >
       <div className="flex items-center gap-2">
-        <Layers size={16} style={{ color: 'var(--palace)' }} />
+        <Library size={16} style={{ color: 'var(--palace)' }} />
         <span className="font-medium text-sm truncate">{collection.name}</span>
       </div>
       <span className="text-xs text-muted-foreground mt-auto">{collection.entry_count} 件</span>
@@ -126,7 +126,7 @@ function SpaceTile({ space }: { space: Space }) {
       className="shrink-0 w-44 flex flex-col gap-2 rounded-xl border border-border bg-card px-4 py-3 hover:shadow-md transition-shadow"
     >
       <div className="flex items-center gap-2">
-        <LayoutGrid size={16} style={{ color: 'var(--palace)' }} />
+        <Frame size={16} style={{ color: 'var(--palace)' }} />
         <span className="font-medium text-sm truncate">{space.name}</span>
         <span className="ml-auto shrink-0 text-xs text-muted-foreground">{spaceTypeLabel(space.space_type)}</span>
       </div>
@@ -144,7 +144,7 @@ function ViewTile({ view }: { view: View }) {
       className="shrink-0 w-44 flex flex-col gap-2 rounded-xl border border-border bg-card px-4 py-3 hover:shadow-md transition-shadow"
     >
       <div className="flex items-center gap-2">
-        <Frame size={16} style={{ color: 'var(--palace)' }} />
+        <LayoutGrid size={16} style={{ color: 'var(--palace)' }} />
         <span className="font-medium text-sm truncate">{view.name}</span>
       </div>
       <span className="text-xs text-muted-foreground mt-auto">{viewTypeLabel(view.view_type)}</span>
@@ -222,7 +222,7 @@ function SearchDeckTile({ deck }: { deck: SearchDeck }) {
           // eslint-disable-next-line @next/next/no-img-element
           <img src={coverUrl} alt={deck.name} className="w-full h-full object-cover" loading="lazy" />
         ) : (
-          <Library size={24} className="text-muted-foreground/50" />
+          <Layers size={24} className="text-muted-foreground/50" />
         )}
       </div>
       <div className="px-3 py-2 flex items-center justify-between gap-1">
@@ -307,7 +307,7 @@ function SearchResultsView({
         </ResultGroup>
       )}
       {results.decks.length > 0 && (
-        <ResultGroup icon={<Library size={18} />} title="デッキ" count={results.decks.length}>
+        <ResultGroup icon={<Layers size={18} />} title="デッキ" count={results.decks.length}>
           <Rail>
             {results.decks.map((deck) => (
               <SearchDeckTile key={deck.id} deck={deck} />
@@ -316,13 +316,13 @@ function SearchResultsView({
         </ResultGroup>
       )}
       {results.collections.length > 0 && (
-        <ResultGroup icon={<Layers size={18} />} title="コレクション" count={results.collections.length}>
+        <ResultGroup icon={<Library size={18} />} title="コレクション" count={results.collections.length}>
           <Rail>
             {results.collections.map((collection) => (
               <SearchNamedTile
                 key={collection.id}
                 href={`/collections/${collection.id}`}
-                icon={<Layers size={16} />}
+                icon={<Library size={16} />}
                 name={collection.name}
                 sub={`${collection.entry_count} 件`}
               />
@@ -331,13 +331,13 @@ function SearchResultsView({
         </ResultGroup>
       )}
       {results.spaces.length > 0 && (
-        <ResultGroup icon={<LayoutGrid size={18} />} title="スペース" count={results.spaces.length}>
+        <ResultGroup icon={<Frame size={18} />} title="スペース" count={results.spaces.length}>
           <Rail>
             {results.spaces.map((space) => (
               <SearchNamedTile
                 key={space.id}
                 href={`/spaces/${space.id}`}
-                icon={<LayoutGrid size={16} />}
+                icon={<Frame size={16} />}
                 name={space.name}
               />
             ))}
@@ -345,13 +345,13 @@ function SearchResultsView({
         </ResultGroup>
       )}
       {results.views.length > 0 && (
-        <ResultGroup icon={<Frame size={18} />} title="ビュー" count={results.views.length}>
+        <ResultGroup icon={<LayoutGrid size={18} />} title="ビュー" count={results.views.length}>
           <Rail>
             {results.views.map((view) => (
               <SearchNamedTile
                 key={view.id}
                 href={`/views/${view.id}`}
-                icon={<Frame size={16} />}
+                icon={<LayoutGrid size={16} />}
                 name={view.name}
                 sub="ビュー"
               />
@@ -517,7 +517,7 @@ export default function LibraryPage() {
 
       {/* デッキ（カードを束ねる） */}
       <Shelf
-        icon={<Library size={20} />}
+        icon={<Layers size={20} />}
         title="デッキ"
         count={decks.length}
         href="/decks"
@@ -538,7 +538,7 @@ export default function LibraryPage() {
 
       {/* コレクション（デッキを束ねる） */}
       <Shelf
-        icon={<Layers size={20} />}
+        icon={<Library size={20} />}
         title="コレクション"
         count={collections.length}
         href="/collections"
@@ -559,7 +559,7 @@ export default function LibraryPage() {
 
       {/* スペース */}
       <Shelf
-        icon={<LayoutGrid size={20} />}
+        icon={<Frame size={20} />}
         title="スペース"
         count={spaces.length}
         href="/spaces"
@@ -580,7 +580,7 @@ export default function LibraryPage() {
 
       {/* ビュー（フリーボード） */}
       <Shelf
-        icon={<Frame size={20} />}
+        icon={<LayoutGrid size={20} />}
         title="ビュー"
         count={views.length}
         href="/views"
