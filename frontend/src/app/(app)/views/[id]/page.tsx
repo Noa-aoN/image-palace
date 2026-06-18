@@ -10,6 +10,7 @@ import { getViewDetail, updateView, deleteView } from '@/lib/api/views'
 import { viewTypeLabel } from '@/lib/view-types'
 import type { ViewDetail } from '@/types/view'
 import { FreeboardCanvas } from '@/components/features/views/FreeboardCanvas'
+import { SpaceMapCanvas } from '@/components/features/views/SpaceMapCanvas'
 
 export default function ViewEditorPage() {
   const { id } = useParams<{ id: string }>()
@@ -136,9 +137,11 @@ export default function ViewEditorPage() {
 
       {error && <p className="text-sm text-destructive mb-4">{error}</p>}
 
-      {/* ビュータイプごとの描画。今はフリーボードのみ（将来タイムライン等を追加） */}
+      {/* ビュータイプごとの描画（freeboard / space_map を実装済み） */}
       {view.view_type === 'freeboard' ? (
-        <FreeboardCanvas viewId={view.id} initialItems={view.items} />
+        <FreeboardCanvas viewId={view.id} initialItems={view.items ?? []} />
+      ) : view.view_type === 'space_map' ? (
+        <SpaceMapCanvas viewId={view.id} space={view.space} initialPoints={view.points ?? []} />
       ) : (
         <div className="flex-1 min-h-[40vh] flex flex-col items-center justify-center gap-2 rounded-xl border border-border text-center">
           <p className="text-base font-medium">{viewTypeLabel(view.view_type)}は準備中です</p>
