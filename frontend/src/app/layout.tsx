@@ -56,11 +56,15 @@ export default function RootLayout({
         </div>
         <CookieConsentBanner />
         <Analytics />
-        <Script
-          src="https://static.cloudflareinsights.com/beacon.min.js"
-          data-cf-beacon='{"token": "4e38ecb6245142e79a3367465b6788e5"}'
-          strategy="afterInteractive"
-        />
+        {/* Cloudflare Web Analytics ビーコンは本番ビルドのみ。
+            開発(localhost)では cloudflareinsights への送信が CORS で失敗しコンソールを汚すため読み込まない。 */}
+        {process.env.NODE_ENV === 'production' && (
+          <Script
+            src="https://static.cloudflareinsights.com/beacon.min.js"
+            data-cf-beacon='{"token": "4e38ecb6245142e79a3367465b6788e5"}'
+            strategy="afterInteractive"
+          />
+        )}
       </body>
     </html>
   )
