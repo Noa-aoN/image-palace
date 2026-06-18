@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
-import { Menu, X } from 'lucide-react'
+import { Menu, X, Castle } from 'lucide-react'
 import { NAV_GROUPS } from './nav-items'
 
 /**
@@ -46,8 +46,8 @@ export function MobileNav() {
             aria-label="ナビゲーション"
           >
             <div className="flex items-center justify-between px-3 pb-2">
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img src="/logo-palace.svg" alt="ImagePalace" width={32} height={32} />
+              {/* ロゴは仮置き（宮殿アイコン） */}
+              <Castle size={28} style={{ color: 'var(--palace)' }} aria-label="ImagePalace" />
               <button
                 onClick={() => setOpen(false)}
                 className="rounded p-1.5 hover:bg-black/5 transition-colors"

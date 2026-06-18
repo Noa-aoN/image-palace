@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react'
 import Link from 'next/link'
 import { useParams, useRouter } from 'next/navigation'
-import { Trash2, Pencil, Check, X, Plus, GalleryHorizontal, Library, LayoutGrid, Frame } from 'lucide-react'
+import { Trash2, Pencil, Check, X, Plus, GalleryHorizontal, Layers, LayoutGrid, Frame } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import {
@@ -22,9 +22,9 @@ type Pickable = { id: string; label: string; image: string | null; sub?: string 
 
 const TYPE_META: Record<CollectionEntryType, { label: string; icon: React.ReactNode; path: string }> = {
   Item: { label: 'カード', icon: <GalleryHorizontal size={16} />, path: 'items' },
-  Deck: { label: 'デッキ', icon: <Library size={16} />, path: 'decks' },
-  Space: { label: 'スペース', icon: <LayoutGrid size={16} />, path: 'spaces' },
-  View: { label: 'ビュー', icon: <Frame size={16} />, path: 'views' },
+  Deck: { label: 'デッキ', icon: <Layers size={16} />, path: 'decks' },
+  Space: { label: 'スペース', icon: <Frame size={16} />, path: 'spaces' },
+  View: { label: 'ビュー', icon: <LayoutGrid size={16} />, path: 'views' },
 }
 const TYPE_ORDER: CollectionEntryType[] = ['Item', 'Deck', 'Space', 'View']
 

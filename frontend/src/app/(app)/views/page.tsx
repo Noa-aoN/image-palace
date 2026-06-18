@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import Link from 'next/link'
-import { Frame, Plus } from 'lucide-react'
+import { LayoutGrid, Plus } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { getViews, createView } from '@/lib/api/views'
@@ -181,7 +181,7 @@ export default function ViewsPage() {
               className="flex flex-col gap-3 rounded-xl border border-border bg-card px-5 py-4 hover:shadow-md transition-shadow"
             >
               <div className="flex items-center gap-2">
-                <Frame size={18} style={{ color: 'var(--palace)' }} />
+                <LayoutGrid size={18} style={{ color: 'var(--palace)' }} />
                 <span className="font-medium truncate">{view.name}</span>
               </div>
               <span className="text-xs text-muted-foreground">{viewTypeLabel(view.view_type)}</span>
