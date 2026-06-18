@@ -68,9 +68,9 @@ function FirstImage({ images, name, fallback }: { images: CoverImageLike[]; name
             <ChevronRight size={16} />
           </button>
           <div className="pointer-events-none absolute bottom-1 left-0 right-0 flex justify-center gap-1 opacity-0 transition-opacity group-hover/cover:opacity-100">
-            {images.map((m, i) => (
+            {images.map((_m, i) => (
               <span
-                key={m?.id ?? i}
+                key={i}
                 className={`h-1.5 w-1.5 rounded-full ${i === safeIdx ? 'bg-white' : 'bg-white/50'}`}
               />
             ))}
@@ -92,7 +92,7 @@ function Collage({ images, name }: { images: CoverImageLike[]; name: string }) {
         const url = imgUrl(m)
         return url ? (
           // eslint-disable-next-line @next/next/no-img-element
-          <img key={m?.id ?? i} src={url} alt={name} className="h-full w-full object-cover" loading="lazy" />
+          <img key={i} src={url} alt={name} className="h-full w-full object-cover" loading="lazy" />
         ) : (
           <div key={i} className="flex items-center justify-center bg-muted">
             <Layers size={14} className="text-muted-foreground/40" />
