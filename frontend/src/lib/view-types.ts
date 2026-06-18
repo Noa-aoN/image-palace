@@ -6,7 +6,7 @@ export type ViewType = (typeof VIEW_TYPES)[number]
 
 export const VIEW_TYPE_LABELS: Record<string, string> = {
   freeboard: 'フリーボード',
-  space_map: 'スペースマッピング',
+  space_map: 'スペース配置',
   page: 'ページ',
   map: 'マップ',
   timeline: 'タイムライン',

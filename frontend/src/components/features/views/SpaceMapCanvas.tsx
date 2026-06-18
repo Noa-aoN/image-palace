@@ -165,14 +165,8 @@ export function SpaceMapCanvas({
     setPickerPointId(null)
     try {
       const updated = await placeCardOnPoint(viewId, pointId, item.id)
-      // 1カード1ポイント: 同じカードを別ポイントから移動した場合は元を空にする
-      setPoints((ps) =>
-        ps.map((p) => {
-          if (p.space_point_id === pointId) return updated
-          if (p.placed_item?.id === item.id) return { ...p, placed_item: null }
-          return p
-        })
-      )
+      // 同じカードは複数ポイントに置ける（再利用可）。対象ポイントのみ更新する。
+      setPoints((ps) => ps.map((p) => (p.space_point_id === pointId ? updated : p)))
     } catch {
       setError('カードの配置に失敗しました')
     }
@@ -187,10 +181,20 @@ export function SpaceMapCanvas({
     }
   }
 
+  // 同じカードが複数ポイントに配置されているとき、2回目以降のポイントにバッジを出す
+  const occurrence = new Map<string, number>()
+  const seenCount = new Map<string, number>()
+  points.forEach((p) => {
+    if (!p.placed_item) return
+    const n = (seenCount.get(p.placed_item.id) ?? 0) + 1
+    seenCount.set(p.placed_item.id, n)
+    occurrence.set(p.space_point_id, n)
+  })
+
   return (
     <div className="flex-1">
       <p className="mb-3 text-sm text-muted-foreground">
-        スペース「{space.name}」のポイントにカードを配置します。各ポイントの loci 画像を手掛かりに記憶を結び付けましょう。
+        スペース「{space.name}」のポイントにカードを配置します。各ポイントの loci 画像を手掛かりに記憶を結び付けましょう。同じカードは複数のポイントに置けます。
       </p>
       {error && <p className="mb-3 text-sm text-destructive">{error}</p>}
 
@@ -211,7 +215,18 @@ export function SpaceMapCanvas({
               <LociImage point={point} />
               <div className="min-w-0 flex-1">
                 <p className="truncate text-sm font-medium">{point.name || '（名前なし）'}</p>
-                <div className="mt-1"><PlacedCard item={point.placed_item} /></div>
+                <div className="mt-1 flex items-center gap-2">
+                  <PlacedCard item={point.placed_item} />
+                  {(occurrence.get(point.space_point_id) ?? 0) >= 2 && (
+                    <span
+                      className="shrink-0 rounded-full border px-2 py-0.5 text-[10px] font-medium"
+                      style={{ borderColor: 'var(--palace)', color: 'var(--palace)' }}
+                      title="このカードは複数のポイントに配置されています"
+                    >
+                      {occurrence.get(point.space_point_id)}回目
+                    </span>
+                  )}
+                </div>
               </div>
               <div className="flex shrink-0 items-center gap-1">
                 <Button variant="outline" size="sm" onClick={() => setPickerPointId(point.space_point_id)}>

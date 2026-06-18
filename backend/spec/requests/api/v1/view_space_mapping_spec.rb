@@ -65,7 +65,7 @@ RSpec.describe "Api::V1::Views space mapping", type: :request do
       expect(json_response["points"].first["placed_item"]["title"]).to eq("りんご")
     end
 
-    it "同じカードを別ポイントに置くと移動する（ビュー内でカードは一意）" do
+    it "同じカードを複数のポイントに配置できる（再利用）" do
       point2 = create(:space_point, space: space, position: 2, name: "台所")
       post "/api/v1/views/#{view.id}/points/#{point.id}",
         params: { item_id: item.id }, headers: headers, as: :json
@@ -73,8 +73,9 @@ RSpec.describe "Api::V1::Views space mapping", type: :request do
         params: { item_id: item.id }, headers: headers, as: :json
 
       expect(response).to have_http_status(:created)
-      expect(view.view_items.where(item_id: item.id).count).to eq(1)
-      expect(view.view_items.find_by(item_id: item.id).space_point_id).to eq(point2.id)
+      expect(view.view_items.where(item_id: item.id).count).to eq(2)
+      expect(view.view_items.where(item_id: item.id).pluck(:space_point_id))
+        .to contain_exactly(point.id, point2.id)
     end
 
     it "ビューのスペースに属さないポイントには配置できない（404）" do

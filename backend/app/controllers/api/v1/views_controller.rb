@@ -62,13 +62,12 @@ module Api
         head :no_content
       end
 
-      # space_map: スペースのポイントにカードを配置する（1ポイント1カード）
+      # space_map: スペースのポイントにカードを配置する。
+      # 1 ポイント 1 カード（差し替え可）。同じカードは複数ポイントに置ける（再利用可）。
       def place_on_point
         point = view_space_point!
         item = current_user.items.find(params[:item_id])
 
-        # 同じカードが他ポイントにあれば移動（view 内でカードは一意）
-        @view.view_items.where(item_id: item.id).where.not(space_point_id: point.id).destroy_all
         placement = @view.view_items.find_or_initialize_by(space_point_id: point.id)
         placement.item = item
         placement.save!

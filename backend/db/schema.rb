@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_06_18_010000) do
+ActiveRecord::Schema[8.1].define(version: 2026_06_18_020000) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
   enable_extension "pgcrypto"
@@ -416,7 +416,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_06_18_010000) do
     t.float "y", default: 0.0, null: false
     t.integer "z_index", default: 0, null: false
     t.index ["space_point_id"], name: "index_view_items_on_space_point_id"
-    t.index ["view_id", "item_id"], name: "index_view_items_on_view_id_and_item_id", unique: true
+    t.index ["view_id", "item_id"], name: "index_view_items_on_view_and_item_freeboard", unique: true, where: "(space_point_id IS NULL)"
     t.index ["view_id", "space_point_id"], name: "index_view_items_on_view_and_space_point", unique: true, where: "(space_point_id IS NOT NULL)"
     t.index ["view_id"], name: "index_view_items_on_view_id"
   end

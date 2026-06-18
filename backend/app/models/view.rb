@@ -14,7 +14,7 @@ class View < ApplicationRecord
 
   validates :name, presence: true, length: { maximum: NAME_MAX_LENGTH }
   validates :view_type, inclusion: { in: VIEW_TYPES }
-  # スペースマッピングは配置先スペース必須。指定スペースは本人所有であること。
+  # スペース配置は配置先スペース必須。指定スペースは本人所有であること。
   validates :space_id, presence: true, if: -> { view_type == "space_map" }
   validate :space_must_belong_to_user, if: -> { space_id.present? }
 
