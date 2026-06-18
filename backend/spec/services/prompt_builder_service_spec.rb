@@ -11,6 +11,12 @@ RSpec.describe PromptBuilderService do
       expect(result).to end_with(described_class::NO_TEXT_HINT)
     end
 
+    it "端で見切れるのを減らすフレーミング指示を添える" do
+      item = build(:item, user: user, title: "cat")
+      result = described_class.effective_prompt(item)
+      expect(result).to include(described_class::FRAMING_HINT)
+    end
+
     it "スタイルプリセットの修飾句を付与する" do
       item = build(:item, user: user, title: "cat", style: "watercolor")
       result = described_class.effective_prompt(item)

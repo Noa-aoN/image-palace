@@ -23,6 +23,9 @@ class PromptBuilderService
   # 軽い指示だけを末尾に添える。この文面はキャッシュキー（normalized_prompt）の一部に
   # なるため、変更すると既存キャッシュは自動で無効化される。
   NO_TEXT_HINT = "avoid any text, letters, or numbers"
+  # 被写体が端で見切れるのを減らす軽い指示（構図は引き続き自由）。
+  # NO_TEXT_HINT 同様キャッシュキーの一部になる。
+  FRAMING_HINT = "keep the whole subject within the frame, not cropped at the edges"
 
   def self.effective_prompt(item)
     parts = [ item.title.to_s.strip ]
@@ -33,6 +36,7 @@ class PromptBuilderService
     custom = item.custom_prompt.to_s.strip
     parts << custom if custom.present?
 
+    parts << FRAMING_HINT
     parts << NO_TEXT_HINT
     parts.join(", ")
   end
