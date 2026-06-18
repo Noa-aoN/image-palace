@@ -19,11 +19,16 @@ class Collection < ApplicationRecord
 
   scope :recent, -> { order(created_at: :desc) }
 
-  # カバー候補カード（コレクション内の Item エントリを追加順で）
+  # 自動カバー候補となるカード（画像）を追加順で集める。
+  # Item エントリはそのカード、Deck エントリはそのデッキの表紙カードを使う
+  # （コレクションがデッキ等だけでもカバーに中身の画像が反映されるようにする）。
   def cover_item_candidates
-    collection_entries.select { |e| e.entry_type == "Item" }
-                      .sort_by(&:created_at)
-                      .filter_map(&:entry)
+    collection_entries.sort_by(&:created_at).filter_map do |e|
+      case e.entry_type
+      when "Item" then e.entry
+      when "Deck" then e.entry&.cover
+      end
+    end
   end
 
   def cover
