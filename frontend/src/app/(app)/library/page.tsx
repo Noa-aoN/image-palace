@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import Link from 'next/link'
-import { GalleryHorizontal, Library, Layers, LayoutGrid, Frame, ChevronRight, Plus, Search, X } from 'lucide-react'
+import { GalleryHorizontal, Library, Layers, LayoutGrid, Frame, ChevronRight, Plus, Search, X, Route, DoorOpen } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { getItems, getItemsSummary } from '@/lib/api/items'
 import { getDecks } from '@/lib/api/decks'
@@ -11,6 +11,7 @@ import { getSpaces } from '@/lib/api/spaces'
 import { getViews } from '@/lib/api/views'
 import { searchLibrary } from '@/lib/api/search'
 import { DeckCover } from '@/components/features/decks/DeckCover'
+import { EntityCover } from '@/components/features/shared/EntityCover'
 import type { Item } from '@/types/item'
 import type { Deck } from '@/types/deck'
 import type { Collection } from '@/types/collection'
@@ -104,17 +105,32 @@ function DeckTile({ deck }: { deck: Deck }) {
   )
 }
 
+// カバー画像が無いスペースのフォールバック（ルーム=部屋 / ロード=道）
+function SpaceCoverFallback({ spaceType }: { spaceType: string }) {
+  return (
+    <div className="flex h-full w-full items-center justify-center bg-muted">
+      {spaceType === 'road' ? (
+        <Route size={24} className="text-muted-foreground/50" />
+      ) : (
+        <DoorOpen size={24} className="text-muted-foreground/50" />
+      )}
+    </div>
+  )
+}
+
 function CollectionTile({ collection }: { collection: Collection }) {
   return (
     <Link
       href={`/collections/${collection.id}`}
-      className="shrink-0 w-44 flex flex-col gap-2 rounded-xl border border-border bg-card px-4 py-3 hover:shadow-md transition-shadow"
+      className="shrink-0 w-40 flex flex-col rounded-xl border border-border overflow-hidden bg-card hover:shadow-md transition-shadow"
     >
-      <div className="flex items-center gap-2">
-        <Library size={16} style={{ color: 'var(--palace)' }} />
-        <span className="font-medium text-sm truncate">{collection.name}</span>
+      <div className="px-3 py-2 flex items-center justify-between gap-1">
+        <span className="text-sm font-medium truncate">{collection.name}</span>
+        <span className="text-xs text-muted-foreground shrink-0">{collection.entry_count}</span>
       </div>
-      <span className="text-xs text-muted-foreground mt-auto">{collection.entry_count} 件</span>
+      <div className="w-full aspect-square bg-muted overflow-hidden">
+        <EntityCover cover={collection} />
+      </div>
     </Link>
   )
 }
@@ -123,16 +139,15 @@ function SpaceTile({ space }: { space: Space }) {
   return (
     <Link
       href={`/spaces/${space.id}`}
-      className="shrink-0 w-44 flex flex-col gap-2 rounded-xl border border-border bg-card px-4 py-3 hover:shadow-md transition-shadow"
+      className="shrink-0 w-40 flex flex-col rounded-xl border border-border overflow-hidden bg-card hover:shadow-md transition-shadow"
     >
-      <div className="flex items-center gap-2">
-        <Frame size={16} style={{ color: 'var(--palace)' }} />
-        <span className="font-medium text-sm truncate">{space.name}</span>
-        <span className="ml-auto shrink-0 text-xs text-muted-foreground">{spaceTypeLabel(space.space_type)}</span>
+      <div className="px-3 py-2 flex items-center justify-between gap-1">
+        <span className="text-sm font-medium truncate">{space.name}</span>
+        <span className="text-xs text-muted-foreground shrink-0">{spaceTypeLabel(space.space_type)}</span>
       </div>
-      {space.description && (
-        <span className="text-xs text-muted-foreground line-clamp-2">{space.description}</span>
-      )}
+      <div className="w-full aspect-square bg-muted overflow-hidden">
+        <EntityCover cover={space} fallback={<SpaceCoverFallback spaceType={space.space_type} />} />
+      </div>
     </Link>
   )
 }
@@ -141,13 +156,15 @@ function ViewTile({ view }: { view: View }) {
   return (
     <Link
       href={`/views/${view.id}`}
-      className="shrink-0 w-44 flex flex-col gap-2 rounded-xl border border-border bg-card px-4 py-3 hover:shadow-md transition-shadow"
+      className="shrink-0 w-40 flex flex-col rounded-xl border border-border overflow-hidden bg-card hover:shadow-md transition-shadow"
     >
-      <div className="flex items-center gap-2">
-        <LayoutGrid size={16} style={{ color: 'var(--palace)' }} />
-        <span className="font-medium text-sm truncate">{view.name}</span>
+      <div className="px-3 py-2 flex items-center justify-between gap-1">
+        <span className="text-sm font-medium truncate">{view.name}</span>
+        <span className="text-xs text-muted-foreground shrink-0">{viewTypeLabel(view.view_type)}</span>
       </div>
-      <span className="text-xs text-muted-foreground mt-auto">{viewTypeLabel(view.view_type)}</span>
+      <div className="w-full aspect-square bg-muted overflow-hidden">
+        <EntityCover cover={view} />
+      </div>
     </Link>
   )
 }
