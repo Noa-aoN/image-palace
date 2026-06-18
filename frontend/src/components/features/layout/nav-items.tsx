@@ -16,15 +16,30 @@ export interface NavItem {
   label: string
 }
 
-// サイドバー（デスクトップ）とモバイルドロワーで共有するナビゲーション項目
-export const NAV_ITEMS: NavItem[] = [
-  { href: '/dashboard', icon: <LayoutDashboard size={22} />, label: 'ダッシュボード' },
-  { href: '/items', icon: <GalleryHorizontal size={22} />, label: 'マイカード' },
-  { href: '/library', icon: <LibraryBig size={22} />, label: 'ライブラリ' },
-  { href: '/decks', icon: <Library size={22} />, label: 'デッキ' },
-  { href: '/collections', icon: <Layers size={22} />, label: 'コレクション' },
-  { href: '/spaces', icon: <LayoutGrid size={22} />, label: 'スペース' },
-  { href: '/views', icon: <Frame size={22} />, label: 'ビュー' },
-  { href: '/tags', icon: <Tag size={22} />, label: 'タグ' },
-  { href: '/items/new', icon: <Plus size={22} />, label: 'カードを作成' },
+export interface NavGroup {
+  items: NavItem[]
+}
+
+// サイドバー（デスクトップ）とモバイルドロワーで共有するナビゲーション項目。
+// グループ間には区切り線を入れて「各ページ系」と「作成ジャンプ系」を整理する。
+export const NAV_GROUPS: NavGroup[] = [
+  // 各ページ系
+  {
+    items: [
+      { href: '/dashboard', icon: <LayoutDashboard size={22} />, label: 'ダッシュボード' },
+      { href: '/items', icon: <GalleryHorizontal size={22} />, label: 'マイカード' },
+      { href: '/library', icon: <LibraryBig size={22} />, label: 'ライブラリ' },
+      { href: '/decks', icon: <Library size={22} />, label: 'デッキ' },
+      { href: '/collections', icon: <Layers size={22} />, label: 'コレクション' },
+      { href: '/spaces', icon: <LayoutGrid size={22} />, label: 'スペース' },
+      { href: '/views', icon: <Frame size={22} />, label: 'ビュー' },
+      { href: '/tags', icon: <Tag size={22} />, label: 'タグ' },
+    ],
+  },
+  // 作成ジャンプ系
+  {
+    items: [
+      { href: '/items/new', icon: <Plus size={22} />, label: 'カードを作成' },
+    ],
+  },
 ]

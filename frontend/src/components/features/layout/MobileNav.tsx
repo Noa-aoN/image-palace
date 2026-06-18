@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { Menu, X } from 'lucide-react'
-import { NAV_ITEMS } from './nav-items'
+import { NAV_GROUPS } from './nav-items'
 
 /**
  * モバイル（<md）用のナビゲーション。ヘッダー左のハンバーガーで
@@ -57,25 +57,35 @@ export function MobileNav() {
               </button>
             </div>
 
-            <div className="flex flex-col gap-1 px-2 pt-2">
-              {NAV_ITEMS.map((item) => {
-                const isActive = pathname === item.href || pathname.startsWith(item.href + '/')
-                return (
-                  <Link
-                    key={item.href}
-                    href={item.href}
-                    onClick={() => setOpen(false)}
-                    className="flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-colors hover:bg-black/5"
-                    style={{
-                      color: isActive ? 'var(--palace)' : 'inherit',
-                      backgroundColor: isActive ? 'rgba(198,167,94,0.1)' : undefined,
-                    }}
-                  >
-                    <span className="shrink-0">{item.icon}</span>
-                    <span className="truncate">{item.label}</span>
-                  </Link>
-                )
-              })}
+            <div className="flex flex-col px-2 pt-2">
+              {NAV_GROUPS.map((group, groupIndex) => (
+                <div key={groupIndex} className="flex flex-col gap-1">
+                  {groupIndex > 0 && (
+                    <hr
+                      className="my-2 mx-3 border-0 border-t"
+                      style={{ borderColor: 'var(--palace)', opacity: 0.2 }}
+                    />
+                  )}
+                  {group.items.map((item) => {
+                    const isActive = pathname === item.href || pathname.startsWith(item.href + '/')
+                    return (
+                      <Link
+                        key={item.href}
+                        href={item.href}
+                        onClick={() => setOpen(false)}
+                        className="flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-colors hover:bg-black/5"
+                        style={{
+                          color: isActive ? 'var(--palace)' : 'inherit',
+                          backgroundColor: isActive ? 'rgba(198,167,94,0.1)' : undefined,
+                        }}
+                      >
+                        <span className="shrink-0">{item.icon}</span>
+                        <span className="truncate">{item.label}</span>
+                      </Link>
+                    )
+                  })}
+                </div>
+              ))}
             </div>
           </nav>
         </div>
