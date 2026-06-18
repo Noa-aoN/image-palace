@@ -8,6 +8,7 @@ import { Input } from '@/components/ui/input'
 import { getViews, createView } from '@/lib/api/views'
 import { getSpaces } from '@/lib/api/spaces'
 import { VIEW_TYPES, viewTypeLabel, IMPLEMENTED_VIEW_TYPES } from '@/lib/view-types'
+import { spaceTypeLabel } from '@/lib/space-types'
 import type { View } from '@/types/view'
 import type { Space } from '@/types/space'
 
@@ -26,7 +27,7 @@ export default function ViewsPage() {
   const [spaces, setSpaces] = useState<Space[]>([])
   const [selectedSpaceId, setSelectedSpaceId] = useState('')
 
-  // スペースマッピングを選んだら配置先スペースの候補を読み込む
+  // スペース配置を選んだら配置先スペースの候補を読み込む
   useEffect(() => {
     if (viewType !== 'space_map' || spaces.length > 0) return
     getSpaces()
@@ -135,7 +136,7 @@ export default function ViewsPage() {
             >
               <option value="">スペースを選択…</option>
               {spaces.map((s) => (
-                <option key={s.id} value={s.id}>{s.name}</option>
+                <option key={s.id} value={s.id}>{s.name}（{spaceTypeLabel(s.space_type)}）</option>
               ))}
             </select>
           )}
