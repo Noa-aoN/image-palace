@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import Link from 'next/link'
 import { useParams, useRouter } from 'next/navigation'
-import { Trash2, Pencil, Check, X, Plus, ChevronUp, ChevronDown, Search, Loader2 } from 'lucide-react'
+import { Trash2, Pencil, Check, X, Plus, ChevronUp, ChevronDown, Search, Loader2, Route, DoorOpen } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import {
@@ -14,12 +14,30 @@ import {
   updateSpacePoint,
   removeSpacePoint,
   reorderSpacePoints,
+  uploadSpaceCover,
+  removeSpaceCover,
 } from '@/lib/api/spaces'
 import { getItemsPage } from '@/lib/api/items'
 import { spaceTypeLabel } from '@/lib/space-types'
 import { RoomCanvas } from '@/components/features/views/RoomCanvas'
+import { EntityCover } from '@/components/features/shared/EntityCover'
+import { CoverSettings } from '@/components/features/shared/CoverSettings'
 import type { SpaceDetail, SpacePoint } from '@/types/space'
 import type { Item } from '@/types/item'
+import type { CoverType } from '@/types/cover'
+
+// カバー画像が無いスペースのフォールバック（ルーム=部屋 / ロード=道）
+function SpaceCoverFallback({ spaceType }: { spaceType: string }) {
+  return (
+    <div className="flex h-full w-full items-center justify-center bg-muted">
+      {spaceType === 'road' ? (
+        <Route size={28} className="text-muted-foreground/50" />
+      ) : (
+        <DoorOpen size={28} className="text-muted-foreground/50" />
+      )}
+    </div>
+  )
+}
 
 // 生成中とみなすステータス（ポーリング継続条件）
 const POLLING_STATUSES = new Set(['pending', 'processing'])
@@ -252,6 +270,7 @@ export default function SpaceDetailPage() {
   // ポイント
   const [pickerPointId, setPickerPointId] = useState<string | null>(null)
   const [busyPoint, setBusyPoint] = useState(false)
+  const [coverBusy, setCoverBusy] = useState(false)
   const pollRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   useEffect(() => {
@@ -331,6 +350,44 @@ export default function SpaceDetailPage() {
   }
 
   // --- ポイント操作 ---
+  // カバー設定（デッキ踏襲。候補はポイントの生成画像）
+  const handleSetCoverType = async (coverType: CoverType) => {
+    if (!space || space.cover_type === coverType) return
+    setCoverBusy(true)
+    try {
+      const updated = await updateSpace(id, { cover_type: coverType })
+      setSpace((prev) => (prev ? { ...prev, ...updated } : prev))
+    } catch {
+      setError('カバー表示の変更に失敗しました')
+    } finally {
+      setCoverBusy(false)
+    }
+  }
+  const handleUploadCover = async (file: File) => {
+    if (!space) return
+    setCoverBusy(true)
+    try {
+      const updated = await uploadSpaceCover(id, file)
+      setSpace((prev) => (prev ? { ...prev, ...updated } : prev))
+    } catch {
+      setError('画像のアップロードに失敗しました')
+    } finally {
+      setCoverBusy(false)
+    }
+  }
+  const handleRemoveCover = async () => {
+    if (!space) return
+    setCoverBusy(true)
+    try {
+      const updated = await removeSpaceCover(id)
+      setSpace((prev) => (prev ? { ...prev, ...updated } : prev))
+    } catch {
+      setError('画像の削除に失敗しました')
+    } finally {
+      setCoverBusy(false)
+    }
+  }
+
   const handleAddPoint = async () => {
     setBusyPoint(true)
     try {
@@ -471,6 +528,24 @@ export default function SpaceDetailPage() {
           </Button>
         </div>
       )}
+
+      {/* カバー（ヘッダー）設定 */}
+      <div className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-start">
+        <div className="aspect-square w-40 shrink-0 overflow-hidden rounded-xl border border-border bg-muted">
+          <EntityCover cover={space} fallback={<SpaceCoverFallback spaceType={space.space_type} />} />
+        </div>
+        <div className="flex-1">
+          <CoverSettings
+            coverType={space.cover_type}
+            busy={coverBusy}
+            hasCustom={!!space.cover_image}
+            helpText="先頭/コラージュ: ポイントの生成画像を使用 / カスタム: アップロード画像"
+            onSelectType={handleSetCoverType}
+            onUpload={handleUploadCover}
+            onRemove={handleRemoveCover}
+          />
+        </div>
+      </div>
 
       {error && <p className="text-sm text-destructive mb-4">{error}</p>}
 

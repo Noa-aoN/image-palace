@@ -40,12 +40,16 @@ Rails.application.routes.draw do
         member do
           post "entries", action: :add_entry
           delete "entries/:entry_type/:entry_id", action: :remove_entry
+          post "cover_image", action: :upload_cover
+          delete "cover_image", action: :remove_cover
         end
       end
       resources :spaces, only: [ :index, :create, :show, :update, :destroy ] do
         member do
           post "collections", action: :add_collection
           delete "collections/:collection_id", action: :remove_collection
+          post "cover_image", action: :upload_cover
+          delete "cover_image", action: :remove_cover
         end
         resources :points, controller: "space_points", only: [ :create, :update, :destroy ] do
           collection do
@@ -58,6 +62,8 @@ Rails.application.routes.draw do
           post "items", action: :add_item
           patch "items/:item_id", action: :update_item
           delete "items/:item_id", action: :remove_item
+          post "cover_image", action: :upload_cover
+          delete "cover_image", action: :remove_cover
           # space_map 種別: スペースのポイントへカードを配置/クリア
           post "points/:space_point_id", action: :place_on_point
           delete "points/:space_point_id", action: :clear_point

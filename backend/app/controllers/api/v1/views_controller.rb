@@ -4,7 +4,8 @@ module Api
       include ItemSerialization
 
       before_action :set_view, only: [
-        :show, :update, :destroy, :add_item, :update_item, :remove_item, :place_on_point, :clear_point
+        :show, :update, :destroy, :add_item, :update_item, :remove_item, :place_on_point, :clear_point,
+        :upload_cover, :remove_cover
       ]
 
       def index
@@ -25,7 +26,9 @@ module Api
       end
 
       def update
-        @view.update!(view_params)
+        @view.assign_attributes(view_update_params)
+        validate_cover!
+        @view.save!
         render json: serialize_view(@view)
       rescue ActiveRecord::RecordInvalid => e
         render json: { errors: e.record.errors.full_messages }, status: :unprocessable_entity
@@ -76,6 +79,25 @@ module Api
         render json: { errors: e.record.errors.full_messages }, status: :unprocessable_entity
       end
 
+      # POST /api/v1/views/:id/cover_image （multipart: cover_image）
+      def upload_cover
+        file = params[:cover_image]
+        return render(json: { errors: [ "画像が指定されていません" ] }, status: :unprocessable_entity) if file.blank?
+
+        @view.cover_image.attach(file)
+        @view.update!(cover_type: "custom")
+        render json: serialize_view(@view)
+      rescue ActiveRecord::RecordInvalid => e
+        render json: { errors: e.record.errors.full_messages }, status: :unprocessable_entity
+      end
+
+      # DELETE /api/v1/views/:id/cover_image
+      def remove_cover
+        @view.cover_image.purge if @view.cover_image.attached?
+        @view.update!(cover_type: "first_card")
+        render json: serialize_view(@view)
+      end
+
       # space_map: ポイントからカードを外す
       def clear_point
         @view.view_items.find_by(space_point_id: params[:space_point_id])&.destroy!
@@ -98,6 +120,19 @@ module Api
         params.require(:view).permit(:name, :view_type, :space_id)
       end
 
+      def view_update_params
+        params.require(:view).permit(:name, :cover_item_id, :cover_type)
+      end
+
+      # 表紙はビューに配置したカードのみ指定可能
+      def validate_cover!
+        return if @view.cover_item_id.blank?
+        return if @view.view_items.exists?(item_id: @view.cover_item_id)
+
+        @view.errors.add(:cover_item_id, "はこのビューに配置したカードを指定してください")
+        raise ActiveRecord::RecordInvalid, @view
+      end
+
       def placement_params
         params.permit(:x, :y, :z_index)
       end
@@ -108,6 +143,11 @@ module Api
           name: view.name,
           view_type: view.view_type,
           space_id: view.space_id,
+          cover_type: view.cover_type,
+          cover_item_id: view.cover_item_id,
+          cover: serialize_media(view.cover&.primary_media),
+          cover_images: view.cover_cards.map { |item| serialize_media(item.primary_media) }.compact,
+          cover_image: serialize_attached_cover(view.cover_image),
           created_at: view.created_at
         }
       end

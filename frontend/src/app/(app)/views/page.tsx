@@ -2,13 +2,14 @@
 
 import { useEffect, useState } from 'react'
 import Link from 'next/link'
-import { LayoutGrid, Plus } from 'lucide-react'
+import { Plus } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { getViews, createView } from '@/lib/api/views'
 import { getSpaces } from '@/lib/api/spaces'
 import { VIEW_TYPES, viewTypeLabel, IMPLEMENTED_VIEW_TYPES } from '@/lib/view-types'
 import { spaceTypeLabel } from '@/lib/space-types'
+import { EntityCover } from '@/components/features/shared/EntityCover'
 import type { View } from '@/types/view'
 import type { Space } from '@/types/space'
 
@@ -158,9 +159,9 @@ export default function ViewsPage() {
       )}
 
       {loading ? (
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-          {Array.from({ length: 6 }).map((_, i) => (
-            <div key={i} className="h-28 rounded-xl border border-border bg-muted animate-pulse" />
+        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
+          {Array.from({ length: 8 }).map((_, i) => (
+            <div key={i} className="aspect-square rounded-xl border border-border bg-muted animate-pulse" />
           ))}
         </div>
       ) : error ? (
@@ -173,18 +174,20 @@ export default function ViewsPage() {
           {!creating && <Button onClick={() => setCreating(true)}>最初のビューを作成</Button>}
         </div>
       ) : (
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
           {views.map((view) => (
             <Link
               key={view.id}
               href={`/views/${view.id}`}
-              className="flex flex-col gap-3 rounded-xl border border-border bg-card px-5 py-4 hover:shadow-md transition-shadow"
+              className="flex flex-col rounded-xl border border-border overflow-hidden bg-card hover:shadow-md transition-shadow"
             >
-              <div className="flex items-center gap-2">
-                <LayoutGrid size={18} style={{ color: 'var(--palace)' }} />
+              <div className="px-4 py-3 flex items-center justify-between gap-2">
                 <span className="font-medium truncate">{view.name}</span>
+                <span className="shrink-0 text-xs text-muted-foreground">{viewTypeLabel(view.view_type)}</span>
               </div>
-              <span className="text-xs text-muted-foreground">{viewTypeLabel(view.view_type)}</span>
+              <div className="w-full aspect-square bg-muted overflow-hidden">
+                <EntityCover cover={view} />
+              </div>
             </Link>
           ))}
         </div>

@@ -38,6 +38,18 @@ module ItemSerialization
     }
   end
 
+  # has_one_attached の custom カバー画像（デッキ/コレクション/スペース/ビュー共通）
+  def serialize_attached_cover(attachment)
+    return nil unless attachment.attached?
+    return nil unless blob_available?(attachment.blob)
+
+    blob = attachment.blob
+    {
+      url: media_url(blob),
+      thumb_url: thumbnail_url(blob)
+    }
+  end
+
   def serialize_media(media)
     return nil unless media&.file&.attached?
     return nil unless blob_available?(media.file.blob)

@@ -1,5 +1,6 @@
 import { apiClient } from './client'
 import type { Space, SpaceDetail, SpacePoint } from '@/types/space'
+import type { CoverType } from '@/types/cover'
 
 export async function getSpaces(): Promise<Space[]> {
   const res = await apiClient.get<{ spaces: Space[] }>('/api/v1/spaces')
@@ -24,9 +25,21 @@ export async function createSpace(
 
 export async function updateSpace(
   id: string,
-  payload: { name?: string; description?: string }
+  payload: { name?: string; description?: string; cover_space_point_id?: string | null; cover_type?: CoverType }
 ): Promise<Space> {
   const res = await apiClient.patch<Space>(`/api/v1/spaces/${id}`, { space: payload })
+  return res.data
+}
+
+export async function uploadSpaceCover(id: string, file: File): Promise<Space> {
+  const form = new FormData()
+  form.append('cover_image', file)
+  const res = await apiClient.post<Space>(`/api/v1/spaces/${id}/cover_image`, form)
+  return res.data
+}
+
+export async function removeSpaceCover(id: string): Promise<Space> {
+  const res = await apiClient.delete<Space>(`/api/v1/spaces/${id}/cover_image`)
   return res.data
 }
 

@@ -6,11 +6,14 @@ import { useParams, useRouter } from 'next/navigation'
 import { Trash2, Pencil, Check, X } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
-import { getViewDetail, updateView, deleteView } from '@/lib/api/views'
+import { getViewDetail, updateView, deleteView, uploadViewCover, removeViewCover } from '@/lib/api/views'
 import { viewTypeLabel } from '@/lib/view-types'
 import type { ViewDetail } from '@/types/view'
+import type { CoverType } from '@/types/cover'
 import { FreeboardCanvas } from '@/components/features/views/FreeboardCanvas'
 import { SpaceMapCanvas } from '@/components/features/views/SpaceMapCanvas'
+import { EntityCover } from '@/components/features/shared/EntityCover'
+import { CoverSettings } from '@/components/features/shared/CoverSettings'
 
 export default function ViewEditorPage() {
   const { id } = useParams<{ id: string }>()
@@ -67,6 +70,45 @@ export default function ViewEditorPage() {
       setError('削除に失敗しました')
       setDeleting(false)
       setConfirmDelete(false)
+    }
+  }
+
+  // カバー設定（デッキ踏襲。候補は配置したカード）
+  const [coverBusy, setCoverBusy] = useState(false)
+  const handleSetCoverType = async (coverType: CoverType) => {
+    if (!view || view.cover_type === coverType) return
+    setCoverBusy(true)
+    try {
+      const updated = await updateView(id, { cover_type: coverType })
+      setView((prev) => (prev ? { ...prev, ...updated } : prev))
+    } catch {
+      setError('カバー表示の変更に失敗しました')
+    } finally {
+      setCoverBusy(false)
+    }
+  }
+  const handleUploadCover = async (file: File) => {
+    if (!view) return
+    setCoverBusy(true)
+    try {
+      const updated = await uploadViewCover(id, file)
+      setView((prev) => (prev ? { ...prev, ...updated } : prev))
+    } catch {
+      setError('画像のアップロードに失敗しました')
+    } finally {
+      setCoverBusy(false)
+    }
+  }
+  const handleRemoveCover = async () => {
+    if (!view) return
+    setCoverBusy(true)
+    try {
+      const updated = await removeViewCover(id)
+      setView((prev) => (prev ? { ...prev, ...updated } : prev))
+    } catch {
+      setError('画像の削除に失敗しました')
+    } finally {
+      setCoverBusy(false)
     }
   }
 
@@ -133,6 +175,24 @@ export default function ViewEditorPage() {
           <Trash2 size={14} />
           {deleting ? '削除中...' : confirmDelete ? '本当に削除' : '削除'}
         </Button>
+      </div>
+
+      {/* カバー（ヘッダー）設定 */}
+      <div className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-start">
+        <div className="aspect-square w-40 shrink-0 overflow-hidden rounded-xl border border-border bg-muted">
+          <EntityCover cover={view} />
+        </div>
+        <div className="flex-1">
+          <CoverSettings
+            coverType={view.cover_type}
+            busy={coverBusy}
+            hasCustom={!!view.cover_image}
+            helpText="先頭/コラージュ: ビューに配置したカードを使用 / カスタム: アップロード画像"
+            onSelectType={handleSetCoverType}
+            onUpload={handleUploadCover}
+            onRemove={handleRemoveCover}
+          />
+        </div>
       </div>
 
       {error && <p className="text-sm text-destructive mb-4">{error}</p>}

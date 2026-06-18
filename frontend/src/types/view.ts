@@ -1,10 +1,16 @@
 import type { ItemMedia, GenerationStatus } from './item'
+import type { CoverType, CoverImage } from './cover'
 
 export interface View {
   id: string
   name: string
   view_type: string
   space_id?: string | null // space_map 種別の配置先スペース
+  cover_type: CoverType
+  cover_item_id: string | null
+  cover: ItemMedia | null
+  cover_images: ItemMedia[]
+  cover_image: CoverImage | null
   created_at: string
 }
 

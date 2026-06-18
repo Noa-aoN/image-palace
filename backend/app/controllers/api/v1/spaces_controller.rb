@@ -3,7 +3,9 @@ module Api
     class SpacesController < BaseController
       include ItemSerialization
 
-      before_action :set_space, only: [ :show, :update, :destroy, :add_collection, :remove_collection ]
+      before_action :set_space, only: [
+        :show, :update, :destroy, :add_collection, :remove_collection, :upload_cover, :remove_cover
+      ]
 
       def index
         spaces = current_user.spaces.recent
@@ -23,7 +25,9 @@ module Api
       end
 
       def update
-        @space.update!(space_params)
+        @space.assign_attributes(space_update_params)
+        validate_cover!
+        @space.save!
         render json: serialize_space(@space)
       rescue ActiveRecord::RecordInvalid => e
         render json: { errors: e.record.errors.full_messages }, status: :unprocessable_entity
@@ -48,6 +52,25 @@ module Api
         head :no_content
       end
 
+      # POST /api/v1/spaces/:id/cover_image （multipart: cover_image）
+      def upload_cover
+        file = params[:cover_image]
+        return render(json: { errors: [ "画像が指定されていません" ] }, status: :unprocessable_entity) if file.blank?
+
+        @space.cover_image.attach(file)
+        @space.update!(cover_type: "custom")
+        render json: serialize_space(@space)
+      rescue ActiveRecord::RecordInvalid => e
+        render json: { errors: e.record.errors.full_messages }, status: :unprocessable_entity
+      end
+
+      # DELETE /api/v1/spaces/:id/cover_image
+      def remove_cover
+        @space.cover_image.purge if @space.cover_image.attached?
+        @space.update!(cover_type: "first_card")
+        render json: serialize_space(@space)
+      end
+
       private
 
       def set_space
@@ -58,12 +81,32 @@ module Api
         params.require(:space).permit(:name, :description, :space_type)
       end
 
+      def space_update_params
+        params.require(:space).permit(:name, :description, :cover_space_point_id, :cover_type)
+      end
+
+      # 表紙はこのスペースのポイントのみ指定可能
+      def validate_cover!
+        return if @space.cover_space_point_id.blank?
+        return if @space.space_points.exists?(id: @space.cover_space_point_id)
+
+        @space.errors.add(:cover_space_point_id, "はこのスペースのポイントを指定してください")
+        raise ActiveRecord::RecordInvalid, @space
+      end
+
       def serialize_space(space)
+        cover_point = space.cover_point
         {
           id: space.id,
           name: space.name,
           description: space.description,
           space_type: space.space_type,
+          cover_type: space.cover_type,
+          cover_space_point_id: space.cover_space_point_id,
+          cover: cover_point ? serialize_point_image(cover_point) : nil,
+          # ポイントの生成画像（順序付き、最大 COVER_CARDS_LIMIT 枚）
+          cover_images: space.cover_points.map { |p| serialize_point_image(p) }.compact,
+          cover_image: serialize_attached_cover(space.cover_image),
           created_at: space.created_at
         }
       end

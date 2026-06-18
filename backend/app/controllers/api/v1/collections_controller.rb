@@ -3,7 +3,9 @@ module Api
     class CollectionsController < BaseController
       include ItemSerialization
 
-      before_action :set_collection, only: [ :show, :update, :destroy, :add_entry, :remove_entry ]
+      before_action :set_collection, only: [
+        :show, :update, :destroy, :add_entry, :remove_entry, :upload_cover, :remove_cover
+      ]
 
       def index
         collections = current_user.collections
@@ -32,7 +34,9 @@ module Api
       end
 
       def update
-        @collection.update!(collection_params)
+        @collection.assign_attributes(collection_update_params)
+        validate_cover!
+        @collection.save!
         render json: serialize_collection(@collection)
       rescue ActiveRecord::RecordInvalid => e
         render json: { errors: e.record.errors.full_messages }, status: :unprocessable_entity
@@ -57,7 +61,30 @@ module Api
       def remove_entry
         @collection.collection_entries
                    .find_by(entry_type: params[:entry_type], entry_id: params[:entry_id])&.destroy!
+        # 表紙にしていたカードを外した場合は表紙指定も解除する
+        if params[:entry_type] == "Item" && @collection.cover_item_id == params[:entry_id]
+          @collection.update!(cover_item_id: nil)
+        end
         head :no_content
+      end
+
+      # POST /api/v1/collections/:id/cover_image （multipart: cover_image）
+      def upload_cover
+        file = params[:cover_image]
+        return render(json: { errors: [ "画像が指定されていません" ] }, status: :unprocessable_entity) if file.blank?
+
+        @collection.cover_image.attach(file)
+        @collection.update!(cover_type: "custom")
+        render json: serialize_collection(@collection)
+      rescue ActiveRecord::RecordInvalid => e
+        render json: { errors: e.record.errors.full_messages }, status: :unprocessable_entity
+      end
+
+      # DELETE /api/v1/collections/:id/cover_image
+      def remove_cover
+        @collection.cover_image.purge if @collection.cover_image.attached?
+        @collection.update!(cover_type: "first_card")
+        render json: serialize_collection(@collection)
       end
 
       private
@@ -68,6 +95,19 @@ module Api
 
       def collection_params
         params.require(:collection).permit(:name, :description)
+      end
+
+      def collection_update_params
+        params.require(:collection).permit(:name, :description, :cover_item_id, :cover_type)
+      end
+
+      # 表紙はコレクション内の Item エントリのみ指定可能
+      def validate_cover!
+        return if @collection.cover_item_id.blank?
+        return if @collection.collection_entries.exists?(entry_type: "Item", entry_id: @collection.cover_item_id)
+
+        @collection.errors.add(:cover_item_id, "はこのコレクション内のカードを指定してください")
+        raise ActiveRecord::RecordInvalid, @collection
       end
 
       # entry_type に応じて current_user 所有のオブジェクトを引く（他人のものは 404）
@@ -89,6 +129,11 @@ module Api
           name: collection.name,
           description: collection.description,
           entry_count: collection_entry_count(collection),
+          cover_type: collection.cover_type,
+          cover_item_id: collection.cover_item_id,
+          cover: serialize_media(collection.cover&.primary_media),
+          cover_images: collection.cover_cards.map { |item| serialize_media(item.primary_media) }.compact,
+          cover_image: serialize_attached_cover(collection.cover_image),
           created_at: collection.created_at
         }
       end

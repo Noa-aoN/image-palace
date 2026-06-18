@@ -7,13 +7,19 @@ class View < ApplicationRecord
   has_many :collection_entries, as: :entry, dependent: :destroy
   has_many :view_items, dependent: :destroy
   has_many :items, through: :view_items
+  # カバー（デッキ踏襲）。表紙はビューに配置した Item を指定。
+  belongs_to :cover_item, class_name: "Item", optional: true
+  has_one_attached :cover_image
 
   NAME_MAX_LENGTH = 100
   # freeboard と space_map を実装済み。他は種別を仮置き（詳細画面は「準備中」表示）。
   VIEW_TYPES = %w[freeboard space_map page map timeline binder album].freeze
+  COVER_TYPES = %w[first_card collage custom].freeze
+  COVER_CARDS_LIMIT = 8
 
   validates :name, presence: true, length: { maximum: NAME_MAX_LENGTH }
   validates :view_type, inclusion: { in: VIEW_TYPES }
+  validates :cover_type, inclusion: { in: COVER_TYPES }
   # スペース配置は配置先スペース必須。指定スペースは本人所有であること。
   validates :space_id, presence: true, if: -> { view_type == "space_map" }
   validate :space_must_belong_to_user, if: -> { space_id.present? }
@@ -22,6 +28,23 @@ class View < ApplicationRecord
 
   def space_map?
     view_type == "space_map"
+  end
+
+  # カバー候補カード（ビューに配置したカードを追加順で）
+  def cover_item_candidates
+    view_items.sort_by(&:created_at).filter_map(&:item)
+  end
+
+  def cover
+    cover_item || cover_item_candidates.first
+  end
+
+  def cover_cards(limit: COVER_CARDS_LIMIT)
+    ordered = cover_item_candidates
+    if cover_item_id && (chosen = ordered.find { |i| i.id == cover_item_id })
+      ordered = [ chosen, *ordered.reject { |i| i.id == cover_item_id } ]
+    end
+    ordered.first(limit)
   end
 
   private

@@ -7,7 +7,21 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { getSpaces, createSpace } from '@/lib/api/spaces'
 import { SPACE_TYPES, spaceTypeLabel } from '@/lib/space-types'
+import { EntityCover } from '@/components/features/shared/EntityCover'
 import type { Space } from '@/types/space'
+
+// カバー画像が無いスペースのフォールバック（ルーム=部屋 / ロード=道アイコン）
+function SpaceCoverFallback({ spaceType }: { spaceType: string }) {
+  return (
+    <div className="flex h-full w-full items-center justify-center bg-muted">
+      {spaceType === 'road' ? (
+        <Route size={28} className="text-muted-foreground/50" />
+      ) : (
+        <DoorOpen size={28} className="text-muted-foreground/50" />
+      )}
+    </div>
+  )
+}
 
 export default function SpacesPage() {
   const [spaces, setSpaces] = useState<Space[]>([])
@@ -119,9 +133,9 @@ export default function SpacesPage() {
       )}
 
       {loading ? (
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-          {Array.from({ length: 6 }).map((_, i) => (
-            <div key={i} className="h-24 rounded-xl border border-border bg-muted animate-pulse" />
+        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
+          {Array.from({ length: 8 }).map((_, i) => (
+            <div key={i} className="aspect-square rounded-xl border border-border bg-muted animate-pulse" />
           ))}
         </div>
       ) : error ? (
@@ -134,25 +148,20 @@ export default function SpacesPage() {
           {!creating && <Button onClick={() => setCreating(true)}>最初のスペースを作成</Button>}
         </div>
       ) : (
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
           {spaces.map((space) => (
             <Link
               key={space.id}
               href={`/spaces/${space.id}`}
-              className="flex flex-col gap-2 rounded-xl border border-border bg-card px-5 py-4 hover:shadow-md transition-shadow"
+              className="flex flex-col rounded-xl border border-border overflow-hidden bg-card hover:shadow-md transition-shadow"
             >
-              <div className="flex items-center gap-2">
-                {space.space_type === 'road' ? (
-                  <Route size={18} style={{ color: 'var(--palace)' }} />
-                ) : (
-                  <DoorOpen size={18} style={{ color: 'var(--palace)' }} />
-                )}
+              <div className="px-4 py-3 flex items-center justify-between gap-2">
                 <span className="font-medium truncate">{space.name}</span>
-                <span className="ml-auto shrink-0 text-xs text-muted-foreground">{spaceTypeLabel(space.space_type)}</span>
+                <span className="shrink-0 text-xs text-muted-foreground">{spaceTypeLabel(space.space_type)}</span>
               </div>
-              {space.description && (
-                <p className="text-sm text-muted-foreground line-clamp-2">{space.description}</p>
-              )}
+              <div className="w-full aspect-square bg-muted overflow-hidden">
+                <EntityCover cover={space} fallback={<SpaceCoverFallback spaceType={space.space_type} />} />
+              </div>
             </Link>
           ))}
         </div>
