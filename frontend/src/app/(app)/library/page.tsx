@@ -74,6 +74,7 @@ function CardThumb({ item }: { item: Item }) {
       href={`/items/${item.id}`}
       className="shrink-0 w-32 flex flex-col rounded-xl border border-border overflow-hidden bg-card hover:shadow-md transition-shadow"
     >
+      <span className="px-2 py-1.5 text-xs font-medium truncate">{item.title}</span>
       <div className="w-full aspect-square bg-muted flex items-center justify-center overflow-hidden">
         {imageUrl ? (
           // eslint-disable-next-line @next/next/no-img-element
@@ -82,7 +83,6 @@ function CardThumb({ item }: { item: Item }) {
           <span className="text-muted-foreground text-[11px] px-2 text-center">{item.title}</span>
         )}
       </div>
-      <span className="px-2 py-1.5 text-xs font-medium truncate">{item.title}</span>
     </Link>
   )
 }
@@ -93,12 +93,12 @@ function DeckTile({ deck }: { deck: Deck }) {
       href={`/decks/${deck.id}`}
       className="shrink-0 w-40 flex flex-col rounded-xl border border-border overflow-hidden bg-card hover:shadow-md transition-shadow"
     >
-      <div className="w-full aspect-square bg-muted overflow-hidden">
-        <DeckCover deck={deck} />
-      </div>
       <div className="px-3 py-2 flex items-center justify-between gap-1">
         <span className="text-sm font-medium truncate">{deck.name}</span>
         <span className="text-xs text-muted-foreground shrink-0">{deck.item_count}</span>
+      </div>
+      <div className="w-full aspect-square bg-muted overflow-hidden">
+        <DeckCover deck={deck} />
       </div>
     </Link>
   )
@@ -197,6 +197,7 @@ function SearchCardTile({ card }: { card: SearchCard }) {
       href={`/items/${card.id}`}
       className="shrink-0 w-32 flex flex-col rounded-xl border border-border overflow-hidden bg-card hover:shadow-md transition-shadow"
     >
+      <span className="px-2 py-1.5 text-xs font-medium truncate">{card.title}</span>
       <div className="w-full aspect-square bg-muted flex items-center justify-center overflow-hidden">
         {imageUrl ? (
           // eslint-disable-next-line @next/next/no-img-element
@@ -205,7 +206,6 @@ function SearchCardTile({ card }: { card: SearchCard }) {
           <span className="text-muted-foreground text-[11px] px-2 text-center">{card.title}</span>
         )}
       </div>
-      <span className="px-2 py-1.5 text-xs font-medium truncate">{card.title}</span>
     </Link>
   )
 }
@@ -217,6 +217,10 @@ function SearchDeckTile({ deck }: { deck: SearchDeck }) {
       href={`/decks/${deck.id}`}
       className="shrink-0 w-40 flex flex-col rounded-xl border border-border overflow-hidden bg-card hover:shadow-md transition-shadow"
     >
+      <div className="px-3 py-2 flex items-center justify-between gap-1">
+        <span className="text-sm font-medium truncate">{deck.name}</span>
+        <span className="text-xs text-muted-foreground shrink-0">{deck.item_count}</span>
+      </div>
       <div className="w-full aspect-square bg-muted flex items-center justify-center overflow-hidden">
         {coverUrl ? (
           // eslint-disable-next-line @next/next/no-img-element
@@ -224,10 +228,6 @@ function SearchDeckTile({ deck }: { deck: SearchDeck }) {
         ) : (
           <Layers size={24} className="text-muted-foreground/50" />
         )}
-      </div>
-      <div className="px-3 py-2 flex items-center justify-between gap-1">
-        <span className="text-sm font-medium truncate">{deck.name}</span>
-        <span className="text-xs text-muted-foreground shrink-0">{deck.item_count}</span>
       </div>
     </Link>
   )

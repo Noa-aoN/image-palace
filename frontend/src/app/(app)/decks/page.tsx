@@ -15,12 +15,12 @@ function DeckCard({ deck }: { deck: Deck }) {
       href={`/decks/${deck.id}`}
       className="flex flex-col rounded-xl border border-border overflow-hidden bg-card hover:shadow-md transition-shadow"
     >
-      <div className="w-full aspect-square bg-muted overflow-hidden">
-        <DeckCover deck={deck} />
-      </div>
       <div className="px-4 py-3 flex items-center justify-between gap-2">
         <span className="font-medium truncate">{deck.name}</span>
         <span className="text-xs text-muted-foreground shrink-0">{deck.item_count} 枚</span>
+      </div>
+      <div className="w-full aspect-square bg-muted overflow-hidden">
+        <DeckCover deck={deck} />
       </div>
     </Link>
   )

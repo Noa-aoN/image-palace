@@ -124,6 +124,7 @@ export function AddCardsPanel({ placedIds, onAdd, onClose }: AddCardsPanelProps)
                   onClick={() => onAdd(item)}
                   className="flex flex-col overflow-hidden rounded-lg border border-border bg-background text-left transition-shadow hover:shadow-md"
                 >
+                  <span className="truncate px-1.5 py-1 text-[11px] font-medium">{item.title}</span>
                   <div className="flex aspect-square w-full items-center justify-center overflow-hidden bg-muted">
                     {imageUrl ? (
                       // eslint-disable-next-line @next/next/no-img-element
@@ -132,7 +133,6 @@ export function AddCardsPanel({ placedIds, onAdd, onClose }: AddCardsPanelProps)
                       <span className="px-1 text-center text-[10px] text-muted-foreground">{item.title}</span>
                     )}
                   </div>
-                  <span className="truncate px-1.5 py-1 text-[11px] font-medium">{item.title}</span>
                 </button>
               )
             })}
