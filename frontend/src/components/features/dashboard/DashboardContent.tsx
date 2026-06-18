@@ -32,13 +32,29 @@ export function DashboardContent() {
       .catch(() => setSummary(EMPTY_SUMMARY))
   }, [])
 
+  // 読み込み中はスケルトンを表示する。新規ユーザー判定（total_count===0）の前に出すことで、
+  // 「統計(…) → ようこそ画面」へ切り替わるレイアウトシフトを防ぐ。
+  if (summary === null) {
+    return (
+      <div className="max-w-2xl mx-auto px-6 py-12 space-y-8">
+        <div className="h-7 w-40 rounded bg-muted animate-pulse" />
+        <div className="grid grid-cols-2 gap-4">
+          <div className="h-24 rounded-xl bg-muted animate-pulse" />
+          <div className="h-24 rounded-xl bg-muted animate-pulse" />
+        </div>
+        <div className="h-28 rounded-xl bg-muted animate-pulse" />
+        <div className="h-10 w-48 rounded bg-muted animate-pulse" />
+      </div>
+    )
+  }
+
   const usedRatio =
-    summary && summary.monthly_limit > 0
+    summary.monthly_limit > 0
       ? Math.min(100, Math.round((summary.monthly_count / summary.monthly_limit) * 100))
       : 0
 
   // 新規ユーザー（カード0件）には統計の代わりに始め方ガイドを表示
-  if (summary !== null && summary.total_count === 0) {
+  if (summary.total_count === 0) {
     return (
       <div className="max-w-2xl mx-auto px-6 py-12 space-y-8">
         <div>
@@ -85,17 +101,13 @@ export function DashboardContent() {
         <Card>
           <CardContent className="pt-6">
             <p className="text-sm text-muted-foreground">所持カード数</p>
-            <p className="text-3xl font-bold mt-1">
-              {summary === null ? '...' : summary.total_count}
-            </p>
+            <p className="text-3xl font-bold mt-1">{summary.total_count}</p>
           </CardContent>
         </Card>
         <Card>
           <CardContent className="pt-6">
             <p className="text-sm text-muted-foreground">生成中 / 失敗</p>
-            <p className="text-3xl font-bold mt-1">
-              {summary === null ? '...' : `${summary.processing_count} / ${summary.failed_count}`}
-            </p>
+            <p className="text-3xl font-bold mt-1">{summary.processing_count} / {summary.failed_count}</p>
           </CardContent>
         </Card>
       </div>
@@ -106,14 +118,8 @@ export function DashboardContent() {
           <div className="flex items-end justify-between">
             <p className="text-sm text-muted-foreground">今月の生成枚数</p>
             <p className="text-sm">
-              {summary === null ? (
-                '...'
-              ) : (
-                <>
-                  <span className="font-semibold text-foreground">残り {summary.monthly_remaining} 枚</span>
-                  <span className="text-muted-foreground"> / {summary.monthly_limit} 枚</span>
-                </>
-              )}
+              <span className="font-semibold text-foreground">残り {summary.monthly_remaining} 枚</span>
+              <span className="text-muted-foreground"> / {summary.monthly_limit} 枚</span>
             </p>
           </div>
           <div className="h-2 w-full overflow-hidden rounded-full bg-muted">
@@ -122,7 +128,7 @@ export function DashboardContent() {
               style={{ width: `${usedRatio}%` }}
             />
           </div>
-          {summary !== null && summary.monthly_remaining === 0 && (
+          {summary.monthly_remaining === 0 && (
             <p className="text-xs text-destructive">
               今月の上限に達しました。来月になるとリセットされます。
             </p>
