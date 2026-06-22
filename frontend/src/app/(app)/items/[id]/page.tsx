@@ -269,6 +269,49 @@ export default function ItemDetailPage() {
           </Button>
         </div>
 
+        {/* タイトル + ステータス（テキストを画像の上に表示） */}
+        {editing ? (
+          <div className="space-y-2">
+            <div className="flex items-center gap-2">
+              <Input
+                value={titleDraft}
+                onChange={(e) => setTitleDraft(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') { e.preventDefault(); handleSaveTitle() }
+                  if (e.key === 'Escape') cancelEdit()
+                }}
+                disabled={saving}
+                autoFocus
+                aria-label="タイトル"
+                className="text-lg"
+              />
+              <Button size="sm" onClick={handleSaveTitle} disabled={saving} aria-label="保存" className="shrink-0">
+                {saving ? <Spinner size={16} /> : <Check size={16} />}
+              </Button>
+              <Button variant="ghost" size="sm" onClick={cancelEdit} disabled={saving} aria-label="キャンセル" className="shrink-0">
+                <X size={16} />
+              </Button>
+            </div>
+            {editError && <p className="text-sm text-destructive">{editError}</p>}
+          </div>
+        ) : (
+          <div className="flex items-center justify-between gap-3">
+            <div className="flex items-center gap-2 min-w-0">
+              <h1 className="text-2xl font-semibold truncate">{item.title}</h1>
+              <button
+                onClick={startEdit}
+                className="shrink-0 text-muted-foreground hover:text-foreground transition-colors"
+                aria-label="タイトルを編集"
+              >
+                <Pencil size={16} />
+              </button>
+            </div>
+            <span className={`shrink-0 rounded-full px-3 py-1 text-sm font-medium ${STATUS_COLOR[item.generation_status] ?? ''}`}>
+              {STATUS_LABEL[item.generation_status] ?? item.generation_status}
+            </span>
+          </div>
+        )}
+
         {/*
           ── 画像 + ナビゲーション ──
           モバイル (<md): flex row で [←][画像][→]
@@ -318,49 +361,6 @@ export default function ItemDetailPage() {
             )}
           </div>
         </div>
-
-        {/* タイトル + ステータス */}
-        {editing ? (
-          <div className="space-y-2">
-            <div className="flex items-center gap-2">
-              <Input
-                value={titleDraft}
-                onChange={(e) => setTitleDraft(e.target.value)}
-                onKeyDown={(e) => {
-                  if (e.key === 'Enter') { e.preventDefault(); handleSaveTitle() }
-                  if (e.key === 'Escape') cancelEdit()
-                }}
-                disabled={saving}
-                autoFocus
-                aria-label="タイトル"
-                className="text-lg"
-              />
-              <Button size="sm" onClick={handleSaveTitle} disabled={saving} aria-label="保存" className="shrink-0">
-                {saving ? <Spinner size={16} /> : <Check size={16} />}
-              </Button>
-              <Button variant="ghost" size="sm" onClick={cancelEdit} disabled={saving} aria-label="キャンセル" className="shrink-0">
-                <X size={16} />
-              </Button>
-            </div>
-            {editError && <p className="text-sm text-destructive">{editError}</p>}
-          </div>
-        ) : (
-          <div className="flex items-center justify-between gap-3">
-            <div className="flex items-center gap-2 min-w-0">
-              <h1 className="text-2xl font-semibold truncate">{item.title}</h1>
-              <button
-                onClick={startEdit}
-                className="shrink-0 text-muted-foreground hover:text-foreground transition-colors"
-                aria-label="タイトルを編集"
-              >
-                <Pencil size={16} />
-              </button>
-            </div>
-            <span className={`shrink-0 rounded-full px-3 py-1 text-sm font-medium ${STATUS_COLOR[item.generation_status] ?? ''}`}>
-              {STATUS_LABEL[item.generation_status] ?? item.generation_status}
-            </span>
-          </div>
-        )}
 
         {/* 生成情報: メタ情報なので常時表示せず ⓘ ボタンのクリックで開く */}
         <div className="flex justify-end">
