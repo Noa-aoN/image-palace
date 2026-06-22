@@ -2,9 +2,8 @@
 
 import Script from 'next/script'
 import { useConsentStore } from '@/stores/consent'
-
-// GA 測定ID。未設定なら解析タグは一切読み込まない（GA本体導入は別issue）
-const GA_ID = process.env.NEXT_PUBLIC_GA_ID
+import { GA_ID } from '@/lib/analytics'
+import { AnalyticsPageView } from './AnalyticsPageView'
 
 /**
  * Google Analytics タグ。ユーザーが Cookie 同意した場合のみ読み込む。
@@ -31,6 +30,7 @@ export function Analytics() {
           gtag('config', '${GA_ID}', { anonymize_ip: true });
         `}
       </Script>
+      <AnalyticsPageView />
     </>
   )
 }
