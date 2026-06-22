@@ -41,6 +41,7 @@ gem "sentry-rails"
 gem "devise"
 gem "devise_token_auth"
 gem "omniauth-google-oauth2"
+gem "omniauth-apple"
 
 # Background jobs
 gem "solid_queue"

@@ -7,7 +7,8 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { PasswordField } from '@/components/features/auth/PasswordField'
-import { signUp, googleOAuthUrl } from '@/lib/api/auth'
+import { AppleIcon } from '@/components/features/auth/AppleIcon'
+import { signUp, googleOAuthUrl, appleOAuthUrl } from '@/lib/api/auth'
 import {
   buildSignupErrorDetail,
   type AuthFieldErrors,
@@ -94,11 +95,21 @@ export function SignupForm() {
 
       <Button
         variant="outline"
-        className="w-full mb-5"
+        className="w-full mb-3"
         style={{ borderColor: '#E3E6EA' }}
         onClick={() => { window.location.href = googleOAuthUrl() }}
       >
         Google で登録
+      </Button>
+
+      <Button
+        variant="outline"
+        className="w-full mb-5 gap-2"
+        style={{ borderColor: '#E3E6EA' }}
+        onClick={() => { window.location.href = appleOAuthUrl() }}
+      >
+        <AppleIcon />
+        Apple で登録
       </Button>
 
       <div className="mb-5 flex items-center gap-2">

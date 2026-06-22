@@ -100,3 +100,7 @@ export async function resetPassword(
 export function googleOAuthUrl(): string {
   return `${getBrowserApiBaseUrl()}/api/v1/auth/google_oauth2`
 }
+
+export function appleOAuthUrl(): string {
+  return `${getBrowserApiBaseUrl()}/api/v1/auth/apple`
+}

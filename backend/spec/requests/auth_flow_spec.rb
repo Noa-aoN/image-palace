@@ -178,6 +178,14 @@ RSpec.describe "Auth flow", type: :request do
 
       expect(response).to have_http_status(:redirect)
     end
+
+    it "apple 開始時に 500 を出さずリダイレクトする" do
+      # Apple も同じ redirect ルートを通る。リクエストフェーズでは client_secret(JWT) は不要なため、
+      # APPLE_* 未設定でも認可URL(appleid.apple.com)へのリダイレクトが返る。
+      get "/api/v1/auth/apple", params: { auth_origin_url: "http://localhost:3000" }
+
+      expect(response).to have_http_status(:redirect)
+    end
   end
 
   describe "POST /api/v1/auth/sign_in (login)" do

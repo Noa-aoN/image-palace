@@ -2,7 +2,7 @@ class User < ApplicationRecord
   # == Deviseモジュール ======================================================
   devise :database_authenticatable, :registerable,
          :recoverable, :rememberable, :validatable, :confirmable,
-         :omniauthable, omniauth_providers: [ :google_oauth2 ]
+         :omniauthable, omniauth_providers: [ :google_oauth2, :apple ]
 
   # == devise-token-auth設定 ================================================
   include DeviseTokenAuth::Concerns::User
