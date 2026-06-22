@@ -43,6 +43,9 @@ gem "devise_token_auth"
 gem "omniauth-google-oauth2"
 gem "omniauth-apple"
 
+# Billing
+gem "stripe"
+
 # Background jobs
 gem "solid_queue"
 

@@ -452,6 +452,9 @@ GEM
       net-ssh (>= 2.8.0)
       ostruct
     stringio (3.2.0)
+    stripe (19.2.1)
+      bigdecimal
+      logger
     thor (1.5.0)
     thruster (0.1.19)
     thruster (0.1.19-aarch64-linux)
@@ -514,6 +517,7 @@ DEPENDENCIES
   sentry-ruby
   shoulda-matchers (~> 6.4)
   solid_queue
+  stripe
   thruster
   tzinfo-data
 

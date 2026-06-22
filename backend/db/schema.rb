@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_06_19_000003) do
+ActiveRecord::Schema[8.1].define(version: 2026_06_23_000004) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
   enable_extension "pgcrypto"
@@ -86,6 +86,24 @@ ActiveRecord::Schema[8.1].define(version: 2026_06_19_000003) do
     t.index ["cover_item_id"], name: "index_collections_on_cover_item_id"
     t.index ["user_id", "created_at"], name: "index_collections_on_user_id_and_created_at"
     t.index ["user_id"], name: "index_collections_on_user_id"
+  end
+
+  create_table "credit_transactions", id: :uuid, default: -> { "gen_random_uuid()" }, force: :cascade do |t|
+    t.datetime "created_at", null: false
+    t.integer "delta", null: false
+    t.string "description"
+    t.uuid "item_id"
+    t.string "kind", null: false
+    t.uuid "space_point_id"
+    t.string "stripe_event_id"
+    t.integer "subscription_credits_after"
+    t.uuid "subscription_id"
+    t.integer "topup_credits_after"
+    t.datetime "updated_at", null: false
+    t.uuid "user_id", null: false
+    t.index ["stripe_event_id"], name: "index_credit_transactions_on_stripe_event_id", unique: true, where: "(stripe_event_id IS NOT NULL)"
+    t.index ["user_id", "created_at"], name: "index_credit_transactions_on_user_id_and_created_at"
+    t.index ["user_id"], name: "index_credit_transactions_on_user_id"
   end
 
   create_table "deck_items", id: :uuid, default: -> { "gen_random_uuid()" }, force: :cascade do |t|
@@ -165,13 +183,21 @@ ActiveRecord::Schema[8.1].define(version: 2026_06_19_000003) do
   end
 
   create_table "plans", id: :uuid, default: -> { "gen_random_uuid()" }, force: :cascade do |t|
+    t.boolean "active", default: true, null: false
     t.datetime "created_at", null: false
+    t.integer "credits_per_period", default: 0, null: false
+    t.string "currency", default: "jpy", null: false
     t.string "interval"
+    t.string "kind", default: "subscription", null: false
     t.jsonb "metadata", default: {}, null: false
     t.string "name", null: false
     t.integer "price_cents"
+    t.string "stripe_price_id"
+    t.string "stripe_product_id"
+    t.string "tier"
     t.datetime "updated_at", null: false
     t.index ["name"], name: "index_plans_on_name", unique: true
+    t.index ["stripe_price_id"], name: "index_plans_on_stripe_price_id", unique: true, where: "(stripe_price_id IS NOT NULL)"
   end
 
   create_table "relations", id: :uuid, default: -> { "gen_random_uuid()" }, force: :cascade do |t|
@@ -368,14 +394,21 @@ ActiveRecord::Schema[8.1].define(version: 2026_06_19_000003) do
   end
 
   create_table "subscriptions", id: :uuid, default: -> { "gen_random_uuid()" }, force: :cascade do |t|
+    t.boolean "cancel_at_period_end", default: false, null: false
+    t.datetime "canceled_at"
     t.datetime "created_at", null: false
     t.datetime "current_period_end"
+    t.datetime "current_period_start"
     t.uuid "plan_id", null: false
     t.datetime "started_at", null: false
     t.string "status"
+    t.string "stripe_customer_id"
+    t.string "stripe_subscription_id"
     t.datetime "updated_at", null: false
     t.uuid "user_id", null: false
     t.index ["plan_id"], name: "index_subscriptions_on_plan_id"
+    t.index ["stripe_customer_id"], name: "index_subscriptions_on_stripe_customer_id"
+    t.index ["stripe_subscription_id"], name: "index_subscriptions_on_stripe_subscription_id", unique: true, where: "(stripe_subscription_id IS NOT NULL)"
     t.index ["user_id"], name: "index_subscriptions_on_user_id"
   end
 
@@ -402,7 +435,10 @@ ActiveRecord::Schema[8.1].define(version: 2026_06_19_000003) do
     t.datetime "reset_password_sent_at"
     t.string "reset_password_token"
     t.string "role", default: "user", null: false
+    t.string "stripe_customer_id"
+    t.integer "subscription_credits", default: 0, null: false
     t.jsonb "tokens", default: {}
+    t.integer "topup_credits", default: 0, null: false
     t.string "uid", default: "", null: false
     t.string "unconfirmed_email"
     t.datetime "updated_at", null: false
@@ -410,6 +446,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_06_19_000003) do
     t.index ["email"], name: "index_users_on_email", unique: true
     t.index ["provider", "uid"], name: "index_users_on_provider_and_uid", unique: true
     t.index ["reset_password_token"], name: "index_users_on_reset_password_token", unique: true
+    t.index ["stripe_customer_id"], name: "index_users_on_stripe_customer_id", unique: true
   end
 
   create_table "view_items", id: :uuid, default: -> { "gen_random_uuid()" }, force: :cascade do |t|
@@ -451,6 +488,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_06_19_000003) do
   add_foreign_key "collection_items", "items", on_delete: :cascade
   add_foreign_key "collections", "items", column: "cover_item_id", on_delete: :nullify
   add_foreign_key "collections", "users", on_delete: :cascade
+  add_foreign_key "credit_transactions", "users", on_delete: :cascade
   add_foreign_key "deck_items", "decks", on_delete: :cascade
   add_foreign_key "deck_items", "items", on_delete: :cascade
   add_foreign_key "decks", "items", column: "cover_item_id", on_delete: :nullify
