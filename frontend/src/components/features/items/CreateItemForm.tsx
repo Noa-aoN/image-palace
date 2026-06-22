@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button'
 import { Label } from '@/components/ui/label'
 import { Spinner } from '@/components/ui/spinner'
 import { createItem } from '@/lib/api/items'
+import { trackEvent } from '@/lib/analytics'
 import { getDecks, createDeck } from '@/lib/api/decks'
 import { getSettings } from '@/lib/api/settings'
 import { useItemsStore } from '@/stores/items'
@@ -91,6 +92,13 @@ export function CreateItemForm() {
         upsertItem(item)
         setProgress({ done: i + 1, total: titles.length })
       }
+      // 単語そのものは送らず、作成件数とオプション有無のみ計測する
+      trackEvent('create_items', {
+        count: titles.length,
+        force_generate: forceGenerate,
+        with_meaning: generateMeaning,
+        with_tags: generateTags,
+      })
       router.push('/items')
     } catch (err: unknown) {
       const axiosErr = err as { response?: { data?: { error?: string; errors?: string[] } } }
