@@ -3,7 +3,6 @@
 import Script from 'next/script'
 import { useConsentStore } from '@/stores/consent'
 import { GA_ID } from '@/lib/analytics'
-import { AnalyticsPageView } from './AnalyticsPageView'
 
 /**
  * Google Analytics タグ。ユーザーが Cookie 同意した場合のみ読み込む。
@@ -30,7 +29,6 @@ export function Analytics() {
           gtag('config', '${GA_ID}', { anonymize_ip: true });
         `}
       </Script>
-      <AnalyticsPageView />
     </>
   )
 }

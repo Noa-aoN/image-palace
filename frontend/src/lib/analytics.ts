@@ -19,12 +19,6 @@ function gtagReady(): boolean {
   return typeof window !== 'undefined' && typeof window.gtag === 'function' && !!GA_ID
 }
 
-/** SPA 遷移時のページビューを送信する */
-export function pageview(path: string): void {
-  if (!gtagReady()) return
-  window.gtag!('event', 'page_view', { page_path: path })
-}
-
 /** カスタムイベントを送信する（単語など個人を特定しうる値は渡さない） */
 export function trackEvent(name: string, params: GtagParams = {}): void {
   if (!gtagReady()) return
