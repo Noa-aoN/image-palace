@@ -100,3 +100,11 @@ export async function resetPassword(
 export function googleOAuthUrl(): string {
   return `${getBrowserApiBaseUrl()}/api/v1/auth/google_oauth2`
 }
+
+export function appleOAuthUrl(): string {
+  return `${getBrowserApiBaseUrl()}/api/v1/auth/apple`
+}
+
+// Apple サインインの表示フラグ。Apple Developer 設定 + Fly secrets が揃うまでは
+// ボタンを出さない（未設定だと押下時にエラーになるため）。'true' で有効化。
+export const APPLE_AUTH_ENABLED = process.env.NEXT_PUBLIC_APPLE_AUTH_ENABLED === 'true'

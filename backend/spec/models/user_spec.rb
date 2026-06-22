@@ -74,5 +74,22 @@ RSpec.describe User, type: :model do
         expect(result).to eq(existing)
       }.not_to change(described_class, :count)
     end
+
+    it "creates an Apple user even when name is omitted (Apple は名前を返さないことがある)" do
+      apple_hash = {
+        "provider" => "apple",
+        "uid" => "apple-uid-#{SecureRandom.hex(4)}",
+        "info" => { "email" => "apple-#{SecureRandom.hex(4)}@privaterelay.appleid.com", "name" => nil }
+      }
+
+      expect {
+        described_class.find_for_oauth(apple_hash)
+      }.to change(described_class, :count).by(1)
+
+      user = described_class.find_by(provider: "apple", uid: apple_hash["uid"])
+      expect(user).to be_confirmed
+      expect(user.email).to eq(apple_hash["info"]["email"])
+      expect(user.name).to be_nil
+    end
   end
 end

@@ -7,7 +7,8 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { PasswordField } from '@/components/features/auth/PasswordField'
-import { signIn, googleOAuthUrl } from '@/lib/api/auth'
+import { AppleIcon } from '@/components/features/auth/AppleIcon'
+import { signIn, googleOAuthUrl, appleOAuthUrl, APPLE_AUTH_ENABLED } from '@/lib/api/auth'
 import { buildLoginErrorDetail, validateLoginField } from '@/lib/auth-errors'
 import { useAuthStore } from '@/stores/auth'
 import { useItemsStore } from '@/stores/items'
@@ -77,12 +78,24 @@ export function LoginForm() {
 
       <Button
         variant="outline"
-        className="w-full mb-5"
+        className={APPLE_AUTH_ENABLED ? 'w-full mb-3' : 'w-full mb-5'}
         style={{ borderColor: '#E3E6EA' }}
         onClick={() => { window.location.href = googleOAuthUrl() }}
       >
         Google でログイン
       </Button>
+
+      {APPLE_AUTH_ENABLED && (
+        <Button
+          variant="outline"
+          className="w-full mb-5 gap-2"
+          style={{ borderColor: '#E3E6EA' }}
+          onClick={() => { window.location.href = appleOAuthUrl() }}
+        >
+          <AppleIcon />
+          Apple でログイン
+        </Button>
+      )}
 
       <div className="mb-5 flex items-center gap-2">
         <div className="flex-1 border-t" style={{ borderColor: '#E3E6EA' }} />

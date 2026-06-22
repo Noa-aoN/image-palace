@@ -282,6 +282,19 @@ Devise.setup do |config|
                     prompt: "select_account"
                   }
 
+  # Sign in with Apple を有効化。
+  # client_secret は team_id / key_id / pem(.p8の中身) から omniauth-apple が JWT を生成するため、
+  # 第2引数(secret)は空文字。APPLE_PRIVATE_KEY は改行を含むので、エスケープされた \n も実改行へ復元する。
+  config.omniauth :apple,
+                  ENV["APPLE_CLIENT_ID"],
+                  "",
+                  {
+                    scope: "email name",
+                    team_id: ENV["APPLE_TEAM_ID"],
+                    key_id: ENV["APPLE_KEY_ID"],
+                    pem: ENV["APPLE_PRIVATE_KEY"]&.gsub('\n', "\n")
+                  }
+
   # ==> Warden configuration
   # If you want to use other strategies, that are not supported by Devise, or
   # change the failure app, you can configure them inside the config.warden block.
