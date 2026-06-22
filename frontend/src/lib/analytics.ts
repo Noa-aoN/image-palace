@@ -1,7 +1,9 @@
 // GA4 (gtag.js) の薄いラッパー。
-// - スクリプト本体の読み込みと同意ゲートは Analytics コンポーネント側が担う
-// - ここでは window.gtag が存在する（＝同意済み＆読込済み）場合のみ送信する
+// - スクリプト本体の読み込みは Analytics コンポーネント側が担う（Consent Mode v2）
+// - gtag.js は同意前から読み込まれるため、自前イベントは「同意済み」を別途確認して送る
 // - NEXT_PUBLIC_GA_ID 未設定環境では全関数が no-op になる
+
+import { useConsentStore } from '@/stores/consent'
 
 export const GA_ID = process.env.NEXT_PUBLIC_GA_ID
 
@@ -14,9 +16,10 @@ declare global {
   }
 }
 
-/** gtag が利用可能か（＝同意済みでタグ読込済み）を判定する */
+/** gtag が利用可能 かつ ユーザーが計測に同意済みかを判定する */
 function gtagReady(): boolean {
-  return typeof window !== 'undefined' && typeof window.gtag === 'function' && !!GA_ID
+  if (typeof window === 'undefined' || typeof window.gtag !== 'function' || !GA_ID) return false
+  return useConsentStore.getState().consent === 'accepted'
 }
 
 /** カスタムイベントを送信する（単語など個人を特定しうる値は渡さない） */
