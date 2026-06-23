@@ -4,24 +4,8 @@ import { useEffect, useState } from 'react'
 import { CreditCard, Coins, Sparkles, Loader2, ExternalLink } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { getPlans, getBillingSummary, createCheckoutSession, createPortalSession } from '@/lib/api/billing'
+import { tierLabel, formatYen } from '@/lib/billing'
 import type { BillingPlan, BillingSummary } from '@/types/billing'
-
-const TIER_LABELS: Record<string, string> = {
-  free: 'フリー',
-  standard: 'スタンダード',
-  pro: 'プロ',
-  creator: 'クリエイター',
-  studio: 'スタジオ',
-  topup: 'クレジット追加',
-}
-
-function tierLabel(tier: string): string {
-  return TIER_LABELS[tier] ?? tier
-}
-
-function formatYen(price: number): string {
-  return `¥${price.toLocaleString('ja-JP')}`
-}
 
 export default function BillingPage() {
   const [summary, setSummary] = useState<BillingSummary | null>(null)
