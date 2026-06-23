@@ -16,6 +16,8 @@ Rails.application.routes.draw do
 
       # 課金（Stripe）
       namespace :billing do
+        get "plans", to: "plans#index"
+        get "summary", to: "summaries#show"
         post "checkout", to: "checkouts#create"
         post "portal", to: "portals#create"
       end

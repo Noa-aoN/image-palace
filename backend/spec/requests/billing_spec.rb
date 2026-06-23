@@ -37,4 +37,35 @@ RSpec.describe "Billing endpoints", type: :request do
       expect(response).to have_http_status(:ok)
     end
   end
+
+  describe "GET /api/v1/billing/plans" do
+    it "requires authentication" do
+      get "/api/v1/billing/plans", as: :json
+      expect(response).to have_http_status(:unauthorized)
+    end
+
+    it "returns active plans" do
+      user = create(:user, :confirmed)
+      create(:plan, :standard)
+
+      get "/api/v1/billing/plans", headers: auth_headers_for(user), as: :json
+
+      expect(response).to have_http_status(:ok)
+      names = json_response["plans"].map { |p| p["name"] }
+      expect(names).to include("standard")
+    end
+  end
+
+  describe "GET /api/v1/billing/summary" do
+    it "returns the current credit balance and plan" do
+      user = create(:user, :confirmed)
+
+      get "/api/v1/billing/summary", headers: auth_headers_for(user), as: :json
+
+      expect(response).to have_http_status(:ok)
+      # 無料枠が lazy 付与され、free プランの 10cr が表示される
+      expect(json_response["available_credits"]).to eq(10.0)
+      expect(json_response.dig("plan", "name")).to eq("free")
+    end
+  end
 end
