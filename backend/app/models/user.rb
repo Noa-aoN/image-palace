@@ -36,8 +36,27 @@ class User < ApplicationRecord
   # 履歴は credit_transactions に追記する（監査用の append-only 台帳）。
   class InsufficientCredits < StandardError; end
 
-  def available_credits
+  # 残高（ポイント）。subscription_credits / topup_credits はポイントで保持する。
+  def available_credit_points
     subscription_credits + topup_credits
+  end
+
+  # 表示用クレジット（1cr = Billing::POINTS_PER_CREDIT pt）。
+  def available_credits
+    available_credit_points.fdiv(Billing::POINTS_PER_CREDIT)
+  end
+
+  # 無料枠クレジットを「カレント月」に lazy 付与する。
+  # 有料（active_subscription あり）は Stripe webhook 側で付与するため対象外。
+  def ensure_current_period_credits!
+    return if active_subscription.present?
+
+    month_start = Time.current.beginning_of_month
+    return if credits_period_start && credits_period_start >= month_start
+
+    free_credits = Plan.find_by(name: "free")&.credits_per_period.to_i
+    reset_subscription_credits!(free_credits * Billing::POINTS_PER_CREDIT)
+    update_column(:credits_period_start, month_start) # rubocop:disable Rails/SkipsModelValidations
   end
 
   # サブスク分を毎月リセットする（旧残分は失効ログを残す）。invoice 支払い時などに呼ぶ。
@@ -63,7 +82,7 @@ class User < ApplicationRecord
   # 生成1件ぶんなどを消費する。サブスク分→Top-up の順に引く。
   def consume_credits!(amount, item: nil, space_point_id: nil)
     with_lock do
-      raise InsufficientCredits, "クレジットが不足しています" if available_credits < amount
+      raise InsufficientCredits, "クレジットが不足しています" if available_credit_points < amount
 
       from_subscription = [ subscription_credits, amount ].min
       from_topup = amount - from_subscription

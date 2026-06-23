@@ -4,10 +4,15 @@ require "rails_helper"
 RSpec.describe "User credit ledger", type: :model do
   let(:user) { create(:user, :confirmed) }
 
-  describe "#available_credits" do
-    it "sums both buckets" do
+  describe "balances" do
+    it "available_credit_points sums both buckets (points)" do
       user.update!(subscription_credits: 30, topup_credits: 5)
-      expect(user.available_credits).to eq(35)
+      expect(user.available_credit_points).to eq(35)
+    end
+
+    it "available_credits shows points as credits (1cr = 100pt)" do
+      user.update!(subscription_credits: 150, topup_credits: 50)
+      expect(user.available_credits).to eq(2.0)
     end
   end
 
@@ -49,7 +54,7 @@ RSpec.describe "User credit ledger", type: :model do
       user.reload
       expect(user.subscription_credits).to eq(0)
       expect(user.topup_credits).to eq(8)
-      expect(user.available_credits).to eq(8)
+      expect(user.available_credit_points).to eq(8)
       expect(user.credit_transactions.last.kind).to eq("consumption")
       expect(user.credit_transactions.last.delta).to eq(-5)
     end
@@ -60,7 +65,26 @@ RSpec.describe "User credit ledger", type: :model do
       expect {
         expect { user.consume_credits!(2) }.to raise_error(User::InsufficientCredits)
       }.not_to change(CreditTransaction, :count)
-      expect(user.reload.available_credits).to eq(1)
+      expect(user.reload.available_credit_points).to eq(1)
+    end
+  end
+
+  describe "#ensure_current_period_credits! (無料枠の lazy 月次付与)" do
+    it "grants the free plan allotment in points on a new period" do
+      expect {
+        user.ensure_current_period_credits!
+      }.to change { user.reload.subscription_credits }.from(0).to(10 * Billing::POINTS_PER_CREDIT)
+      expect(user.credits_period_start).to be_present
+    end
+
+    it "does not re-grant within the same month" do
+      user.ensure_current_period_credits!
+      expect { user.ensure_current_period_credits! }.not_to(change { user.reload.subscription_credits })
+    end
+
+    it "skips the free grant for users with an active paid subscription" do
+      create(:subscription, user:, status: "active")
+      expect { user.ensure_current_period_credits! }.not_to(change { user.reload.subscription_credits })
     end
   end
 end

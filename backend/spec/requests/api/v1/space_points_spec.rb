@@ -27,9 +27,9 @@ RSpec.describe "Api::V1::SpacePoints", type: :request do
       expect(json_response["name"]).to be_nil
     end
 
-    it "月間生成上限に達している場合は名前付きポイントを作れない" do
-      allow_any_instance_of(User).to receive(:monthly_generation_count)
-        .and_return(Items::CreateService::FREE_ITEM_LIMIT_PER_MONTH)
+    it "クレジット残高が不足している場合は名前付きポイントを作れない" do
+      user.ensure_current_period_credits!
+      user.update!(subscription_credits: 0, topup_credits: 0)
 
       expect {
         post "/api/v1/spaces/#{space.id}/points",
@@ -37,7 +37,7 @@ RSpec.describe "Api::V1::SpacePoints", type: :request do
       }.not_to have_enqueued_job(GeneratePointImageJob)
 
       expect(response).to have_http_status(:unprocessable_entity)
-      expect(json_response["error"]).to include("上限")
+      expect(json_response["error"]).to include("クレジット")
     end
 
     it "他人のスペースには作成できない" do

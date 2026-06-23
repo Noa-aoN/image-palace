@@ -1,7 +1,10 @@
 module Items
   class CreateService
+    # 旧・月間枚数上限（summary 表示の互換のため残置。生成ゲートはクレジット残高へ移行済み）
     FREE_ITEM_LIMIT_PER_MONTH = 100
     class MonthlyLimitExceeded < StandardError; end
+    # クレジット残高が不足していて生成できない
+    class InsufficientCredits < StandardError; end
     # ブロックリストに該当する不適切なプロンプトを生成前に弾く
     class ContentBlocked < StandardError; end
 
@@ -19,13 +22,13 @@ module Items
     def call
       moderate!
 
+      # 無料枠は当月分を lazy 付与してから残高で判定・消費する。
+      @user.ensure_current_period_credits!
+      cost = Billing::CreditCost.call(kind: :item_generation)
       item = nil
 
       @user.with_lock do
-        monthly_count = @user.monthly_generation_count
-        if monthly_count >= FREE_ITEM_LIMIT_PER_MONTH
-          raise MonthlyLimitExceeded, "今月の生成枚数の上限（#{FREE_ITEM_LIMIT_PER_MONTH}枚）に達しました"
-        end
+        raise InsufficientCredits, "クレジットが不足しています" if @user.available_credit_points < cost
 
         item = @user.items.create!(
           title: @params[:title],
@@ -34,6 +37,7 @@ module Items
           style: @params[:style].presence,
           custom_prompt: @params[:custom_prompt].presence
         )
+        @user.consume_credits!(cost, item: item)
       end
 
       GenerateImageJob.perform_later(item.id, force_generate: @params[:force_generate] == true)

@@ -32,7 +32,7 @@ RSpec.describe Billing::WebhookHandler do
       user
       plan
       handle(payload)
-      expect(user.reload.subscription_credits).to eq(100)
+      expect(user.reload.subscription_credits).to eq(100 * Billing::POINTS_PER_CREDIT)
     end
 
     it "is idempotent on a duplicate event id" do
@@ -53,7 +53,7 @@ RSpec.describe Billing::WebhookHandler do
       metadata: { plan_name: topup.name }
     } })
 
-    expect(user.reload.topup_credits).to eq(100)
+    expect(user.reload.topup_credits).to eq(100 * Billing::POINTS_PER_CREDIT)
   end
 
   it "upserts a local subscription on customer.subscription.created" do

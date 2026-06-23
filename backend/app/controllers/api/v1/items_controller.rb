@@ -77,7 +77,7 @@ module Api
         assign_tags!(result.item)
         assign_decks!(result.item)
         render json: serialize_item(result.item.reload), status: :accepted
-      rescue Items::CreateService::MonthlyLimitExceeded => e
+      rescue Items::CreateService::InsufficientCredits, Items::CreateService::MonthlyLimitExceeded => e
         render json: { error: e.message }, status: :unprocessable_entity
       rescue Items::CreateService::ContentBlocked => e
         render json: { error: e.message }, status: :unprocessable_entity

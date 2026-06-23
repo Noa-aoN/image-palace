@@ -11,10 +11,13 @@ module Api
       # 末尾にポイントを追加。name があればそのポイントの画像生成を開始する。
       def create
         name = stripped_name
-        return render_limit_exceeded if name.present? && monthly_limit_reached?
+        return render_insufficient_credits if name.present? && insufficient_credits?
 
         point = @space.space_points.create!(position: next_position, name: name)
-        enqueue_generation(point) if point.name.present?
+        if point.name.present?
+          current_user.consume_credits!(point_cost, space_point_id: point.id)
+          enqueue_generation(point)
+        end
         render json: serialize_point(point), status: :created
       rescue ActiveRecord::RecordInvalid => e
         render json: { errors: e.record.errors.full_messages }, status: :unprocessable_entity
@@ -29,12 +32,15 @@ module Api
         @point.y = params[:y] if params.key?(:y)
 
         will_generate = name_will_generate?
-        return render_limit_exceeded if will_generate && monthly_limit_reached?
+        return render_insufficient_credits if will_generate && insufficient_credits?
 
         @point.name = stripped_name if params.key?(:name)
         @point.generation_status = "pending" if will_generate
         @point.save!
-        enqueue_generation(@point) if will_generate
+        if will_generate
+          current_user.consume_credits!(point_cost, space_point_id: @point.id)
+          enqueue_generation(@point)
+        end
         render json: serialize_point(@point.reload)
       rescue ActiveRecord::RecordInvalid => e
         render json: { errors: e.record.errors.full_messages }, status: :unprocessable_entity
@@ -95,15 +101,18 @@ module Api
         GeneratePointImageJob.perform_later(point.id)
       end
 
-      # カード＋名前付きポイントの合算が月間上限に達しているか
-      def monthly_limit_reached?
-        current_user.monthly_generation_count >= Items::CreateService::FREE_ITEM_LIMIT_PER_MONTH
+      def point_cost
+        ::Billing::CreditCost.call(kind: :point_generation)
       end
 
-      def render_limit_exceeded
-        render json: {
-          error: "今月の生成枚数の上限（#{Items::CreateService::FREE_ITEM_LIMIT_PER_MONTH}枚）に達しました"
-        }, status: :unprocessable_entity
+      # 当月分の無料枠を付与したうえで、ポイント生成1件分のクレジットが足りないか
+      def insufficient_credits?
+        current_user.ensure_current_period_credits!
+        current_user.available_credit_points < point_cost
+      end
+
+      def render_insufficient_credits
+        render json: { error: "クレジットが不足しています" }, status: :unprocessable_entity
       end
     end
   end
