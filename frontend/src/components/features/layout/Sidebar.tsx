@@ -36,10 +36,16 @@ export function Sidebar() {
         {NAV_GROUPS.map((group, groupIndex) => (
           <div key={groupIndex} className="flex flex-col gap-1">
             {groupIndex > 0 && (
-              <hr
-                className={`my-2 border-0 border-t ${sidebarExpanded ? 'mx-2' : 'mx-1'}`}
-                style={{ borderColor: 'var(--palace)', opacity: 0.2 }}
-              />
+              sidebarExpanded && group.label ? (
+                <p className="px-2 pt-3 pb-1 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+                  {group.label}
+                </p>
+              ) : (
+                <hr
+                  className={`my-2 border-0 border-t ${sidebarExpanded ? 'mx-2' : 'mx-1'}`}
+                  style={{ borderColor: 'var(--palace)', opacity: 0.2 }}
+                />
+              )
             )}
             {group.items.map((item) => {
               const isActive = pathname === item.href || pathname.startsWith(item.href + '/')

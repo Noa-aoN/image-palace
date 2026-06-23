@@ -68,6 +68,30 @@ function Shelf({
   )
 }
 
+// 傘セクション（ビュー / スペース）の見出し＋配下のサブ棚をまとめる枠
+function Section({
+  icon,
+  title,
+  description,
+  children,
+}: {
+  icon: React.ReactNode
+  title: string
+  description?: string
+  children: React.ReactNode
+}) {
+  return (
+    <section className="space-y-6">
+      <div className="flex items-center gap-2">
+        <span style={{ color: 'var(--palace)' }}>{icon}</span>
+        <h2 className="text-lg font-bold">{title}</h2>
+        {description && <span className="text-sm text-muted-foreground">{description}</span>}
+      </div>
+      <div className="space-y-8 border-l border-border/60 pl-4">{children}</div>
+    </section>
+  )
+}
+
 function CardThumb({ item }: { item: Item }) {
   const imageUrl = item.media?.thumb_url ?? item.media?.url ?? null
   return (
@@ -446,6 +470,8 @@ export default function LibraryPage() {
   }
 
   const hasQuery = query.trim().length > 0
+  const roadSpaces = spaces.filter((s) => s.space_type === 'road')
+  const roomSpaces = spaces.filter((s) => s.space_type === 'room')
 
   if (loading) {
     return (
@@ -532,28 +558,7 @@ export default function LibraryPage() {
         )}
       </Shelf>
 
-      {/* デッキ（カードを束ねる） */}
-      <Shelf
-        icon={<Layers size={20} />}
-        title="デッキ"
-        count={decks.length}
-        href="/decks"
-      >
-        {decks.length === 0 ? (
-          <EmptyRail
-            message="まだデッキがありません。"
-            cta={<Link href="/decks"><Button size="sm">デッキを作成</Button></Link>}
-          />
-        ) : (
-          <Rail>
-            {decks.slice(0, PREVIEW_LIMIT).map((deck) => (
-              <DeckTile key={deck.id} deck={deck} />
-            ))}
-          </Rail>
-        )}
-      </Shelf>
-
-      {/* コレクション（デッキを束ねる） */}
+      {/* コレクション */}
       <Shelf
         icon={<Library size={20} />}
         title="コレクション"
@@ -574,47 +579,72 @@ export default function LibraryPage() {
         )}
       </Shelf>
 
-      {/* スペース */}
-      <Shelf
-        icon={<Frame size={20} />}
-        title="スペース"
-        count={spaces.length}
-        href="/spaces"
-      >
+      {/* ビュー（表示・学習形式：デッキ / フリーボード等） */}
+      <Section icon={<LayoutGrid size={22} />} title="ビュー" description="カードの表示・学習形式">
+        <Shelf icon={<Layers size={18} />} title="デッキ" count={decks.length} href="/decks">
+          {decks.length === 0 ? (
+            <EmptyRail
+              message="まだデッキがありません。"
+              cta={<Link href="/decks"><Button size="sm">デッキを作成</Button></Link>}
+            />
+          ) : (
+            <Rail>
+              {decks.slice(0, PREVIEW_LIMIT).map((deck) => (
+                <DeckTile key={deck.id} deck={deck} />
+              ))}
+            </Rail>
+          )}
+        </Shelf>
+        <Shelf icon={<LayoutGrid size={18} />} title="ビュー（フリーボード等）" count={views.length} href="/views">
+          {views.length === 0 ? (
+            <EmptyRail
+              message="まだビューがありません。"
+              cta={<Link href="/views"><Button size="sm">ビューを作成</Button></Link>}
+            />
+          ) : (
+            <Rail>
+              {views.slice(0, PREVIEW_LIMIT).map((view) => (
+                <ViewTile key={view.id} view={view} />
+              ))}
+            </Rail>
+          )}
+        </Shelf>
+      </Section>
+
+      {/* スペース（記憶の空間：ロード / ルーム） */}
+      <Section icon={<Frame size={22} />} title="スペース" description="記憶の空間">
         {spaces.length === 0 ? (
           <EmptyRail
             message="まだスペースがありません。"
             cta={<Link href="/spaces"><Button size="sm">スペースを作成</Button></Link>}
           />
         ) : (
-          <Rail>
-            {spaces.slice(0, PREVIEW_LIMIT).map((space) => (
-              <SpaceTile key={space.id} space={space} />
-            ))}
-          </Rail>
+          <>
+            <Shelf icon={<Route size={18} />} title="ロード" count={roadSpaces.length} href="/spaces">
+              {roadSpaces.length === 0 ? (
+                <EmptyRail message="ロードはまだありません。" cta={<Link href="/spaces"><Button size="sm">作成</Button></Link>} />
+              ) : (
+                <Rail>
+                  {roadSpaces.slice(0, PREVIEW_LIMIT).map((space) => (
+                    <SpaceTile key={space.id} space={space} />
+                  ))}
+                </Rail>
+              )}
+            </Shelf>
+            <Shelf icon={<DoorOpen size={18} />} title="ルーム" count={roomSpaces.length} href="/spaces">
+              {roomSpaces.length === 0 ? (
+                <EmptyRail message="ルームはまだありません。" cta={<Link href="/spaces"><Button size="sm">作成</Button></Link>} />
+              ) : (
+                <Rail>
+                  {roomSpaces.slice(0, PREVIEW_LIMIT).map((space) => (
+                    <SpaceTile key={space.id} space={space} />
+                  ))}
+                </Rail>
+              )}
+            </Shelf>
+          </>
         )}
-      </Shelf>
-
-      {/* ビュー（フリーボード） */}
-      <Shelf
-        icon={<LayoutGrid size={20} />}
-        title="ビュー"
-        count={views.length}
-        href="/views"
-      >
-        {views.length === 0 ? (
-          <EmptyRail
-            message="まだビューがありません。"
-            cta={<Link href="/views"><Button size="sm">ビューを作成</Button></Link>}
-          />
-        ) : (
-          <Rail>
-            {views.slice(0, PREVIEW_LIMIT).map((view) => (
-              <ViewTile key={view.id} view={view} />
-            ))}
-          </Rail>
-        )}
-      </Shelf>
+      </Section>
         </>
       )}
     </div>
