@@ -8,6 +8,7 @@ import {
   Frame,
   Tag,
   Plus,
+  CreditCard,
 } from 'lucide-react'
 
 export interface NavItem {
@@ -40,6 +41,12 @@ export const NAV_GROUPS: NavGroup[] = [
   {
     items: [
       { href: '/items/new', icon: <Plus size={22} />, label: 'カードを作成' },
+    ],
+  },
+  // アカウント系
+  {
+    items: [
+      { href: '/billing', icon: <CreditCard size={22} />, label: 'プラン' },
     ],
   },
 ]
