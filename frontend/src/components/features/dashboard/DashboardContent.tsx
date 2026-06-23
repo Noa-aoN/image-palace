@@ -20,6 +20,8 @@ const EMPTY_SUMMARY: ItemsSummary = {
   pending_count: 0,
   processing_count: 0,
   failed_count: 0,
+  views_count: 0,
+  spaces_count: 0,
   monthly_count: 0,
   monthly_limit: 0,
   monthly_remaining: 0,
@@ -108,6 +110,18 @@ export function DashboardContent() {
           <CardContent className="pt-6">
             <p className="text-sm text-muted-foreground">生成中 / 失敗</p>
             <p className="text-3xl font-bold mt-1">{summary.processing_count} / {summary.failed_count}</p>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="pt-6">
+            <p className="text-sm text-muted-foreground">ビュー</p>
+            <p className="text-3xl font-bold mt-1">{summary.views_count}</p>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="pt-6">
+            <p className="text-sm text-muted-foreground">スペース</p>
+            <p className="text-3xl font-bold mt-1">{summary.spaces_count}</p>
           </CardContent>
         </Card>
       </div>

@@ -281,6 +281,7 @@ RSpec.describe "Api::V1::Items", type: :request do
       expect(json_response["monthly_limit"]).to eq(Items::CreateService::FREE_ITEM_LIMIT_PER_MONTH)
       expect(json_response["monthly_remaining"]).to eq(Items::CreateService::FREE_ITEM_LIMIT_PER_MONTH - 2)
       expect(json_response["total_count"]).to eq(3)
+      expect(json_response).to include("views_count", "spaces_count")
     end
   end
 
