@@ -6,6 +6,8 @@ export interface ItemsSummary {
   pending_count: number
   processing_count: number
   failed_count: number
+  views_count: number
+  spaces_count: number
   monthly_count: number
   monthly_limit: number
   monthly_remaining: number
