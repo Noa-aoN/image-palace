@@ -13,6 +13,14 @@ Rails.application.routes.draw do
       get "search", to: "search#index"
       get "account/export", to: "account#export"
       delete "account", to: "account#destroy"
+
+      # 課金（Stripe）
+      namespace :billing do
+        post "checkout", to: "checkouts#create"
+        post "portal", to: "portals#create"
+      end
+      post "stripe/webhook", to: "stripe_webhooks#create"
+
       resource :settings, only: [ :show, :update ]
       resources :items, only: [ :index, :create, :show, :update, :destroy ] do
         collection do
