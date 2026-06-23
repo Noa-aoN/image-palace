@@ -6,6 +6,8 @@ import { PenLine, Sparkles, GalleryVerticalEnd } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
 import { getItemsSummary, type ItemsSummary } from '@/lib/api/items'
+import { useBillingStore } from '@/stores/billing'
+import { tierLabel } from '@/lib/billing'
 
 const GETTING_STARTED = [
   { icon: <PenLine size={20} />, text: '覚えたい単語や概念を入力する' },
@@ -25,12 +27,15 @@ const EMPTY_SUMMARY: ItemsSummary = {
 
 export function DashboardContent() {
   const [summary, setSummary] = useState<ItemsSummary | null>(null)
+  const billing = useBillingStore((s) => s.summary)
+  const fetchBilling = useBillingStore((s) => s.fetchSummary)
 
   useEffect(() => {
     getItemsSummary()
       .then((data) => setSummary(data))
       .catch(() => setSummary(EMPTY_SUMMARY))
-  }, [])
+    fetchBilling()
+  }, [fetchBilling])
 
   // 読み込み中はスケルトンを表示する。新規ユーザー判定（total_count===0）の前に出すことで、
   // 「統計(…) → ようこそ画面」へ切り替わるレイアウトシフトを防ぐ。
@@ -47,11 +52,6 @@ export function DashboardContent() {
       </div>
     )
   }
-
-  const usedRatio =
-    summary.monthly_limit > 0
-      ? Math.min(100, Math.round((summary.monthly_count / summary.monthly_limit) * 100))
-      : 0
 
   // 新規ユーザー（カード0件）には統計の代わりに始め方ガイドを表示
   if (summary.total_count === 0) {
@@ -112,27 +112,29 @@ export function DashboardContent() {
         </Card>
       </div>
 
-      {/* 今月のクレジット（生成枚数）残量 */}
+      {/* クレジット残高・プラン */}
       <Card>
         <CardContent className="pt-6 space-y-3">
           <div className="flex items-end justify-between">
-            <p className="text-sm text-muted-foreground">今月の生成枚数</p>
-            <p className="text-sm">
-              <span className="font-semibold text-foreground">残り {summary.monthly_remaining} 枚</span>
-              <span className="text-muted-foreground"> / {summary.monthly_limit} 枚</span>
-            </p>
+            <div>
+              <p className="text-sm text-muted-foreground">クレジット残高</p>
+              <p className="text-3xl font-bold mt-1 tabular-nums">
+                {billing ? billing.available_credits : '—'}
+              </p>
+            </div>
+            <div className="text-right">
+              <p className="text-sm text-muted-foreground">プラン</p>
+              <p className="text-sm font-medium">{tierLabel(billing?.plan?.tier ?? 'free')}</p>
+            </div>
           </div>
-          <div className="h-2 w-full overflow-hidden rounded-full bg-muted">
-            <div
-              className="h-full rounded-full bg-primary transition-all"
-              style={{ width: `${usedRatio}%` }}
-            />
-          </div>
-          {summary.monthly_remaining === 0 && (
+          {billing && billing.available_credits <= 0 && (
             <p className="text-xs text-destructive">
-              今月の上限に達しました。来月になるとリセットされます。
+              クレジットがありません。プランのアップグレードかクレジット追加で生成を続けられます。
             </p>
           )}
+          <Link href="/billing">
+            <Button variant="outline" size="sm">プランを見る</Button>
+          </Link>
         </CardContent>
       </Card>
 

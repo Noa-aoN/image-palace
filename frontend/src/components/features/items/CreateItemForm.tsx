@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
+import Link from 'next/link'
 import { Button } from '@/components/ui/button'
 import { Label } from '@/components/ui/label'
 import { Spinner } from '@/components/ui/spinner'
@@ -10,6 +11,8 @@ import { trackEvent } from '@/lib/analytics'
 import { getDecks, createDeck } from '@/lib/api/decks'
 import { getSettings } from '@/lib/api/settings'
 import { useItemsStore } from '@/stores/items'
+import { useBillingStore } from '@/stores/billing'
+import { estimatedCards } from '@/lib/billing'
 import { STYLE_OPTIONS, CUSTOM_PROMPT_MAX_LENGTH } from '@/lib/item-styles'
 import type { Deck } from '@/types/deck'
 
@@ -25,6 +28,8 @@ function parseTitles(raw: string): string[] {
 export function CreateItemForm() {
   const router = useRouter()
   const upsertItem = useItemsStore((state) => state.upsertItem)
+  const billing = useBillingStore((s) => s.summary)
+  const fetchBilling = useBillingStore((s) => s.fetchSummary)
   const [input, setInput] = useState('')
   const [tagsInput, setTagsInput] = useState('')
   const [style, setStyle] = useState('')
@@ -49,7 +54,8 @@ export function CreateItemForm() {
         setGenerateTags(s.auto_generate_tags)
       })
       .catch(() => {})
-  }, [])
+    fetchBilling()
+  }, [fetchBilling])
 
   const toggleDeck = (id: string) => {
     setSelectedDeckIds((prev) => (prev.includes(id) ? prev.filter((d) => d !== id) : [...prev, id]))
@@ -59,6 +65,9 @@ export function CreateItemForm() {
   const wordCount = titles.length
   const hasTooLongTitle = titles.some((t) => t.length > MAX_TITLE_LENGTH)
   const tagNames = tagsInput.split(/[\s,、]+/).map((s) => s.trim()).filter(Boolean)
+  // 残クレジットからおおよその作成可能枚数を出し、入力件数が超える場合は警告する
+  const remainingCards = billing ? estimatedCards(billing.available_credits) : null
+  const willExceedCredits = remainingCards !== null && wordCount > remainingCards
 
   const handleSubmit = async (e: React.SyntheticEvent<HTMLFormElement>) => {
     e.preventDefault()
@@ -99,6 +108,7 @@ export function CreateItemForm() {
         with_meaning: generateMeaning,
         with_tags: generateTags,
       })
+      fetchBilling() // 消費後の残高を更新（ヘッダー等の表示に反映）
       router.push('/items')
     } catch (err: unknown) {
       const axiosErr = err as { response?: { data?: { error?: string; errors?: string[] } } }
@@ -143,6 +153,18 @@ export function CreateItemForm() {
           <p className="text-xs text-destructive">
             1単語あたり{MAX_TITLE_LENGTH}文字を超えています。区切り直すか短くしてください。
           </p>
+        )}
+        {remainingCards !== null && (
+          willExceedCredits ? (
+            <p className="text-xs text-destructive">
+              クレジットが不足します（残り約 {remainingCards} 枚 / 入力 {wordCount} 件）。
+              <Link href="/billing" className="ml-1 underline">プランを見る</Link>
+            </p>
+          ) : (
+            <p className="text-xs text-muted-foreground">
+              残りクレジット {billing?.available_credits}（あと約 {remainingCards} 枚作成できます）
+            </p>
+          )
         )}
       </div>
 
