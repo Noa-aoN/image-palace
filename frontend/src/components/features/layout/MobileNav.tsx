@@ -61,10 +61,16 @@ export function MobileNav() {
               {NAV_GROUPS.map((group, groupIndex) => (
                 <div key={groupIndex} className="flex flex-col gap-1">
                   {groupIndex > 0 && (
-                    <hr
-                      className="my-2 mx-3 border-0 border-t"
-                      style={{ borderColor: 'var(--palace)', opacity: 0.2 }}
-                    />
+                    group.label ? (
+                      <p className="px-3 pt-3 pb-1 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+                        {group.label}
+                      </p>
+                    ) : (
+                      <hr
+                        className="my-2 mx-3 border-0 border-t"
+                        style={{ borderColor: 'var(--palace)', opacity: 0.2 }}
+                      />
+                    )
                   )}
                   {group.items.map((item) => {
                     const isActive = pathname === item.href || pathname.startsWith(item.href + '/')
