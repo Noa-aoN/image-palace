@@ -52,7 +52,7 @@ module Billing
       return unless user && plan
       return if processed?(event)
 
-      user.add_topup_credits!(plan.credits_per_period, stripe_event_id: event.id)
+      user.add_topup_credits!(plan.credits_per_period * Billing::POINTS_PER_CREDIT, stripe_event_id: event.id)
     end
 
     def sync_subscription(event)
@@ -89,7 +89,7 @@ module Billing
       return unless user && plan
       return if processed?(event)
 
-      user.reset_subscription_credits!(plan.credits_per_period, stripe_event_id: event.id)
+      user.reset_subscription_credits!(plan.credits_per_period * Billing::POINTS_PER_CREDIT, stripe_event_id: event.id)
     end
 
     def user_for(customer_id, client_reference_id = nil)

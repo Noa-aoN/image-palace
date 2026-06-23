@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_06_23_000004) do
+ActiveRecord::Schema[8.1].define(version: 2026_06_23_000005) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
   enable_extension "pgcrypto"
@@ -428,6 +428,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_06_23_000004) do
     t.string "confirmation_token"
     t.datetime "confirmed_at"
     t.datetime "created_at", null: false
+    t.datetime "credits_period_start"
     t.string "email", null: false
     t.string "encrypted_password"
     t.string "name"

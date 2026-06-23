@@ -114,22 +114,21 @@ RSpec.describe Items::CreateService, type: :service do
       }.to raise_error(described_class::ContentBlocked)
     end
 
-    it "raises monthly limit exceeded when the user already created 100 items this month" do
-      freeze_time do
-        described_class::FREE_ITEM_LIMIT_PER_MONTH.times do |index|
-          user.items.create!(
-            title: "card-#{index}",
-            item_type: item_type,
-            generation_status: "completed",
-            created_at: Time.current,
-            updated_at: Time.current
-          )
-        end
+    it "consumes 1 credit (=100pt) per generation" do
+      user.ensure_current_period_credits! # 先に無料枠を付与しておく
+      expect {
+        described_class.call(user: user, params: { title: "cat" })
+      }.to change { user.reload.available_credit_points }.by(-Billing::POINTS_PER_CREDIT)
+    end
 
-        expect {
-          described_class.call(user: user, params: { title: "101枚目" })
-        }.to raise_error(described_class::MonthlyLimitExceeded)
-      end
+    it "raises InsufficientCredits when the balance is exhausted" do
+      # 無料枠を使い切らせる（10cr=1000pt を 0 に）
+      user.ensure_current_period_credits!
+      user.update!(subscription_credits: 0, topup_credits: 0)
+
+      expect {
+        described_class.call(user: user, params: { title: "no-credit" })
+      }.to raise_error(described_class::InsufficientCredits)
     end
   end
 end

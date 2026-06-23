@@ -69,25 +69,17 @@ RSpec.describe "Api::V1::Items", type: :request do
       expect(json_response["errors"]).to be_present
     end
 
-    it "returns validation error when monthly limit is exceeded" do
-      freeze_time do
-        Items::CreateService::FREE_ITEM_LIMIT_PER_MONTH.times do |index|
-          user.items.create!(
-            title: "card-#{index}",
-            item_type: item_type,
-            generation_status: "completed",
-            created_at: Time.current,
-            updated_at: Time.current
-          )
-        end
+    it "returns an error and enqueues nothing when the user is out of credits" do
+      # 無料枠を付与してから 0 にし、残高切れを再現する
+      user.ensure_current_period_credits!
+      user.update!(subscription_credits: 0, topup_credits: 0)
 
-        expect {
-          post "/api/v1/items", params: { item: { title: "101枚目" } }, headers: headers, as: :json
-        }.not_to have_enqueued_job
-      end
+      expect {
+        post "/api/v1/items", params: { item: { title: "no-credit" } }, headers: headers, as: :json
+      }.not_to have_enqueued_job
 
       expect(response).to have_http_status(:unprocessable_content)
-      expect(json_response["error"]).to eq("今月の生成枚数の上限（100枚）に達しました")
+      expect(json_response["error"]).to eq("クレジットが不足しています")
     end
 
     it "不適切なプロンプトは 422 を返し、アイテムを作らずジョブも積まない" do
