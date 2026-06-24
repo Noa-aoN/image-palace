@@ -636,9 +636,9 @@ export default function LibraryPage() {
           />
         ) : (
           <>
-            <Shelf icon={<Route size={18} />} title="ロード" count={roadSpaces.length} href="/spaces">
+            <Shelf icon={<Route size={18} />} title="ロード" count={roadSpaces.length} href="/spaces?type=road">
               {roadSpaces.length === 0 ? (
-                <EmptyRail message="ロードはまだありません。" cta={<Link href="/spaces"><Button size="sm">作成</Button></Link>} />
+                <EmptyRail message="ロードはまだありません。" cta={<Link href="/spaces?type=road"><Button size="sm">作成</Button></Link>} />
               ) : (
                 <Rail>
                   {roadSpaces.slice(0, PREVIEW_LIMIT).map((space) => (
@@ -647,9 +647,9 @@ export default function LibraryPage() {
                 </Rail>
               )}
             </Shelf>
-            <Shelf icon={<DoorOpen size={18} />} title="ルーム" count={roomSpaces.length} href="/spaces">
+            <Shelf icon={<DoorOpen size={18} />} title="ルーム" count={roomSpaces.length} href="/spaces?type=room">
               {roomSpaces.length === 0 ? (
-                <EmptyRail message="ルームはまだありません。" cta={<Link href="/spaces"><Button size="sm">作成</Button></Link>} />
+                <EmptyRail message="ルームはまだありません。" cta={<Link href="/spaces?type=room"><Button size="sm">作成</Button></Link>} />
               ) : (
                 <Rail>
                   {roomSpaces.slice(0, PREVIEW_LIMIT).map((space) => (
