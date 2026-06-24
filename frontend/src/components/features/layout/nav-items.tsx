@@ -46,8 +46,8 @@ export const NAV_TREE: NavNode[] = [
     label: 'スペース',
     icon: <Frame size={22} />,
     children: [
-      { href: '/spaces', icon: <Route size={20} />, label: 'ロード' },
-      { href: '/spaces', icon: <DoorOpen size={20} />, label: 'ルーム' },
+      { href: '/spaces?type=road', icon: <Route size={20} />, label: 'ロード' },
+      { href: '/spaces?type=room', icon: <DoorOpen size={20} />, label: 'ルーム' },
     ],
   },
   { href: '/tags', icon: <Tag size={22} />, label: 'タグ' },
