@@ -4,7 +4,7 @@ module Api
       include ItemSerialization
 
       before_action :set_view, only: [
-        :show, :update, :destroy, :add_item, :update_item, :remove_item, :place_on_point, :clear_point,
+        :show, :update, :destroy, :add_item, :update_item, :remove_item, :reorder, :place_on_point, :clear_point,
         :upload_cover, :remove_cover
       ]
 
@@ -43,7 +43,12 @@ module Api
       def add_item
         item = current_user.items.find(params[:item_id])
         view_item = @view.view_items.find_or_initialize_by(item_id: item.id)
-        view_item.assign_attributes(placement_params)
+        if @view.deck?
+          # deck はカードを末尾に追加（順序は position。座標は既定 0）。
+          view_item.position ||= next_deck_position
+        else
+          view_item.assign_attributes(placement_params)
+        end
         view_item.save!
         render json: serialize_placement(view_item.tap { |vi| vi.item = item }), status: :created
       rescue ActiveRecord::RecordInvalid => e
@@ -59,7 +64,18 @@ module Api
         render json: { errors: e.record.errors.full_messages }, status: :unprocessable_entity
       end
 
-      # フリーボードからカードを外す
+      # deck: カードの並び替え（ordered_item_ids の順に position を 1..N で振り直す）
+      def reorder
+        ids = Array(params[:ordered_item_ids])
+        ViewItem.transaction do
+          ids.each_with_index do |item_id, index|
+            @view.view_items.where(item_id: item_id).update_all(position: index + 1, updated_at: Time.current)
+          end
+        end
+        head :no_content
+      end
+
+      # カードを外す
       def remove_item
         @view.view_items.find_by(item_id: params[:item_id])&.destroy!
         head :no_content
@@ -137,6 +153,11 @@ module Api
         params.permit(:x, :y, :z_index)
       end
 
+      # deck の末尾 position（最大 + 1）
+      def next_deck_position
+        (@view.view_items.maximum(:position) || 0) + 1
+      end
+
       def serialize_view(view)
         {
           id: view.id,
@@ -155,9 +176,11 @@ module Api
       def serialize_view_detail(view)
         return serialize_space_map_detail(view) if view.space_map?
 
+        # deck は position 順、freeboard は重なり順
+        order = view.deck? ? Arel.sql("position ASC NULLS LAST, created_at ASC") : Arel.sql("z_index, created_at")
         placements = view.view_items
                          .includes(item: [ :item_type, { medias: { file_attachment: :blob } } ])
-                         .order(:z_index, :created_at)
+                         .order(order)
         serialize_view(view).merge(items: placements.map { |vi| serialize_placement(vi) })
       end
 
@@ -197,6 +220,7 @@ module Api
           x: view_item.x,
           y: view_item.y,
           z_index: view_item.z_index,
+          position: view_item.position,
           item: serialize_item(view_item.item)
         }
       end

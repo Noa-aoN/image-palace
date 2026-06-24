@@ -110,4 +110,44 @@ RSpec.describe "Api::V1::Views", type: :request do
       expect(response).to have_http_status(:no_content)
     end
   end
+
+  describe "deck 種別" do
+    let(:deck_view) { user.views.create!(name: "英単語", view_type: "deck") }
+    let(:card_a) { create(:item, user:) }
+    let(:card_b) { create(:item, user:) }
+
+    it "creates a deck view" do
+      post "/api/v1/views", params: { view: { name: "英単語", view_type: "deck" } }, headers:, as: :json
+      expect(response).to have_http_status(:created)
+      expect(json_response["view_type"]).to eq("deck")
+    end
+
+    it "appends added cards with sequential position" do
+      post "/api/v1/views/#{deck_view.id}/items", params: { item_id: card_a.id }, headers:, as: :json
+      post "/api/v1/views/#{deck_view.id}/items", params: { item_id: card_b.id }, headers:, as: :json
+
+      positions = deck_view.view_items.order(:position).pluck(:item_id, :position)
+      expect(positions).to eq([ [ card_a.id, 1 ], [ card_b.id, 2 ] ])
+    end
+
+    it "returns detail items ordered by position" do
+      deck_view.view_items.create!(item: card_b, position: 2)
+      deck_view.view_items.create!(item: card_a, position: 1)
+
+      get "/api/v1/views/#{deck_view.id}", headers:, as: :json
+
+      expect(json_response["items"].map { |i| i["item_id"] }).to eq([ card_a.id, card_b.id ])
+    end
+
+    it "reorders cards by ordered_item_ids" do
+      deck_view.view_items.create!(item: card_a, position: 1)
+      deck_view.view_items.create!(item: card_b, position: 2)
+
+      patch "/api/v1/views/#{deck_view.id}/reorder",
+        params: { ordered_item_ids: [ card_b.id, card_a.id ] }, headers:, as: :json
+
+      expect(response).to have_http_status(:no_content)
+      expect(deck_view.view_items.order(:position).pluck(:item_id)).to eq([ card_b.id, card_a.id ])
+    end
+  end
 end
