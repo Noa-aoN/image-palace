@@ -4,11 +4,12 @@ import { useEffect, useState } from 'react'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { Menu, X, Castle } from 'lucide-react'
-import { NAV_GROUPS } from './nav-items'
+import { NAV_TREE, type NavNode } from './nav-items'
 
 /**
  * モバイル（<md）用のナビゲーション。ヘッダー左のハンバーガーで
  * 左からスライドインするドロワーを開く。リンク選択・背景タップ・ESC で閉じる。
+ * ビュー/スペースは親子の入れ子ツリーで表示する。
  */
 export function MobileNav() {
   const [open, setOpen] = useState(false)
@@ -20,6 +21,30 @@ export function MobileNav() {
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
   }, [open])
+
+  const isActive = (href: string) => pathname === href || pathname.startsWith(href + '/')
+
+  const renderLink = (node: NavNode, nested = false) => {
+    const href = node.href ?? '#'
+    const active = isActive(href)
+    return (
+      <Link
+        key={node.label}
+        href={href}
+        onClick={() => setOpen(false)}
+        className={`flex items-center gap-3 rounded-lg py-2.5 text-sm font-medium transition-colors hover:bg-black/5 ${
+          nested ? 'pl-9 pr-3' : 'px-3'
+        }`}
+        style={{
+          color: active ? 'var(--palace)' : 'inherit',
+          backgroundColor: active ? 'rgba(198,167,94,0.1)' : undefined,
+        }}
+      >
+        <span className="shrink-0">{node.icon}</span>
+        <span className="truncate">{node.label}</span>
+      </Link>
+    )
+  }
 
   return (
     <>
@@ -57,41 +82,19 @@ export function MobileNav() {
               </button>
             </div>
 
-            <div className="flex flex-col px-2 pt-2">
-              {NAV_GROUPS.map((group, groupIndex) => (
-                <div key={groupIndex} className="flex flex-col gap-1">
-                  {groupIndex > 0 && (
-                    group.label ? (
-                      <p className="px-3 pt-3 pb-1 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
-                        {group.label}
-                      </p>
-                    ) : (
-                      <hr
-                        className="my-2 mx-3 border-0 border-t"
-                        style={{ borderColor: 'var(--palace)', opacity: 0.2 }}
-                      />
-                    )
-                  )}
-                  {group.items.map((item) => {
-                    const isActive = pathname === item.href || pathname.startsWith(item.href + '/')
-                    return (
-                      <Link
-                        key={item.href}
-                        href={item.href}
-                        onClick={() => setOpen(false)}
-                        className="flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-colors hover:bg-black/5"
-                        style={{
-                          color: isActive ? 'var(--palace)' : 'inherit',
-                          backgroundColor: isActive ? 'rgba(198,167,94,0.1)' : undefined,
-                        }}
-                      >
-                        <span className="shrink-0">{item.icon}</span>
-                        <span className="truncate">{item.label}</span>
-                      </Link>
-                    )
-                  })}
-                </div>
-              ))}
+            <div className="flex flex-col gap-1 px-2 pt-2">
+              {NAV_TREE.map((node) => {
+                if (!node.children) return renderLink(node)
+                return (
+                  <div key={node.label} className="flex flex-col gap-1">
+                    <div className="flex items-center gap-3 px-3 pt-2 pb-0.5 text-sm font-semibold text-muted-foreground">
+                      <span className="shrink-0">{node.icon}</span>
+                      <span className="truncate">{node.label}</span>
+                    </div>
+                    {node.children.map((child) => renderLink(child, true))}
+                  </div>
+                )
+              })}
             </div>
           </nav>
         </div>
