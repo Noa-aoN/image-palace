@@ -3,4 +3,6 @@ export interface Tag {
   name: string
   item_count: number
   pinned: boolean
+  is_default?: boolean
+  position?: number | null
 }
