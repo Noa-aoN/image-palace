@@ -4,11 +4,38 @@ import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { ChevronRight, ChevronLeft } from 'lucide-react'
 import { useUiStore } from '@/stores/ui'
-import { NAV_GROUPS } from './nav-items'
+import { NAV_TREE, type NavNode } from './nav-items'
 
 export function Sidebar() {
   const pathname = usePathname()
   const { sidebarExpanded, toggleSidebar } = useUiStore()
+
+  const isActive = (href: string) => pathname === href || pathname.startsWith(href + '/')
+
+  // 葉ノードのリンク。nested=true で子（字下げ）表示。
+  const renderLink = (node: NavNode, nested = false) => {
+    const href = node.href ?? '#'
+    const active = isActive(href)
+    return (
+      <Link
+        key={node.label}
+        href={href}
+        className={`flex rounded-lg py-2.5 text-sm font-medium transition-colors hover:bg-black/5 ${
+          sidebarExpanded ? `items-center gap-3 ${nested ? 'pl-9 pr-2' : 'px-2'}` : 'items-center justify-center px-0'
+        }`}
+        style={{
+          color: active ? 'var(--palace)' : 'inherit',
+          backgroundColor: active ? 'rgba(198,167,94,0.1)' : undefined,
+          whiteSpace: 'nowrap',
+          overflow: 'hidden',
+        }}
+        title={!sidebarExpanded ? node.label : undefined}
+      >
+        <span className="shrink-0">{node.icon}</span>
+        {sidebarExpanded && <span className="truncate">{node.label}</span>}
+      </Link>
+    )
+  }
 
   return (
     <aside
@@ -31,48 +58,25 @@ export function Sidebar() {
         </button>
       </div>
 
-      {/* ナビゲーション（グループ間は区切り線で整理） */}
-      <nav className={`flex flex-col pt-2 ${sidebarExpanded ? 'px-2' : 'px-1.5'}`}>
-        {NAV_GROUPS.map((group, groupIndex) => (
-          <div key={groupIndex} className="flex flex-col gap-1">
-            {groupIndex > 0 && (
-              sidebarExpanded && group.label ? (
-                <p className="px-2 pt-3 pb-1 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
-                  {group.label}
-                </p>
-              ) : (
-                <hr
-                  className={`my-2 border-0 border-t ${sidebarExpanded ? 'mx-2' : 'mx-1'}`}
-                  style={{ borderColor: 'var(--palace)', opacity: 0.2 }}
-                />
-              )
-            )}
-            {group.items.map((item) => {
-              const isActive = pathname === item.href || pathname.startsWith(item.href + '/')
-              return (
-                <Link
-                  key={item.href}
-                  href={item.href}
-                  className={`flex rounded-lg py-2.5 text-sm font-medium transition-colors hover:bg-black/5 ${
-                    sidebarExpanded ? 'items-center gap-3 px-2' : 'items-center justify-center px-0'
-                  }`}
-                  style={{
-                    color: isActive ? 'var(--palace)' : 'inherit',
-                    backgroundColor: isActive ? 'rgba(198,167,94,0.1)' : undefined,
-                    whiteSpace: 'nowrap',
-                    overflow: 'hidden',
-                  }}
-                  title={!sidebarExpanded ? item.label : undefined}
-                >
-                  <span className="shrink-0">{item.icon}</span>
-                  {sidebarExpanded && (
-                    <span className="truncate">{item.label}</span>
-                  )}
-                </Link>
-              )
-            })}
-          </div>
-        ))}
+      {/* ナビゲーション（ビュー/スペースは親子の入れ子ツリー） */}
+      <nav className={`flex flex-col gap-1 pt-2 ${sidebarExpanded ? 'px-2' : 'px-1.5'}`}>
+        {NAV_TREE.map((node) => {
+          if (!node.children) return renderLink(node)
+
+          // 親（カテゴリ）ノード。折りたたみ時は子アイコンだけを並べる。
+          if (!sidebarExpanded) {
+            return node.children.map((child) => renderLink(child))
+          }
+          return (
+            <div key={node.label} className="flex flex-col gap-1">
+              <div className="flex items-center gap-3 px-2 pt-2 pb-0.5 text-sm font-semibold text-muted-foreground">
+                <span className="shrink-0">{node.icon}</span>
+                <span className="truncate">{node.label}</span>
+              </div>
+              {node.children.map((child) => renderLink(child, true))}
+            </div>
+          )
+        })}
       </nav>
     </aside>
   )

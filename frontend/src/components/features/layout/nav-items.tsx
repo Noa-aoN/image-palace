@@ -6,73 +6,45 @@ import {
   Layers,
   LayoutGrid,
   Frame,
+  Route,
+  DoorOpen,
   Tag,
   Plus,
   CreditCard,
 } from 'lucide-react'
 
-export interface NavItem {
-  href: string
-  icon: React.ReactNode
+export interface NavNode {
   label: string
+  icon: React.ReactNode
+  // 葉ノードはリンク先を持つ。親（カテゴリ）ノードは href を持たず children を持つ。
+  href?: string
+  children?: NavNode[]
 }
 
-export interface NavGroup {
-  // セクション見出し（任意）。あれば区切り線の代わりに小見出しを表示する。
-  label?: string
-  items: NavItem[]
-}
-
-// サイドバー（デスクトップ）とモバイルドロワーで共有するナビゲーション項目。
-// ライブラリの階層（カード/コレクション ┃ ビュー[デッキ/ビュー] ┃ スペース）を
-// セクション見出しで表現する。
-export const NAV_GROUPS: NavGroup[] = [
-  // トップ（見出しなし）
-  {
-    items: [
-      { href: '/dashboard', icon: <LayoutDashboard size={22} />, label: 'ダッシュボード' },
-      { href: '/library', icon: <LibraryBig size={22} />, label: 'ライブラリ' },
-    ],
-  },
-  // ライブラリ系
-  {
-    label: 'ライブラリ',
-    items: [
-      { href: '/items', icon: <GalleryHorizontal size={22} />, label: 'カード' },
-      { href: '/collections', icon: <Library size={22} />, label: 'コレクション' },
-    ],
-  },
-  // ビュー系（表示・学習形式）
+// サイドバー（デスクトップ）とモバイルドロワーで共有する入れ子ツリー。
+// ライブラリの階層を「ビュー（デッキ/ビュー）」「スペース（ロード/ルーム）」の親子で表現する。
+export const NAV_TREE: NavNode[] = [
+  { href: '/dashboard', icon: <LayoutDashboard size={22} />, label: 'ダッシュボード' },
+  { href: '/library', icon: <LibraryBig size={22} />, label: 'ライブラリ' },
+  { href: '/items', icon: <GalleryHorizontal size={22} />, label: 'カード' },
+  { href: '/collections', icon: <Library size={22} />, label: 'コレクション' },
   {
     label: 'ビュー',
-    items: [
-      { href: '/decks', icon: <Layers size={22} />, label: 'デッキ' },
-      { href: '/views', icon: <LayoutGrid size={22} />, label: 'ビュー' },
+    icon: <LayoutGrid size={22} />,
+    children: [
+      { href: '/decks', icon: <Layers size={20} />, label: 'デッキ' },
+      { href: '/views', icon: <LayoutGrid size={20} />, label: 'ビュー' },
     ],
   },
-  // スペース系（記憶の空間）
   {
     label: 'スペース',
-    items: [
-      { href: '/spaces', icon: <Frame size={22} />, label: 'スペース' },
+    icon: <Frame size={22} />,
+    children: [
+      { href: '/spaces', icon: <Route size={20} />, label: 'ロード' },
+      { href: '/spaces', icon: <DoorOpen size={20} />, label: 'ルーム' },
     ],
   },
-  // その他
-  {
-    items: [
-      { href: '/tags', icon: <Tag size={22} />, label: 'タグ' },
-    ],
-  },
-  // 作成ジャンプ系
-  {
-    items: [
-      { href: '/items/new', icon: <Plus size={22} />, label: 'カードを作成' },
-    ],
-  },
-  // アカウント系
-  {
-    items: [
-      { href: '/billing', icon: <CreditCard size={22} />, label: 'プラン' },
-    ],
-  },
+  { href: '/tags', icon: <Tag size={22} />, label: 'タグ' },
+  { href: '/items/new', icon: <Plus size={22} />, label: 'カードを作成' },
+  { href: '/billing', icon: <CreditCard size={22} />, label: 'プラン' },
 ]
