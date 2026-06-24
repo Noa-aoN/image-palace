@@ -6,6 +6,7 @@ import {
   Layers,
   LayoutGrid,
   Frame,
+  MapPin,
   Route,
   DoorOpen,
   Tag,
@@ -35,6 +36,8 @@ export const NAV_TREE: NavNode[] = [
     icon: <LayoutGrid size={22} />,
     children: [
       { href: '/decks', icon: <Layers size={20} />, label: 'デッキ' },
+      { href: '/views?type=freeboard', icon: <LayoutGrid size={20} />, label: 'フリーボード' },
+      { href: '/views?type=space_map', icon: <MapPin size={20} />, label: 'スペース配置' },
     ],
   },
   {
