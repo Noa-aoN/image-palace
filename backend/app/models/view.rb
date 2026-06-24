@@ -12,8 +12,9 @@ class View < ApplicationRecord
   has_one_attached :cover_image
 
   NAME_MAX_LENGTH = 100
-  # freeboard と space_map を実装済み。他は種別を仮置き（詳細画面は「準備中」表示）。
-  VIEW_TYPES = %w[freeboard space_map page map timeline binder album].freeze
+  # freeboard / space_map / deck を実装。他は種別を仮置き（詳細画面は「準備中」表示）。
+  # deck はカードの順序付きリスト（view_items.position で並べる）。
+  VIEW_TYPES = %w[freeboard space_map deck page map timeline binder album].freeze
   COVER_TYPES = %w[first_card collage custom].freeze
   COVER_CARDS_LIMIT = 8
 
@@ -28,6 +29,10 @@ class View < ApplicationRecord
 
   def space_map?
     view_type == "space_map"
+  end
+
+  def deck?
+    view_type == "deck"
   end
 
   # カバー候補カード（ビューに配置したカードを追加順で）
