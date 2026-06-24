@@ -4,14 +4,12 @@ RSpec.describe Tag, type: :model do
   let(:user) { create(:user, :confirmed) }
 
   describe ".assign_defaults_to" do
-    it "creates default tags with is_default and ordered position" do
+    it "creates default tags (science5 + ndc, deduped) in order" do
       Tag.assign_defaults_to(user)
 
-      expect(user.tags.count).to eq(Tag::DEFAULT_TAGS.size)
       expect(user.tags.where(is_default: true).count).to eq(Tag::DEFAULT_TAGS.size)
-      # 先頭8個が指定順（position 1..8）
-      first_eight = user.tags.where("position <= 8").order(:position).pluck(:name)
-      expect(first_eight).to eq(%w[形式科学 自然科学 社会科学 人文科学 応用科学 芸術・創作 実用・生活 その他])
+      first_five = user.tags.where("position <= 5").order(:position).pluck(:name)
+      expect(first_five).to eq(%w[形式科学 自然科学 社会科学 人文科学 応用科学])
     end
 
     it "is idempotent (does not duplicate on re-run)" do
@@ -20,23 +18,22 @@ RSpec.describe Tag, type: :model do
       expect { Tag.assign_defaults_to(user) }.not_to change { user.tags.count }
     end
 
-    it "marks an existing same-named tag as default without duplicating" do
-      user.tags.create!(name: "自然科学")
+    it "demotes a former default tag no longer in the list to a normal tag" do
+      stale = user.tags.create!(name: "実用・生活", is_default: true, position: 99)
 
       Tag.assign_defaults_to(user)
 
-      tag = user.tags.where(name: "自然科学")
-      expect(tag.count).to eq(1)
-      expect(tag.first.is_default).to be(true)
-      expect(tag.first.position).to eq(2)
+      expect(stale.reload.is_default).to be(false)
+      expect(stale.position).to be_nil
     end
   end
 
-  describe ".default_kind" do
-    it "classifies main vs ndc default tags" do
-      expect(Tag.default_kind("自然科学")).to eq("main")
-      expect(Tag.default_kind("総記")).to eq("ndc")
-      expect(Tag.default_kind("ユーザー作成タグ")).to be_nil
+  describe ".default_groups" do
+    it "returns the groups a name belongs to (shared names belong to both)" do
+      expect(Tag.default_groups("形式科学")).to eq(%w[main])
+      expect(Tag.default_groups("自然科学")).to eq(%w[main ndc])
+      expect(Tag.default_groups("総記")).to eq(%w[ndc])
+      expect(Tag.default_groups("ユーザー作成タグ")).to eq([])
     end
   end
 

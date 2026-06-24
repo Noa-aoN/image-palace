@@ -8,6 +8,10 @@ import { Input } from '@/components/ui/input'
 import { getTags, createTag, updateTag, deleteTag, setTagPinned } from '@/lib/api/tags'
 import type { Tag } from '@/types/tag'
 
+// セクション表示順（科学5 / NDC10）。重複する自然科学・社会科学・芸術は両方に出す。
+const SCIENCE_NAMES = ['形式科学', '自然科学', '社会科学', '人文科学', '応用科学']
+const NDC_NAMES = ['総記', '哲学', '歴史', '社会科学', '自然科学', '技術・工学', '産業', '芸術', '言語', '文学']
+
 // デフォルトタグを指定順で先頭に、続いてピン留め、各グループ内は日本語の名前順で並べる
 function sortTags(a: Tag, b: Tag): number {
   return (
@@ -18,7 +22,7 @@ function sortTags(a: Tag, b: Tag): number {
   )
 }
 
-function TagRow({ tag, onChanged }: { tag: Tag; onChanged: (next: Tag | null) => void }) {
+function TagRow({ tag, onChanged, badge }: { tag: Tag; onChanged: (next: Tag | null) => void; badge?: string }) {
   const [editing, setEditing] = useState(false)
   const [draft, setDraft] = useState(tag.name)
   const [saving, setSaving] = useState(false)
@@ -102,9 +106,9 @@ function TagRow({ tag, onChanged }: { tag: Tag; onChanged: (next: Tag | null) =>
         <div className="flex items-center gap-2 min-w-0">
           <TagIcon size={16} style={{ color: 'var(--palace)' }} />
           <Link href={`/items?tag=${tag.id}`} className="font-medium text-sm truncate hover:underline">{tag.name}</Link>
-          {tag.is_default && (
+          {badge && (
             <span className="shrink-0 rounded-full bg-muted px-1.5 py-0.5 text-[10px] font-medium text-muted-foreground">
-              {tag.default_kind === 'ndc' ? 'NDC' : '標準'}
+              {badge}
             </span>
           )}
           <span className="text-xs text-muted-foreground shrink-0">{tag.item_count} 枚</span>
@@ -224,9 +228,13 @@ export default function TagsPage() {
       return [...updated].sort(sortTags)
     })
 
-  // セクション分け（tags は sortTags 済みなので各グループ内の順序は保たれる）
-  const scienceTags = tags.filter((t) => t.default_kind === 'main')
-  const ndcTags = tags.filter((t) => t.default_kind === 'ndc')
+  // セクション分け（科学5 / NDC10。各セクションは名簿順、自然科学等は両方に表示）
+  const scienceTags = tags
+    .filter((t) => t.default_groups?.includes('main'))
+    .sort((a, b) => SCIENCE_NAMES.indexOf(a.name) - SCIENCE_NAMES.indexOf(b.name))
+  const ndcTags = tags
+    .filter((t) => t.default_groups?.includes('ndc'))
+    .sort((a, b) => NDC_NAMES.indexOf(a.name) - NDC_NAMES.indexOf(b.name))
   const userTags = tags.filter((t) => !t.is_default)
 
   return (
@@ -268,14 +276,14 @@ export default function TagsPage() {
           {scienceTags.length > 0 && (
             <CollapsibleSection title="科学分類（標準）" count={scienceTags.length}>
               {scienceTags.map((tag) => (
-                <TagRow key={tag.id} tag={tag} onChanged={(next) => handleTagChanged(tag.id, next)} />
+                <TagRow key={tag.id} tag={tag} badge="標準" onChanged={(next) => handleTagChanged(tag.id, next)} />
               ))}
             </CollapsibleSection>
           )}
           {ndcTags.length > 0 && (
             <CollapsibleSection title="NDC（図書館分類）" count={ndcTags.length} defaultOpen={false}>
               {ndcTags.map((tag) => (
-                <TagRow key={tag.id} tag={tag} onChanged={(next) => handleTagChanged(tag.id, next)} />
+                <TagRow key={tag.id} tag={tag} badge="NDC" onChanged={(next) => handleTagChanged(tag.id, next)} />
               ))}
             </CollapsibleSection>
           )}
