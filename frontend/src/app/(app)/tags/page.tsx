@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useSyncExternalStore } from 'react'
 import Link from 'next/link'
 import { Tag as TagIcon, Pencil, Check, X, Trash2, Plus, Pin, ChevronDown, ChevronRight } from 'lucide-react'
 import { Button } from '@/components/ui/button'
@@ -148,24 +148,43 @@ function TagRow({ tag, onChanged, badge }: { tag: Tag; onChanged: (next: Tag | n
   )
 }
 
-// 折りたたみ可能なタグセクション（科学分類 / NDC）
+// 折りたたみ可能なタグセクション（科学分類 / NDC）。開閉状態は localStorage に保存する。
 function CollapsibleSection({
   title,
   count,
   defaultOpen = true,
+  storageKey,
   children,
 }: {
   title: string
   count: number
   defaultOpen?: boolean
+  storageKey: string
   children: React.ReactNode
 }) {
-  const [open, setOpen] = useState(defaultOpen)
+  // 開閉状態は localStorage（外部ストア）から読む。SSR では defaultOpen。
+  const open = useSyncExternalStore(
+    (callback) => {
+      window.addEventListener(`toggle:${storageKey}`, callback)
+      return () => window.removeEventListener(`toggle:${storageKey}`, callback)
+    },
+    () => {
+      const stored = window.localStorage.getItem(storageKey)
+      return stored === null ? defaultOpen : stored === '1'
+    },
+    () => defaultOpen
+  )
+
+  const toggle = () => {
+    window.localStorage.setItem(storageKey, open ? '0' : '1')
+    window.dispatchEvent(new Event(`toggle:${storageKey}`))
+  }
+
   return (
     <div className="rounded-xl border border-border/60 bg-muted/20 p-2">
       <button
         type="button"
-        onClick={() => setOpen((o) => !o)}
+        onClick={toggle}
         className="flex w-full items-center gap-2 px-2 py-1.5 text-left"
         aria-expanded={open}
       >
@@ -274,14 +293,14 @@ export default function TagsPage() {
       ) : (
         <div className="space-y-4">
           {scienceTags.length > 0 && (
-            <CollapsibleSection title="科学分類（標準）" count={scienceTags.length}>
+            <CollapsibleSection title="科学分類（標準）" count={scienceTags.length} storageKey="tags-section-science">
               {scienceTags.map((tag) => (
                 <TagRow key={tag.id} tag={tag} badge="標準" onChanged={(next) => handleTagChanged(tag.id, next)} />
               ))}
             </CollapsibleSection>
           )}
           {ndcTags.length > 0 && (
-            <CollapsibleSection title="NDC（図書館分類）" count={ndcTags.length} defaultOpen={false}>
+            <CollapsibleSection title="NDC（図書館分類）" count={ndcTags.length} defaultOpen={false} storageKey="tags-section-ndc">
               {ndcTags.map((tag) => (
                 <TagRow key={tag.id} tag={tag} badge="NDC" onChanged={(next) => handleTagChanged(tag.id, next)} />
               ))}
