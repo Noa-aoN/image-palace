@@ -32,6 +32,14 @@ RSpec.describe Tag, type: :model do
     end
   end
 
+  describe ".default_kind" do
+    it "classifies main vs ndc default tags" do
+      expect(Tag.default_kind("自然科学")).to eq("main")
+      expect(Tag.default_kind("総記")).to eq("ndc")
+      expect(Tag.default_kind("ユーザー作成タグ")).to be_nil
+    end
+  end
+
   describe ".ordered" do
     it "lists default tags first in position order, then others by name" do
       Tag.assign_defaults_to(user)

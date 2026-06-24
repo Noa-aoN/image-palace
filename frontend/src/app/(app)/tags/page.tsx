@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import Link from 'next/link'
-import { Tag as TagIcon, Pencil, Check, X, Trash2, Plus, Pin } from 'lucide-react'
+import { Tag as TagIcon, Pencil, Check, X, Trash2, Plus, Pin, ChevronDown, ChevronRight } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { getTags, createTag, updateTag, deleteTag, setTagPinned } from '@/lib/api/tags'
@@ -103,7 +103,9 @@ function TagRow({ tag, onChanged }: { tag: Tag; onChanged: (next: Tag | null) =>
           <TagIcon size={16} style={{ color: 'var(--palace)' }} />
           <Link href={`/items?tag=${tag.id}`} className="font-medium text-sm truncate hover:underline">{tag.name}</Link>
           {tag.is_default && (
-            <span className="shrink-0 rounded-full bg-muted px-1.5 py-0.5 text-[10px] font-medium text-muted-foreground">標準</span>
+            <span className="shrink-0 rounded-full bg-muted px-1.5 py-0.5 text-[10px] font-medium text-muted-foreground">
+              {tag.default_kind === 'ndc' ? 'NDC' : '標準'}
+            </span>
           )}
           <span className="text-xs text-muted-foreground shrink-0">{tag.item_count} 枚</span>
         </div>
@@ -138,6 +140,36 @@ function TagRow({ tag, onChanged }: { tag: Tag; onChanged: (next: Tag | null) =>
         </div>
       )}
       {error && <p className="text-xs text-destructive">{error}</p>}
+    </div>
+  )
+}
+
+// 折りたたみ可能なタグセクション（科学分類 / NDC）
+function CollapsibleSection({
+  title,
+  count,
+  defaultOpen = true,
+  children,
+}: {
+  title: string
+  count: number
+  defaultOpen?: boolean
+  children: React.ReactNode
+}) {
+  const [open, setOpen] = useState(defaultOpen)
+  return (
+    <div className="rounded-xl border border-border/60 bg-muted/20 p-2">
+      <button
+        type="button"
+        onClick={() => setOpen((o) => !o)}
+        className="flex w-full items-center gap-2 px-2 py-1.5 text-left"
+        aria-expanded={open}
+      >
+        {open ? <ChevronDown size={16} /> : <ChevronRight size={16} />}
+        <span className="text-sm font-semibold">{title}</span>
+        <span className="text-xs text-muted-foreground">{count}</span>
+      </button>
+      {open && <div className="space-y-2 px-1 pb-1 pt-1">{children}</div>}
     </div>
   )
 }
@@ -186,6 +218,17 @@ export default function TagsPage() {
     }
   }, [])
 
+  const handleTagChanged = (id: string, next: Tag | null) =>
+    setTags((current) => {
+      const updated = next ? current.map((t) => (t.id === id ? next : t)) : current.filter((t) => t.id !== id)
+      return [...updated].sort(sortTags)
+    })
+
+  // セクション分け（tags は sortTags 済みなので各グループ内の順序は保たれる）
+  const scienceTags = tags.filter((t) => t.default_kind === 'main')
+  const ndcTags = tags.filter((t) => t.default_kind === 'ndc')
+  const userTags = tags.filter((t) => !t.is_default)
+
   return (
     <div className="max-w-2xl mx-auto px-6 py-12">
       <h1 className="text-xl font-semibold mb-2">タグ</h1>
@@ -221,21 +264,34 @@ export default function TagsPage() {
       ) : tags.length === 0 ? (
         <p className="text-muted-foreground py-12 text-center">まだタグがありません。カード詳細でタグを付けると、ここに表示されます。</p>
       ) : (
-        <div className="space-y-2">
-          {tags.map((tag) => (
-            <TagRow
-              key={tag.id}
-              tag={tag}
-              onChanged={(next) =>
-                setTags((current) => {
-                  const updated = next
-                    ? current.map((t) => (t.id === tag.id ? next : t))
-                    : current.filter((t) => t.id !== tag.id)
-                  return [...updated].sort(sortTags)
-                })
-              }
-            />
-          ))}
+        <div className="space-y-4">
+          {scienceTags.length > 0 && (
+            <CollapsibleSection title="科学分類（標準）" count={scienceTags.length}>
+              {scienceTags.map((tag) => (
+                <TagRow key={tag.id} tag={tag} onChanged={(next) => handleTagChanged(tag.id, next)} />
+              ))}
+            </CollapsibleSection>
+          )}
+          {ndcTags.length > 0 && (
+            <CollapsibleSection title="NDC（図書館分類）" count={ndcTags.length} defaultOpen={false}>
+              {ndcTags.map((tag) => (
+                <TagRow key={tag.id} tag={tag} onChanged={(next) => handleTagChanged(tag.id, next)} />
+              ))}
+            </CollapsibleSection>
+          )}
+          {userTags.length > 0 && (
+            <div>
+              <div className="flex items-center gap-2 px-2 py-1.5">
+                <span className="text-sm font-semibold">マイタグ</span>
+                <span className="text-xs text-muted-foreground">{userTags.length}</span>
+              </div>
+              <div className="space-y-2">
+                {userTags.map((tag) => (
+                  <TagRow key={tag.id} tag={tag} onChanged={(next) => handleTagChanged(tag.id, next)} />
+                ))}
+              </div>
+            </div>
+          )}
         </div>
       )}
     </div>

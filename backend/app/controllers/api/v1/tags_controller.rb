@@ -45,7 +45,10 @@ module Api
 
       def serialize_tag(tag)
         count = tag.has_attribute?(:item_count) ? tag.item_count : tag.item_tags.size
-        { id: tag.id, name: tag.name, item_count: count, pinned: tag.pinned, is_default: tag.is_default }
+        {
+          id: tag.id, name: tag.name, item_count: count, pinned: tag.pinned,
+          is_default: tag.is_default, default_kind: (tag.is_default ? Tag.default_kind(tag.name) : nil)
+        }
       end
     end
   end
