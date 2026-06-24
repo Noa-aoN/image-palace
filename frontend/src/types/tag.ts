@@ -5,4 +5,5 @@ export interface Tag {
   pinned: boolean
   is_default?: boolean
   position?: number | null
+  default_kind?: 'main' | 'ndc' | null
 }
