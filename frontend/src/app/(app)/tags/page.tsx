@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useSyncExternalStore } from 'react'
 import Link from 'next/link'
 import { Tag as TagIcon, Pencil, Check, X, Trash2, Plus, Pin, ChevronDown, ChevronRight } from 'lucide-react'
 import { Button } from '@/components/ui/button'
@@ -162,20 +162,23 @@ function CollapsibleSection({
   storageKey: string
   children: React.ReactNode
 }) {
-  const [open, setOpen] = useState(defaultOpen)
+  // 開閉状態は localStorage（外部ストア）から読む。SSR では defaultOpen。
+  const open = useSyncExternalStore(
+    (callback) => {
+      window.addEventListener(`toggle:${storageKey}`, callback)
+      return () => window.removeEventListener(`toggle:${storageKey}`, callback)
+    },
+    () => {
+      const stored = window.localStorage.getItem(storageKey)
+      return stored === null ? defaultOpen : stored === '1'
+    },
+    () => defaultOpen
+  )
 
-  // 初回マウント時に保存済みの開閉状態を反映（SSR とのハイドレーション不整合を避けるため effect で）
-  useEffect(() => {
-    const stored = window.localStorage.getItem(storageKey)
-    if (stored !== null) setOpen(stored === '1')
-  }, [storageKey])
-
-  const toggle = () =>
-    setOpen((o) => {
-      const next = !o
-      window.localStorage.setItem(storageKey, next ? '1' : '0')
-      return next
-    })
+  const toggle = () => {
+    window.localStorage.setItem(storageKey, open ? '0' : '1')
+    window.dispatchEvent(new Event(`toggle:${storageKey}`))
+  }
 
   return (
     <div className="rounded-xl border border-border/60 bg-muted/20 p-2">
