@@ -8,7 +8,7 @@ import { Input } from '@/components/ui/input'
 import { getTags, createTag, updateTag, deleteTag, setTagPinned } from '@/lib/api/tags'
 import type { Tag } from '@/types/tag'
 
-// セクション表示順（科学5 / NDC10）。重複する自然科学・社会科学・芸術は両方に出す。
+// セクション表示順（科学 / NDC）。重複する自然科学・社会科学は NDC 優先で1セクションのみ。
 const SCIENCE_NAMES = ['形式科学', '自然科学', '社会科学', '人文科学', '応用科学']
 const NDC_NAMES = ['総記', '哲学', '歴史', '社会科学', '自然科学', '技術・工学', '産業', '芸術', '言語', '文学']
 
@@ -228,9 +228,9 @@ export default function TagsPage() {
       return [...updated].sort(sortTags)
     })
 
-  // セクション分け（科学5 / NDC10。各セクションは名簿順、自然科学等は両方に表示）
+  // セクション分け（各タグは1セクションのみ。重複（自然科学/社会科学）は NDC 優先）
   const scienceTags = tags
-    .filter((t) => t.default_groups?.includes('main'))
+    .filter((t) => t.default_groups?.includes('main') && !t.default_groups?.includes('ndc'))
     .sort((a, b) => SCIENCE_NAMES.indexOf(a.name) - SCIENCE_NAMES.indexOf(b.name))
   const ndcTags = tags
     .filter((t) => t.default_groups?.includes('ndc'))
