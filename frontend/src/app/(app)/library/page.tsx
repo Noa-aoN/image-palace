@@ -235,7 +235,7 @@ function SearchDeckTile({ deck }: { deck: SearchDeck }) {
   const coverUrl = deck.cover?.thumb_url ?? deck.cover?.url ?? null
   return (
     <Link
-      href={`/decks/${deck.id}`}
+      href={`/views/${deck.id}`}
       className="shrink-0 w-40 flex flex-col rounded-xl border border-border overflow-hidden bg-card hover:shadow-md transition-shadow"
     >
       <div className="px-3 py-2 flex items-center justify-between gap-1">

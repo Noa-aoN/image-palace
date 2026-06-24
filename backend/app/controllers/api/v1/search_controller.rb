@@ -26,10 +26,12 @@ module Api
                               .order(created_at: :desc).limit(LIMIT)
                               .includes(:item_type, medias: { file_attachment: :blob })
                               .map { |i| serialize_item(i) },
-          decks: current_user.decks
+          # デッキは view_type='deck' のビューへ統合済み
+          decks: current_user.views.where(view_type: "deck")
                              .where("name ILIKE ?", like)
                              .order(created_at: :desc).limit(LIMIT)
-                             .map { |d| serialize_deck(d) },
+                             .includes(view_items: { item: { medias: { file_attachment: :blob } } })
+                             .map { |v| serialize_deck_view(v) },
           collections: current_user.collections
                                    .where("name ILIKE ?", like)
                                    .order(created_at: :desc).limit(LIMIT)
@@ -38,19 +40,20 @@ module Api
                               .where("name ILIKE ?", like)
                               .order(created_at: :desc).limit(LIMIT)
                               .map { |s| { id: s.id, name: s.name } },
-          views: current_user.views
+          # deck は decks グループで返すため、views グループからは除外
+          views: current_user.views.where.not(view_type: "deck")
                              .where("name ILIKE ?", like)
                              .order(created_at: :desc).limit(LIMIT)
                              .map { |v| { id: v.id, name: v.name } }
         }
       end
 
-      def serialize_deck(deck)
+      def serialize_deck_view(view)
         {
-          id: deck.id,
-          name: deck.name,
-          item_count: deck.deck_items.size,
-          cover: serialize_media(deck.cover&.primary_media)
+          id: view.id,
+          name: view.name,
+          item_count: view.view_items.size,
+          cover: serialize_media(view.cover&.primary_media)
         }
       end
 
