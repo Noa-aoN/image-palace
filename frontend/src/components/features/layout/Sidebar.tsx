@@ -62,17 +62,10 @@ export function Sidebar() {
       <nav className={`flex flex-col gap-1 pt-2 ${sidebarExpanded ? 'px-2' : 'px-1.5'}`}>
         {NAV_TREE.map((node) => {
           if (!node.children) return renderLink(node)
-
-          // 親（カテゴリ）ノード。折りたたみ時は子アイコンだけを並べる。
-          if (!sidebarExpanded) {
-            return node.children.map((child) => renderLink(child))
-          }
+          // 親もリンク。配下の子を入れ子（展開時は字下げ）で表示する。
           return (
             <div key={node.label} className="flex flex-col gap-1">
-              <div className="flex items-center gap-3 px-2 pt-2 pb-0.5 text-sm font-semibold text-muted-foreground">
-                <span className="shrink-0">{node.icon}</span>
-                <span className="truncate">{node.label}</span>
-              </div>
+              {renderLink(node)}
               {node.children.map((child) => renderLink(child, true))}
             </div>
           )
