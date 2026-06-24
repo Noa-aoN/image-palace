@@ -12,6 +12,7 @@ import type { ViewDetail } from '@/types/view'
 import type { CoverType } from '@/types/cover'
 import { FreeboardCanvas } from '@/components/features/views/FreeboardCanvas'
 import { SpaceMapCanvas } from '@/components/features/views/SpaceMapCanvas'
+import { DeckBoard } from '@/components/features/views/DeckBoard'
 import { EntityCover } from '@/components/features/shared/EntityCover'
 import { CoverSettings } from '@/components/features/shared/CoverSettings'
 
@@ -200,6 +201,8 @@ export default function ViewEditorPage() {
       {/* ビュータイプごとの描画（freeboard / space_map を実装済み） */}
       {view.view_type === 'freeboard' ? (
         <FreeboardCanvas viewId={view.id} initialItems={view.items ?? []} />
+      ) : view.view_type === 'deck' ? (
+        <DeckBoard viewId={view.id} initialItems={view.items ?? []} />
       ) : view.view_type === 'space_map' ? (
         <SpaceMapCanvas viewId={view.id} space={view.space} initialPoints={view.points ?? []} />
       ) : (
