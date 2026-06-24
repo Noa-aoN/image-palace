@@ -13,12 +13,12 @@ RSpec.describe Collection, type: :model do
       expect(collection.cover_cards).to include(item)
     end
 
-    it "Deck エントリはそのデッキの表紙カードをカバー候補に含める（中身がデッキだけでも反映）" do
+    it "View エントリ（デッキ含む）はそのビューの表紙カードをカバー候補に含める" do
       collection = user.collections.create!(name: "C2")
       cover = create(:item, user: user, item_type: item_type, title: "ゼウス")
-      deck = user.decks.create!(name: "神々")
-      deck.deck_items.create!(item: cover)
-      collection.collection_entries.create!(entry_type: "Deck", entry_id: deck.id)
+      view = user.views.create!(name: "神々", view_type: "deck")
+      view.view_items.create!(item: cover, position: 1)
+      collection.collection_entries.create!(entry_type: "View", entry_id: view.id)
 
       expect(collection.cover_cards).to include(cover)
     end

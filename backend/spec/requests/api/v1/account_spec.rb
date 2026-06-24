@@ -12,7 +12,6 @@ RSpec.describe "Api::V1::Account", type: :request do
 
     it "自分のデータを JSON で返し、ダウンロード用ヘッダを付与する" do
       item = create(:item, user: user, title: "光合成")
-      create(:deck, user: user, name: "生物デッキ")
 
       get "/api/v1/account/export", headers: headers
 
@@ -22,7 +21,6 @@ RSpec.describe "Api::V1::Account", type: :request do
       expect(json_response["user"]["email"]).to eq(user.email)
       expect(json_response["items"].map { |i| i["title"] }).to include("光合成")
       expect(json_response["items"].map { |i| i["id"] }).to include(item.id)
-      expect(json_response["decks"].map { |d| d["name"] }).to include("生物デッキ")
     end
 
     it "他ユーザーのデータは含めない" do
@@ -43,7 +41,6 @@ RSpec.describe "Api::V1::Account", type: :request do
 
     it "アカウントと関連データを完全削除する" do
       item = create(:item, user: user)
-      create(:deck, user: user)
 
       expect do
         delete "/api/v1/account", headers: headers
@@ -52,7 +49,6 @@ RSpec.describe "Api::V1::Account", type: :request do
       expect(response).to have_http_status(:no_content)
       expect(User.exists?(user.id)).to be(false)
       expect(Item.exists?(item.id)).to be(false)
-      expect(user.decks.count).to eq(0)
     end
 
     it "他ユーザーのデータは削除しない" do

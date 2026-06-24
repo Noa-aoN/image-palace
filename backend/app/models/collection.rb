@@ -1,9 +1,7 @@
 class Collection < ApplicationRecord
   belongs_to :user
-  # コレクションはカード/デッキ/スペース/ビューをまとめる汎用コンテナ（ポリモーフィック）
+  # コレクションはカード/スペース/ビューをまとめる汎用コンテナ（ポリモーフィック）
   has_many :collection_entries, dependent: :destroy
-  # 旧: デッキ専用・カード直結。移行のため残置（UI 非公開）
-  has_many :collection_decks, dependent: :destroy
   has_many :collection_items, dependent: :destroy
   has_many :space_collections, dependent: :destroy
   # カバー（デッキ踏襲）。表紙はコレクション内の Item を指定。
@@ -20,13 +18,13 @@ class Collection < ApplicationRecord
   scope :recent, -> { order(created_at: :desc) }
 
   # 自動カバー候補となるカード（画像）を追加順で集める。
-  # Item エントリはそのカード、Deck エントリはそのデッキの表紙カードを使う
-  # （コレクションがデッキ等だけでもカバーに中身の画像が反映されるようにする）。
+  # Item エントリはそのカード、View エントリ（デッキ含む）はその表紙カードを使う
+  # （コレクションがビュー等だけでもカバーに中身の画像が反映されるようにする）。
   def cover_item_candidates
     collection_entries.sort_by(&:created_at).filter_map do |e|
       case e.entry_type
       when "Item" then e.entry
-      when "Deck" then e.entry&.cover
+      when "View" then e.entry&.cover
       end
     end
   end
