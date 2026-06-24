@@ -8,7 +8,7 @@ module Api
                            .left_joins(:item_tags)
                            .select("tags.*, COUNT(item_tags.id) AS item_count")
                            .group("tags.id")
-                           .order(Arel.sql("tags.pinned DESC, tags.name"))
+                           .order(Tag::DEFAULT_ORDER)
 
         render json: { tags: tags.map { |t| serialize_tag(t) } }
       end
@@ -45,7 +45,7 @@ module Api
 
       def serialize_tag(tag)
         count = tag.has_attribute?(:item_count) ? tag.item_count : tag.item_tags.size
-        { id: tag.id, name: tag.name, item_count: count, pinned: tag.pinned }
+        { id: tag.id, name: tag.name, item_count: count, pinned: tag.pinned, is_default: tag.is_default }
       end
     end
   end

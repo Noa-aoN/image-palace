@@ -8,9 +8,14 @@ import { Input } from '@/components/ui/input'
 import { getTags, createTag, updateTag, deleteTag, setTagPinned } from '@/lib/api/tags'
 import type { Tag } from '@/types/tag'
 
-// ピン留めを先頭に、各グループ内は日本語の名前順で並べる
+// デフォルトタグを指定順で先頭に、続いてピン留め、各グループ内は日本語の名前順で並べる
 function sortTags(a: Tag, b: Tag): number {
-  return Number(b.pinned) - Number(a.pinned) || a.name.localeCompare(b.name, 'ja')
+  return (
+    Number(b.is_default ?? false) - Number(a.is_default ?? false) ||
+    (a.position ?? Infinity) - (b.position ?? Infinity) ||
+    Number(b.pinned) - Number(a.pinned) ||
+    a.name.localeCompare(b.name, 'ja')
+  )
 }
 
 function TagRow({ tag, onChanged }: { tag: Tag; onChanged: (next: Tag | null) => void }) {
@@ -72,7 +77,11 @@ function TagRow({ tag, onChanged }: { tag: Tag; onChanged: (next: Tag | null) =>
   return (
     <div
       className={`flex items-center justify-between gap-2 rounded-xl border px-4 py-3 ${
-        tag.pinned ? 'border-[var(--palace)]/40 bg-[var(--palace)]/5' : 'border-border bg-card'
+        tag.pinned
+          ? 'border-[var(--palace)]/40 bg-[var(--palace)]/5'
+          : tag.is_default
+            ? 'border-dashed border-border/70 bg-muted/30'
+            : 'border-border bg-card'
       }`}
     >
       {editing ? (
@@ -93,6 +102,9 @@ function TagRow({ tag, onChanged }: { tag: Tag; onChanged: (next: Tag | null) =>
         <div className="flex items-center gap-2 min-w-0">
           <TagIcon size={16} style={{ color: 'var(--palace)' }} />
           <Link href={`/items?tag=${tag.id}`} className="font-medium text-sm truncate hover:underline">{tag.name}</Link>
+          {tag.is_default && (
+            <span className="shrink-0 rounded-full bg-muted px-1.5 py-0.5 text-[10px] font-medium text-muted-foreground">標準</span>
+          )}
           <span className="text-xs text-muted-foreground shrink-0">{tag.item_count} 枚</span>
         </div>
       )}
