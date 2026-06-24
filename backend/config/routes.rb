@@ -72,6 +72,8 @@ Rails.application.routes.draw do
           post "items", action: :add_item
           patch "items/:item_id", action: :update_item
           delete "items/:item_id", action: :remove_item
+          # deck 種別: カードの並び替え
+          patch "reorder", action: :reorder
           post "cover_image", action: :upload_cover
           delete "cover_image", action: :remove_cover
           # space_map 種別: スペースのポイントへカードを配置/クリア
