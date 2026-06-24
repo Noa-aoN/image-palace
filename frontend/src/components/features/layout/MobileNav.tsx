@@ -85,12 +85,10 @@ export function MobileNav() {
             <div className="flex flex-col gap-1 px-2 pt-2">
               {NAV_TREE.map((node) => {
                 if (!node.children) return renderLink(node)
+                // 親もリンク。配下の子を字下げで入れ子表示する。
                 return (
                   <div key={node.label} className="flex flex-col gap-1">
-                    <div className="flex items-center gap-3 px-3 pt-2 pb-0.5 text-sm font-semibold text-muted-foreground">
-                      <span className="shrink-0">{node.icon}</span>
-                      <span className="truncate">{node.label}</span>
-                    </div>
+                    {renderLink(node)}
                     {node.children.map((child) => renderLink(child, true))}
                   </div>
                 )

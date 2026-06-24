@@ -29,14 +29,17 @@ export const NAV_TREE: NavNode[] = [
   { href: '/items', icon: <GalleryHorizontal size={22} />, label: 'カード' },
   { href: '/collections', icon: <Library size={22} />, label: 'コレクション' },
   {
+    // 親自身も「ビュー」一覧へのリンク。配下にデッキ等の表示形式を入れ子にする。
+    href: '/views',
     label: 'ビュー',
     icon: <LayoutGrid size={22} />,
     children: [
       { href: '/decks', icon: <Layers size={20} />, label: 'デッキ' },
-      { href: '/views', icon: <LayoutGrid size={20} />, label: 'ビュー' },
     ],
   },
   {
+    // 親自身も「スペース」一覧へのリンク。配下にロード/ルームを入れ子にする。
+    href: '/spaces',
     label: 'スペース',
     icon: <Frame size={22} />,
     children: [
