@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_06_24_000001) do
+ActiveRecord::Schema[8.1].define(version: 2026_06_24_000002) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
   enable_extension "pgcrypto"
@@ -471,11 +471,13 @@ ActiveRecord::Schema[8.1].define(version: 2026_06_24_000001) do
     t.string "cover_type", default: "first_card", null: false
     t.datetime "created_at", null: false
     t.string "name", null: false
+    t.uuid "source_deck_id"
     t.uuid "space_id"
     t.datetime "updated_at", null: false
     t.uuid "user_id", null: false
     t.string "view_type", default: "freeboard", null: false
     t.index ["cover_item_id"], name: "index_views_on_cover_item_id"
+    t.index ["source_deck_id"], name: "index_views_on_source_deck_id", unique: true, where: "(source_deck_id IS NOT NULL)"
     t.index ["space_id"], name: "index_views_on_space_id"
     t.index ["user_id", "created_at"], name: "index_views_on_user_id_and_created_at"
     t.index ["user_id"], name: "index_views_on_user_id"
