@@ -2,7 +2,7 @@
 
 import { useState } from 'react'
 import Link from 'next/link'
-import { Plus, X, ChevronUp, ChevronDown } from 'lucide-react'
+import { Plus, X, ChevronUp, ChevronDown, GripVertical } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { getItems } from '@/lib/api/items'
 import { addDeckCard, removeViewItem, reorderDeckCards } from '@/lib/api/views'
@@ -15,6 +15,7 @@ export function DeckBoard({ viewId, initialItems }: { viewId: string; initialIte
   const [picking, setPicking] = useState(false)
   const [allItems, setAllItems] = useState<Item[]>([])
   const [busy, setBusy] = useState(false)
+  const [dragIndex, setDragIndex] = useState<number | null>(null)
 
   const placedIds = new Set(items.map((i) => i.item_id))
 
@@ -62,17 +63,36 @@ export function DeckBoard({ viewId, initialItems }: { viewId: string; initialIte
     }
   }
 
+  const persistOrder = async (ordered: ViewItemPlacement[]) => {
+    try {
+      await reorderDeckCards(viewId, ordered.map((i) => i.item_id))
+    } catch {
+      // noop（楽観更新のまま）
+    }
+  }
+
   const move = async (index: number, dir: -1 | 1) => {
     const target = index + dir
     if (target < 0 || target >= items.length) return
     const next = [...items]
     ;[next[index], next[target]] = [next[target], next[index]]
     setItems(next)
-    try {
-      await reorderDeckCards(viewId, next.map((i) => i.item_id))
-    } catch {
-      // noop（楽観更新のまま）
-    }
+    await persistOrder(next)
+  }
+
+  // ドラッグ中は target の位置へ即時に差し込む（楽観更新）。確定は dragEnd で永続化。
+  const handleDragOver = (index: number) => {
+    if (dragIndex === null || dragIndex === index) return
+    const next = [...items]
+    const [moved] = next.splice(dragIndex, 1)
+    next.splice(index, 0, moved)
+    setItems(next)
+    setDragIndex(index)
+  }
+
+  const handleDragEnd = () => {
+    if (dragIndex !== null) persistOrder(items)
+    setDragIndex(null)
   }
 
   return (
@@ -94,7 +114,19 @@ export function DeckBoard({ viewId, initialItems }: { viewId: string; initialIte
           {items.map((vi, index) => {
             const url = vi.item.media?.thumb_url ?? vi.item.media?.url ?? null
             return (
-              <li key={vi.item_id} className="flex items-center gap-3 rounded-xl border border-border bg-card p-2">
+              <li
+                key={vi.item_id}
+                draggable
+                onDragStart={() => setDragIndex(index)}
+                onDragOver={(e) => { e.preventDefault(); handleDragOver(index) }}
+                onDragEnd={handleDragEnd}
+                className={`flex items-center gap-3 rounded-xl border border-border bg-card p-2 ${
+                  dragIndex === index ? 'opacity-50' : ''
+                }`}
+              >
+                <span className="cursor-grab text-muted-foreground/60 active:cursor-grabbing" aria-hidden="true">
+                  <GripVertical size={16} />
+                </span>
                 <span className="w-6 text-center text-xs text-muted-foreground">{index + 1}</span>
                 <div className="h-12 w-12 shrink-0 overflow-hidden rounded-lg bg-muted">
                   {url ? (
