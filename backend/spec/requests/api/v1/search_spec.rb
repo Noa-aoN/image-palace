@@ -15,7 +15,7 @@ RSpec.describe "Api::V1::Search", type: :request do
   describe "GET /api/v1/search" do
     it "returns matching results across cards/decks/collections/spaces/views" do
       user.items.create!(title: "英語ノート", item_type: item_type, generation_status: "completed")
-      user.decks.create!(name: "英語デッキ")
+      user.views.create!(name: "英語デッキ", view_type: "deck")
       user.collections.create!(name: "英語コレクション")
       user.spaces.create!(name: "英語スペース")
       user.views.create!(name: "英語ビュー")
@@ -43,7 +43,7 @@ RSpec.describe "Api::V1::Search", type: :request do
 
     it "does not return other users objects" do
       other = create(:user, :confirmed)
-      other.decks.create!(name: "他人デッキ")
+      other.views.create!(name: "他人デッキ", view_type: "deck")
 
       get "/api/v1/search", params: { q: "他人" }, headers: headers
 
