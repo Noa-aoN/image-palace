@@ -5,15 +5,12 @@ import Link from 'next/link'
 import { GalleryHorizontal, Library, Layers, LayoutGrid, Frame, MapPin, ChevronRight, Plus, Search, X, Route, DoorOpen } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { getItems, getItemsSummary } from '@/lib/api/items'
-import { getDecks } from '@/lib/api/decks'
 import { getCollections } from '@/lib/api/collections'
 import { getSpaces } from '@/lib/api/spaces'
 import { getViews } from '@/lib/api/views'
 import { searchLibrary } from '@/lib/api/search'
-import { DeckCover } from '@/components/features/decks/DeckCover'
 import { EntityCover } from '@/components/features/shared/EntityCover'
 import type { Item } from '@/types/item'
-import type { Deck } from '@/types/deck'
 import type { Collection } from '@/types/collection'
 import type { Space } from '@/types/space'
 import type { View } from '@/types/view'
@@ -107,23 +104,6 @@ function CardThumb({ item }: { item: Item }) {
         ) : (
           <span className="text-muted-foreground text-[11px] px-2 text-center">{item.title}</span>
         )}
-      </div>
-    </Link>
-  )
-}
-
-function DeckTile({ deck }: { deck: Deck }) {
-  return (
-    <Link
-      href={`/decks/${deck.id}`}
-      className="shrink-0 w-40 flex flex-col rounded-xl border border-border overflow-hidden bg-card hover:shadow-md transition-shadow"
-    >
-      <div className="px-3 py-2 flex items-center justify-between gap-1">
-        <span className="text-sm font-medium truncate">{deck.name}</span>
-        <span className="text-xs text-muted-foreground shrink-0">{deck.item_count}</span>
-      </div>
-      <div className="w-full aspect-square bg-muted overflow-hidden">
-        <DeckCover deck={deck} />
       </div>
     </Link>
   )
@@ -407,7 +387,6 @@ function SearchResultsView({
 export default function LibraryPage() {
   const [cards, setCards] = useState<Item[]>([])
   const [cardCount, setCardCount] = useState<number | undefined>(undefined)
-  const [decks, setDecks] = useState<Deck[]>([])
   const [collections, setCollections] = useState<Collection[]>([])
   const [spaces, setSpaces] = useState<Space[]>([])
   const [views, setViews] = useState<View[]>([])
@@ -418,12 +397,11 @@ export default function LibraryPage() {
 
   useEffect(() => {
     let cancelled = false
-    Promise.allSettled([getItems(), getItemsSummary(), getDecks(), getCollections(), getSpaces(), getViews()])
-      .then(([itemsRes, summaryRes, decksRes, collectionsRes, spacesRes, viewsRes]) => {
+    Promise.allSettled([getItems(), getItemsSummary(), getCollections(), getSpaces(), getViews()])
+      .then(([itemsRes, summaryRes, collectionsRes, spacesRes, viewsRes]) => {
         if (cancelled) return
         if (itemsRes.status === 'fulfilled') setCards(itemsRes.value.slice(0, PREVIEW_LIMIT))
         if (summaryRes.status === 'fulfilled') setCardCount(summaryRes.value.total_count)
-        if (decksRes.status === 'fulfilled') setDecks(decksRes.value)
         if (collectionsRes.status === 'fulfilled') setCollections(collectionsRes.value)
         if (spacesRes.status === 'fulfilled') setSpaces(spacesRes.value)
         if (viewsRes.status === 'fulfilled') setViews(viewsRes.value)
@@ -472,6 +450,7 @@ export default function LibraryPage() {
   const hasQuery = query.trim().length > 0
   const roadSpaces = spaces.filter((s) => s.space_type === 'road')
   const roomSpaces = spaces.filter((s) => s.space_type === 'room')
+  const deckViews = views.filter((v) => v.view_type === 'deck')
   const freeboardViews = views.filter((v) => v.view_type === 'freeboard')
   const spaceMapViews = views.filter((v) => v.view_type === 'space_map')
 
@@ -583,16 +562,16 @@ export default function LibraryPage() {
 
       {/* ビュー（表示・学習形式：デッキ / フリーボード等） */}
       <Section icon={<LayoutGrid size={22} />} title="ビュー" description="カードの表示・学習形式">
-        <Shelf icon={<Layers size={18} />} title="デッキ" count={decks.length} href="/decks">
-          {decks.length === 0 ? (
+        <Shelf icon={<Layers size={18} />} title="デッキ" count={deckViews.length} href="/views?type=deck">
+          {deckViews.length === 0 ? (
             <EmptyRail
               message="まだデッキがありません。"
-              cta={<Link href="/decks"><Button size="sm">デッキを作成</Button></Link>}
+              cta={<Link href="/views?type=deck"><Button size="sm">デッキを作成</Button></Link>}
             />
           ) : (
             <Rail>
-              {decks.slice(0, PREVIEW_LIMIT).map((deck) => (
-                <DeckTile key={deck.id} deck={deck} />
+              {deckViews.slice(0, PREVIEW_LIMIT).map((view) => (
+                <ViewTile key={view.id} view={view} />
               ))}
             </Rail>
           )}

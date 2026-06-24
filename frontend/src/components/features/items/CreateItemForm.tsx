@@ -8,13 +8,13 @@ import { Label } from '@/components/ui/label'
 import { Spinner } from '@/components/ui/spinner'
 import { createItem } from '@/lib/api/items'
 import { trackEvent } from '@/lib/analytics'
-import { getDecks, createDeck } from '@/lib/api/decks'
+import { getViews, createView, addDeckCard } from '@/lib/api/views'
 import { getSettings } from '@/lib/api/settings'
 import { useItemsStore } from '@/stores/items'
 import { useBillingStore } from '@/stores/billing'
 import { estimatedCards } from '@/lib/billing'
 import { STYLE_OPTIONS, CUSTOM_PROMPT_MAX_LENGTH } from '@/lib/item-styles'
-import type { Deck } from '@/types/deck'
+import type { View } from '@/types/view'
 
 const MAX_TITLE_LENGTH = 100
 
@@ -37,7 +37,7 @@ export function CreateItemForm() {
   const [forceGenerate, setForceGenerate] = useState(false)
   const [generateMeaning, setGenerateMeaning] = useState(false)
   const [generateTags, setGenerateTags] = useState(false)
-  const [decks, setDecks] = useState<Deck[]>([])
+  const [deckViews, setDeckViews] = useState<View[]>([])
   const [createNewDeck, setCreateNewDeck] = useState(false)
   const [newDeckName, setNewDeckName] = useState('')
   const [selectedDeckIds, setSelectedDeckIds] = useState<string[]>([])
@@ -47,7 +47,7 @@ export function CreateItemForm() {
 
   // 既存デッキ一覧と、意味自動生成のデフォルト値（ユーザー設定）を読み込む
   useEffect(() => {
-    getDecks().then(setDecks).catch(() => {})
+    getViews().then((vs) => setDeckViews(vs.filter((v) => v.view_type === 'deck'))).catch(() => {})
     getSettings()
       .then((s) => {
         setGenerateMeaning(s.auto_generate_meanings)
@@ -81,13 +81,13 @@ export function CreateItemForm() {
     setProgress({ done: 0, total: titles.length })
 
     try {
-      // 送信先デッキ ID を組み立てる。新規デッキを作る場合は先に作成する
+      // 送信先デッキ（view_type='deck' のビュー）を組み立てる。新規作成する場合は先に作る
       // （名前未入力ならデフォルトのナンバリング名を付ける）。
-      const targetDeckIds = [...selectedDeckIds]
+      const targetViewIds = [...selectedDeckIds]
       if (createNewDeck) {
-        const name = newDeckName.trim() || `デッキ ${decks.length + 1}`
-        const created = await createDeck(name)
-        targetDeckIds.push(created.id)
+        const name = newDeckName.trim() || `デッキ ${deckViews.length + 1}`
+        const created = await createView(name, 'deck')
+        targetViewIds.push(created.id)
       }
 
       for (let i = 0; i < titles.length; i++) {
@@ -96,8 +96,11 @@ export function CreateItemForm() {
           customPrompt: customPrompt.trim() || undefined,
           generateMeaning,
           generateTags,
-          deckIds: targetDeckIds.length ? targetDeckIds : undefined,
         })
+        // 作成したカードを選択中のデッキ（deck-view）へ追加する
+        for (const viewId of targetViewIds) {
+          await addDeckCard(viewId, item.id)
+        }
         upsertItem(item)
         setProgress({ done: i + 1, total: titles.length })
       }
@@ -297,31 +300,31 @@ export function CreateItemForm() {
                 value={newDeckName}
                 onChange={(e) => setNewDeckName(e.target.value)}
                 disabled={submitting}
-                placeholder={`デッキ名（未入力なら「デッキ ${decks.length + 1}」）`}
+                placeholder={`デッキ名（未入力なら「デッキ ${deckViews.length + 1}」）`}
                 className="w-full rounded-lg border border-input bg-background px-3 py-2 text-sm placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
               />
             )}
           </span>
         </label>
 
-        {decks.length > 0 && (
+        {deckViews.length > 0 && (
           <div className="space-y-2 border-t border-border/60 pt-3">
             <span className="block text-sm font-medium">既存のデッキに追加する</span>
             <div className="flex flex-wrap gap-2">
-              {decks.map((deck) => {
-                const active = selectedDeckIds.includes(deck.id)
+              {deckViews.map((view) => {
+                const active = selectedDeckIds.includes(view.id)
                 return (
                   <button
-                    key={deck.id}
+                    key={view.id}
                     type="button"
-                    onClick={() => toggleDeck(deck.id)}
+                    onClick={() => toggleDeck(view.id)}
                     disabled={submitting}
                     className={`rounded-full border px-3 py-1 text-sm transition-colors disabled:opacity-50 ${
                       active ? 'border-transparent text-white' : 'border-border text-muted-foreground hover:bg-muted'
                     }`}
                     style={active ? { backgroundColor: 'var(--palace)' } : undefined}
                   >
-                    {deck.name}
+                    {view.name}
                   </button>
                 )
               })}
