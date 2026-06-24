@@ -148,24 +148,40 @@ function TagRow({ tag, onChanged, badge }: { tag: Tag; onChanged: (next: Tag | n
   )
 }
 
-// 折りたたみ可能なタグセクション（科学分類 / NDC）
+// 折りたたみ可能なタグセクション（科学分類 / NDC）。開閉状態は localStorage に保存する。
 function CollapsibleSection({
   title,
   count,
   defaultOpen = true,
+  storageKey,
   children,
 }: {
   title: string
   count: number
   defaultOpen?: boolean
+  storageKey: string
   children: React.ReactNode
 }) {
   const [open, setOpen] = useState(defaultOpen)
+
+  // 初回マウント時に保存済みの開閉状態を反映（SSR とのハイドレーション不整合を避けるため effect で）
+  useEffect(() => {
+    const stored = window.localStorage.getItem(storageKey)
+    if (stored !== null) setOpen(stored === '1')
+  }, [storageKey])
+
+  const toggle = () =>
+    setOpen((o) => {
+      const next = !o
+      window.localStorage.setItem(storageKey, next ? '1' : '0')
+      return next
+    })
+
   return (
     <div className="rounded-xl border border-border/60 bg-muted/20 p-2">
       <button
         type="button"
-        onClick={() => setOpen((o) => !o)}
+        onClick={toggle}
         className="flex w-full items-center gap-2 px-2 py-1.5 text-left"
         aria-expanded={open}
       >
@@ -274,14 +290,14 @@ export default function TagsPage() {
       ) : (
         <div className="space-y-4">
           {scienceTags.length > 0 && (
-            <CollapsibleSection title="科学分類（標準）" count={scienceTags.length}>
+            <CollapsibleSection title="科学分類（標準）" count={scienceTags.length} storageKey="tags-section-science">
               {scienceTags.map((tag) => (
                 <TagRow key={tag.id} tag={tag} badge="標準" onChanged={(next) => handleTagChanged(tag.id, next)} />
               ))}
             </CollapsibleSection>
           )}
           {ndcTags.length > 0 && (
-            <CollapsibleSection title="NDC（図書館分類）" count={ndcTags.length} defaultOpen={false}>
+            <CollapsibleSection title="NDC（図書館分類）" count={ndcTags.length} defaultOpen={false} storageKey="tags-section-ndc">
               {ndcTags.map((tag) => (
                 <TagRow key={tag.id} tag={tag} badge="NDC" onChanged={(next) => handleTagChanged(tag.id, next)} />
               ))}
