@@ -14,12 +14,11 @@ export interface Collection {
   created_at: string
 }
 
-export type CollectionEntryType = 'Item' | 'Deck' | 'Space' | 'View'
+export type CollectionEntryType = 'Item' | 'Space' | 'View'
 
-// コレクションにまとめられた要素（カード/デッキ/スペース/ビューの混在）
+// コレクションにまとめられた要素（カード/スペース/ビューの混在。デッキはビューに統合済み）
 export type CollectionEntry =
   | { entry_type: 'Item'; id: string; title: string; media: ItemMedia | null }
-  | { entry_type: 'Deck'; id: string; name: string; item_count: number; cover: ItemMedia | null }
   | { entry_type: 'Space'; id: string; name: string; cover: CoverImage | null }
   | { entry_type: 'View'; id: string; name: string; cover: ItemMedia | null }
 

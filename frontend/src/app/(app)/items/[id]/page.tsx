@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import Link from 'next/link'
-import { useParams, useRouter, useSearchParams } from 'next/navigation'
+import { useParams, useRouter } from 'next/navigation'
 import { Trash2, ChevronLeft, ChevronRight, Pencil, Check, X } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -11,7 +11,6 @@ import { ItemProperties } from '@/components/features/items/ItemProperties'
 import { RegeneratePanel } from '@/components/features/items/RegeneratePanel'
 import { GenerationInfo } from '@/components/features/items/GenerationInfo'
 import { getItem, getItems, deleteItem, updateItem } from '@/lib/api/items'
-import { getDeck } from '@/lib/api/decks'
 import { useItemsStore } from '@/stores/items'
 import type { Item } from '@/types/item'
 
@@ -34,12 +33,9 @@ const POLLING_STATUSES = new Set(['pending', 'processing'])
 export default function ItemDetailPage() {
   const { id } = useParams<{ id: string }>()
   const router = useRouter()
-  const searchParams = useSearchParams()
-  // デッキ経由で開いた場合の文脈（戻り先・前後移動の範囲をそのデッキに揃える）
-  const deckId = searchParams.get('deck')
-  const backHref = deckId ? `/decks/${deckId}` : '/items'
-  const backLabel = deckId ? '← デッキへ戻る' : '← マイカードへ戻る'
-  const itemHref = (targetId: string) => (deckId ? `/items/${targetId}?deck=${deckId}` : `/items/${targetId}`)
+  const backHref = '/items'
+  const backLabel = '← マイカードへ戻る'
+  const itemHref = (targetId: string) => `/items/${targetId}`
   const cachedItems = useItemsStore((s) => s.items)
   const upsertItem = useItemsStore((s) => s.upsertItem)
   const removeItem = useItemsStore((s) => s.removeItem)
@@ -84,24 +80,13 @@ export default function ItemDetailPage() {
       return
     }
 
-    // デッキ経由でストア未読込（リロード等）の場合はそのデッキのカードで前後移動する
-    if (deckId) {
-      getDeck(deckId)
-        .then((deck) => {
-          setAllIds(deck.items.map((i) => i.id))
-          useItemsStore.getState().setItems(deck.items)
-        })
-        .catch(() => {})
-      return
-    }
-
     getItems()
       .then((items) => {
         setAllIds(items.map((current) => current.id))
         useItemsStore.getState().setItems(items)
       })
       .catch(() => {})
-  }, [cachedItems, deckId])
+  }, [cachedItems])
 
   // Effect 3: pending/processing 中はポーリング
   const generationStatus = item?.generation_status
