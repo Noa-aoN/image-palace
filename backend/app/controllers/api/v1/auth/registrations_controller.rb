@@ -20,6 +20,18 @@ module Api
           super
         end
 
+        # 登録成功時に新規ユーザーへデフォルトタグを付与する（失敗してもサインアップは継続）。
+        def render_create_success
+          if @resource&.persisted?
+            begin
+              Tag.assign_defaults_to(@resource)
+            rescue StandardError => e
+              Rails.logger.warn("default tags assignment failed for user #{@resource.id}: #{e.message}")
+            end
+          end
+          super
+        end
+
         private
 
         # 認証済みユーザー（@resource は set_user_by_token が設定）と異なるメールが渡されたか

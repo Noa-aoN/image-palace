@@ -10,12 +10,12 @@ RSpec.describe "Api::V1::Settings", type: :request do
       expect(response).to have_http_status(:unauthorized)
     end
 
-    it "設定が無ければ既定値で作成して返す" do
+    it "設定が無ければ既定値で作成して返す（生成オプションは既定ON）" do
       get "/api/v1/settings", headers: headers
 
       expect(response).to have_http_status(:success)
-      expect(json_response["auto_generate_meanings"]).to be(false)
-      expect(json_response["auto_generate_tags"]).to be(false)
+      expect(json_response["auto_generate_meanings"]).to be(true)
+      expect(json_response["auto_generate_tags"]).to be(true)
       expect(user.reload.setting).to be_present
     end
   end
