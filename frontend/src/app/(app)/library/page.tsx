@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import Link from 'next/link'
-import { GalleryHorizontal, Library, Layers, LayoutGrid, Frame, ChevronRight, Plus, Search, X, Route, DoorOpen } from 'lucide-react'
+import { GalleryHorizontal, Library, Layers, LayoutGrid, Frame, MapPin, ChevronRight, Plus, Search, X, Route, DoorOpen } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { getItems, getItemsSummary } from '@/lib/api/items'
 import { getDecks } from '@/lib/api/decks'
@@ -472,6 +472,8 @@ export default function LibraryPage() {
   const hasQuery = query.trim().length > 0
   const roadSpaces = spaces.filter((s) => s.space_type === 'road')
   const roomSpaces = spaces.filter((s) => s.space_type === 'room')
+  const freeboardViews = views.filter((v) => v.view_type === 'freeboard')
+  const spaceMapViews = views.filter((v) => v.view_type === 'space_map')
 
   if (loading) {
     return (
@@ -595,15 +597,29 @@ export default function LibraryPage() {
             </Rail>
           )}
         </Shelf>
-        <Shelf icon={<LayoutGrid size={18} />} title="ビュー（フリーボード等）" count={views.length} href="/views">
-          {views.length === 0 ? (
+        <Shelf icon={<LayoutGrid size={18} />} title="フリーボード" count={freeboardViews.length} href="/views?type=freeboard">
+          {freeboardViews.length === 0 ? (
             <EmptyRail
-              message="まだビューがありません。"
-              cta={<Link href="/views"><Button size="sm">ビューを作成</Button></Link>}
+              message="まだフリーボードがありません。"
+              cta={<Link href="/views?type=freeboard"><Button size="sm">作成</Button></Link>}
             />
           ) : (
             <Rail>
-              {views.slice(0, PREVIEW_LIMIT).map((view) => (
+              {freeboardViews.slice(0, PREVIEW_LIMIT).map((view) => (
+                <ViewTile key={view.id} view={view} />
+              ))}
+            </Rail>
+          )}
+        </Shelf>
+        <Shelf icon={<MapPin size={18} />} title="スペース配置" count={spaceMapViews.length} href="/views?type=space_map">
+          {spaceMapViews.length === 0 ? (
+            <EmptyRail
+              message="まだスペース配置がありません。"
+              cta={<Link href="/views?type=space_map"><Button size="sm">作成</Button></Link>}
+            />
+          ) : (
+            <Rail>
+              {spaceMapViews.slice(0, PREVIEW_LIMIT).map((view) => (
                 <ViewTile key={view.id} view={view} />
               ))}
             </Rail>

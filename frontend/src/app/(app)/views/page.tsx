@@ -1,7 +1,8 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { Suspense, useEffect, useState } from 'react'
 import Link from 'next/link'
+import { useSearchParams } from 'next/navigation'
 import { Plus } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -13,14 +14,20 @@ import { EntityCover } from '@/components/features/shared/EntityCover'
 import type { View } from '@/types/view'
 import type { Space } from '@/types/space'
 
-export default function ViewsPage() {
+function ViewsPageInner() {
+  // ?type=freeboard / space_map で種別フィルタ（サイドバー/ライブラリの導線から）
+  const searchParams = useSearchParams()
+  const typeFilter = searchParams.get('type')
+
   const [views, setViews] = useState<View[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
   const [creating, setCreating] = useState(false)
   const [name, setName] = useState('')
-  const [viewType, setViewType] = useState('freeboard')
+  const [viewType, setViewType] = useState(
+    typeFilter && (VIEW_TYPES as readonly string[]).includes(typeFilter) ? typeFilter : 'freeboard'
+  )
   const [submitting, setSubmitting] = useState(false)
   const [createError, setCreateError] = useState<string | null>(null)
 
@@ -85,10 +92,20 @@ export default function ViewsPage() {
     }
   }
 
+  const visibleViews = typeFilter ? views.filter((v) => v.view_type === typeFilter) : views
+  const heading = typeFilter ? viewTypeLabel(typeFilter) : 'ビュー'
+
   return (
     <div className="max-w-7xl mx-auto px-6 py-12">
       <div className="flex items-center justify-between mb-2">
-        <h1 className="text-xl font-semibold">ビュー</h1>
+        <div className="flex items-baseline gap-3">
+          <h1 className="text-xl font-semibold">{heading}</h1>
+          {typeFilter && (
+            <Link href="/views" className="text-sm hover:underline" style={{ color: 'var(--palace)' }}>
+              すべてのビュー
+            </Link>
+          )}
+        </div>
         {!creating && (
           <Button size="sm" onClick={() => setCreating(true)} className="flex items-center gap-1.5">
             <Plus size={16} />
@@ -166,16 +183,16 @@ export default function ViewsPage() {
         </div>
       ) : error ? (
         <p className="text-destructive text-sm">{error}</p>
-      ) : views.length === 0 ? (
+      ) : visibleViews.length === 0 ? (
         <div className="text-center py-16 space-y-4">
           <p className="text-muted-foreground">
-            まだビューがありません。フリーボードを作ってカードを配置してみましょう。
+            まだ{heading}がありません。作成してカードを配置してみましょう。
           </p>
-          {!creating && <Button onClick={() => setCreating(true)}>最初のビューを作成</Button>}
+          {!creating && <Button onClick={() => setCreating(true)}>{heading}を作成</Button>}
         </div>
       ) : (
         <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
-          {views.map((view) => (
+          {visibleViews.map((view) => (
             <Link
               key={view.id}
               href={`/views/${view.id}`}
@@ -193,5 +210,14 @@ export default function ViewsPage() {
         </div>
       )}
     </div>
+  )
+}
+
+export default function ViewsPage() {
+  // useSearchParams は Suspense 境界が必要
+  return (
+    <Suspense fallback={<div className="max-w-7xl mx-auto px-6 py-12 text-muted-foreground">読み込み中…</div>}>
+      <ViewsPageInner />
+    </Suspense>
   )
 }
