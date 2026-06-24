@@ -35,8 +35,9 @@ export function CreateItemForm() {
   const [style, setStyle] = useState('')
   const [customPrompt, setCustomPrompt] = useState('')
   const [forceGenerate, setForceGenerate] = useState(false)
-  const [generateMeaning, setGenerateMeaning] = useState(false)
-  const [generateTags, setGenerateTags] = useState(false)
+  // タグ生成・説明生成は既定ON（ユーザー設定があればそれで上書き）
+  const [generateMeaning, setGenerateMeaning] = useState(true)
+  const [generateTags, setGenerateTags] = useState(true)
   const [deckViews, setDeckViews] = useState<View[]>([])
   const [createNewDeck, setCreateNewDeck] = useState(false)
   const [newDeckName, setNewDeckName] = useState('')

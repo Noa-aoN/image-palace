@@ -23,6 +23,15 @@ module Api
           # ユーザーを取得または作成
           @user = User.find_for_oauth(@auth_hash)
 
+          # 新規 OAuth ユーザーにはデフォルトタグを付与する（失敗してもログインは継続）。
+          if @user.previously_new_record?
+            begin
+              Tag.assign_defaults_to(@user)
+            rescue StandardError => e
+              Rails.logger.warn("default tags assignment failed for user #{@user.id}: #{e.message}")
+            end
+          end
+
           # devise_token_auth 標準メソッドでトークン発行
           auth_header = @user.create_new_auth_token
 
