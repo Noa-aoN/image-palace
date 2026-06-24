@@ -14,12 +14,13 @@ export interface View {
   created_at: string
 }
 
-// フリーボード上に配置されたカード
+// フリーボード上に配置されたカード（deck では position が順序を表す）
 export interface ViewItemPlacement {
   item_id: string
   x: number
   y: number
   z_index: number
+  position?: number | null
   item: {
     id: string
     title: string

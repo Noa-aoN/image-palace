@@ -47,6 +47,16 @@ export async function removeViewItem(viewId: string, itemId: string): Promise<vo
   await apiClient.delete(`/api/v1/views/${viewId}/items/${itemId}`)
 }
 
+// deck: カードを末尾に追加する（position はサーバ側で採番、座標不要）
+export async function addDeckCard(viewId: string, itemId: string): Promise<void> {
+  await apiClient.post(`/api/v1/views/${viewId}/items`, { item_id: itemId })
+}
+
+// deck: カードの並び替え（ordered_item_ids の順に position を振り直す）
+export async function reorderDeckCards(viewId: string, orderedItemIds: string[]): Promise<void> {
+  await apiClient.patch(`/api/v1/views/${viewId}/reorder`, { ordered_item_ids: orderedItemIds })
+}
+
 export async function createView(
   name: string,
   viewType: string = 'freeboard',
