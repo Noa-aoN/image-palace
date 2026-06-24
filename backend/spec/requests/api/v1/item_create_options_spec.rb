@@ -33,33 +33,6 @@ RSpec.describe "Api::V1::Items create with style options", type: :request do
     expect(json_response["style"]).to be_nil
   end
 
-  describe "deck_ids での作成時デッキ追加" do
-    it "指定した自分のデッキに作成カードを追加する" do
-      deck1 = create(:deck, user: user)
-      deck2 = create(:deck, user: user)
-
-      post "/api/v1/items",
-        params: { item: { title: "cat", deck_ids: [ deck1.id, deck2.id ] } },
-        headers: headers
-
-      expect(response).to have_http_status(:accepted)
-      item = user.items.last
-      expect(deck1.reload.items).to include(item)
-      expect(deck2.reload.items).to include(item)
-    end
-
-    it "他人のデッキ ID は無視する" do
-      other_deck = create(:deck, user: create(:user, :confirmed))
-
-      post "/api/v1/items",
-        params: { item: { title: "cat", deck_ids: [ other_deck.id ] } },
-        headers: headers
-
-      expect(response).to have_http_status(:accepted)
-      expect(other_deck.reload.items).to be_empty
-    end
-  end
-
   describe "generate_meaning オプション" do
     it "true なら設定 OFF でも GenerateMeaningJob をエンキューする" do
       create(:setting, user: user, auto_generate_meanings: false)

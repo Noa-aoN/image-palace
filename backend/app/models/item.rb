@@ -5,8 +5,6 @@ class Item < ApplicationRecord
   has_many :medias, dependent: :destroy
   has_many :collection_items, dependent: :destroy
   has_many :collections, through: :collection_items
-  has_many :deck_items, dependent: :destroy
-  has_many :decks, through: :deck_items
   has_many :collection_entries, as: :entry, dependent: :destroy
   has_many :item_tags, dependent: :destroy
   has_many :tags, through: :item_tags

@@ -48,7 +48,7 @@ module Api
       end
 
       # POST /api/v1/collections/:id/entries { entry_type, entry_id }
-      # entry_type は Item / Deck / Space / View
+      # entry_type は Item / Space / View
       def add_entry
         entry = find_owned_entry(params[:entry_type], params[:entry_id])
         @collection.collection_entries.find_or_create_by!(entry_type: params[:entry_type], entry_id: entry.id)
@@ -115,7 +115,6 @@ module Api
         scope =
           case entry_type
           when "Item" then current_user.items
-          when "Deck" then current_user.decks
           when "Space" then current_user.spaces
           when "View" then current_user.views
           else raise ActiveRecord::RecordNotFound
@@ -154,8 +153,6 @@ module Api
         case collection_entry.entry_type
         when "Item"
           base.merge(title: obj.title, media: serialize_media(obj.primary_media))
-        when "Deck"
-          base.merge(name: obj.name, item_count: obj.deck_items.size, cover: serialize_media(obj.cover&.primary_media))
         when "Space"
           base.merge(name: obj.name, cover: obj.cover_point ? serialize_point_image(obj.cover_point) : nil)
         when "View"

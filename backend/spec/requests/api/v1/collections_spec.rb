@@ -5,8 +5,8 @@ RSpec.describe "Api::V1::Collections", type: :request do
   let(:headers) { auth_headers_for(user) }
   let(:item_type) { ItemType.find_or_create_by!(name: "term") { |it| it.label = "単語" } }
 
-  def create_deck(name)
-    user.decks.create!(name: name)
+  def create_view(name)
+    user.views.create!(name: name, view_type: "deck")
   end
 
   describe "認証ガード" do
@@ -19,7 +19,7 @@ RSpec.describe "Api::V1::Collections", type: :request do
   describe "GET /api/v1/collections" do
     it "returns the user's collections with entry counts" do
       collection = user.collections.create!(name: "学習")
-      collection.collection_entries.create!(entry: create_deck("単語"))
+      collection.collection_entries.create!(entry: create_view("単語"))
       collection.collection_entries.create!(entry: user.spaces.create!(name: "英語"))
       user.collections.create!(name: "空コレクション")
 
@@ -62,11 +62,10 @@ RSpec.describe "Api::V1::Collections", type: :request do
   end
 
   describe "GET /api/v1/collections/:id" do
-    it "returns mixed entries (card / deck / space / view)" do
+    it "returns mixed entries (card / space / view)" do
       collection = user.collections.create!(name: "学習")
       item = user.items.create!(title: "りんご", item_type: item_type, generation_status: "completed")
       collection.collection_entries.create!(entry: item)
-      collection.collection_entries.create!(entry: create_deck("単語"))
       collection.collection_entries.create!(entry: user.spaces.create!(name: "英語スペース"))
       collection.collection_entries.create!(entry: user.views.create!(name: "関係図"))
 
@@ -74,7 +73,7 @@ RSpec.describe "Api::V1::Collections", type: :request do
 
       expect(response).to have_http_status(:success)
       types = json_response.fetch("entries").map { |e| e["entry_type"] }
-      expect(types).to contain_exactly("Item", "Deck", "Space", "View")
+      expect(types).to contain_exactly("Item", "Space", "View")
     end
 
     it "rejects access to another users collection" do
@@ -90,11 +89,11 @@ RSpec.describe "Api::V1::Collections", type: :request do
   describe "コレクションへのエントリ追加・削除" do
     it "adds a deck entry" do
       collection = user.collections.create!(name: "学習")
-      deck = create_deck("単語")
+      deck = create_view("単語")
 
       expect {
         post "/api/v1/collections/#{collection.id}/entries",
-          params: { entry_type: "Deck", entry_id: deck.id }, headers: headers, as: :json
+          params: { entry_type: "View", entry_id: deck.id }, headers: headers, as: :json
       }.to change { collection.collection_entries.count }.by(1)
 
       expect(response).to have_http_status(:no_content)
@@ -113,12 +112,12 @@ RSpec.describe "Api::V1::Collections", type: :request do
 
     it "is idempotent when adding the same entry twice" do
       collection = user.collections.create!(name: "学習")
-      deck = create_deck("単語")
+      deck = create_view("単語")
       collection.collection_entries.create!(entry: deck)
 
       expect {
         post "/api/v1/collections/#{collection.id}/entries",
-          params: { entry_type: "Deck", entry_id: deck.id }, headers: headers, as: :json
+          params: { entry_type: "View", entry_id: deck.id }, headers: headers, as: :json
       }.not_to change { collection.collection_entries.count }
 
       expect(response).to have_http_status(:no_content)
@@ -136,21 +135,21 @@ RSpec.describe "Api::V1::Collections", type: :request do
     it "does not add another users object" do
       collection = user.collections.create!(name: "学習")
       other = create(:user, :confirmed)
-      other_deck = other.decks.create!(name: "他人デッキ")
+      other_deck = other.views.create!(name: "他人デッキ", view_type: "deck")
 
       post "/api/v1/collections/#{collection.id}/entries",
-        params: { entry_type: "Deck", entry_id: other_deck.id }, headers: headers, as: :json
+        params: { entry_type: "View", entry_id: other_deck.id }, headers: headers, as: :json
 
       expect(response).to have_http_status(:not_found)
     end
 
     it "removes an entry" do
       collection = user.collections.create!(name: "学習")
-      deck = create_deck("単語")
+      deck = create_view("単語")
       collection.collection_entries.create!(entry: deck)
 
       expect {
-        delete "/api/v1/collections/#{collection.id}/entries/Deck/#{deck.id}", headers: headers, as: :json
+        delete "/api/v1/collections/#{collection.id}/entries/View/#{deck.id}", headers: headers, as: :json
       }.to change { collection.collection_entries.count }.by(-1)
 
       expect(response).to have_http_status(:no_content)
