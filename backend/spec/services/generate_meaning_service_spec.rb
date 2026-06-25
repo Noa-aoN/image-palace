@@ -49,4 +49,20 @@ RSpec.describe GenerateMeaningService do
 
     expect { described_class.call(item: item) }.to raise_error(GenerateMeaningService::GenerationError)
   end
+
+  it "level を指定すると detail_level に保存する" do
+    stub_chat({ definition: "くわしい説明", example_sentence: "例" }.to_json)
+
+    meaning = described_class.call(item: item, level: "detailed")
+
+    expect(meaning.detail_level).to eq("detailed")
+  end
+
+  it "level 未指定なら simple、不正値も simple に丸める" do
+    stub_chat({ definition: "説明", example_sentence: "" }.to_json)
+    expect(described_class.call(item: item).detail_level).to eq("simple")
+
+    stub_chat({ definition: "説明2", example_sentence: "" }.to_json)
+    expect(described_class.call(item: item, level: "bogus").detail_level).to eq("simple")
+  end
 end

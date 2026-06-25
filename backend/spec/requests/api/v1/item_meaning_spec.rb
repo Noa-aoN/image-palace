@@ -12,15 +12,19 @@ RSpec.describe "Api::V1::Items meaning", type: :request do
     end
 
     it "意味を生成してアイテムを返す" do
-      allow(GenerateMeaningService).to receive(:call) do |item:|
-        item.meanings.create!(language_code: "ja", definition: "植物が光で養分を作る働き", example_sentence: "例文")
+      allow(GenerateMeaningService).to receive(:call) do |item:, level: nil|
+        item.meanings.create!(
+          language_code: "ja", definition: "植物が光で養分を作る働き",
+          example_sentence: "例文", detail_level: Meaning.normalize_level(level)
+        )
       end
 
-      post "/api/v1/items/#{item.id}/meaning", headers: headers
+      post "/api/v1/items/#{item.id}/meaning", params: { level: "detailed" }, headers: headers
 
       expect(response).to have_http_status(:success)
       expect(json_response["meaning"]).to include("光")
       expect(json_response["meaning_example"]).to eq("例文")
+      expect(json_response["meaning_level"]).to eq("detailed")
     end
 
     it "生成に失敗したら 422" do

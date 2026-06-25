@@ -36,6 +36,7 @@ export interface Item {
   item_type?: ItemType | null
   meaning?: string | null
   meaning_example?: string | null
+  meaning_level?: string | null
   style?: string | null
   custom_prompt?: string | null
   tags?: ItemTag[]
