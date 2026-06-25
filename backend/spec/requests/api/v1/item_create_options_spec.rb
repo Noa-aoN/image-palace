@@ -42,5 +42,12 @@ RSpec.describe "Api::V1::Items create with style options", type: :request do
       }.to have_enqueued_job(GenerateMeaningJob)
       expect(response).to have_http_status(:accepted)
     end
+
+    it "generate_meaning_level を GenerateMeaningJob に渡す" do
+      expect {
+        post "/api/v1/items",
+          params: { item: { title: "光合成", generate_meaning: true, generate_meaning_level: "detailed" } }, headers: headers
+      }.to have_enqueued_job(GenerateMeaningJob).with(anything, "detailed")
+    end
   end
 end

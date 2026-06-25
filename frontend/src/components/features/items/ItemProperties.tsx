@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react'
 import { Loader2, Pencil, Check, X, Sparkles } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { getItemTypes, updateItem, generateMeaning, generateTags } from '@/lib/api/items'
+import { MEANING_LEVELS, meaningLevelLabel, DEFAULT_MEANING_LEVEL } from '@/lib/meaning-levels'
 import { getTags } from '@/lib/api/tags'
 import type { Item, ItemType } from '@/types/item'
 import type { Tag } from '@/types/tag'
@@ -28,12 +29,13 @@ export function ItemProperties({ item, onUpdated }: ItemPropertiesProps) {
   const [savingMeaning, setSavingMeaning] = useState(false)
   const [meaningError, setMeaningError] = useState<string | null>(null)
   const [generatingMeaning, setGeneratingMeaning] = useState(false)
+  const [meaningLevel, setMeaningLevel] = useState<string>(item.meaning_level ?? DEFAULT_MEANING_LEVEL)
 
   const handleGenerateMeaning = async () => {
     setGeneratingMeaning(true)
     setMeaningError(null)
     try {
-      const updated = await generateMeaning(item.id)
+      const updated = await generateMeaning(item.id, meaningLevel)
       onUpdated(updated)
     } catch {
       setMeaningError('意味の生成に失敗しました。時間を置いて再度お試しください。')
@@ -218,6 +220,30 @@ export function ItemProperties({ item, onUpdated }: ItemPropertiesProps) {
             </div>
           )}
         </div>
+
+        {!editingMeaning && (
+          <div className="flex flex-wrap items-center gap-1.5">
+            <span className="text-xs text-muted-foreground">詳しさ:</span>
+            {MEANING_LEVELS.map((lv) => {
+              const active = meaningLevel === lv
+              return (
+                <button
+                  key={lv}
+                  type="button"
+                  onClick={() => setMeaningLevel(lv)}
+                  disabled={generatingMeaning}
+                  className={`rounded-full border px-2.5 py-0.5 text-xs transition-colors disabled:opacity-50 ${
+                    active ? 'border-transparent text-white' : 'border-border text-muted-foreground hover:bg-muted'
+                  }`}
+                  style={active ? { backgroundColor: 'var(--palace)' } : undefined}
+                  aria-pressed={active}
+                >
+                  {meaningLevelLabel(lv)}
+                </button>
+              )
+            })}
+          </div>
+        )}
 
         {editingMeaning ? (
           <div className="space-y-2">

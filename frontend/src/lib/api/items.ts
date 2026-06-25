@@ -18,10 +18,10 @@ export interface CreateItemOptions {
   customPrompt?: string
   /** 各カードの意味・説明を AI で自動生成するか（未指定ならユーザー設定に従う） */
   generateMeaning?: boolean
+  /** 説明の詳しさレベル（brief / simple / detailed） */
+  generateMeaningLevel?: string
   /** 各カードのタグを AI で自動生成するか（未指定ならユーザー設定に従う） */
   generateTags?: boolean
-  /** 作成したカードを追加するデッキ ID の配列 */
-  deckIds?: string[]
 }
 
 export async function createItem(
@@ -38,8 +38,8 @@ export async function createItem(
       ...(options?.style ? { style: options.style } : {}),
       ...(options?.customPrompt ? { custom_prompt: options.customPrompt } : {}),
       ...(options?.generateMeaning !== undefined ? { generate_meaning: options.generateMeaning } : {}),
+      ...(options?.generateMeaningLevel ? { generate_meaning_level: options.generateMeaningLevel } : {}),
       ...(options?.generateTags !== undefined ? { generate_tags: options.generateTags } : {}),
-      ...(options?.deckIds && options.deckIds.length ? { deck_ids: options.deckIds } : {}),
     },
   })
   return res.data
@@ -155,9 +155,9 @@ export async function retryItem(id: string, options?: RegenerateOptions): Promis
   return res.data
 }
 
-// AI による意味・説明の生成（同期）。生成済みの場合は再生成。
-export async function generateMeaning(id: string): Promise<Item> {
-  const res = await apiClient.post<Item>(`/api/v1/items/${id}/meaning`)
+// AI による意味・説明の生成（同期）。生成済みの場合は再生成。level で詳しさを選べる。
+export async function generateMeaning(id: string, level?: string): Promise<Item> {
+  const res = await apiClient.post<Item>(`/api/v1/items/${id}/meaning`, level ? { level } : {})
   return res.data
 }
 

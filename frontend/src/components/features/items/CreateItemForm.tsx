@@ -14,6 +14,7 @@ import { useItemsStore } from '@/stores/items'
 import { useBillingStore } from '@/stores/billing'
 import { estimatedCards } from '@/lib/billing'
 import { STYLE_OPTIONS, CUSTOM_PROMPT_MAX_LENGTH } from '@/lib/item-styles'
+import { MEANING_LEVELS, meaningLevelLabel, DEFAULT_MEANING_LEVEL } from '@/lib/meaning-levels'
 import type { View } from '@/types/view'
 
 const MAX_TITLE_LENGTH = 100
@@ -37,6 +38,7 @@ export function CreateItemForm() {
   const [forceGenerate, setForceGenerate] = useState(false)
   // タグ生成・説明生成は既定ON（ユーザー設定があればそれで上書き）
   const [generateMeaning, setGenerateMeaning] = useState(true)
+  const [meaningLevel, setMeaningLevel] = useState<string>(DEFAULT_MEANING_LEVEL)
   const [generateTags, setGenerateTags] = useState(true)
   const [deckViews, setDeckViews] = useState<View[]>([])
   const [createNewDeck, setCreateNewDeck] = useState(false)
@@ -96,6 +98,7 @@ export function CreateItemForm() {
           style: style || undefined,
           customPrompt: customPrompt.trim() || undefined,
           generateMeaning,
+          generateMeaningLevel: generateMeaning ? meaningLevel : undefined,
           generateTags,
         })
         // 作成したカードを選択中のデッキ（deck-view）へ追加する
@@ -256,11 +259,34 @@ export function CreateItemForm() {
           onChange={(e) => setGenerateMeaning(e.target.checked)}
           disabled={submitting}
         />
-        <span className="space-y-1">
+        <span className="flex-1 space-y-2">
           <span className="block text-sm font-medium">各カードの意味・説明をAIで自動生成する</span>
           <span className="block text-xs text-muted-foreground">
             作成するすべてのカードについて、意味・説明をAIで生成します。あとから個別に生成・編集することもできます。
           </span>
+          {generateMeaning && (
+            <span className="flex flex-wrap items-center gap-1.5 pt-1">
+              <span className="text-xs text-muted-foreground">詳しさ:</span>
+              {MEANING_LEVELS.map((lv) => {
+                const active = meaningLevel === lv
+                return (
+                  <button
+                    key={lv}
+                    type="button"
+                    onClick={(e) => { e.preventDefault(); setMeaningLevel(lv) }}
+                    disabled={submitting}
+                    className={`rounded-full border px-2.5 py-0.5 text-xs transition-colors disabled:opacity-50 ${
+                      active ? 'border-transparent text-white' : 'border-border text-muted-foreground hover:bg-muted'
+                    }`}
+                    style={active ? { backgroundColor: 'var(--palace)' } : undefined}
+                    aria-pressed={active}
+                  >
+                    {meaningLevelLabel(lv)}
+                  </button>
+                )
+              })}
+            </span>
+          )}
         </span>
       </label>
 

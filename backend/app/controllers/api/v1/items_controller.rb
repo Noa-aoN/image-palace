@@ -143,8 +143,9 @@ module Api
       end
 
       # 意味・説明を AI で生成（同期）。詳細画面の「意味を生成」ボタンから呼ばれる。
+      # level（brief / simple / detailed）で詳しさを選べる。未指定は simple。
       def meaning
-        GenerateMeaningService.call(item: item)
+        GenerateMeaningService.call(item: item, level: params[:level])
         render json: serialize_item(item.reload), status: :ok
       rescue GenerateMeaningService::GenerationError, KeyError, Faraday::Error => e
         Rails.logger.warn "[ItemsController#meaning] failed item_id=#{item.id}: #{e.class}: #{e.message}"
@@ -187,7 +188,7 @@ module Api
       def item_params
         params.require(:item).permit(
           :title, :item_type_id, :force_generate, :style, :custom_prompt,
-          :generate_meaning, :generate_tags
+          :generate_meaning, :generate_meaning_level, :generate_tags
         )
       end
 
@@ -261,6 +262,7 @@ module Api
           item_type: serialize_item_type(item.item_type),
           meaning: item.primary_meaning&.definition,
           meaning_example: item.primary_meaning&.example_sentence,
+          meaning_level: item.primary_meaning&.detail_level,
           style: item.style,
           custom_prompt: item.custom_prompt,
           tags: item.tags.map { |t| { id: t.id, name: t.name } },

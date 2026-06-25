@@ -43,7 +43,7 @@ module Items
       GenerateImageJob.perform_later(item.id, force_generate: @params[:force_generate] == true)
       # 意味の自動生成: 作成時に generate_meaning が明示指定されればそれを優先し、
       # 指定がなければユーザー設定（auto_generate_meanings）にフォールバックする
-      GenerateMeaningJob.perform_later(item.id) if generate_meaning?
+      GenerateMeaningJob.perform_later(item.id, meaning_level) if generate_meaning?
       # タグの自動生成: generate_tags が明示指定されればそれを優先し、
       # 指定がなければユーザー設定（auto_generate_tags）にフォールバックする
       GenerateTagsJob.perform_later(item.id) if generate_tags?
@@ -59,6 +59,11 @@ module Items
       else
         @user.setting&.auto_generate_meanings
       end
+    end
+
+    # 説明の詳しさレベル（未指定・不正値は simple）
+    def meaning_level
+      Meaning.normalize_level(@params[:generate_meaning_level])
     end
 
     # 作成時に generate_tags が渡された場合はその真偽値を、なければユーザー設定を使う

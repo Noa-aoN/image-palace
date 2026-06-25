@@ -8,20 +8,26 @@ class GenerateMeaningService
   DEFAULT_MODEL = "gpt-4o-mini"
   LANGUAGE_CODE = "ja"
 
-  SYSTEM_PROMPT = <<~PROMPT.freeze
-    あなたは学習者向けの辞書アシスタントです。与えられた単語・概念について、日本語で
-    簡潔（80〜120字程度）に意味・説明を作成してください。専門的になりすぎず、初学者にも
-    伝わる言葉を使ってください。
+  # 詳しさレベル別の指示。共通の JSON 形式指示（COMMON_PROMPT）を併せて使う。
+  LEVEL_INSTRUCTIONS = {
+    "brief" => "与えられた単語・概念を、日本語でひとことで（40字以内）、定義のみ簡潔に説明してください。example_sentence は空文字列にしてください。",
+    "simple" => "与えられた単語・概念を、日本語で簡潔（80〜120字程度）に説明し、理解を助ける短い例文を添えてください。",
+    "detailed" => "与えられた単語・概念を、日本語でくわしく（200〜300字程度）、背景・要点・補足も含めて説明し、理解を助ける例文を添えてください。"
+  }.freeze
+
+  COMMON_PROMPT = <<~PROMPT.freeze
+    あなたは学習者向けの辞書アシスタントです。専門的になりすぎず、初学者にも伝わる言葉を使ってください。
     必ず次の JSON 形式のみで返してください: {"definition": "意味の説明", "example_sentence": "短い例文や用例"}
     example_sentence は理解を助ける短い例文・用例。不要な場合は空文字列にしてください。
   PROMPT
 
-  def self.call(item:)
-    new(item).call
+  def self.call(item:, level: Meaning::DEFAULT_DETAIL_LEVEL)
+    new(item, level).call
   end
 
-  def initialize(item)
+  def initialize(item, level = Meaning::DEFAULT_DETAIL_LEVEL)
     @item = item
+    @level = Meaning.normalize_level(level)
   end
 
   # 生成した意味を Meaning(ja) として upsert し、その Meaning を返す
@@ -30,12 +36,17 @@ class GenerateMeaningService
     meaning = @item.meanings.find_or_initialize_by(language_code: LANGUAGE_CODE)
     meaning.update!(
       definition: result.fetch(:definition),
-      example_sentence: result[:example_sentence]
+      example_sentence: result[:example_sentence],
+      detail_level: @level
     )
     meaning
   end
 
   private
+
+  def system_prompt
+    "#{LEVEL_INSTRUCTIONS.fetch(@level)}\n#{COMMON_PROMPT}"
+  end
 
   def request
     client = ::OpenAI::Client.new(access_token: ENV.fetch("OPENAI_API_KEY"))
@@ -43,7 +54,7 @@ class GenerateMeaningService
       parameters: {
         model: model,
         messages: [
-          { role: "system", content: SYSTEM_PROMPT },
+          { role: "system", content: system_prompt },
           { role: "user", content: @item.title }
         ],
         temperature: 0.4,
