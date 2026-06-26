@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button'
 import { LandingFooter } from '@/components/features/layout/LandingFooter'
 import { HeroScrollZoom } from '@/components/features/landing/HeroScrollZoom'
 import { ScrollCue } from '@/components/features/landing/ScrollCue'
+import { SectionDivider } from '@/components/features/landing/SectionDivider'
 
 export const metadata: Metadata = {
   title: { absolute: 'ImagePalace — 単語をイメージに変換して記憶できるサービス' },
@@ -23,11 +24,13 @@ function Section({
   id,
   bg,
   cueTo,
+  topDividerFrom,
   children,
 }: {
   id?: string
   bg?: string
   cueTo?: string
+  topDividerFrom?: string
   children: ReactNode
 }) {
   return (
@@ -37,6 +40,7 @@ function Section({
       style={bg ? { backgroundColor: bg } : undefined}
     >
       <div aria-hidden data-anim-layer className="pointer-events-none absolute inset-0 z-0" />
+      {topDividerFrom && <SectionDivider fill={topDividerFrom} />}
       <div className="relative z-10 mx-auto w-full max-w-4xl">{children}</div>
       {cueTo && <ScrollCue targetId={cueTo} className="absolute bottom-6 left-1/2 z-20 -translate-x-1/2" />}
     </section>
@@ -63,7 +67,7 @@ export default function TopPage() {
       </Section>
 
       {/* 2. 機能（仮） */}
-      <Section id="features" cueTo="gallery" bg="var(--ivory-dark)">
+      <Section id="features" cueTo="gallery" bg="var(--ivory-dark)" topDividerFrom="var(--ivory)">
         <p className="mb-4 text-sm font-medium tracking-widest" style={{ color: 'var(--palace)' }}>FEATURES</p>
         <h2 className="mb-12 text-3xl font-bold tracking-tight md:text-4xl" style={{ color: '#111111' }}>できること</h2>
         <div className="grid gap-6 text-left md:grid-cols-3">
@@ -80,7 +84,7 @@ export default function TopPage() {
       </Section>
 
       {/* 3. 作例（仮） */}
-      <Section id="gallery" cueTo="cta" bg="#ffffff">
+      <Section id="gallery" cueTo="cta" bg="#ffffff" topDividerFrom="var(--ivory-dark)">
         <p className="mb-4 text-sm font-medium tracking-widest" style={{ color: 'var(--palace)' }}>GALLERY</p>
         <h2 className="mb-6 text-3xl font-bold tracking-tight md:text-4xl" style={{ color: '#111111' }}>作例</h2>
         <p className="mx-auto mb-10 max-w-xl text-base leading-relaxed md:text-lg" style={{ color: '#4A4A4A' }}>
@@ -97,7 +101,7 @@ export default function TopPage() {
       </Section>
 
       {/* 4. 再度の入り口（仮） */}
-      <Section id="cta" bg="var(--ivory)">
+      <Section id="cta" bg="var(--ivory)" topDividerFrom="#ffffff">
         <h2 className="mb-8 text-2xl font-bold md:text-3xl" style={{ color: '#111111' }}>
           今日から、記憶を育てはじめましょう。
         </h2>
