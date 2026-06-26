@@ -8,7 +8,7 @@ import { ScrollCue } from './ScrollCue'
 // LP ヒーロー：スクロールで画像中央のドアへズームし、終盤に次セクションへブレンドする。
 // 構造: track(縦長) → stage(sticky, 100svh) → 画像/ぼかし/スクリム/ブレンド + テキスト。
 export function HeroScrollZoom() {
-  const { trackRef, stageRef, reduced } = useHeroZoom({ targetScale: 9 })
+  const { trackRef, stageRef, reduced } = useHeroZoom({ targetScale: 9, blurStart: 0.42 })
 
   return (
     <section ref={trackRef} className="hero-track" data-reduced={reduced ? 'true' : 'false'}>
@@ -32,12 +32,51 @@ export function HeroScrollZoom() {
         {/* 飛び回る渡鴉（ズームでフェード） */}
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img src="/hero-raven.png" alt="" aria-hidden decoding="async" className="hero-raven" />
+        {/* 下部の植物周りを舞う蝶々（外=スクロールで左右へ画面外／中=飛行経路／内=羽ばたき） */}
+        <div aria-hidden className="hero-butterfly hero-butterfly--1">
+          <div className="hero-butterfly__path">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src="/hero-butterfly-orange.png" alt="" decoding="async" className="hero-butterfly__wing" />
+          </div>
+        </div>
+        <div aria-hidden className="hero-butterfly hero-butterfly--2">
+          <div className="hero-butterfly__path">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src="/hero-butterfly-pink.png" alt="" decoding="async" className="hero-butterfly__wing" />
+          </div>
+        </div>
+        <div aria-hidden className="hero-butterfly hero-butterfly--3">
+          <div className="hero-butterfly__path">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src="/hero-butterfly-blue.png" alt="" decoding="async" className="hero-butterfly__wing" />
+          </div>
+        </div>
+        <div aria-hidden className="hero-butterfly hero-butterfly--4">
+          <div className="hero-butterfly__path">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src="/hero-butterfly-green.png" alt="" decoding="async" className="hero-butterfly__wing" />
+          </div>
+        </div>
+        <div aria-hidden className="hero-butterfly hero-butterfly--5">
+          <div className="hero-butterfly__path">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src="/hero-butterfly-white.png" alt="" decoding="async" className="hero-butterfly__wing" />
+          </div>
+        </div>
+        <div aria-hidden className="hero-butterfly hero-butterfly--6">
+          <div className="hero-butterfly__path">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src="/hero-butterfly-black.png" alt="" decoding="async" className="hero-butterfly__wing" />
+          </div>
+        </div>
         {/* 下部のぼかし */}
         <div aria-hidden className="hero-blur" />
         {/* アイボリースクリム（可読性） */}
         <div aria-hidden className="hero-scrim" />
         {/* 次セクションへのブレンド（ズーム終盤でフェードイン） */}
         <div aria-hidden className="hero-blend" />
+        {/* 終盤に白っぽく光が満ちる（扉が開いた先へ吸い込まれる感じ） */}
+        <div aria-hidden className="hero-whiteout" />
         {/* HA下端を下セクション(アイボリー)へ自然にフェード（直線も雲も無く馴染ませる） */}
         <div aria-hidden className="hero-bottom-fade" />
 
