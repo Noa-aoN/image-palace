@@ -37,34 +37,70 @@ export default function TopPage() {
     <div className="flex flex-col flex-1">
 
       {/* Hero */}
-      <section className="flex flex-col items-center justify-center px-6 py-20 md:py-28 text-center">
-        <p className="text-sm tracking-widest mb-4 font-medium" style={{ color: 'var(--palace)' }}>
-          IMAGE PALACE
-        </p>
-        <h1 className="text-4xl md:text-5xl font-bold tracking-tight mb-6 leading-tight" style={{ color: '#111111' }}>
-          単語をイメージに変えて、
-          <br />
-          記憶を設計する。
-        </h1>
-        <p className="text-base md:text-lg max-w-md mb-10" style={{ color: '#4A4A4A' }}>
-          AIが単語を画像カードに変換。
-          自分だけの記憶の宮殿を、少しずつ育てていけます。
-        </p>
-        <div className="flex w-full max-w-sm flex-col sm:w-auto sm:max-w-none sm:flex-row gap-3">
-          <Link href="/signup" className="w-full sm:w-auto">
-            <Button
-              size="lg"
-              className="w-full px-8 text-base sm:w-auto"
-              style={{ backgroundColor: 'var(--palace)', color: '#fff', border: 'none' }}
-            >
-              無料ではじめる
-            </Button>
-          </Link>
-          <Link href="/login" className="w-full sm:w-auto">
-            <Button size="lg" variant="outline" className="w-full px-8 text-base sm:w-auto">
-              ログイン
-            </Button>
-          </Link>
+      <section className="relative isolate flex min-h-[600px] flex-col items-center justify-start overflow-hidden px-6 pt-20 pb-44 text-center md:min-h-[680px] md:pt-24">
+        {/* 背景画像（最背面） */}
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img
+          src="/hero-palace.jpg"
+          alt=""
+          aria-hidden
+          fetchPriority="high"
+          decoding="async"
+          className="absolute inset-0 z-0 h-full w-full object-cover object-center"
+        />
+        {/* 下部のぼかし（画像の下側を柔らかく。上に向かってフェード） */}
+        <div
+          aria-hidden
+          className="absolute inset-x-0 bottom-0 z-10 h-2/5"
+          style={{
+            backdropFilter: 'blur(10px)',
+            WebkitBackdropFilter: 'blur(10px)',
+            maskImage: 'linear-gradient(to top, #000 35%, transparent 100%)',
+            WebkitMaskImage: 'linear-gradient(to top, #000 35%, transparent 100%)',
+          }}
+        />
+        {/* アイボリースクリム（可読性確保。上ほど濃く、下は神殿を鮮明に） */}
+        <div
+          aria-hidden
+          className="absolute inset-0 z-20"
+          style={{
+            background:
+              'linear-gradient(180deg, rgba(255,253,247,0.88) 0%, rgba(255,253,247,0.6) 45%, rgba(255,253,247,0.18) 100%)',
+          }}
+        />
+        {/* アニメーション層（今後ここに重ねる） */}
+        <div id="hero-animation-layer" aria-hidden className="pointer-events-none absolute inset-0 z-30" />
+
+        {/* テキスト/CTA（最前面） */}
+        <div className="relative z-40 flex flex-col items-center">
+          <p className="text-sm tracking-widest mb-4 font-medium" style={{ color: 'var(--palace)' }}>
+            IMAGE PALACE
+          </p>
+          <h1 className="text-4xl md:text-5xl font-bold tracking-tight mb-6 leading-tight" style={{ color: '#111111' }}>
+            単語をイメージに変えて、
+            <br />
+            記憶を設計する。
+          </h1>
+          <p className="text-base md:text-lg max-w-md mb-10" style={{ color: '#4A4A4A' }}>
+            AIが単語を画像カードに変換。
+            自分だけの記憶の宮殿を、少しずつ育てていけます。
+          </p>
+          <div className="flex w-full max-w-sm flex-col sm:w-auto sm:max-w-none sm:flex-row gap-3">
+            <Link href="/signup" className="w-full sm:w-auto">
+              <Button
+                size="lg"
+                className="w-full px-8 text-base sm:w-auto"
+                style={{ backgroundColor: 'var(--palace)', color: '#fff', border: 'none' }}
+              >
+                無料ではじめる
+              </Button>
+            </Link>
+            <Link href="/login" className="w-full sm:w-auto">
+              <Button size="lg" variant="outline" className="w-full px-8 text-base sm:w-auto">
+                ログイン
+              </Button>
+            </Link>
+          </div>
         </div>
       </section>
 
