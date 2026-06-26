@@ -349,6 +349,56 @@
   100% { transform: translate3d(10vw, 14vh, 0) scale(0.78, 0.78) rotate(-3deg);  filter: brightness(1.18) opacity(0.78); }
 }
 
+/* 下部の植物周りを舞う蝶々（ラッパーが飛行経路、内側imgが羽ばたき） */
+.hero-butterfly {
+  position: absolute;
+  z-index: 30;
+  width: 50px;
+  pointer-events: none;
+  opacity: calc((1 - var(--fade, 0)) * 0.95);
+  will-change: transform, opacity;
+}
+.hero-butterfly__wing {
+  display: block;
+  width: 100%;
+  height: auto;
+  transform-origin: center;
+  will-change: transform;
+  /* 羽ばたき（横方向の縮みで翅の開閉を擬似） */
+  animation: hero-bfly-flap 0.42s ease-in-out infinite;
+}
+.hero-butterfly--1 { left: 23%; top: 73%; width: 50px; animation: hero-bfly-path-a 15s ease-in-out infinite; }
+.hero-butterfly--2 { left: 60%; top: 79%; width: 42px; animation: hero-bfly-path-b 19s ease-in-out infinite; }
+.hero-butterfly--3 { left: 77%; top: 70%; width: 56px; animation: hero-bfly-path-a 13s ease-in-out infinite reverse; animation-delay: -5s; }
+.hero-butterfly--2 .hero-butterfly__wing { animation-duration: 0.5s; }
+.hero-butterfly--3 .hero-butterfly__wing { animation-duration: 0.36s; }
+
+@keyframes hero-bfly-flap {
+  0%, 100% { transform: scaleX(1); }
+  50% { transform: scaleX(0.5) scaleY(1.05); }
+}
+
+/* ひらひら・ジグザグに上下しながら漂う（0%=100%でループ） */
+@keyframes hero-bfly-path-a {
+  0%   { transform: translate3d(0, 0, 0) rotate(-5deg); }
+  15%  { transform: translate3d(22px, -30px, 0) rotate(7deg); }
+  30%  { transform: translate3d(50px, -10px, 0) rotate(-3deg); }
+  45%  { transform: translate3d(30px, -44px, 0) rotate(9deg); }
+  60%  { transform: translate3d(64px, -22px, 0) rotate(-6deg); }
+  75%  { transform: translate3d(26px, -48px, 0) rotate(5deg); }
+  90%  { transform: translate3d(8px, -18px, 0) rotate(-7deg); }
+  100% { transform: translate3d(0, 0, 0) rotate(-5deg); }
+}
+@keyframes hero-bfly-path-b {
+  0%   { transform: translate3d(0, 0, 0) rotate(4deg); }
+  18%  { transform: translate3d(-26px, -22px, 0) rotate(-8deg); }
+  36%  { transform: translate3d(-44px, -6px, 0) rotate(5deg); }
+  54%  { transform: translate3d(-20px, -38px, 0) rotate(-4deg); }
+  72%  { transform: translate3d(-54px, -16px, 0) rotate(8deg); }
+  88%  { transform: translate3d(-14px, -30px, 0) rotate(-5deg); }
+  100% { transform: translate3d(0, 0, 0) rotate(4deg); }
+}
+
 @media (max-width: 640px) {
   :root {
     --hero-track-vh: 180vh;
@@ -464,6 +514,13 @@
   }
   /* ズーム非駆動のため扉オーバーレイは隠す（貼り付き回避） */
   .hero-doors {
+    display: none;
+  }
+  .hero-butterfly,
+  .hero-butterfly__wing {
+    animation: none !important;
+  }
+  .hero-butterfly {
     display: none;
   }
 }
