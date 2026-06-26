@@ -139,9 +139,10 @@
      object-position をこの値にすると全画面比で扉が viewport の同位置に出る＝
      focal point・オーバーレイと一致する。 */
   --hero-door-x: 50%;
-  --hero-door-y: 68%;
+  --hero-door-y: 67%;
   /* 扉オーバーレイのサイズ（宮殿の開口部に合わせる）と開き角 */
-  --door-h: 13vh;
+  --door-h: 16vh;
+  --door-aspect: 0.36;
   --door-open-deg: 95deg;
 }
 
@@ -186,7 +187,8 @@
   left: var(--hero-door-x);
   top: var(--hero-door-y);
   height: var(--door-h);
-  aspect-ratio: 617 / 1000;
+  /* 宮殿の開口部は細長（幅3.7%×高さ17%＝約0.22）。素材を寄せて充填する */
+  aspect-ratio: var(--door-aspect, 0.36);
   transform: translate(-50%, -50%) scale(var(--zoom, 1));
   transform-origin: center;
   perspective: 1400px;
@@ -200,7 +202,8 @@
   top: 0;
   height: 100%;
   width: 50%;
-  object-fit: contain;
+  /* 細長い開口部にあわせて充填（素材より細く）。継ぎ目側を中央へ */
+  object-fit: fill;
   backface-visibility: hidden;
   /* 背景と同じ blur で馴染ませる＋落ち影で重み＋開くほど面が陰る（厚み・奥行き） */
   filter: blur(var(--blurpx, 0px)) drop-shadow(0 6px 16px rgba(18, 16, 32, 0.5))
