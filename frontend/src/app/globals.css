@@ -279,9 +279,38 @@
   }
 }
 
+/* スクロール誘導 cue */
+.scroll-cue {
+  display: inline-flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  background: none;
+  border: 0;
+  cursor: pointer;
+  color: var(--palace);
+  font-size: 0.72rem;
+  letter-spacing: 0.08em;
+  opacity: 0.85;
+  transition: opacity 0.2s;
+}
+.scroll-cue:hover {
+  opacity: 1;
+}
+.scroll-cue__chevron {
+  animation: scroll-cue-bob 1.8s ease-in-out infinite;
+}
+@keyframes scroll-cue-bob {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(4px); }
+}
+
 @media (prefers-reduced-motion: reduce) {
   .hero-track {
     height: 100svh;
+  }
+  .scroll-cue__chevron {
+    animation: none;
   }
   .hero-zoom {
     transform: none !important;

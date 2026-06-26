@@ -3,6 +3,7 @@
 import Link from 'next/link'
 import { Button } from '@/components/ui/button'
 import { useHeroZoom } from '@/hooks/useHeroZoom'
+import { ScrollCue } from './ScrollCue'
 
 // LP ヒーロー：スクロールで画像中央のドアへズームし、終盤に次セクションへブレンドする。
 // 構造: track(縦長) → stage(sticky, 100svh) → 画像/ぼかし/スクリム/ブレンド + テキスト。
@@ -44,7 +45,7 @@ export function HeroScrollZoom() {
             AIが単語を画像カードに変換。
             自分だけの記憶の宮殿を、少しずつ育てていけます。
           </p>
-          <div className="flex w-full max-w-sm flex-col sm:w-44 sm:max-w-none sm:flex-row gap-3">
+          <div className="flex w-full max-w-sm flex-col sm:w-auto sm:max-w-none sm:flex-row gap-3">
             <Link href="/signup" className="w-full sm:w-44">
               <Button
                 size="lg"
@@ -60,6 +61,7 @@ export function HeroScrollZoom() {
               </Button>
             </Link>
           </div>
+          <ScrollCue targetId="concept" className="mt-10" />
         </div>
       </div>
     </section>
