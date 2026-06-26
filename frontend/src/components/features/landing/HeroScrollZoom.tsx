@@ -32,26 +32,42 @@ export function HeroScrollZoom() {
         {/* 飛び回る渡鴉（ズームでフェード） */}
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img src="/hero-raven.png" alt="" aria-hidden decoding="async" className="hero-raven" />
-        {/* 下部の植物周りを舞う蝶々（羽ばたき＋ひらひら・ズームでフェード） */}
+        {/* 下部の植物周りを舞う蝶々（外=スクロールで左右へ画面外／中=飛行経路／内=羽ばたき） */}
         <div aria-hidden className="hero-butterfly hero-butterfly--1">
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src="/hero-butterfly-orange.png" alt="" decoding="async" className="hero-butterfly__wing" />
+          <div className="hero-butterfly__path">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src="/hero-butterfly-orange.png" alt="" decoding="async" className="hero-butterfly__wing" />
+          </div>
         </div>
         <div aria-hidden className="hero-butterfly hero-butterfly--2">
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src="/hero-butterfly-pink.png" alt="" decoding="async" className="hero-butterfly__wing" />
+          <div className="hero-butterfly__path">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src="/hero-butterfly-pink.png" alt="" decoding="async" className="hero-butterfly__wing" />
+          </div>
         </div>
         <div aria-hidden className="hero-butterfly hero-butterfly--3">
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src="/hero-butterfly-blue.png" alt="" decoding="async" className="hero-butterfly__wing" />
+          <div className="hero-butterfly__path">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src="/hero-butterfly-blue.png" alt="" decoding="async" className="hero-butterfly__wing" />
+          </div>
         </div>
         <div aria-hidden className="hero-butterfly hero-butterfly--4">
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src="/hero-butterfly-green.png" alt="" decoding="async" className="hero-butterfly__wing" />
+          <div className="hero-butterfly__path">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src="/hero-butterfly-green.png" alt="" decoding="async" className="hero-butterfly__wing" />
+          </div>
         </div>
         <div aria-hidden className="hero-butterfly hero-butterfly--5">
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src="/hero-butterfly-white.png" alt="" decoding="async" className="hero-butterfly__wing" />
+          <div className="hero-butterfly__path">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src="/hero-butterfly-white.png" alt="" decoding="async" className="hero-butterfly__wing" />
+          </div>
+        </div>
+        <div aria-hidden className="hero-butterfly hero-butterfly--6">
+          <div className="hero-butterfly__path">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src="/hero-butterfly-black.png" alt="" decoding="async" className="hero-butterfly__wing" />
+          </div>
         </div>
         {/* 下部のぼかし */}
         <div aria-hidden className="hero-blur" />

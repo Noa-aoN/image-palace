@@ -353,29 +353,49 @@
 .hero-butterfly {
   position: absolute;
   z-index: 30;
-  width: 30px;
+  width: 24px;
   pointer-events: none;
-  opacity: calc((1 - var(--fade, 0)) * 0.95);
+  opacity: calc((1 - var(--fade, 0)) * 0.88);
+  /* スクロールに応じて左右(--bfly-dir)へ飛び去り画面外へ抜ける */
+  transform: translate3d(
+    calc(var(--fade, 0) * var(--bfly-dir, 1) * 85vw),
+    calc(var(--fade, 0) * -8vh),
+    0
+  );
   will-change: transform, opacity;
+}
+.hero-butterfly__path {
+  width: 100%;
+  will-change: transform;
 }
 .hero-butterfly__wing {
   display: block;
   width: 100%;
   height: auto;
   transform-origin: center;
+  /* 彩度を落とし暖色寄せで風景に馴染ませる */
+  filter: saturate(0.78) brightness(1.03) sepia(0.07);
   will-change: transform;
   /* 羽ばたき（横方向の縮みで翅の開閉を擬似） */
   animation: hero-bfly-flap 0.42s ease-in-out infinite;
 }
-.hero-butterfly--1 { left: 23%; top: 73%; width: 32px; animation: hero-bfly-path-a 15s ease-in-out infinite; }
-.hero-butterfly--2 { left: 58%; top: 80%; width: 26px; animation: hero-bfly-path-b 19s ease-in-out infinite; }
-.hero-butterfly--3 { left: 77%; top: 70%; width: 34px; animation: hero-bfly-path-a 13s ease-in-out infinite reverse; animation-delay: -5s; }
-.hero-butterfly--4 { left: 40%; top: 83%; width: 28px; animation: hero-bfly-path-b 16s ease-in-out infinite reverse; animation-delay: -7s; }
-.hero-butterfly--5 { left: 88%; top: 76%; width: 24px; animation: hero-bfly-path-a 21s ease-in-out infinite; animation-delay: -11s; }
+.hero-butterfly--1 { left: 13%; top: 73%; width: 26px; --bfly-dir: -1; }
+.hero-butterfly--2 { left: 85%; top: 80%; width: 22px; --bfly-dir: 1; }
+.hero-butterfly--3 { left: 78%; top: 69%; width: 28px; --bfly-dir: 1; }
+.hero-butterfly--4 { left: 17%; top: 84%; width: 24px; --bfly-dir: -1; }
+.hero-butterfly--5 { left: 90%; top: 74%; width: 20px; --bfly-dir: 1; }
+.hero-butterfly--6 { left: 11%; top: 88%; width: 24px; --bfly-dir: -1; }
+.hero-butterfly--1 .hero-butterfly__path { animation: hero-bfly-path-a 15s ease-in-out infinite; }
+.hero-butterfly--2 .hero-butterfly__path { animation: hero-bfly-path-b 19s ease-in-out infinite; }
+.hero-butterfly--3 .hero-butterfly__path { animation: hero-bfly-path-a 13s ease-in-out infinite reverse; animation-delay: -5s; }
+.hero-butterfly--4 .hero-butterfly__path { animation: hero-bfly-path-b 16s ease-in-out infinite reverse; animation-delay: -7s; }
+.hero-butterfly--5 .hero-butterfly__path { animation: hero-bfly-path-a 21s ease-in-out infinite; animation-delay: -11s; }
+.hero-butterfly--6 .hero-butterfly__path { animation: hero-bfly-path-b 17s ease-in-out infinite; animation-delay: -3s; }
 .hero-butterfly--2 .hero-butterfly__wing { animation-duration: 0.5s; }
 .hero-butterfly--3 .hero-butterfly__wing { animation-duration: 0.36s; }
 .hero-butterfly--4 .hero-butterfly__wing { animation-duration: 0.44s; }
 .hero-butterfly--5 .hero-butterfly__wing { animation-duration: 0.52s; }
+.hero-butterfly--6 .hero-butterfly__wing { animation-duration: 0.46s; }
 
 @keyframes hero-bfly-flap {
   0%, 100% { transform: scaleX(1); }
@@ -521,6 +541,7 @@
     display: none;
   }
   .hero-butterfly,
+  .hero-butterfly__path,
   .hero-butterfly__wing {
     animation: none !important;
   }
