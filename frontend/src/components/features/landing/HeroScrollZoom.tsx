@@ -18,6 +18,11 @@ export function HeroScrollZoom() {
         {/* 背景画像（ズーム対象・最背面） */}
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img src="/hero-palace.jpg" alt="" aria-hidden fetchPriority="high" decoding="async" className="hero-zoom" />
+        {/* 流れる雲（上空・スクリムの下で馴染ませる。ズームでフェード） */}
+        <div aria-hidden className="hero-clouds" />
+        {/* 飛び回る渡鴉（ズームでフェード） */}
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img src="/hero-raven.png" alt="" aria-hidden decoding="async" className="hero-raven" />
         {/* 下部のぼかし */}
         <div aria-hidden className="hero-blur" />
         {/* アイボリースクリム（可読性） */}
