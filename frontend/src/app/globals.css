@@ -139,10 +139,10 @@
      object-position をこの値にすると全画面比で扉が viewport の同位置に出る＝
      focal point・オーバーレイと一致する。 */
   --hero-door-x: 50%;
-  --hero-door-y: 67%;
+  --hero-door-y: 67.5%;
   /* 扉オーバーレイのサイズ（宮殿の開口部に合わせる）と開き角 */
-  --door-h: 9.5vh;
-  --door-aspect: 0.60;
+  --door-h: 8.5vh;
+  --door-aspect: 0.67;
   --door-open-deg: 95deg;
 }
 
