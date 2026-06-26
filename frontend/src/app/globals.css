@@ -413,7 +413,8 @@
 /* ヒーローの cue は画像下部に固定（他セクションと同位置）。ズームでフェード */
 .hero-cue {
   position: absolute;
-  bottom: 24px;
+  /* ヘッダー(h-14=56px)分だけ上げる */
+  bottom: 80px;
   left: 50%;
   z-index: 40;
   transform: translateX(-50%);
