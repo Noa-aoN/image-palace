@@ -89,13 +89,13 @@ export default function TopPage() {
           今日から、記憶を育てはじめましょう。
         </h2>
         <div className="flex w-full max-w-sm flex-col items-center gap-3 sm:mx-auto sm:max-w-none sm:flex-row sm:justify-center">
-          <Link href="/signup" className="w-full sm:w-auto">
-            <Button size="lg" className="w-full px-10 text-base sm:w-auto" style={{ backgroundColor: 'var(--palace)', color: '#fff', border: 'none' }}>
+          <Link href="/signup" className="w-full sm:w-44">
+            <Button size="lg" className="w-full px-8 text-base sm:w-44" style={{ backgroundColor: 'var(--palace)', color: '#fff', border: 'none' }}>
               無料ではじめる
             </Button>
           </Link>
-          <Link href="/login" className="w-full sm:w-auto">
-            <Button size="lg" variant="outline" className="w-full px-10 text-base sm:w-auto">
+          <Link href="/login" className="w-full sm:w-44">
+            <Button size="lg" variant="outline" className="w-full px-8 text-base sm:w-44">
               ログイン
             </Button>
           </Link>
