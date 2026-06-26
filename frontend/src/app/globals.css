@@ -131,3 +131,110 @@
     @apply font-sans;
   }
 }
+
+/* --- LP ヒーロー：スクロール連動ズーム（useHeroZoom が --zoom/--fade/--blend を駆動） --- */
+:root {
+  --hero-track-vh: 250vh;
+  --hero-door-x: 50%;
+  --hero-door-y: 63%;
+}
+
+.hero-track {
+  position: relative;
+  height: var(--hero-track-vh);
+}
+
+.hero-stage {
+  position: sticky;
+  top: 0;
+  height: 100vh;
+  height: 100svh;
+  overflow: hidden;
+  isolation: isolate;
+  /* JS 未駆動・reduced 時の既定値 */
+  --zoom: 1;
+  --fade: 0;
+  --blend: 0;
+}
+
+.hero-zoom {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: var(--hero-door-x) var(--hero-door-y);
+  transform: scale(var(--zoom, 1));
+  transform-origin: var(--hero-door-x) var(--hero-door-y);
+  will-change: transform;
+}
+
+.hero-blur {
+  position: absolute;
+  inset-inline: 0;
+  bottom: 0;
+  z-index: 10;
+  height: 40%;
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  -webkit-mask-image: linear-gradient(to top, #000 35%, transparent 100%);
+  mask-image: linear-gradient(to top, #000 35%, transparent 100%);
+  opacity: calc(1 - var(--fade, 0));
+  will-change: opacity;
+}
+
+.hero-scrim {
+  position: absolute;
+  inset: 0;
+  z-index: 20;
+  background: linear-gradient(
+    180deg,
+    rgba(255, 253, 247, 0.88) 0%,
+    rgba(255, 253, 247, 0.6) 45%,
+    rgba(255, 253, 247, 0.18) 100%
+  );
+  opacity: calc(1 - var(--fade, 0));
+  will-change: opacity;
+}
+
+.hero-blend {
+  position: absolute;
+  inset: 0;
+  z-index: 35;
+  pointer-events: none;
+  background: linear-gradient(to bottom, transparent 55%, var(--ivory-dark) 100%);
+  opacity: var(--blend, 0);
+}
+
+.hero-content {
+  position: relative;
+  z-index: 40;
+  opacity: calc(1 - var(--fade, 0));
+  transform: translateY(calc(var(--fade, 0) * -24px));
+  will-change: opacity, transform;
+}
+
+@media (max-width: 640px) {
+  :root {
+    --hero-track-vh: 180vh;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .hero-track {
+    height: 100svh;
+  }
+  .hero-zoom {
+    transform: none !important;
+  }
+  .hero-blur,
+  .hero-scrim,
+  .hero-content {
+    opacity: 1 !important;
+    transform: none !important;
+  }
+  .hero-blend {
+    opacity: 0 !important;
+  }
+}
