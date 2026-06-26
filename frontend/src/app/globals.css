@@ -300,22 +300,22 @@
   transform: scaleY(-1);
 }
 
-/* ヒーロー下端の雲（コンセプトのアイボリーを垂らし、画像下端の直線を雲型で隠す） */
-.hero-bottom-clouds {
-  top: auto;
+/* ヒーロー下端を下セクション(アイボリー)へ自然にフェード（直線も雲も無く馴染ませる） */
+.hero-bottom-fade {
+  position: absolute;
+  inset-inline: 0;
   bottom: 0;
-  height: 96px;
+  height: 24%;
   z-index: 25;
-  /* 主スクロール中は不透明（直線を隠す）。終盤は blend(ivory-dark) が上から覆う */
+  pointer-events: none;
+  background: linear-gradient(to bottom, transparent 0%, var(--ivory) 100%);
+  /* 主スクロール中は表示（画像下端を隠す）。終盤は blend が上から覆う */
   opacity: calc(1 - var(--blend, 0));
 }
 
 @media (max-width: 640px) {
   .section-divider {
     height: 40px;
-  }
-  .hero-bottom-clouds {
-    height: 56px;
   }
 }
 
