@@ -205,9 +205,11 @@
   /* 細長い開口部にあわせて充填（素材より細く）。継ぎ目側を中央へ */
   object-fit: fill;
   backface-visibility: hidden;
-  /* 背景と同じ blur で馴染ませる＋落ち影で重み＋開くほど面が陰る（厚み・奥行き） */
-  filter: blur(var(--blurpx, 0px)) drop-shadow(0 6px 16px rgba(18, 16, 32, 0.5))
-    brightness(calc(1 - var(--dooropen, 0) * 0.28));
+  /* 背景と同じ blur＋彩度を落とし暖色寄せで風景に馴染ませる＋落ち影で重み＋開くほど面が陰る */
+  filter: blur(var(--blurpx, 0px))
+    saturate(0.8) sepia(0.08)
+    brightness(calc(1.04 - var(--dooropen, 0) * 0.28))
+    drop-shadow(0 6px 16px rgba(18, 16, 32, 0.5));
   will-change: transform, filter;
 }
 
