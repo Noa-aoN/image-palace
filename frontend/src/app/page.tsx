@@ -5,6 +5,7 @@ import { Brain, Layers, Search, GalleryVerticalEnd } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { LandingFooter } from '@/components/features/layout/LandingFooter'
 import { HeroScrollZoom } from '@/components/features/landing/HeroScrollZoom'
+import { ScrollCue } from '@/components/features/landing/ScrollCue'
 
 export const metadata: Metadata = {
   title: { absolute: 'ImagePalace — 単語をイメージに変換して記憶できるサービス' },
@@ -18,14 +19,26 @@ const FEATURES = [
 
 // HA（ヒーロー）と同じく全画面サイズのセクション。内容は仮埋め。
 // data-anim-layer は今後アニメーションを重ねるための空レイヤー。
-function Section({ bg, children }: { bg?: string; children: ReactNode }) {
+function Section({
+  id,
+  bg,
+  cueTo,
+  children,
+}: {
+  id?: string
+  bg?: string
+  cueTo?: string
+  children: ReactNode
+}) {
   return (
     <section
+      id={id}
       className="relative isolate flex min-h-svh flex-col items-center justify-center overflow-hidden px-6 py-20 text-center"
       style={bg ? { backgroundColor: bg } : undefined}
     >
       <div aria-hidden data-anim-layer className="pointer-events-none absolute inset-0 z-0" />
       <div className="relative z-10 mx-auto w-full max-w-4xl">{children}</div>
+      {cueTo && <ScrollCue targetId={cueTo} className="absolute bottom-6 left-1/2 z-20 -translate-x-1/2" />}
     </section>
   )
 }
@@ -37,7 +50,7 @@ export default function TopPage() {
       <HeroScrollZoom />
 
       {/* 1. コンセプト（仮） */}
-      <Section bg="var(--ivory)">
+      <Section id="concept" cueTo="features" bg="var(--ivory)">
         <p className="mb-4 text-sm font-medium tracking-widest" style={{ color: 'var(--palace)' }}>CONCEPT</p>
         <h2 className="mb-6 text-3xl font-bold tracking-tight md:text-4xl" style={{ color: '#111111' }}>
           記憶を、設計する。
@@ -50,7 +63,7 @@ export default function TopPage() {
       </Section>
 
       {/* 2. 機能（仮） */}
-      <Section bg="var(--ivory-dark)">
+      <Section id="features" cueTo="gallery" bg="var(--ivory-dark)">
         <p className="mb-4 text-sm font-medium tracking-widest" style={{ color: 'var(--palace)' }}>FEATURES</p>
         <h2 className="mb-12 text-3xl font-bold tracking-tight md:text-4xl" style={{ color: '#111111' }}>できること</h2>
         <div className="grid gap-6 text-left md:grid-cols-3">
@@ -67,7 +80,7 @@ export default function TopPage() {
       </Section>
 
       {/* 3. 作例（仮） */}
-      <Section bg="#ffffff">
+      <Section id="gallery" cueTo="cta" bg="#ffffff">
         <p className="mb-4 text-sm font-medium tracking-widest" style={{ color: 'var(--palace)' }}>GALLERY</p>
         <h2 className="mb-6 text-3xl font-bold tracking-tight md:text-4xl" style={{ color: '#111111' }}>作例</h2>
         <p className="mx-auto mb-10 max-w-xl text-base leading-relaxed md:text-lg" style={{ color: '#4A4A4A' }}>
@@ -84,7 +97,7 @@ export default function TopPage() {
       </Section>
 
       {/* 4. 再度の入り口（仮） */}
-      <Section bg="var(--ivory)">
+      <Section id="cta" bg="var(--ivory)">
         <h2 className="mb-8 text-2xl font-bold md:text-3xl" style={{ color: '#111111' }}>
           今日から、記憶を育てはじめましょう。
         </h2>
