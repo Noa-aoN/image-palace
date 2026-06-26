@@ -7,7 +7,7 @@ import { useHeroZoom } from '@/hooks/useHeroZoom'
 // LP ヒーロー：スクロールで画像中央のドアへズームし、終盤に次セクションへブレンドする。
 // 構造: track(縦長) → stage(sticky, 100svh) → 画像/ぼかし/スクリム/ブレンド + テキスト。
 export function HeroScrollZoom() {
-  const { trackRef, stageRef, reduced } = useHeroZoom()
+  const { trackRef, stageRef, reduced } = useHeroZoom({ targetScale: 3.8 })
 
   return (
     <section ref={trackRef} className="hero-track" data-reduced={reduced ? 'true' : 'false'}>
