@@ -221,24 +221,25 @@
 /* 流れる雲（上空・スクリムの上で視認性確保） */
 .hero-clouds {
   position: absolute;
-  inset-inline: -10%;
+  inset-inline: 0;
   top: 8%;
   height: 26%;
   z-index: 21;
   pointer-events: none;
   background: url('/hero-clouds.png') repeat-x;
-  background-size: auto 100%;
+  /* タイル幅を 60vw に固定し、ちょうど1タイル分送る＝継ぎ目の分からないシームレスループ */
+  background-size: 60vw 100%;
   opacity: calc((1 - var(--fade, 0)) * 0.55);
-  will-change: transform, opacity;
-  animation: hero-cloud-drift 90s linear infinite;
+  will-change: background-position, opacity;
+  animation: hero-cloud-drift 80s linear infinite;
 }
 
 @keyframes hero-cloud-drift {
-  from { transform: translate3d(0, 0, 0); }
-  to { transform: translate3d(-50%, 0, 0); }
+  from { background-position: 0 0; }
+  to { background-position: -60vw 0; }
 }
 
-/* 飛び回る渡鴉（スクリムの上・画面内を周回） */
+/* 飛び回る渡鴉（スクリムの上・画面内を滑らかに周回） */
 .hero-raven {
   position: absolute;
   z-index: 22;
@@ -246,26 +247,29 @@
   left: 0;
   width: 96px;
   height: auto;
-  opacity: calc((1 - var(--fade, 0)) * 0.95);
+  /* opacity(ズームフェード)。位置による濃淡(上空ほどアイボリーで霞む)は filter で表現 */
+  opacity: calc(1 - var(--fade, 0));
   pointer-events: none;
   transform-origin: 50% 50%;
-  will-change: transform, opacity;
-  animation: hero-raven-fly 24s ease-in-out infinite, hero-raven-bob 3.2s ease-in-out infinite;
+  will-change: transform, filter, opacity;
+  animation: hero-raven-fly 26s ease-in-out infinite;
 }
 
-/* 画面内を周回（0%と100%を一致させてシームレスにループ） */
+/*
+ * 画面内を周回（0%=100% でシームレス）。
+ * - 縦：上空ほど小さく(scale小)・霞む(filter opacity小+brightness大)、下ほど大きく・濃く
+ * - 進行方向：左移動時は scaleX を負にして左右反転（向きを進行方向に）
+ * - 反転は step-end でパッと切り替え（潰れない）
+ */
 @keyframes hero-raven-fly {
-  0% { transform: translate3d(8vw, 18vh, 0) scale(0.8) rotate(-3deg); }
-  20% { transform: translate3d(34vw, 8vh, 0) scale(1) rotate(3deg); }
-  40% { transform: translate3d(62vw, 16vh, 0) scale(0.85) rotate(-2deg); }
-  60% { transform: translate3d(80vw, 30vh, 0) scale(0.95) rotate(4deg); }
-  80% { transform: translate3d(44vw, 34vh, 0) scale(0.8) rotate(-1deg); }
-  100% { transform: translate3d(8vw, 18vh, 0) scale(0.8) rotate(-3deg); }
-}
-
-@keyframes hero-raven-bob {
-  0%, 100% { margin-top: 0; }
-  50% { margin-top: -8px; }
+  0%   { transform: translate3d(10vw, 14vh, 0) scale(0.78, 0.78) rotate(-3deg);  filter: brightness(1.18) opacity(0.78); }
+  22%  { transform: translate3d(42vw, 9vh, 0)  scale(0.72, 0.72) rotate(3deg);   filter: brightness(1.22) opacity(0.72); }
+  45%  { transform: translate3d(80vw, 20vh, 0) scale(0.9, 0.9)   rotate(-1deg);  filter: brightness(1.06) opacity(0.92); animation-timing-function: step-end; }
+  46%  { transform: translate3d(80vw, 20vh, 0) scale(-0.9, 0.9)  rotate(-1deg);  filter: brightness(1.06) opacity(0.92); }
+  70%  { transform: translate3d(40vw, 34vh, 0) scale(-1, 1)      rotate(3deg);   filter: brightness(1) opacity(1); }
+  90%  { transform: translate3d(14vw, 22vh, 0) scale(-0.82, 0.82) rotate(-2deg); filter: brightness(1.12) opacity(0.84); }
+  98%  { transform: translate3d(10vw, 15vh, 0) scale(-0.78, 0.78) rotate(-3deg); filter: brightness(1.18) opacity(0.78); animation-timing-function: step-end; }
+  100% { transform: translate3d(10vw, 14vh, 0) scale(0.78, 0.78) rotate(-3deg);  filter: brightness(1.18) opacity(0.78); }
 }
 
 @media (max-width: 640px) {
@@ -296,13 +300,14 @@
   transform: scaleY(-1);
 }
 
-/* ヒーロー下端の雲（コンセプトのアイボリーを垂らす） */
+/* ヒーロー下端の雲（コンセプトのアイボリーを垂らし、画像下端の直線を雲型で隠す） */
 .hero-bottom-clouds {
   top: auto;
   bottom: 0;
-  height: 84px;
+  height: 96px;
   z-index: 25;
-  opacity: calc(1 - var(--fade, 0));
+  /* 主スクロール中は不透明（直線を隠す）。終盤は blend(ivory-dark) が上から覆う */
+  opacity: calc(1 - var(--blend, 0));
 }
 
 @media (max-width: 640px) {
@@ -334,6 +339,15 @@
 }
 .scroll-cue__chevron {
   animation: scroll-cue-bob 1.8s ease-in-out infinite;
+}
+/* ヒーローの cue は画像下部に固定（他セクションと同位置）。ズームでフェード */
+.hero-cue {
+  position: absolute;
+  bottom: 24px;
+  left: 50%;
+  z-index: 40;
+  transform: translateX(-50%);
+  opacity: calc(1 - var(--fade, 0));
 }
 @keyframes scroll-cue-bob {
   0%, 100% { transform: translateY(0); }
