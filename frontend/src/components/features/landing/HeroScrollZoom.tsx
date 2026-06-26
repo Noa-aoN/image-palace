@@ -64,8 +64,10 @@ export function HeroScrollZoom() {
               </Button>
             </Link>
           </div>
-          <ScrollCue targetId="concept" className="mt-10" />
         </div>
+
+        {/* スクロール誘導（画像下部・他セクションと同位置） */}
+        <ScrollCue targetId="concept" className="hero-cue" />
       </div>
     </section>
   )
