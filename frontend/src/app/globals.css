@@ -279,6 +279,24 @@
   }
 }
 
+/* 雲型セクション区切り（前セクション色を上端に垂らす） */
+.section-divider {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 60px;
+  z-index: 1;
+  display: block;
+  pointer-events: none;
+}
+
+@media (max-width: 640px) {
+  .section-divider {
+    height: 40px;
+  }
+}
+
 /* スクロール誘導 cue */
 .scroll-cue {
   display: inline-flex;
