@@ -353,7 +353,7 @@
 .hero-butterfly {
   position: absolute;
   z-index: 30;
-  width: 50px;
+  width: 30px;
   pointer-events: none;
   opacity: calc((1 - var(--fade, 0)) * 0.95);
   will-change: transform, opacity;
@@ -367,11 +367,15 @@
   /* 羽ばたき（横方向の縮みで翅の開閉を擬似） */
   animation: hero-bfly-flap 0.42s ease-in-out infinite;
 }
-.hero-butterfly--1 { left: 23%; top: 73%; width: 50px; animation: hero-bfly-path-a 15s ease-in-out infinite; }
-.hero-butterfly--2 { left: 60%; top: 79%; width: 42px; animation: hero-bfly-path-b 19s ease-in-out infinite; }
-.hero-butterfly--3 { left: 77%; top: 70%; width: 56px; animation: hero-bfly-path-a 13s ease-in-out infinite reverse; animation-delay: -5s; }
+.hero-butterfly--1 { left: 23%; top: 73%; width: 32px; animation: hero-bfly-path-a 15s ease-in-out infinite; }
+.hero-butterfly--2 { left: 58%; top: 80%; width: 26px; animation: hero-bfly-path-b 19s ease-in-out infinite; }
+.hero-butterfly--3 { left: 77%; top: 70%; width: 34px; animation: hero-bfly-path-a 13s ease-in-out infinite reverse; animation-delay: -5s; }
+.hero-butterfly--4 { left: 40%; top: 83%; width: 28px; animation: hero-bfly-path-b 16s ease-in-out infinite reverse; animation-delay: -7s; }
+.hero-butterfly--5 { left: 88%; top: 76%; width: 24px; animation: hero-bfly-path-a 21s ease-in-out infinite; animation-delay: -11s; }
 .hero-butterfly--2 .hero-butterfly__wing { animation-duration: 0.5s; }
 .hero-butterfly--3 .hero-butterfly__wing { animation-duration: 0.36s; }
+.hero-butterfly--4 .hero-butterfly__wing { animation-duration: 0.44s; }
+.hero-butterfly--5 .hero-butterfly__wing { animation-duration: 0.52s; }
 
 @keyframes hero-bfly-flap {
   0%, 100% { transform: scaleX(1); }

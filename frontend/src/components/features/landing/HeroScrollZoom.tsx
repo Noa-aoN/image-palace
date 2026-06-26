@@ -45,6 +45,14 @@ export function HeroScrollZoom() {
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img src="/hero-butterfly-blue.png" alt="" decoding="async" className="hero-butterfly__wing" />
         </div>
+        <div aria-hidden className="hero-butterfly hero-butterfly--4">
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img src="/hero-butterfly-green.png" alt="" decoding="async" className="hero-butterfly__wing" />
+        </div>
+        <div aria-hidden className="hero-butterfly hero-butterfly--5">
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img src="/hero-butterfly-white.png" alt="" decoding="async" className="hero-butterfly__wing" />
+        </div>
         {/* 下部のぼかし */}
         <div aria-hidden className="hero-blur" />
         {/* アイボリースクリム（可読性） */}
