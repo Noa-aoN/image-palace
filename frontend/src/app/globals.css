@@ -155,6 +155,8 @@
   --zoom: 1;
   --fade: 0;
   --blend: 0;
+  --blurpx: 0px;
+  --zoombright: 1;
 }
 
 .hero-zoom {
@@ -167,7 +169,8 @@
   object-position: var(--hero-door-x) var(--hero-door-y);
   transform: scale(var(--zoom, 1));
   transform-origin: var(--hero-door-x) var(--hero-door-y);
-  will-change: transform;
+  filter: blur(var(--blurpx, 0px)) brightness(var(--zoombright, 1));
+  will-change: transform, filter;
 }
 
 .hero-blur {
@@ -227,6 +230,7 @@
   }
   .hero-zoom {
     transform: none !important;
+    filter: none !important;
   }
   .hero-blur,
   .hero-scrim,

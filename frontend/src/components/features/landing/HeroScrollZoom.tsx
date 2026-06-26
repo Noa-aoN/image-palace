@@ -39,18 +39,18 @@ export function HeroScrollZoom() {
             AIが単語を画像カードに変換。
             自分だけの記憶の宮殿を、少しずつ育てていけます。
           </p>
-          <div className="flex w-full max-w-sm flex-col sm:w-auto sm:max-w-none sm:flex-row gap-3">
-            <Link href="/signup" className="w-full sm:w-auto">
+          <div className="flex w-full max-w-sm flex-col sm:w-44 sm:max-w-none sm:flex-row gap-3">
+            <Link href="/signup" className="w-full sm:w-44">
               <Button
                 size="lg"
-                className="w-full px-8 text-base sm:w-auto"
+                className="w-full px-8 text-base sm:w-44"
                 style={{ backgroundColor: 'var(--palace)', color: '#fff', border: 'none' }}
               >
                 無料ではじめる
               </Button>
             </Link>
-            <Link href="/login" className="w-full sm:w-auto">
-              <Button size="lg" variant="outline" className="w-full px-8 text-base sm:w-auto">
+            <Link href="/login" className="w-full sm:w-44">
+              <Button size="lg" variant="outline" className="w-full px-8 text-base sm:w-44">
                 ログイン
               </Button>
             </Link>
