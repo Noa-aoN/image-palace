@@ -23,9 +23,9 @@ export function HeroScrollZoom() {
         <div aria-hidden className="hero-doors">
           <div className="hero-door-glow" />
           {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src="/hero-door-left.png" alt="" decoding="async" className="hero-door hero-door--left" />
+          <img src="/hero-door-left.png?v=2" alt="" decoding="async" className="hero-door hero-door--left" />
           {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src="/hero-door-right.png" alt="" decoding="async" className="hero-door hero-door--right" />
+          <img src="/hero-door-right.png?v=2" alt="" decoding="async" className="hero-door hero-door--right" />
         </div>
         {/* 流れる雲（上空・スクリムの下で馴染ませる。ズームでフェード） */}
         <div aria-hidden className="hero-clouds" />

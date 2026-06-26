@@ -141,8 +141,8 @@
   --hero-door-x: 50%;
   --hero-door-y: 67%;
   /* 扉オーバーレイのサイズ（宮殿の開口部に合わせる）と開き角 */
-  --door-h: 13vh;
-  --door-aspect: 0.44;
+  --door-h: 11vh;
+  --door-aspect: 0.52;
   --door-open-deg: 95deg;
 }
 
