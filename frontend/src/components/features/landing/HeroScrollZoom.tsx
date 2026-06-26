@@ -49,7 +49,7 @@ export function HeroScrollZoom() {
           <h1 className="text-4xl md:text-5xl font-bold tracking-tight mb-6 leading-tight" style={{ color: '#111111' }}>
             言葉をイメージに変えて、
             <br />
-            頭に記憶の宮殿をつくる。
+            記憶の宮殿をつくる。
           </h1>
           <p className="text-base md:text-lg max-w-md mb-10" style={{ color: '#4A4A4A' }}>
             AIが単語を画像カードに変換。
