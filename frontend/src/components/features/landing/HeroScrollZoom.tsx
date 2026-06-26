@@ -18,7 +18,7 @@ export function HeroScrollZoom() {
       >
         {/* 背景画像（ズーム対象・最背面） */}
         {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img src="/hero-palace.jpg" alt="" aria-hidden fetchPriority="high" decoding="async" className="hero-zoom" />
+        <img src="/hero-palace.jpg?v=2" alt="" aria-hidden fetchPriority="high" decoding="async" className="hero-zoom" />
         {/* 宮殿の扉オーバーレイ：focal point に重ねズームで拡大→スクロールで観音開き・奥から光 */}
         <div aria-hidden className="hero-doors">
           <div className="hero-door-glow" />
