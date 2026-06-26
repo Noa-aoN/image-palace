@@ -285,6 +285,16 @@
   opacity: var(--blend, 0);
 }
 
+/* 終盤に画面全体が白っぽく光で満ちる（--blend に連動） */
+.hero-whiteout {
+  position: absolute;
+  inset: 0;
+  z-index: 36;
+  pointer-events: none;
+  background: #fbf8f1;
+  opacity: var(--blend, 0);
+}
+
 .hero-content {
   position: relative;
   z-index: 40;
