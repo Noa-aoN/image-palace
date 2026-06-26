@@ -19,6 +19,14 @@ export function HeroScrollZoom() {
         {/* 背景画像（ズーム対象・最背面） */}
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img src="/hero-palace.jpg" alt="" aria-hidden fetchPriority="high" decoding="async" className="hero-zoom" />
+        {/* 宮殿の扉オーバーレイ：focal point に重ねズームで拡大→スクロールで観音開き・奥から光 */}
+        <div aria-hidden className="hero-doors">
+          <div className="hero-door-glow" />
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img src="/hero-door-left.png" alt="" decoding="async" className="hero-door hero-door--left" />
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img src="/hero-door-right.png" alt="" decoding="async" className="hero-door hero-door--right" />
+        </div>
         {/* 流れる雲（上空・スクリムの下で馴染ませる。ズームでフェード） */}
         <div aria-hidden className="hero-clouds" />
         {/* 飛び回る渡鴉（ズームでフェード） */}
@@ -39,9 +47,9 @@ export function HeroScrollZoom() {
             IMAGE PALACE
           </p>
           <h1 className="text-4xl md:text-5xl font-bold tracking-tight mb-6 leading-tight" style={{ color: '#111111' }}>
-            単語をイメージに変えて、
+            言葉をイメージに変えて、
             <br />
-            記憶を設計する。
+            頭に記憶の宮殿をつくる。
           </h1>
           <p className="text-base md:text-lg max-w-md mb-10" style={{ color: '#4A4A4A' }}>
             AIが単語を画像カードに変換。

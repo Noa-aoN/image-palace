@@ -135,8 +135,11 @@
 /* --- LP ヒーロー：スクロール連動ズーム（useHeroZoom が --zoom/--fade/--blend を駆動） --- */
 :root {
   --hero-track-vh: 250vh;
-  --hero-door-x: 50%;
-  --hero-door-y: 63%;
+  --hero-door-x: 48.5%;
+  --hero-door-y: 64%;
+  /* 扉オーバーレイのサイズ（宮殿の扉に合わせる）と開き角 */
+  --door-h: 14vh;
+  --door-open-deg: 82deg;
 }
 
 .hero-track {
@@ -157,6 +160,7 @@
   --blend: 0;
   --blurpx: 0px;
   --zoombright: 1;
+  --dooropen: 0;
 }
 
 .hero-zoom {
@@ -171,6 +175,66 @@
   transform-origin: var(--hero-door-x) var(--hero-door-y);
   filter: blur(var(--blurpx, 0px)) brightness(var(--zoombright, 1));
   will-change: transform, filter;
+}
+
+/* 宮殿の扉オーバーレイ：focal point に重ね --zoom で一緒に拡大→スクロールで観音開き */
+.hero-doors {
+  position: absolute;
+  left: var(--hero-door-x);
+  top: var(--hero-door-y);
+  height: var(--door-h);
+  aspect-ratio: 617 / 1000;
+  transform: translate(-50%, -50%) scale(var(--zoom, 1));
+  transform-origin: center;
+  perspective: 1400px;
+  z-index: 5;
+  pointer-events: none;
+  will-change: transform;
+}
+
+.hero-door {
+  position: absolute;
+  top: 0;
+  height: 100%;
+  width: 50%;
+  object-fit: contain;
+  backface-visibility: hidden;
+  will-change: transform;
+}
+
+/* 左扉=左ヒンジ。継ぎ目(右端)を中央に寄せ、左軸で奥へ開く */
+.hero-door--left {
+  left: 0;
+  object-position: right center;
+  transform-origin: left center;
+  transform: rotateY(calc(var(--dooropen, 0) * var(--door-open-deg)));
+}
+
+/* 右扉=右ヒンジ。継ぎ目(左端)を中央に寄せ、右軸で奥へ開く */
+.hero-door--right {
+  right: 0;
+  object-position: left center;
+  transform-origin: right center;
+  transform: rotateY(calc(var(--dooropen, 0) * var(--door-open-deg) * -1));
+}
+
+/* 扉の奥から差し込む金色の光（開くほど強く） */
+.hero-door-glow {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 150%;
+  height: 125%;
+  transform: translate(-50%, -50%);
+  background: radial-gradient(
+    ellipse at center,
+    rgba(255, 244, 214, 0.95) 0%,
+    rgba(255, 216, 134, 0.6) 38%,
+    rgba(255, 200, 90, 0) 72%
+  );
+  opacity: var(--dooropen, 0);
+  z-index: -1;
+  pointer-events: none;
 }
 
 .hero-blur {
@@ -383,5 +447,9 @@
   }
   .hero-clouds {
     opacity: calc((1 - var(--fade, 0)) * 0.35);
+  }
+  /* ズーム非駆動のため扉オーバーレイは隠す（貼り付き回避） */
+  .hero-doors {
+    display: none;
   }
 }
