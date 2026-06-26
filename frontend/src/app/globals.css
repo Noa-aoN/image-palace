@@ -289,7 +289,9 @@
   position: relative;
   z-index: 40;
   opacity: calc(1 - var(--fade, 0));
-  transform: translateY(calc(var(--fade, 0) * -24px));
+  /* ズームに合わせて拡大しながら外へ消える（スクロールでズーム中だと分かりやすく） */
+  transform: translateY(calc(var(--fade, 0) * -12px)) scale(calc(1 + var(--fade, 0) * 0.7));
+  transform-origin: center center;
   will-change: opacity, transform;
 }
 
