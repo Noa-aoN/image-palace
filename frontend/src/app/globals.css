@@ -141,8 +141,8 @@
   --hero-door-x: 50%;
   --hero-door-y: 63%;
   /* 扉オーバーレイのサイズ（宮殿の扉に合わせる）と開き角 */
-  --door-h: 14vh;
-  --door-open-deg: 82deg;
+  --door-h: 11vh;
+  --door-open-deg: 88deg;
 }
 
 .hero-track {
@@ -202,7 +202,10 @@
   width: 50%;
   object-fit: contain;
   backface-visibility: hidden;
-  will-change: transform;
+  /* 落ち影で重み＋開くほど面が陰る（厚み・奥行きの演出） */
+  filter: drop-shadow(0 6px 16px rgba(18, 16, 32, 0.5))
+    brightness(calc(1 - var(--dooropen, 0) * 0.28));
+  will-change: transform, filter;
 }
 
 /* 左扉=左ヒンジ。継ぎ目(右端)を中央に寄せ、左軸で奥へ開く */
