@@ -4,6 +4,7 @@ import Link from 'next/link'
 import { Button } from '@/components/ui/button'
 import { useHeroZoom } from '@/hooks/useHeroZoom'
 import { ScrollCue } from './ScrollCue'
+import { SectionDivider } from './SectionDivider'
 
 // LP ヒーロー：スクロールで画像中央のドアへズームし、終盤に次セクションへブレンドする。
 // 構造: track(縦長) → stage(sticky, 100svh) → 画像/ぼかし/スクリム/ブレンド + テキスト。
@@ -30,6 +31,8 @@ export function HeroScrollZoom() {
         <div aria-hidden className="hero-scrim" />
         {/* 次セクションへのブレンド（ズーム終盤でフェードイン） */}
         <div aria-hidden className="hero-blend" />
+        {/* HA下端の雲型遊び心（コンセプトのアイボリーを垂らす。ズームでフェード） */}
+        <SectionDivider fill="var(--ivory)" flip className="hero-bottom-clouds" />
 
         {/* テキスト/CTA（最前面・ズームでフェードアウト） */}
         <div className="hero-content flex flex-col items-center">
