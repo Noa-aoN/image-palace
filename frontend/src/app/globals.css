@@ -135,8 +135,15 @@
 /* --- LP ヒーロー：スクロール連動ズーム（useHeroZoom が --zoom/--fade/--blend を駆動） --- */
 :root {
   --hero-track-vh: 250vh;
+  /* 扉の青ピクセル解析で実測: 画像内の扉中心 x≈50% / y≈63%。
+     object-position をこの値にすると全画面比で扉が viewport の同位置に出る＝
+     focal point・オーバーレイと一致する。 */
   --hero-door-x: 50%;
-  --hero-door-y: 63%;
+  --hero-door-y: 67.5%;
+  /* 扉オーバーレイのサイズ（宮殿の開口部に合わせる）と開き角 */
+  --door-h: 9.6vh;
+  --door-aspect: 0.594;
+  --door-open-deg: 95deg;
 }
 
 .hero-track {
@@ -157,6 +164,7 @@
   --blend: 0;
   --blurpx: 0px;
   --zoombright: 1;
+  --dooropen: 0;
 }
 
 .hero-zoom {
@@ -171,6 +179,73 @@
   transform-origin: var(--hero-door-x) var(--hero-door-y);
   filter: blur(var(--blurpx, 0px)) brightness(var(--zoombright, 1));
   will-change: transform, filter;
+}
+
+/* 宮殿の扉オーバーレイ：focal point に重ね --zoom で一緒に拡大→スクロールで観音開き */
+.hero-doors {
+  position: absolute;
+  left: var(--hero-door-x);
+  top: var(--hero-door-y);
+  height: var(--door-h);
+  /* 宮殿の開口部は細長（幅3.7%×高さ17%＝約0.22）。素材を寄せて充填する */
+  aspect-ratio: var(--door-aspect, 0.36);
+  transform: translate(-50%, -50%) scale(var(--zoom, 1));
+  transform-origin: center;
+  perspective: 1400px;
+  z-index: 5;
+  pointer-events: none;
+  will-change: transform;
+}
+
+.hero-door {
+  position: absolute;
+  top: 0;
+  height: 100%;
+  width: 50%;
+  /* 細長い開口部にあわせて充填（素材より細く）。継ぎ目側を中央へ */
+  object-fit: fill;
+  backface-visibility: hidden;
+  /* 背景と同じ blur＋彩度を落とし暖色寄せで風景に馴染ませる＋落ち影で重み＋開くほど面が陰る */
+  filter: blur(var(--blurpx, 0px))
+    saturate(0.8) sepia(0.08)
+    brightness(calc(1.04 - var(--dooropen, 0) * 0.28))
+    drop-shadow(0 6px 16px rgba(18, 16, 32, 0.5));
+  will-change: transform, filter;
+}
+
+/* 左扉=左ヒンジ。継ぎ目(右端)を中央に寄せ、左軸で奥へ開く */
+.hero-door--left {
+  left: 0;
+  object-position: right center;
+  transform-origin: left center;
+  transform: rotateY(calc(var(--dooropen, 0) * var(--door-open-deg)));
+}
+
+/* 右扉=右ヒンジ。継ぎ目(左端)を中央に寄せ、右軸で奥へ開く */
+.hero-door--right {
+  right: 0;
+  object-position: left center;
+  transform-origin: right center;
+  transform: rotateY(calc(var(--dooropen, 0) * var(--door-open-deg) * -1));
+}
+
+/* 扉の奥から差し込む金色の光（開くほど強く） */
+.hero-door-glow {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 150%;
+  height: 125%;
+  transform: translate(-50%, -50%);
+  background: radial-gradient(
+    ellipse at center,
+    rgba(255, 244, 214, 0.95) 0%,
+    rgba(255, 216, 134, 0.6) 38%,
+    rgba(255, 200, 90, 0) 72%
+  );
+  opacity: var(--dooropen, 0);
+  z-index: -1;
+  pointer-events: none;
 }
 
 .hero-blur {
@@ -343,7 +418,8 @@
 /* ヒーローの cue は画像下部に固定（他セクションと同位置）。ズームでフェード */
 .hero-cue {
   position: absolute;
-  bottom: 24px;
+  /* ヘッダー(h-14=56px)分だけ上げる */
+  bottom: 80px;
   left: 50%;
   z-index: 40;
   transform: translateX(-50%);
@@ -383,5 +459,9 @@
   }
   .hero-clouds {
     opacity: calc((1 - var(--fade, 0)) * 0.35);
+  }
+  /* ズーム非駆動のため扉オーバーレイは隠す（貼り付き回避） */
+  .hero-doors {
+    display: none;
   }
 }

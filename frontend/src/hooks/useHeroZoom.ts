@@ -13,6 +13,10 @@ export interface HeroZoomOptions {
   blurStart?: number
   /** progress=1 でのぼかし量(px) */
   maxBlurPx?: number
+  /** 扉が開き始める進捗（0〜1） */
+  doorOpenStart?: number
+  /** 扉が開ききる進捗（0〜1） */
+  doorOpenEnd?: number
 }
 
 const clamp = (v: number, min: number, max: number) => Math.min(max, Math.max(min, v))
@@ -25,7 +29,15 @@ const easeInQuad = (p: number) => p * p
  * prefers-reduced-motion 時はリスナーを張らず、CSS 側で静的化する。
  */
 export function useHeroZoom(opts: HeroZoomOptions = {}) {
-  const { targetScale = 2.6, fadeEnd = 0.55, blendStart = 0.7, blurStart = 0.55, maxBlurPx = 5 } = opts
+  const {
+    targetScale = 2.6,
+    fadeEnd = 0.55,
+    blendStart = 0.7,
+    blurStart = 0.55,
+    maxBlurPx = 5,
+    doorOpenStart = 0.5,
+    doorOpenEnd = 0.9,
+  } = opts
   const trackRef = useRef<HTMLElement | null>(null)
   const stageRef = useRef<HTMLDivElement | null>(null)
   const [reduced, setReduced] = useState(false)
@@ -56,6 +68,9 @@ export function useHeroZoom(opts: HeroZoomOptions = {}) {
       const blend = clamp((progress - blendStart) / (1 - blendStart), 0, 1)
       // 55%まで鮮明→頂点で柔らかく（拡大の粗さをマスク）
       const blurRamp = clamp((progress - blurStart) / (1 - blurStart), 0, 1)
+      // 扉の開き（ズームが寄ってから開く）。滑らかに加減速。
+      const doorRamp = clamp((progress - doorOpenStart) / (doorOpenEnd - doorOpenStart), 0, 1)
+      const doorOpen = doorRamp * doorRamp * (3 - 2 * doorRamp) // smoothstep
 
       // 書き込み（後でまとめて＝レイアウトスラッシュ回避）
       stage.style.setProperty('--zoom', String(scale))
@@ -63,6 +78,7 @@ export function useHeroZoom(opts: HeroZoomOptions = {}) {
       stage.style.setProperty('--blend', String(blend))
       stage.style.setProperty('--blurpx', `${easeInQuad(blurRamp) * maxBlurPx}px`)
       stage.style.setProperty('--zoombright', String(1 + blurRamp * 0.08))
+      stage.style.setProperty('--dooropen', String(doorOpen))
     }
 
     const onScroll = () => {
@@ -84,7 +100,7 @@ export function useHeroZoom(opts: HeroZoomOptions = {}) {
       window.removeEventListener('resize', onScroll)
       cancelAnimationFrame(rafId)
     }
-  }, [targetScale, fadeEnd, blendStart, blurStart, maxBlurPx])
+  }, [targetScale, fadeEnd, blendStart, blurStart, maxBlurPx, doorOpenStart, doorOpenEnd])
 
   return { trackRef, stageRef, reduced }
 }
