@@ -139,10 +139,10 @@
      object-position をこの値にすると全画面比で扉が viewport の同位置に出る＝
      focal point・オーバーレイと一致する。 */
   --hero-door-x: 50%;
-  --hero-door-y: 63%;
-  /* 扉オーバーレイのサイズ（宮殿の扉に合わせる）と開き角 */
-  --door-h: 11vh;
-  --door-open-deg: 88deg;
+  --hero-door-y: 65%;
+  /* 扉オーバーレイのサイズ（宮殿の開口部に合わせる）と開き角 */
+  --door-h: 13vh;
+  --door-open-deg: 95deg;
 }
 
 .hero-track {
@@ -202,8 +202,8 @@
   width: 50%;
   object-fit: contain;
   backface-visibility: hidden;
-  /* 落ち影で重み＋開くほど面が陰る（厚み・奥行きの演出） */
-  filter: drop-shadow(0 6px 16px rgba(18, 16, 32, 0.5))
+  /* 背景と同じ blur で馴染ませる＋落ち影で重み＋開くほど面が陰る（厚み・奥行き） */
+  filter: blur(var(--blurpx, 0px)) drop-shadow(0 6px 16px rgba(18, 16, 32, 0.5))
     brightness(calc(1 - var(--dooropen, 0) * 0.28));
   will-change: transform, filter;
 }
