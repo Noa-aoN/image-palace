@@ -159,6 +159,9 @@ export function DashboardContent() {
         <Link href="/items">
           <Button variant="outline">マイカードを見る</Button>
         </Link>
+        <Link href="/library">
+          <Button variant="outline">ライブラリを見る</Button>
+        </Link>
       </div>
     </div>
   )
