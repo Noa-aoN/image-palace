@@ -3,6 +3,7 @@
 import { ChevronRight, ChevronLeft } from 'lucide-react'
 import { useUiStore } from '@/stores/ui'
 import { SidebarNav } from './SidebarNav'
+import { GlobalActions } from './GlobalActions'
 
 export function Sidebar() {
   const { sidebarExpanded, toggleSidebar } = useUiStore()
@@ -17,8 +18,9 @@ export function Sidebar() {
         borderRight: '1px solid var(--palace)',
       }}
     >
-      {/* 折りたたみトグル */}
-      <div className={`flex items-center pt-4 pb-2 px-3 ${sidebarExpanded ? 'justify-end' : 'justify-center'}`}>
+      {/* 最上部の行: グローバル操作（検索・タグ）＋ 折りたたみトグル */}
+      <div className={`flex pt-4 pb-2 px-3 ${sidebarExpanded ? 'items-center justify-between gap-2' : 'flex-col items-center gap-2'}`}>
+        <GlobalActions vertical={!sidebarExpanded} />
         <button
           onClick={toggleSidebar}
           className="rounded p-1.5 hover:bg-black/5 transition-colors"
