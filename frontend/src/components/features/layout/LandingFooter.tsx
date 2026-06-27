@@ -11,6 +11,8 @@ export function LandingFooter() {
         <span className="mx-2" aria-hidden>|</span>
         <Link href="/privacy" className="hover:underline">プライバシーポリシー</Link>
         <span className="mx-2" aria-hidden>|</span>
+        <Link href="/tokushoho" className="hover:underline">特定商取引法に基づく表記</Link>
+        <span className="mx-2" aria-hidden>|</span>
         <Link href="/cookie-settings" className="hover:underline">Cookie設定</Link>
         <span className="mx-2" aria-hidden>|</span>
         <span>お問い合わせ</span>
