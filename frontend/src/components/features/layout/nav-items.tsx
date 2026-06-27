@@ -48,6 +48,7 @@ export const NAV_SECTIONS: NavSection[] = [
           { href: '/collections', icon: <Library size={20} />, label: 'コレクション' },
           { href: '/views', icon: <LayoutGrid size={20} />, label: 'ビュー' },
           { href: '/spaces', icon: <Frame size={20} />, label: 'スペース' },
+          { href: '/wordlists', icon: <ListChecks size={20} />, label: 'ワードリスト' },
         ],
       },
       { href: '/study', icon: <GraduationCap size={22} />, label: 'スタディ' },
