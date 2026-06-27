@@ -19,7 +19,7 @@ export function Sidebar() {
       }}
     >
       {/* 最上部の行: グローバル操作（検索・タグ）＋ 折りたたみトグル */}
-      <div className={`flex pt-4 pb-2 px-3 ${sidebarExpanded ? 'items-center justify-between gap-2' : 'flex-col items-center gap-2'}`}>
+      <div className={`flex pt-4 pb-2 px-3 ${sidebarExpanded ? 'items-center justify-between gap-2' : 'flex-col-reverse items-center gap-2'}`}>
         <GlobalActions vertical={!sidebarExpanded} />
         <button
           onClick={toggleSidebar}
