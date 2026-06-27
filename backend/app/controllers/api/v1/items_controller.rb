@@ -66,6 +66,7 @@ module Api
           pending_count: current_user.items.where(generation_status: "pending").count,
           processing_count: current_user.items.where(generation_status: "processing").count,
           failed_count: current_user.items.where(generation_status: "failed").count,
+          collections_count: current_user.collections.count,
           views_count: current_user.views.count,
           spaces_count: current_user.spaces.count,
           monthly_count: monthly_count,
