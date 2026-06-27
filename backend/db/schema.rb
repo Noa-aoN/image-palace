@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_06_25_000002) do
+ActiveRecord::Schema[8.1].define(version: 2026_06_28_000001) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
   enable_extension "pgcrypto"
@@ -453,6 +453,16 @@ ActiveRecord::Schema[8.1].define(version: 2026_06_25_000002) do
     t.index ["user_id"], name: "index_views_on_user_id"
   end
 
+  create_table "wordlists", id: :uuid, default: -> { "gen_random_uuid()" }, force: :cascade do |t|
+    t.datetime "created_at", null: false
+    t.string "name", null: false
+    t.datetime "updated_at", null: false
+    t.uuid "user_id", null: false
+    t.string "words", default: [], null: false, array: true
+    t.index ["user_id", "created_at"], name: "index_wordlists_on_user_id_and_created_at"
+    t.index ["user_id"], name: "index_wordlists_on_user_id"
+  end
+
   add_foreign_key "active_storage_attachments", "active_storage_blobs", column: "blob_id"
   add_foreign_key "active_storage_variant_records", "active_storage_blobs", column: "blob_id"
   add_foreign_key "collection_entries", "collections", on_delete: :cascade
@@ -493,4 +503,5 @@ ActiveRecord::Schema[8.1].define(version: 2026_06_25_000002) do
   add_foreign_key "views", "items", column: "cover_item_id", on_delete: :nullify
   add_foreign_key "views", "spaces", on_delete: :nullify
   add_foreign_key "views", "users", on_delete: :cascade
+  add_foreign_key "wordlists", "users", on_delete: :cascade
 end

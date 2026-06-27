@@ -11,6 +11,7 @@ Rails.application.routes.draw do
       get "health", to: "health#show"
       get "health/authenticated", to: "health#show_authenticated"
       get "search", to: "search#index"
+      post "words/generate", to: "words#generate"
       get "account/export", to: "account#export"
       delete "account", to: "account#destroy"
 
@@ -38,6 +39,7 @@ Rails.application.routes.draw do
       end
       resources :item_types, only: [ :index ]
       resources :tags, only: [ :index, :create, :update, :destroy ]
+      resources :wordlists, only: [ :index, :create, :show, :destroy ]
       resources :collections, only: [ :index, :create, :show, :update, :destroy ] do
         member do
           post "entries", action: :add_entry
