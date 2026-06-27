@@ -1,5 +1,9 @@
 // 課金表示まわりの共有ヘルパー（プラン名の日本語化・金額/クレジット表示）。
 
+// クレジットの単位表記。full = 残高表示など、short = ヘッダー等の省略記号。
+export const CREDIT_UNIT = 'クレジット'
+export const CREDIT_UNIT_SHORT = 'cr'
+
 const TIER_LABELS: Record<string, string> = {
   free: 'フリー',
   standard: 'スタンダード',

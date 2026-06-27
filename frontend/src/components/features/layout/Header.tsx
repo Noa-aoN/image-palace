@@ -14,6 +14,7 @@ import { useAuthStore } from '@/stores/auth'
 import { useItemsStore } from '@/stores/items'
 import { useBillingStore } from '@/stores/billing'
 import { signOut } from '@/lib/api/auth'
+import { CREDIT_UNIT_SHORT } from '@/lib/billing'
 import { MobileNav } from '@/components/features/layout/MobileNav'
 
 export function AppHeader() {
@@ -70,6 +71,7 @@ export function AppHeader() {
           >
             <Coins size={16} style={{ color: 'var(--palace)' }} />
             <span className="font-medium tabular-nums">{billingSummary.available_credits}</span>
+            <span className="text-xs text-muted-foreground">{CREDIT_UNIT_SHORT}</span>
           </Link>
         )}
         {showUserMenu ? (

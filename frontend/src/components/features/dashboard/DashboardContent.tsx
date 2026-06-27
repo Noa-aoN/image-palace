@@ -3,12 +3,12 @@
 import { useEffect, useState } from 'react'
 import type { ReactNode } from 'react'
 import Link from 'next/link'
-import { PenLine, Sparkles, GalleryVerticalEnd, Library, LayoutGrid, Frame, Loader2, ChevronRight } from 'lucide-react'
+import { PenLine, Sparkles, GalleryVerticalEnd, Library, LayoutGrid, Frame, Loader2, ChevronRight, Coins } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
 import { getItemsSummary, type ItemsSummary } from '@/lib/api/items'
 import { useBillingStore } from '@/stores/billing'
-import { tierLabel } from '@/lib/billing'
+import { tierLabel, CREDIT_UNIT } from '@/lib/billing'
 
 const GETTING_STARTED = [
   { icon: <PenLine size={20} />, text: '覚えたい単語や概念を入力する' },
@@ -37,10 +37,19 @@ const OWNED_CARDS: { label: string; href: string; icon: ReactNode; value: (s: It
   { label: 'スペース', href: '/spaces', icon: <Frame size={18} />, value: (s) => `${s.spaces_count}` },
 ]
 
-// 月間利用枠のバー進捗率（0〜100）。limit<=0（無制限/未設定）のときは null を返す。
-function usagePercent(s: ItemsSummary): number | null {
-  if (s.monthly_limit <= 0) return null
-  return Math.min(100, Math.round((s.monthly_count / s.monthly_limit) * 100))
+// クレジットメーターの進捗率（残高 / 今期付与, 0〜100）。付与枠が無い/不明なら null。
+// 1生成＝1クレジットのため、残高がそのまま「あと何枚つくれるか」になる。
+function creditPercent(available: number, perPeriod: number): number | null {
+  if (perPeriod <= 0) return null
+  return Math.min(100, Math.round((available / perPeriod) * 100))
+}
+
+// クレジット更新日（次回付与日）を "M/D" に整形。null/不正は null。
+function formatRenewal(iso: string | null | undefined): string | null {
+  if (!iso) return null
+  const d = new Date(iso)
+  if (Number.isNaN(d.getTime())) return null
+  return `${d.getMonth() + 1}/${d.getDate()}`
 }
 
 export function DashboardContent() {
@@ -111,77 +120,83 @@ export function DashboardContent() {
     )
   }
 
-  const usage = usagePercent(summary)
+  const credits = billing?.available_credits ?? null
+  const perPeriod = billing?.plan?.credits_per_period ?? 0
+  const creditPct = credits !== null ? creditPercent(credits, perPeriod) : null
+  const renewal = formatRenewal(billing?.subscription?.current_period_end)
   const activeCount = summary.pending_count + summary.processing_count + summary.failed_count
 
   return (
     <div className="max-w-2xl mx-auto px-6 py-12 space-y-8">
       <h1 className="text-xl font-semibold">ダッシュボード</h1>
 
-      {/* 今月の利用（クレジット・プラン込み。カード全体で /billing へ） */}
-      <Link
-        href="/billing"
-        aria-label="プランと利用状況を見る"
-        className="group block rounded-xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--palace)]"
-      >
-        <Card className="cursor-pointer transition hover:border-[var(--palace)] hover:shadow-md">
-          <CardContent className="pt-6 space-y-4">
-            <div className="flex items-start justify-between">
-              <p className="text-sm font-semibold text-muted-foreground">今月の利用</p>
-              <ChevronRight
-                size={18}
-                className="transition-transform group-hover:translate-x-0.5"
-                style={{ color: 'var(--palace)' }}
-              />
-            </div>
-
-            {usage !== null ? (
-              <div className="space-y-2">
-                <div className="flex items-baseline justify-between">
-                  <span className="text-sm text-muted-foreground">生成</span>
-                  <span>
-                    <span className="text-2xl font-bold tabular-nums">{summary.monthly_count}</span>
-                    <span className="text-sm text-muted-foreground"> / {summary.monthly_limit} 枚</span>
-                  </span>
+      {/* クレジット（残高・生成可能枚数・プラン。カード全体で /billing へ） */}
+      <section className="space-y-3">
+        <h2 className="text-sm font-semibold text-muted-foreground">クレジット</h2>
+        <Link
+          href="/billing"
+          aria-label="プランと利用状況を見る"
+          className="group block rounded-xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--palace)]"
+        >
+          <Card className="cursor-pointer transition hover:border-[var(--palace)] hover:shadow-md">
+            <CardContent className="pt-6 space-y-4">
+              <div className="flex items-start justify-between">
+                <div>
+                  <p className="flex items-center gap-2 text-sm text-muted-foreground">
+                    <Coins size={18} style={{ color: 'var(--palace)' }} />
+                    クレジット残高
+                  </p>
+                  <p className="mt-1">
+                    <span className="text-3xl font-bold tabular-nums">{credits ?? '—'}</span>
+                    <span className="ml-1 text-sm text-muted-foreground">{CREDIT_UNIT}</span>
+                  </p>
                 </div>
-                <div className="h-2 w-full overflow-hidden rounded-full bg-muted">
-                  <div
-                    className="h-full rounded-full transition-all"
-                    style={{ width: `${usage}%`, backgroundColor: 'var(--palace)' }}
+                <div className="flex items-start gap-3">
+                  <div className="text-right">
+                    <p className="text-sm text-muted-foreground">プラン</p>
+                    <p className="text-sm font-medium">{tierLabel(billing?.plan?.tier ?? 'free')}</p>
+                  </div>
+                  <ChevronRight
+                    size={18}
+                    className="transition-transform group-hover:translate-x-0.5"
+                    style={{ color: 'var(--palace)' }}
                   />
                 </div>
+              </div>
+
+              <div className="border-t pt-3 space-y-2">
+                {creditPct !== null && (
+                  <>
+                    <div className="flex items-baseline justify-between">
+                      <span className="text-sm text-muted-foreground">今期のクレジット</span>
+                      <span>
+                        <span className="text-base font-semibold tabular-nums">{credits}</span>
+                        <span className="text-sm text-muted-foreground"> / {perPeriod}</span>
+                      </span>
+                    </div>
+                    <div className="h-2 w-full overflow-hidden rounded-full bg-muted">
+                      <div
+                        className="h-full rounded-full transition-all"
+                        style={{ width: `${creditPct}%`, backgroundColor: 'var(--palace)' }}
+                      />
+                    </div>
+                  </>
+                )}
                 <p className="text-xs text-muted-foreground">
-                  今月はあと {summary.monthly_remaining} 枚つくれます
+                  {credits !== null ? `あと 約${credits}枚 つくれます（1枚＝1クレジット）` : '読み込み中…'}
+                  {renewal && `　・　${renewal} に更新`}
                 </p>
               </div>
-            ) : (
-              <div className="flex items-baseline justify-between">
-                <span className="text-sm text-muted-foreground">今月の生成</span>
-                <span className="text-2xl font-bold tabular-nums">{summary.monthly_count} 枚</span>
-              </div>
-            )}
 
-            <div className="flex items-end justify-between border-t pt-3">
-              <div>
-                <p className="text-sm text-muted-foreground">クレジット残高</p>
-                <p className="text-2xl font-bold mt-0.5 tabular-nums">
-                  {billing ? billing.available_credits : '—'}
+              {credits !== null && credits <= 0 && (
+                <p className="text-xs text-destructive">
+                  クレジットがありません。プランのアップグレードかクレジット追加で生成を続けられます。
                 </p>
-              </div>
-              <div className="text-right">
-                <p className="text-sm text-muted-foreground">プラン</p>
-                <p className="text-sm font-medium">{tierLabel(billing?.plan?.tier ?? 'free')}</p>
-              </div>
-            </div>
-
-            {billing && billing.available_credits <= 0 && (
-              <p className="text-xs text-destructive">
-                クレジットがありません。プランのアップグレードかクレジット追加で生成を続けられます。
-              </p>
-            )}
-          </CardContent>
-        </Card>
-      </Link>
+              )}
+            </CardContent>
+          </Card>
+        </Link>
+      </section>
 
       {/* 作業状況（生成中・失敗があるときだけ表示） */}
       {activeCount > 0 && (
