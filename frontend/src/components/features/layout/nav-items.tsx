@@ -52,7 +52,8 @@ export const NAV_SECTIONS: NavSection[] = [
       },
       { href: '/study', icon: <GraduationCap size={22} />, label: 'スタディ' },
       {
-        // 親自身はページを持たない開閉グループ。配下に各作成導線。
+        // 親はアトリエのトップ（作成ハブ）へのリンク兼開閉グループ。
+        href: '/atelier',
         icon: <Palette size={22} />,
         label: 'アトリエ',
         children: [

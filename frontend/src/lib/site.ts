@@ -20,6 +20,7 @@ export const PRIVATE_PATHS = [
   '/spaces',
   '/tags',
   '/study',
+  '/atelier',
   '/wordlists',
   '/delphi',
   '/search',
