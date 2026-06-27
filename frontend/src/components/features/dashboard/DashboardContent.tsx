@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react'
 import type { ReactNode } from 'react'
 import Link from 'next/link'
-import { PenLine, Sparkles, GalleryVerticalEnd, LayoutGrid, Frame, Loader2, ChevronRight } from 'lucide-react'
+import { PenLine, Sparkles, GalleryVerticalEnd, Library, LayoutGrid, Frame, Loader2, ChevronRight } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
 import { getItemsSummary, type ItemsSummary } from '@/lib/api/items'
@@ -21,6 +21,7 @@ const EMPTY_SUMMARY: ItemsSummary = {
   pending_count: 0,
   processing_count: 0,
   failed_count: 0,
+  collections_count: 0,
   views_count: 0,
   spaces_count: 0,
   monthly_count: 0,
@@ -28,10 +29,10 @@ const EMPTY_SUMMARY: ItemsSummary = {
   monthly_remaining: 0,
 }
 
-// 各統計カードのクリック先・アイコン・表示値。カードを押すと該当の一覧ページへ遷移する。
-const STAT_CARDS: { label: string; href: string; icon: ReactNode; value: (s: ItemsSummary) => string }[] = [
-  { label: '所持カード数', href: '/items', icon: <GalleryVerticalEnd size={18} />, value: (s) => `${s.total_count}` },
-  { label: '生成中 / 失敗', href: '/items', icon: <Loader2 size={18} />, value: (s) => `${s.processing_count} / ${s.failed_count}` },
+// 「所有」セクションの統計カード。クリックで該当の一覧ページへ遷移する。
+const OWNED_CARDS: { label: string; href: string; icon: ReactNode; value: (s: ItemsSummary) => string }[] = [
+  { label: 'カード', href: '/items', icon: <GalleryVerticalEnd size={18} />, value: (s) => `${s.total_count}` },
+  { label: 'コレクション', href: '/collections', icon: <Library size={18} />, value: (s) => `${s.collections_count}` },
   { label: 'ビュー', href: '/views', icon: <LayoutGrid size={18} />, value: (s) => `${s.views_count}` },
   { label: 'スペース', href: '/spaces', icon: <Frame size={18} />, value: (s) => `${s.spaces_count}` },
 ]
@@ -111,6 +112,7 @@ export function DashboardContent() {
   }
 
   const usage = usagePercent(summary)
+  const activeCount = summary.pending_count + summary.processing_count + summary.failed_count
 
   return (
     <div className="max-w-2xl mx-auto px-6 py-12 space-y-8">
@@ -181,11 +183,47 @@ export function DashboardContent() {
         </Card>
       </Link>
 
-      {/* ライブラリ */}
+      {/* 作業状況（生成中・失敗があるときだけ表示） */}
+      {activeCount > 0 && (
+        <section className="space-y-3">
+          <h2 className="text-sm font-semibold text-muted-foreground">作業状況</h2>
+          <Link
+            href="/items"
+            aria-label="作業状況を見る"
+            className="group block rounded-xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--palace)]"
+          >
+            <Card className="cursor-pointer transition hover:border-[var(--palace)] hover:shadow-md">
+              <CardContent className="pt-6">
+                <div className="flex items-center justify-between">
+                  <span className="flex items-center gap-2 text-sm text-muted-foreground">
+                    <Loader2 size={18} style={{ color: 'var(--palace)' }} />
+                    生成中 / 失敗
+                  </span>
+                  <ChevronRight
+                    size={16}
+                    className="transition-transform group-hover:translate-x-0.5"
+                    style={{ color: 'var(--palace)' }}
+                  />
+                </div>
+                <div className="mt-2 flex items-baseline gap-4">
+                  <p className="text-3xl font-bold tabular-nums">
+                    {summary.processing_count} / {summary.failed_count}
+                  </p>
+                  {summary.pending_count > 0 && (
+                    <p className="text-sm text-muted-foreground">保留中 {summary.pending_count}</p>
+                  )}
+                </div>
+              </CardContent>
+            </Card>
+          </Link>
+        </section>
+      )}
+
+      {/* 所有 */}
       <section className="space-y-3">
-        <h2 className="text-sm font-semibold text-muted-foreground">ライブラリ</h2>
+        <h2 className="text-sm font-semibold text-muted-foreground">所有</h2>
         <div className="grid grid-cols-2 gap-4">
-          {STAT_CARDS.map((stat) => (
+          {OWNED_CARDS.map((stat) => (
             <Link
               key={stat.label}
               href={stat.href}
