@@ -26,6 +26,18 @@ RSpec.describe GenerateWordsService do
     expect(words).to eq(%w[a b])
   end
 
+  it "count 未指定（おまかせ）でもテーマに応じた数を返す" do
+    stub_chat({ words: %w[子 丑 寅 卯] }.to_json)
+    words = described_class.call(theme: "十二支")
+    expect(words).to eq(%w[子 丑 寅 卯])
+  end
+
+  it "おまかせでも MAX_COUNT を超えない（ハードキャップ）" do
+    stub_chat({ words: (1..80).map { |n| "w#{n}" } }.to_json)
+    words = described_class.call(theme: "たくさん")
+    expect(words.size).to eq(GenerateWordsService::MAX_COUNT)
+  end
+
   it "words が空なら GenerationError を投げる" do
     stub_chat({ words: [] }.to_json)
     expect { described_class.call(theme: "x", count: 3) }.to raise_error(GenerateWordsService::GenerationError)

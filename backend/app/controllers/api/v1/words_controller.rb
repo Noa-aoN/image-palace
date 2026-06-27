@@ -4,7 +4,8 @@ module Api
       # テーマ/ジャンルから学習単語を生成して返す（テキストのみ＝クレジット消費なし）。
       # ワードリスト作成フォームとデルフォイ（ガチャ）から利用する。
       def generate
-        words = GenerateWordsService.call(theme: params[:theme], count: params[:count] || 5)
+        # count 未指定（nil/空）は「おまかせ（自動）」としてサービス側に委ねる。
+        words = GenerateWordsService.call(theme: params[:theme], count: params[:count].presence)
         render json: { words: words }
       rescue GenerateWordsService::GenerationError, KeyError, Faraday::Error => e
         Rails.logger.warn "[WordsController#generate] failed: #{e.class}: #{e.message}"

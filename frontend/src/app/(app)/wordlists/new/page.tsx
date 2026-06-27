@@ -13,6 +13,7 @@ export default function NewWordlistPage() {
   const router = useRouter()
   const [theme, setTheme] = useState('')
   const [count, setCount] = useState(10)
+  const [auto, setAuto] = useState(false)
   const [generating, setGenerating] = useState(false)
   const [words, setWords] = useState<string[] | null>(null)
   const [name, setName] = useState('')
@@ -24,7 +25,7 @@ export default function NewWordlistPage() {
     setGenerating(true)
     setError(null)
     try {
-      const generated = await generateWords(theme.trim(), count)
+      const generated = await generateWords(theme.trim(), auto ? undefined : count)
       setWords(generated)
       if (!name.trim()) setName(theme.trim())
     } catch {
@@ -93,7 +94,7 @@ export default function NewWordlistPage() {
             disabled={generating}
           />
         </div>
-        <div className="w-24">
+        <div className="w-28">
           <label htmlFor="count" className="mb-1 block text-sm font-medium">単語数</label>
           <Input
             id="count"
@@ -102,8 +103,18 @@ export default function NewWordlistPage() {
             max={50}
             value={count}
             onChange={(e) => setCount(Math.max(1, Math.min(50, Number(e.target.value) || 1)))}
-            disabled={generating}
+            disabled={generating || auto}
           />
+          <label className="mt-1.5 flex items-center gap-1.5 text-xs text-muted-foreground">
+            <input
+              type="checkbox"
+              checked={auto}
+              onChange={(e) => setAuto(e.target.checked)}
+              disabled={generating}
+              className="h-3.5 w-3.5 rounded border-input"
+            />
+            おまかせ
+          </label>
         </div>
         <Button onClick={handleGenerate} disabled={generating} className="flex items-center justify-center gap-2 sm:w-28">
           {generating ? <Spinner size={15} /> : <Sparkles size={16} />}

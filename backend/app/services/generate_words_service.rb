@@ -11,19 +11,22 @@ class GenerateWordsService
 
   SYSTEM_PROMPT = <<~PROMPT.freeze
     あなたは学習用の単語リスト作成アシスタントです。
-    与えられたテーマ（ジャンル）に沿った、学習に役立つ単語・概念を、指定された個数だけ重複なく挙げてください。
+    与えられたテーマ（ジャンル）に沿った、学習に役立つ単語・概念を、指定された条件で重複なく挙げてください。
     テーマが「ランダム」または空の場合は、一般教養・学習に役立つ単語を幅広いジャンルからランダムに選んでください。
     各要素は短い単語または語句にし、説明文・記号・番号は含めないでください。
+    どんな場合でも要素数は最大 #{MAX_COUNT} 個までにしてください。
     必ず次の JSON 形式のみで返してください: {"words": ["単語1", "単語2", ...]}
   PROMPT
 
-  def self.call(theme: nil, count: 5)
+  def self.call(theme: nil, count: nil)
     new(theme:, count:).call
   end
 
+  # count が nil/空のときは「おまかせ（自動）」。AI がテーマに応じた自然な数を返す。
+  # 数値指定時は 1〜MAX_COUNT にクランプ。いずれも MAX_COUNT を超えないよう必ず切り詰める。
   def initialize(theme:, count:)
     @theme = theme.to_s.strip
-    @count = count.to_i.clamp(1, MAX_COUNT)
+    @count = count.present? ? count.to_i.clamp(1, MAX_COUNT) : nil
   end
 
   def call
@@ -32,9 +35,19 @@ class GenerateWordsService
 
   private
 
+  # 切り詰めの上限（おまかせ時はハードキャップ＝MAX_COUNT）。
+  def cap
+    @count || MAX_COUNT
+  end
+
   def user_prompt
     theme = @theme.presence || "ランダム（指定なし）"
-    "テーマ: #{theme}\n個数: #{@count}"
+    if @count.nil?
+      "テーマ: #{theme}\n個数: おまかせ（テーマに最適な数。十二支・曜日・七福神のような有限の集合は過不足なくすべて挙げる。" \
+        "それ以外は10〜20程度。ただし最大 #{MAX_COUNT} 個）"
+    else
+      "テーマ: #{theme}\n個数: #{@count}"
+    end
   end
 
   def request
@@ -53,7 +66,7 @@ class GenerateWordsService
 
     content = response.dig("choices", 0, "message", "content").to_s
     parsed = JSON.parse(content)
-    words = Array(parsed["words"]).map { |w| w.to_s.strip }.reject(&:blank?).uniq.first(@count)
+    words = Array(parsed["words"]).map { |w| w.to_s.strip }.reject(&:blank?).uniq.first(cap)
     raise GenerationError, "単語を生成できませんでした" if words.empty?
 
     words
