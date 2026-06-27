@@ -1,8 +1,6 @@
-import type { Metadata } from 'next'
-import { DashboardContent } from '@/components/features/dashboard/DashboardContent'
+import { redirect } from 'next/navigation'
 
-export const metadata: Metadata = { title: 'ダッシュボード' }
-
-export default function DashboardPage() {
-  return <DashboardContent />
+// 旧 /dashboard は /entrance に改名済み。ブックマーク等の救済として恒久リダイレクトする。
+export default function DashboardRedirectPage() {
+  redirect('/entrance')
 }

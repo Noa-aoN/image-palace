@@ -62,7 +62,7 @@ export function LoginForm() {
       const { user, tokens } = await signIn(email, password)
       resetItems()
       setAuth(user, tokens)
-      router.push('/dashboard')
+      router.push('/entrance')
     } catch (err: unknown) {
       setFormError(buildLoginErrorDetail(err).message)
     } finally {

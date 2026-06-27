@@ -5,9 +5,9 @@ import Link from 'next/link'
 import { useSearchParams } from 'next/navigation'
 import { Plus, Route, DoorOpen } from 'lucide-react'
 import { Button } from '@/components/ui/button'
-import { Input } from '@/components/ui/input'
-import { getSpaces, createSpace } from '@/lib/api/spaces'
-import { SPACE_TYPES, spaceTypeLabel } from '@/lib/space-types'
+import { getSpaces } from '@/lib/api/spaces'
+import { spaceTypeLabel } from '@/lib/space-types'
+import { CreateSpaceForm } from '@/components/features/spaces/CreateSpaceForm'
 import { EntityCover } from '@/components/features/shared/EntityCover'
 import type { Space } from '@/types/space'
 
@@ -34,12 +34,6 @@ function SpacesPageInner() {
   const [error, setError] = useState<string | null>(null)
 
   const [creating, setCreating] = useState(false)
-  const [name, setName] = useState('')
-  const [spaceType, setSpaceType] = useState(
-    typeFilter && (SPACE_TYPES as readonly string[]).includes(typeFilter) ? typeFilter : 'room'
-  )
-  const [submitting, setSubmitting] = useState(false)
-  const [createError, setCreateError] = useState<string | null>(null)
 
   useEffect(() => {
     let cancelled = false
@@ -57,29 +51,6 @@ function SpacesPageInner() {
       cancelled = true
     }
   }, [])
-
-  const handleCreate = async (e: React.FormEvent) => {
-    e.preventDefault()
-    const trimmed = name.trim()
-    if (!trimmed) {
-      setCreateError('スペース名を入力してください')
-      return
-    }
-    setSubmitting(true)
-    setCreateError(null)
-    try {
-      const created = await createSpace(trimmed, spaceType)
-      setSpaces((current) => [created, ...current])
-      setName('')
-      setSpaceType('room')
-      setCreating(false)
-    } catch (err: unknown) {
-      const axiosErr = err as { response?: { data?: { errors?: string[] } } }
-      setCreateError(axiosErr?.response?.data?.errors?.[0] ?? 'スペースの作成に失敗しました')
-    } finally {
-      setSubmitting(false)
-    }
-  }
 
   const visibleSpaces = typeFilter ? spaces.filter((s) => s.space_type === typeFilter) : spaces
   const heading = typeFilter ? spaceTypeLabel(typeFilter) : 'スペース'
@@ -107,46 +78,16 @@ function SpacesPageInner() {
       </p>
 
       {creating && (
-        <form onSubmit={handleCreate} className="mb-8 flex flex-col gap-2 sm:flex-row sm:items-start">
-          <select
-            value={spaceType}
-            onChange={(e) => setSpaceType(e.target.value)}
-            disabled={submitting}
-            aria-label="スペースの種別"
-            className="h-9 rounded-lg border border-input bg-background px-3 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-          >
-            {SPACE_TYPES.map((t) => (
-              <option key={t} value={t}>
-                {spaceTypeLabel(t)}
-              </option>
-            ))}
-          </select>
-          <div className="flex-1">
-            <Input
-              value={name}
-              onChange={(e) => setName(e.target.value)}
-              placeholder={spaceType === 'road' ? 'ロード名（例: 通勤路、家の中）' : 'ルーム名（例: 英単語、文法）'}
-              autoFocus
-              disabled={submitting}
-              aria-label="スペース名"
-            />
-            {createError && <p className="mt-1 text-sm text-destructive">{createError}</p>}
-          </div>
-          <div className="flex gap-2">
-            <Button type="submit" size="sm" disabled={submitting}>
-              {submitting ? '作成中...' : '作成'}
-            </Button>
-            <Button
-              type="button"
-              variant="ghost"
-              size="sm"
-              onClick={() => { setCreating(false); setName(''); setCreateError(null) }}
-              disabled={submitting}
-            >
-              キャンセル
-            </Button>
-          </div>
-        </form>
+        <div className="mb-8">
+          <CreateSpaceForm
+            defaultType={typeFilter ?? undefined}
+            onCreated={(created) => {
+              setSpaces((current) => [created, ...current])
+              setCreating(false)
+            }}
+            onCancel={() => setCreating(false)}
+          />
+        </div>
       )}
 
       {loading ? (

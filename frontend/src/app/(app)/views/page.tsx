@@ -5,14 +5,11 @@ import Link from 'next/link'
 import { useSearchParams } from 'next/navigation'
 import { Plus } from 'lucide-react'
 import { Button } from '@/components/ui/button'
-import { Input } from '@/components/ui/input'
-import { getViews, createView } from '@/lib/api/views'
-import { getSpaces } from '@/lib/api/spaces'
-import { VIEW_TYPES, viewTypeLabel, IMPLEMENTED_VIEW_TYPES } from '@/lib/view-types'
-import { spaceTypeLabel } from '@/lib/space-types'
+import { getViews } from '@/lib/api/views'
+import { viewTypeLabel } from '@/lib/view-types'
+import { CreateViewForm } from '@/components/features/views/CreateViewForm'
 import { EntityCover } from '@/components/features/shared/EntityCover'
 import type { View } from '@/types/view'
-import type { Space } from '@/types/space'
 
 function ViewsPageInner() {
   // ?type=freeboard / space_map で種別フィルタ（サイドバー/ライブラリの導線から）
@@ -24,24 +21,6 @@ function ViewsPageInner() {
   const [error, setError] = useState<string | null>(null)
 
   const [creating, setCreating] = useState(false)
-  const [name, setName] = useState('')
-  const [viewType, setViewType] = useState(
-    typeFilter && (VIEW_TYPES as readonly string[]).includes(typeFilter) ? typeFilter : 'freeboard'
-  )
-  const [submitting, setSubmitting] = useState(false)
-  const [createError, setCreateError] = useState<string | null>(null)
-
-  // space_map 用: 配置先スペースの候補と選択
-  const [spaces, setSpaces] = useState<Space[]>([])
-  const [selectedSpaceId, setSelectedSpaceId] = useState('')
-
-  // スペース配置を選んだら配置先スペースの候補を読み込む
-  useEffect(() => {
-    if (viewType !== 'space_map' || spaces.length > 0) return
-    getSpaces()
-      .then(setSpaces)
-      .catch(() => setCreateError('スペースの取得に失敗しました'))
-  }, [viewType, spaces.length])
 
   useEffect(() => {
     let cancelled = false
@@ -59,38 +38,6 @@ function ViewsPageInner() {
       cancelled = true
     }
   }, [])
-
-  const handleCreate = async (e: React.FormEvent) => {
-    e.preventDefault()
-    const trimmed = name.trim()
-    if (!trimmed) {
-      setCreateError('ビュー名を入力してください')
-      return
-    }
-    if (viewType === 'space_map' && !selectedSpaceId) {
-      setCreateError('配置先のスペースを選択してください')
-      return
-    }
-    setSubmitting(true)
-    setCreateError(null)
-    try {
-      const created = await createView(
-        trimmed,
-        viewType,
-        viewType === 'space_map' ? selectedSpaceId : undefined
-      )
-      setViews((current) => [created, ...current])
-      setName('')
-      setViewType('freeboard')
-      setSelectedSpaceId('')
-      setCreating(false)
-    } catch (err: unknown) {
-      const axiosErr = err as { response?: { data?: { errors?: string[] } } }
-      setCreateError(axiosErr?.response?.data?.errors?.[0] ?? 'ビューの作成に失敗しました')
-    } finally {
-      setSubmitting(false)
-    }
-  }
 
   const visibleViews = typeFilter ? views.filter((v) => v.view_type === typeFilter) : views
   const heading = typeFilter ? viewTypeLabel(typeFilter) : 'ビュー'
@@ -118,61 +65,16 @@ function ViewsPageInner() {
       </p>
 
       {creating && (
-        <form onSubmit={handleCreate} className="mb-8 flex flex-col gap-2 sm:flex-row sm:items-start">
-          <div className="flex-1">
-            <Input
-              value={name}
-              onChange={(e) => setName(e.target.value)}
-              placeholder="ビュー名（例: 関係図、学習マップ）"
-              autoFocus
-              disabled={submitting}
-              aria-label="ビュー名"
-            />
-            {createError && <p className="mt-1 text-sm text-destructive">{createError}</p>}
-          </div>
-          <select
-            value={viewType}
-            onChange={(e) => setViewType(e.target.value)}
-            disabled={submitting}
-            aria-label="ビューの種別"
-            className="h-9 rounded-lg border border-input bg-background px-3 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-          >
-            {VIEW_TYPES.map((t) => (
-              <option key={t} value={t}>
-                {viewTypeLabel(t)}
-                {IMPLEMENTED_VIEW_TYPES.has(t) ? '' : '（準備中）'}
-              </option>
-            ))}
-          </select>
-          {viewType === 'space_map' && (
-            <select
-              value={selectedSpaceId}
-              onChange={(e) => setSelectedSpaceId(e.target.value)}
-              disabled={submitting}
-              aria-label="配置先のスペース"
-              className="h-9 rounded-lg border border-input bg-background px-3 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-            >
-              <option value="">スペースを選択…</option>
-              {spaces.map((s) => (
-                <option key={s.id} value={s.id}>{s.name}（{spaceTypeLabel(s.space_type)}）</option>
-              ))}
-            </select>
-          )}
-          <div className="flex gap-2">
-            <Button type="submit" size="sm" disabled={submitting}>
-              {submitting ? '作成中...' : '作成'}
-            </Button>
-            <Button
-              type="button"
-              variant="ghost"
-              size="sm"
-              onClick={() => { setCreating(false); setName(''); setCreateError(null) }}
-              disabled={submitting}
-            >
-              キャンセル
-            </Button>
-          </div>
-        </form>
+        <div className="mb-8">
+          <CreateViewForm
+            defaultType={typeFilter ?? undefined}
+            onCreated={(created) => {
+              setViews((current) => [created, ...current])
+              setCreating(false)
+            }}
+            onCancel={() => setCreating(false)}
+          />
+        </div>
       )}
 
       {loading ? (

@@ -10,6 +10,7 @@ export const SITE_DESCRIPTION = '単語をAI画像に変換して記憶できる
 
 // 認証が必要でクロールさせたくないパス（robots の Disallow と一致させる）。
 export const PRIVATE_PATHS = [
+  '/entrance',
   '/dashboard',
   '/items',
   '/library',
@@ -18,6 +19,15 @@ export const PRIVATE_PATHS = [
   '/views',
   '/spaces',
   '/tags',
+  '/study',
+  '/atelier',
+  '/wordlists',
+  '/delphi',
+  '/search',
+  '/agora',
+  '/arena',
+  '/guide',
+  '/blog',
   '/account',
   '/billing',
   '/forgot-password',

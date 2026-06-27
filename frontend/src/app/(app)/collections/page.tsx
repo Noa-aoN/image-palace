@@ -4,8 +4,8 @@ import { useEffect, useState } from 'react'
 import Link from 'next/link'
 import { Plus } from 'lucide-react'
 import { Button } from '@/components/ui/button'
-import { Input } from '@/components/ui/input'
-import { getCollections, createCollection } from '@/lib/api/collections'
+import { getCollections } from '@/lib/api/collections'
+import { CreateCollectionForm } from '@/components/features/collections/CreateCollectionForm'
 import { EntityCover } from '@/components/features/shared/EntityCover'
 import type { Collection } from '@/types/collection'
 
@@ -15,9 +15,6 @@ export default function CollectionsPage() {
   const [error, setError] = useState<string | null>(null)
 
   const [creating, setCreating] = useState(false)
-  const [name, setName] = useState('')
-  const [submitting, setSubmitting] = useState(false)
-  const [createError, setCreateError] = useState<string | null>(null)
 
   useEffect(() => {
     let cancelled = false
@@ -36,28 +33,6 @@ export default function CollectionsPage() {
     }
   }, [])
 
-  const handleCreate = async (e: React.FormEvent) => {
-    e.preventDefault()
-    const trimmed = name.trim()
-    if (!trimmed) {
-      setCreateError('コレクション名を入力してください')
-      return
-    }
-    setSubmitting(true)
-    setCreateError(null)
-    try {
-      const created = await createCollection(trimmed)
-      setCollections((current) => [created, ...current])
-      setName('')
-      setCreating(false)
-    } catch (err: unknown) {
-      const axiosErr = err as { response?: { data?: { errors?: string[] } } }
-      setCreateError(axiosErr?.response?.data?.errors?.[0] ?? 'コレクションの作成に失敗しました')
-    } finally {
-      setSubmitting(false)
-    }
-  }
-
   return (
     <div className="max-w-7xl mx-auto px-6 py-12">
       <div className="flex items-center justify-between mb-6">
@@ -71,33 +46,15 @@ export default function CollectionsPage() {
       </div>
 
       {creating && (
-        <form onSubmit={handleCreate} className="mb-8 flex flex-col gap-2 sm:flex-row sm:items-start">
-          <div className="flex-1">
-            <Input
-              value={name}
-              onChange={(e) => setName(e.target.value)}
-              placeholder="コレクション名（例: 英単語、Rails用語）"
-              autoFocus
-              disabled={submitting}
-              aria-label="コレクション名"
-            />
-            {createError && <p className="mt-1 text-sm text-destructive">{createError}</p>}
-          </div>
-          <div className="flex gap-2">
-            <Button type="submit" size="sm" disabled={submitting}>
-              {submitting ? '作成中...' : '作成'}
-            </Button>
-            <Button
-              type="button"
-              variant="ghost"
-              size="sm"
-              onClick={() => { setCreating(false); setName(''); setCreateError(null) }}
-              disabled={submitting}
-            >
-              キャンセル
-            </Button>
-          </div>
-        </form>
+        <div className="mb-8">
+          <CreateCollectionForm
+            onCreated={(created) => {
+              setCollections((current) => [created, ...current])
+              setCreating(false)
+            }}
+            onCancel={() => setCreating(false)}
+          />
+        </div>
       )}
 
       {loading ? (

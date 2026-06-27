@@ -1,56 +1,98 @@
 import {
-  LayoutDashboard,
-  GalleryHorizontal,
+  DoorOpen,
   LibraryBig,
+  GalleryHorizontal,
   Library,
-  Layers,
   LayoutGrid,
   Frame,
-  MapPin,
-  Route,
-  DoorOpen,
+  GraduationCap,
+  Palette,
+  ListChecks,
+  Search,
   Tag,
-  Plus,
+  Wand2,
+  Store,
+  Swords,
   CreditCard,
+  UserCog,
+  BookOpen,
+  Newspaper,
 } from 'lucide-react'
 
 export interface NavNode {
   label: string
   icon: React.ReactNode
-  // 葉ノードはリンク先を持つ。親（カテゴリ）ノードは href を持たず children を持つ。
+  // 葉ノードはリンク先を持つ。children を持つノードは開閉可能。
+  // children + href（ライブラリ）= リンク＋開閉、children のみ（アトリエ）= 開閉グループ見出し。
   href?: string
   children?: NavNode[]
 }
 
-// サイドバー（デスクトップ）とモバイルドロワーで共有する入れ子ツリー。
-// ライブラリの階層を「ビュー（デッキ/ビュー）」「スペース（ロード/ルーム）」の親子で表現する。
-export const NAV_TREE: NavNode[] = [
-  { href: '/dashboard', icon: <LayoutDashboard size={22} />, label: 'ダッシュボード' },
-  { href: '/library', icon: <LibraryBig size={22} />, label: 'ライブラリ' },
-  { href: '/items', icon: <GalleryHorizontal size={22} />, label: 'カード' },
-  { href: '/collections', icon: <Library size={22} />, label: 'コレクション' },
+export interface NavSection {
+  title: string
+  items: NavNode[]
+}
+
+// サイドバー（デスクトップ）とモバイルドロワーで共有するセクション付きナビ。
+export const NAV_SECTIONS: NavSection[] = [
   {
-    // 親自身も「ビュー」一覧へのリンク。配下にデッキ等の表示形式を入れ子にする。
-    href: '/views',
-    label: 'ビュー',
-    icon: <LayoutGrid size={22} />,
-    children: [
-      { href: '/views?type=deck', icon: <Layers size={20} />, label: 'デッキ' },
-      { href: '/views?type=freeboard', icon: <LayoutGrid size={20} />, label: 'フリーボード' },
-      { href: '/views?type=space_map', icon: <MapPin size={20} />, label: 'スペース配置' },
+    title: '宮殿',
+    items: [
+      { href: '/entrance', icon: <DoorOpen size={22} />, label: 'エントランス' },
+      {
+        href: '/library',
+        icon: <LibraryBig size={22} />,
+        label: 'ライブラリ',
+        children: [
+          { href: '/items', icon: <GalleryHorizontal size={20} />, label: 'カード' },
+          { href: '/collections', icon: <Library size={20} />, label: 'コレクション' },
+          { href: '/views', icon: <LayoutGrid size={20} />, label: 'ビュー' },
+          { href: '/spaces', icon: <Frame size={20} />, label: 'スペース' },
+        ],
+      },
+      { href: '/study', icon: <GraduationCap size={22} />, label: 'スタディ' },
+      {
+        // 親はアトリエのトップ（作成ハブ）へのリンク兼開閉グループ。
+        href: '/atelier',
+        icon: <Palette size={22} />,
+        label: 'アトリエ',
+        children: [
+          { href: '/wordlists/new', icon: <ListChecks size={20} />, label: 'ワードリストを作成' },
+          { href: '/items/new', icon: <GalleryHorizontal size={20} />, label: 'カードを作成' },
+          { href: '/collections/new', icon: <Library size={20} />, label: 'コレクションを作成' },
+          { href: '/views/new', icon: <LayoutGrid size={20} />, label: 'ビューを作成' },
+          { href: '/spaces/new', icon: <Frame size={20} />, label: 'スペースを作成' },
+        ],
+      },
     ],
   },
   {
-    // 親自身も「スペース」一覧へのリンク。配下にロード/ルームを入れ子にする。
-    href: '/spaces',
-    label: 'スペース',
-    icon: <Frame size={22} />,
-    children: [
-      { href: '/spaces?type=road', icon: <Route size={20} />, label: 'ロード' },
-      { href: '/spaces?type=room', icon: <DoorOpen size={20} />, label: 'ルーム' },
+    title: '検索',
+    items: [
+      { href: '/search', icon: <Search size={22} />, label: '横断検索' },
+      { href: '/tags', icon: <Tag size={22} />, label: 'タグ' },
     ],
   },
-  { href: '/tags', icon: <Tag size={22} />, label: 'タグ' },
-  { href: '/items/new', icon: <Plus size={22} />, label: 'カードを作成' },
-  { href: '/billing', icon: <CreditCard size={22} />, label: 'プラン' },
+  {
+    title: '宮殿外',
+    items: [
+      { href: '/delphi', icon: <Wand2 size={22} />, label: 'デルフォイ' },
+      { href: '/agora', icon: <Store size={22} />, label: 'アゴラ' },
+      { href: '/arena', icon: <Swords size={22} />, label: 'アリーナ' },
+    ],
+  },
+  {
+    title: '会員',
+    items: [
+      { href: '/billing', icon: <CreditCard size={22} />, label: 'プラン' },
+      { href: '/account', icon: <UserCog size={22} />, label: 'アカウント設定' },
+    ],
+  },
+  {
+    title: '運営',
+    items: [
+      { href: '/guide', icon: <BookOpen size={22} />, label: '使い方' },
+      { href: '/blog', icon: <Newspaper size={22} />, label: 'コラム' },
+    ],
+  },
 ]
