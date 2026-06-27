@@ -15,6 +15,7 @@ import {
   Swords,
   CreditCard,
   UserCog,
+  House,
   BookOpen,
   Newspaper,
 } from 'lucide-react'
@@ -65,6 +66,16 @@ export const NAV_SECTIONS: NavSection[] = [
           { href: '/spaces/new', icon: <Frame size={20} />, label: 'スペースを作成' },
         ],
       },
+      {
+        // 個人用ハブ。プラン/アカウント設定を内包し、自身もマイルームのページへリンク。
+        href: '/myroom',
+        icon: <House size={22} />,
+        label: 'マイルーム',
+        children: [
+          { href: '/billing', icon: <CreditCard size={20} />, label: 'プラン' },
+          { href: '/account', icon: <UserCog size={20} />, label: 'アカウント設定' },
+        ],
+      },
     ],
   },
   {
@@ -80,13 +91,6 @@ export const NAV_SECTIONS: NavSection[] = [
       { href: '/delphi', icon: <Wand2 size={22} />, label: 'デルフォイ' },
       { href: '/agora', icon: <Store size={22} />, label: 'アゴラ' },
       { href: '/arena', icon: <Swords size={22} />, label: 'アリーナ' },
-    ],
-  },
-  {
-    title: '会員',
-    items: [
-      { href: '/billing', icon: <CreditCard size={22} />, label: 'プラン' },
-      { href: '/account', icon: <UserCog size={22} />, label: 'アカウント設定' },
     ],
   },
   {
