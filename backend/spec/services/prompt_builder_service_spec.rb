@@ -43,5 +43,19 @@ RSpec.describe PromptBuilderService do
       b = build(:item, user: user, title: "cat", style: "anime")
       expect(described_class.effective_prompt(a)).not_to eq(described_class.effective_prompt(b))
     end
+
+    it "include_meaning: true で意味・説明を補足として加える" do
+      item = build(:item, user: user, title: "apple")
+      item.meanings.build(language_code: "ja", definition: "赤い果物", detail_level: "simple")
+      result = described_class.effective_prompt(item, include_meaning: true)
+      expect(result).to include("赤い果物")
+    end
+
+    it "既定（include_meaning 省略）では意味を加えない" do
+      item = build(:item, user: user, title: "apple")
+      item.meanings.build(language_code: "ja", definition: "赤い果物", detail_level: "simple")
+      result = described_class.effective_prompt(item)
+      expect(result).not_to include("赤い果物")
+    end
   end
 end

@@ -449,7 +449,7 @@ RSpec.describe "Api::V1::Items", type: :request do
 
       expect {
         post "/api/v1/items/#{item.id}/retry", headers: headers, as: :json
-      }.to have_enqueued_job(GenerateImageJob).with(item.id, force_generate: false)
+      }.to have_enqueued_job(GenerateImageJob).with(item.id, force_generate: false, use_meaning: false)
 
       expect(response).to have_http_status(:accepted)
       expect(item.reload.generation_status).to eq("pending")
@@ -463,7 +463,7 @@ RSpec.describe "Api::V1::Items", type: :request do
 
       expect {
         post "/api/v1/items/#{item.id}/retry", headers: headers, as: :json
-      }.to have_enqueued_job(GenerateImageJob).with(item.id, force_generate: true)
+      }.to have_enqueued_job(GenerateImageJob).with(item.id, force_generate: true, use_meaning: false)
 
       expect(response).to have_http_status(:accepted)
       expect(item.reload.generation_status).to eq("pending")
@@ -476,12 +476,25 @@ RSpec.describe "Api::V1::Items", type: :request do
         post "/api/v1/items/#{item.id}/retry",
           params: { item: { custom_prompt: "断面を見せて", style: "watercolor" } },
           headers: headers, as: :json
-      }.to have_enqueued_job(GenerateImageJob).with(item.id, force_generate: true)
+      }.to have_enqueued_job(GenerateImageJob).with(item.id, force_generate: true, use_meaning: false)
 
       expect(response).to have_http_status(:accepted)
       item.reload
       expect(item.custom_prompt).to eq("断面を見せて")
       expect(item.style).to eq("watercolor")
+    end
+
+    it "use_meaning を渡すと意味を参照して強制再生成する" do
+      item = user.items.create!(title: "りんご", item_type: item_type, generation_status: "completed")
+      item.meanings.create!(language_code: "ja", definition: "赤い果物", detail_level: "simple")
+
+      expect {
+        post "/api/v1/items/#{item.id}/retry",
+          params: { item: { use_meaning: true } },
+          headers: headers, as: :json
+      }.to have_enqueued_job(GenerateImageJob).with(item.id, force_generate: true, use_meaning: true)
+
+      expect(response).to have_http_status(:accepted)
     end
 
     it "指示が不適切な場合は 422 を返し、再生成しない" do
