@@ -2,7 +2,7 @@
 
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
-import { ChevronDown, ChevronRight } from 'lucide-react'
+import { ChevronDown, ChevronUp } from 'lucide-react'
 import { useUiStore } from '@/stores/ui'
 import { NAV_SECTIONS, type NavNode } from './nav-items'
 
@@ -67,7 +67,8 @@ export function SidebarNav({ iconsOnly = false, onNavigate }: Props) {
     }
 
     const collapsed = collapsedGroups[node.label]
-    const Chevron = collapsed ? ChevronRight : ChevronDown
+    // 閉じている時は ▼（下＝展開できる合図）、開いている時は ▲（上＝畳める合図）。
+    const Chevron = collapsed ? ChevronDown : ChevronUp
 
     const header = node.href ? (
       // リンク（ラベル）＋ chevron トグル

@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react'
 import { Menu, X, Castle } from 'lucide-react'
 import { SidebarNav } from './SidebarNav'
+import { GlobalActions } from './GlobalActions'
 
 /**
  * モバイル（<md）用のナビゲーション。ヘッダー左のハンバーガーで
@@ -46,13 +47,16 @@ export function MobileNav() {
             <div className="flex items-center justify-between px-3 pb-2">
               {/* ロゴは仮置き（宮殿アイコン） */}
               <Castle size={28} style={{ color: 'var(--palace)' }} aria-label="ImagePalace" />
-              <button
-                onClick={() => setOpen(false)}
-                className="rounded p-1.5 hover:bg-black/5 transition-colors"
-                aria-label="メニューを閉じる"
-              >
-                <X size={22} />
-              </button>
+              <div className="flex items-center gap-1">
+                <GlobalActions onNavigate={() => setOpen(false)} />
+                <button
+                  onClick={() => setOpen(false)}
+                  className="rounded p-1.5 hover:bg-black/5 transition-colors"
+                  aria-label="メニューを閉じる"
+                >
+                  <X size={22} />
+                </button>
+              </div>
             </div>
 
             <div className="pt-2">
