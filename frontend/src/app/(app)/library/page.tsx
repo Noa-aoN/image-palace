@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import Link from 'next/link'
-import { GalleryHorizontal, Library, Layers, LayoutGrid, Frame, MapPin, ChevronRight, Plus, Search, X, Route, DoorOpen, ListChecks } from 'lucide-react'
+import { GalleryHorizontal, Library, Layers, LayoutGrid, Frame, MapPin, ChevronRight, Plus, Search, X, Route, DoorOpen, ListChecks, Boxes } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { getItems, getItemsSummary } from '@/lib/api/items'
 import { getCollections } from '@/lib/api/collections'
@@ -581,27 +581,6 @@ export default function LibraryPage() {
         )}
       </Shelf>
 
-      {/* ワードリスト */}
-      <Shelf
-        icon={<ListChecks size={20} />}
-        title="ワードリスト"
-        count={wordlists.length}
-        href="/wordlists"
-      >
-        {wordlists.length === 0 ? (
-          <EmptyRail
-            message="まだワードリストがありません。"
-            cta={<Link href="/wordlists/new"><Button size="sm">ワードリストを作成</Button></Link>}
-          />
-        ) : (
-          <Rail>
-            {wordlists.slice(0, PREVIEW_LIMIT).map((wordlist) => (
-              <WordlistTile key={wordlist.id} wordlist={wordlist} />
-            ))}
-          </Rail>
-        )}
-      </Shelf>
-
       {/* ビュー（表示・学習形式：デッキ / フリーボード等） */}
       <Section icon={<LayoutGrid size={22} />} title="ビュー" description="カードの表示・学習形式">
         <Shelf icon={<Layers size={18} />} title="デッキ" count={deckViews.length} href="/views?type=deck">
@@ -681,6 +660,24 @@ export default function LibraryPage() {
             </Shelf>
           </>
         )}
+      </Section>
+
+      {/* 素材（カード生成のもと） */}
+      <Section icon={<Boxes size={22} />} title="素材" description="カード生成のもと">
+        <Shelf icon={<ListChecks size={18} />} title="ワードリスト" count={wordlists.length} href="/wordlists">
+          {wordlists.length === 0 ? (
+            <EmptyRail
+              message="まだワードリストがありません。"
+              cta={<Link href="/wordlists/new"><Button size="sm">ワードリストを作成</Button></Link>}
+            />
+          ) : (
+            <Rail>
+              {wordlists.slice(0, PREVIEW_LIMIT).map((wordlist) => (
+                <WordlistTile key={wordlist.id} wordlist={wordlist} />
+              ))}
+            </Rail>
+          )}
+        </Shelf>
       </Section>
         </>
       )}
