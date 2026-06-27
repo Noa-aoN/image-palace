@@ -15,7 +15,9 @@ import { useBillingStore } from '@/stores/billing'
 import { estimatedCards } from '@/lib/billing'
 import { STYLE_OPTIONS, CUSTOM_PROMPT_MAX_LENGTH } from '@/lib/item-styles'
 import { MEANING_LEVELS, meaningLevelLabel, DEFAULT_MEANING_LEVEL } from '@/lib/meaning-levels'
+import { getWordlists } from '@/lib/api/wordlists'
 import type { View } from '@/types/view'
+import type { Wordlist } from '@/types/wordlist'
 
 const MAX_TITLE_LENGTH = 100
 
@@ -41,6 +43,7 @@ export function CreateItemForm() {
   const [meaningLevel, setMeaningLevel] = useState<string>(DEFAULT_MEANING_LEVEL)
   const [generateTags, setGenerateTags] = useState(true)
   const [deckViews, setDeckViews] = useState<View[]>([])
+  const [wordlists, setWordlists] = useState<Wordlist[]>([])
   const [createNewDeck, setCreateNewDeck] = useState(false)
   const [newDeckName, setNewDeckName] = useState('')
   const [selectedDeckIds, setSelectedDeckIds] = useState<string[]>([])
@@ -51,6 +54,7 @@ export function CreateItemForm() {
   // 既存デッキ一覧と、意味自動生成のデフォルト値（ユーザー設定）を読み込む
   useEffect(() => {
     getViews().then((vs) => setDeckViews(vs.filter((v) => v.view_type === 'deck'))).catch(() => {})
+    getWordlists().then(setWordlists).catch(() => {})
     getSettings()
       .then((s) => {
         setGenerateMeaning(s.auto_generate_meanings)
@@ -130,6 +134,16 @@ export function CreateItemForm() {
     }
   }
 
+  // 選択したワードリストの単語を入力欄に追記する（既存の入力は残す）。
+  const insertWordlist = (wordlist: Wordlist) => {
+    if (wordlist.words.length === 0) return
+    setInput((prev) => {
+      const existing = prev.trim()
+      const added = wordlist.words.join('\n')
+      return existing ? `${existing}\n${added}` : added
+    })
+  }
+
   return (
     <form onSubmit={handleSubmit} className="space-y-5">
       <div className="space-y-2">
@@ -138,6 +152,25 @@ export function CreateItemForm() {
           <p>具体的な名詞や場面が思い浮かぶ言葉ほど、画像化に成功しやすいです。</p>
           <p>例: <span className="font-medium text-foreground">富士山 / API / 光合成 / 細胞分裂</span></p>
         </div>
+        {wordlists.length > 0 && (
+          <div className="flex items-center gap-2">
+            <select
+              value=""
+              onChange={(e) => {
+                const wl = wordlists.find((w) => w.id === e.target.value)
+                if (wl) insertWordlist(wl)
+              }}
+              disabled={submitting}
+              aria-label="ワードリストから挿入"
+              className="h-8 rounded-lg border border-input bg-background px-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+            >
+              <option value="">ワードリストから挿入…</option>
+              {wordlists.map((wl) => (
+                <option key={wl.id} value={wl.id}>{wl.name}（{wl.word_count}語）</option>
+              ))}
+            </select>
+          </div>
+        )}
         <textarea
           id="titles"
           className="w-full min-h-[180px] rounded-lg border border-input bg-background px-3 py-2.5 text-sm placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring resize-y"

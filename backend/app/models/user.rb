@@ -18,6 +18,7 @@ class User < ApplicationRecord
   has_many :space_points, through: :spaces
   has_many :views, dependent: :destroy
   has_many :tags, dependent: :destroy
+  has_many :wordlists, dependent: :destroy
   has_many :relations, dependent: :destroy
   has_many :shared_medias, dependent: :destroy
   has_many :subscriptions, dependent: :destroy

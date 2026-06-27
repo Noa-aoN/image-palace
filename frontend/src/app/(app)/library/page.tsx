@@ -2,18 +2,20 @@
 
 import { useEffect, useState } from 'react'
 import Link from 'next/link'
-import { GalleryHorizontal, Library, Layers, LayoutGrid, Frame, MapPin, ChevronRight, Plus, Search, X, Route, DoorOpen } from 'lucide-react'
+import { GalleryHorizontal, Library, Layers, LayoutGrid, Frame, MapPin, ChevronRight, Plus, Search, X, Route, DoorOpen, ListChecks } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { getItems, getItemsSummary } from '@/lib/api/items'
 import { getCollections } from '@/lib/api/collections'
 import { getSpaces } from '@/lib/api/spaces'
 import { getViews } from '@/lib/api/views'
+import { getWordlists } from '@/lib/api/wordlists'
 import { searchLibrary } from '@/lib/api/search'
 import { EntityCover } from '@/components/features/shared/EntityCover'
 import type { Item } from '@/types/item'
 import type { Collection } from '@/types/collection'
 import type { Space } from '@/types/space'
 import type { View } from '@/types/view'
+import type { Wordlist } from '@/types/wordlist'
 import { viewTypeLabel } from '@/lib/view-types'
 import { spaceTypeLabel } from '@/lib/space-types'
 import type { SearchResults, SearchCard, SearchDeck } from '@/types/search'
@@ -134,6 +136,23 @@ function CollectionTile({ collection }: { collection: Collection }) {
       </div>
       <div className="w-full aspect-square bg-muted overflow-hidden">
         <EntityCover cover={collection} />
+      </div>
+    </Link>
+  )
+}
+
+function WordlistTile({ wordlist }: { wordlist: Wordlist }) {
+  return (
+    <Link
+      href={`/wordlists/${wordlist.id}`}
+      className="shrink-0 w-40 flex flex-col rounded-xl border border-border overflow-hidden bg-card hover:shadow-md transition-shadow"
+    >
+      <div className="px-3 py-2 flex items-center justify-between gap-1">
+        <span className="text-sm font-medium truncate">{wordlist.name}</span>
+        <span className="text-xs text-muted-foreground shrink-0">{wordlist.word_count}</span>
+      </div>
+      <div className="w-full aspect-square bg-muted flex items-center justify-center">
+        <ListChecks size={28} className="text-muted-foreground/50" />
       </div>
     </Link>
   )
@@ -388,6 +407,7 @@ export default function LibraryPage() {
   const [cards, setCards] = useState<Item[]>([])
   const [cardCount, setCardCount] = useState<number | undefined>(undefined)
   const [collections, setCollections] = useState<Collection[]>([])
+  const [wordlists, setWordlists] = useState<Wordlist[]>([])
   const [spaces, setSpaces] = useState<Space[]>([])
   const [views, setViews] = useState<View[]>([])
   const [loading, setLoading] = useState(true)
@@ -397,14 +417,15 @@ export default function LibraryPage() {
 
   useEffect(() => {
     let cancelled = false
-    Promise.allSettled([getItems(), getItemsSummary(), getCollections(), getSpaces(), getViews()])
-      .then(([itemsRes, summaryRes, collectionsRes, spacesRes, viewsRes]) => {
+    Promise.allSettled([getItems(), getItemsSummary(), getCollections(), getSpaces(), getViews(), getWordlists()])
+      .then(([itemsRes, summaryRes, collectionsRes, spacesRes, viewsRes, wordlistsRes]) => {
         if (cancelled) return
         if (itemsRes.status === 'fulfilled') setCards(itemsRes.value.slice(0, PREVIEW_LIMIT))
         if (summaryRes.status === 'fulfilled') setCardCount(summaryRes.value.total_count)
         if (collectionsRes.status === 'fulfilled') setCollections(collectionsRes.value)
         if (spacesRes.status === 'fulfilled') setSpaces(spacesRes.value)
         if (viewsRes.status === 'fulfilled') setViews(viewsRes.value)
+        if (wordlistsRes.status === 'fulfilled') setWordlists(wordlistsRes.value)
       })
       .finally(() => {
         if (!cancelled) setLoading(false)
@@ -555,6 +576,27 @@ export default function LibraryPage() {
           <Rail>
             {collections.slice(0, PREVIEW_LIMIT).map((collection) => (
               <CollectionTile key={collection.id} collection={collection} />
+            ))}
+          </Rail>
+        )}
+      </Shelf>
+
+      {/* ワードリスト */}
+      <Shelf
+        icon={<ListChecks size={20} />}
+        title="ワードリスト"
+        count={wordlists.length}
+        href="/wordlists"
+      >
+        {wordlists.length === 0 ? (
+          <EmptyRail
+            message="まだワードリストがありません。"
+            cta={<Link href="/wordlists/new"><Button size="sm">ワードリストを作成</Button></Link>}
+          />
+        ) : (
+          <Rail>
+            {wordlists.slice(0, PREVIEW_LIMIT).map((wordlist) => (
+              <WordlistTile key={wordlist.id} wordlist={wordlist} />
             ))}
           </Rail>
         )}
