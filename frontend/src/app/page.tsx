@@ -7,9 +7,28 @@ import { LandingFooter } from '@/components/features/layout/LandingFooter'
 import { HeroScrollZoom } from '@/components/features/landing/HeroScrollZoom'
 import { ScrollCue } from '@/components/features/landing/ScrollCue'
 import { SectionDivider } from '@/components/features/landing/SectionDivider'
+import { SITE_URL, SITE_NAME, SITE_DESCRIPTION } from '@/lib/site'
 
 export const metadata: Metadata = {
   title: { absolute: 'ImagePalace — 単語をイメージに変換して記憶できるサービス' },
+}
+
+// 検索エンジン向けの構造化データ（schema.org WebApplication）。
+// リッチリザルト対象になりやすく、サービスの種別・無料提供を機械可読にする。
+const STRUCTURED_DATA = {
+  '@context': 'https://schema.org',
+  '@type': 'WebApplication',
+  name: SITE_NAME,
+  url: SITE_URL,
+  description: SITE_DESCRIPTION,
+  applicationCategory: 'EducationalApplication',
+  operatingSystem: 'Web',
+  inLanguage: 'ja',
+  offers: {
+    '@type': 'Offer',
+    price: '0',
+    priceCurrency: 'JPY',
+  },
 }
 
 const FEATURES = [
@@ -50,6 +69,12 @@ function Section({
 export default function TopPage() {
   return (
     <div className="flex flex-col flex-1">
+      <script
+        type="application/ld+json"
+        // 静的な定数のみ埋め込む（ユーザー入力を含まないため XSS リスクなし）
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(STRUCTURED_DATA) }}
+      />
+
       {/* HA: ヒーロー（スクロール連動ズーム） */}
       <HeroScrollZoom />
 
