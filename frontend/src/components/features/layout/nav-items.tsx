@@ -34,6 +34,12 @@ export interface NavSection {
   items: NavNode[]
 }
 
+// サイドバー上部に固定するグローバル操作（場所に属さない横断操作）。アイコンのみで表示する。
+export const GLOBAL_ACTIONS: NavNode[] = [
+  { href: '/search', icon: <Search size={20} />, label: '横断検索' },
+  { href: '/tags', icon: <Tag size={20} />, label: 'タグ' },
+]
+
 // サイドバー（デスクトップ）とモバイルドロワーで共有するセクション付きナビ。
 export const NAV_SECTIONS: NavSection[] = [
   {
@@ -76,13 +82,6 @@ export const NAV_SECTIONS: NavSection[] = [
           { href: '/billing', icon: <CreditCard size={20} />, label: 'プラン' },
         ],
       },
-    ],
-  },
-  {
-    title: '検索',
-    items: [
-      { href: '/search', icon: <Search size={22} />, label: '横断検索' },
-      { href: '/tags', icon: <Tag size={22} />, label: 'タグ' },
     ],
   },
   {
