@@ -92,7 +92,7 @@ export function DashboardContent() {
         </div>
 
         <Card>
-          <CardContent className="pt-6 space-y-4">
+          <CardContent className="space-y-4">
             <p className="text-sm font-medium">使い方</p>
             <ol className="space-y-3">
               {GETTING_STARTED.map((step, i) => (
@@ -139,7 +139,7 @@ export function DashboardContent() {
           className="group block rounded-xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--palace)]"
         >
           <Card className="cursor-pointer transition hover:border-[var(--palace)] hover:shadow-md">
-            <CardContent className="pt-6 space-y-4">
+            <CardContent className="space-y-4">
               <div className="flex items-start justify-between">
                 <div>
                   <p className="flex items-center gap-2 text-sm text-muted-foreground">
@@ -208,7 +208,7 @@ export function DashboardContent() {
             className="group block rounded-xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--palace)]"
           >
             <Card className="cursor-pointer transition hover:border-[var(--palace)] hover:shadow-md">
-              <CardContent className="pt-6">
+              <CardContent>
                 <div className="flex items-center justify-between">
                   <span className="flex items-center gap-2 text-sm text-muted-foreground">
                     <Loader2 size={18} style={{ color: 'var(--palace)' }} />
@@ -246,7 +246,7 @@ export function DashboardContent() {
               className="group block rounded-xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--palace)]"
             >
               <Card className="h-full cursor-pointer transition hover:border-[var(--palace)] hover:shadow-md">
-                <CardContent className="pt-6">
+                <CardContent>
                   <div className="flex items-center justify-between">
                     <span className="flex items-center gap-2 text-sm text-muted-foreground">
                       <span style={{ color: 'var(--palace)' }}>{stat.icon}</span>
