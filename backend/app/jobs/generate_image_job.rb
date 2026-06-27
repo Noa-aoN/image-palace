@@ -10,7 +10,7 @@ class GenerateImageJob < ApplicationJob
     Rails.logger.error "[GenerateImageJob] ALL RETRIES EXHAUSTED item_id=#{item_id} error=#{error.message}"
   end
 
-  def perform(item_id, force_generate: false)
+  def perform(item_id, force_generate: false, use_meaning: false)
     item = Item.find_by(id: item_id)
     return unless item
 
@@ -26,8 +26,9 @@ class GenerateImageJob < ApplicationJob
       end
 
       item.update_generation_status!("processing")
-      # スタイル・カスタム指示を反映した有効プロンプト。キャッシュキーと生成の両方に使う
-      effective_prompt = PromptBuilderService.effective_prompt(item)
+      # スタイル・カスタム指示を反映した有効プロンプト。キャッシュキーと生成の両方に使う。
+      # use_meaning が true なら意味・説明文も補足として加える（再生成オプション）。
+      effective_prompt = PromptBuilderService.effective_prompt(item, include_meaning: use_meaning)
       normalized = NormalizePromptService.call(effective_prompt)
       # プロンプト全文はユーザー入力（個人情報・機密語句を含み得る）なのでログに残さない。
       # 相関用にハッシュの先頭と長さだけ記録する。

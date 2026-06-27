@@ -141,13 +141,16 @@ export interface RegenerateOptions {
   customPrompt?: string
   /** スタイルプリセット */
   style?: string
+  /** カードの意味・説明をプロンプトの補足に加えるか（既定オフ） */
+  useMeaning?: boolean
 }
 
 // 再生成。failed・completed どちらからも呼べる。任意で指示を渡すとプロンプトに反映される。
 export async function retryItem(id: string, options?: RegenerateOptions): Promise<Item> {
-  const payload: Record<string, string> = {}
+  const payload: Record<string, string | boolean> = {}
   if (options?.customPrompt !== undefined) payload.custom_prompt = options.customPrompt
   if (options?.style !== undefined) payload.style = options.style
+  if (options?.useMeaning !== undefined) payload.use_meaning = options.useMeaning
   const res = await apiClient.post<Item>(
     `/api/v1/items/${id}/retry`,
     Object.keys(payload).length ? { item: payload } : undefined

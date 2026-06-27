@@ -131,10 +131,13 @@ module Api
         instructions = regeneration_instructions
         apply_regeneration_instructions!(current_item, instructions)
 
+        # 意味・説明を参考にするオプション（既定オフ）。プロンプトが変わるため再生成扱いにする。
+        use_meaning = regeneration_use_meaning?
+
         # completed の再生成や指示の変更時はキャッシュを使わず新しい画像を生成する
-        force = was_completed || instructions.present?
+        force = was_completed || instructions.present? || use_meaning
         current_item.update_generation_status!("pending")
-        GenerateImageJob.perform_later(current_item.id, force_generate: force)
+        GenerateImageJob.perform_later(current_item.id, force_generate: force, use_meaning: use_meaning)
         render json: serialize_item(current_item.reload), status: :accepted
       rescue Items::CreateService::ContentBlocked => e
         render json: { error: e.message }, status: :unprocessable_entity
@@ -198,6 +201,11 @@ module Api
         return {} unless item_param.respond_to?(:permit)
 
         item_param.permit(:custom_prompt, :style).to_h.symbolize_keys.reject { |_, v| v.nil? }
+      end
+
+      # 再生成時に意味・説明を参考にするか（既定 false）。boolean 以外は false に丸める。
+      def regeneration_use_meaning?
+        ActiveModel::Type::Boolean.new.cast(params.dig(:item, :use_meaning)) || false
       end
 
       # 指示が渡された場合のみ、custom_prompt をモデレーションして item に反映する

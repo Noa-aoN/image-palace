@@ -24,14 +24,21 @@ export function RegeneratePanel({ item, onUpdated }: Props) {
   const [open, setOpen] = useState(isFailed)
   const [customPrompt, setCustomPrompt] = useState(item.custom_prompt ?? '')
   const [style, setStyle] = useState(item.style ?? '')
+  const [useMeaning, setUseMeaning] = useState(false)
   const [retrying, setRetrying] = useState(false)
   const [error, setError] = useState<string | null>(null)
+
+  const hasMeaning = Boolean(item.meaning && item.meaning.trim())
 
   const handleRegenerate = async () => {
     setRetrying(true)
     setError(null)
     try {
-      const updated = await retryItem(item.id, { customPrompt: customPrompt.trim(), style })
+      const updated = await retryItem(item.id, {
+        customPrompt: customPrompt.trim(),
+        style,
+        useMeaning: hasMeaning ? useMeaning : false,
+      })
       onUpdated(updated)
     } catch (err: unknown) {
       const axiosErr = err as { response?: { data?: { error?: string; errors?: string[] } } }
@@ -106,6 +113,24 @@ export function RegeneratePanel({ item, onUpdated }: Props) {
               })}
             </div>
           </div>
+
+          {hasMeaning && (
+            <label className="flex items-start gap-3 rounded-xl border border-border/70 bg-background px-4 py-3">
+              <input
+                type="checkbox"
+                checked={useMeaning}
+                onChange={(e) => setUseMeaning(e.target.checked)}
+                disabled={retrying}
+                className="mt-1 h-4 w-4 rounded border-input"
+              />
+              <span className="space-y-1">
+                <span className="block text-sm font-medium">意味・説明を参考にする</span>
+                <span className="block text-xs text-muted-foreground">
+                  このカードの意味・説明文を画像生成のヒントに加えます（既定はオフ）。
+                </span>
+              </span>
+            </label>
+          )}
 
           <div className="flex items-center gap-2">
             <Button

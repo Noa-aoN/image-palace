@@ -27,7 +27,10 @@ class PromptBuilderService
   # NO_TEXT_HINT 同様キャッシュキーの一部になる。
   FRAMING_HINT = "keep the whole subject within the frame, not cropped at the edges"
 
-  def self.effective_prompt(item)
+  # include_meaning: true のとき、カードの意味・説明（primary_meaning.definition）を
+  # 被写体の補足として追記する。再生成時のオプション（既定オフ）から渡される。
+  # 追記すると normalized_prompt が変わるため、別画像として正しく扱われる。
+  def self.effective_prompt(item, include_meaning: false)
     parts = [ item.title.to_s.strip ]
 
     modifier = STYLE_MODIFIERS[item.style.presence]
@@ -35,6 +38,11 @@ class PromptBuilderService
 
     custom = item.custom_prompt.to_s.strip
     parts << custom if custom.present?
+
+    if include_meaning
+      meaning = item.primary_meaning&.definition.to_s.strip
+      parts << meaning if meaning.present?
+    end
 
     parts << FRAMING_HINT
     parts << NO_TEXT_HINT
