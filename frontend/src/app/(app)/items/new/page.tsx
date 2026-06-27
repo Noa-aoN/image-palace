@@ -7,7 +7,7 @@ export const metadata: Metadata = { title: 'カードを作成' }
 
 export default function NewItemPage() {
   return (
-    <div className="max-w-lg mx-auto px-6 py-12">
+    <div className="max-w-2xl mx-auto px-6 py-12">
       <div className="mb-8">
         <Link href="/items">
           <Button variant="ghost" className="text-sm px-0 mb-4">← マイカードへ戻る</Button>
