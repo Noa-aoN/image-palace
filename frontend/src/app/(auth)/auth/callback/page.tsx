@@ -39,7 +39,7 @@ export default function AuthCallbackPage() {
       .then((res) => {
         useItemsStore.getState().resetItems()
         setAuth(res.data.data, tokens)
-        router.replace('/dashboard')
+        router.replace('/entrance')
       })
       .catch(() => {
         useItemsStore.getState().resetItems()

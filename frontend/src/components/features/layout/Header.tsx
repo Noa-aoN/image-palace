@@ -56,7 +56,7 @@ export function AppHeader() {
       {/* 左: モバイルのハンバーガー（認証時のみ）＋ ロゴ */}
       <div className="flex items-center gap-1">
         {showUserMenu && <MobileNav />}
-        <Link href={isAuthenticated ? '/dashboard' : '/'} className="flex items-center" aria-label="ImagePalace ホーム">
+        <Link href={isAuthenticated ? '/entrance' : '/'} className="flex items-center" aria-label="ImagePalace ホーム">
           {/* ロゴは仮置き（宮殿アイコン）。正式ロゴ確定までのプレースホルダ */}
           <Castle size={32} style={{ color: 'var(--palace)' }} />
         </Link>

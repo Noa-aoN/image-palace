@@ -128,7 +128,7 @@ export function DashboardContent() {
 
   return (
     <div className="max-w-2xl mx-auto px-6 py-12 space-y-8">
-      <h1 className="text-xl font-semibold">ダッシュボード</h1>
+      <h1 className="text-xl font-semibold">エントランス</h1>
 
       {/* クレジット（残高・生成可能枚数・プラン。カード全体で /billing へ） */}
       <section className="space-y-3">

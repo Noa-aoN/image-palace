@@ -95,7 +95,7 @@ export function ResetPasswordForm() {
       const result = await resetPassword(password, passwordConfirmation, tokens)
       resetItems()
       setAuth(result.user, result.tokens)
-      router.push('/dashboard')
+      router.push('/entrance')
     } catch (err: unknown) {
       const detail = buildResetPasswordErrorDetail(err)
       setSummaryMessage(detail.summaryMessage)
