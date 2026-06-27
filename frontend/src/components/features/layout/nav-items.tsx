@@ -41,19 +41,6 @@ export const NAV_SECTIONS: NavSection[] = [
     items: [
       { href: '/entrance', icon: <DoorOpen size={22} />, label: 'エントランス' },
       {
-        href: '/library',
-        icon: <LibraryBig size={22} />,
-        label: 'ライブラリ',
-        children: [
-          { href: '/items', icon: <GalleryHorizontal size={20} />, label: 'カード' },
-          { href: '/collections', icon: <Library size={20} />, label: 'コレクション' },
-          { href: '/views', icon: <LayoutGrid size={20} />, label: 'ビュー' },
-          { href: '/spaces', icon: <Frame size={20} />, label: 'スペース' },
-          { href: '/wordlists', icon: <ListChecks size={20} />, label: 'ワードリスト' },
-        ],
-      },
-      { href: '/study', icon: <GraduationCap size={22} />, label: 'スタディ' },
-      {
         // 親はアトリエのトップ（作成ハブ）へのリンク兼開閉グループ。
         href: '/atelier',
         icon: <Palette size={22} />,
@@ -67,13 +54,26 @@ export const NAV_SECTIONS: NavSection[] = [
         ],
       },
       {
+        href: '/library',
+        icon: <LibraryBig size={22} />,
+        label: 'ライブラリ',
+        children: [
+          { href: '/items', icon: <GalleryHorizontal size={20} />, label: 'カード' },
+          { href: '/collections', icon: <Library size={20} />, label: 'コレクション' },
+          { href: '/views', icon: <LayoutGrid size={20} />, label: 'ビュー' },
+          { href: '/spaces', icon: <Frame size={20} />, label: 'スペース' },
+          { href: '/wordlists', icon: <ListChecks size={20} />, label: 'ワードリスト' },
+        ],
+      },
+      { href: '/study', icon: <GraduationCap size={22} />, label: 'スタディ' },
+      {
         // 個人用ハブ。プラン/アカウント設定を内包し、自身もマイルームのページへリンク。
         href: '/myroom',
         icon: <House size={22} />,
         label: 'マイルーム',
         children: [
-          { href: '/billing', icon: <CreditCard size={20} />, label: 'プラン' },
           { href: '/account', icon: <UserCog size={20} />, label: 'アカウント設定' },
+          { href: '/billing', icon: <CreditCard size={20} />, label: 'プラン' },
         ],
       },
     ],
