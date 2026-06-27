@@ -1,8 +1,9 @@
 'use client'
 
 import { useEffect, useState } from 'react'
+import type { ReactNode } from 'react'
 import Link from 'next/link'
-import { PenLine, Sparkles, GalleryVerticalEnd } from 'lucide-react'
+import { PenLine, Sparkles, GalleryVerticalEnd, LayoutGrid, Frame, Loader2, ChevronRight } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
 import { getItemsSummary, type ItemsSummary } from '@/lib/api/items'
@@ -25,6 +26,20 @@ const EMPTY_SUMMARY: ItemsSummary = {
   monthly_count: 0,
   monthly_limit: 0,
   monthly_remaining: 0,
+}
+
+// 各統計カードのクリック先・アイコン・表示値。カードを押すと該当の一覧ページへ遷移する。
+const STAT_CARDS: { label: string; href: string; icon: ReactNode; value: (s: ItemsSummary) => string }[] = [
+  { label: '所持カード数', href: '/items', icon: <GalleryVerticalEnd size={18} />, value: (s) => `${s.total_count}` },
+  { label: '生成中 / 失敗', href: '/items', icon: <Loader2 size={18} />, value: (s) => `${s.processing_count} / ${s.failed_count}` },
+  { label: 'ビュー', href: '/views', icon: <LayoutGrid size={18} />, value: (s) => `${s.views_count}` },
+  { label: 'スペース', href: '/spaces', icon: <Frame size={18} />, value: (s) => `${s.spaces_count}` },
+]
+
+// 月間利用枠のバー進捗率（0〜100）。limit<=0（無制限/未設定）のときは null を返す。
+function usagePercent(s: ItemsSummary): number | null {
+  if (s.monthly_limit <= 0) return null
+  return Math.min(100, Math.round((s.monthly_count / s.monthly_limit) * 100))
 }
 
 export function DashboardContent() {
@@ -95,62 +110,108 @@ export function DashboardContent() {
     )
   }
 
+  const usage = usagePercent(summary)
+
   return (
     <div className="max-w-2xl mx-auto px-6 py-12 space-y-8">
       <h1 className="text-xl font-semibold">ダッシュボード</h1>
 
-      <div className="grid grid-cols-2 gap-4">
-        <Card>
-          <CardContent className="pt-6">
-            <p className="text-sm text-muted-foreground">所持カード数</p>
-            <p className="text-3xl font-bold mt-1">{summary.total_count}</p>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="pt-6">
-            <p className="text-sm text-muted-foreground">生成中 / 失敗</p>
-            <p className="text-3xl font-bold mt-1">{summary.processing_count} / {summary.failed_count}</p>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="pt-6">
-            <p className="text-sm text-muted-foreground">ビュー</p>
-            <p className="text-3xl font-bold mt-1">{summary.views_count}</p>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="pt-6">
-            <p className="text-sm text-muted-foreground">スペース</p>
-            <p className="text-3xl font-bold mt-1">{summary.spaces_count}</p>
-          </CardContent>
-        </Card>
-      </div>
+      {/* 今月の利用（クレジット・プラン込み。カード全体で /billing へ） */}
+      <Link
+        href="/billing"
+        aria-label="プランと利用状況を見る"
+        className="group block rounded-xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--palace)]"
+      >
+        <Card className="cursor-pointer transition hover:border-[var(--palace)] hover:shadow-md">
+          <CardContent className="pt-6 space-y-4">
+            <div className="flex items-start justify-between">
+              <p className="text-sm font-semibold text-muted-foreground">今月の利用</p>
+              <ChevronRight
+                size={18}
+                className="transition-transform group-hover:translate-x-0.5"
+                style={{ color: 'var(--palace)' }}
+              />
+            </div>
 
-      {/* クレジット残高・プラン */}
-      <Card>
-        <CardContent className="pt-6 space-y-3">
-          <div className="flex items-end justify-between">
-            <div>
-              <p className="text-sm text-muted-foreground">クレジット残高</p>
-              <p className="text-3xl font-bold mt-1 tabular-nums">
-                {billing ? billing.available_credits : '—'}
+            {usage !== null ? (
+              <div className="space-y-2">
+                <div className="flex items-baseline justify-between">
+                  <span className="text-sm text-muted-foreground">生成</span>
+                  <span>
+                    <span className="text-2xl font-bold tabular-nums">{summary.monthly_count}</span>
+                    <span className="text-sm text-muted-foreground"> / {summary.monthly_limit} 枚</span>
+                  </span>
+                </div>
+                <div className="h-2 w-full overflow-hidden rounded-full bg-muted">
+                  <div
+                    className="h-full rounded-full transition-all"
+                    style={{ width: `${usage}%`, backgroundColor: 'var(--palace)' }}
+                  />
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  今月はあと {summary.monthly_remaining} 枚つくれます
+                </p>
+              </div>
+            ) : (
+              <div className="flex items-baseline justify-between">
+                <span className="text-sm text-muted-foreground">今月の生成</span>
+                <span className="text-2xl font-bold tabular-nums">{summary.monthly_count} 枚</span>
+              </div>
+            )}
+
+            <div className="flex items-end justify-between border-t pt-3">
+              <div>
+                <p className="text-sm text-muted-foreground">クレジット残高</p>
+                <p className="text-2xl font-bold mt-0.5 tabular-nums">
+                  {billing ? billing.available_credits : '—'}
+                </p>
+              </div>
+              <div className="text-right">
+                <p className="text-sm text-muted-foreground">プラン</p>
+                <p className="text-sm font-medium">{tierLabel(billing?.plan?.tier ?? 'free')}</p>
+              </div>
+            </div>
+
+            {billing && billing.available_credits <= 0 && (
+              <p className="text-xs text-destructive">
+                クレジットがありません。プランのアップグレードかクレジット追加で生成を続けられます。
               </p>
-            </div>
-            <div className="text-right">
-              <p className="text-sm text-muted-foreground">プラン</p>
-              <p className="text-sm font-medium">{tierLabel(billing?.plan?.tier ?? 'free')}</p>
-            </div>
-          </div>
-          {billing && billing.available_credits <= 0 && (
-            <p className="text-xs text-destructive">
-              クレジットがありません。プランのアップグレードかクレジット追加で生成を続けられます。
-            </p>
-          )}
-          <Link href="/billing">
-            <Button variant="outline" size="sm">プランを見る</Button>
-          </Link>
-        </CardContent>
-      </Card>
+            )}
+          </CardContent>
+        </Card>
+      </Link>
+
+      {/* ライブラリ */}
+      <section className="space-y-3">
+        <h2 className="text-sm font-semibold text-muted-foreground">ライブラリ</h2>
+        <div className="grid grid-cols-2 gap-4">
+          {STAT_CARDS.map((stat) => (
+            <Link
+              key={stat.label}
+              href={stat.href}
+              aria-label={`${stat.label}を見る`}
+              className="group block rounded-xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--palace)]"
+            >
+              <Card className="h-full cursor-pointer transition hover:border-[var(--palace)] hover:shadow-md">
+                <CardContent className="pt-6">
+                  <div className="flex items-center justify-between">
+                    <span className="flex items-center gap-2 text-sm text-muted-foreground">
+                      <span style={{ color: 'var(--palace)' }}>{stat.icon}</span>
+                      {stat.label}
+                    </span>
+                    <ChevronRight
+                      size={16}
+                      className="transition-transform group-hover:translate-x-0.5"
+                      style={{ color: 'var(--palace)' }}
+                    />
+                  </div>
+                  <p className="text-3xl font-bold mt-2">{stat.value(summary)}</p>
+                </CardContent>
+              </Card>
+            </Link>
+          ))}
+        </div>
+      </section>
 
       <div className="flex gap-3">
         <Link href="/items/new">
