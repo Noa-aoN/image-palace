@@ -15,6 +15,8 @@ import {
   Swords,
   CreditCard,
   UserCog,
+  Settings,
+  Trophy,
   House,
   BookOpen,
   Newspaper,
@@ -73,13 +75,15 @@ export const NAV_SECTIONS: NavSection[] = [
       },
       { href: '/study', icon: <GraduationCap size={22} />, label: 'スタディ' },
       {
-        // 個人用ハブ。プラン/アカウント設定を内包し、自身もマイルームのページへリンク。
+        // 個人用ハブ。アカウント設定/環境設定/プラン・支払い/トロフィーを内包し、自身もマイルームのページへリンク。
         href: '/myroom',
         icon: <House size={22} />,
         label: 'マイルーム',
         children: [
           { href: '/account', icon: <UserCog size={20} />, label: 'アカウント設定' },
-          { href: '/billing', icon: <CreditCard size={20} />, label: 'プラン' },
+          { href: '/settings', icon: <Settings size={20} />, label: '環境設定' },
+          { href: '/billing', icon: <CreditCard size={20} />, label: 'プラン・支払い' },
+          { href: '/trophy', icon: <Trophy size={20} />, label: 'トロフィー' },
         ],
       },
     ],

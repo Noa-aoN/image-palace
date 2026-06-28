@@ -31,6 +31,9 @@ export const PRIVATE_PATHS = [
   '/blog',
   '/account',
   '/billing',
+  '/profile',
+  '/settings',
+  '/trophy',
   '/forgot-password',
   '/reset-password',
 ] as const

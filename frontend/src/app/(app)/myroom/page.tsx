@@ -3,15 +3,17 @@
 import { useEffect } from 'react'
 import type { ReactNode } from 'react'
 import Link from 'next/link'
-import { ChevronRight, CreditCard, UserCog, Coins } from 'lucide-react'
+import { ChevronRight, CreditCard, UserCog, Settings, Trophy, Coins } from 'lucide-react'
 import { Card, CardContent } from '@/components/ui/card'
 import { useAuthStore } from '@/stores/auth'
 import { useBillingStore } from '@/stores/billing'
 import { tierLabel, CREDIT_UNIT } from '@/lib/billing'
 
 const LINKS: { href: string; icon: ReactNode; label: string; description: string }[] = [
-  { href: '/billing', icon: <CreditCard size={20} />, label: 'プラン', description: 'プランの確認・アップグレード、クレジットの追加。' },
-  { href: '/account', icon: <UserCog size={20} />, label: 'アカウント設定', description: 'プロフィール・データのエクスポート・退会。' },
+  { href: '/account', icon: <UserCog size={20} />, label: 'アカウント設定', description: 'プロフィール・ログイン連携・メール・退会。' },
+  { href: '/settings', icon: <Settings size={20} />, label: '環境設定', description: '生成・共有・連携・通知・データ管理。' },
+  { href: '/billing', icon: <CreditCard size={20} />, label: 'プラン・支払い', description: 'プラン・クレジット・支払いの管理。' },
+  { href: '/trophy', icon: <Trophy size={20} />, label: 'トロフィー', description: '実績・バッジ・称号・活動記録。' },
 ]
 
 export default function MyRoomPage() {

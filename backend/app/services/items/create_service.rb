@@ -34,7 +34,8 @@ module Items
           title: @params[:title],
           item_type_id: @params[:item_type_id] || default_item_type_id,
           generation_status: "pending",
-          style: @params[:style].presence,
+          # スタイル未指定（おまかせ）なら、ユーザーのデフォルト画像スタイルにフォールバックする
+          style: @params[:style].presence || @user.setting&.default_image_style.presence,
           custom_prompt: @params[:custom_prompt].presence
         )
         @user.consume_credits!(cost, item: item)
