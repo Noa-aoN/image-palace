@@ -188,9 +188,6 @@ export function DashboardContent() {
                     </div>
                   </>
                 )}
-                <p className="text-xs text-muted-foreground">
-                  {credits !== null ? `あと 約${credits}枚 つくれます（基本 1枚＝1クレジット）` : '読み込み中…'}
-                </p>
               </div>
 
               {credits !== null && credits <= 0 && (
