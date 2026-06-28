@@ -10,13 +10,8 @@ module Api
           sub = current_user.active_subscription
           plan = sub&.plan || Plan.find_by(name: "free")
 
-          # 次回更新（クレジット回復）日。有料はサブスクの期末、無料はカレンダー月の翌月初。
-          next_credit_reset =
-            if sub
-              sub.current_period_end
-            else
-              (current_user.credits_period_start || Time.current.beginning_of_month).next_month.beginning_of_month
-            end
+          # 次回更新（クレジット回復）日。有料はサブスク期末、無料は登録日アニバーサリーの翌周期。
+          next_credit_reset = sub ? sub.current_period_end : current_user.next_free_credit_reset_at
 
           render json: {
             available_credits: current_user.available_credits,

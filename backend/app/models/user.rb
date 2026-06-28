@@ -47,17 +47,32 @@ class User < ApplicationRecord
     available_credit_points.fdiv(Billing::POINTS_PER_CREDIT)
   end
 
-  # 無料枠クレジットを「カレント月」に lazy 付与する。
+  # 無料枠クレジットを「登録日アニバーサリー基準の現周期」に lazy 付与する。
   # 有料（active_subscription あり）は Stripe webhook 側で付与するため対象外。
   def ensure_current_period_credits!
     return if active_subscription.present?
 
-    month_start = Time.current.beginning_of_month
-    return if credits_period_start && credits_period_start >= month_start
+    period_start = free_period_start
+    return if credits_period_start && credits_period_start >= period_start
 
     free_credits = Plan.find_by(name: "free")&.credits_per_period.to_i
     reset_subscription_credits!(free_credits * Billing::POINTS_PER_CREDIT)
-    update_column(:credits_period_start, month_start) # rubocop:disable Rails/SkipsModelValidations
+    update_column(:credits_period_start, period_start) # rubocop:disable Rails/SkipsModelValidations
+  end
+
+  # 無料枠の現周期の開始日時（登録日アニバーサリー基準・月次。有料の契約日周期と整合させる）。
+  # 例: 1/15 登録なら毎月15日が周期境界。月末日は ActiveSupport が丸める（1/31→2/28 等）。
+  def free_period_start(now = Time.current)
+    anchor = created_at || now
+    elapsed_months = (now.year - anchor.year) * 12 + (now.month - anchor.month)
+    start = anchor + elapsed_months.months
+    start -= 1.month if start > now
+    start
+  end
+
+  # 次回の無料クレジット更新（回復）日。
+  def next_free_credit_reset_at(now = Time.current)
+    free_period_start(now) + 1.month
   end
 
   # サブスク分を毎月リセットする（旧残分は失効ログを残す）。invoice 支払い時などに呼ぶ。

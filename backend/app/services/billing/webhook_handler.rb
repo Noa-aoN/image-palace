@@ -22,7 +22,10 @@ module Billing
       case event.type
       when "checkout.session.completed"
         handle_checkout_completed(event)
-      when "customer.subscription.created", "customer.subscription.updated"
+      when "customer.subscription.created"
+        sub = sync_subscription(event)
+        grant_trial_credits(event, sub)
+      when "customer.subscription.updated"
         sync_subscription(event)
       when "customer.subscription.deleted"
         cancel_subscription(event)
@@ -72,6 +75,20 @@ module Billing
       sub.canceled_at = time_at(obj.canceled_at)
       sub.started_at ||= Time.current
       sub.save!
+      sub
+    end
+
+    # trial 開始時にクレジットを付与する（trial 中も生成できるように）。
+    # created イベント1回で付与し、stripe_event_id で冪等化する。
+    # 注: Stripe が trial 中に $0 invoice.paid も送る構成では、reset 同額のため残高は二重にならない。
+    def grant_trial_credits(event, sub)
+      return unless sub&.status == "trialing" && sub.plan
+      return if processed?(event)
+
+      sub.user.reset_subscription_credits!(
+        sub.plan.credits_per_period * Billing::POINTS_PER_CREDIT,
+        subscription: sub, stripe_event_id: event.id
+      )
     end
 
     # 解約確定時に、残っているサブスククレジットを失効させる（解約後に使い回せる穴を塞ぐ）。
