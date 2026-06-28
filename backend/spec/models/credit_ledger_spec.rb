@@ -35,6 +35,17 @@ RSpec.describe "User credit ledger", type: :model do
       }.to change(CreditTransaction, :count).by(1)
       expect(user.credit_transactions.last.kind).to eq("subscription_grant")
     end
+
+    it "forfeits without logging a grant when amount is zero (解約時の失効)" do
+      user.update!(subscription_credits: 40)
+
+      expect {
+        user.reset_subscription_credits!(0)
+      }.to change { user.reload.subscription_credits }.from(40).to(0)
+
+      kinds = user.credit_transactions.order(:created_at).pluck(:kind)
+      expect(kinds).to eq(%w[subscription_expire]) # 0デルタの subscription_grant は残さない
+    end
   end
 
   describe "#add_topup_credits!" do
@@ -84,6 +95,11 @@ RSpec.describe "User credit ledger", type: :model do
 
     it "skips the free grant for users with an active paid subscription" do
       create(:subscription, user:, status: "active")
+      expect { user.ensure_current_period_credits! }.not_to(change { user.reload.subscription_credits })
+    end
+
+    it "skips the free grant for users on a trialing subscription" do
+      create(:subscription, user:, status: "trialing")
       expect { user.ensure_current_period_credits! }.not_to(change { user.reload.subscription_credits })
     end
   end

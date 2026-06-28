@@ -74,9 +74,15 @@ module Billing
       sub.save!
     end
 
+    # 解約確定時に、残っているサブスククレジットを失効させる（解約後に使い回せる穴を塞ぐ）。
+    # 冪等性は status=="canceled" の早期 return で担保する（再配信でも二重失効しない）。
     def cancel_subscription(event)
       sub = Subscription.find_by(stripe_subscription_id: event.data.object.id)
-      sub&.update!(status: "canceled", canceled_at: Time.current)
+      return unless sub
+      return if sub.status == "canceled"
+
+      sub.user.reset_subscription_credits!(0, subscription: sub)
+      sub.update!(status: "canceled", canceled_at: Time.current)
     end
 
     # サブスクの請求成功（初回＋毎月）でクレジットを当月分にリセット付与する。

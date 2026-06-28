@@ -75,11 +75,45 @@ RSpec.describe Billing::WebhookHandler do
     expect(sub.status).to eq("active")
   end
 
-  it "marks the subscription canceled on customer.subscription.deleted" do
-    sub = create(:subscription, user:, plan:, status: "active", stripe_subscription_id: "sub_1")
+  it "updates current_period_end on customer.subscription.updated (renewal)" do
+    create(:subscription, user:, plan:, status: "active", stripe_subscription_id: "sub_1",
+      current_period_end: Time.at(1_700_000_000))
 
-    handle(id: "evt_d1", type: "customer.subscription.deleted", data: { object: { id: "sub_1" } })
+    handle(id: "evt_u1", type: "customer.subscription.updated", data: { object: {
+      id: "sub_1", customer: "cus_1", status: "active",
+      current_period_start: 1_702_592_000, current_period_end: 1_705_270_400,
+      cancel_at_period_end: false, canceled_at: nil,
+      items: { data: [ { price: { id: "price_std" } } ] }
+    } })
 
-    expect(sub.reload.status).to eq("canceled")
+    sub = Subscription.find_by(stripe_subscription_id: "sub_1")
+    expect(sub.current_period_end).to eq(Time.at(1_705_270_400))
+  end
+
+  describe "customer.subscription.deleted" do
+    let(:deleted_event) do
+      { id: "evt_d1", type: "customer.subscription.deleted", data: { object: { id: "sub_1" } } }
+    end
+
+    it "forfeits remaining subscription credits and marks canceled" do
+      sub = create(:subscription, user:, plan:, status: "active", stripe_subscription_id: "sub_1")
+      user.update!(subscription_credits: 50 * Billing::POINTS_PER_CREDIT)
+
+      handle(deleted_event)
+
+      expect(sub.reload.status).to eq("canceled")
+      expect(user.reload.subscription_credits).to eq(0)
+      expect(CreditTransaction.where(user:, kind: "subscription_expire").count).to eq(1)
+    end
+
+    it "is idempotent when the subscription is already canceled" do
+      create(:subscription, user:, plan:, status: "active", stripe_subscription_id: "sub_1")
+      user.update!(subscription_credits: 50 * Billing::POINTS_PER_CREDIT)
+      handle(deleted_event)
+
+      expect {
+        handle(id: "evt_d2", type: "customer.subscription.deleted", data: { object: { id: "sub_1" } })
+      }.not_to(change { CreditTransaction.where(user:, kind: "subscription_expire").count })
+    end
   end
 end
