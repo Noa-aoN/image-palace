@@ -124,6 +124,20 @@ RSpec.describe "Api::V1::Items", type: :request do
       expect(items.last["generation_error"]).to be_nil
     end
 
+    it "status=needs_correction でファクトチェック要確認のカードだけ返す" do
+      flagged = user.items.create!(title: "トリトニウム", item_type: item_type, generation_status: "completed")
+      flagged.meanings.create!(definition: "説明", language_code: "ja", fact_check_status: "doubtful")
+      ok = user.items.create!(title: "光合成", item_type: item_type, generation_status: "completed")
+      ok.meanings.create!(definition: "説明", language_code: "ja", fact_check_status: "correct")
+      user.items.create!(title: "未チェック", item_type: item_type, generation_status: "completed")
+
+      get "/api/v1/items", params: { status: "needs_correction" }, headers: headers
+
+      expect(response).to have_http_status(:success)
+      ids = json_response["items"].map { |i| i["id"] }
+      expect(ids).to contain_exactly(flagged.id)
+    end
+
     it "does not return other users items" do
       own_item = user.items.create!(title: "自分のカード", item_type: item_type, generation_status: "completed")
       other_user = create(:user, :confirmed)
@@ -411,6 +425,38 @@ RSpec.describe "Api::V1::Items", type: :request do
       expect(json_response["meaning"]).to eq("新しい説明")
     end
 
+    it "説明を書き換えると以前のファクトチェック結果をクリアする" do
+      item = user.items.create!(title: "光合成", item_type: item_type, generation_status: "completed")
+      item.meanings.create!(definition: "古い説明", language_code: "ja",
+        fact_check_status: "doubtful", fact_check_comment: "怪しい", fact_check_suggestion: "正しい説明")
+
+      patch "/api/v1/items/#{item.id}",
+        params: { item: { meaning: "新しい説明" } }, headers: headers, as: :json
+
+      expect(response).to have_http_status(:success)
+      meaning = item.reload.primary_meaning
+      expect(meaning.definition).to eq("新しい説明")
+      expect(meaning.fact_check_status).to be_nil
+      expect(meaning.fact_check_suggestion).to be_nil
+      expect(json_response["fact_check_status"]).to be_nil
+    end
+
+    it "単語名を変更すると以前のファクトチェック結果をクリアする" do
+      item = user.items.create!(title: "トリトニウム", item_type: item_type, generation_status: "completed")
+      item.meanings.create!(definition: "説明", language_code: "ja",
+        fact_check_status: "doubtful", fact_check_comment: "別語の疑い",
+        fact_check_title_suggestion: "トリチウム")
+
+      patch "/api/v1/items/#{item.id}", params: { item: { title: "トリチウム" } }, headers: headers, as: :json
+
+      expect(response).to have_http_status(:success)
+      expect(item.reload.title).to eq("トリチウム")
+      meaning = item.primary_meaning
+      expect(meaning.fact_check_status).to be_nil
+      expect(meaning.fact_check_title_suggestion).to be_nil
+      expect(json_response["fact_check_status"]).to be_nil
+    end
+
     it "removes the meaning when an empty value is provided" do
       item = user.items.create!(title: "光合成", item_type: item_type, generation_status: "completed")
       item.meanings.create!(definition: "消される説明", language_code: "ja")
@@ -515,7 +561,7 @@ RSpec.describe "Api::V1::Items", type: :request do
     it "AI生成タグを既存タグへ union 付与して返す" do
       item = user.items.create!(title: "光合成", item_type: item_type, generation_status: "completed")
       item.tags << user.tags.create!(name: "お気に入り")
-      allow(GenerateTagsService).to receive(:call) do |item:|
+      allow(GenerateTagsService).to receive(:call) do |item:, replace: false|
         item.tags = (item.tags + [ item.user.tags.find_or_create_by!(name: "生物学") ]).uniq
         item
       end
@@ -626,6 +672,76 @@ RSpec.describe "Api::V1::Items", type: :request do
     it "認証なしでは 401" do
       delete "/api/v1/items/bulk_destroy", params: { ids: [] }, as: :json
       expect(response).to have_http_status(:unauthorized)
+    end
+  end
+
+  describe "AI一括操作系エンドポイント" do
+    describe "POST /api/v1/items/:id/fact_check" do
+      it "説明があればファクトチェック結果を返す" do
+        item = user.items.create!(title: "光合成", item_type: item_type, generation_status: "completed")
+        item.meanings.create!(definition: "説明文です", language_code: "ja")
+        allow(GenerateFactCheckService).to receive(:call) do
+          m = item.primary_meaning
+          m.update!(fact_check_status: "doubtful", fact_check_comment: "一部不正確です", fact_checked_at: Time.current)
+          m
+        end
+
+        post "/api/v1/items/#{item.id}/fact_check", headers: headers, as: :json
+
+        expect(response).to have_http_status(:ok)
+        expect(json_response["fact_check_status"]).to eq("doubtful")
+        expect(json_response["fact_check_comment"]).to eq("一部不正確です")
+      end
+
+      it "説明が無ければスキップを返す" do
+        item = user.items.create!(title: "光合成", item_type: item_type, generation_status: "completed")
+
+        post "/api/v1/items/#{item.id}/fact_check", headers: headers, as: :json
+
+        expect(response).to have_http_status(:ok)
+        expect(json_response["status"]).to eq("skipped")
+        expect(json_response["reason"]).to eq("no_meaning")
+      end
+    end
+
+    describe "POST /api/v1/items/:id/tags" do
+      it "replace=true で既存タグを置き換える" do
+        item = user.items.create!(title: "光合成", item_type: item_type, generation_status: "completed")
+        item.tags << user.tags.create!(name: "古い")
+        allow(GenerateTagsService).to receive(:call).with(item: instance_of(Item), replace: true) do
+          item.tags = [ user.tags.find_or_create_by!(name: "新しい") ]
+          item
+        end
+
+        post "/api/v1/items/#{item.id}/tags", params: { replace: true }, headers: headers, as: :json
+
+        expect(response).to have_http_status(:ok)
+        expect(item.reload.tags.map(&:name)).to eq(%w[新しい])
+      end
+
+      it "only_if_empty=true でタグ有りはスキップ" do
+        item = user.items.create!(title: "光合成", item_type: item_type, generation_status: "completed")
+        item.tags << user.tags.create!(name: "既存")
+
+        expect(GenerateTagsService).not_to receive(:call)
+        post "/api/v1/items/#{item.id}/tags", params: { only_if_empty: true }, headers: headers, as: :json
+
+        expect(json_response["status"]).to eq("skipped")
+        expect(json_response["reason"]).to eq("already_tagged")
+      end
+    end
+
+    describe "POST /api/v1/items/:id/meaning" do
+      it "only_if_empty=true で説明有りはスキップ" do
+        item = user.items.create!(title: "光合成", item_type: item_type, generation_status: "completed")
+        item.meanings.create!(definition: "既存の説明", language_code: "ja")
+
+        expect(GenerateMeaningService).not_to receive(:call)
+        post "/api/v1/items/#{item.id}/meaning", params: { only_if_empty: true }, headers: headers, as: :json
+
+        expect(json_response["status"]).to eq("skipped")
+        expect(json_response["reason"]).to eq("already_has_meaning")
+      end
     end
   end
 end

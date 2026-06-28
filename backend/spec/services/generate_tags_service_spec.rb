@@ -36,6 +36,16 @@ RSpec.describe GenerateTagsService do
     expect(item.reload.tags.map(&:name)).to match_array(%w[お気に入り 生物学])
   end
 
+  it "replace=true なら既存タグを置き換える" do
+    existing = user.tags.create!(name: "お気に入り")
+    item.tags << existing
+    stub_chat({ tags: %w[生物学 植物] }.to_json)
+
+    described_class.call(item: item, replace: true)
+
+    expect(item.reload.tags.map(&:name)).to match_array(%w[生物学 植物])
+  end
+
   it "既存タグを大文字小文字を無視して再利用する（重複作成しない）" do
     user.tags.create!(name: "Biology")
     stub_chat({ tags: %w[biology] }.to_json)

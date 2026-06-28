@@ -37,6 +37,14 @@ export interface Item {
   meaning?: string | null
   meaning_example?: string | null
   meaning_level?: string | null
+  /** 説明のAIファクトチェック結果 */
+  fact_check_status?: 'correct' | 'doubtful' | 'incorrect' | null
+  fact_check_comment?: string | null
+  /** doubtful/incorrect 時の訂正案（説明の書き換え候補） */
+  fact_check_suggestion?: string | null
+  /** 単語名自体の訂正案（取り違え・誤記など） */
+  fact_check_title_suggestion?: string | null
+  fact_checked_at?: string | null
   style?: string | null
   custom_prompt?: string | null
   tags?: ItemTag[]

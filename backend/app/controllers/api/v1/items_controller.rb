@@ -1,7 +1,7 @@
 module Api
   module V1
     class ItemsController < BaseController
-      before_action :set_item, only: [ :show, :update, :destroy, :retry, :meaning, :generate_tags ]
+      before_action :set_item, only: [ :show, :update, :destroy, :retry, :meaning, :generate_tags, :fact_check ]
 
       DEFAULT_PER_PAGE = 24
       MAX_PER_PAGE = 100
@@ -11,7 +11,14 @@ module Api
 
       def index
         scope = current_user.items
-        scope = scope.where(generation_status: params[:status]) if Item::GENERATION_STATUSES.include?(params[:status])
+        if params[:status] == "needs_correction"
+          # ファクトチェックで「正しい」以外＝訂正待ち（サブクエリで重複を避ける）
+          flagged_ids = current_user.items.joins(:meanings)
+                                    .where(meanings: { fact_check_status: %w[incorrect doubtful] }).select(:id)
+          scope = scope.where(id: flagged_ids)
+        elsif Item::GENERATION_STATUSES.include?(params[:status])
+          scope = scope.where(generation_status: params[:status])
+        end
         scope = scope.joins(:item_tags).where(item_tags: { tag_id: params[:tag_id] }) if params[:tag_id].present?
         if params[:q].present?
           like = "%#{ActiveRecord::Base.sanitize_sql_like(params[:q].strip)}%"
@@ -93,10 +100,13 @@ module Api
 
       # タイトル・種別・意味の編集。画像の再生成は伴わず、既存メディアと生成ステータスは保持する
       def update
+        # 単語名を変えたら、説明への以前のファクトチェック判定は無効化する
+        title_changed = item_update_params.key?(:title) && item_update_params[:title].to_s != item.title
         Item.transaction do
           item.update!(item_update_params)
           upsert_meaning!
           assign_tags!(item)
+          clear_fact_check!(item.primary_meaning) if title_changed
         end
         render json: serialize_item(item.reload)
       rescue ActiveRecord::RecordInvalid => e
@@ -146,9 +156,14 @@ module Api
         render json: { errors: e.record.errors.full_messages }, status: :unprocessable_entity
       end
 
-      # 意味・説明を AI で生成（同期）。詳細画面の「意味を生成」ボタンから呼ばれる。
+      # 意味・説明を AI で生成（同期）。詳細画面の「意味を生成」ボタンや一括操作から呼ばれる。
       # level（brief / simple / detailed）で詳しさを選べる。未指定は simple。
+      # only_if_empty=true なら、既に説明があるカードはスキップする（未設定の穴埋め用）。
       def meaning
+        if truthy?(params[:only_if_empty]) && item.primary_meaning.present?
+          return render json: { status: "skipped", reason: "already_has_meaning" }, status: :ok
+        end
+
         GenerateMeaningService.call(item: item, level: params[:level])
         render json: serialize_item(item.reload), status: :ok
       rescue GenerateMeaningService::GenerationError, KeyError, Faraday::Error => e
@@ -156,17 +171,39 @@ module Api
         render json: { error: "意味の生成に失敗しました。時間を置いて再度お試しください。" }, status: :unprocessable_entity
       end
 
-      # タグを AI で生成（同期）。詳細画面の「AIで生成」ボタンから呼ばれる。
-      # 既存タグは消さず union で追加する。
+      # タグを AI で生成（同期）。詳細画面の「AIで生成」ボタンや一括操作から呼ばれる。
+      # replace=true: AI結果で置き換え。false（既定）: 既存タグへ union で追加。
+      # only_if_empty=true: 既にタグがあるカードはスキップ（未設定の穴埋め用）。
       def generate_tags
-        GenerateTagsService.call(item: item)
+        if truthy?(params[:only_if_empty]) && item.tags.exists?
+          return render json: { status: "skipped", reason: "already_tagged" }, status: :ok
+        end
+
+        GenerateTagsService.call(item: item, replace: truthy?(params[:replace]))
         render json: serialize_item(item.reload), status: :ok
       rescue GenerateTagsService::GenerationError, KeyError, Faraday::Error => e
         Rails.logger.warn "[ItemsController#generate_tags] failed item_id=#{item.id}: #{e.class}: #{e.message}"
         render json: { error: "タグの生成に失敗しました。時間を置いて再度お試しください。" }, status: :unprocessable_entity
       end
 
+      # カードの説明（meaning）が事実として正しいかを AI でファクトチェックする（同期）。
+      # 説明が無いカードはスキップを返す。
+      def fact_check
+        result = GenerateFactCheckService.call(item: item)
+        return render json: { status: "skipped", reason: "no_meaning" }, status: :ok if result.nil?
+
+        render json: serialize_item(item.reload), status: :ok
+      rescue GenerateFactCheckService::GenerationError, KeyError, Faraday::Error => e
+        Rails.logger.warn "[ItemsController#fact_check] failed item_id=#{item.id}: #{e.class}: #{e.message}"
+        render json: { error: "ファクトチェックに失敗しました。時間を置いて再度お試しください。" }, status: :unprocessable_entity
+      end
+
       private
+
+      # クエリ/フォームの真偽値（"true"/"1" 等）を bool に変換する
+      def truthy?(value)
+        ActiveModel::Type::Boolean.new.cast(value)
+      end
 
       # 並び替え句を組み立てる。カラム・方向は許可リストからのみ採用し、安定化のため created_at を副キーにする
       def sort_clause
@@ -246,8 +283,30 @@ module Api
         if definition.blank?
           meaning.destroy! if meaning.persisted?
         else
-          meaning.update!(definition: definition)
+          # 説明を書き換えたら、以前のファクトチェック結果は無効化する（古い判定が残らないように）
+          if meaning.definition != definition
+            meaning.fact_check_status = nil
+            meaning.fact_check_comment = nil
+            meaning.fact_check_suggestion = nil
+            meaning.fact_check_title_suggestion = nil
+            meaning.fact_checked_at = nil
+          end
+          meaning.definition = definition
+          meaning.save!
         end
+      end
+
+      # 既存（永続化済み）の meaning のファクトチェック結果をクリアする
+      def clear_fact_check!(meaning)
+        return unless meaning&.persisted?
+
+        meaning.update!(
+          fact_check_status: nil,
+          fact_check_comment: nil,
+          fact_check_suggestion: nil,
+          fact_check_title_suggestion: nil,
+          fact_checked_at: nil
+        )
       end
 
       # item[tags] にタグ名配列が渡された場合のみ、その内容でタグを設定する（未指定なら変更しない）。
@@ -272,6 +331,11 @@ module Api
           meaning: item.primary_meaning&.definition,
           meaning_example: item.primary_meaning&.example_sentence,
           meaning_level: item.primary_meaning&.detail_level,
+          fact_check_status: item.primary_meaning&.fact_check_status,
+          fact_check_comment: item.primary_meaning&.fact_check_comment,
+          fact_check_suggestion: item.primary_meaning&.fact_check_suggestion,
+          fact_check_title_suggestion: item.primary_meaning&.fact_check_title_suggestion,
+          fact_checked_at: item.primary_meaning&.fact_checked_at,
           style: item.style,
           custom_prompt: item.custom_prompt,
           tags: item.tags.map { |t| { id: t.id, name: t.name } },

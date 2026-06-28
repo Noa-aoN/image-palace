@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_06_28_000001) do
+ActiveRecord::Schema[8.1].define(version: 2026_06_28_000004) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
   enable_extension "pgcrypto"
@@ -134,6 +134,11 @@ ActiveRecord::Schema[8.1].define(version: 2026_06_28_000001) do
     t.text "definition", null: false
     t.string "detail_level", default: "simple", null: false
     t.text "example_sentence"
+    t.text "fact_check_comment"
+    t.string "fact_check_status"
+    t.text "fact_check_suggestion"
+    t.string "fact_check_title_suggestion"
+    t.datetime "fact_checked_at"
     t.uuid "item_id", null: false
     t.string "language_code", default: "ja", null: false
     t.datetime "updated_at", null: false
