@@ -159,7 +159,10 @@ export default function DelphiPage() {
             className="h-9 w-full rounded-lg border border-input bg-background px-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
           >
             {STYLE_OPTIONS.map((opt) => (
-              <option key={opt.value || 'default'} value={opt.value}>{opt.label}</option>
+              <option key={opt.value || 'default'} value={opt.value}>
+                {/* 既定の写真は「おすすめ」として見せる */}
+                {opt.value === 'photo' ? `おすすめ（${opt.label}）` : opt.label}
+              </option>
             ))}
           </select>
         </div>
