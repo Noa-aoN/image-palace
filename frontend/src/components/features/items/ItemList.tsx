@@ -38,6 +38,59 @@ const STATUS_COLOR: Record<string, string> = {
   failed: 'bg-red-100 text-red-800',
 }
 
+// 一括AI操作の per-item 結果（完了後の確認ダイアログ用）
+type BulkResultEntry = {
+  id: string
+  title: string
+  outcome: 'processed' | 'skipped' | 'failed'
+  item?: Item
+  reason?: string
+}
+
+const SKIP_REASON_LABEL: Record<string, string> = {
+  no_meaning: '説明が無いためスキップ',
+  already_has_meaning: '既に説明があるためスキップ',
+  already_tagged: '既にタグがあるためスキップ',
+}
+
+const FACT_CHECK_LABEL: Record<string, string> = {
+  correct: '✓ 正しい',
+  doubtful: '⚠ 疑わしい',
+  incorrect: '✗ 誤り',
+}
+
+function bulkOutcomeLabel(outcome: BulkResultEntry['outcome']): string {
+  if (outcome === 'failed') return '失敗'
+  if (outcome === 'skipped') return 'スキップ'
+  return '完了'
+}
+
+function bulkOutcomeBadgeClass(outcome: BulkResultEntry['outcome']): string {
+  const base = 'shrink-0 rounded-full px-2 py-0.5 text-xs font-medium '
+  if (outcome === 'failed') return base + 'bg-red-100 text-red-700'
+  if (outcome === 'skipped') return base + 'bg-muted text-muted-foreground'
+  return base + 'bg-green-100 text-green-700'
+}
+
+// アクション種別（label）に応じて結果の要点テキストを返す。確認ダイアログ/リストの説明用。
+function bulkResultDetail(label: string, e: BulkResultEntry): string | null {
+  if (e.outcome === 'failed') return '生成に失敗しました（再試行できます）'
+  if (e.outcome === 'skipped') return e.reason ? (SKIP_REASON_LABEL[e.reason] ?? 'スキップしました') : null
+  const item = e.item
+  if (!item) return null
+  if (label.includes('ファクトチェック')) {
+    const verdict = item.fact_check_status ? FACT_CHECK_LABEL[item.fact_check_status] : null
+    if (!verdict) return null
+    return item.fact_check_comment ? `${verdict} — ${item.fact_check_comment}` : verdict
+  }
+  if (label.includes('説明')) return item.meaning ?? null
+  if (label.includes('タグ')) {
+    const names = item.tags?.map((t) => t.name) ?? []
+    return names.length ? `タグ: ${names.join(' / ')}` : 'タグなし'
+  }
+  return null
+}
+
 const POLLING_STATUSES = new Set(['pending', 'processing'])
 
 type ItemCardProps = {
@@ -170,6 +223,9 @@ export function ItemList({ initialTag = null }: { initialTag?: string | null }) 
   // 一括AI操作（タグ再設定・付与・ファクトチェック・説明付与）の進捗とサマリ
   const [bulkAction, setBulkAction] = useState<{ label: string; done: number; total: number } | null>(null)
   const [bulkSummary, setBulkSummary] = useState<string | null>(null)
+  // 完了後に確認できる per-item 結果
+  const [bulkResults, setBulkResults] = useState<{ label: string; entries: BulkResultEntry[] } | null>(null)
+  const [resultsOpen, setResultsOpen] = useState(false)
   const [confirmTagReplace, setConfirmTagReplace] = useState(false)
   const cancelBulkRef = useRef(false)
   const upsertItem = useItemsStore((state) => state.upsertItem)
@@ -191,6 +247,8 @@ export function ItemList({ initialTag = null }: { initialTag?: string | null }) 
     setConfirmTagReplace(false)
     setActionError(null)
     setBulkSummary(null)
+    setBulkResults(null)
+    setResultsOpen(false)
   }
 
   // 選択カードを1件ずつ AI 操作に通す共通ループ。進捗を出し、スキップ/失敗を集計する。
@@ -200,9 +258,13 @@ export function ItemList({ initialTag = null }: { initialTag?: string | null }) 
     cancelBulkRef.current = false
     setActionError(null)
     setBulkSummary(null)
+    setBulkResults(null)
+    setResultsOpen(false)
     setBulkAction({ label, done: 0, total: ids.length })
 
     const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms))
+    const titleOf = (id: string) => items.find((it) => it.id === id)?.title ?? id
+    const entries: BulkResultEntry[] = []
     let processed = 0
     let skipped = 0
     let failed = 0
@@ -213,10 +275,13 @@ export function ItemList({ initialTag = null }: { initialTag?: string | null }) 
       for (;;) {
         try {
           const result = await fn(ids[i])
-          if (isItemSkip(result)) skipped += 1
-          else {
+          if (isItemSkip(result)) {
+            skipped += 1
+            entries.push({ id: ids[i], title: titleOf(ids[i]), outcome: 'skipped', reason: result.reason })
+          } else {
             upsertItem(result)
             processed += 1
+            entries.push({ id: ids[i], title: result.title, outcome: 'processed', item: result })
           }
           break
         } catch (err) {
@@ -230,6 +295,7 @@ export function ItemList({ initialTag = null }: { initialTag?: string | null }) 
             continue
           }
           failed += 1
+          entries.push({ id: ids[i], title: titleOf(ids[i]), outcome: 'failed' })
           break
         }
       }
@@ -243,6 +309,7 @@ export function ItemList({ initialTag = null }: { initialTag?: string | null }) 
     if (failed) parts.push(`${failed}件失敗`)
     if (cancelBulkRef.current) parts.push('中断')
     setBulkSummary(`${label}: ${parts.join(' / ')}`)
+    if (entries.length > 0) setBulkResults({ label, entries })
   }
 
   // ① タグを再設定（AI結果で置き換え・破壊的なので2段階確認）
@@ -671,7 +738,40 @@ export function ItemList({ initialTag = null }: { initialTag?: string | null }) 
           </button>
         </div>
       )}
-      {bulkSummary && <p className="text-sm text-muted-foreground">{bulkSummary}</p>}
+      {bulkSummary && (
+        <div className="space-y-2">
+          <div className="flex flex-wrap items-center gap-2 text-sm text-muted-foreground">
+            <span>{bulkSummary}</span>
+            {bulkResults && bulkResults.entries.length > 0 && (
+              <button
+                type="button"
+                onClick={() => setResultsOpen((v) => !v)}
+                className="underline hover:text-foreground"
+              >
+                {resultsOpen ? '結果を閉じる' : '結果を確認'}
+              </button>
+            )}
+          </div>
+          {resultsOpen && bulkResults && (
+            <ul className="max-h-72 divide-y overflow-y-auto rounded-lg border border-border bg-card">
+              {bulkResults.entries.map((e) => {
+                const detail = bulkResultDetail(bulkResults.label, e)
+                return (
+                  <li key={e.id} className="px-3 py-2">
+                    <div className="flex items-center justify-between gap-2">
+                      <Link href={`/items/${e.id}`} className="text-sm font-medium hover:underline">
+                        {e.title}
+                      </Link>
+                      <span className={bulkOutcomeBadgeClass(e.outcome)}>{bulkOutcomeLabel(e.outcome)}</span>
+                    </div>
+                    {detail && <p className="mt-1 line-clamp-3 text-xs text-muted-foreground">{detail}</p>}
+                  </li>
+                )
+              })}
+            </ul>
+          )}
+        </div>
+      )}
       {actionError && <p className="text-sm text-destructive">{actionError}</p>}
     </div>
   )
