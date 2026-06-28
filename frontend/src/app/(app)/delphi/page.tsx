@@ -8,6 +8,7 @@ import { Input } from '@/components/ui/input'
 import { Spinner } from '@/components/ui/spinner'
 import { generateWords } from '@/lib/api/wordlists'
 import { createItem } from '@/lib/api/items'
+import { STYLE_OPTIONS } from '@/lib/item-styles'
 import { useBillingStore } from '@/stores/billing'
 import type { Item } from '@/types/item'
 
@@ -16,6 +17,8 @@ const MAX_PULL = 5
 export default function DelphiPage() {
   const [genre, setGenre] = useState('')
   const [count, setCount] = useState(1)
+  // 既定は「写真(photo)」。未指定だと realism 指示が付かずイラスト寄りになるため。
+  const [style, setStyle] = useState('photo')
   const [forging, setForging] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [cards, setCards] = useState<Item[]>([])
@@ -43,7 +46,7 @@ export default function DelphiPage() {
       const created: Item[] = []
       for (const word of words) {
         try {
-          created.push(await createItem(word.trim()))
+          created.push(await createItem(word.trim(), false, undefined, { style: style || undefined }))
         } catch (err: unknown) {
           const axiosErr = err as { response?: { data?: { error?: string; errors?: string[] } } }
           setError(
@@ -84,7 +87,21 @@ export default function DelphiPage() {
             disabled={forging}
           />
         </div>
-        <div className="w-24">
+        <div className="w-28">
+          <label htmlFor="style" className="mb-1 block text-sm font-medium">スタイル</label>
+          <select
+            id="style"
+            value={style}
+            onChange={(e) => setStyle(e.target.value)}
+            disabled={forging}
+            className="h-9 w-full rounded-lg border border-input bg-background px-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+          >
+            {STYLE_OPTIONS.map((opt) => (
+              <option key={opt.value || 'default'} value={opt.value}>{opt.label}</option>
+            ))}
+          </select>
+        </div>
+        <div className="w-20">
           <label htmlFor="count" className="mb-1 block text-sm font-medium">枚数</label>
           <select
             id="count"
