@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import Link from 'next/link'
 import { Wand2, X } from 'lucide-react'
 import { Button } from '@/components/ui/button'
@@ -39,6 +39,16 @@ export default function DelphiPage() {
   const addRecord = useDelphiStore((s) => s.addRecord)
   const clearHistory = useDelphiStore((s) => s.clearHistory)
 
+  // 受け取り済み＝二度と出さない（除外）。キャンセル済み＝出る確率を大きく下げる（回避）。
+  const excludeWords = useMemo(
+    () => Array.from(new Set(history.filter((r) => r.status === 'received').flatMap((r) => r.words))),
+    [history]
+  )
+  const avoidWords = useMemo(
+    () => Array.from(new Set(history.filter((r) => r.status === 'cancelled').flatMap((r) => r.words))),
+    [history]
+  )
+
   useEffect(() => {
     fetchBilling()
   }, [fetchBilling])
@@ -53,7 +63,7 @@ export default function DelphiPage() {
     setForging(true)
     setError(null)
     try {
-      const words = await generateWords(genre.trim(), count)
+      const words = await generateWords(genre.trim(), count, { exclude: excludeWords, avoid: avoidWords })
       if (words.length === 0) {
         setError('神託が得られませんでした。もう一度お試しください。')
         return
