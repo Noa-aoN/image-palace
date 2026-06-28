@@ -153,7 +153,10 @@ export function DashboardContent() {
                     style={{ color: 'var(--palace)' }}
                   />
                 </div>
-                <p className="mt-1 text-lg font-semibold">{tierLabel(billing?.plan?.tier ?? 'free')}</p>
+                <div className="mt-1 flex items-baseline justify-between gap-2">
+                  <p className="text-lg font-semibold">{tierLabel(billing?.plan?.tier ?? 'free')}</p>
+                  {renewal && <span className="text-xs text-muted-foreground">{renewal} に更新</span>}
+                </div>
               </div>
 
               <div className="border-t pt-3">
@@ -167,17 +170,14 @@ export function DashboardContent() {
                 </p>
               </div>
 
-              <div className="border-t pt-3 space-y-2">
+              <div className="space-y-2">
                 {creditPct !== null && (
                   <>
                     <div className="flex items-baseline justify-between">
-                      <span className="text-sm text-muted-foreground">
-                        今期のクレジット
-                        {renewal && <span className="ml-2 text-xs">{renewal} に更新</span>}
-                      </span>
+                      <span className="text-sm text-muted-foreground">生成可能カードの枚数目安</span>
                       <span>
                         <span className="text-base font-semibold tabular-nums">{credits}</span>
-                        <span className="text-sm text-muted-foreground"> / {perPeriod}</span>
+                        <span className="text-sm text-muted-foreground"> / {perPeriod} 枚</span>
                       </span>
                     </div>
                     <div className="h-2 w-full overflow-hidden rounded-full bg-muted">
