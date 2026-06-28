@@ -32,8 +32,11 @@ class GenerateFactCheckService
     comment: 学習者向けの短い日本語コメント（誤りの指摘・補足・その概念の意義・考えるとよい質問など）。
     suggestion: status が "doubtful" または "incorrect" のときのみ、事実に基づく簡潔で正確な説明文（訂正案）を日本語で書く。
                 判定が "correct" のとき、または適切な訂正が作れないときは空文字 "" にする。
+    title_suggestion: 「単語名」自体を直すべき場合（実在語の取り違え・誤記など。例: 「トリトニウム」→「トリチウム」）のみ、
+                      正しい単語名を書く。単語名を変える必要がなければ空文字 "" にする。
 
-    必ず次の JSON 形式のみで返してください: {"status": "correct|doubtful|incorrect", "comment": "...", "suggestion": "..."}
+    必ず次の JSON 形式のみで返してください:
+    {"status": "correct|doubtful|incorrect", "comment": "...", "suggestion": "...", "title_suggestion": "..."}
   PROMPT
 
   def self.call(item:)
@@ -54,6 +57,7 @@ class GenerateFactCheckService
       fact_check_status: result[:status],
       fact_check_comment: result[:comment],
       fact_check_suggestion: result[:suggestion],
+      fact_check_title_suggestion: result[:title_suggestion],
       fact_checked_at: Time.current
     )
     @meaning
@@ -84,9 +88,12 @@ class GenerateFactCheckService
     status = parsed["status"].to_s
     raise GenerationError, "不正な判定: #{status}" unless Meaning::FACT_CHECK_STATUSES.include?(status)
 
-    # correct のときは訂正案を持たせない
+    # correct のときは訂正案（説明・単語名）を持たせない。
+    # 単語名の訂正案は、現在の単語名と同じなら無視する。
     suggestion = status == "correct" ? nil : parsed["suggestion"].to_s.strip.presence
-    { status:, comment: parsed["comment"].to_s.strip, suggestion: suggestion }
+    title_suggestion = status == "correct" ? nil : parsed["title_suggestion"].to_s.strip.presence
+    title_suggestion = nil if title_suggestion == @item.title
+    { status:, comment: parsed["comment"].to_s.strip, suggestion:, title_suggestion: }
   rescue JSON::ParserError => e
     raise GenerationError, "ファクトチェック結果の解析に失敗しました: #{e.message}"
   end

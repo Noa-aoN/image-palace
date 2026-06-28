@@ -39,6 +39,25 @@ RSpec.describe GenerateFactCheckService do
     expect(meaning.fact_check_suggestion).to eq("正しい説明はこちら")
   end
 
+  it "単語名の訂正案(title_suggestion)も保存する" do
+    meaning = item.meanings.create!(definition: "水素の同位体…", language_code: "ja")
+    stub_chat({ status: "incorrect", comment: "別語です", suggestion: "正しい説明",
+                title_suggestion: "トリチウム" }.to_json)
+
+    described_class.call(item: item)
+
+    expect(meaning.reload.fact_check_title_suggestion).to eq("トリチウム")
+  end
+
+  it "現在の単語名と同じ title_suggestion は無視する" do
+    meaning = item.meanings.create!(definition: "説明", language_code: "ja")
+    stub_chat({ status: "doubtful", comment: "x", suggestion: "y", title_suggestion: "光合成" }.to_json)
+
+    described_class.call(item: item)
+
+    expect(meaning.reload.fact_check_title_suggestion).to be_nil
+  end
+
   it "correct のときは suggestion を保存しない" do
     meaning = item.meanings.create!(definition: "正しい説明", language_code: "ja")
     stub_chat({ status: "correct", comment: "OK", suggestion: "余計な訂正" }.to_json)

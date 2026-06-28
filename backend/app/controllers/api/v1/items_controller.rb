@@ -93,10 +93,13 @@ module Api
 
       # タイトル・種別・意味の編集。画像の再生成は伴わず、既存メディアと生成ステータスは保持する
       def update
+        # 単語名を変えたら、説明への以前のファクトチェック判定は無効化する
+        title_changed = item_update_params.key?(:title) && item_update_params[:title].to_s != item.title
         Item.transaction do
           item.update!(item_update_params)
           upsert_meaning!
           assign_tags!(item)
+          clear_fact_check!(item.primary_meaning) if title_changed
         end
         render json: serialize_item(item.reload)
       rescue ActiveRecord::RecordInvalid => e
@@ -278,11 +281,25 @@ module Api
             meaning.fact_check_status = nil
             meaning.fact_check_comment = nil
             meaning.fact_check_suggestion = nil
+            meaning.fact_check_title_suggestion = nil
             meaning.fact_checked_at = nil
           end
           meaning.definition = definition
           meaning.save!
         end
+      end
+
+      # 既存（永続化済み）の meaning のファクトチェック結果をクリアする
+      def clear_fact_check!(meaning)
+        return unless meaning&.persisted?
+
+        meaning.update!(
+          fact_check_status: nil,
+          fact_check_comment: nil,
+          fact_check_suggestion: nil,
+          fact_check_title_suggestion: nil,
+          fact_checked_at: nil
+        )
       end
 
       # item[tags] にタグ名配列が渡された場合のみ、その内容でタグを設定する（未指定なら変更しない）。
@@ -310,6 +327,7 @@ module Api
           fact_check_status: item.primary_meaning&.fact_check_status,
           fact_check_comment: item.primary_meaning&.fact_check_comment,
           fact_check_suggestion: item.primary_meaning&.fact_check_suggestion,
+          fact_check_title_suggestion: item.primary_meaning&.fact_check_title_suggestion,
           fact_checked_at: item.primary_meaning&.fact_checked_at,
           style: item.style,
           custom_prompt: item.custom_prompt,
