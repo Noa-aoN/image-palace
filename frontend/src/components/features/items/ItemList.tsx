@@ -202,20 +202,36 @@ export function ItemList({ initialTag = null }: { initialTag?: string | null }) 
     setBulkSummary(null)
     setBulkAction({ label, done: 0, total: ids.length })
 
+    const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms))
     let processed = 0
     let skipped = 0
     let failed = 0
     for (let i = 0; i < ids.length; i++) {
       if (cancelBulkRef.current) break
-      try {
-        const result = await fn(ids[i])
-        if (isItemSkip(result)) skipped += 1
-        else {
-          upsertItem(result)
-          processed += 1
+      let attempt = 0
+      // レート制限（429）は待って再試行し、取りこぼさない
+      for (;;) {
+        try {
+          const result = await fn(ids[i])
+          if (isItemSkip(result)) skipped += 1
+          else {
+            upsertItem(result)
+            processed += 1
+          }
+          break
+        } catch (err) {
+          const res = (err as { response?: { status?: number; headers?: Record<string, string> } }).response
+          if (res?.status === 429 && attempt < 30 && !cancelBulkRef.current) {
+            attempt += 1
+            const retryAfter = Number(res.headers?.['retry-after']) || 5
+            setBulkAction({ label: `${label}（混雑のため待機中）`, done: i, total: ids.length })
+            await sleep(Math.min(retryAfter, 60) * 1000)
+            if (cancelBulkRef.current) break
+            continue
+          }
+          failed += 1
+          break
         }
-      } catch {
-        failed += 1
       }
       setBulkAction({ label, done: i + 1, total: ids.length })
     }
