@@ -75,6 +75,20 @@ RSpec.describe Billing::WebhookHandler do
     expect(sub.status).to eq("active")
   end
 
+  it "grants credits when a subscription starts trialing on customer.subscription.created" do
+    user
+    plan
+
+    handle(id: "evt_trial1", type: "customer.subscription.created", data: { object: {
+      id: "sub_t1", customer: "cus_1", status: "trialing",
+      current_period_start: 1_700_000_000, current_period_end: 1_702_592_000,
+      cancel_at_period_end: false, canceled_at: nil,
+      items: { data: [ { price: { id: "price_std" } } ] }
+    } })
+
+    expect(user.reload.subscription_credits).to eq(100 * Billing::POINTS_PER_CREDIT)
+  end
+
   it "updates current_period_end on customer.subscription.updated (renewal)" do
     create(:subscription, user:, plan:, status: "active", stripe_subscription_id: "sub_1",
       current_period_end: Time.at(1_700_000_000))

@@ -102,5 +102,28 @@ RSpec.describe "User credit ledger", type: :model do
       create(:subscription, user:, status: "trialing")
       expect { user.ensure_current_period_credits! }.not_to(change { user.reload.subscription_credits })
     end
+
+    it "re-grants at each anniversary period (登録日基準で月次)" do
+      user.update_column(:created_at, Time.zone.local(2026, 1, 15, 10))
+
+      travel_to(Time.zone.local(2026, 2, 20, 12)) do
+        user.ensure_current_period_credits!
+        expect(user.reload.credits_period_start).to eq(Time.zone.local(2026, 2, 15, 10))
+      end
+      user.update_column(:subscription_credits, 0)
+
+      travel_to(Time.zone.local(2026, 3, 20, 12)) do
+        expect { user.ensure_current_period_credits! }
+          .to change { user.reload.subscription_credits }.from(0).to(10 * Billing::POINTS_PER_CREDIT)
+        expect(user.reload.credits_period_start).to eq(Time.zone.local(2026, 3, 15, 10))
+      end
+    end
+
+    it "next_free_credit_reset_at は現周期＋1ヶ月（登録日基準）" do
+      user.update_column(:created_at, Time.zone.local(2026, 1, 15, 10))
+      travel_to(Time.zone.local(2026, 6, 20, 12)) do
+        expect(user.next_free_credit_reset_at).to eq(Time.zone.local(2026, 7, 15, 10))
+      end
+    end
   end
 end

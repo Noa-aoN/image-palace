@@ -68,15 +68,17 @@ RSpec.describe "Billing endpoints", type: :request do
       expect(json_response.dig("plan", "name")).to eq("free")
     end
 
-    it "無料会員の next_credit_reset は翌月初を返す" do
+    it "無料会員の next_credit_reset は登録日アニバーサリーの翌周期を返す" do
       user = create(:user, :confirmed)
+      user.update_column(:created_at, Time.zone.local(2026, 1, 15, 10, 0, 0))
 
-      travel_to(Time.zone.local(2026, 6, 15, 12, 0, 0)) do
+      travel_to(Time.zone.local(2026, 6, 20, 12, 0, 0)) do
         get "/api/v1/billing/summary", headers: auth_headers_for(user), as: :json
       end
 
       expect(response).to have_http_status(:ok)
-      expect(Time.zone.parse(json_response["next_credit_reset"])).to eq(Time.zone.local(2026, 7, 1).beginning_of_day)
+      # 1/15 登録 → 現周期 6/15、次回 7/15
+      expect(Time.zone.parse(json_response["next_credit_reset"])).to eq(Time.zone.local(2026, 7, 15, 10, 0, 0))
     end
   end
 end
