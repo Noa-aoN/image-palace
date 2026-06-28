@@ -3,12 +3,12 @@
 import { useEffect, useState } from 'react'
 import type { ReactNode } from 'react'
 import Link from 'next/link'
-import { PenLine, Sparkles, GalleryVerticalEnd, Library, LayoutGrid, Frame, Loader2, ChevronRight, Coins } from 'lucide-react'
+import { PenLine, Sparkles, GalleryVerticalEnd, Library, LayoutGrid, Frame, Loader2, ChevronRight, Coins, CreditCard } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
 import { getItemsSummary, type ItemsSummary } from '@/lib/api/items'
 import { useBillingStore } from '@/stores/billing'
-import { tierLabel, CREDIT_UNIT } from '@/lib/billing'
+import { tierLabel, CREDIT_UNIT, CREDIT_UNIT_SHORT } from '@/lib/billing'
 
 const GETTING_STARTED = [
   { icon: <PenLine size={20} />, text: '覚えたい単語や概念を入力する' },
@@ -141,25 +141,29 @@ export function DashboardContent() {
         >
           <Card className="cursor-pointer transition hover:border-[var(--palace)] hover:shadow-md">
             <CardContent className="space-y-4">
-              <div className="flex items-center justify-between">
-                <p className="text-sm text-muted-foreground">
-                  プラン: <span className="font-medium text-foreground">{tierLabel(billing?.plan?.tier ?? 'free')}</span>
-                </p>
-                <ChevronRight
-                  size={18}
-                  className="transition-transform group-hover:translate-x-0.5"
-                  style={{ color: 'var(--palace)' }}
-                />
+              <div>
+                <div className="flex items-center justify-between">
+                  <p className="flex items-center gap-2 text-sm text-muted-foreground">
+                    <CreditCard size={18} style={{ color: 'var(--palace)' }} />
+                    プラン
+                  </p>
+                  <ChevronRight
+                    size={18}
+                    className="transition-transform group-hover:translate-x-0.5"
+                    style={{ color: 'var(--palace)' }}
+                  />
+                </div>
+                <p className="mt-1 text-lg font-semibold">{tierLabel(billing?.plan?.tier ?? 'free')}</p>
               </div>
 
               <div className="border-t pt-3">
                 <p className="flex items-center gap-2 text-sm text-muted-foreground">
                   <Coins size={18} style={{ color: 'var(--palace)' }} />
-                  クレジット残高
+                  残高
                 </p>
                 <p className="mt-1">
                   <span className="text-3xl font-bold tabular-nums">{credits ?? '—'}</span>
-                  <span className="ml-1 text-sm text-muted-foreground">{CREDIT_UNIT}</span>
+                  <span className="ml-1 text-sm text-muted-foreground">{CREDIT_UNIT}（{CREDIT_UNIT_SHORT}）</span>
                 </p>
               </div>
 
