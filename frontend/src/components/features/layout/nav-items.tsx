@@ -6,8 +6,12 @@ import {
   LayoutGrid,
   Frame,
   GraduationCap,
+  Layers,
+  HelpCircle,
+  Gamepad2,
+  BarChart3,
   Palette,
-  ListChecks,
+  Boxes,
   Search,
   Tag,
   Wand2,
@@ -54,7 +58,7 @@ export const NAV_SECTIONS: NavSection[] = [
         icon: <Palette size={22} />,
         label: 'アトリエ',
         children: [
-          { href: '/wordlists/new', icon: <ListChecks size={20} />, label: 'ワードリストを作成' },
+          { href: '/materials/new', icon: <Boxes size={20} />, label: 'マテリアルを作成' },
           { href: '/items/new', icon: <GalleryHorizontal size={20} />, label: 'カードを作成' },
           { href: '/collections/new', icon: <Library size={20} />, label: 'コレクションを作成' },
           { href: '/views/new', icon: <LayoutGrid size={20} />, label: 'キャンバスを作成' },
@@ -66,14 +70,25 @@ export const NAV_SECTIONS: NavSection[] = [
         icon: <LibraryBig size={22} />,
         label: 'ライブラリ',
         children: [
+          { href: '/materials', icon: <Boxes size={20} />, label: 'マテリアル一覧' },
           { href: '/items', icon: <GalleryHorizontal size={20} />, label: 'カード一覧' },
           { href: '/collections', icon: <Library size={20} />, label: 'コレクション一覧' },
           { href: '/views', icon: <LayoutGrid size={20} />, label: 'キャンバス一覧' },
           { href: '/spaces', icon: <Frame size={20} />, label: 'スペース一覧' },
-          { href: '/wordlists', icon: <ListChecks size={20} />, label: 'ワードリスト一覧' },
         ],
       },
-      { href: '/study', icon: <GraduationCap size={22} />, label: 'スタディ' },
+      {
+        // スタディのトップ（学習ハブ）へのリンク兼開閉グループ。準備中のゲーム/レコードはハブのみ。
+        href: '/study',
+        icon: <GraduationCap size={22} />,
+        label: 'スタディ',
+        children: [
+          { href: '/study/practice', icon: <Layers size={20} />, label: 'プラクティス' },
+          { href: '/study/quiz', icon: <HelpCircle size={20} />, label: 'クイズ' },
+          { href: '/study/game', icon: <Gamepad2 size={20} />, label: 'プレイ' },
+          { href: '/study/record', icon: <BarChart3 size={20} />, label: 'レコード' },
+        ],
+      },
       {
         // 個人用ハブ。アカウント設定/環境設定/プラン・支払い/トロフィーを内包し、自身もマイルームのページへリンク。
         href: '/myroom',

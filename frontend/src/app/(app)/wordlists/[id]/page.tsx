@@ -71,13 +71,14 @@ export default function WordlistDetailPage() {
         )}
       </div>
 
-      <div className="mt-6 flex flex-wrap gap-2">
+      <ol className="mt-6 divide-y divide-border overflow-hidden rounded-xl border border-border bg-card">
         {wordlist.words.map((word, i) => (
-          <span key={`${word}-${i}`} className="rounded-full border border-border bg-card px-3 py-1 text-sm">
-            {word}
-          </span>
+          <li key={`${word}-${i}`} className="flex items-center gap-3 px-4 py-2.5 text-sm">
+            <span className="w-6 shrink-0 text-right text-xs tabular-nums text-muted-foreground">{i + 1}</span>
+            <span>{word}</span>
+          </li>
         ))}
-      </div>
+      </ol>
     </div>
   )
 }

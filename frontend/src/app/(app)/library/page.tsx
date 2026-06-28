@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import Link from 'next/link'
-import { GalleryHorizontal, Library, Layers, LayoutGrid, Frame, MapPin, ChevronRight, Plus, Search, X, Route, DoorOpen, ListChecks, Boxes } from 'lucide-react'
+import { GalleryHorizontal, Library, Layers, LayoutGrid, Frame, MapPin, ChevronRight, Plus, Search, X, Route, DoorOpen, ListChecks, Boxes, Images } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { getItems, getItemsSummary } from '@/lib/api/items'
 import { getCollections } from '@/lib/api/collections'
@@ -662,8 +662,8 @@ export default function LibraryPage() {
         )}
       </Section>
 
-      {/* 素材（カード生成のもと） */}
-      <Section icon={<Boxes size={22} />} title="素材" description="カード生成のもと">
+      {/* マテリアル（カード化の前の素材） */}
+      <Section icon={<Boxes size={22} />} title="マテリアル" description="カード化の前の素材">
         <Shelf icon={<ListChecks size={18} />} title="ワードリスト" count={wordlists.length} href="/wordlists">
           {wordlists.length === 0 ? (
             <EmptyRail
@@ -677,6 +677,9 @@ export default function LibraryPage() {
               ))}
             </Rail>
           )}
+        </Shelf>
+        <Shelf icon={<Images size={18} />} title="ピクチャーリスト">
+          <EmptyRail message="準備中です。画像素材をまとめられるようにする予定です。" />
         </Shelf>
       </Section>
         </>

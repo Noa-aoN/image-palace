@@ -22,6 +22,7 @@ export const PRIVATE_PATHS = [
   '/study',
   '/atelier',
   '/myroom',
+  '/materials',
   '/wordlists',
   '/delphi',
   '/search',
