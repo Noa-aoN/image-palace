@@ -5,7 +5,13 @@ module Api
       # ワードリスト作成フォームとデルフォイ（ガチャ）から利用する。
       def generate
         # count 未指定（nil/空）は「おまかせ（自動）」としてサービス側に委ねる。
-        words = GenerateWordsService.call(theme: params[:theme], count: params[:count].presence)
+        # exclude=既出（絶対に出さない）, avoid=キャンセル済み（確率を大きく下げる）。
+        words = GenerateWordsService.call(
+          theme: params[:theme],
+          count: params[:count].presence,
+          exclude: params[:exclude],
+          avoid: params[:avoid]
+        )
         render json: { words: words }
       rescue GenerateWordsService::GenerationError, KeyError, Faraday::Error => e
         Rails.logger.warn "[WordsController#generate] failed: #{e.class}: #{e.message}"

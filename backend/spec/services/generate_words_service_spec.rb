@@ -38,6 +38,12 @@ RSpec.describe GenerateWordsService do
     expect(words.size).to eq(GenerateWordsService::MAX_COUNT)
   end
 
+  it "exclude の語は結果から確実に除外する" do
+    stub_chat({ words: %w[apple banana cherry] }.to_json)
+    words = described_class.call(theme: "果物", count: 5, exclude: %w[banana])
+    expect(words).to eq(%w[apple cherry])
+  end
+
   it "words が空なら GenerationError を投げる" do
     stub_chat({ words: [] }.to_json)
     expect { described_class.call(theme: "x", count: 3) }.to raise_error(GenerateWordsService::GenerationError)
