@@ -9,7 +9,7 @@ import { addDeckCard, removeViewItem, reorderDeckCards } from '@/lib/api/views'
 import type { ViewItemPlacement } from '@/types/view'
 import type { Item } from '@/types/item'
 
-// deck 種別のビュー本体：カードの順序付きリスト（追加・削除・並び替え）。
+// deck 種別のキャンバス本体：カードの順序付きリスト（追加・削除・並び替え）。
 export function DeckBoard({ viewId, initialItems }: { viewId: string; initialItems: ViewItemPlacement[] }) {
   const [items, setItems] = useState<ViewItemPlacement[]>(initialItems)
   const [picking, setPicking] = useState(false)

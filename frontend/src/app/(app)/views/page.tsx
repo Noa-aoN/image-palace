@@ -29,7 +29,7 @@ function ViewsPageInner() {
         if (!cancelled) setViews(data)
       })
       .catch(() => {
-        if (!cancelled) setError('ビューの取得に失敗しました')
+        if (!cancelled) setError('キャンバスの取得に失敗しました')
       })
       .finally(() => {
         if (!cancelled) setLoading(false)
@@ -40,7 +40,7 @@ function ViewsPageInner() {
   }, [])
 
   const visibleViews = typeFilter ? views.filter((v) => v.view_type === typeFilter) : views
-  const heading = typeFilter ? viewTypeLabel(typeFilter) : 'ビュー'
+  const heading = typeFilter ? viewTypeLabel(typeFilter) : 'キャンバス'
 
   return (
     <div className="max-w-7xl mx-auto px-6 py-12">
@@ -49,7 +49,7 @@ function ViewsPageInner() {
           <h1 className="text-xl font-semibold">{heading}</h1>
           {typeFilter && (
             <Link href="/views" className="text-sm hover:underline" style={{ color: 'var(--palace)' }}>
-              すべてのビュー
+              すべてのキャンバス
             </Link>
           )}
         </div>

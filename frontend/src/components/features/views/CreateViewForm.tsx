@@ -20,7 +20,7 @@ interface Props {
 }
 
 /**
- * ビュー作成フォーム。一覧ページのインライン作成と /views/new で共有する。
+ * キャンバス作成フォーム。一覧ページのインライン作成と /views/new で共有する。
  * space_map（スペース配置）選択時は配置先スペースの選択を要求する。
  */
 export function CreateViewForm({ onCreated, redirectBase, onCancel, defaultType }: Props) {
@@ -46,7 +46,7 @@ export function CreateViewForm({ onCreated, redirectBase, onCancel, defaultType 
     e.preventDefault()
     const trimmed = name.trim()
     if (!trimmed) {
-      setError('ビュー名を入力してください')
+      setError('キャンバス名を入力してください')
       return
     }
     if (viewType === 'space_map' && !selectedSpaceId) {
@@ -68,7 +68,7 @@ export function CreateViewForm({ onCreated, redirectBase, onCancel, defaultType 
       if (redirectBase) router.push(`${redirectBase}/${created.id}`)
     } catch (err: unknown) {
       const axiosErr = err as { response?: { data?: { errors?: string[] } } }
-      setError(axiosErr?.response?.data?.errors?.[0] ?? 'ビューの作成に失敗しました')
+      setError(axiosErr?.response?.data?.errors?.[0] ?? 'キャンバスの作成に失敗しました')
     } finally {
       setSubmitting(false)
     }
@@ -80,10 +80,10 @@ export function CreateViewForm({ onCreated, redirectBase, onCancel, defaultType 
         <Input
           value={name}
           onChange={(e) => setName(e.target.value)}
-          placeholder="ビュー名（例: 関係図、学習マップ）"
+          placeholder="キャンバス名（例: 関係図、学習マップ）"
           autoFocus
           disabled={submitting}
-          aria-label="ビュー名"
+          aria-label="キャンバス名"
         />
         {error && <p className="mt-1 text-sm text-destructive">{error}</p>}
       </div>
@@ -91,7 +91,7 @@ export function CreateViewForm({ onCreated, redirectBase, onCancel, defaultType 
         value={viewType}
         onChange={(e) => setViewType(e.target.value)}
         disabled={submitting}
-        aria-label="ビューの種別"
+        aria-label="キャンバスの種別"
         className="h-9 rounded-lg border border-input bg-background px-3 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
       >
         {VIEW_TYPES.map((t) => (

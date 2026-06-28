@@ -1,6 +1,6 @@
 module Api
   module V1
-    # ライブラリ横断検索: カード/デッキ/コレクション/スペース/ビューをまとめて検索する
+    # ライブラリ横断検索: カード/デッキ/コレクション/スペース/キャンバスをまとめて検索する
     class SearchController < BaseController
       include ItemSerialization
 
@@ -26,7 +26,7 @@ module Api
                               .order(created_at: :desc).limit(LIMIT)
                               .includes(:item_type, medias: { file_attachment: :blob })
                               .map { |i| serialize_item(i) },
-          # デッキは view_type='deck' のビューへ統合済み
+          # デッキは view_type='deck' のキャンバスへ統合済み
           decks: current_user.views.where(view_type: "deck")
                              .where("name ILIKE ?", like)
                              .order(created_at: :desc).limit(LIMIT)

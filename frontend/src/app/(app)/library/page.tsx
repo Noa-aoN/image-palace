@@ -67,7 +67,7 @@ function Shelf({
   )
 }
 
-// 傘セクション（ビュー / スペース）の見出し＋配下のサブ棚をまとめる枠
+// 傘セクション（キャンバス / スペース）の見出し＋配下のサブ棚をまとめる枠
 function Section({
   icon,
   title,
@@ -385,7 +385,7 @@ function SearchResultsView({
         </ResultGroup>
       )}
       {results.views.length > 0 && (
-        <ResultGroup icon={<LayoutGrid size={18} />} title="ビュー" count={results.views.length}>
+        <ResultGroup icon={<LayoutGrid size={18} />} title="キャンバス" count={results.views.length}>
           <Rail>
             {results.views.map((view) => (
               <SearchNamedTile
@@ -393,7 +393,7 @@ function SearchResultsView({
                 href={`/views/${view.id}`}
                 icon={<LayoutGrid size={16} />}
                 name={view.name}
-                sub="ビュー"
+                sub="キャンバス"
               />
             ))}
           </Rail>
@@ -511,7 +511,7 @@ export default function LibraryPage() {
           type="search"
           value={query}
           onChange={(e) => handleQueryChange(e.target.value)}
-          placeholder="カード・デッキ・コレクション・スペース・ビューを横断検索"
+          placeholder="カード・デッキ・コレクション・スペース・キャンバスを横断検索"
           className="w-full rounded-xl border border-border bg-card py-2.5 pl-10 pr-10 text-sm outline-none focus:border-[var(--palace)] focus:ring-1 focus:ring-[var(--palace)]"
           aria-label="ライブラリ横断検索"
         />
@@ -581,8 +581,8 @@ export default function LibraryPage() {
         )}
       </Shelf>
 
-      {/* ビュー（表示・学習形式：デッキ / フリーボード等） */}
-      <Section icon={<LayoutGrid size={22} />} title="ビュー" description="カードの表示・学習形式">
+      {/* キャンバス（表示・学習形式：デッキ / フリーボード等） */}
+      <Section icon={<LayoutGrid size={22} />} title="キャンバス" description="カードの表示・学習形式">
         <Shelf icon={<Layers size={18} />} title="デッキ" count={deckViews.length} href="/views?type=deck">
           {deckViews.length === 0 ? (
             <EmptyRail

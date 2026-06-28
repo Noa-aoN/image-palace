@@ -33,7 +33,7 @@ const EMPTY_SUMMARY: ItemsSummary = {
 const OWNED_CARDS: { label: string; href: string; icon: ReactNode; value: (s: ItemsSummary) => string }[] = [
   { label: 'カード', href: '/items', icon: <GalleryVerticalEnd size={18} />, value: (s) => `${s.total_count}` },
   { label: 'コレクション', href: '/collections', icon: <Library size={18} />, value: (s) => `${s.collections_count}` },
-  { label: 'ビュー', href: '/views', icon: <LayoutGrid size={18} />, value: (s) => `${s.views_count}` },
+  { label: 'キャンバス', href: '/views', icon: <LayoutGrid size={18} />, value: (s) => `${s.views_count}` },
   { label: 'スペース', href: '/spaces', icon: <Frame size={18} />, value: (s) => `${s.spaces_count}` },
 ]
 

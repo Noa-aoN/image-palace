@@ -38,7 +38,7 @@ module ItemSerialization
     }
   end
 
-  # has_one_attached の custom カバー画像（デッキ/コレクション/スペース/ビュー共通）
+  # has_one_attached の custom カバー画像（デッキ/コレクション/スペース/キャンバス共通）
   def serialize_attached_cover(attachment)
     return nil unless attachment.attached?
     return nil unless blob_available?(attachment.blob)

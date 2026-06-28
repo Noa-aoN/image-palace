@@ -1,6 +1,6 @@
 import { redirect } from 'next/navigation'
 
-// デッキはビューの一種（view_type='deck'）に統合済み。/views?type=deck へ集約。
+// デッキはキャンバスの一種（view_type='deck'）に統合済み。/views?type=deck へ集約。
 export default function DecksPage() {
   redirect('/views?type=deck')
 }

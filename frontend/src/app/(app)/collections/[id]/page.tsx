@@ -26,7 +26,7 @@ type Pickable = { id: string; label: string; image: string | null; sub?: string 
 const TYPE_META: Record<CollectionEntryType, { label: string; icon: React.ReactNode; path: string }> = {
   Item: { label: 'カード', icon: <GalleryHorizontal size={16} />, path: 'items' },
   Space: { label: 'スペース', icon: <Frame size={16} />, path: 'spaces' },
-  View: { label: 'ビュー', icon: <LayoutGrid size={16} />, path: 'views' },
+  View: { label: 'キャンバス', icon: <LayoutGrid size={16} />, path: 'views' },
 }
 const TYPE_ORDER: CollectionEntryType[] = ['Item', 'Space', 'View']
 
@@ -308,7 +308,7 @@ export default function CollectionDetailPage() {
         </Button>
       </div>
       <p className="text-sm text-muted-foreground mb-6">
-        カード・デッキ・スペース・ビューをまとめられます。
+        カード・デッキ・スペース・キャンバスをまとめられます。
       </p>
 
       {/* カバー（ヘッダー）設定 */}

@@ -33,7 +33,7 @@ const STRUCTURED_DATA = {
 
 const FEATURES = [
   { icon: <Brain size={20} />, title: 'イメージで記憶', body: '無機質な単語を視覚的な手がかりに変え、思い出しやすくします。' },
-  { icon: <Layers size={20} />, title: '自由に整理', body: 'ビュー・コレクション・スペースで、知識を自分の構造にまとめられます。' },
+  { icon: <Layers size={20} />, title: '自由に整理', body: 'キャンバス・コレクション・スペースで、知識を自分の構造にまとめられます。' },
   { icon: <Search size={20} />, title: 'すぐ探せる', body: 'タグと検索で、必要なカードをすぐに引き出せます。' },
 ]
 

@@ -7,7 +7,7 @@ class View < ApplicationRecord
   has_many :collection_entries, as: :entry, dependent: :destroy
   has_many :view_items, dependent: :destroy
   has_many :items, through: :view_items
-  # カバー（デッキ踏襲）。表紙はビューに配置した Item を指定。
+  # カバー（デッキ踏襲）。表紙はキャンバスに配置した Item を指定。
   belongs_to :cover_item, class_name: "Item", optional: true
   has_one_attached :cover_image
 
@@ -35,7 +35,7 @@ class View < ApplicationRecord
     view_type == "deck"
   end
 
-  # カバー候補カード（ビューに配置したカードを追加順で）
+  # カバー候補カード（キャンバスに配置したカードを追加順で）
   def cover_item_candidates
     view_items.sort_by(&:created_at).filter_map(&:item)
   end
