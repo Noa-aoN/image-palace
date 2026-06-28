@@ -34,6 +34,22 @@ RSpec.describe Items::CreateService, type: :service do
       expect(result.item.custom_prompt).to eq("wearing a hat")
     end
 
+    it "スタイル未指定なら設定のデフォルト画像スタイルを使う" do
+      create(:setting, user: user, default_image_style: "photo")
+
+      result = described_class.call(user: user, params: { title: "cat" })
+
+      expect(result.item.style).to eq("photo")
+    end
+
+    it "スタイルを明示指定した場合はデフォルト画像スタイルより優先される" do
+      create(:setting, user: user, default_image_style: "photo")
+
+      result = described_class.call(user: user, params: { title: "cat", style: "anime" })
+
+      expect(result.item.style).to eq("anime")
+    end
+
     it "意味の自動生成設定が ON のとき GenerateMeaningJob もエンキューする" do
       create(:setting, user: user, auto_generate_meanings: true)
 

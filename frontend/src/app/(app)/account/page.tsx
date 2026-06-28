@@ -1,94 +1,39 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { Download, Trash2, AlertTriangle, Sparkles, Loader2 } from 'lucide-react'
+import { User, Globe, Trash2, AlertTriangle, IdCard } from 'lucide-react'
 import { Button } from '@/components/ui/button'
-import { exportAccountData, deleteAccount } from '@/lib/api/account'
-import { getSettings, updateSettings } from '@/lib/api/settings'
+import { CategorySections, type CategorySection } from '@/components/features/myroom/CategorySections'
+import { ComingSoon } from '@/components/features/myroom/ComingSoon'
+import { deleteAccount } from '@/lib/api/account'
 import { useAuthStore } from '@/stores/auth'
 import { useItemsStore } from '@/stores/items'
 
+type TabKey = 'info' | 'basic' | 'public' | 'withdraw'
+
+// 認証プロバイダ（devise-token-auth の provider 値）を日本語表記にする。
+const PROVIDER_LABELS: Record<string, string> = {
+  email: 'メールアドレス',
+  google_oauth2: 'Google',
+  apple: 'Apple',
+  github: 'GitHub',
+}
+
+function providerLabel(provider?: string): string {
+  if (!provider) return '—'
+  return PROVIDER_LABELS[provider] ?? provider
+}
+
 export default function AccountPage() {
   const router = useRouter()
+  const user = useAuthStore((s) => s.user)
   const clearAuth = useAuthStore((s) => s.clearAuth)
   const resetItems = useItemsStore((s) => s.resetItems)
-
-  const [autoMeanings, setAutoMeanings] = useState<boolean | null>(null)
-  const [autoTags, setAutoTags] = useState<boolean | null>(null)
-  const [savingSettings, setSavingSettings] = useState(false)
-
-  useEffect(() => {
-    let cancelled = false
-    getSettings()
-      .then((s) => {
-        if (cancelled) return
-        setAutoMeanings(s.auto_generate_meanings)
-        setAutoTags(s.auto_generate_tags)
-      })
-      .catch(() => {})
-    return () => {
-      cancelled = true
-    }
-  }, [])
-
-  const toggleAutoMeanings = async () => {
-    if (autoMeanings === null || savingSettings) return
-    const next = !autoMeanings
-    setSavingSettings(true)
-    setAutoMeanings(next)
-    try {
-      const s = await updateSettings({ auto_generate_meanings: next })
-      setAutoMeanings(s.auto_generate_meanings)
-    } catch {
-      setAutoMeanings(!next) // 失敗したら元に戻す
-    } finally {
-      setSavingSettings(false)
-    }
-  }
-
-  const toggleAutoTags = async () => {
-    if (autoTags === null || savingSettings) return
-    const next = !autoTags
-    setSavingSettings(true)
-    setAutoTags(next)
-    try {
-      const s = await updateSettings({ auto_generate_tags: next })
-      setAutoTags(s.auto_generate_tags)
-    } catch {
-      setAutoTags(!next) // 失敗したら元に戻す
-    } finally {
-      setSavingSettings(false)
-    }
-  }
-
-  const [exporting, setExporting] = useState(false)
-  const [exportError, setExportError] = useState<string | null>(null)
 
   const [confirming, setConfirming] = useState(false)
   const [deleting, setDeleting] = useState(false)
   const [deleteError, setDeleteError] = useState<string | null>(null)
-
-  const handleExport = async () => {
-    setExporting(true)
-    setExportError(null)
-    try {
-      const data = await exportAccountData()
-      const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' })
-      const url = URL.createObjectURL(blob)
-      const a = document.createElement('a')
-      a.href = url
-      a.download = `image-palace-export-${new Date().toISOString().slice(0, 10)}.json`
-      document.body.appendChild(a)
-      a.click()
-      a.remove()
-      URL.revokeObjectURL(url)
-    } catch {
-      setExportError('エクスポートに失敗しました。時間を置いて再度お試しください。')
-    } finally {
-      setExporting(false)
-    }
-  }
 
   const handleDelete = async () => {
     setDeleting(true)
@@ -104,128 +49,107 @@ export default function AccountPage() {
     }
   }
 
+  const sections: CategorySection<TabKey>[] = [
+    {
+      key: 'info',
+      label: '登録情報',
+      icon: <IdCard size={16} />,
+      content: (
+        <section className="space-y-3 rounded-xl border border-border bg-card p-5">
+          <dl className="grid gap-3 text-sm">
+            <div className="flex items-center justify-between gap-4">
+              <dt className="text-muted-foreground">表示名</dt>
+              <dd className="font-medium">{user?.name?.trim() ? user.name : '未設定'}</dd>
+            </div>
+            <div className="flex items-center justify-between gap-4 border-t border-border pt-3">
+              <dt className="text-muted-foreground">メールアドレス</dt>
+              <dd className="font-medium break-all">{user?.email ?? '—'}</dd>
+            </div>
+            <div className="flex items-center justify-between gap-4 border-t border-border pt-3">
+              <dt className="text-muted-foreground">ログイン連携</dt>
+              <dd className="font-medium">{providerLabel(user?.provider)}</dd>
+            </div>
+          </dl>
+          <p className="text-xs text-muted-foreground">
+            メールアドレス・パスワード・ログイン連携の編集は順次対応予定です。
+          </p>
+        </section>
+      ),
+    },
+    {
+      key: 'basic',
+      label: '基本プロフィール',
+      icon: <User size={16} />,
+      content: (
+        <ComingSoon
+          description="アイコンや言語設定、ログイン連携、パスワード変更などは順次対応予定です。"
+          items={['アイコン', 'アプリ内の呼び名', '言語 / タイムゾーン', '学習目的 / デフォルト学習ジャンル', '自分用メモ', 'ログイン連携（Google / GitHub / Apple）', 'メールアドレス変更', 'パスワード / 二要素認証']}
+        />
+      ),
+    },
+    {
+      key: 'public',
+      label: '公開プロフィール',
+      icon: <Globe size={16} />,
+      content: (
+        <ComingSoon
+          description="他のユーザーへ見せる公開ページの設定は順次対応予定です。"
+          items={['公開名 / 公開アイコン', '自己紹介', 'SNS / 外部リンク', '公開プロフィール URL', '公開コレクション / 公開トロフィー', '公開 / 非公開の切り替え']}
+        />
+      ),
+    },
+    {
+      key: 'withdraw',
+      label: '退会',
+      icon: <Trash2 size={16} />,
+      content: (
+        <section className="space-y-3 rounded-xl border border-destructive/40 bg-destructive/5 p-5">
+          <div className="flex items-center gap-2">
+            <Trash2 size={18} className="text-destructive" />
+            <h2 className="text-base font-semibold text-destructive">退会（アカウントの削除）</h2>
+          </div>
+          <p className="text-sm text-muted-foreground">
+            アカウントを削除すると、すべてのカード・画像・デッキ・コレクションなどが完全に削除されます。
+            この操作は取り消せません。
+          </p>
+
+          {!confirming ? (
+            <Button variant="destructive" onClick={() => setConfirming(true)} className="flex items-center gap-1">
+              <Trash2 size={15} />
+              アカウントを削除
+            </Button>
+          ) : (
+            <div className="space-y-3 rounded-lg border border-destructive/50 bg-background p-4">
+              <div className="flex items-start gap-2 text-sm">
+                <AlertTriangle size={18} className="text-destructive shrink-0 mt-0.5" />
+                <span>本当に削除しますか？この操作は取り消せません。</span>
+              </div>
+              <div className="flex gap-2">
+                <Button variant="destructive" onClick={handleDelete} disabled={deleting}>
+                  {deleting ? '削除中…' : '完全に削除する'}
+                </Button>
+                <Button variant="outline" onClick={() => setConfirming(false)} disabled={deleting}>
+                  キャンセル
+                </Button>
+              </div>
+            </div>
+          )}
+          {deleteError && <p className="text-sm text-destructive">{deleteError}</p>}
+        </section>
+      ),
+    },
+  ]
+
   return (
-    <div className="max-w-2xl mx-auto px-6 py-12 space-y-10">
+    <div className="max-w-2xl mx-auto px-6 py-12 space-y-8">
       <div>
         <h1 className="text-xl font-semibold">アカウント設定</h1>
-        <p className="mt-1 text-sm text-muted-foreground">生成オプション・データのエクスポート・アカウントの削除ができます。</p>
+        <p className="mt-1 text-sm text-muted-foreground">
+          プロフィール・ログイン情報・退会など、アカウント本体に関する設定です。
+        </p>
       </div>
 
-      {/* 生成オプション */}
-      <section className="space-y-3 rounded-xl border border-border bg-card p-5">
-        <div className="flex items-center gap-2">
-          <Sparkles size={18} style={{ color: 'var(--palace)' }} />
-          <h2 className="text-base font-semibold">生成オプション</h2>
-        </div>
-        <div className="flex items-start justify-between gap-4">
-          <div>
-            <p className="text-sm font-medium">カード作成時に意味・説明を自動生成</p>
-            <p className="mt-1 text-sm text-muted-foreground">
-              ONにすると、新しいカードを作るたびに AI が意味・説明を自動生成します（生成コストがかかります）。
-              OFF の場合は、各カードの詳細画面から個別に生成できます。
-            </p>
-          </div>
-          <button
-            type="button"
-            role="switch"
-            aria-checked={autoMeanings === true}
-            aria-label="意味・説明の自動生成"
-            disabled={autoMeanings === null || savingSettings}
-            onClick={toggleAutoMeanings}
-            className={`relative mt-0.5 inline-flex h-6 w-11 shrink-0 items-center rounded-full transition-colors disabled:opacity-50 ${
-              autoMeanings ? 'bg-[var(--palace)]' : 'bg-muted'
-            }`}
-          >
-            <span
-              className={`inline-block h-5 w-5 transform rounded-full bg-white shadow transition-transform ${
-                autoMeanings ? 'translate-x-5' : 'translate-x-0.5'
-              }`}
-            />
-          </button>
-        </div>
-        <div className="flex items-start justify-between gap-4 border-t border-border pt-3">
-          <div>
-            <p className="text-sm font-medium">カード作成時にタグを自動生成</p>
-            <p className="mt-1 text-sm text-muted-foreground">
-              ONにすると、新しいカードを作るたびに AI が分類用タグを自動生成します（生成コストがかかります）。
-              OFF の場合は、各カードの詳細画面から個別に生成できます。既存のタグは消さず追加されます。
-            </p>
-          </div>
-          <button
-            type="button"
-            role="switch"
-            aria-checked={autoTags === true}
-            aria-label="タグの自動生成"
-            disabled={autoTags === null || savingSettings}
-            onClick={toggleAutoTags}
-            className={`relative mt-0.5 inline-flex h-6 w-11 shrink-0 items-center rounded-full transition-colors disabled:opacity-50 ${
-              autoTags ? 'bg-[var(--palace)]' : 'bg-muted'
-            }`}
-          >
-            <span
-              className={`inline-block h-5 w-5 transform rounded-full bg-white shadow transition-transform ${
-                autoTags ? 'translate-x-5' : 'translate-x-0.5'
-              }`}
-            />
-          </button>
-        </div>
-        {savingSettings && (
-          <p className="flex items-center gap-1 text-xs text-muted-foreground">
-            <Loader2 size={12} className="animate-spin" /> 保存中…
-          </p>
-        )}
-      </section>
-
-      {/* データエクスポート */}
-      <section className="space-y-3 rounded-xl border border-border bg-card p-5">
-        <div className="flex items-center gap-2">
-          <Download size={18} style={{ color: 'var(--palace)' }} />
-          <h2 className="text-base font-semibold">データのエクスポート</h2>
-        </div>
-        <p className="text-sm text-muted-foreground">
-          あなたのカード・デッキ・コレクションなどのデータを JSON 形式でダウンロードします。
-        </p>
-        <Button onClick={handleExport} disabled={exporting} className="flex items-center gap-1">
-          <Download size={15} />
-          {exporting ? 'エクスポート中…' : 'データをエクスポート'}
-        </Button>
-        {exportError && <p className="text-sm text-destructive">{exportError}</p>}
-      </section>
-
-      {/* アカウント削除 */}
-      <section className="space-y-3 rounded-xl border border-destructive/40 bg-destructive/5 p-5">
-        <div className="flex items-center gap-2">
-          <Trash2 size={18} className="text-destructive" />
-          <h2 className="text-base font-semibold text-destructive">アカウントの削除</h2>
-        </div>
-        <p className="text-sm text-muted-foreground">
-          アカウントを削除すると、すべてのカード・画像・デッキ・コレクションなどが完全に削除されます。
-          この操作は取り消せません。
-        </p>
-
-        {!confirming ? (
-          <Button variant="destructive" onClick={() => setConfirming(true)} className="flex items-center gap-1">
-            <Trash2 size={15} />
-            アカウントを削除
-          </Button>
-        ) : (
-          <div className="space-y-3 rounded-lg border border-destructive/50 bg-background p-4">
-            <div className="flex items-start gap-2 text-sm">
-              <AlertTriangle size={18} className="text-destructive shrink-0 mt-0.5" />
-              <span>本当に削除しますか？この操作は取り消せません。</span>
-            </div>
-            <div className="flex gap-2">
-              <Button variant="destructive" onClick={handleDelete} disabled={deleting}>
-                {deleting ? '削除中…' : '完全に削除する'}
-              </Button>
-              <Button variant="outline" onClick={() => setConfirming(false)} disabled={deleting}>
-                キャンセル
-              </Button>
-            </div>
-          </div>
-        )}
-        {deleteError && <p className="text-sm text-destructive">{deleteError}</p>}
-      </section>
+      <CategorySections sections={sections} ariaLabel="アカウント設定カテゴリ" />
     </div>
   )
 }

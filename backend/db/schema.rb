@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_06_28_000004) do
+ActiveRecord::Schema[8.1].define(version: 2026_06_28_000005) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
   enable_extension "pgcrypto"
@@ -193,6 +193,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_06_28_000004) do
     t.boolean "auto_generate_meanings", default: true, null: false
     t.boolean "auto_generate_tags", default: true, null: false
     t.datetime "created_at", null: false
+    t.string "default_image_style", default: "", null: false
     t.string "locale", default: "ja", null: false
     t.string "timezone", default: "Asia/Tokyo", null: false
     t.datetime "updated_at", null: false

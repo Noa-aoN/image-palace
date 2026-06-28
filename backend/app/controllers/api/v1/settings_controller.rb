@@ -20,13 +20,14 @@ module Api
       end
 
       def settings_params
-        params.require(:setting).permit(:auto_generate_meanings, :auto_generate_tags)
+        params.require(:setting).permit(:auto_generate_meanings, :auto_generate_tags, :default_image_style)
       end
 
       def serialize_setting(setting)
         {
           auto_generate_meanings: setting.auto_generate_meanings,
           auto_generate_tags: setting.auto_generate_tags,
+          default_image_style: setting.default_image_style,
           locale: setting.locale,
           timezone: setting.timezone
         }

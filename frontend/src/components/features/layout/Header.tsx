@@ -7,7 +7,10 @@ import { CircleUser, Castle, Coins } from 'lucide-react'
 import {
   DropdownMenu,
   DropdownMenuContent,
+  DropdownMenuGroup,
   DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
 import { useAuthStore } from '@/stores/auth'
@@ -20,6 +23,7 @@ import { MobileNav } from '@/components/features/layout/MobileNav'
 export function AppHeader() {
   const pathname = usePathname()
   const router = useRouter()
+  const user = useAuthStore((s) => s.user)
   const clearAuth = useAuthStore((s) => s.clearAuth)
   const resetItems = useItemsStore((s) => s.resetItems)
   const isAuthenticated = useAuthStore((s) => s.isAuthenticated)
@@ -80,12 +84,26 @@ export function AppHeader() {
               <CircleUser size={32} strokeWidth={1.5} />
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end">
+              {/* ユーザー名（表示名が無ければメールアドレス） */}
+              <DropdownMenuGroup>
+                <DropdownMenuLabel className="max-w-56 truncate">
+                  {user?.name?.trim() ? user.name : (user?.email ?? 'ゲスト')}
+                </DropdownMenuLabel>
+              </DropdownMenuGroup>
+              <DropdownMenuSeparator />
               <DropdownMenuItem onClick={() => router.push('/account')} className="cursor-pointer">
                 アカウント設定
               </DropdownMenuItem>
-              <DropdownMenuItem onClick={() => router.push('/billing')} className="cursor-pointer">
-                プランと請求
+              <DropdownMenuItem onClick={() => router.push('/settings')} className="cursor-pointer">
+                環境設定
               </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => router.push('/billing')} className="cursor-pointer">
+                プラン・支払い
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => router.push('/trophy')} className="cursor-pointer">
+                トロフィー
+              </DropdownMenuItem>
+              <DropdownMenuSeparator />
               <DropdownMenuItem onClick={handleLogout} className="cursor-pointer">
                 ログアウト
               </DropdownMenuItem>
