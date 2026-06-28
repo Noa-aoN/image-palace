@@ -143,7 +143,10 @@ export function DashboardContent() {
             <CardContent className="space-y-4">
               <div className="flex items-start justify-between">
                 <div>
-                  <p className="flex items-center gap-2 text-sm text-muted-foreground">
+                  <p className="text-sm text-muted-foreground">
+                    プラン: <span className="font-medium text-foreground">{tierLabel(billing?.plan?.tier ?? 'free')}</span>
+                  </p>
+                  <p className="mt-3 flex items-center gap-2 text-sm text-muted-foreground">
                     <Coins size={18} style={{ color: 'var(--palace)' }} />
                     クレジット残高
                   </p>
@@ -152,24 +155,21 @@ export function DashboardContent() {
                     <span className="ml-1 text-sm text-muted-foreground">{CREDIT_UNIT}</span>
                   </p>
                 </div>
-                <div className="flex items-start gap-3">
-                  <div className="text-right">
-                    <p className="text-sm text-muted-foreground">プラン</p>
-                    <p className="text-sm font-medium">{tierLabel(billing?.plan?.tier ?? 'free')}</p>
-                  </div>
-                  <ChevronRight
-                    size={18}
-                    className="transition-transform group-hover:translate-x-0.5"
-                    style={{ color: 'var(--palace)' }}
-                  />
-                </div>
+                <ChevronRight
+                  size={18}
+                  className="transition-transform group-hover:translate-x-0.5"
+                  style={{ color: 'var(--palace)' }}
+                />
               </div>
 
               <div className="border-t pt-3 space-y-2">
                 {creditPct !== null && (
                   <>
                     <div className="flex items-baseline justify-between">
-                      <span className="text-sm text-muted-foreground">今期のクレジット</span>
+                      <span className="text-sm text-muted-foreground">
+                        今期のクレジット
+                        {renewal && <span className="ml-2 text-xs">{renewal} に更新</span>}
+                      </span>
                       <span>
                         <span className="text-base font-semibold tabular-nums">{credits}</span>
                         <span className="text-sm text-muted-foreground"> / {perPeriod}</span>
@@ -185,7 +185,6 @@ export function DashboardContent() {
                 )}
                 <p className="text-xs text-muted-foreground">
                   {credits !== null ? `あと 約${credits}枚 つくれます（基本 1枚＝1クレジット）` : '読み込み中…'}
-                  {renewal && `　・　${renewal} に更新`}
                 </p>
               </div>
 
@@ -237,7 +236,7 @@ export function DashboardContent() {
 
       {/* 所有 */}
       <section className="space-y-3">
-        <h2 className="text-sm font-semibold text-muted-foreground">所有</h2>
+        <h2 className="text-sm font-semibold text-muted-foreground">所有アイテム</h2>
         <div className="grid grid-cols-2 gap-4">
           {OWNED_CARDS.map((stat) => (
             <Link
