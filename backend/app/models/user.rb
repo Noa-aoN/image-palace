@@ -22,7 +22,8 @@ class User < ApplicationRecord
   has_many :relations, dependent: :destroy
   has_many :shared_medias, dependent: :destroy
   has_many :subscriptions, dependent: :destroy
-  has_one :active_subscription, -> { where(status: "active") }, class_name: "Subscription"
+  # trialing も「有効な有料契約」として扱う（trial 中ユーザーに無料枠を二重付与しないため）。
+  has_one :active_subscription, -> { where(status: %w[active trialing]) }, class_name: "Subscription"
   has_many :credit_transactions, dependent: :destroy
 
   # 当月の生成数。カード（items）と、名前付きスペースポイント（画像生成を伴う）を
@@ -67,7 +68,10 @@ class User < ApplicationRecord
         record_credit!(kind: "subscription_expire", delta: -forfeited, subscription:)
       end
       update!(subscription_credits: amount)
-      record_credit!(kind: "subscription_grant", delta: amount, subscription:, stripe_event_id:)
+      # 解約時の失効（amount==0）では 0 デルタの付与ログを残さない。
+      if amount.positive?
+        record_credit!(kind: "subscription_grant", delta: amount, subscription:, stripe_event_id:)
+      end
     end
   end
 
