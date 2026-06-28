@@ -59,17 +59,31 @@ const FACT_CHECK_LABEL: Record<string, string> = {
   incorrect: '✗ 誤り',
 }
 
-function bulkOutcomeLabel(outcome: BulkResultEntry['outcome']): string {
-  if (outcome === 'failed') return '失敗'
-  if (outcome === 'skipped') return 'スキップ'
-  return '完了'
+// 結果バッジ（ラベル＋色）。ファクトチェックは判定（正しい/疑わしい/誤り）で色分けする。
+function bulkBadge(label: string, e: BulkResultEntry): { text: string; className: string } {
+  const base = 'shrink-0 rounded-full px-2 py-0.5 text-xs font-medium '
+  if (e.outcome === 'failed') return { text: '失敗', className: base + 'bg-red-100 text-red-700' }
+  if (e.outcome === 'skipped') return { text: 'スキップ', className: base + 'bg-muted text-muted-foreground' }
+  const status = label.includes('ファクトチェック') ? e.item?.fact_check_status : undefined
+  if (status) {
+    const cls =
+      status === 'correct' ? 'bg-green-100 text-green-700'
+      : status === 'doubtful' ? 'bg-yellow-100 text-yellow-800'
+      : 'bg-red-100 text-red-700'
+    return { text: FACT_CHECK_LABEL[status] ?? '完了', className: base + cls }
+  }
+  return { text: '完了', className: base + 'bg-green-100 text-green-700' }
 }
 
-function bulkOutcomeBadgeClass(outcome: BulkResultEntry['outcome']): string {
-  const base = 'shrink-0 rounded-full px-2 py-0.5 text-xs font-medium '
-  if (outcome === 'failed') return base + 'bg-red-100 text-red-700'
-  if (outcome === 'skipped') return base + 'bg-muted text-muted-foreground'
-  return base + 'bg-green-100 text-green-700'
+// 注意が必要な行（失敗・ファクトチェックで正しい以外）は左罫線＋淡い背景で強調する。
+function bulkRowClass(label: string, e: BulkResultEntry): string {
+  if (e.outcome === 'failed') return 'border-l-2 border-l-red-400 bg-red-50/40'
+  if (label.includes('ファクトチェック')) {
+    const s = e.item?.fact_check_status
+    if (s === 'incorrect') return 'border-l-2 border-l-red-400 bg-red-50/40'
+    if (s === 'doubtful') return 'border-l-2 border-l-yellow-400 bg-yellow-50/50'
+  }
+  return ''
 }
 
 // アクション種別（label）に応じて結果の要点テキストを返す。確認ダイアログ/リストの説明用。
@@ -756,13 +770,14 @@ export function ItemList({ initialTag = null }: { initialTag?: string | null }) 
             <ul className="max-h-72 divide-y overflow-y-auto rounded-lg border border-border bg-card">
               {bulkResults.entries.map((e) => {
                 const detail = bulkResultDetail(bulkResults.label, e)
+                const badge = bulkBadge(bulkResults.label, e)
                 return (
-                  <li key={e.id} className="px-3 py-2">
+                  <li key={e.id} className={`px-3 py-2 ${bulkRowClass(bulkResults.label, e)}`}>
                     <div className="flex items-center justify-between gap-2">
                       <Link href={`/items/${e.id}`} className="text-sm font-medium hover:underline">
                         {e.title}
                       </Link>
-                      <span className={bulkOutcomeBadgeClass(e.outcome)}>{bulkOutcomeLabel(e.outcome)}</span>
+                      <span className={badge.className}>{badge.text}</span>
                     </div>
                     {detail && <p className="mt-1 line-clamp-3 text-xs text-muted-foreground">{detail}</p>}
                   </li>

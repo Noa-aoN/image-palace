@@ -6,11 +6,17 @@
 class GenerateFactCheckService
   class GenerationError < StandardError; end
 
-  DEFAULT_MODEL = "gpt-4o-mini"
+  # ファクトチェックは世界知識と懐疑性が要るため、既定で意味/タグ生成より強いモデルを使う。
+  DEFAULT_MODEL = "gpt-4o"
 
   SYSTEM_PROMPT = <<~PROMPT.freeze
     あなたは学習カードの説明文を厳密にファクトチェックする校閲者です。
     与えられた「単語/概念」と、その「説明文」について、含まれる事実主張を1つずつ検証してください。
+
+    最初に、その「単語/概念」が実在し一般に確立されたものかを確認してください。
+    実在しない・架空・あなたが存在を確認できない造語（例: 似た綴りの実在語の取り違え）である場合は、
+    説明文がもっともらしくても "incorrect"（または確証が持てなければ "doubtful"）とし、
+    comment にその旨（実在が確認できない 等）を必ず書いてください。
 
     判定（status）は次の3つから1つ選びます:
       - "correct": 説明が事実として正確で、単語/概念とも一致している場合のみ
@@ -86,6 +92,7 @@ class GenerateFactCheckService
   end
 
   def model
-    ENV.fetch("OPENAI_TEXT_MODEL", DEFAULT_MODEL)
+    # 意味/タグ生成（OPENAI_TEXT_MODEL=mini）とは別に、ファクトチェック専用モデルを使う。
+    ENV.fetch("OPENAI_FACT_CHECK_MODEL", DEFAULT_MODEL)
   end
 end
