@@ -44,12 +44,12 @@ function creditPercent(available: number, perPeriod: number): number | null {
   return Math.min(100, Math.round((available / perPeriod) * 100))
 }
 
-// クレジット更新日（次回付与日）を "M/D" に整形。null/不正は null。
+// クレジット更新日（次回付与日）を "YYYY/M/D" に整形。null/不正は null。
 function formatRenewal(iso: string | null | undefined): string | null {
   if (!iso) return null
   const d = new Date(iso)
   if (Number.isNaN(d.getTime())) return null
-  return `${d.getMonth() + 1}/${d.getDate()}`
+  return `${d.getFullYear()}/${d.getMonth() + 1}/${d.getDate()}`
 }
 
 export function DashboardContent() {
