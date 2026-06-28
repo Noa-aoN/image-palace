@@ -29,6 +29,25 @@ RSpec.describe GenerateFactCheckService do
     expect(meaning.fact_checked_at).to be_present
   end
 
+  it "doubtful のとき訂正案(suggestion)も保存する" do
+    meaning = item.meanings.create!(definition: "間違った説明", language_code: "ja")
+    stub_chat({ status: "doubtful", comment: "不正確です", suggestion: "正しい説明はこちら" }.to_json)
+
+    described_class.call(item: item)
+
+    expect(meaning.reload.fact_check_status).to eq("doubtful")
+    expect(meaning.fact_check_suggestion).to eq("正しい説明はこちら")
+  end
+
+  it "correct のときは suggestion を保存しない" do
+    meaning = item.meanings.create!(definition: "正しい説明", language_code: "ja")
+    stub_chat({ status: "correct", comment: "OK", suggestion: "余計な訂正" }.to_json)
+
+    described_class.call(item: item)
+
+    expect(meaning.reload.fact_check_suggestion).to be_nil
+  end
+
   it "説明が無ければ nil を返す（スキップ扱い）" do
     expect(described_class.call(item: item)).to be_nil
   end

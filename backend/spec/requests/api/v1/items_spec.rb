@@ -411,6 +411,22 @@ RSpec.describe "Api::V1::Items", type: :request do
       expect(json_response["meaning"]).to eq("新しい説明")
     end
 
+    it "説明を書き換えると以前のファクトチェック結果をクリアする" do
+      item = user.items.create!(title: "光合成", item_type: item_type, generation_status: "completed")
+      item.meanings.create!(definition: "古い説明", language_code: "ja",
+        fact_check_status: "doubtful", fact_check_comment: "怪しい", fact_check_suggestion: "正しい説明")
+
+      patch "/api/v1/items/#{item.id}",
+        params: { item: { meaning: "新しい説明" } }, headers: headers, as: :json
+
+      expect(response).to have_http_status(:success)
+      meaning = item.reload.primary_meaning
+      expect(meaning.definition).to eq("新しい説明")
+      expect(meaning.fact_check_status).to be_nil
+      expect(meaning.fact_check_suggestion).to be_nil
+      expect(json_response["fact_check_status"]).to be_nil
+    end
+
     it "removes the meaning when an empty value is provided" do
       item = user.items.create!(title: "光合成", item_type: item_type, generation_status: "completed")
       item.meanings.create!(definition: "消される説明", language_code: "ja")

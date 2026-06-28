@@ -273,7 +273,15 @@ module Api
         if definition.blank?
           meaning.destroy! if meaning.persisted?
         else
-          meaning.update!(definition: definition)
+          # 説明を書き換えたら、以前のファクトチェック結果は無効化する（古い判定が残らないように）
+          if meaning.definition != definition
+            meaning.fact_check_status = nil
+            meaning.fact_check_comment = nil
+            meaning.fact_check_suggestion = nil
+            meaning.fact_checked_at = nil
+          end
+          meaning.definition = definition
+          meaning.save!
         end
       end
 
@@ -301,6 +309,7 @@ module Api
           meaning_level: item.primary_meaning&.detail_level,
           fact_check_status: item.primary_meaning&.fact_check_status,
           fact_check_comment: item.primary_meaning&.fact_check_comment,
+          fact_check_suggestion: item.primary_meaning&.fact_check_suggestion,
           fact_checked_at: item.primary_meaning&.fact_checked_at,
           style: item.style,
           custom_prompt: item.custom_prompt,

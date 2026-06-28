@@ -40,6 +40,8 @@ export interface Item {
   /** 説明のAIファクトチェック結果 */
   fact_check_status?: 'correct' | 'doubtful' | 'incorrect' | null
   fact_check_comment?: string | null
+  /** doubtful/incorrect 時の訂正案（説明の書き換え候補） */
+  fact_check_suggestion?: string | null
   fact_checked_at?: string | null
   style?: string | null
   custom_prompt?: string | null

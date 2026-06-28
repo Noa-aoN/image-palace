@@ -21,10 +21,21 @@ const FACT_CHECK_BADGE: Record<string, { label: string; className: string }> = {
   incorrect: { label: '✗ 誤り', className: 'bg-red-100 text-red-700' },
 }
 
-// 説明のAIファクトチェック結果（判定バッジ＋コメント）。未チェックなら何も出さない。
-function FactCheckResult({ item }: { item: Item }) {
+// 説明のAIファクトチェック結果（判定バッジ＋コメント＋訂正案）。未チェックなら何も出さない。
+// 訂正案がある場合は、確認のうえ説明を書き換えるボタンを出す（自動上書きはしない）。
+function FactCheckResult({
+  item,
+  onApply,
+  applying,
+}: {
+  item: Item
+  onApply?: (text: string) => void
+  applying?: boolean
+}) {
+  const [confirm, setConfirm] = useState(false)
   const badge = item.fact_check_status ? FACT_CHECK_BADGE[item.fact_check_status] : undefined
   if (!badge) return null
+  const suggestion = item.fact_check_suggestion
   return (
     <div className="rounded-md border border-border bg-muted/30 px-2.5 py-2">
       <span className={`inline-block rounded-full px-2 py-0.5 text-xs font-medium ${badge.className}`}>
@@ -32,6 +43,27 @@ function FactCheckResult({ item }: { item: Item }) {
       </span>
       {item.fact_check_comment && (
         <p className="mt-1.5 text-xs leading-relaxed text-muted-foreground whitespace-pre-wrap">{item.fact_check_comment}</p>
+      )}
+      {suggestion && (
+        <div className="mt-2 rounded border border-border bg-background px-2.5 py-2">
+          <p className="text-xs font-medium text-muted-foreground">AIの訂正案</p>
+          <p className="mt-1 text-sm leading-relaxed whitespace-pre-wrap">{suggestion}</p>
+          {onApply && (
+            <Button
+              size="sm"
+              variant={confirm ? 'destructive' : 'outline'}
+              disabled={applying}
+              onClick={() => {
+                if (!confirm) { setConfirm(true); return }
+                onApply(suggestion)
+              }}
+              onBlur={() => setConfirm(false)}
+              className="mt-2"
+            >
+              {applying ? '書き換え中...' : confirm ? 'この内容で書き換える（確定）' : '説明を書き換える'}
+            </Button>
+          )}
+        </div>
       )}
     </div>
   )
@@ -52,6 +84,21 @@ export function ItemProperties({ item, onUpdated }: ItemPropertiesProps) {
   const [meaningError, setMeaningError] = useState<string | null>(null)
   const [generatingMeaning, setGeneratingMeaning] = useState(false)
   const [meaningLevel, setMeaningLevel] = useState<string>(item.meaning_level ?? DEFAULT_MEANING_LEVEL)
+  const [applyingSuggestion, setApplyingSuggestion] = useState(false)
+
+  // ファクトチェックの訂正案で説明を書き換える（確認後に呼ばれる）。
+  const handleApplyFactCheckSuggestion = async (text: string) => {
+    setApplyingSuggestion(true)
+    setMeaningError(null)
+    try {
+      const updated = await updateItem(item.id, { meaning: text })
+      onUpdated(updated)
+    } catch {
+      setMeaningError('説明の書き換えに失敗しました。もう一度お試しください。')
+    } finally {
+      setApplyingSuggestion(false)
+    }
+  }
 
   const handleGenerateMeaning = async () => {
     setGeneratingMeaning(true)
@@ -304,7 +351,7 @@ export function ItemProperties({ item, onUpdated }: ItemPropertiesProps) {
                 例: {item.meaning_example}
               </p>
             )}
-            <FactCheckResult item={item} />
+            <FactCheckResult item={item} onApply={handleApplyFactCheckSuggestion} applying={applyingSuggestion} />
           </div>
         ) : (
           <p className="text-sm text-muted-foreground">未設定（「AIで生成」または鉛筆アイコンから追加できます）</p>
