@@ -18,4 +18,6 @@ export type BillingSummary = {
     current_period_end: string | null
     cancel_at_period_end: boolean
   } | null
+  // 次回のクレジット更新（回復）日。無料会員でも返る（翌月初）。
+  next_credit_reset: string | null
 }

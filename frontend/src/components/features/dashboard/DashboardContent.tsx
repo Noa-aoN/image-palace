@@ -123,7 +123,8 @@ export function DashboardContent() {
   const credits = billing?.available_credits ?? null
   const perPeriod = billing?.plan?.credits_per_period ?? 0
   const creditPct = credits !== null ? creditPercent(credits, perPeriod) : null
-  const renewal = formatRenewal(billing?.subscription?.current_period_end)
+  // 有料はサブスク期末、無料は次回クレジット回復日（翌月初）。どちらも「M/D に更新」で表示する。
+  const renewal = formatRenewal(billing?.subscription?.current_period_end ?? billing?.next_credit_reset)
   const activeCount = summary.pending_count + summary.processing_count + summary.failed_count
 
   return (
