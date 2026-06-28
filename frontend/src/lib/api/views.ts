@@ -12,7 +12,7 @@ export async function getView(id: string): Promise<View> {
   return res.data
 }
 
-// ビュー詳細（配置されたカード一覧を含む）
+// キャンバス詳細（配置されたカード一覧を含む）
 export async function getViewDetail(id: string): Promise<ViewDetail> {
   const res = await apiClient.get<ViewDetail>(`/api/v1/views/${id}`)
   return res.data

@@ -4,7 +4,7 @@ class ViewItem < ApplicationRecord
   # space_map 種別: カードを置いたスペースのポイント（freeboard では nil）
   belongs_to :space_point, optional: true
 
-  # freeboard（space_point_id が nil）は 1 ビュー 1 カード。
+  # freeboard（space_point_id が nil）は 1 キャンバス 1 カード。
   # space_map は同じカードを複数ポイントに置けるよう、この制約を課さない。
   validates :item_id, uniqueness: { scope: :view_id }, if: -> { space_point_id.nil? }
   # space_map では 1 ポイント 1 カード

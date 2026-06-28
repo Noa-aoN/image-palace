@@ -126,7 +126,7 @@ module Api
         @view = current_user.views.find(params[:id])
       end
 
-      # 配置先ポイントがこのビューのスペースに属することを保証する
+      # 配置先ポイントがこのキャンバスのスペースに属することを保証する
       def view_space_point!
         raise ActiveRecord::RecordNotFound unless @view.space
         @view.space.space_points.find(params[:space_point_id])
@@ -140,12 +140,12 @@ module Api
         params.require(:view).permit(:name, :cover_item_id, :cover_type)
       end
 
-      # 表紙はビューに配置したカードのみ指定可能
+      # 表紙はキャンバスに配置したカードのみ指定可能
       def validate_cover!
         return if @view.cover_item_id.blank?
         return if @view.view_items.exists?(item_id: @view.cover_item_id)
 
-        @view.errors.add(:cover_item_id, "はこのビューに配置したカードを指定してください")
+        @view.errors.add(:cover_item_id, "はこのキャンバスに配置したカードを指定してください")
         raise ActiveRecord::RecordInvalid, @view
       end
 

@@ -88,7 +88,7 @@ export function CreateItemForm() {
     setProgress({ done: 0, total: titles.length })
 
     try {
-      // 送信先デッキ（view_type='deck' のビュー）を組み立てる。新規作成する場合は先に作る
+      // 送信先デッキ（view_type='deck' のキャンバス）を組み立てる。新規作成する場合は先に作る
       // （名前未入力ならデフォルトのナンバリング名を付ける）。
       const targetViewIds = [...selectedDeckIds]
       if (createNewDeck) {

@@ -1,6 +1,6 @@
 class Collection < ApplicationRecord
   belongs_to :user
-  # コレクションはカード/スペース/ビューをまとめる汎用コンテナ（ポリモーフィック）
+  # コレクションはカード/スペース/キャンバスをまとめる汎用コンテナ（ポリモーフィック）
   has_many :collection_entries, dependent: :destroy
   has_many :collection_items, dependent: :destroy
   has_many :space_collections, dependent: :destroy
@@ -19,7 +19,7 @@ class Collection < ApplicationRecord
 
   # 自動カバー候補となるカード（画像）を追加順で集める。
   # Item エントリはそのカード、View エントリ（デッキ含む）はその表紙カードを使う
-  # （コレクションがビュー等だけでもカバーに中身の画像が反映されるようにする）。
+  # （コレクションがキャンバス等だけでもカバーに中身の画像が反映されるようにする）。
   def cover_item_candidates
     collection_entries.sort_by(&:created_at).filter_map do |e|
       case e.entry_type

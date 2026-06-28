@@ -1,4 +1,4 @@
-// ビュー種別。freeboard / space_map / deck が実装済み、他は仮置き（詳細は「準備中」表示）。
+// キャンバス種別。freeboard / space_map / deck が実装済み、他は仮置き（詳細は「準備中」表示）。
 // バックエンドの View::VIEW_TYPES と一致させること。
 export const VIEW_TYPES = ['freeboard', 'space_map', 'deck', 'page', 'map', 'timeline', 'binder', 'album'] as const
 

@@ -36,7 +36,7 @@ export default function ViewEditorPage() {
         if (!cancelled) setView(data)
       })
       .catch(() => {
-        if (!cancelled) setError('ビューの取得に失敗しました')
+        if (!cancelled) setError('キャンバスの取得に失敗しました')
       })
     return () => {
       cancelled = true
@@ -55,7 +55,7 @@ export default function ViewEditorPage() {
       setView((prev) => (prev ? { ...prev, name: updated.name } : prev))
       setEditing(false)
     } catch {
-      setError('ビュー名の更新に失敗しました')
+      setError('キャンバス名の更新に失敗しました')
     } finally {
       setSaving(false)
     }
@@ -117,7 +117,7 @@ export default function ViewEditorPage() {
     return (
       <div className="max-w-lg mx-auto px-6 py-12 text-center space-y-4">
         <p className="text-destructive">{error}</p>
-        <Link href="/views"><Button variant="outline">← ビュー一覧へ</Button></Link>
+        <Link href="/views"><Button variant="outline">← キャンバス一覧へ</Button></Link>
       </div>
     )
   }
@@ -134,7 +134,7 @@ export default function ViewEditorPage() {
   return (
     <div className="flex flex-col min-h-full px-6 py-12 max-w-7xl mx-auto w-full">
       <Link href="/views">
-        <Button variant="ghost" className="text-sm px-0 mb-4 self-start">← ビュー一覧へ</Button>
+        <Button variant="ghost" className="text-sm px-0 mb-4 self-start">← キャンバス一覧へ</Button>
       </Link>
 
       <div className="flex items-center justify-between gap-3 mb-6">
@@ -146,7 +146,7 @@ export default function ViewEditorPage() {
               onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); handleSaveName() } if (e.key === 'Escape') setEditing(false) }}
               disabled={saving}
               autoFocus
-              aria-label="ビュー名"
+              aria-label="キャンバス名"
               className="text-lg max-w-sm"
             />
             <Button size="sm" onClick={handleSaveName} disabled={saving} aria-label="保存"><Check size={16} /></Button>
@@ -159,7 +159,7 @@ export default function ViewEditorPage() {
             <button
               onClick={() => { setNameDraft(view.name); setEditing(true) }}
               className="shrink-0 text-muted-foreground hover:text-foreground transition-colors"
-              aria-label="ビュー名を編集"
+              aria-label="キャンバス名を編集"
             >
               <Pencil size={16} />
             </button>
@@ -188,7 +188,7 @@ export default function ViewEditorPage() {
             coverType={view.cover_type}
             busy={coverBusy}
             hasCustom={!!view.cover_image}
-            helpText="先頭/コラージュ: ビューに配置したカードを使用 / カスタム: アップロード画像"
+            helpText="先頭/コラージュ: キャンバスに配置したカードを使用 / カスタム: アップロード画像"
             onSelectType={handleSetCoverType}
             onUpload={handleUploadCover}
             onRemove={handleRemoveCover}
@@ -198,7 +198,7 @@ export default function ViewEditorPage() {
 
       {error && <p className="text-sm text-destructive mb-4">{error}</p>}
 
-      {/* ビュータイプごとの描画（freeboard / space_map を実装済み） */}
+      {/* キャンバスタイプごとの描画（freeboard / space_map を実装済み） */}
       {view.view_type === 'freeboard' ? (
         <FreeboardCanvas viewId={view.id} initialItems={view.items ?? []} />
       ) : view.view_type === 'deck' ? (

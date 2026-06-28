@@ -16,7 +16,7 @@ export interface Collection {
 
 export type CollectionEntryType = 'Item' | 'Space' | 'View'
 
-// コレクションにまとめられた要素（カード/スペース/ビューの混在。デッキはビューに統合済み）
+// コレクションにまとめられた要素（カード/スペース/キャンバスの混在。デッキはキャンバスに統合済み）
 export type CollectionEntry =
   | { entry_type: 'Item'; id: string; title: string; media: ItemMedia | null }
   | { entry_type: 'Space'; id: string; name: string; cover: CoverImage | null }
