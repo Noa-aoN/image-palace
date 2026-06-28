@@ -11,7 +11,14 @@ module Api
 
       def index
         scope = current_user.items
-        scope = scope.where(generation_status: params[:status]) if Item::GENERATION_STATUSES.include?(params[:status])
+        if params[:status] == "needs_correction"
+          # ファクトチェックで「正しい」以外＝訂正待ち（サブクエリで重複を避ける）
+          flagged_ids = current_user.items.joins(:meanings)
+                                    .where(meanings: { fact_check_status: %w[incorrect doubtful] }).select(:id)
+          scope = scope.where(id: flagged_ids)
+        elsif Item::GENERATION_STATUSES.include?(params[:status])
+          scope = scope.where(generation_status: params[:status])
+        end
         scope = scope.joins(:item_tags).where(item_tags: { tag_id: params[:tag_id] }) if params[:tag_id].present?
         if params[:q].present?
           like = "%#{ActiveRecord::Base.sanitize_sql_like(params[:q].strip)}%"

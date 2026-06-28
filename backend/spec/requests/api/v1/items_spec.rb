@@ -124,6 +124,20 @@ RSpec.describe "Api::V1::Items", type: :request do
       expect(items.last["generation_error"]).to be_nil
     end
 
+    it "status=needs_correction でファクトチェック要確認のカードだけ返す" do
+      flagged = user.items.create!(title: "トリトニウム", item_type: item_type, generation_status: "completed")
+      flagged.meanings.create!(definition: "説明", language_code: "ja", fact_check_status: "doubtful")
+      ok = user.items.create!(title: "光合成", item_type: item_type, generation_status: "completed")
+      ok.meanings.create!(definition: "説明", language_code: "ja", fact_check_status: "correct")
+      user.items.create!(title: "未チェック", item_type: item_type, generation_status: "completed")
+
+      get "/api/v1/items", params: { status: "needs_correction" }, headers: headers
+
+      expect(response).to have_http_status(:success)
+      ids = json_response["items"].map { |i| i["id"] }
+      expect(ids).to contain_exactly(flagged.id)
+    end
+
     it "does not return other users items" do
       own_item = user.items.create!(title: "自分のカード", item_type: item_type, generation_status: "completed")
       other_user = create(:user, :confirmed)

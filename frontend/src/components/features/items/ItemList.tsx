@@ -59,12 +59,15 @@ const FACT_CHECK_LABEL: Record<string, string> = {
   incorrect: '✗ 誤り',
 }
 
+// 一括AI操作の種別。結果の表示（バッジ色・要点）を切り替えるのに使う。
+type BulkKind = 'tag' | 'meaning' | 'factcheck'
+
 // 結果バッジ（ラベル＋色）。ファクトチェックは判定（正しい/疑わしい/誤り）で色分けする。
-function bulkBadge(label: string, e: BulkResultEntry): { text: string; className: string } {
+function bulkBadge(kind: BulkKind, e: BulkResultEntry): { text: string; className: string } {
   const base = 'shrink-0 rounded-full px-2 py-0.5 text-xs font-medium '
   if (e.outcome === 'failed') return { text: '失敗', className: base + 'bg-red-100 text-red-700' }
   if (e.outcome === 'skipped') return { text: 'スキップ', className: base + 'bg-muted text-muted-foreground' }
-  const status = label.includes('ファクトチェック') ? e.item?.fact_check_status : undefined
+  const status = kind === 'factcheck' ? e.item?.fact_check_status : undefined
   if (status) {
     const cls =
       status === 'correct' ? 'bg-green-100 text-green-700'
@@ -76,9 +79,9 @@ function bulkBadge(label: string, e: BulkResultEntry): { text: string; className
 }
 
 // 注意が必要な行（失敗・ファクトチェックで正しい以外）は左罫線＋淡い背景で強調する。
-function bulkRowClass(label: string, e: BulkResultEntry): string {
+function bulkRowClass(kind: BulkKind, e: BulkResultEntry): string {
   if (e.outcome === 'failed') return 'border-l-2 border-l-red-400 bg-red-50/40'
-  if (label.includes('ファクトチェック')) {
+  if (kind === 'factcheck') {
     const s = e.item?.fact_check_status
     if (s === 'incorrect') return 'border-l-2 border-l-red-400 bg-red-50/40'
     if (s === 'doubtful') return 'border-l-2 border-l-yellow-400 bg-yellow-50/50'
@@ -86,23 +89,30 @@ function bulkRowClass(label: string, e: BulkResultEntry): string {
   return ''
 }
 
-// アクション種別（label）に応じて結果の要点テキストを返す。確認ダイアログ/リストの説明用。
-function bulkResultDetail(label: string, e: BulkResultEntry): string | null {
+// アクション種別に応じて結果の要点テキストを返す。確認リストの説明用。
+function bulkResultDetail(kind: BulkKind, e: BulkResultEntry): string | null {
   if (e.outcome === 'failed') return '生成に失敗しました（再試行できます）'
   if (e.outcome === 'skipped') return e.reason ? (SKIP_REASON_LABEL[e.reason] ?? 'スキップしました') : null
   const item = e.item
   if (!item) return null
-  if (label.includes('ファクトチェック')) {
+  if (kind === 'factcheck') {
     const verdict = item.fact_check_status ? FACT_CHECK_LABEL[item.fact_check_status] : null
     if (!verdict) return null
     return item.fact_check_comment ? `${verdict} — ${item.fact_check_comment}` : verdict
   }
-  if (label.includes('説明')) return item.meaning ?? null
-  if (label.includes('タグ')) {
+  if (kind === 'meaning') return item.meaning ?? null
+  if (kind === 'tag') {
     const names = item.tags?.map((t) => t.name) ?? []
     return names.length ? `タグ: ${names.join(' / ')}` : 'タグなし'
   }
   return null
+}
+
+// ファクトチェックで「正しい」以外のときの単語名の色（一覧カードで使用）
+function factCheckTitleClass(status?: string | null): string {
+  if (status === 'incorrect') return 'text-red-600'
+  if (status === 'doubtful') return 'text-yellow-700'
+  return ''
 }
 
 const POLLING_STATUSES = new Set(['pending', 'processing'])
@@ -137,7 +147,13 @@ function ItemCard({ item, selectionMode, selected, onToggle }: ItemCardProps) {
     <>
       {/* テキストを上・画像を下に配置 */}
       <div className="px-3 py-2 flex items-center justify-between gap-2">
-        <span className="text-sm font-medium truncate">{item.title}</span>
+        {/* ファクトチェックで「正しい」以外なら単語名に色を付けて気づけるようにする */}
+        <span
+          className={`text-sm font-medium truncate ${factCheckTitleClass(item.fact_check_status)}`}
+          title={item.fact_check_status && item.fact_check_status !== 'correct' ? 'ファクトチェックで要確認' : undefined}
+        >
+          {item.title}
+        </span>
         <span
           className={`shrink-0 rounded-full px-2 py-0.5 text-xs font-medium ${STATUS_COLOR[item.generation_status] ?? ''}`}
         >
@@ -238,7 +254,7 @@ export function ItemList({ initialTag = null }: { initialTag?: string | null }) 
   const [bulkAction, setBulkAction] = useState<{ label: string; done: number; total: number } | null>(null)
   const [bulkSummary, setBulkSummary] = useState<string | null>(null)
   // 完了後に確認できる per-item 結果
-  const [bulkResults, setBulkResults] = useState<{ label: string; entries: BulkResultEntry[] } | null>(null)
+  const [bulkResults, setBulkResults] = useState<{ kind: BulkKind; entries: BulkResultEntry[] } | null>(null)
   const [resultsOpen, setResultsOpen] = useState(false)
   const [confirmTagReplace, setConfirmTagReplace] = useState(false)
   const cancelBulkRef = useRef(false)
@@ -266,7 +282,7 @@ export function ItemList({ initialTag = null }: { initialTag?: string | null }) 
   }
 
   // 選択カードを1件ずつ AI 操作に通す共通ループ。進捗を出し、スキップ/失敗を集計する。
-  const runBulkAi = async (label: string, fn: (id: string) => Promise<ItemOrSkip>) => {
+  const runBulkAi = async (label: string, kind: BulkKind, fn: (id: string) => Promise<ItemOrSkip>) => {
     const ids = [...selectedIds]
     if (ids.length === 0) return
     cancelBulkRef.current = false
@@ -323,21 +339,21 @@ export function ItemList({ initialTag = null }: { initialTag?: string | null }) 
     if (failed) parts.push(`${failed}件失敗`)
     if (cancelBulkRef.current) parts.push('中断')
     setBulkSummary(`${label}: ${parts.join(' / ')}`)
-    if (entries.length > 0) setBulkResults({ label, entries })
+    if (entries.length > 0) setBulkResults({ kind, entries })
   }
 
-  // ① タグを再設定（AI結果で置き換え・破壊的なので2段階確認）
+  // タグを付与（未設定のみ）
+  const handleTagFill = () => runBulkAi('タグを付与', 'tag', (id) => generateTags(id, { onlyIfEmpty: true }))
+  // タグを再設定（AI結果で置き換え・破壊的なので2段階確認）
   const handleTagReplace = () => {
     if (selectedIds.size === 0) return
     if (!confirmTagReplace) { setConfirmTagReplace(true); return }
-    runBulkAi('タグを再設定', (id) => generateTags(id, { replace: true }))
+    runBulkAi('タグを再設定', 'tag', (id) => generateTags(id, { replace: true }))
   }
-  // ③ タグを付与（未設定のみ）
-  const handleTagFill = () => runBulkAi('タグを付与', (id) => generateTags(id, { onlyIfEmpty: true }))
-  // ② 説明をファクトチェック（説明なしはスキップ）
-  const handleFactCheck = () => runBulkAi('ファクトチェック', (id) => factCheckItem(id))
-  // ④ 説明を付与（未設定のみ）
-  const handleMeaningFill = () => runBulkAi('説明を付与', (id) => generateMeaning(id, undefined, { onlyIfEmpty: true }))
+  // 説明を付与（未設定のみ）
+  const handleMeaningFill = () => runBulkAi('説明を付与', 'meaning', (id) => generateMeaning(id, undefined, { onlyIfEmpty: true }))
+  // AIで情報をチェック（説明のファクトチェック・説明なしはスキップ）
+  const handleFactCheck = () => runBulkAi('AIで情報をチェック', 'factcheck', (id) => factCheckItem(id))
 
   const allSelected = items.length > 0 && items.every((i) => selectedIds.has(i.id))
   const toggleSelectAll = () => {
@@ -614,6 +630,7 @@ export function ItemList({ initialTag = null }: { initialTag?: string | null }) 
         <option value="processing">生成中</option>
         <option value="pending">生成待ち</option>
         <option value="failed">失敗</option>
+        <option value="needs_correction">訂正待ち（要確認）</option>
       </select>
     </div>
   )
@@ -698,6 +715,10 @@ export function ItemList({ initialTag = null }: { initialTag?: string | null }) 
         </button>
         <span className="text-sm text-muted-foreground">{selectedIds.size}件を選択中</span>
         <div className="ml-auto flex flex-wrap items-center gap-2">
+          <Button variant="outline" size="sm" onClick={handleTagFill} disabled={bulkBusy || selectedIds.size === 0}
+            className="flex items-center gap-1.5" title="タグが無いカードにだけAIでタグを付けます">
+            <TagIcon size={14} />タグを付与
+          </Button>
           <Button
             variant={confirmTagReplace ? 'destructive' : 'outline'}
             size="sm"
@@ -710,17 +731,13 @@ export function ItemList({ initialTag = null }: { initialTag?: string | null }) 
             <Tags size={14} />
             {confirmTagReplace ? `置き換える（${selectedIds.size}件）` : 'タグを再設定'}
           </Button>
-          <Button variant="outline" size="sm" onClick={handleTagFill} disabled={bulkBusy || selectedIds.size === 0}
-            className="flex items-center gap-1.5" title="タグが無いカードにだけAIでタグを付けます">
-            <TagIcon size={14} />タグを付与
-          </Button>
-          <Button variant="outline" size="sm" onClick={handleFactCheck} disabled={bulkBusy || selectedIds.size === 0}
-            className="flex items-center gap-1.5" title="説明が事実として正しいかAIでチェックします">
-            <ShieldCheck size={14} />ファクトチェック
-          </Button>
           <Button variant="outline" size="sm" onClick={handleMeaningFill} disabled={bulkBusy || selectedIds.size === 0}
             className="flex items-center gap-1.5" title="説明が無いカードにだけAIで説明を付けます">
             <FileText size={14} />説明を付与
+          </Button>
+          <Button variant="outline" size="sm" onClick={handleFactCheck} disabled={bulkBusy || selectedIds.size === 0}
+            className="flex items-center gap-1.5" title="説明が事実として正しいかAIでチェックし、訂正案を出します">
+            <ShieldCheck size={14} />AIで情報をチェック
           </Button>
           <span className="mx-1 h-5 w-px bg-border" aria-hidden />
           <Button
@@ -769,10 +786,10 @@ export function ItemList({ initialTag = null }: { initialTag?: string | null }) 
           {resultsOpen && bulkResults && (
             <ul className="max-h-72 divide-y overflow-y-auto rounded-lg border border-border bg-card">
               {bulkResults.entries.map((e) => {
-                const detail = bulkResultDetail(bulkResults.label, e)
-                const badge = bulkBadge(bulkResults.label, e)
+                const detail = bulkResultDetail(bulkResults.kind, e)
+                const badge = bulkBadge(bulkResults.kind, e)
                 return (
-                  <li key={e.id} className={`px-3 py-2 ${bulkRowClass(bulkResults.label, e)}`}>
+                  <li key={e.id} className={`px-3 py-2 ${bulkRowClass(bulkResults.kind, e)}`}>
                     <div className="flex items-center justify-between gap-2">
                       <Link href={`/items/${e.id}`} className="text-sm font-medium hover:underline">
                         {e.title}
