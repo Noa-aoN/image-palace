@@ -3,12 +3,12 @@
 import { useEffect, useState } from 'react'
 import type { ReactNode } from 'react'
 import Link from 'next/link'
-import { PenLine, Sparkles, GalleryVerticalEnd, Library, LayoutGrid, Frame, Loader2, ChevronRight, Coins } from 'lucide-react'
+import { PenLine, Sparkles, GalleryVerticalEnd, Library, LayoutGrid, Frame, Loader2, ChevronRight, Coins, CreditCard } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
 import { getItemsSummary, type ItemsSummary } from '@/lib/api/items'
 import { useBillingStore } from '@/stores/billing'
-import { tierLabel, CREDIT_UNIT } from '@/lib/billing'
+import { tierLabel, CREDIT_UNIT, CREDIT_UNIT_SHORT } from '@/lib/billing'
 
 const GETTING_STARTED = [
   { icon: <PenLine size={20} />, text: '覚えたい単語や概念を入力する' },
@@ -44,12 +44,12 @@ function creditPercent(available: number, perPeriod: number): number | null {
   return Math.min(100, Math.round((available / perPeriod) * 100))
 }
 
-// クレジット更新日（次回付与日）を "M/D" に整形。null/不正は null。
+// クレジット更新日（次回付与日）を "YYYY/M/D" に整形。null/不正は null。
 function formatRenewal(iso: string | null | undefined): string | null {
   if (!iso) return null
   const d = new Date(iso)
   if (Number.isNaN(d.getTime())) return null
-  return `${d.getMonth() + 1}/${d.getDate()}`
+  return `${d.getFullYear()}/${d.getMonth() + 1}/${d.getDate()}`
 }
 
 export function DashboardContent() {
@@ -123,7 +123,8 @@ export function DashboardContent() {
   const credits = billing?.available_credits ?? null
   const perPeriod = billing?.plan?.credits_per_period ?? 0
   const creditPct = credits !== null ? creditPercent(credits, perPeriod) : null
-  const renewal = formatRenewal(billing?.subscription?.current_period_end)
+  // 有料はサブスク期末、無料は次回クレジット回復日（翌月初）。どちらも「M/D に更新」で表示する。
+  const renewal = formatRenewal(billing?.subscription?.current_period_end ?? billing?.next_credit_reset)
   const activeCount = summary.pending_count + summary.processing_count + summary.failed_count
 
   return (
@@ -140,38 +141,43 @@ export function DashboardContent() {
         >
           <Card className="cursor-pointer transition hover:border-[var(--palace)] hover:shadow-md">
             <CardContent className="space-y-4">
-              <div className="flex items-start justify-between">
-                <div>
+              <div>
+                <div className="flex items-center justify-between">
                   <p className="flex items-center gap-2 text-sm text-muted-foreground">
-                    <Coins size={18} style={{ color: 'var(--palace)' }} />
-                    クレジット残高
+                    <CreditCard size={18} style={{ color: 'var(--palace)' }} />
+                    プラン
                   </p>
-                  <p className="mt-1">
-                    <span className="text-3xl font-bold tabular-nums">{credits ?? '—'}</span>
-                    <span className="ml-1 text-sm text-muted-foreground">{CREDIT_UNIT}</span>
-                  </p>
-                </div>
-                <div className="flex items-start gap-3">
-                  <div className="text-right">
-                    <p className="text-sm text-muted-foreground">プラン</p>
-                    <p className="text-sm font-medium">{tierLabel(billing?.plan?.tier ?? 'free')}</p>
-                  </div>
                   <ChevronRight
                     size={18}
                     className="transition-transform group-hover:translate-x-0.5"
                     style={{ color: 'var(--palace)' }}
                   />
                 </div>
+                <div className="mt-1 flex items-baseline justify-between gap-2">
+                  <p className="text-lg font-semibold">{tierLabel(billing?.plan?.tier ?? 'free')}</p>
+                  {renewal && <span className="text-xs text-muted-foreground">{renewal} に更新</span>}
+                </div>
               </div>
 
-              <div className="border-t pt-3 space-y-2">
+              <div className="border-t pt-3">
+                <p className="flex items-center gap-2 text-sm text-muted-foreground">
+                  <Coins size={18} style={{ color: 'var(--palace)' }} />
+                  残高
+                </p>
+                <p className="mt-1">
+                  <span className="text-3xl font-bold tabular-nums">{credits ?? '—'}</span>
+                  <span className="ml-1 text-sm text-muted-foreground">{CREDIT_UNIT}（{CREDIT_UNIT_SHORT}）</span>
+                </p>
+              </div>
+
+              <div className="space-y-2">
                 {creditPct !== null && (
                   <>
                     <div className="flex items-baseline justify-between">
-                      <span className="text-sm text-muted-foreground">今期のクレジット</span>
+                      <span className="text-sm text-muted-foreground">生成可能カードの枚数目安</span>
                       <span>
                         <span className="text-base font-semibold tabular-nums">{credits}</span>
-                        <span className="text-sm text-muted-foreground"> / {perPeriod}</span>
+                        <span className="text-sm text-muted-foreground"> / {perPeriod} 枚</span>
                       </span>
                     </div>
                     <div className="h-2 w-full overflow-hidden rounded-full bg-muted">
@@ -182,10 +188,6 @@ export function DashboardContent() {
                     </div>
                   </>
                 )}
-                <p className="text-xs text-muted-foreground">
-                  {credits !== null ? `あと 約${credits}枚 つくれます（基本 1枚＝1クレジット）` : '読み込み中…'}
-                  {renewal && `　・　${renewal} に更新`}
-                </p>
               </div>
 
               {credits !== null && credits <= 0 && (
@@ -236,7 +238,7 @@ export function DashboardContent() {
 
       {/* 所有 */}
       <section className="space-y-3">
-        <h2 className="text-sm font-semibold text-muted-foreground">所有</h2>
+        <h2 className="text-sm font-semibold text-muted-foreground">所有アイテム</h2>
         <div className="grid grid-cols-2 gap-4">
           {OWNED_CARDS.map((stat) => (
             <Link

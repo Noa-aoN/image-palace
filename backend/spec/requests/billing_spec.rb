@@ -67,5 +67,16 @@ RSpec.describe "Billing endpoints", type: :request do
       expect(json_response["available_credits"]).to eq(10.0)
       expect(json_response.dig("plan", "name")).to eq("free")
     end
+
+    it "無料会員の next_credit_reset は翌月初を返す" do
+      user = create(:user, :confirmed)
+
+      travel_to(Time.zone.local(2026, 6, 15, 12, 0, 0)) do
+        get "/api/v1/billing/summary", headers: auth_headers_for(user), as: :json
+      end
+
+      expect(response).to have_http_status(:ok)
+      expect(Time.zone.parse(json_response["next_credit_reset"])).to eq(Time.zone.local(2026, 7, 1).beginning_of_day)
+    end
   end
 end
