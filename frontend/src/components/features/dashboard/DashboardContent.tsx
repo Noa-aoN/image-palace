@@ -141,25 +141,26 @@ export function DashboardContent() {
         >
           <Card className="cursor-pointer transition hover:border-[var(--palace)] hover:shadow-md">
             <CardContent className="space-y-4">
-              <div className="flex items-start justify-between">
-                <div>
-                  <p className="text-sm text-muted-foreground">
-                    プラン: <span className="font-medium text-foreground">{tierLabel(billing?.plan?.tier ?? 'free')}</span>
-                  </p>
-                  <p className="mt-3 flex items-center gap-2 text-sm text-muted-foreground">
-                    <Coins size={18} style={{ color: 'var(--palace)' }} />
-                    クレジット残高
-                  </p>
-                  <p className="mt-1">
-                    <span className="text-3xl font-bold tabular-nums">{credits ?? '—'}</span>
-                    <span className="ml-1 text-sm text-muted-foreground">{CREDIT_UNIT}</span>
-                  </p>
-                </div>
+              <div className="flex items-center justify-between">
+                <p className="text-sm text-muted-foreground">
+                  プラン: <span className="font-medium text-foreground">{tierLabel(billing?.plan?.tier ?? 'free')}</span>
+                </p>
                 <ChevronRight
                   size={18}
                   className="transition-transform group-hover:translate-x-0.5"
                   style={{ color: 'var(--palace)' }}
                 />
+              </div>
+
+              <div className="border-t pt-3">
+                <p className="flex items-center gap-2 text-sm text-muted-foreground">
+                  <Coins size={18} style={{ color: 'var(--palace)' }} />
+                  クレジット残高
+                </p>
+                <p className="mt-1">
+                  <span className="text-3xl font-bold tabular-nums">{credits ?? '—'}</span>
+                  <span className="ml-1 text-sm text-muted-foreground">{CREDIT_UNIT}</span>
+                </p>
               </div>
 
               <div className="border-t pt-3 space-y-2">
