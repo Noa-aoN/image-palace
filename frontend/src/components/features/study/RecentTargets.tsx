@@ -1,0 +1,61 @@
+'use client'
+
+import { GalleryHorizontal, Library, LayoutGrid, Star } from 'lucide-react'
+import { useStudyTargetStore, toQuizTarget, type SavedTarget } from '@/stores/studyTargets'
+import type { QuizTarget } from '@/lib/quiz'
+
+function kindIcon(kind: SavedTarget['kind']) {
+  if (kind === 'all') return <GalleryHorizontal size={15} />
+  if (kind === 'collection') return <Library size={15} />
+  return <LayoutGrid size={15} />
+}
+
+interface Props {
+  selectedKey?: string
+  onSelect: (target: QuizTarget) => void
+}
+
+// 直近・お気に入りのスタディ対象をチップで表示し、ワンタップで選び直せる。
+export function RecentTargets({ selectedKey, onSelect }: Props) {
+  const targets = useStudyTargetStore((s) => s.targets)
+  const togglePin = useStudyTargetStore((s) => s.togglePin)
+
+  if (targets.length === 0) {
+    return <p className="text-sm text-muted-foreground">最近選んだ対象はまだありません。</p>
+  }
+
+  return (
+    <div className="flex flex-wrap gap-2">
+      {targets.map((t) => {
+        const active = t.key === selectedKey
+        return (
+          <div
+            key={t.key}
+            className="flex items-center gap-1 rounded-full border bg-card pl-3 pr-1.5 py-1 text-sm transition"
+            style={{
+              borderColor: active ? 'var(--palace)' : 'var(--border)',
+              backgroundColor: active ? 'rgba(198,167,94,0.08)' : undefined,
+            }}
+          >
+            <button
+              type="button"
+              onClick={() => onSelect(toQuizTarget(t))}
+              className="flex items-center gap-1.5"
+            >
+              <span style={{ color: 'var(--palace)' }}>{kindIcon(t.kind)}</span>
+              <span className="max-w-40 truncate font-medium">{t.name}</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => togglePin(t.key)}
+              aria-label={t.pinned ? 'ピン留めを外す' : 'ピン留めする'}
+              className="rounded-full p-1 text-muted-foreground hover:text-[var(--palace)]"
+            >
+              <Star size={14} fill={t.pinned ? 'var(--palace)' : 'none'} color={t.pinned ? 'var(--palace)' : 'currentColor'} />
+            </button>
+          </div>
+        )
+      })}
+    </div>
+  )
+}

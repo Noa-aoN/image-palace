@@ -134,13 +134,11 @@ export default function NewWordlistPage() {
 
           <div>
             <p className="mb-2 text-sm font-medium">単語（{words.length}）</p>
-            <div className="flex flex-wrap gap-2">
+            <ul className="divide-y divide-border overflow-hidden rounded-xl border border-border bg-card">
               {words.map((word, i) => (
-                <span
-                  key={`${word}-${i}`}
-                  className="inline-flex items-center gap-1 rounded-full border border-border bg-card px-3 py-1 text-sm"
-                >
-                  {word}
+                <li key={`${word}-${i}`} className="flex items-center gap-3 px-4 py-2 text-sm">
+                  <span className="w-6 shrink-0 text-right text-xs tabular-nums text-muted-foreground">{i + 1}</span>
+                  <span className="flex-1">{word}</span>
                   <button
                     type="button"
                     onClick={() => removeWord(i)}
@@ -149,9 +147,9 @@ export default function NewWordlistPage() {
                   >
                     <X size={14} />
                   </button>
-                </span>
+                </li>
               ))}
-            </div>
+            </ul>
             <div className="mt-3 flex gap-2">
               <Input
                 value={newWord}

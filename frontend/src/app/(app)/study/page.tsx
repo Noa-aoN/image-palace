@@ -1,115 +1,95 @@
-'use client'
-
-import { useEffect, useState } from 'react'
+import type { Metadata } from 'next'
+import type { ReactNode } from 'react'
 import Link from 'next/link'
-import { Shuffle, ArrowRight } from 'lucide-react'
-import { Button } from '@/components/ui/button'
-import { getItems } from '@/lib/api/items'
-import type { Item } from '@/types/item'
+import { ChevronRight, Layers, HelpCircle, Gamepad2, BarChart3 } from 'lucide-react'
+import { Card, CardContent } from '@/components/ui/card'
 
-function shuffle<T>(arr: T[]): T[] {
-  const a = [...arr]
-  for (let i = a.length - 1; i > 0; i--) {
-    const j = Math.floor(Math.random() * (i + 1))
-    ;[a[i], a[j]] = [a[j], a[i]]
-  }
-  return a
+export const metadata: Metadata = { title: 'スタディ' }
+
+type StudyMode = {
+  href?: string
+  icon: ReactNode
+  label: string
+  description: string
+  comingSoon?: boolean
 }
 
+const STUDY_MODES: StudyMode[] = [
+  {
+    href: '/study/practice',
+    icon: <Layers size={20} />,
+    label: 'プラクティス',
+    description: 'カードを見返しながら、低負担で復習します。',
+  },
+  {
+    href: '/study/quiz',
+    icon: <HelpCircle size={20} />,
+    label: 'クイズ',
+    description: '選んだカードやコレクションから問題を作って確認します。',
+  },
+  {
+    href: '/study/game',
+    icon: <Gamepad2 size={20} />,
+    label: 'プレイ',
+    description: 'カルタや神経衰弱など、ゲームで楽しみながら反復できる学習モードです。',
+  },
+  {
+    href: '/study/record',
+    icon: <BarChart3 size={20} />,
+    label: 'レコード',
+    description: '学習履歴や正答率を確認します。',
+  },
+]
+
 export default function StudyPage() {
-  const [order, setOrder] = useState<Item[] | null>(null)
-  const [index, setIndex] = useState(0)
-  const [revealed, setRevealed] = useState(false)
-
-  useEffect(() => {
-    getItems()
-      .then((data) => {
-        const usable = data.filter((i) => i.generation_status === 'completed' && i.media?.url)
-        setOrder(shuffle(usable))
-      })
-      .catch(() => setOrder([]))
-  }, [])
-
-  const reshuffle = () => {
-    setOrder((current) => (current ? shuffle(current) : current))
-    setIndex(0)
-    setRevealed(false)
-  }
-
-  const next = () => {
-    setRevealed(false)
-    setIndex((i) => (order && order.length > 0 ? (i + 1) % order.length : 0))
-  }
-
-  if (order === null) {
-    return (
-      <div className="max-w-xl mx-auto px-6 py-12">
-        <div className="h-7 w-32 rounded bg-muted animate-pulse" />
-        <div className="mt-8 aspect-square w-full rounded-xl bg-muted animate-pulse" />
-      </div>
-    )
-  }
-
-  if (order.length === 0) {
-    return (
-      <div className="max-w-xl mx-auto px-6 py-12 text-center">
-        <h1 className="text-2xl font-semibold">スタディ</h1>
-        <p className="mt-4 text-muted-foreground">学習できるカードがまだありません。まずはカードを作成しましょう。</p>
-        <Link href="/items/new">
-          <Button className="mt-6">カードを作成する</Button>
-        </Link>
-      </div>
-    )
-  }
-
-  const card = order[index]
-
   return (
-    <div className="max-w-xl mx-auto px-6 py-12">
-      <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-semibold">スタディ</h1>
-        <span className="text-sm text-muted-foreground tabular-nums">
-          {index + 1} / {order.length}
-        </span>
-      </div>
-      <p className="mt-2 text-sm text-muted-foreground">画像を見て単語を思い出し、タップで答え合わせをしましょう。</p>
+    <div className="max-w-2xl mx-auto px-6 py-12">
+      <h1 className="text-2xl font-semibold">スタディ</h1>
+      <p className="mt-2 text-muted-foreground">
+        保存したカードやコレクションを使って、記憶を定着させます。
+      </p>
 
-      {/* フラッシュカード（タップで裏返す） */}
-      <button
-        type="button"
-        onClick={() => setRevealed((r) => !r)}
-        className="mt-6 block w-full overflow-hidden rounded-2xl border border-border bg-card text-left transition hover:shadow-md"
-        aria-label={revealed ? '画像に戻す' : '答えを表示'}
-      >
-        <div className="aspect-square w-full bg-muted">
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src={card.media!.url} alt="" className="h-full w-full object-cover" />
-        </div>
-        <div className="px-5 py-4">
-          {revealed ? (
-            <>
-              <p className="text-xl font-bold">{card.title}</p>
-              {card.meaning ? (
-                <p className="mt-1 text-sm leading-6 text-muted-foreground">{card.meaning}</p>
-              ) : (
-                <p className="mt-1 text-sm text-muted-foreground">（意味は未登録）</p>
-              )}
-            </>
+      <div className="mt-8 grid gap-4 sm:grid-cols-2">
+        {STUDY_MODES.map((mode) =>
+          mode.comingSoon || !mode.href ? (
+            <Card key={mode.label} className="h-full border-dashed bg-card/60" aria-disabled>
+              <CardContent>
+                <div className="flex items-center justify-between">
+                  <span className="flex items-center gap-2 text-sm font-medium text-muted-foreground">
+                    <span style={{ color: 'var(--palace)' }}>{mode.icon}</span>
+                    {mode.label}
+                  </span>
+                  <span className="rounded-full bg-muted px-2 py-0.5 text-xs text-muted-foreground">準備中</span>
+                </div>
+                <p className="mt-2 text-sm text-muted-foreground">{mode.description}</p>
+              </CardContent>
+            </Card>
           ) : (
-            <p className="text-sm text-muted-foreground">タップして答えを表示</p>
-          )}
-        </div>
-      </button>
-
-      <div className="mt-6 flex items-center gap-3">
-        <Button onClick={next} className="flex flex-1 items-center justify-center gap-2">
-          次へ
-          <ArrowRight size={16} />
-        </Button>
-        <Button variant="outline" onClick={reshuffle} className="flex items-center gap-2" aria-label="シャッフル">
-          <Shuffle size={16} />
-          シャッフル
-        </Button>
+            <Link
+              key={mode.label}
+              href={mode.href}
+              aria-label={mode.label}
+              className="group block rounded-xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--palace)]"
+            >
+              <Card className="h-full cursor-pointer transition hover:border-[var(--palace)] hover:shadow-md">
+                <CardContent>
+                  <div className="flex items-center justify-between">
+                    <span className="flex items-center gap-2 text-sm font-medium">
+                      <span style={{ color: 'var(--palace)' }}>{mode.icon}</span>
+                      {mode.label}
+                    </span>
+                    <ChevronRight
+                      size={16}
+                      className="transition-transform group-hover:translate-x-0.5"
+                      style={{ color: 'var(--palace)' }}
+                    />
+                  </div>
+                  <p className="mt-2 text-sm text-muted-foreground">{mode.description}</p>
+                </CardContent>
+              </Card>
+            </Link>
+          )
+        )}
       </div>
     </div>
   )
