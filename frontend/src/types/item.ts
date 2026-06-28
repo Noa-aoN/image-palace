@@ -37,6 +37,10 @@ export interface Item {
   meaning?: string | null
   meaning_example?: string | null
   meaning_level?: string | null
+  /** 説明のAIファクトチェック結果 */
+  fact_check_status?: 'correct' | 'doubtful' | 'incorrect' | null
+  fact_check_comment?: string | null
+  fact_checked_at?: string | null
   style?: string | null
   custom_prompt?: string | null
   tags?: ItemTag[]

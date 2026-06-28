@@ -3,10 +3,20 @@
 import { startTransition, useEffect, useEffectEvent, useRef, useState } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
-import { ChevronLeft, ChevronRight, Search, X, Trash2, CheckSquare, Square } from 'lucide-react'
+import { ChevronLeft, ChevronRight, Search, X, Trash2, CheckSquare, Square, Tags, Tag as TagIcon, ShieldCheck, FileText } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Spinner } from '@/components/ui/spinner'
-import { getItemsPage, getItemSuggestions, bulkDeleteItems, type ItemSuggestion } from '@/lib/api/items'
+import {
+  getItemsPage,
+  getItemSuggestions,
+  bulkDeleteItems,
+  generateTags,
+  generateMeaning,
+  factCheckItem,
+  isItemSkip,
+  type ItemSuggestion,
+  type ItemOrSkip,
+} from '@/lib/api/items'
 import { getTags } from '@/lib/api/tags'
 import { useItemsStore } from '@/stores/items'
 import type { Item } from '@/types/item'
@@ -157,6 +167,13 @@ export function ItemList({ initialTag = null }: { initialTag?: string | null }) 
   const [deleting, setDeleting] = useState(false)
   const [actionError, setActionError] = useState<string | null>(null)
   const [refreshToken, setRefreshToken] = useState(0)
+  // 一括AI操作（タグ再設定・付与・ファクトチェック・説明付与）の進捗とサマリ
+  const [bulkAction, setBulkAction] = useState<{ label: string; done: number; total: number } | null>(null)
+  const [bulkSummary, setBulkSummary] = useState<string | null>(null)
+  const [confirmTagReplace, setConfirmTagReplace] = useState(false)
+  const cancelBulkRef = useRef(false)
+  const upsertItem = useItemsStore((state) => state.upsertItem)
+  const bulkBusy = deleting || bulkAction !== null
 
   const toggleSelect = (id: string) => {
     setSelectedIds((prev) => {
@@ -171,8 +188,59 @@ export function ItemList({ initialTag = null }: { initialTag?: string | null }) 
     setSelectionMode(false)
     setSelectedIds(new Set())
     setConfirmBulkDelete(false)
+    setConfirmTagReplace(false)
     setActionError(null)
+    setBulkSummary(null)
   }
+
+  // 選択カードを1件ずつ AI 操作に通す共通ループ。進捗を出し、スキップ/失敗を集計する。
+  const runBulkAi = async (label: string, fn: (id: string) => Promise<ItemOrSkip>) => {
+    const ids = [...selectedIds]
+    if (ids.length === 0) return
+    cancelBulkRef.current = false
+    setActionError(null)
+    setBulkSummary(null)
+    setBulkAction({ label, done: 0, total: ids.length })
+
+    let processed = 0
+    let skipped = 0
+    let failed = 0
+    for (let i = 0; i < ids.length; i++) {
+      if (cancelBulkRef.current) break
+      try {
+        const result = await fn(ids[i])
+        if (isItemSkip(result)) skipped += 1
+        else {
+          upsertItem(result)
+          processed += 1
+        }
+      } catch {
+        failed += 1
+      }
+      setBulkAction({ label, done: i + 1, total: ids.length })
+    }
+
+    setBulkAction(null)
+    setConfirmTagReplace(false)
+    const parts = [`${processed}件処理`]
+    if (skipped) parts.push(`${skipped}件スキップ`)
+    if (failed) parts.push(`${failed}件失敗`)
+    if (cancelBulkRef.current) parts.push('中断')
+    setBulkSummary(`${label}: ${parts.join(' / ')}`)
+  }
+
+  // ① タグを再設定（AI結果で置き換え・破壊的なので2段階確認）
+  const handleTagReplace = () => {
+    if (selectedIds.size === 0) return
+    if (!confirmTagReplace) { setConfirmTagReplace(true); return }
+    runBulkAi('タグを再設定', (id) => generateTags(id, { replace: true }))
+  }
+  // ③ タグを付与（未設定のみ）
+  const handleTagFill = () => runBulkAi('タグを付与', (id) => generateTags(id, { onlyIfEmpty: true }))
+  // ② 説明をファクトチェック（説明なしはスキップ）
+  const handleFactCheck = () => runBulkAi('ファクトチェック', (id) => factCheckItem(id))
+  // ④ 説明を付与（未設定のみ）
+  const handleMeaningFill = () => runBulkAi('説明を付与', (id) => generateMeaning(id, undefined, { onlyIfEmpty: true }))
 
   const allSelected = items.length > 0 && items.every((i) => selectedIds.has(i.id))
   const toggleSelectAll = () => {
@@ -525,29 +593,69 @@ export function ItemList({ initialTag = null }: { initialTag?: string | null }) 
         <button
           type="button"
           onClick={toggleSelectAll}
-          className="flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors"
+          disabled={bulkBusy}
+          className="flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors disabled:opacity-50"
         >
           {allSelected ? <CheckSquare size={16} /> : <Square size={16} />}
           {allSelected ? 'すべて解除' : 'すべて選択'}
         </button>
         <span className="text-sm text-muted-foreground">{selectedIds.size}件を選択中</span>
-        <div className="ml-auto flex items-center gap-2">
+        <div className="ml-auto flex flex-wrap items-center gap-2">
+          <Button
+            variant={confirmTagReplace ? 'destructive' : 'outline'}
+            size="sm"
+            onClick={handleTagReplace}
+            disabled={bulkBusy || selectedIds.size === 0}
+            onBlur={() => setConfirmTagReplace(false)}
+            className="flex items-center gap-1.5"
+            title="選択カードのタグをAIの結果で置き換えます"
+          >
+            <Tags size={14} />
+            {confirmTagReplace ? `置き換える（${selectedIds.size}件）` : 'タグを再設定'}
+          </Button>
+          <Button variant="outline" size="sm" onClick={handleTagFill} disabled={bulkBusy || selectedIds.size === 0}
+            className="flex items-center gap-1.5" title="タグが無いカードにだけAIでタグを付けます">
+            <TagIcon size={14} />タグを付与
+          </Button>
+          <Button variant="outline" size="sm" onClick={handleFactCheck} disabled={bulkBusy || selectedIds.size === 0}
+            className="flex items-center gap-1.5" title="説明が事実として正しいかAIでチェックします">
+            <ShieldCheck size={14} />ファクトチェック
+          </Button>
+          <Button variant="outline" size="sm" onClick={handleMeaningFill} disabled={bulkBusy || selectedIds.size === 0}
+            className="flex items-center gap-1.5" title="説明が無いカードにだけAIで説明を付けます">
+            <FileText size={14} />説明を付与
+          </Button>
+          <span className="mx-1 h-5 w-px bg-border" aria-hidden />
           <Button
             variant={confirmBulkDelete ? 'destructive' : 'outline'}
             size="sm"
             onClick={handleBulkDelete}
-            disabled={deleting || selectedIds.size === 0}
+            disabled={bulkBusy || selectedIds.size === 0}
             onBlur={() => setConfirmBulkDelete(false)}
             className="flex items-center gap-1.5"
           >
             {deleting ? <Spinner size={14} /> : <Trash2 size={14} />}
             {deleting ? '削除中...' : confirmBulkDelete ? `本当に削除（${selectedIds.size}件）` : '削除'}
           </Button>
-          <Button variant="ghost" size="sm" onClick={exitSelection} disabled={deleting}>
+          <Button variant="ghost" size="sm" onClick={exitSelection} disabled={bulkBusy}>
             キャンセル
           </Button>
         </div>
       </div>
+      {bulkAction && (
+        <div className="flex items-center gap-2 text-sm text-muted-foreground">
+          <Spinner size={14} />
+          {bulkAction.label}中... ({bulkAction.done}/{bulkAction.total})
+          <button
+            type="button"
+            onClick={() => { cancelBulkRef.current = true }}
+            className="underline hover:text-foreground"
+          >
+            中断
+          </button>
+        </div>
+      )}
+      {bulkSummary && <p className="text-sm text-muted-foreground">{bulkSummary}</p>}
       {actionError && <p className="text-sm text-destructive">{actionError}</p>}
     </div>
   )

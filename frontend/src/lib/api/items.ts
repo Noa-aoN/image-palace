@@ -159,14 +159,44 @@ export async function retryItem(id: string, options?: RegenerateOptions): Promis
   return res.data
 }
 
-// AI による意味・説明の生成（同期）。生成済みの場合は再生成。level で詳しさを選べる。
-export async function generateMeaning(id: string, level?: string): Promise<Item> {
-  const res = await apiClient.post<Item>(`/api/v1/items/${id}/meaning`, level ? { level } : {})
+// 一括AI操作でカードが対象外（既に設定済み・説明なし等）だった場合のスキップ結果。
+export type ItemSkip = { status: 'skipped'; reason: string }
+export type ItemOrSkip = Item | ItemSkip
+
+export function isItemSkip(result: ItemOrSkip): result is ItemSkip {
+  return (result as ItemSkip).status === 'skipped'
+}
+
+// AI による意味・説明の生成（同期）。level で詳しさを選べる。
+// onlyIfEmpty=true なら既に説明があるカードはスキップ（未設定の穴埋め用）。
+export async function generateMeaning(
+  id: string,
+  level?: string,
+  opts?: { onlyIfEmpty?: boolean }
+): Promise<ItemOrSkip> {
+  const body: Record<string, unknown> = {}
+  if (level) body.level = level
+  if (opts?.onlyIfEmpty) body.only_if_empty = true
+  const res = await apiClient.post<ItemOrSkip>(`/api/v1/items/${id}/meaning`, body)
   return res.data
 }
 
-// AI による分類タグの生成（同期）。既存タグは消さず union で追加する。
-export async function generateTags(id: string): Promise<Item> {
-  const res = await apiClient.post<Item>(`/api/v1/items/${id}/tags`)
+// AI による分類タグの生成（同期）。
+// replace=true で置き換え、false（既定）は既存タグへ union 追加。
+// onlyIfEmpty=true なら既にタグがあるカードはスキップ（未設定の穴埋め用）。
+export async function generateTags(
+  id: string,
+  opts?: { replace?: boolean; onlyIfEmpty?: boolean }
+): Promise<ItemOrSkip> {
+  const body: Record<string, unknown> = {}
+  if (opts?.replace) body.replace = true
+  if (opts?.onlyIfEmpty) body.only_if_empty = true
+  const res = await apiClient.post<ItemOrSkip>(`/api/v1/items/${id}/tags`, body)
+  return res.data
+}
+
+// AI による説明（meaning）のファクトチェック（同期）。説明が無いカードはスキップ。
+export async function factCheckItem(id: string): Promise<ItemOrSkip> {
+  const res = await apiClient.post<ItemOrSkip>(`/api/v1/items/${id}/fact_check`)
   return res.data
 }

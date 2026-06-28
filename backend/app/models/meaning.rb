@@ -5,9 +5,13 @@ class Meaning < ApplicationRecord
   DETAIL_LEVELS = %w[brief simple detailed].freeze
   DEFAULT_DETAIL_LEVEL = "simple"
 
+  # AIファクトチェックの判定（正しい / 疑わしい / 誤り）
+  FACT_CHECK_STATUSES = %w[correct doubtful incorrect].freeze
+
   validates :definition, presence: true
   validates :language_code, presence: true
   validates :detail_level, inclusion: { in: DETAIL_LEVELS }
+  validates :fact_check_status, inclusion: { in: FACT_CHECK_STATUSES }, allow_nil: true
 
   scope :in_language, ->(lang) { where(language_code: lang) }
 

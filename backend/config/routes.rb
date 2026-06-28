@@ -34,6 +34,7 @@ Rails.application.routes.draw do
         member do
           post :retry
           post :meaning
+          post :fact_check
           post "tags", action: :generate_tags
         end
       end

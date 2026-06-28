@@ -21,21 +21,23 @@ class GenerateTagsService
     必ず次の JSON 形式のみで返してください: {"tags": ["タグ1", "タグ2"]}
   PROMPT
 
-  def self.call(item:)
-    new(item).call
+  def self.call(item:, replace: false)
+    new(item, replace:).call
   end
 
-  def initialize(item)
+  def initialize(item, replace: false)
     @item = item
+    @replace = replace
   end
 
-  # 生成したタグを既存タグへ union で追加し、対象アイテムを返す
+  # 生成したタグを対象アイテムへ反映して返す。
+  # replace=false: 既存タグへ union で追加（既定）。replace=true: AI結果で置き換え。
   def call
     names = normalize(request)
     return @item if names.empty?
 
     new_tags = names.map { |name| find_or_create_tag(name) }
-    @item.tags = (@item.tags + new_tags).uniq
+    @item.tags = @replace ? new_tags.uniq : (@item.tags + new_tags).uniq
     @item
   end
 

@@ -1,7 +1,7 @@
 module Api
   module V1
     class ItemsController < BaseController
-      before_action :set_item, only: [ :show, :update, :destroy, :retry, :meaning, :generate_tags ]
+      before_action :set_item, only: [ :show, :update, :destroy, :retry, :meaning, :generate_tags, :fact_check ]
 
       DEFAULT_PER_PAGE = 24
       MAX_PER_PAGE = 100
@@ -146,9 +146,14 @@ module Api
         render json: { errors: e.record.errors.full_messages }, status: :unprocessable_entity
       end
 
-      # 意味・説明を AI で生成（同期）。詳細画面の「意味を生成」ボタンから呼ばれる。
+      # 意味・説明を AI で生成（同期）。詳細画面の「意味を生成」ボタンや一括操作から呼ばれる。
       # level（brief / simple / detailed）で詳しさを選べる。未指定は simple。
+      # only_if_empty=true なら、既に説明があるカードはスキップする（未設定の穴埋め用）。
       def meaning
+        if truthy?(params[:only_if_empty]) && item.primary_meaning.present?
+          return render json: { status: "skipped", reason: "already_has_meaning" }, status: :ok
+        end
+
         GenerateMeaningService.call(item: item, level: params[:level])
         render json: serialize_item(item.reload), status: :ok
       rescue GenerateMeaningService::GenerationError, KeyError, Faraday::Error => e
@@ -156,17 +161,39 @@ module Api
         render json: { error: "意味の生成に失敗しました。時間を置いて再度お試しください。" }, status: :unprocessable_entity
       end
 
-      # タグを AI で生成（同期）。詳細画面の「AIで生成」ボタンから呼ばれる。
-      # 既存タグは消さず union で追加する。
+      # タグを AI で生成（同期）。詳細画面の「AIで生成」ボタンや一括操作から呼ばれる。
+      # replace=true: AI結果で置き換え。false（既定）: 既存タグへ union で追加。
+      # only_if_empty=true: 既にタグがあるカードはスキップ（未設定の穴埋め用）。
       def generate_tags
-        GenerateTagsService.call(item: item)
+        if truthy?(params[:only_if_empty]) && item.tags.exists?
+          return render json: { status: "skipped", reason: "already_tagged" }, status: :ok
+        end
+
+        GenerateTagsService.call(item: item, replace: truthy?(params[:replace]))
         render json: serialize_item(item.reload), status: :ok
       rescue GenerateTagsService::GenerationError, KeyError, Faraday::Error => e
         Rails.logger.warn "[ItemsController#generate_tags] failed item_id=#{item.id}: #{e.class}: #{e.message}"
         render json: { error: "タグの生成に失敗しました。時間を置いて再度お試しください。" }, status: :unprocessable_entity
       end
 
+      # カードの説明（meaning）が事実として正しいかを AI でファクトチェックする（同期）。
+      # 説明が無いカードはスキップを返す。
+      def fact_check
+        result = GenerateFactCheckService.call(item: item)
+        return render json: { status: "skipped", reason: "no_meaning" }, status: :ok if result.nil?
+
+        render json: serialize_item(item.reload), status: :ok
+      rescue GenerateFactCheckService::GenerationError, KeyError, Faraday::Error => e
+        Rails.logger.warn "[ItemsController#fact_check] failed item_id=#{item.id}: #{e.class}: #{e.message}"
+        render json: { error: "ファクトチェックに失敗しました。時間を置いて再度お試しください。" }, status: :unprocessable_entity
+      end
+
       private
+
+      # クエリ/フォームの真偽値（"true"/"1" 等）を bool に変換する
+      def truthy?(value)
+        ActiveModel::Type::Boolean.new.cast(value)
+      end
 
       # 並び替え句を組み立てる。カラム・方向は許可リストからのみ採用し、安定化のため created_at を副キーにする
       def sort_clause
@@ -272,6 +299,9 @@ module Api
           meaning: item.primary_meaning&.definition,
           meaning_example: item.primary_meaning&.example_sentence,
           meaning_level: item.primary_meaning&.detail_level,
+          fact_check_status: item.primary_meaning&.fact_check_status,
+          fact_check_comment: item.primary_meaning&.fact_check_comment,
+          fact_checked_at: item.primary_meaning&.fact_checked_at,
           style: item.style,
           custom_prompt: item.custom_prompt,
           tags: item.tags.map { |t| { id: t.id, name: t.name } },
