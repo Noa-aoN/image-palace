@@ -83,3 +83,6 @@ jobs:
 
       - name: Unit test (node:test)
         run: npm run test:unit
+
+      - name: Unit test (vitest)
+        run: npm run test
