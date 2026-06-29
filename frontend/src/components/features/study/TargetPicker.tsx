@@ -9,6 +9,7 @@ import {
   Search,
   X,
   Check,
+  Star,
   ChevronDown,
   Clock,
   Tag,
@@ -18,6 +19,7 @@ import {
 import { getCollections } from '@/lib/api/collections'
 import { getViews } from '@/lib/api/views'
 import { viewTypeLabel } from '@/lib/view-types'
+import { useStudyTargetStore } from '@/stores/studyTargets'
 import { targetKey, type QuizTarget } from '@/lib/quiz'
 import type { Collection } from '@/types/collection'
 import type { View } from '@/types/view'
@@ -31,20 +33,43 @@ const COMING_SOON_TARGETS: { icon: ReactNode; label: string }[] = [
 
 type OpenMedium = 'collection' | 'view' | null
 
+// 「その他（準備中）」の対象候補をチップで表示する（単体でも使える）。
+export function ComingSoonTargets() {
+  return (
+    <div className="flex flex-wrap gap-1.5">
+      {COMING_SOON_TARGETS.map((t) => (
+        <span
+          key={t.label}
+          className="inline-flex items-center gap-1.5 rounded-full border border-dashed border-border bg-card/60 px-2.5 py-1 text-xs text-muted-foreground"
+        >
+          <span style={{ color: 'var(--palace)' }}>{t.icon}</span>
+          {t.label}
+        </span>
+      ))}
+    </div>
+  )
+}
+
 interface Props {
   selectedKey?: string
   onSelect: (target: QuizTarget) => void
+  // 「その他（準備中）」セクションを隠す（呼び出し側で別途表示する場合に使う）
+  hideComingSoon?: boolean
 }
 
 /**
  * スタディの対象選択。媒体ごとに1行のアコーディオンで省スペースに表示し、
- * 展開したときだけ検索つきのリストを出す。選択は selectedKey でハイライトする。
+ * 各行の★で対象を保存できる（保存した対象は②に表示される）。
  */
-export function TargetPicker({ selectedKey, onSelect }: Props) {
+export function TargetPicker({ selectedKey, onSelect, hideComingSoon = false }: Props) {
   const [collections, setCollections] = useState<Collection[]>([])
   const [views, setViews] = useState<View[]>([])
   const [open, setOpen] = useState<OpenMedium>(null)
   const [query, setQuery] = useState('')
+
+  const savedTargets = useStudyTargetStore((s) => s.targets)
+  const toggleSave = useStudyTargetStore((s) => s.toggleSave)
+  const savedKeys = useMemo(() => new Set(savedTargets.map((t) => t.key)), [savedTargets])
 
   useEffect(() => {
     getCollections().then(setCollections).catch(() => setCollections([]))
@@ -67,23 +92,29 @@ export function TargetPicker({ selectedKey, onSelect }: Props) {
   )
 
   const allActive = selectedKey === 'all'
+  const allTarget: QuizTarget = { kind: 'all' }
 
   return (
     <div className="space-y-2">
-      {/* すべてのカード（行クリックで即選択） */}
-      <button
-        type="button"
-        onClick={() => onSelect({ kind: 'all' })}
-        className="flex w-full items-center gap-3 rounded-xl border bg-card px-4 py-3 text-left transition hover:border-[var(--palace)]"
+      {/* すべてのカード（行クリックで即選択／★で保存） */}
+      <div
+        className="flex items-center gap-1 rounded-xl border bg-card transition"
         style={{
           borderColor: allActive ? 'var(--palace)' : 'var(--border)',
           backgroundColor: allActive ? 'rgba(198,167,94,0.08)' : undefined,
         }}
       >
-        <span style={{ color: 'var(--palace)' }}><GalleryHorizontal size={18} /></span>
-        <span className="flex-1 text-sm font-medium">すべてのカード</span>
-        {allActive && <Check size={16} className="text-[var(--palace)]" />}
-      </button>
+        <button
+          type="button"
+          onClick={() => onSelect(allTarget)}
+          className="flex flex-1 items-center gap-3 px-4 py-3 text-left"
+        >
+          <span style={{ color: 'var(--palace)' }}><GalleryHorizontal size={18} /></span>
+          <span className="flex-1 text-sm font-medium">すべてのカード</span>
+          {allActive && <Check size={16} className="text-[var(--palace)]" />}
+        </button>
+        <StarBtn saved={savedKeys.has('all')} onClick={() => toggleSave(allTarget)} />
+      </div>
 
       {/* コレクション（展開で検索＋リスト） */}
       <MediumAccordion
@@ -102,14 +133,17 @@ export function TargetPicker({ selectedKey, onSelect }: Props) {
         >
           {filteredCollections.map((c) => {
             const t: QuizTarget = { kind: 'collection', id: c.id, name: c.name }
+            const key = targetKey(t)
             return (
               <ItemRow
                 key={c.id}
                 icon={<Library size={16} />}
                 label={c.name}
                 meta={`${c.entry_count} 件`}
-                active={selectedKey === targetKey(t)}
+                active={selectedKey === key}
+                saved={savedKeys.has(key)}
                 onClick={() => onSelect(t)}
+                onToggleSave={() => toggleSave(t)}
               />
             )
           })}
@@ -133,36 +167,44 @@ export function TargetPicker({ selectedKey, onSelect }: Props) {
         >
           {filteredViews.map((v) => {
             const t: QuizTarget = { kind: 'view', id: v.id, name: v.name }
+            const key = targetKey(t)
             return (
               <ItemRow
                 key={v.id}
                 icon={<LayoutGrid size={16} />}
                 label={v.name}
                 meta={viewTypeLabel(v.view_type)}
-                active={selectedKey === targetKey(t)}
+                active={selectedKey === key}
+                saved={savedKeys.has(key)}
                 onClick={() => onSelect(t)}
+                onToggleSave={() => toggleSave(t)}
               />
             )
           })}
         </MediumList>
       </MediumAccordion>
 
-      {/* その他（準備中） */}
-      <div className="pt-1">
-        <p className="mb-1.5 text-xs font-medium text-muted-foreground">その他（準備中）</p>
-        <div className="flex flex-wrap gap-1.5">
-          {COMING_SOON_TARGETS.map((t) => (
-            <span
-              key={t.label}
-              className="inline-flex items-center gap-1.5 rounded-full border border-dashed border-border bg-card/60 px-2.5 py-1 text-xs text-muted-foreground"
-            >
-              <span style={{ color: 'var(--palace)' }}>{t.icon}</span>
-              {t.label}
-            </span>
-          ))}
+      {/* その他（準備中）。呼び出し側で別表示する場合は隠す。 */}
+      {!hideComingSoon && (
+        <div className="pt-1">
+          <p className="mb-1.5 text-xs font-medium text-muted-foreground">その他（準備中）</p>
+          <ComingSoonTargets />
         </div>
-      </div>
+      )}
     </div>
+  )
+}
+
+function StarBtn({ saved, onClick }: { saved: boolean; onClick: () => void }) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      aria-label={saved ? '保存を外す' : '保存する'}
+      className="mr-1 shrink-0 rounded-md p-1.5 text-muted-foreground transition hover:text-[var(--palace)]"
+    >
+      <Star size={16} fill={saved ? 'var(--palace)' : 'none'} color={saved ? 'var(--palace)' : 'currentColor'} />
+    </button>
   )
 }
 
@@ -251,28 +293,37 @@ function ItemRow({
   label,
   meta,
   active,
+  saved,
   onClick,
+  onToggleSave,
 }: {
   icon: ReactNode
   label: string
   meta?: string
   active: boolean
+  saved: boolean
   onClick: () => void
+  onToggleSave: () => void
 }) {
   return (
-    <button
-      type="button"
-      onClick={onClick}
-      className="flex w-full items-center gap-2.5 rounded-lg border px-3 py-2 text-left text-sm transition hover:border-[var(--palace)]"
+    <div
+      className="flex items-center gap-1 rounded-lg border transition"
       style={{
         borderColor: active ? 'var(--palace)' : 'transparent',
         backgroundColor: active ? 'rgba(198,167,94,0.08)' : undefined,
       }}
     >
-      <span className="shrink-0 text-muted-foreground">{icon}</span>
-      <span className="flex-1 truncate font-medium">{label}</span>
-      {meta && <span className="shrink-0 text-xs text-muted-foreground">{meta}</span>}
-      {active && <Check size={15} className="shrink-0 text-[var(--palace)]" />}
-    </button>
+      <button
+        type="button"
+        onClick={onClick}
+        className="flex flex-1 items-center gap-2.5 rounded-lg px-3 py-2 text-left text-sm transition hover:bg-black/5"
+      >
+        <span className="shrink-0 text-muted-foreground">{icon}</span>
+        <span className="flex-1 truncate font-medium">{label}</span>
+        {meta && <span className="shrink-0 text-xs text-muted-foreground">{meta}</span>}
+        {active && <Check size={15} className="shrink-0 text-[var(--palace)]" />}
+      </button>
+      <StarBtn saved={saved} onClick={onToggleSave} />
+    </div>
   )
 }

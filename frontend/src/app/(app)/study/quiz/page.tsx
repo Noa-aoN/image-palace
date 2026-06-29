@@ -4,12 +4,11 @@ import { useEffect, useState } from 'react'
 import Link from 'next/link'
 import { ChevronRight, AlertTriangle, Check, X, Loader2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
-import { TargetPicker } from '@/components/features/study/TargetPicker'
+import { TargetPicker, ComingSoonTargets } from '@/components/features/study/TargetPicker'
 import { RecentTargets } from '@/components/features/study/RecentTargets'
 import { StudyArea } from '@/components/features/study/StudyArea'
 import { StudyStatsArea } from '@/components/features/study/StudyStatsArea'
 import { useStudyRecordStore } from '@/stores/studyRecords'
-import { useStudyTargetStore } from '@/stores/studyTargets'
 import {
   loadQuizCards,
   buildQuestions,
@@ -50,7 +49,6 @@ export default function QuizPage() {
   const [correctCount, setCorrectCount] = useState(0)
 
   const addRecord = useStudyRecordStore((s) => s.addRecord)
-  const touchTarget = useStudyTargetStore((s) => s.touch)
 
   const label = target ? targetLabel(target) : ''
   const formatLabel = format === 'image_to_word' ? '画像→単語' : '単語→画像'
@@ -75,7 +73,6 @@ export default function QuizPage() {
         setLoadError(`クイズには画像付きカードが${MIN_CARDS}枚以上必要です。`)
         return
       }
-      touchTarget(target)
       setQuestions(qs)
       setQIndex(0)
       setSelectedId(null)
@@ -128,47 +125,69 @@ export default function QuizPage() {
           <p className="mt-2 text-muted-foreground">選んだカードやコレクションから問題を作って確認します。</p>
         </div>
 
-        <StudyArea title="① 出題対象と設定" description="クイズにする範囲と、出題形式・問題数を選びます。">
-          <TargetPicker selectedKey={target ? targetKey(target) : undefined} onSelect={setTarget} />
+        <StudyArea title="① 出題対象" description="クイズにするカードの範囲を選びます。">
+          <div className="space-y-5">
+            {/* 検索して選ぶ */}
+            <div>
+              <p className="mb-2 text-sm font-semibold text-muted-foreground">検索して選ぶ</p>
+              <TargetPicker hideComingSoon selectedKey={target ? targetKey(target) : undefined} onSelect={setTarget} />
+            </div>
 
-          <div className="mt-4">
-            <p className="mb-2 text-sm font-medium">出題形式</p>
-            <div className="flex flex-wrap gap-2">
-              {FORMATS.map((f) => (
-                <SegButton key={f.value} active={format === f.value} onClick={() => setFormat(f.value)}>
-                  {f.label}
-                </SegButton>
-              ))}
+            {/* 保存から選ぶ */}
+            <div>
+              <p className="mb-2 text-sm font-semibold text-muted-foreground">保存から選ぶ</p>
+              <RecentTargets selectedKey={target ? targetKey(target) : undefined} onSelect={setTarget} />
+            </div>
+
+            {/* その他から選ぶ */}
+            <div>
+              <p className="mb-2 text-sm font-semibold text-muted-foreground">その他から選ぶ</p>
+              <ComingSoonTargets />
             </div>
           </div>
+        </StudyArea>
 
-          <div className="mt-4">
-            <p className="mb-2 text-sm font-medium">出題数</p>
-            <div className="flex flex-wrap gap-2">
-              {QUESTION_COUNTS.map((opt) => (
-                <SegButton key={opt.label} active={questionCount === opt.value} onClick={() => setQuestionCount(opt.value)}>
-                  {opt.label}
-                </SegButton>
-              ))}
+        <StudyArea title="② 出題設定" description="出題形式と問題数を選びます。">
+          <div className="space-y-4">
+            {/* 出題形式 */}
+            <div>
+              <p className="mb-2 text-sm font-semibold text-muted-foreground">出題形式</p>
+              <div className="flex flex-wrap gap-2">
+                {FORMATS.map((f) => (
+                  <SegButton key={f.value} active={format === f.value} onClick={() => setFormat(f.value)}>
+                    {f.label}
+                  </SegButton>
+                ))}
+              </div>
             </div>
-            <p className="mt-1.5 text-xs text-muted-foreground">対象のカードが少ない場合は、その枚数までで出題します。</p>
-          </div>
 
+            {/* 出題数 */}
+            <div>
+              <p className="mb-2 text-sm font-semibold text-muted-foreground">出題数</p>
+              <div className="flex flex-wrap gap-2">
+                {QUESTION_COUNTS.map((opt) => (
+                  <SegButton key={opt.label} active={questionCount === opt.value} onClick={() => setQuestionCount(opt.value)}>
+                    {opt.label}
+                  </SegButton>
+                ))}
+              </div>
+              <p className="mt-1.5 text-xs text-muted-foreground">対象のカードが少ない場合は、その枚数までで出題します。</p>
+            </div>
+          </div>
+        </StudyArea>
+
+        {/* 開始ボタン（②の下） */}
+        <div>
           {loadError && (
-            <p className="mt-4 flex items-center gap-1.5 text-sm text-destructive">
+            <p className="mb-3 flex items-center gap-1.5 text-sm text-destructive">
               <AlertTriangle size={15} /> {loadError}
             </p>
           )}
-
-          <Button onClick={startQuiz} disabled={!target || loading} className="mt-5 flex items-center gap-2">
+          <Button onClick={startQuiz} disabled={!target || loading} className="flex items-center gap-2">
             {loading ? <Loader2 size={16} className="animate-spin" /> : null}
             {loading ? '準備中…' : target ? `「${label}」でクイズを開始` : '対象を選んでください'}
           </Button>
-        </StudyArea>
-
-        <StudyArea title="② 保存・最近の対象" description="一度使った対象から、すぐに選び直せます。">
-          <RecentTargets selectedKey={target ? targetKey(target) : undefined} onSelect={setTarget} />
-        </StudyArea>
+        </div>
 
         <StudyArea title="③ 記録・分析・応用">
           <StudyStatsArea mode="quiz" />

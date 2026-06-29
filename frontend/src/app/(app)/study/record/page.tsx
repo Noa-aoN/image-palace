@@ -20,10 +20,18 @@ const GAME_LABELS: Record<StudyGameKind, string> = {
   duel: 'メモリーデュエル',
 }
 
-function modeLabel(r: StudyRecord): string {
+// スタディの種類（プラクティス／クイズ／プレイ）
+function typeLabel(r: StudyRecord): string {
   if (r.mode === 'practice') return 'プラクティス'
   if (r.mode === 'quiz') return 'クイズ'
-  return r.game ? GAME_LABELS[r.game] : 'プレイ'
+  return 'プレイ'
+}
+
+// その中の内容（プレイ＝ゲーム種類 / クイズ＝出題形式）。無ければ空。
+function contentLabel(r: StudyRecord): string {
+  if (r.mode === 'game') return r.game ? GAME_LABELS[r.game] : ''
+  if (r.mode === 'quiz') return r.format ?? ''
+  return ''
 }
 
 // 履歴1件の主要数値
@@ -90,6 +98,12 @@ export default function RecordPage() {
             </StatGroup>
           </div>
 
+          {/* グラフ */}
+          <div className="mt-8 space-y-6">
+            <ActivityChart records={records} />
+            {quizzes.length > 0 && <AccuracyTrend quizzes={quizzes} />}
+          </div>
+
           {/* 履歴 */}
           <div className="mt-8 flex items-center justify-between">
             <h2 className="text-sm font-semibold text-muted-foreground">履歴（{records.length}）</h2>
@@ -108,18 +122,23 @@ export default function RecordPage() {
           <ul className="mt-3 divide-y divide-border overflow-hidden rounded-xl border border-border bg-card">
             {records.map((r) => (
               <li key={r.id} className="flex items-center gap-3 px-4 py-3">
-                <span
-                  className="shrink-0 rounded-full px-2 py-0.5 text-xs font-medium"
-                  style={{ backgroundColor: 'rgba(198,167,94,0.12)', color: 'var(--palace)' }}
-                >
-                  {modeLabel(r)}
-                </span>
+                {/* スタディの種類＋その中の内容 */}
+                <div className="flex shrink-0 flex-wrap items-center gap-1">
+                  <span
+                    className="rounded-full px-2 py-0.5 text-xs font-medium"
+                    style={{ backgroundColor: 'rgba(198,167,94,0.12)', color: 'var(--palace)' }}
+                  >
+                    {typeLabel(r)}
+                  </span>
+                  {contentLabel(r) && (
+                    <span className="rounded-full bg-muted px-2 py-0.5 text-xs font-medium text-muted-foreground">
+                      {contentLabel(r)}
+                    </span>
+                  )}
+                </div>
                 <div className="min-w-0 flex-1">
                   <p className="truncate text-sm font-medium">{r.targetLabel}</p>
-                  <p className="text-xs text-muted-foreground">
-                    {formatDate(r.date)}
-                    {r.format ? ` ・ ${r.format}` : ''}
-                  </p>
+                  <p className="text-xs text-muted-foreground">{formatDate(r.date)}</p>
                 </div>
                 <span className="shrink-0 text-sm font-semibold tabular-nums">{metric(r)}</span>
               </li>
@@ -151,6 +170,81 @@ function Stat({ label, value, icon }: { label: string; value: string; icon?: Rea
         {label}
       </p>
       <p className="mt-1 text-2xl font-bold tabular-nums">{value}</p>
+    </div>
+  )
+}
+
+function sameDay(iso: string, d: Date): boolean {
+  const x = new Date(iso)
+  return x.getFullYear() === d.getFullYear() && x.getMonth() === d.getMonth() && x.getDate() === d.getDate()
+}
+
+const mdLabel = (d: Date) => `${d.getMonth() + 1}/${d.getDate()}`
+
+// 直近2週間の学習回数（日別）バーチャート
+function ActivityChart({ records }: { records: StudyRecord[] }) {
+  const now = new Date()
+  const days: Date[] = []
+  for (let i = 13; i >= 0; i--) {
+    const d = new Date(now)
+    d.setDate(now.getDate() - i)
+    days.push(d)
+  }
+  const counts = days.map((d) => records.filter((r) => sameDay(r.date, d)).length)
+  const max = Math.max(1, ...counts)
+  return (
+    <div>
+      <h2 className="mb-2 text-sm font-semibold text-muted-foreground">学習アクティビティ（直近2週間）</h2>
+      <div className="rounded-xl border border-border bg-card p-4">
+        <div className="flex h-24 items-end gap-1.5">
+          {days.map((d, i) => (
+            <div
+              key={i}
+              className="flex-1 rounded-t transition-[height]"
+              title={`${mdLabel(d)}：${counts[i]}回`}
+              style={{
+                height: `${counts[i] === 0 ? 3 : Math.max(8, (counts[i] / max) * 88)}px`,
+                backgroundColor: counts[i] === 0 ? 'var(--border)' : 'var(--palace)',
+              }}
+            />
+          ))}
+        </div>
+        <div className="mt-1.5 flex justify-between text-[11px] text-muted-foreground">
+          <span>{mdLabel(days[0])}</span>
+          <span>今日</span>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+// クイズ正答率の推移（直近最大12回）バーチャート
+function AccuracyTrend({ quizzes }: { quizzes: StudyRecord[] }) {
+  const recent = [...quizzes]
+    .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime())
+    .slice(-12)
+  return (
+    <div>
+      <h2 className="mb-2 text-sm font-semibold text-muted-foreground">クイズ正答率の推移（直近{recent.length}回）</h2>
+      <div className="rounded-xl border border-border bg-card p-4">
+        <div className="flex h-24 items-end gap-1.5">
+          {recent.map((r) => {
+            const rate = r.total > 0 ? Math.round((r.correct / r.total) * 100) : 0
+            return (
+              <div
+                key={r.id}
+                className="flex-1 rounded-t"
+                title={`${rate}%`}
+                style={{ height: `${Math.max(6, (rate / 100) * 88)}px`, backgroundColor: 'var(--palace)' }}
+              />
+            )
+          })}
+        </div>
+        <div className="mt-1.5 flex justify-between text-[11px] text-muted-foreground">
+          <span>古い</span>
+          <span>最新（{recent.length > 0 ? Math.round((recent[recent.length - 1].correct / Math.max(1, recent[recent.length - 1].total)) * 100) : 0}%）</span>
+        </div>
+      </div>
     </div>
   )
 }

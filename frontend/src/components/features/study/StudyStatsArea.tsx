@@ -32,7 +32,7 @@ export function StudyStatsArea({ mode }: { mode: 'practice' | 'quiz' }) {
   return (
     <div className="space-y-3">
       <div className="grid grid-cols-2 gap-3">
-        <Stat label={mode === 'practice' ? '復習した回数' : 'クイズ回数'} value={`${count}`} />
+        <Stat label={mode === 'practice' ? '練習した回数' : 'クイズ回数'} value={`${count}`} />
         <Stat label={secondLabel} value={secondValue} />
       </div>
 
@@ -56,7 +56,7 @@ export function StudyStatsArea({ mode }: { mode: 'practice' | 'quiz' }) {
       </Link>
 
       {mode === 'practice' ? (
-        <ComingSoon description="復習の記録や、苦手カードの抽出などは順次対応予定です。" items={['苦手カードの抽出', '復習リマインド', '定着度の可視化']} />
+        <ComingSoon description="練習の記録や、苦手カードの抽出などは順次対応予定です。" items={['苦手カードの抽出', '練習リマインド', '定着度の可視化']} />
       ) : (
         <ComingSoon description="弱点の分析や、苦手カードの復習など、応用機能は順次対応予定です。" items={['正答率の推移', '苦手カードの抽出', '復習リマインド']} />
       )}

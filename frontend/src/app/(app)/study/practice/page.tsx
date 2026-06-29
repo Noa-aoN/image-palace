@@ -4,11 +4,10 @@ import { useState } from 'react'
 import Link from 'next/link'
 import { Shuffle, ArrowRight, ImageIcon, Type, Loader2, AlertTriangle } from 'lucide-react'
 import { Button } from '@/components/ui/button'
-import { TargetPicker } from '@/components/features/study/TargetPicker'
+import { TargetPicker, ComingSoonTargets } from '@/components/features/study/TargetPicker'
 import { RecentTargets } from '@/components/features/study/RecentTargets'
 import { StudyArea } from '@/components/features/study/StudyArea'
 import { StudyStatsArea } from '@/components/features/study/StudyStatsArea'
-import { useStudyTargetStore } from '@/stores/studyTargets'
 import { useStudyRecordStore } from '@/stores/studyRecords'
 import { loadPracticeCards, targetKey, targetLabel, type QuizTarget, type PracticeCard } from '@/lib/quiz'
 import { shuffle } from '@/lib/shuffle'
@@ -26,7 +25,6 @@ export default function PracticePage() {
   const [revealed, setRevealed] = useState(false)
   const [mode, setMode] = useState<FrontMode>('image')
 
-  const touchTarget = useStudyTargetStore((s) => s.touch)
   const addRecord = useStudyRecordStore((s) => s.addRecord)
   const label = target ? targetLabel(target) : ''
 
@@ -40,7 +38,6 @@ export default function PracticePage() {
         setError('この対象には学習できる画像付きカードがありません。')
         return
       }
-      touchTarget(target)
       addRecord({ mode: 'practice', targetLabel: label, total: loaded.length, correct: 0 })
       setCards(shuffle(loaded))
       setIndex(0)
@@ -86,26 +83,42 @@ export default function PracticePage() {
             <Button variant="ghost" className="text-sm px-0 mb-4">← スタディへ戻る</Button>
           </Link>
           <h1 className="text-2xl font-semibold">プラクティス</h1>
-          <p className="mt-2 text-muted-foreground">カードを見返しながら、低負担で復習します。</p>
+          <p className="mt-2 text-muted-foreground">カードを見返しながら、低負担で練習します。</p>
         </div>
 
-        <StudyArea title="① 復習する対象" description="復習するカードの範囲を選びます。">
-          <TargetPicker selectedKey={target ? targetKey(target) : undefined} onSelect={setTarget} />
+        <StudyArea title="① 練習する対象" description="練習するカードの範囲を選びます。">
+          <div className="space-y-5">
+            {/* 検索して選ぶ */}
+            <div>
+              <p className="mb-2 text-sm font-semibold text-muted-foreground">検索して選ぶ</p>
+              <TargetPicker hideComingSoon selectedKey={target ? targetKey(target) : undefined} onSelect={setTarget} />
+            </div>
 
-          {error && (
-            <p className="mt-4 flex items-center gap-1.5 text-sm text-destructive">
-              <AlertTriangle size={15} /> {error}
-            </p>
-          )}
+            {/* 保存から選ぶ */}
+            <div>
+              <p className="mb-2 text-sm font-semibold text-muted-foreground">保存から選ぶ</p>
+              <RecentTargets selectedKey={target ? targetKey(target) : undefined} onSelect={setTarget} />
+            </div>
 
-          <Button onClick={start} disabled={!target || loading} className="mt-5 flex items-center gap-2">
-            {loading ? <Loader2 size={16} className="animate-spin" /> : null}
-            {loading ? '準備中…' : target ? `「${label}」で復習を始める` : '対象を選んでください'}
-          </Button>
-        </StudyArea>
+            {/* その他から選ぶ */}
+            <div>
+              <p className="mb-2 text-sm font-semibold text-muted-foreground">その他から選ぶ</p>
+              <ComingSoonTargets />
+            </div>
 
-        <StudyArea title="② 保存・最近の対象" description="一度使った対象から、すぐに選び直せます。">
-          <RecentTargets selectedKey={target ? targetKey(target) : undefined} onSelect={setTarget} />
+            {/* 開始 */}
+            <div>
+              {error && (
+                <p className="mb-3 flex items-center gap-1.5 text-sm text-destructive">
+                  <AlertTriangle size={15} /> {error}
+                </p>
+              )}
+              <Button onClick={start} disabled={!target || loading} className="flex items-center gap-2">
+                {loading ? <Loader2 size={16} className="animate-spin" /> : null}
+                {loading ? '準備中…' : target ? `「${label}」で練習を始める` : '対象を選んでください'}
+              </Button>
+            </div>
+          </div>
         </StudyArea>
 
         <StudyArea title="③ 記録・分析・応用">

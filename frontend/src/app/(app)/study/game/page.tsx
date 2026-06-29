@@ -5,7 +5,8 @@ import type { ReactNode } from 'react'
 import Link from 'next/link'
 import { Flame, BarChart3, Check, Volume2, Copy, Compass, Crosshair, Swords, ChevronDown, SlidersHorizontal } from 'lucide-react'
 import { Button } from '@/components/ui/button'
-import { TargetPicker } from '@/components/features/study/TargetPicker'
+import { TargetPicker, ComingSoonTargets } from '@/components/features/study/TargetPicker'
+import { RecentTargets } from '@/components/features/study/RecentTargets'
 import { StudyArea } from '@/components/features/study/StudyArea'
 import { Segmented } from '@/components/features/study/Segmented'
 import { ComingSoon } from '@/components/features/myroom/ComingSoon'
@@ -14,7 +15,6 @@ import { MemoryGame, type MemoryPairType } from '@/components/features/study/gam
 import { KarutaGame, type KarutaReadBy } from '@/components/features/study/games/KarutaGame'
 import { MemoryDuelGame } from '@/components/features/study/games/MemoryDuelGame'
 import { useStudyRecordStore } from '@/stores/studyRecords'
-import { useStudyTargetStore } from '@/stores/studyTargets'
 import { targetKey, targetLabel, type QuizTarget, type QuizFormat } from '@/lib/quiz'
 
 // ゲームタイトル一覧。連続正解・神経衰弱は実装済み、他は準備中（タイトルは仮）。
@@ -98,7 +98,6 @@ export default function GamePage() {
   const [karutaReadBy, setKarutaReadBy] = useState<KarutaReadBy>('word')
   const [karutaCount, setKarutaCount] = useState<number | 'auto'>('auto')
 
-  const touchTarget = useStudyTargetStore((s) => s.touch)
   const records = useStudyRecordStore((s) => s.records)
   const games = records.filter((r) => r.mode === 'game')
   const playCount = games.length
@@ -123,7 +122,6 @@ export default function GamePage() {
 
   const start = () => {
     if (!canStart || !target) return
-    touchTarget(target)
     setStarted(true)
   }
 
@@ -217,7 +215,25 @@ export default function GamePage() {
       </div>
 
       <StudyArea title="① 対象を選ぶ" description="ゲームに使うカードの範囲を選びます。">
-        <TargetPicker selectedKey={target ? targetKey(target) : undefined} onSelect={setTarget} />
+        <div className="space-y-5">
+          {/* 検索して選ぶ */}
+          <div>
+            <p className="mb-2 text-sm font-semibold text-muted-foreground">検索して選ぶ</p>
+            <TargetPicker hideComingSoon selectedKey={target ? targetKey(target) : undefined} onSelect={setTarget} />
+          </div>
+
+          {/* 保存から選ぶ */}
+          <div>
+            <p className="mb-2 text-sm font-semibold text-muted-foreground">保存から選ぶ</p>
+            <RecentTargets selectedKey={target ? targetKey(target) : undefined} onSelect={setTarget} />
+          </div>
+
+          {/* その他から選ぶ */}
+          <div>
+            <p className="mb-2 text-sm font-semibold text-muted-foreground">その他から選ぶ</p>
+            <ComingSoonTargets />
+          </div>
+        </div>
       </StudyArea>
 
       <StudyArea title="② ゲームを選ぶ" description="あそべるゲームです。新しいゲームは順次追加予定です。">
