@@ -25,6 +25,7 @@ export default function BillingPage() {
   const [loading, setLoading] = useState(true)
   const [busyPlan, setBusyPlan] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
+  const [checkoutNotice, setCheckoutNotice] = useState<'success' | 'cancel' | null>(null)
 
   useEffect(() => {
     let cancelled = false
@@ -42,6 +43,41 @@ export default function BillingPage() {
       })
     return () => {
       cancelled = true
+    }
+  }, [])
+
+  // Stripe からの戻り（?checkout=success/cancel）を検知。
+  // webhook は非同期なので、成功時はサマリーを数回ポーリングして反映を待つ（手動リロード不要に）。
+  useEffect(() => {
+    const checkout = new URLSearchParams(window.location.search).get('checkout')
+    if (checkout !== 'success' && checkout !== 'cancel') return
+    window.history.replaceState(null, '', window.location.pathname)
+
+    let cancelled = false
+    let tries = 0
+    const poll = async () => {
+      tries += 1
+      try {
+        const s = await getBillingSummary()
+        if (cancelled) return
+        setSummary(s)
+        if (s.plan?.tier && s.plan.tier !== 'free') return // 反映完了で停止
+      } catch {
+        /* 一時的な失敗は次のポーリングで吸収 */
+      }
+      if (!cancelled && tries < 5) setTimeout(poll, 2000)
+    }
+
+    // effect 本体での同期 setState を避けるため、表示・ポーリングは次タスクで開始する。
+    const notice = setTimeout(() => {
+      if (cancelled) return
+      setCheckoutNotice(checkout)
+      if (checkout === 'success') setTimeout(poll, 1500)
+    }, 0)
+
+    return () => {
+      cancelled = true
+      clearTimeout(notice)
     }
   }, [])
 
@@ -275,6 +311,17 @@ export default function BillingPage() {
           クレジット残高の確認、プランのアップグレード、クレジットの追加ができます。
         </p>
       </div>
+
+      {checkoutNotice === 'success' && (
+        <p className="rounded-lg border border-[var(--palace)]/40 bg-[rgba(198,167,94,0.08)] px-4 py-3 text-sm">
+          決済が完了しました。プランの反映を確認しています…（数秒かかる場合があります）
+        </p>
+      )}
+      {checkoutNotice === 'cancel' && (
+        <p className="rounded-lg border border-border bg-muted px-4 py-3 text-sm text-muted-foreground">
+          決済はキャンセルされました。
+        </p>
+      )}
 
       {error && <p className="text-sm text-destructive">{error}</p>}
 
