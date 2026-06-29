@@ -63,14 +63,19 @@ module Billing
       user = user_for(obj.customer)
       return unless user
 
-      plan = Plan.find_by(stripe_price_id: obj.items.data.first&.price&.id)
+      line = obj.items.data.first
+      plan = Plan.find_by(stripe_price_id: line&.price&.id)
       sub = Subscription.find_or_initialize_by(stripe_subscription_id: obj.id)
       sub.user = user
       sub.plan = plan if plan
       sub.stripe_customer_id = obj.customer
       sub.status = obj.status
-      sub.current_period_start = time_at(obj.current_period_start)
-      sub.current_period_end = time_at(obj.current_period_end)
+      # Stripe API 2025-03-31 以降は current_period_* が Subscription 直下から items 配下へ移動した。
+      # 旧/新どちらの形でも取得できるようフォールバックする。
+      # ※ Stripe オブジェクトは未知メソッドで NoMethodError を投げるため、必ず [] でアクセスする
+      #   （直アクセスだと新APIで webhook が 422 になり、サブスクが作られずプランが更新されない）。
+      sub.current_period_start = time_at(period_value(obj, line, :current_period_start))
+      sub.current_period_end = time_at(period_value(obj, line, :current_period_end))
       sub.cancel_at_period_end = obj.cancel_at_period_end
       sub.canceled_at = time_at(obj.canceled_at)
       sub.started_at ||= Time.current
@@ -113,6 +118,12 @@ module Billing
       return if processed?(event)
 
       user.reset_subscription_credits!(plan.credits_per_period * Billing::POINTS_PER_CREDIT, stripe_event_id: event.id)
+    end
+
+    # current_period_* は Subscription 直下（旧API）か items 配下（新API）のどちらか。
+    # Stripe オブジェクトは [] なら未設定キーで nil を返す（直メソッドは NoMethodError）。
+    def period_value(obj, line, key)
+      obj[key] || (line && line[key])
     end
 
     def user_for(customer_id, client_reference_id = nil)
