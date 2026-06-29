@@ -23,7 +23,7 @@ import { CardImage } from '@/components/ui/card-image'
 
 const PREVIEW_LIMIT = 12
 
-// シェルフ共通の枠（見出し＋「すべて見る」＋横スクロールの中身）
+// シェルフ共通の枠（href があれば見出し自体が一覧へのリンク＝シェブロン付き＋横スクロールの中身）
 function Shelf({
   icon,
   title,
@@ -39,29 +39,36 @@ function Shelf({
   action?: React.ReactNode
   children: React.ReactNode
 }) {
+  // 見出し本体（アイコン＋タイトル＋件数）。href があれば末尾にシェブロンを付けてリンク化の手がかりにする。
+  const heading = (
+    <>
+      <span style={{ color: 'var(--palace)' }}>{icon}</span>
+      <h2 className="text-base font-semibold">{title}</h2>
+      {typeof count === 'number' && <span className="text-sm text-muted-foreground">{count}</span>}
+      {href && (
+        <ChevronRight
+          size={16}
+          className="text-muted-foreground transition-colors group-hover:text-[var(--palace)]"
+        />
+      )}
+    </>
+  )
+
   return (
     <section className="space-y-3">
       <div className="flex items-center justify-between gap-3">
-        <div className="flex items-center gap-2">
-          <span style={{ color: 'var(--palace)' }}>{icon}</span>
-          <h2 className="text-base font-semibold">{title}</h2>
-          {typeof count === 'number' && (
-            <span className="text-sm text-muted-foreground">{count}</span>
-          )}
-        </div>
-        <div className="flex items-center gap-2">
-          {action}
-          {href && (
-            <Link
-              href={href}
-              className="flex items-center gap-0.5 text-sm hover:underline"
-              style={{ color: 'var(--palace)' }}
-            >
-              すべて見る
-              <ChevronRight size={15} />
-            </Link>
-          )}
-        </div>
+        {href ? (
+          <Link
+            href={href}
+            aria-label={`${title}の一覧を見る`}
+            className="group flex items-center gap-2 rounded-md transition-colors hover:text-[var(--palace)]"
+          >
+            {heading}
+          </Link>
+        ) : (
+          <div className="flex items-center gap-2">{heading}</div>
+        )}
+        {action && <div className="flex items-center gap-2">{action}</div>}
       </div>
       {children}
     </section>
