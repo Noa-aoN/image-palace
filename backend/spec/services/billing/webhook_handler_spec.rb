@@ -42,6 +42,19 @@ RSpec.describe Billing::WebhookHandler do
       expect { handle(payload) }.not_to(change { user.reload.subscription_credits })
       expect(CreditTransaction.where(stripe_event_id: "evt_inv1").count).to eq(1)
     end
+
+    it "reads subscription/price from the 2025-03+ shape (parent + pricing.price_details)" do
+      user
+      plan
+
+      handle(id: "evt_inv2", type: "invoice.paid", data: { object: {
+        customer: "cus_1",
+        parent: { subscription_details: { subscription: "sub_1" } },
+        lines: { data: [ { pricing: { price_details: { price: "price_std" } } } ] }
+      } })
+
+      expect(user.reload.subscription_credits).to eq(100 * Billing::POINTS_PER_CREDIT)
+    end
   end
 
   it "adds top-up credits on checkout.session.completed (payment mode)" do

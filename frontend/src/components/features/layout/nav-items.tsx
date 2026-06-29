@@ -96,8 +96,8 @@ export const NAV_SECTIONS: NavSection[] = [
         label: 'マイルーム',
         children: [
           { href: '/account', icon: <UserCog size={20} />, label: 'アカウント設定' },
-          { href: '/settings', icon: <Settings size={20} />, label: '環境設定' },
           { href: '/billing', icon: <CreditCard size={20} />, label: 'プラン・支払い' },
+          { href: '/settings', icon: <Settings size={20} />, label: '環境設定' },
           { href: '/trophy', icon: <Trophy size={20} />, label: 'トロフィー' },
         ],
       },

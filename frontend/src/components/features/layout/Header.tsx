@@ -94,11 +94,11 @@ export function AppHeader() {
               <DropdownMenuItem onClick={() => router.push('/account')} className="cursor-pointer">
                 アカウント設定
               </DropdownMenuItem>
-              <DropdownMenuItem onClick={() => router.push('/settings')} className="cursor-pointer">
-                環境設定
-              </DropdownMenuItem>
               <DropdownMenuItem onClick={() => router.push('/billing')} className="cursor-pointer">
                 プラン・支払い
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => router.push('/settings')} className="cursor-pointer">
+                環境設定
               </DropdownMenuItem>
               <DropdownMenuItem onClick={() => router.push('/trophy')} className="cursor-pointer">
                 トロフィー
