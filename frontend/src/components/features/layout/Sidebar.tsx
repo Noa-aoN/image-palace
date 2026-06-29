@@ -11,7 +11,8 @@ export function Sidebar() {
   return (
     <aside
       // モバイル（<md）では非表示にし、ヘッダーのハンバーガー（MobileNav）を使う
-      className="hidden md:flex flex-col shrink-0 overflow-y-auto transition-[width] duration-200"
+      // relative z-30: ページ内の sticky（z-10）より前面に置き、タブ等が被らないようにする
+      className="relative z-30 hidden md:flex flex-col shrink-0 overflow-y-auto transition-[width] duration-200"
       style={{
         width: sidebarExpanded ? '240px' : '72px',
         backgroundColor: 'var(--ivory)',
