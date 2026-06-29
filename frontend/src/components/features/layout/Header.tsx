@@ -51,7 +51,7 @@ export function AppHeader() {
 
   return (
     <header
-      className="h-14 flex items-center justify-between px-6 shrink-0 z-10"
+      className="h-14 flex items-center justify-between px-6 shrink-0 relative z-30"
       style={{
         backgroundColor: 'var(--ivory)',
         borderBottom: '1px solid var(--palace)',

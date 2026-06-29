@@ -68,7 +68,7 @@ export function CategorySections<K extends string>({ sections, ariaLabel }: Prop
   return (
     <>
       {/* 上部 sticky アンカーナビ（モバイルは横スクロール） */}
-      <div className="sticky top-0 z-10 -mx-6 border-b border-border bg-background/90 px-6 py-2 backdrop-blur">
+      <div className="sticky top-0 z-10 rounded-xl border border-border bg-[var(--ivory-dark)]/95 px-2 py-1.5 backdrop-blur">
         <div role="tablist" aria-label={ariaLabel} className="flex gap-1 overflow-x-auto whitespace-nowrap">
           {sections.map((s) => {
             const isActive = s.key === active
@@ -81,9 +81,8 @@ export function CategorySections<K extends string>({ sections, ariaLabel }: Prop
                 aria-controls={s.key}
                 onClick={() => handleJump(s.key)}
                 className={`flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-sm font-medium transition-colors ${
-                  isActive ? 'text-[var(--palace)]' : 'text-muted-foreground hover:bg-black/5'
+                  isActive ? 'bg-white text-[var(--palace)] shadow-sm' : 'text-muted-foreground hover:bg-black/5'
                 }`}
-                style={isActive ? { backgroundColor: 'rgba(198,167,94,0.1)' } : undefined}
               >
                 {s.icon}
                 {s.label}
