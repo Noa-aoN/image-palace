@@ -1,9 +1,11 @@
 'use client'
 
-import { useState } from 'react'
+import { useMemo, useState } from 'react'
 import Link from 'next/link'
 import { Layers, HelpCircle, Gamepad2, Flame } from 'lucide-react'
 import { Button } from '@/components/ui/button'
+import { Badge } from '@/components/ui/badge'
+import { StatCard } from '@/components/features/study/StatCard'
 import { useStudyRecordStore, type StudyRecord, type StudyGameKind } from '@/stores/studyRecords'
 
 function formatDate(iso: string): string {
@@ -53,15 +55,21 @@ export default function RecordPage() {
   const clear = useStudyRecordStore((s) => s.clear)
   const [confirming, setConfirming] = useState(false)
 
-  const practice = records.filter((r) => r.mode === 'practice')
-  const quizzes = records.filter((r) => r.mode === 'quiz')
-  const games = records.filter((r) => r.mode === 'game')
-
-  const practiceCards = practice.reduce((s, r) => s + r.total, 0)
-  const quizQ = quizzes.reduce((s, r) => s + r.total, 0)
-  const quizC = quizzes.reduce((s, r) => s + r.correct, 0)
-  const avgRate = quizQ > 0 ? Math.round((quizC / quizQ) * 100) : null
-  const bestStreak = games.filter((r) => r.game === 'streak').reduce((m, r) => Math.max(m, r.total), 0)
+  const { practice, quizzes, games, practiceCards, avgRate, bestStreak } = useMemo(() => {
+    const p = records.filter((r) => r.mode === 'practice')
+    const q = records.filter((r) => r.mode === 'quiz')
+    const g = records.filter((r) => r.mode === 'game')
+    const quizQ = q.reduce((s, r) => s + r.total, 0)
+    const quizC = q.reduce((s, r) => s + r.correct, 0)
+    return {
+      practice: p,
+      quizzes: q,
+      games: g,
+      practiceCards: p.reduce((s, r) => s + r.total, 0),
+      avgRate: quizQ > 0 ? Math.round((quizC / quizQ) * 100) : null,
+      bestStreak: g.filter((r) => r.game === 'streak').reduce((m, r) => Math.max(m, r.total), 0),
+    }
+  }, [records])
 
   return (
     <div className="max-w-2xl mx-auto px-6 py-12">
@@ -85,16 +93,16 @@ export default function RecordPage() {
           {/* 統計 */}
           <div className="mt-8 space-y-4">
             <StatGroup icon={<Layers size={16} />} title="プラクティス">
-              <Stat label="回数" value={`${practice.length}`} />
-              <Stat label="見返した枚数" value={`${practiceCards}`} />
+              <StatCard label="回数" value={`${practice.length}`} />
+              <StatCard label="見返した枚数" value={`${practiceCards}`} />
             </StatGroup>
             <StatGroup icon={<HelpCircle size={16} />} title="クイズ">
-              <Stat label="回数" value={`${quizzes.length}`} />
-              <Stat label="平均正答率" value={avgRate === null ? '—' : `${avgRate}%`} />
+              <StatCard label="回数" value={`${quizzes.length}`} />
+              <StatCard label="平均正答率" value={avgRate === null ? '—' : `${avgRate}%`} />
             </StatGroup>
             <StatGroup icon={<Gamepad2 size={16} />} title="プレイ">
-              <Stat label="回数" value={`${games.length}`} />
-              <Stat label="最高連続正解" value={`${bestStreak}`} icon={<Flame size={13} style={{ color: 'var(--palace)' }} />} />
+              <StatCard label="回数" value={`${games.length}`} />
+              <StatCard label="最高連続正解" value={`${bestStreak}`} icon={<Flame size={13} style={{ color: 'var(--palace)' }} />} />
             </StatGroup>
           </div>
 
@@ -124,17 +132,8 @@ export default function RecordPage() {
               <li key={r.id} className="flex items-center gap-3 px-4 py-3">
                 {/* スタディの種類＋その中の内容 */}
                 <div className="flex shrink-0 flex-wrap items-center gap-1">
-                  <span
-                    className="rounded-full px-2 py-0.5 text-xs font-medium"
-                    style={{ backgroundColor: 'rgba(198,167,94,0.12)', color: 'var(--palace)' }}
-                  >
-                    {typeLabel(r)}
-                  </span>
-                  {contentLabel(r) && (
-                    <span className="rounded-full bg-muted px-2 py-0.5 text-xs font-medium text-muted-foreground">
-                      {contentLabel(r)}
-                    </span>
-                  )}
+                  <Badge variant="palace">{typeLabel(r)}</Badge>
+                  {contentLabel(r) && <Badge variant="muted">{contentLabel(r)}</Badge>}
                 </div>
                 <div className="min-w-0 flex-1">
                   <p className="truncate text-sm font-medium">{r.targetLabel}</p>
@@ -162,18 +161,6 @@ function StatGroup({ icon, title, children }: { icon: React.ReactNode; title: st
   )
 }
 
-function Stat({ label, value, icon }: { label: string; value: string; icon?: React.ReactNode }) {
-  return (
-    <div className="rounded-xl border border-border bg-card p-4">
-      <p className="flex items-center gap-1 text-xs text-muted-foreground">
-        {icon}
-        {label}
-      </p>
-      <p className="mt-1 text-2xl font-bold tabular-nums">{value}</p>
-    </div>
-  )
-}
-
 function sameDay(iso: string, d: Date): boolean {
   const x = new Date(iso)
   return x.getFullYear() === d.getFullYear() && x.getMonth() === d.getMonth() && x.getDate() === d.getDate()
@@ -183,15 +170,17 @@ const mdLabel = (d: Date) => `${d.getMonth() + 1}/${d.getDate()}`
 
 // 直近2週間の学習回数（日別）バーチャート
 function ActivityChart({ records }: { records: StudyRecord[] }) {
-  const now = new Date()
-  const days: Date[] = []
-  for (let i = 13; i >= 0; i--) {
-    const d = new Date(now)
-    d.setDate(now.getDate() - i)
-    days.push(d)
-  }
-  const counts = days.map((d) => records.filter((r) => sameDay(r.date, d)).length)
-  const max = Math.max(1, ...counts)
+  const { days, counts, max } = useMemo(() => {
+    const now = new Date()
+    const ds: Date[] = []
+    for (let i = 13; i >= 0; i--) {
+      const d = new Date(now)
+      d.setDate(now.getDate() - i)
+      ds.push(d)
+    }
+    const cs = ds.map((d) => records.filter((r) => sameDay(r.date, d)).length)
+    return { days: ds, counts: cs, max: Math.max(1, ...cs) }
+  }, [records])
   return (
     <div>
       <h2 className="mb-2 text-sm font-semibold text-muted-foreground">学習アクティビティ（直近2週間）</h2>

@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useMemo, useState } from 'react'
 import type { ReactNode } from 'react'
 import Link from 'next/link'
 import { Flame, BarChart3, Check, Volume2, Copy, Compass, Crosshair, Swords, ChevronDown, SlidersHorizontal } from 'lucide-react'
@@ -8,6 +8,7 @@ import { Button } from '@/components/ui/button'
 import { TargetPicker, ComingSoonTargets } from '@/components/features/study/TargetPicker'
 import { RecentTargets } from '@/components/features/study/RecentTargets'
 import { StudyArea } from '@/components/features/study/StudyArea'
+import { StatCard } from '@/components/features/study/StatCard'
 import { Segmented } from '@/components/features/study/Segmented'
 import { ComingSoon } from '@/components/features/myroom/ComingSoon'
 import { StreakGame } from '@/components/features/study/games/StreakGame'
@@ -99,9 +100,18 @@ export default function GamePage() {
   const [karutaCount, setKarutaCount] = useState<number | 'auto'>('auto')
 
   const records = useStudyRecordStore((s) => s.records)
-  const games = records.filter((r) => r.mode === 'game')
-  const playCount = games.length
-  const bestStreak = games.filter((r) => r.game === 'streak').reduce((max, r) => Math.max(max, r.total), 0)
+  const { games, playCount, bestStreak, targetRanking } = useMemo(() => {
+    const g = records.filter((r) => r.mode === 'game')
+    const tally = new Map<string, number>()
+    for (const r of g) tally.set(r.targetLabel, (tally.get(r.targetLabel) ?? 0) + 1)
+    return {
+      games: g,
+      playCount: g.length,
+      bestStreak: g.filter((r) => r.game === 'streak').reduce((max, r) => Math.max(max, r.total), 0),
+      // よくプレイする対象ランキング（上位5）
+      targetRanking: [...tally.entries()].sort((a, b) => b[1] - a[1]).slice(0, 5),
+    }
+  }, [records])
   const gameCount = (key: string) => games.filter((r) => r.game === key).length
   const bestScore = (key: string): number | null => {
     const cfg = HIGH_SCORE[key]
@@ -109,12 +119,6 @@ export default function GamePage() {
     if (!cfg || scores.length === 0) return null
     return cfg.better === 'max' ? Math.max(...scores) : Math.min(...scores)
   }
-  // よくプレイする対象ランキング（上位5）
-  const targetRanking = (() => {
-    const counts = new Map<string, number>()
-    for (const r of games) counts.set(r.targetLabel, (counts.get(r.targetLabel) ?? 0) + 1)
-    return [...counts.entries()].sort((a, b) => b[1] - a[1]).slice(0, 5)
-  })()
 
   const gameDef = GAME_TITLES.find((g) => g.key === selectedGame)
   const canStart = !!target && !!gameDef?.playable
@@ -307,16 +311,12 @@ export default function GamePage() {
 
       <StudyArea title="③ 記録・分析・応用">
         <div className="grid grid-cols-2 gap-3">
-          <div className="rounded-xl border border-border bg-card p-4">
-            <p className="text-xs text-muted-foreground">プレイ回数</p>
-            <p className="mt-1 text-2xl font-bold tabular-nums">{playCount}</p>
-          </div>
-          <div className="rounded-xl border border-border bg-card p-4">
-            <p className="flex items-center gap-1 text-xs text-muted-foreground">
-              <Flame size={13} style={{ color: 'var(--palace)' }} /> ハイスコア（連続正解）
-            </p>
-            <p className="mt-1 text-2xl font-bold tabular-nums">{bestStreak}</p>
-          </div>
+          <StatCard label="プレイ回数" value={`${playCount}`} />
+          <StatCard
+            label="ハイスコア（連続正解）"
+            value={`${bestStreak}`}
+            icon={<Flame size={13} style={{ color: 'var(--palace)' }} />}
+          />
         </div>
 
         {/* ゲーム別の実施回数・ハイスコア */}
