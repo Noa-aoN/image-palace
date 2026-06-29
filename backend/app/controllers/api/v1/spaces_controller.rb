@@ -8,7 +8,8 @@ module Api
       ]
 
       def index
-        spaces = current_user.spaces.recent
+        # cover_point/cover_points は space_points を Ruby 側で走査するため、画像添付ごと preload して N+1 を防ぐ
+        spaces = current_user.spaces.recent.includes(space_points: { image_attachment: :blob })
         render json: { spaces: spaces.map { |s| serialize_space(s) } }
       end
 

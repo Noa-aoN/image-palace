@@ -45,9 +45,9 @@ export type QuizQuestion = {
   choices: QuizCard[] // シャッフル済みの選択肢（正解を含む）
 }
 
-export const CHOICES_PER_QUESTION = 4
+const CHOICES_PER_QUESTION = 4
 export const MIN_CARDS = CHOICES_PER_QUESTION // 4択に必要な最低枚数
-export const DEFAULT_QUESTION_COUNT = 10
+const DEFAULT_QUESTION_COUNT = 10
 
 // 対象に応じて、画像付き・生成完了のカードだけを取得する。
 export async function loadQuizCards(target: QuizTarget): Promise<QuizCard[]> {
@@ -79,6 +79,13 @@ export type PracticeCard = QuizCard & { meaning: string | null }
 
 // 対象のカードを取得し、所有カードの意味を id で突き合わせて添える。
 export async function loadPracticeCards(target: QuizTarget): Promise<PracticeCard[]> {
+  // 'all' は loadQuizCards が内部で getItems() を呼ぶため、二重取得を避けて単一フェッチから組み立てる。
+  if (target.kind === 'all') {
+    const items = await getItems()
+    return items
+      .filter((i) => i.generation_status === 'completed' && i.media?.url)
+      .map((i) => ({ id: i.id, title: i.title, image: i.media!.url, meaning: i.meaning ?? null }))
+  }
   const [cards, items] = await Promise.all([loadQuizCards(target), getItems()])
   const meaningById = new Map(items.map((i) => [i.id, i.meaning ?? null]))
   return cards.map((c) => ({ ...c, meaning: meaningById.get(c.id) ?? null }))
