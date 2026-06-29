@@ -12,6 +12,8 @@ export interface ItemMedia {
   id: string
   url: string
   thumb_url?: string
+  /** LQIP プレースホルダ（極小 WebP の data URL）。読み込み中のぼかし表示用 */
+  blur?: string
   media_type: string
   /** 画像生成時のメタ情報（モデル・revised_prompt 等）。無い場合あり */
   generation_info?: MediaGenerationInfo | null

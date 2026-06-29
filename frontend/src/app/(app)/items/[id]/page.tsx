@@ -315,16 +315,21 @@ export default function ItemDetailPage() {
           {/* 画像 */}
           <div className="flex-1 min-w-0 md:flex-none md:w-full">
             {item.media?.url && !imgError ? (
-              // eslint-disable-next-line @next/next/no-img-element
-              <img
-                src={item.media.url}
-                alt={item.title}
-                className="w-full rounded-xl object-cover cursor-zoom-in"
-                decoding="async"
-                fetchPriority="high"
-                onClick={() => setZoomed(true)}
-                onError={() => setImgError(true)}
-              />
+              <div
+                className="w-full overflow-hidden rounded-xl bg-muted"
+                style={item.media.blur ? { backgroundImage: `url("${item.media.blur}")`, backgroundSize: 'cover', backgroundPosition: 'center' } : undefined}
+              >
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img
+                  src={item.media.url}
+                  alt={item.title}
+                  className="w-full rounded-xl object-cover cursor-zoom-in"
+                  decoding="async"
+                  fetchPriority="high"
+                  onClick={() => setZoomed(true)}
+                  onError={() => setImgError(true)}
+                />
+              </div>
             ) : (
               <div className="relative w-full aspect-square rounded-xl bg-muted flex items-center justify-center overflow-hidden text-muted-foreground text-sm">
                 {isGenerating && (

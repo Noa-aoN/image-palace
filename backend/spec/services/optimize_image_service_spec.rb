@@ -40,6 +40,24 @@ RSpec.describe OptimizeImageService do
       expect(result.data).to eq("not an image")
       expect(result.content_type).to eq("image/png")
       expect(result.extension).to eq("png")
+      expect(result.thumb_data).to be_nil
+      expect(result.lqip).to be_nil
+    end
+
+    it "一覧用サムネ(480px 以内の WebP)を生成する" do
+      result = described_class.call(image_data: png_bytes(1600, 1200), content_type: "image/png")
+
+      expect(result.thumb_data).to be_present
+      thumb = Vips::Image.new_from_buffer(result.thumb_data, "")
+      expect([ thumb.width, thumb.height ].max).to be <= 480
+    end
+
+    it "LQIP を WebP の data URL として返す" do
+      result = described_class.call(image_data: png_bytes(1024, 1024), content_type: "image/png")
+
+      expect(result.lqip).to start_with("data:image/webp;base64,")
+      # 極小なので本体よりはるかに小さい
+      expect(result.lqip.bytesize).to be < result.data.bytesize
     end
   end
 end
