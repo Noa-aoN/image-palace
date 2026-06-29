@@ -19,6 +19,7 @@ import type { Wordlist } from '@/types/wordlist'
 import { viewTypeLabel } from '@/lib/view-types'
 import { spaceTypeLabel } from '@/lib/space-types'
 import type { SearchResults, SearchCard, SearchDeck } from '@/types/search'
+import { CardImage } from '@/components/ui/card-image'
 
 const PREVIEW_LIMIT = 12
 
@@ -92,21 +93,19 @@ function Section({
 }
 
 function CardThumb({ item }: { item: Item }) {
-  const imageUrl = item.media?.thumb_url ?? item.media?.url ?? null
   return (
     <Link
       href={`/items/${item.id}`}
       className="shrink-0 w-32 flex flex-col rounded-xl border border-border overflow-hidden bg-card hover:shadow-md transition-shadow"
     >
       <span className="px-2 py-1.5 text-xs font-medium truncate">{item.title}</span>
-      <div className="w-full aspect-square bg-muted flex items-center justify-center overflow-hidden">
-        {imageUrl ? (
-          // eslint-disable-next-line @next/next/no-img-element
-          <img src={imageUrl} alt={item.title} className="w-full h-full object-cover" loading="lazy" />
-        ) : (
-          <span className="text-muted-foreground text-[11px] px-2 text-center">{item.title}</span>
-        )}
-      </div>
+      <CardImage
+        src={item.media?.thumb_url ?? item.media?.url ?? null}
+        blur={item.media?.blur}
+        alt={item.title}
+        className="w-full aspect-square"
+        fallback={<span className="text-muted-foreground text-[11px] px-2 text-center">{item.title}</span>}
+      />
     </Link>
   )
 }
@@ -231,27 +230,24 @@ function ResultGroup({
 }
 
 function SearchCardTile({ card }: { card: SearchCard }) {
-  const imageUrl = card.media?.thumb_url ?? card.media?.url ?? null
   return (
     <Link
       href={`/items/${card.id}`}
       className="shrink-0 w-32 flex flex-col rounded-xl border border-border overflow-hidden bg-card hover:shadow-md transition-shadow"
     >
       <span className="px-2 py-1.5 text-xs font-medium truncate">{card.title}</span>
-      <div className="w-full aspect-square bg-muted flex items-center justify-center overflow-hidden">
-        {imageUrl ? (
-          // eslint-disable-next-line @next/next/no-img-element
-          <img src={imageUrl} alt={card.title} className="w-full h-full object-cover" loading="lazy" />
-        ) : (
-          <span className="text-muted-foreground text-[11px] px-2 text-center">{card.title}</span>
-        )}
-      </div>
+      <CardImage
+        src={card.media?.thumb_url ?? card.media?.url ?? null}
+        blur={card.media?.blur}
+        alt={card.title}
+        className="w-full aspect-square"
+        fallback={<span className="text-muted-foreground text-[11px] px-2 text-center">{card.title}</span>}
+      />
     </Link>
   )
 }
 
 function SearchDeckTile({ deck }: { deck: SearchDeck }) {
-  const coverUrl = deck.cover?.thumb_url ?? deck.cover?.url ?? null
   return (
     <Link
       href={`/views/${deck.id}`}
@@ -261,14 +257,13 @@ function SearchDeckTile({ deck }: { deck: SearchDeck }) {
         <span className="text-sm font-medium truncate">{deck.name}</span>
         <span className="text-xs text-muted-foreground shrink-0">{deck.item_count}</span>
       </div>
-      <div className="w-full aspect-square bg-muted flex items-center justify-center overflow-hidden">
-        {coverUrl ? (
-          // eslint-disable-next-line @next/next/no-img-element
-          <img src={coverUrl} alt={deck.name} className="w-full h-full object-cover" loading="lazy" />
-        ) : (
-          <Layers size={24} className="text-muted-foreground/50" />
-        )}
-      </div>
+      <CardImage
+        src={deck.cover?.thumb_url ?? deck.cover?.url ?? null}
+        blur={deck.cover?.blur}
+        alt={deck.name}
+        className="w-full aspect-square"
+        fallback={<Layers size={24} className="text-muted-foreground/50" />}
+      />
     </Link>
   )
 }
