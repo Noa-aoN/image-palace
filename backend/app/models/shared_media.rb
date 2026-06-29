@@ -3,6 +3,8 @@ class SharedMedia < ApplicationRecord
 
   belongs_to :user, optional: true
   has_one_attached :file
+  # 一覧用サムネ（480px WebP）のキャッシュ。重複排除されたカードで共有する。
+  has_one_attached :thumb
 
   validates :normalized_prompt, presence: true
 

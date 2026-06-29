@@ -59,9 +59,20 @@ module ItemSerialization
     {
       id: media.id,
       url: media_url(blob),
-      thumb_url: thumbnail_url(blob),
+      thumb_url: media_thumb_url(media, blob),
+      blur: media.metadata&.dig("lqip"),
       media_type: media.media_type
     }
+  end
+
+  # 事前生成済みサムネがあれば CDN 直配信（Rails プロキシを経由しない）。
+  # 無ければ従来の ActiveStorage variant にフォールバックする。
+  def media_thumb_url(media, fallback_blob)
+    if media.respond_to?(:thumb) && media.thumb.attached? && blob_available?(media.thumb.blob)
+      media_url(media.thumb.blob)
+    else
+      thumbnail_url(fallback_blob)
+    end
   end
 
   def media_url(blob)

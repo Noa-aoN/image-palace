@@ -90,12 +90,15 @@ class GenerateImageJob < ApplicationJob
 
     item.medias.where.not(id: media.id).destroy_all
     media.file.attach(shared_media.file.blob)
+    # 事前生成済みサムネがあれば参照（CDN 直配信用）。無い古いキャッシュは未添付のままで OK。
+    media.thumb.attach(shared_media.thumb.blob) if shared_media.thumb.attached?
   end
 
   def attach_image_data(shared_media, image_data, content_type)
     require "stringio"
 
-    # 保存前にリサイズ + WebP 変換でストレージ・配信コストを抑える
+    # 保存前にリサイズ + WebP 変換でストレージ・配信コストを抑える。
+    # あわせて一覧用サムネ(480px)と LQIP プレースホルダも生成する。
     optimized = OptimizeImageService.call(image_data: image_data, content_type: content_type)
 
     shared_media.file.attach(
@@ -103,6 +106,17 @@ class GenerateImageJob < ApplicationJob
       filename: "#{SecureRandom.uuid}.#{optimized.extension}",
       content_type: optimized.content_type
     )
+
+    if optimized.thumb_data
+      shared_media.thumb.attach(
+        io: StringIO.new(optimized.thumb_data),
+        filename: "#{SecureRandom.uuid}.webp",
+        content_type: "image/webp"
+      )
+    end
+
+    # LQIP（data URL）はメタデータに保存し、serializer 経由でフロントのプレースホルダに使う。
+    shared_media.update!(metadata: shared_media.metadata.merge("lqip" => optimized.lqip)) if optimized.lqip
   end
 
   def blob_available?(blob)
