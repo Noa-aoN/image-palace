@@ -75,7 +75,8 @@ module Api
       private
 
       def set_space
-        @space = current_user.spaces.find(params[:id])
+        # serialize_space→cover_point/cover_points が space_points の画像添付を走査するため preload する
+        @space = current_user.spaces.includes(space_points: { image_attachment: :blob }).find(params[:id])
       end
 
       def space_params

@@ -13,6 +13,8 @@ module Api
                                   .left_joins(:collection_entries)
                                   .select("collections.*, COUNT(collection_entries.id) AS entry_count")
                                   .group("collections.id")
+                                  # cover/cover_cards が collection_entries→entry を走査するため preload して N+1 を防ぐ
+                                  .includes(:cover_item, collection_entries: :entry)
 
         render json: { collections: collections.map { |c| serialize_collection(c) } }
       end

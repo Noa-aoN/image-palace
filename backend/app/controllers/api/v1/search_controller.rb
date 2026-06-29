@@ -35,6 +35,7 @@ module Api
           collections: current_user.collections
                                    .where("name ILIKE ?", like)
                                    .order(created_at: :desc).limit(LIMIT)
+                                   .includes(:collection_entries)
                                    .map { |c| serialize_collection(c) },
           spaces: current_user.spaces
                               .where("name ILIKE ?", like)
