@@ -8,8 +8,8 @@ module Api
           session = ::Billing::CheckoutSession.call(
             user: current_user,
             plan: plan,
-            success_url: params[:success_url].presence || default_url("/account?checkout=success"),
-            cancel_url: params[:cancel_url].presence || default_url("/account?checkout=cancel")
+            success_url: params[:success_url].presence || default_url("/billing?checkout=success"),
+            cancel_url: params[:cancel_url].presence || default_url("/billing?checkout=cancel")
           )
           render json: { url: session.url }
         rescue ::Billing::CheckoutSession::MissingPriceId => e
