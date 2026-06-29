@@ -13,7 +13,6 @@ export type SavedTarget = {
 type State = {
   targets: SavedTarget[]
   toggleSave: (target: QuizTarget) => void
-  remove: (key: string) => void
 }
 
 const LIMIT = 50
@@ -37,7 +36,6 @@ export const useStudyTargetStore = create<State>()(
           }
           return { targets: [toSaved(target), ...s.targets].slice(0, LIMIT) }
         }),
-      remove: (key) => set((s) => ({ targets: s.targets.filter((t) => t.key !== key) })),
     }),
     { name: 'ip-study-targets' }
   )
