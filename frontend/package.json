@@ -8,7 +8,9 @@
     "start": "next start",
     "lint": "eslint",
     "lint:fix": "eslint --fix",
-    "test:unit": "node --test",
+    "test:unit": "node --test test/*.test.mjs",
+    "test": "vitest run",
+    "test:watch": "vitest",
     "type-check": "tsc --noEmit",
     "build:worker": "opennextjs-cloudflare build",
     "deploy": "opennextjs-cloudflare build && opennextjs-cloudflare deploy",
@@ -44,8 +46,10 @@
     "@types/react-dom": "^19",
     "eslint": "^9",
     "eslint-config-next": "16.2.1",
+    "jsdom": "^29.1.1",
     "tailwindcss": "^4",
     "typescript": "^5",
+    "vitest": "^4.1.9",
     "wrangler": "^4.79.0"
   }
 }
