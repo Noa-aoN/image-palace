@@ -51,7 +51,8 @@ class GeneratePointImageJob < ApplicationJob
       point.update!(
         generation_status: "completed",
         metadata: point.metadata_without_generation_error.merge(
-          "revised_prompt" => shared_media.metadata&.dig("revised_prompt")
+          "revised_prompt" => shared_media.metadata&.dig("revised_prompt"),
+          "lqip" => shared_media.metadata&.dig("lqip")
         ).compact
       )
       Rails.logger.info "[GeneratePointImageJob] COMPLETE point_id=#{point.id}"
@@ -83,17 +84,30 @@ class GeneratePointImageJob < ApplicationJob
 
   def attach_from_shared_media(point, shared_media)
     point.image.attach(shared_media.file.blob)
+    # 事前生成済みサムネがあれば参照（CDN 直配信用）。無い古いキャッシュは未添付のままで OK。
+    point.thumb.attach(shared_media.thumb.blob) if shared_media.thumb.attached?
   end
 
   def attach_image_data(shared_media, image_data, content_type)
     require "stringio"
 
+    # 本体に加え、一覧用サムネ(480px)と LQIP プレースホルダも生成する（GenerateImageJob と同様）。
     optimized = OptimizeImageService.call(image_data: image_data, content_type: content_type)
     shared_media.file.attach(
       io: StringIO.new(optimized.data),
       filename: "#{SecureRandom.uuid}.#{optimized.extension}",
       content_type: optimized.content_type
     )
+
+    if optimized.thumb_data
+      shared_media.thumb.attach(
+        io: StringIO.new(optimized.thumb_data),
+        filename: "#{SecureRandom.uuid}.webp",
+        content_type: "image/webp"
+      )
+    end
+
+    shared_media.update!(metadata: shared_media.metadata.merge("lqip" => optimized.lqip)) if optimized.lqip
   end
 
   def blob_available?(blob)

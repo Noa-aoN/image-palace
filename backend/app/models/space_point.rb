@@ -4,6 +4,8 @@ class SpacePoint < ApplicationRecord
   belongs_to :item, optional: true
   # ポイント名から生成するポイント自身のイメージ画像
   has_one_attached :image
+  # 一覧用サムネ（480px WebP）。CDN 直配信のため生成時に事前作成する。
+  has_one_attached :thumb
 
   GENERATION_STATUSES = %w[pending processing completed failed].freeze
   GENERATION_ERROR_KEYS = %w[generation_error generation_error_code].freeze

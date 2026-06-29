@@ -35,6 +35,8 @@ export interface SpacePointCard {
 export interface SpacePointImage {
   url: string
   thumb_url?: string
+  /** LQIP プレースホルダ（極小 WebP の data URL） */
+  blur?: string
 }
 
 export interface SpacePoint {
