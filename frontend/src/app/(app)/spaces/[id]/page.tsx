@@ -6,6 +6,7 @@ import { useParams, useRouter } from 'next/navigation'
 import { Trash2, Pencil, Check, X, Plus, ChevronUp, ChevronDown, Search, Loader2, Route, DoorOpen } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
+import { CardImage } from '@/components/ui/card-image'
 import {
   getSpace,
   updateSpace,
@@ -103,27 +104,23 @@ function AssignCardModal({ onSelect, onClose }: { onSelect: (item: Item) => void
             <p className="text-xs text-muted-foreground">カードがありません。</p>
           ) : (
             <div className="grid grid-cols-3 gap-2">
-              {items.map((item) => {
-                const imageUrl = item.media?.thumb_url ?? item.media?.url ?? null
-                return (
-                  <button
-                    key={item.id}
-                    type="button"
-                    onClick={() => onSelect(item)}
-                    className="flex flex-col overflow-hidden rounded-lg border border-border bg-background text-left transition-shadow hover:shadow-md"
-                  >
-                    <div className="flex aspect-square w-full items-center justify-center overflow-hidden bg-muted">
-                      {imageUrl ? (
-                        // eslint-disable-next-line @next/next/no-img-element
-                        <img src={imageUrl} alt={item.title} className="h-full w-full object-cover" loading="lazy" />
-                      ) : (
-                        <span className="px-1 text-center text-[10px] text-muted-foreground">{item.title}</span>
-                      )}
-                    </div>
-                    <span className="truncate px-1.5 py-1 text-[11px] font-medium">{item.title}</span>
-                  </button>
-                )
-              })}
+              {items.map((item) => (
+                <button
+                  key={item.id}
+                  type="button"
+                  onClick={() => onSelect(item)}
+                  className="flex flex-col overflow-hidden rounded-lg border border-border bg-background text-left transition-shadow hover:shadow-md"
+                >
+                  <CardImage
+                    src={item.media?.thumb_url ?? item.media?.url ?? null}
+                    blur={item.media?.blur}
+                    alt={item.title}
+                    className="aspect-square w-full"
+                    fallback={<span className="px-1 text-center text-[10px] text-muted-foreground">{item.title}</span>}
+                  />
+                  <span className="truncate px-1.5 py-1 text-[11px] font-medium">{item.title}</span>
+                </button>
+              ))}
             </div>
           )}
         </div>
@@ -140,8 +137,12 @@ function PointImageCell({ point }: { point: SpacePoint }) {
   return (
     <div className="flex h-16 w-16 shrink-0 items-center justify-center overflow-hidden rounded-md bg-muted">
       {imageUrl ? (
-        // eslint-disable-next-line @next/next/no-img-element
-        <img src={imageUrl} alt={point.name ?? 'ポイント画像'} className="h-full w-full object-cover" loading="lazy" />
+        <CardImage
+          src={imageUrl}
+          blur={point.image?.blur}
+          alt={point.name ?? 'ポイント画像'}
+          className="h-full w-full"
+        />
       ) : generating ? (
         <Loader2 size={18} className="animate-spin text-muted-foreground" />
       ) : (

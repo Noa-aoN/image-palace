@@ -34,7 +34,8 @@ module ItemSerialization
     blob = point.image.blob
     {
       url: media_url(blob),
-      thumb_url: thumbnail_url(blob)
+      thumb_url: media_thumb_url(point, blob),
+      blur: point.metadata&.dig("lqip")
     }
   end
 
