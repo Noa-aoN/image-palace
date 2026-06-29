@@ -2,9 +2,9 @@
 
 import { useEffect, useState } from 'react'
 import Link from 'next/link'
-import { GalleryHorizontal, Library, Layers, LayoutGrid, Frame, MapPin, ChevronRight, Plus, Search, X, Route, DoorOpen, ListChecks, Boxes, Images } from 'lucide-react'
+import { GalleryHorizontal, Library, Layers, LayoutGrid, Frame, MapPin, ChevronRight, Plus, Search, X, Route, DoorOpen, ListChecks, Boxes, Images, CheckSquare, Square, Trash2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
-import { getItems, getItemsSummary } from '@/lib/api/items'
+import { getItems, getItemsSummary, bulkDeleteItems } from '@/lib/api/items'
 import { getCollections } from '@/lib/api/collections'
 import { getSpaces } from '@/lib/api/spaces'
 import { getViews } from '@/lib/api/views'
@@ -92,12 +92,19 @@ function Section({
   )
 }
 
-function CardThumb({ item }: { item: Item }) {
-  return (
-    <Link
-      href={`/items/${item.id}`}
-      className="shrink-0 w-32 flex flex-col rounded-xl border border-border overflow-hidden bg-card hover:shadow-md transition-shadow"
-    >
+function CardThumb({
+  item,
+  selectionMode = false,
+  selected = false,
+  onToggle,
+}: {
+  item: Item
+  selectionMode?: boolean
+  selected?: boolean
+  onToggle?: () => void
+}) {
+  const inner = (
+    <>
       <span className="px-2 py-1.5 text-xs font-medium truncate">{item.title}</span>
       <CardImage
         src={item.media?.thumb_url ?? item.media?.url ?? null}
@@ -106,6 +113,33 @@ function CardThumb({ item }: { item: Item }) {
         className="w-full aspect-square"
         fallback={<span className="text-muted-foreground text-[11px] px-2 text-center">{item.title}</span>}
       />
+    </>
+  )
+  const base = 'shrink-0 w-32 flex flex-col rounded-xl border overflow-hidden bg-card transition-shadow'
+
+  if (selectionMode) {
+    return (
+      <button
+        type="button"
+        onClick={onToggle}
+        aria-pressed={selected}
+        className={`${base} relative text-left ${selected ? 'border-[var(--palace)] ring-2 ring-[var(--palace)]' : 'border-border hover:shadow-md'}`}
+      >
+        {inner}
+        <span className="absolute right-1.5 top-1.5 rounded-md bg-white/90 p-0.5 shadow-sm">
+          {selected ? (
+            <CheckSquare size={18} className="text-[var(--palace)]" />
+          ) : (
+            <Square size={18} className="text-muted-foreground" />
+          )}
+        </span>
+      </button>
+    )
+  }
+
+  return (
+    <Link href={`/items/${item.id}`} className={`${base} border-border hover:shadow-md`}>
+      {inner}
     </Link>
   )
 }
@@ -409,6 +443,45 @@ export default function LibraryPage() {
   const [query, setQuery] = useState('')
   const [results, setResults] = useState<SearchResults | null>(null)
   const [searching, setSearching] = useState(false)
+  // カードの選択モード（一括削除など）
+  const [selectionMode, setSelectionMode] = useState(false)
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set())
+  const [confirmBulkDelete, setConfirmBulkDelete] = useState(false)
+  const [deleting, setDeleting] = useState(false)
+
+  const toggleSelect = (id: string) => {
+    setSelectedIds((prev) => {
+      const next = new Set(prev)
+      if (next.has(id)) next.delete(id)
+      else next.add(id)
+      return next
+    })
+    setConfirmBulkDelete(false)
+  }
+
+  const exitSelection = () => {
+    setSelectionMode(false)
+    setSelectedIds(new Set())
+    setConfirmBulkDelete(false)
+  }
+
+  // 2段階確認 → bulk_destroy（所有者スコープ・上限200）。削除後はプレビューと件数を更新。
+  const handleBulkDelete = async () => {
+    if (selectedIds.size === 0) return
+    if (!confirmBulkDelete) {
+      setConfirmBulkDelete(true)
+      return
+    }
+    setDeleting(true)
+    try {
+      const deleted = new Set(await bulkDeleteItems([...selectedIds]))
+      setCards((prev) => prev.filter((c) => !deleted.has(c.id)))
+      setCardCount((prev) => (prev === undefined ? prev : Math.max(0, prev - deleted.size)))
+      exitSelection()
+    } finally {
+      setDeleting(false)
+    }
+  }
 
   useEffect(() => {
     let cancelled = false
@@ -531,14 +604,42 @@ export default function LibraryPage() {
         icon={<GalleryHorizontal size={20} />}
         title="カード"
         count={cardCount}
-        href="/items"
+        href={selectionMode ? undefined : '/items'}
         action={
-          <Link href="/items/new">
-            <Button variant="outline" size="sm" className="flex items-center gap-1">
-              <Plus size={14} />
-              作成
-            </Button>
-          </Link>
+          selectionMode ? (
+            <div className="flex items-center gap-2">
+              <span className="text-sm text-muted-foreground">{selectedIds.size}件を選択中</span>
+              <Button
+                variant={confirmBulkDelete ? 'destructive' : 'outline'}
+                size="sm"
+                disabled={selectedIds.size === 0 || deleting}
+                onClick={handleBulkDelete}
+                onBlur={() => setConfirmBulkDelete(false)}
+                className="flex items-center gap-1"
+              >
+                <Trash2 size={14} />
+                {deleting ? '削除中…' : confirmBulkDelete ? '本当に削除' : '削除'}
+              </Button>
+              <Button variant="ghost" size="sm" onClick={exitSelection}>
+                キャンセル
+              </Button>
+            </div>
+          ) : (
+            <>
+              {cards.length > 0 && (
+                <Button variant="outline" size="sm" onClick={() => setSelectionMode(true)} className="flex items-center gap-1">
+                  <CheckSquare size={14} />
+                  選択
+                </Button>
+              )}
+              <Link href="/items/new">
+                <Button variant="outline" size="sm" className="flex items-center gap-1">
+                  <Plus size={14} />
+                  作成
+                </Button>
+              </Link>
+            </>
+          )
         }
       >
         {cards.length === 0 ? (
@@ -549,7 +650,13 @@ export default function LibraryPage() {
         ) : (
           <Rail>
             {cards.map((item) => (
-              <CardThumb key={item.id} item={item} />
+              <CardThumb
+                key={item.id}
+                item={item}
+                selectionMode={selectionMode}
+                selected={selectedIds.has(item.id)}
+                onToggle={() => toggleSelect(item.id)}
+              />
             ))}
           </Rail>
         )}
