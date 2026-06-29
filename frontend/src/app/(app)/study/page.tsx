@@ -19,7 +19,7 @@ const STUDY_MODES: StudyMode[] = [
     href: '/study/practice',
     icon: <Layers size={20} />,
     label: 'プラクティス',
-    description: 'カードを見返しながら、低負担で復習します。',
+    description: 'カードを見返しながら、低負担で練習します。',
   },
   {
     href: '/study/quiz',

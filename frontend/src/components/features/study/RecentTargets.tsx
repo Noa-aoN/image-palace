@@ -15,19 +15,20 @@ interface Props {
   onSelect: (target: QuizTarget) => void
 }
 
-// 直近・お気に入りのスタディ対象をチップで表示し、ワンタップで選び直せる。
+// ①で★を付けて保存した対象をチップで表示し、ワンタップで選び直せる。★で保存解除。
 export function RecentTargets({ selectedKey, onSelect }: Props) {
   const targets = useStudyTargetStore((s) => s.targets)
-  const togglePin = useStudyTargetStore((s) => s.togglePin)
+  const toggleSave = useStudyTargetStore((s) => s.toggleSave)
 
   if (targets.length === 0) {
-    return <p className="text-sm text-muted-foreground">最近選んだ対象はまだありません。</p>
+    return <p className="text-sm text-muted-foreground">①の対象の★を押すと、ここに保存されます。</p>
   }
 
   return (
     <div className="flex flex-wrap gap-2">
       {targets.map((t) => {
         const active = t.key === selectedKey
+        const quizTarget = toQuizTarget(t)
         return (
           <div
             key={t.key}
@@ -37,21 +38,17 @@ export function RecentTargets({ selectedKey, onSelect }: Props) {
               backgroundColor: active ? 'rgba(198,167,94,0.08)' : undefined,
             }}
           >
-            <button
-              type="button"
-              onClick={() => onSelect(toQuizTarget(t))}
-              className="flex items-center gap-1.5"
-            >
+            <button type="button" onClick={() => onSelect(quizTarget)} className="flex items-center gap-1.5">
               <span style={{ color: 'var(--palace)' }}>{kindIcon(t.kind)}</span>
               <span className="max-w-40 truncate font-medium">{t.name}</span>
             </button>
             <button
               type="button"
-              onClick={() => togglePin(t.key)}
-              aria-label={t.pinned ? 'ピン留めを外す' : 'ピン留めする'}
-              className="rounded-full p-1 text-muted-foreground hover:text-[var(--palace)]"
+              onClick={() => toggleSave(quizTarget)}
+              aria-label="保存を外す"
+              className="rounded-full p-1 text-[var(--palace)] hover:opacity-70"
             >
-              <Star size={14} fill={t.pinned ? 'var(--palace)' : 'none'} color={t.pinned ? 'var(--palace)' : 'currentColor'} />
+              <Star size={14} fill="var(--palace)" color="var(--palace)" />
             </button>
           </div>
         )
