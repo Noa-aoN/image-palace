@@ -9,7 +9,11 @@ module Api
       ]
 
       def index
-        views = current_user.views.recent
+        # serialize_view→cover/cover_cards が view_items/cover_item の画像を走査するため preload して N+1 を防ぐ
+        views = current_user.views.recent.includes(
+          view_items: { item: { medias: { file_attachment: :blob } } },
+          cover_item: { medias: { file_attachment: :blob } }
+        )
         render json: { views: views.map { |v| serialize_view(v) } }
       end
 
@@ -123,7 +127,11 @@ module Api
       private
 
       def set_view
-        @view = current_user.views.find(params[:id])
+        # 詳細でも serialize_view が cover_cards（view_items）を走査するため preload する
+        @view = current_user.views.includes(
+          view_items: { item: { medias: { file_attachment: :blob } } },
+          cover_item: { medias: { file_attachment: :blob } }
+        ).find(params[:id])
       end
 
       # 配置先ポイントがこのキャンバスのスペースに属することを保証する
