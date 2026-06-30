@@ -80,6 +80,34 @@ RSpec.describe "User credit ledger", type: :model do
     end
   end
 
+  describe "期限付きグラント（credit_grants）" do
+    it "available_credit_points に有効グラントを含む" do
+      user.update!(subscription_credits: 100, topup_credits: 0)
+      user.grant_credits!(50, kind: "free_carryover", expires_at: 30.days.from_now)
+      expect(user.available_credit_points).to eq(150)
+      expect(user.credit_transactions.last.kind).to eq("grant")
+    end
+
+    it "期限切れ・残量0のグラントは集計に含めない" do
+      user.grant_credits!(40, kind: "campaign", expires_at: 1.day.ago) # 期限切れ
+      user.grant_credits!(0, kind: "campaign")                         # 0は付与されない
+      expect(user.grant_credit_points).to eq(0)
+    end
+
+    it "消費は グラント(期限の近い順)→サブスク→Top-up の順" do
+      user.update!(subscription_credits: 100, topup_credits: 100)
+      user.grant_credits!(30, kind: "campaign", expires_at: 10.days.from_now)
+      user.grant_credits!(20, kind: "free_carryover", expires_at: 2.days.from_now)
+
+      user.consume_credits!(60) # 20(近) + 30(次) = グラント50、残り10をサブスクから
+
+      user.reload
+      expect(user.grant_credit_points).to eq(0)
+      expect(user.subscription_credits).to eq(90)
+      expect(user.topup_credits).to eq(100)
+    end
+  end
+
   describe "#ensure_current_period_credits! (無料枠の lazy 月次付与)" do
     it "grants the free plan allotment in points on a new period" do
       expect {

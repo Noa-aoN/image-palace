@@ -69,6 +69,51 @@ RSpec.describe Billing::WebhookHandler do
     expect(user.reload.topup_credits).to eq(100 * Billing::POINTS_PER_CREDIT)
   end
 
+  describe "Free→Paid 引き継ぎ（free_carryover グラント）" do
+    let(:free_plan) { create(:plan) } # name=free, credits_per_period=10
+    let!(:local_sub) { create(:subscription, user:, plan:, status: "active", stripe_subscription_id: "sub_1") }
+
+    def invoice_paid(event_id)
+      handle(id: event_id, type: "invoice.paid", data: { object: {
+        customer: "cus_1", subscription: "sub_1",
+        lines: { data: [ { price: { id: "price_std" } } ] }
+      } })
+    end
+
+    it "初回の有料 invoice.paid で Free 残高を期限付きグラントとして引き継ぐ（期限=元Free周期末）" do
+      user; plan; free_plan
+      user.update!(subscription_credits: 6 * Billing::POINTS_PER_CREDIT)
+      user.update_column(:created_at, Time.zone.local(2026, 1, 15, 10))
+
+      travel_to(Time.zone.local(2026, 1, 20, 12)) { invoice_paid("evt_carry1") }
+
+      grant = user.reload.credit_grants.find_by(kind: "free_carryover")
+      expect(grant).to be_present
+      expect(grant.remaining_points).to eq(6 * Billing::POINTS_PER_CREDIT)
+      expect(grant.expires_at).to eq(Time.zone.local(2026, 2, 15, 10))
+      expect(user.subscription_credits).to eq(100 * Billing::POINTS_PER_CREDIT)
+    end
+
+    it "CAP は Free 月間枠（10cr）を超えない" do
+      user; plan; free_plan
+      user.update!(subscription_credits: 50 * Billing::POINTS_PER_CREDIT)
+
+      invoice_paid("evt_carry2")
+
+      expect(user.reload.credit_grants.find_by(kind: "free_carryover").remaining_points)
+        .to eq(10 * Billing::POINTS_PER_CREDIT)
+    end
+
+    it "2回目（更新）の invoice.paid では引き継がない" do
+      user; plan; free_plan
+      user.update!(subscription_credits: 5 * Billing::POINTS_PER_CREDIT)
+      invoice_paid("evt_carry_first")
+
+      expect { invoice_paid("evt_carry_second") }
+        .not_to(change { user.credit_grants.where(kind: "free_carryover").count })
+    end
+  end
+
   it "upserts a local subscription on customer.subscription.created" do
     user
     plan

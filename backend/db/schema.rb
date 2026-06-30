@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_06_28_000005) do
+ActiveRecord::Schema[8.1].define(version: 2026_06_30_000001) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
   enable_extension "pgcrypto"
@@ -76,6 +76,18 @@ ActiveRecord::Schema[8.1].define(version: 2026_06_28_000005) do
     t.index ["cover_item_id"], name: "index_collections_on_cover_item_id"
     t.index ["user_id", "created_at"], name: "index_collections_on_user_id_and_created_at"
     t.index ["user_id"], name: "index_collections_on_user_id"
+  end
+
+  create_table "credit_grants", id: :uuid, default: -> { "gen_random_uuid()" }, force: :cascade do |t|
+    t.integer "amount_points", null: false
+    t.datetime "created_at", null: false
+    t.datetime "expires_at"
+    t.string "kind", null: false
+    t.jsonb "metadata", default: {}, null: false
+    t.integer "remaining_points", null: false
+    t.datetime "updated_at", null: false
+    t.uuid "user_id", null: false
+    t.index ["user_id", "expires_at"], name: "index_credit_grants_on_user_id_and_expires_at"
   end
 
   create_table "credit_transactions", id: :uuid, default: -> { "gen_random_uuid()" }, force: :cascade do |t|
@@ -476,6 +488,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_06_28_000005) do
   add_foreign_key "collection_items", "items", on_delete: :cascade
   add_foreign_key "collections", "items", column: "cover_item_id", on_delete: :nullify
   add_foreign_key "collections", "users", on_delete: :cascade
+  add_foreign_key "credit_grants", "users"
   add_foreign_key "credit_transactions", "users", on_delete: :cascade
   add_foreign_key "item_tags", "items", on_delete: :cascade
   add_foreign_key "item_tags", "tags", on_delete: :cascade

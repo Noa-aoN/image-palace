@@ -25,6 +25,7 @@ class User < ApplicationRecord
   # trialing も「有効な有料契約」として扱う（trial 中ユーザーに無料枠を二重付与しないため）。
   has_one :active_subscription, -> { where(status: %w[active trialing]) }, class_name: "Subscription"
   has_many :credit_transactions, dependent: :destroy
+  has_many :credit_grants, dependent: :destroy
 
   # 当月の生成数。カード（items）と、名前付きスペースポイント（画像生成を伴う）を
   # 合算して数える。月間生成上限（月100枚）は両者で共有する。
@@ -37,9 +38,14 @@ class User < ApplicationRecord
   # 履歴は credit_transactions に追記する（監査用の append-only 台帳）。
   class InsufficientCredits < StandardError; end
 
-  # 残高（ポイント）。subscription_credits / topup_credits はポイントで保持する。
+  # 残高（ポイント）。期限付きグラント + subscription_credits + topup_credits の合算。
   def available_credit_points
-    subscription_credits + topup_credits
+    grant_credit_points + subscription_credits + topup_credits
+  end
+
+  # 有効な期限付きグラントの残量合計（ポイント）。
+  def grant_credit_points
+    credit_grants.active.sum(:remaining_points)
   end
 
   # 表示用クレジット（1cr = Billing::POINTS_PER_CREDIT pt）。
@@ -98,13 +104,34 @@ class User < ApplicationRecord
     end
   end
 
-  # 生成1件ぶんなどを消費する。サブスク分→Top-up の順に引く。
+  # 期限付きグラント（Free引き継ぎ・キャンペーン等）を付与する。
+  def grant_credits!(amount, kind:, expires_at: nil, metadata: {})
+    return if amount <= 0
+
+    with_lock do
+      credit_grants.create!(kind:, amount_points: amount, remaining_points: amount, expires_at:, metadata:)
+      record_credit!(kind: "grant", delta: amount)
+    end
+  end
+
+  # 生成1件ぶんなどを消費する。期限付きグラント（期限が近い順）→ サブスク → Top-up の順に引く。
   def consume_credits!(amount, item: nil, space_point_id: nil)
     with_lock do
       raise InsufficientCredits, "クレジットが不足しています" if available_credit_points < amount
 
-      from_subscription = [ subscription_credits, amount ].min
-      from_topup = amount - from_subscription
+      remaining = amount
+      # 1) 期限付きグラント（失効ロスを避けるため期限の近い順）
+      credit_grants.consume_order.each do |grant|
+        break if remaining <= 0
+
+        take = [ grant.remaining_points, remaining ].min
+        grant.update!(remaining_points: grant.remaining_points - take)
+        remaining -= take
+      end
+      # 2) サブスク → 3) Top-up
+      from_subscription = [ subscription_credits, remaining ].min
+      remaining -= from_subscription
+      from_topup = remaining
       update!(
         subscription_credits: subscription_credits - from_subscription,
         topup_credits: topup_credits - from_topup
