@@ -147,7 +147,12 @@ export function CreateItemForm() {
   return (
     <form onSubmit={handleSubmit} className="space-y-5">
       <div className="space-y-2">
-        <Label htmlFor="titles" required>単語・概念を入力</Label>
+        <div className="flex items-center justify-between gap-2">
+          <Label htmlFor="titles" required>単語・概念を入力</Label>
+          {remainingCards !== null && (
+            <span className="text-xs text-muted-foreground">あと約{remainingCards}枚作成できます</span>
+          )}
+        </div>
         <div className="rounded-xl border border-border/70 bg-muted/40 px-4 py-3 text-sm leading-6 text-muted-foreground">
           <p>具体的な名詞や場面が思い浮かぶ言葉ほど、画像化に成功しやすいです。</p>
           <p>例: <span className="font-medium text-foreground">富士山 / API / 光合成 / 細胞分裂</span></p>
@@ -179,33 +184,34 @@ export function CreateItemForm() {
           onChange={(e) => setInput(e.target.value)}
           disabled={submitting}
         />
-        {wordCount > 0 && (
-          <p className="text-xs text-muted-foreground">
-            {wordCount}件の単語を認識しました
-          </p>
-        )}
-        {wordCount === 0 && (
-          <p className="text-xs text-muted-foreground">
-            抽象的すぎる語や意味のない文字列は失敗しやすいため、まずは具体的な単語から試してください。
-          </p>
-        )}
+        {wordCount > 0 && <p className="text-xs text-muted-foreground">{wordCount}件を認識</p>}
         {hasTooLongTitle && (
           <p className="text-xs text-destructive">
             1単語あたり{MAX_TITLE_LENGTH}文字を超えています。区切り直すか短くしてください。
           </p>
         )}
-        {remainingCards !== null && (
-          willExceedCredits ? (
-            <p className="text-xs text-destructive">
-              クレジットが不足します（残り約 {remainingCards} 枚 / 入力 {wordCount} 件）。
-              <Link href="/billing" className="ml-1 underline">プランを見る</Link>
-            </p>
-          ) : (
-            <p className="text-xs text-muted-foreground">
-              残りクレジット {billing?.available_credits}（あと約 {remainingCards} 枚作成できます）
-            </p>
-          )
+        {willExceedCredits && (
+          <p className="text-xs text-destructive">
+            クレジットが不足します（残り約{remainingCards}枚 / 入力{wordCount}件）。
+            <Link href="/billing" className="ml-1 underline">プランを見る</Link>
+          </p>
         )}
+      </div>
+
+      {/* 追加の指示（自由入力） */}
+      <div className="space-y-2">
+        <Label htmlFor="custom-prompt">追加の指示（任意）</Label>
+        <input
+          id="custom-prompt"
+          type="text"
+          value={customPrompt}
+          onChange={(e) => setCustomPrompt(e.target.value)}
+          disabled={submitting}
+          maxLength={CUSTOM_PROMPT_MAX_LENGTH}
+          placeholder="例: 背景は白、やさしい色合いで"
+          className="w-full rounded-lg border border-input bg-background px-3 py-2 text-sm placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+        />
+        <p className="text-xs text-muted-foreground">プロンプトに追記され、画像の雰囲気を調整できます。</p>
       </div>
 
       <div className="space-y-2">
@@ -249,22 +255,6 @@ export function CreateItemForm() {
           })}
         </div>
         <p className="text-xs text-muted-foreground">作成するすべてのカードに同じスタイルが適用されます。</p>
-      </div>
-
-      {/* カスタム指示（自由入力） */}
-      <div className="space-y-2">
-        <Label htmlFor="custom-prompt">追加の指示（任意）</Label>
-        <input
-          id="custom-prompt"
-          type="text"
-          value={customPrompt}
-          onChange={(e) => setCustomPrompt(e.target.value)}
-          disabled={submitting}
-          maxLength={CUSTOM_PROMPT_MAX_LENGTH}
-          placeholder="例: 背景は白、やさしい色合いで"
-          className="w-full rounded-lg border border-input bg-background px-3 py-2 text-sm placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-        />
-        <p className="text-xs text-muted-foreground">プロンプトに追記され、画像の雰囲気を調整できます。</p>
       </div>
 
       <label className="flex items-start gap-3 rounded-xl border border-border/70 bg-background px-4 py-3">
