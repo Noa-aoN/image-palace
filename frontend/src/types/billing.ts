@@ -12,6 +12,13 @@ export type BillingPlan = {
 
 export type BillingSummary = {
   available_credits: number
+  // 残高の内訳（クレジット単位）。grant=期限付きボーナス（最も近い期限）。
+  credit_breakdown?: {
+    grant: number
+    grant_expires_at: string | null
+    subscription: number
+    topup: number
+  }
   plan: { name: string; tier: string; credits_per_period: number } | null
   subscription: {
     status: string

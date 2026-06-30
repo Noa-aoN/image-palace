@@ -80,5 +80,18 @@ RSpec.describe "Billing endpoints", type: :request do
       # 1/15 登録 → 現周期 6/15、次回 7/15
       expect(Time.zone.parse(json_response["next_credit_reset"])).to eq(Time.zone.local(2026, 7, 15, 10, 0, 0))
     end
+
+    it "credit_breakdown（サブスク/ボーナス/チャージ）と最も近い期限を返す" do
+      user = create(:user, :confirmed)
+      user.grant_credits!(3 * Billing::POINTS_PER_CREDIT, kind: "campaign", expires_at: Time.zone.local(2026, 12, 1))
+
+      get "/api/v1/billing/summary", headers: auth_headers_for(user), as: :json
+
+      bd = json_response["credit_breakdown"]
+      expect(bd["subscription"]).to eq(10.0) # 無料枠
+      expect(bd["grant"]).to eq(3.0)
+      expect(bd["topup"]).to eq(0.0)
+      expect(Time.zone.parse(bd["grant_expires_at"])).to eq(Time.zone.local(2026, 12, 1))
+    end
   end
 end

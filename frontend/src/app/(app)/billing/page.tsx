@@ -7,7 +7,7 @@ import { CategorySections, type CategorySection } from '@/components/features/my
 import { ComingSoon } from '@/components/features/myroom/ComingSoon'
 import { getPlans, getBillingSummary, createCheckoutSession, createPortalSession } from '@/lib/api/billing'
 import { useBillingStore } from '@/stores/billing'
-import { tierLabel, formatYen, CREDIT_UNIT } from '@/lib/billing'
+import { tierLabel, formatYen, CREDIT_UNIT, CREDIT_UNIT_SHORT } from '@/lib/billing'
 import type { BillingPlan, BillingSummary } from '@/types/billing'
 
 type TabKey = 'usage' | 'plan' | 'credit' | 'capacity' | 'payment'
@@ -138,6 +138,39 @@ export default function BillingPage() {
               {summary?.available_credits ?? 0}
               <span className="ml-1 text-sm font-normal text-muted-foreground">{CREDIT_UNIT}</span>
             </p>
+            {summary?.credit_breakdown && (
+              <dl className="grid gap-1.5 rounded-lg bg-muted/40 px-3 py-2.5 text-sm">
+                <div className="flex items-center justify-between gap-4">
+                  <dt className="text-muted-foreground">サブスク枠</dt>
+                  <dd className="font-medium tabular-nums">
+                    {summary.credit_breakdown.subscription} {CREDIT_UNIT_SHORT}
+                  </dd>
+                </div>
+                {summary.credit_breakdown.grant > 0 && (
+                  <div className="flex items-center justify-between gap-4">
+                    <dt className="text-muted-foreground">
+                      ボーナス
+                      {summary.credit_breakdown.grant_expires_at && (
+                        <span className="ml-1 text-xs">
+                          （{formatRenewal(summary.credit_breakdown.grant_expires_at)} まで）
+                        </span>
+                      )}
+                    </dt>
+                    <dd className="font-medium tabular-nums">
+                      {summary.credit_breakdown.grant} {CREDIT_UNIT_SHORT}
+                    </dd>
+                  </div>
+                )}
+                {summary.credit_breakdown.topup > 0 && (
+                  <div className="flex items-center justify-between gap-4">
+                    <dt className="text-muted-foreground">チャージ（買い切り）</dt>
+                    <dd className="font-medium tabular-nums">
+                      {summary.credit_breakdown.topup} {CREDIT_UNIT_SHORT}
+                    </dd>
+                  </div>
+                )}
+              </dl>
+            )}
             <dl className="grid gap-2 text-sm">
               <div className="flex items-center justify-between gap-4 border-t border-border pt-3">
                 <dt className="text-muted-foreground">現在のプラン</dt>
@@ -156,10 +189,10 @@ export default function BillingPage() {
           </section>
 
           <ComingSoon
-            title="使用量の内訳"
+            title="使用量の推移"
             icon={<Gauge size={18} />}
-            description="今月の使用量や、無料枠・有料枠・追加購入分の内訳表示は順次対応予定です。"
-            items={['今月の使用量', 'Top-up 残高', '無料枠 / 有料枠 / 追加購入分の内訳']}
+            description="今月の使用量や、消費の推移グラフは順次対応予定です。"
+            items={['今月の使用量', '消費の推移', '失効予定の通知']}
           />
         </>
       ),
