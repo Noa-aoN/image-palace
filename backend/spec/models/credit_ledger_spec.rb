@@ -106,6 +106,52 @@ RSpec.describe "User credit ledger", type: :model do
       expect(user.subscription_credits).to eq(90)
       expect(user.topup_credits).to eq(100)
     end
+
+    it "期限切れグラントは消費対象にならない（スキップしてサブスクから引く）" do
+      user.update!(subscription_credits: 100, topup_credits: 0)
+      user.grant_credits!(50, kind: "campaign", expires_at: 1.day.ago) # 期限切れ＝消費されない
+
+      user.consume_credits!(30)
+
+      user.reload
+      expect(user.subscription_credits).to eq(70) # グラントは使われずサブスクから
+      expect(user.credit_grants.where(kind: "campaign").first.remaining_points).to eq(50)
+    end
+
+    it "複数グラントを跨いで一部だけ消費する（近い期限から部分消費）" do
+      user.update!(subscription_credits: 0, topup_credits: 0)
+      user.grant_credits!(20, kind: "free_carryover", expires_at: 2.days.from_now)
+      user.grant_credits!(30, kind: "campaign", expires_at: 9.days.from_now)
+      g_near = user.credit_grants.find_by(kind: "free_carryover")
+      g_far = user.credit_grants.find_by(kind: "campaign")
+
+      user.consume_credits!(35) # near 20 全消費 + far から 15
+
+      expect(g_near.reload.remaining_points).to eq(0)
+      expect(g_far.reload.remaining_points).to eq(15)
+    end
+
+    it "Top-up は最後に消費される（グラント・サブスクを使い切ってから）" do
+      user.update!(subscription_credits: 10, topup_credits: 100)
+      user.grant_credits!(5, kind: "goodwill", expires_at: nil)
+
+      user.consume_credits!(20) # grant5 + sub10 + topup5
+
+      user.reload
+      expect(user.grant_credit_points).to eq(0)
+      expect(user.subscription_credits).to eq(0)
+      expect(user.topup_credits).to eq(95)
+    end
+
+    it "残高不足（グラント含む合算でも足りない）はマイナスにならず例外・記録なし" do
+      user.update!(subscription_credits: 5, topup_credits: 0)
+      user.grant_credits!(3, kind: "campaign", expires_at: 1.day.from_now)
+
+      expect {
+        expect { user.consume_credits!(20) }.to raise_error(User::InsufficientCredits)
+      }.not_to change(CreditTransaction, :count)
+      expect(user.reload.available_credit_points).to eq(8) # 5 + 3、減っていない
+    end
   end
 
   describe "#ensure_current_period_credits! (無料枠の lazy 月次付与)" do

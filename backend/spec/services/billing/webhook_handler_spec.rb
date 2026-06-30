@@ -69,6 +69,39 @@ RSpec.describe Billing::WebhookHandler do
     expect(user.reload.topup_credits).to eq(100 * Billing::POINTS_PER_CREDIT)
   end
 
+  describe "冪等性（Webhook 重複・順序）" do
+    let(:topup) { create(:plan, :topup).tap { |p| p.update!(stripe_price_id: "price_topup") } }
+
+    def topup_event(event_id)
+      handle(id: event_id, type: "checkout.session.completed", data: { object: {
+        mode: "payment", customer: "cus_1", client_reference_id: user.id,
+        metadata: { plan_name: topup.name }
+      } })
+    end
+
+    it "checkout.session.completed(Top-up) は同一 event_id で二重加算しない" do
+      user
+      topup
+      topup_event("evt_dup_topup")
+      expect { topup_event("evt_dup_topup") }.not_to(change { user.reload.topup_credits })
+      expect(CreditTransaction.where(stripe_event_id: "evt_dup_topup").count).to eq(1)
+    end
+
+    it "customer.subscription.updated は重複してもクレジットを変えず破綻しない" do
+      sub = create(:subscription, user:, plan:, status: "active", stripe_subscription_id: "sub_u")
+      user.update!(subscription_credits: 42)
+
+      payload = { id: "evt_up", type: "customer.subscription.updated", data: { object: {
+        id: "sub_u", customer: "cus_1", status: "active", cancel_at_period_end: false, canceled_at: nil,
+        items: { data: [ { price: { id: "price_std" }, current_period_end: 1_705_270_400 } ] }
+      } } }
+
+      handle(payload)
+      expect { handle(payload) }.not_to(change { user.reload.subscription_credits })
+      expect(sub.reload.status).to eq("active")
+    end
+  end
+
   describe "Free→Paid 引き継ぎ（free_carryover グラント）" do
     let(:free_plan) { create(:plan) } # name=free, credits_per_period=10
     let!(:local_sub) { create(:subscription, user:, plan:, status: "active", stripe_subscription_id: "sub_1") }
@@ -111,6 +144,16 @@ RSpec.describe Billing::WebhookHandler do
 
       expect { invoice_paid("evt_carry_second") }
         .not_to(change { user.credit_grants.where(kind: "free_carryover").count })
+    end
+
+    it "Free 残高が 0 なら carryover グラントを作らない（0付与にもしない）" do
+      user; plan; free_plan
+      user.update!(subscription_credits: 0)
+
+      invoice_paid("evt_carry_zero")
+
+      expect(user.reload.credit_grants.where(kind: "free_carryover")).to be_empty
+      expect(user.subscription_credits).to eq(100 * Billing::POINTS_PER_CREDIT) # Paid枠は通常付与
     end
   end
 
