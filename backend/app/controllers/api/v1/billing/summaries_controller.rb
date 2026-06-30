@@ -15,6 +15,13 @@ module Api
 
           render json: {
             available_credits: current_user.available_credits,
+            # 残高の内訳（クレジット単位）。bonus=期限付きグラント（最も近い期限も返す）。
+            credit_breakdown: {
+              grant: current_user.grant_credit_points.fdiv(::Billing::POINTS_PER_CREDIT),
+              grant_expires_at: current_user.credit_grants.active.minimum(:expires_at),
+              subscription: current_user.subscription_credits.fdiv(::Billing::POINTS_PER_CREDIT),
+              topup: current_user.topup_credits.fdiv(::Billing::POINTS_PER_CREDIT)
+            },
             plan: plan && { name: plan.name, tier: plan.tier, credits_per_period: plan.credits_per_period },
             subscription: sub && {
               status: sub.status,
