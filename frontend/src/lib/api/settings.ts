@@ -7,7 +7,9 @@ export async function getSettings(): Promise<UserSettings> {
 }
 
 export async function updateSettings(
-  payload: Partial<Pick<UserSettings, 'auto_generate_meanings' | 'auto_generate_tags' | 'default_image_style'>>
+  payload: Partial<
+    Pick<UserSettings, 'auto_generate_meanings' | 'auto_generate_tags' | 'default_image_style' | 'regenerate_with_meaning'>
+  >
 ): Promise<UserSettings> {
   const res = await apiClient.patch<UserSettings>('/api/v1/settings', { setting: payload })
   return res.data

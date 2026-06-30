@@ -15,6 +15,7 @@ export default function SettingsPage() {
   // 生成オプション
   const [autoMeanings, setAutoMeanings] = useState<boolean | null>(null)
   const [autoTags, setAutoTags] = useState<boolean | null>(null)
+  const [regenWithMeaning, setRegenWithMeaning] = useState<boolean | null>(null)
   const [savingSettings, setSavingSettings] = useState(false)
   // デフォルト画像スタイル（null = 読み込み中）
   const [defaultStyle, setDefaultStyle] = useState<string | null>(null)
@@ -27,6 +28,7 @@ export default function SettingsPage() {
         if (cancelled) return
         setAutoMeanings(s.auto_generate_meanings)
         setAutoTags(s.auto_generate_tags)
+        setRegenWithMeaning(s.regenerate_with_meaning)
         setDefaultStyle(s.default_image_style)
       })
       .catch(() => {})
@@ -75,6 +77,21 @@ export default function SettingsPage() {
       setAutoTags(s.auto_generate_tags)
     } catch {
       setAutoTags(!next) // 失敗したら元に戻す
+    } finally {
+      setSavingSettings(false)
+    }
+  }
+
+  const toggleRegenMeaning = async () => {
+    if (regenWithMeaning === null || savingSettings) return
+    const next = !regenWithMeaning
+    setSavingSettings(true)
+    setRegenWithMeaning(next)
+    try {
+      const s = await updateSettings({ regenerate_with_meaning: next })
+      setRegenWithMeaning(s.regenerate_with_meaning)
+    } catch {
+      setRegenWithMeaning(!next) // 失敗したら元に戻す
     } finally {
       setSavingSettings(false)
     }
@@ -175,6 +192,21 @@ export default function SettingsPage() {
                 label="タグの自動生成"
                 disabled={autoTags === null || savingSettings}
                 onClick={toggleAutoTags}
+              />
+            </div>
+            <div className="flex items-start justify-between gap-4 border-t border-border pt-3">
+              <div>
+                <p className="text-sm font-medium">再生成で意味・説明を参考にする（既定）</p>
+                <p className="mt-1 text-sm text-muted-foreground">
+                  カードを再生成するときの「意味・説明を参考にする」の初期値です。
+                  ONにすると、意味・説明のあるカードでは既定で参考にします（各再生成画面で個別に切り替え可）。
+                </p>
+              </div>
+              <Toggle
+                checked={regenWithMeaning === true}
+                label="再生成で意味・説明を参考にする"
+                disabled={regenWithMeaning === null || savingSettings}
+                onClick={toggleRegenMeaning}
               />
             </div>
             {savingSettings && (

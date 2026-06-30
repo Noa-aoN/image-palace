@@ -1,9 +1,9 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import type { ReactNode } from 'react'
 import Link from 'next/link'
-import { PenLine, Sparkles, GalleryVerticalEnd, Library, LayoutGrid, Frame, Loader2, ChevronRight, Coins, CreditCard } from 'lucide-react'
+import { PenLine, Sparkles, GalleryVerticalEnd, Library, LayoutGrid, Frame, Loader2, ChevronRight, Coins, CreditCard, CheckCircle2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
 import { getItemsSummary, type ItemsSummary } from '@/lib/api/items'
@@ -52,16 +52,69 @@ function formatRenewal(iso: string | null | undefined): string | null {
   return `${d.getFullYear()}/${d.getMonth() + 1}/${d.getDate()}`
 }
 
+type BatchProgress = { total: number; success: number; failed: number; remaining: number; done: boolean }
+const WORK_POLL_MS = 3000
+
 export function DashboardContent() {
   const [summary, setSummary] = useState<ItemsSummary | null>(null)
+  const [progress, setProgress] = useState<BatchProgress | null>(null)
   const billing = useBillingStore((s) => s.summary)
   const fetchBilling = useBillingStore((s) => s.fetchSummary)
+  // 「作業状況」バッチ進捗：生成中の総数を基準に 成功/失敗/残り をリアルタイム表示。
+  const sessionRef = useRef<{ total: number; baseFailed: number } | null>(null)
+  const clearTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   useEffect(() => {
-    getItemsSummary()
-      .then((data) => setSummary(data))
-      .catch(() => setSummary(EMPTY_SUMMARY))
     fetchBilling()
+    let cancelled = false
+    let timer: ReturnType<typeof setTimeout> | null = null
+
+    const apply = (data: ItemsSummary) => {
+      setSummary(data)
+      const inProgress = data.pending_count + data.processing_count
+      if (inProgress > 0 && !sessionRef.current) {
+        // 新しい作業セッション開始（既存の失敗数を基準にする）
+        sessionRef.current = { total: 0, baseFailed: data.failed_count }
+        if (clearTimerRef.current) {
+          clearTimeout(clearTimerRef.current)
+          clearTimerRef.current = null
+        }
+      }
+      const session = sessionRef.current
+      if (!session) return
+
+      const failed = Math.max(0, data.failed_count - session.baseFailed)
+      session.total = Math.max(session.total, inProgress + failed)
+      const success = Math.max(0, session.total - inProgress - failed)
+      setProgress({ total: session.total, success, failed, remaining: inProgress, done: inProgress === 0 })
+
+      if (inProgress === 0) {
+        sessionRef.current = null
+        // 完了表示を少し残してから消す
+        clearTimerRef.current = setTimeout(() => {
+          if (!cancelled) setProgress(null)
+        }, 8000)
+      }
+    }
+
+    const tick = async () => {
+      if (cancelled) return
+      const data = await getItemsSummary().catch(() => null)
+      if (cancelled) return
+      if (data) {
+        apply(data)
+        if (data.pending_count + data.processing_count > 0) timer = setTimeout(tick, WORK_POLL_MS)
+      } else {
+        setSummary((prev) => prev ?? EMPTY_SUMMARY)
+      }
+    }
+    tick()
+
+    return () => {
+      cancelled = true
+      if (timer) clearTimeout(timer)
+      if (clearTimerRef.current) clearTimeout(clearTimerRef.current)
+    }
   }, [fetchBilling])
 
   // 読み込み中はスケルトンを表示する。新規ユーザー判定（total_count===0）の前に出すことで、
@@ -125,7 +178,6 @@ export function DashboardContent() {
   const creditPct = credits !== null ? creditPercent(credits, perPeriod) : null
   // 有料はサブスク期末、無料は次回クレジット回復日（翌月初）。どちらも「M/D に更新」で表示する。
   const renewal = formatRenewal(billing?.subscription?.current_period_end ?? billing?.next_credit_reset)
-  const activeCount = summary.pending_count + summary.processing_count + summary.failed_count
 
   return (
     <div className="max-w-2xl mx-auto px-6 py-12 space-y-8">
@@ -200,8 +252,8 @@ export function DashboardContent() {
         </Link>
       </section>
 
-      {/* 作業状況（生成中・失敗があるときだけ表示） */}
-      {activeCount > 0 && (
+      {/* 作業状況（生成中バッチの進捗、または失敗があるときだけ表示。3秒ポーリングで更新） */}
+      {(progress || summary.failed_count > 0) && (
         <section className="space-y-3">
           <h2 className="text-sm font-semibold text-muted-foreground">作業状況</h2>
           <Link
@@ -211,25 +263,56 @@ export function DashboardContent() {
           >
             <Card className="cursor-pointer transition hover:border-[var(--palace)] hover:shadow-md">
               <CardContent>
-                <div className="flex items-center justify-between">
-                  <span className="flex items-center gap-2 text-sm text-muted-foreground">
-                    <Loader2 size={18} style={{ color: 'var(--palace)' }} />
-                    生成中 / 失敗
-                  </span>
-                  <ChevronRight
-                    size={16}
-                    className="transition-transform group-hover:translate-x-0.5"
-                    style={{ color: 'var(--palace)' }}
-                  />
-                </div>
-                <div className="mt-2 flex items-baseline gap-4">
-                  <p className="text-3xl font-bold tabular-nums">
-                    {summary.processing_count} / {summary.failed_count}
-                  </p>
-                  {summary.pending_count > 0 && (
-                    <p className="text-sm text-muted-foreground">保留中 {summary.pending_count}</p>
-                  )}
-                </div>
+                {progress ? (
+                  <>
+                    <div className="flex items-center justify-between gap-3">
+                      <span className="flex items-center gap-2 text-sm text-muted-foreground">
+                        {progress.done ? (
+                          <CheckCircle2 size={18} style={{ color: 'var(--palace)' }} />
+                        ) : (
+                          <Loader2 size={18} className="animate-spin" style={{ color: 'var(--palace)' }} />
+                        )}
+                        {progress.done ? '生成が完了しました' : '画像を生成中…'}
+                      </span>
+                      <span className="text-sm font-medium tabular-nums">
+                        {progress.success + progress.failed} / {progress.total} 完了
+                      </span>
+                    </div>
+                    <div className="mt-2 h-2 w-full overflow-hidden rounded-full bg-muted">
+                      <div
+                        className="h-full rounded-full bg-[var(--palace)] transition-all duration-500"
+                        style={{
+                          width: `${progress.total > 0 ? Math.round(((progress.success + progress.failed) / progress.total) * 100) : 0}%`,
+                        }}
+                      />
+                    </div>
+                    <div className="mt-2 flex flex-wrap items-center gap-x-4 gap-y-1 text-sm">
+                      <span className="text-muted-foreground">
+                        成功 <b className="text-foreground tabular-nums">{progress.success}</b>
+                      </span>
+                      <span className="text-muted-foreground">
+                        失敗 <b className={`tabular-nums ${progress.failed > 0 ? 'text-destructive' : 'text-foreground'}`}>{progress.failed}</b>
+                      </span>
+                      {!progress.done && (
+                        <span className="text-muted-foreground">
+                          残り <b className="text-foreground tabular-nums">{progress.remaining}</b>
+                        </span>
+                      )}
+                    </div>
+                  </>
+                ) : (
+                  <div className="flex items-center justify-between gap-3">
+                    <span className="text-sm">
+                      <span className="text-destructive">失敗 {summary.failed_count} 件</span>
+                      <span className="ml-1 text-muted-foreground">（タップして再生成）</span>
+                    </span>
+                    <ChevronRight
+                      size={16}
+                      className="transition-transform group-hover:translate-x-0.5"
+                      style={{ color: 'var(--palace)' }}
+                    />
+                  </div>
+                )}
               </CardContent>
             </Card>
           </Link>
@@ -273,7 +356,7 @@ export function DashboardContent() {
           <Button>+ カードを作成</Button>
         </Link>
         <Link href="/items">
-          <Button variant="outline">マイカードを見る</Button>
+          <Button variant="outline">カードを見る</Button>
         </Link>
         <Link href="/library">
           <Button variant="outline">ライブラリを見る</Button>
