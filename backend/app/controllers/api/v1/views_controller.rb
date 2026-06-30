@@ -2,6 +2,7 @@ module Api
   module V1
     class ViewsController < BaseController
       include ItemSerialization
+      include CoverImageUpload
 
       before_action :set_view, only: [
         :show, :update, :destroy, :add_item, :update_item, :remove_item, :reorder, :place_on_point, :clear_point,
@@ -13,7 +14,7 @@ module Api
         views = current_user.views.recent.includes(
           view_items: { item: { medias: { file_attachment: :blob } } },
           cover_item: { medias: { file_attachment: :blob } }
-        )
+        ).with_attached_cover_image.with_attached_cover_thumb
         render json: { views: views.map { |v| serialize_view(v) } }
       end
 
@@ -104,9 +105,11 @@ module Api
         file = params[:cover_image]
         return render(json: { errors: [ "画像が指定されていません" ] }, status: :unprocessable_entity) if file.blank?
 
-        @view.cover_image.attach(file)
+        attach_optimized_cover!(@view, file)
         @view.update!(cover_type: "custom")
         render json: serialize_view(@view)
+      rescue CoverImageUpload::InvalidCover => e
+        render json: { errors: [ e.message ] }, status: :unprocessable_entity
       rescue ActiveRecord::RecordInvalid => e
         render json: { errors: e.record.errors.full_messages }, status: :unprocessable_entity
       end
@@ -114,6 +117,7 @@ module Api
       # DELETE /api/v1/views/:id/cover_image
       def remove_cover
         @view.cover_image.purge if @view.cover_image.attached?
+        @view.cover_thumb.purge if @view.cover_thumb.attached?
         @view.update!(cover_type: "first_card")
         render json: serialize_view(@view)
       end
@@ -176,7 +180,7 @@ module Api
           cover_item_id: view.cover_item_id,
           cover: serialize_media(view.cover&.primary_media),
           cover_images: view.cover_cards.map { |item| serialize_media(item.primary_media) }.compact,
-          cover_image: serialize_attached_cover(view.cover_image),
+          cover_image: serialize_attached_cover(view),
           created_at: view.created_at
         }
       end

@@ -39,6 +39,38 @@ RSpec.describe "Api::V1 entity covers", type: :request do
       expect(response).to have_http_status(:ok)
       expect(json_response["cover_type"]).to eq("first_card")
     end
+
+    it "アップロードしたカバーを最適化(WebP)し、サムネも生成する" do
+      skip "libvips 未インストール環境のためスキップ" unless vips_available?
+
+      png = Tempfile.new([ "cover", ".png" ], binmode: true)
+      png.write(Vips::Image.black(1600, 1200).pngsave_buffer)
+      png.rewind
+
+      post "/api/v1/collections/#{collection.id}/cover_image",
+        params: { cover_image: Rack::Test::UploadedFile.new(png.path, "image/png") }, headers: headers
+
+      expect(response).to have_http_status(:ok)
+      collection.reload
+      expect(collection.cover_image.blob.content_type).to eq("image/webp")
+      expect(collection.cover_thumb).to be_attached
+      expect(collection.cover_type).to eq("custom")
+    ensure
+      png&.close!
+    end
+
+    it "画像でないファイルは 422 で弾く" do
+      txt = Tempfile.new([ "x", ".txt" ])
+      txt.write("not an image")
+      txt.rewind
+
+      post "/api/v1/collections/#{collection.id}/cover_image",
+        params: { cover_image: Rack::Test::UploadedFile.new(txt.path, "text/plain") }, headers: headers
+
+      expect(response).to have_http_status(:unprocessable_entity)
+    ensure
+      txt&.close!
+    end
   end
 
   describe "ビュー" do

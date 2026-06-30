@@ -40,15 +40,26 @@ module ItemSerialization
   end
 
   # has_one_attached の custom カバー画像（デッキ/コレクション/スペース/キャンバス共通）
-  def serialize_attached_cover(attachment)
+  # record は cover_image / cover_thumb を持つ Collection / Space / View。
+  def serialize_attached_cover(record)
+    attachment = record.cover_image
     return nil unless attachment.attached?
     return nil unless blob_available?(attachment.blob)
 
-    blob = attachment.blob
     {
-      url: media_url(blob),
-      thumb_url: thumbnail_url(blob)
+      url: media_url(attachment.blob),
+      thumb_url: cover_thumb_url(record, attachment.blob)
     }
+  end
+
+  # 事前生成済みの cover_thumb があれば CDN 直配信。無い古いカバーは variant にフォールバック。
+  def cover_thumb_url(record, fallback_blob)
+    thumb = record.cover_thumb if record.respond_to?(:cover_thumb)
+    if thumb&.attached? && blob_available?(thumb.blob)
+      media_url(thumb.blob)
+    else
+      thumbnail_url(fallback_blob)
+    end
   end
 
   def serialize_media(media)

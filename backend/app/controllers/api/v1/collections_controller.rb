@@ -2,6 +2,7 @@ module Api
   module V1
     class CollectionsController < BaseController
       include ItemSerialization
+      include CoverImageUpload
 
       before_action :set_collection, only: [
         :show, :update, :destroy, :add_entry, :remove_entry, :upload_cover, :remove_cover
@@ -15,6 +16,8 @@ module Api
                                   .group("collections.id")
                                   # cover/cover_cards が collection_entries→entry を走査するため preload して N+1 を防ぐ
                                   .includes(:cover_item, collection_entries: :entry)
+                                  .with_attached_cover_image
+                                  .with_attached_cover_thumb
 
         render json: { collections: collections.map { |c| serialize_collection(c) } }
       end
@@ -75,9 +78,11 @@ module Api
         file = params[:cover_image]
         return render(json: { errors: [ "画像が指定されていません" ] }, status: :unprocessable_entity) if file.blank?
 
-        @collection.cover_image.attach(file)
+        attach_optimized_cover!(@collection, file)
         @collection.update!(cover_type: "custom")
         render json: serialize_collection(@collection)
+      rescue CoverImageUpload::InvalidCover => e
+        render json: { errors: [ e.message ] }, status: :unprocessable_entity
       rescue ActiveRecord::RecordInvalid => e
         render json: { errors: e.record.errors.full_messages }, status: :unprocessable_entity
       end
@@ -85,6 +90,7 @@ module Api
       # DELETE /api/v1/collections/:id/cover_image
       def remove_cover
         @collection.cover_image.purge if @collection.cover_image.attached?
+        @collection.cover_thumb.purge if @collection.cover_thumb.attached?
         @collection.update!(cover_type: "first_card")
         render json: serialize_collection(@collection)
       end
@@ -134,7 +140,7 @@ module Api
           cover_item_id: collection.cover_item_id,
           cover: serialize_media(collection.cover&.primary_media),
           cover_images: collection.cover_cards.map { |item| serialize_media(item.primary_media) }.compact,
-          cover_image: serialize_attached_cover(collection.cover_image),
+          cover_image: serialize_attached_cover(collection),
           created_at: collection.created_at
         }
       end

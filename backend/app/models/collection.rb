@@ -7,6 +7,8 @@ class Collection < ApplicationRecord
   # カバー（デッキ踏襲）。表紙はコレクション内の Item を指定。
   belongs_to :cover_item, class_name: "Item", optional: true
   has_one_attached :cover_image
+  # 一覧用サムネ（480px WebP）。CDN 直配信のためアップロード時に作成する。
+  has_one_attached :cover_thumb
 
   NAME_MAX_LENGTH = 100
   COVER_TYPES = %w[first_card collage custom].freeze
