@@ -11,8 +11,8 @@ import { tierLabel, CREDIT_UNIT } from '@/lib/billing'
 
 const LINKS: { href: string; icon: ReactNode; label: string; description: string }[] = [
   { href: '/account', icon: <UserCog size={20} />, label: 'アカウント設定', description: 'プロフィール・ログイン連携・メール・退会。' },
-  { href: '/settings', icon: <Settings size={20} />, label: '環境設定', description: '生成・共有・連携・通知・データ管理。' },
   { href: '/billing', icon: <CreditCard size={20} />, label: 'プラン・支払い', description: 'プラン・クレジット・支払いの管理。' },
+  { href: '/settings', icon: <Settings size={20} />, label: '環境設定', description: '生成・共有・連携・通知・データ管理。' },
   { href: '/trophy', icon: <Trophy size={20} />, label: 'トロフィー', description: '実績・バッジ・称号・活動記録。' },
 ]
 

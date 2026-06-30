@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button'
 import { CategorySections, type CategorySection } from '@/components/features/myroom/CategorySections'
 import { ComingSoon } from '@/components/features/myroom/ComingSoon'
 import { getPlans, getBillingSummary, createCheckoutSession, createPortalSession } from '@/lib/api/billing'
+import { useBillingStore } from '@/stores/billing'
 import { tierLabel, formatYen, CREDIT_UNIT } from '@/lib/billing'
 import type { BillingPlan, BillingSummary } from '@/types/billing'
 
@@ -55,13 +56,15 @@ export default function BillingPage() {
 
     let cancelled = false
     let tries = 0
+    // subscription.created（プラン）と invoice.paid（クレジット）は別イベントで前後するため、
+    // 早期終了せず数回ポーリングして両方の反映を取り込む。ヘッダー等の共有残高も更新する。
     const poll = async () => {
       tries += 1
       try {
         const s = await getBillingSummary()
         if (cancelled) return
         setSummary(s)
-        if (s.plan?.tier && s.plan.tier !== 'free') return // 反映完了で停止
+        useBillingStore.getState().fetchSummary()
       } catch {
         /* 一時的な失敗は次のポーリングで吸収 */
       }

@@ -110,14 +110,28 @@ module Billing
     # サブスクの請求成功（初回＋毎月）でクレジットを当月分にリセット付与する。
     def grant_subscription_credits(event)
       invoice = event.data.object
-      return if invoice.subscription.blank?
+      return if invoice_subscription_id(invoice).blank?
 
       user = user_for(invoice.customer)
-      plan = Plan.find_by(stripe_price_id: invoice.lines.data.first&.price&.id)
+      plan = Plan.find_by(stripe_price_id: invoice_price_id(invoice))
       return unless user && plan
       return if processed?(event)
 
       user.reset_subscription_credits!(plan.credits_per_period * Billing::POINTS_PER_CREDIT, stripe_event_id: event.id)
+    end
+
+    # Stripe API 2025-03 以降、invoice.subscription は parent.subscription_details.subscription へ移動した。
+    # Stripe オブジェクトは未知メソッドで NoMethodError を投げるため、必ず [] でアクセスする。
+    def invoice_subscription_id(invoice)
+      invoice[:subscription] || invoice[:parent]&.[](:subscription_details)&.[](:subscription)
+    end
+
+    # 明細の price も line.price → line.pricing.price_details.price へ移動した。両対応で price_id を取る。
+    def invoice_price_id(invoice)
+      line = invoice.lines.data.first
+      return nil unless line
+
+      (line[:price] && line[:price][:id]) || line[:pricing]&.[](:price_details)&.[](:price)
     end
 
     # current_period_* は Subscription 直下（旧API）か items 配下（新API）のどちらか。
