@@ -2,6 +2,8 @@ class CreditTransaction < ApplicationRecord
   KINDS = %w[
     subscription_grant
     subscription_expire
+    grant
+    grant_expire
     topup_purchase
     consumption
     refund
