@@ -7,6 +7,8 @@ class Space < ApplicationRecord
   # カバー（デッキ踏襲）。カバー候補はポイントの生成画像。表紙は SpacePoint を指定。
   belongs_to :cover_space_point, class_name: "SpacePoint", optional: true
   has_one_attached :cover_image
+  # 一覧用サムネ（480px WebP）。CDN 直配信のためアップロード時に作成する。
+  has_one_attached :cover_thumb
 
   NAME_MAX_LENGTH = 100
   # room（棚＝コレクションを並べる） / road（連結法＝序数ポイントにカードを置く）
