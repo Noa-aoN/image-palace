@@ -141,7 +141,10 @@ export default function BillingPage() {
             {summary?.credit_breakdown && (
               <dl className="grid gap-1.5 rounded-lg bg-muted/40 px-3 py-2.5 text-sm">
                 <div className="flex items-center justify-between gap-4">
-                  <dt className="text-muted-foreground">サブスク枠</dt>
+                  <dt className="text-muted-foreground">
+                    サブスク枠
+                    {renewal && <span className="ml-1 text-xs">（{renewal} 更新でリセット）</span>}
+                  </dt>
                   <dd className="font-medium tabular-nums">
                     {summary.credit_breakdown.subscription} {CREDIT_UNIT_SHORT}
                   </dd>
@@ -149,7 +152,7 @@ export default function BillingPage() {
                 {summary.credit_breakdown.grant > 0 && (
                   <div className="flex items-center justify-between gap-4">
                     <dt className="text-muted-foreground">
-                      ボーナス
+                      特典クレジット（期限つき）
                       {summary.credit_breakdown.grant_expires_at && (
                         <span className="ml-1 text-xs">
                           （{formatRenewal(summary.credit_breakdown.grant_expires_at)} まで）
