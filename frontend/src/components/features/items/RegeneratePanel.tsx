@@ -1,11 +1,12 @@
 'use client'
 
-import { useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { RefreshCw, ChevronDown } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Label } from '@/components/ui/label'
 import { Spinner } from '@/components/ui/spinner'
 import { retryItem } from '@/lib/api/items'
+import { getSettings } from '@/lib/api/settings'
 import { STYLE_OPTIONS, CUSTOM_PROMPT_MAX_LENGTH } from '@/lib/item-styles'
 import type { Item } from '@/types/item'
 
@@ -27,8 +28,18 @@ export function RegeneratePanel({ item, onUpdated }: Props) {
   const [useMeaning, setUseMeaning] = useState(false)
   const [retrying, setRetrying] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  // 「意味・説明を参考にする」の初期値はユーザー設定（既定 ON）に従う。ユーザーが触ったら以後は上書きしない。
+  const meaningTouched = useRef(false)
 
   const hasMeaning = Boolean(item.meaning && item.meaning.trim())
+
+  useEffect(() => {
+    getSettings()
+      .then((s) => {
+        if (!meaningTouched.current) setUseMeaning(s.regenerate_with_meaning)
+      })
+      .catch(() => {})
+  }, [])
 
   const handleRegenerate = async () => {
     setRetrying(true)
@@ -119,14 +130,17 @@ export function RegeneratePanel({ item, onUpdated }: Props) {
               <input
                 type="checkbox"
                 checked={useMeaning}
-                onChange={(e) => setUseMeaning(e.target.checked)}
+                onChange={(e) => {
+                  meaningTouched.current = true
+                  setUseMeaning(e.target.checked)
+                }}
                 disabled={retrying}
                 className="mt-1 h-4 w-4 rounded border-input"
               />
               <span className="space-y-1">
                 <span className="block text-sm font-medium">意味・説明を参考にする</span>
                 <span className="block text-xs text-muted-foreground">
-                  このカードの意味・説明文を画像生成のヒントに加えます（既定はオフ）。
+                  このカードの意味・説明文を画像生成のヒントに加えます（既定は環境設定で変更できます）。
                 </span>
               </span>
             </label>

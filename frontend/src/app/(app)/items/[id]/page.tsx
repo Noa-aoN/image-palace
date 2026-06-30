@@ -34,7 +34,7 @@ export default function ItemDetailPage() {
   const { id } = useParams<{ id: string }>()
   const router = useRouter()
   const backHref = '/items'
-  const backLabel = '← マイカードへ戻る'
+  const backLabel = '← カードへ戻る'
   const itemHref = (targetId: string) => `/items/${targetId}`
   const cachedItems = useItemsStore((s) => s.items)
   const upsertItem = useItemsStore((s) => s.upsertItem)

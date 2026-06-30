@@ -51,5 +51,15 @@ RSpec.describe "Api::V1::Settings", type: :request do
 
       expect(response).to have_http_status(:unprocessable_entity)
     end
+
+    it "再生成で意味を参考にする既定は ON で、OFF に更新できる" do
+      get "/api/v1/settings", headers: headers
+      expect(json_response["regenerate_with_meaning"]).to be(true)
+
+      patch "/api/v1/settings", params: { setting: { regenerate_with_meaning: false } }, headers: headers
+      expect(response).to have_http_status(:success)
+      expect(json_response["regenerate_with_meaning"]).to be(false)
+      expect(user.reload.setting.regenerate_with_meaning).to be(false)
+    end
   end
 end

@@ -10,7 +10,7 @@ export default function NewItemPage() {
     <div className="max-w-2xl mx-auto px-6 py-12">
       <div className="mb-8">
         <Link href="/items">
-          <Button variant="ghost" className="text-sm px-0 mb-4">← マイカードへ戻る</Button>
+          <Button variant="ghost" className="text-sm px-0 mb-4">← カードへ戻る</Button>
         </Link>
         <h1 className="text-2xl font-semibold">カードを作成</h1>
         <p className="text-sm text-muted-foreground mt-1">
