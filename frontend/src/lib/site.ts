@@ -19,6 +19,7 @@ export const PRIVATE_PATHS = [
   '/views',
   '/spaces',
   '/tags',
+  '/index',
   '/study',
   '/atelier',
   '/myroom',
