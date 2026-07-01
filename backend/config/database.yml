@@ -13,9 +13,21 @@ test:
 production:
   adapter: postgresql
   encoding: unicode
-  pool: <%= ENV.fetch("RAILS_MAX_THREADS", 5) %>
+  # プールは web(Puma) + Solid Queue worker + dispatcher が同一プロセス・同一 DB を
+  # 共有するため、それらの合計＋余裕を確保する（RAILS_MAX_THREADS=Puma スレッド数とは切り離す）。
+  pool: <%= ENV.fetch("DB_POOL", 12) %>
+  # Neon で切られたアイドル接続がプールに滞留するのを自動回収する（未設定＝Reaper 無効だった）。
+  reaping_frequency: <%= ENV.fetch("DB_REAPING_FREQUENCY", 10) %>
+  # suspend 中/低速な Neon への再接続が長時間ハングするのを防ぐ。
+  connect_timeout: <%= ENV.fetch("DB_CONNECT_TIMEOUT", 5) %>
+  # プール枯渇時に無限待ちせず例外化する（デフォルトと同値だが明示）。
+  checkout_timeout: <%= ENV.fetch("DB_CHECKOUT_TIMEOUT", 5) %>
   # Neon（プール接続）ではセッションが維持されアドバイザリロックが残留し、
   # マイグレーションがデッドロックするため無効化する。
   # Fly の release_command は単一マシンで実行されるため同時実行の心配はない。
   advisory_locks: false
+  variables:
+    # 単一クエリが無限にスレッドを占有する（実測 98s）のを遮断する。
+    # 長時間マイグレーション時は DB_STATEMENT_TIMEOUT_MS を一時的に上げる（0 で無効化）。
+    statement_timeout: <%= ENV.fetch("DB_STATEMENT_TIMEOUT_MS", 30_000) %>
   url: <%= ENV["DATABASE_URL"] %>
