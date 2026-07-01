@@ -16,3 +16,6 @@ production:
   expire_credit_grants:
     class: ExpireCreditGrantsJob
     schedule: at 4am every day
+  recover_stuck_generations:
+    class: RecoverStuckGenerationsJob
+    schedule: every 5 minutes
