@@ -3,12 +3,34 @@
 import Link from 'next/link'
 import { Button } from '@/components/ui/button'
 import { useHeroZoom } from '@/hooks/useHeroZoom'
+import { signOut } from '@/lib/api/auth'
+import { useAuthStore } from '@/stores/auth'
+import { useItemsStore } from '@/stores/items'
 import { ScrollCue } from './ScrollCue'
 
 // LP ヒーロー：スクロールで画像中央のドアへズームし、終盤に次セクションへブレンドする。
 // 構造: track(縦長) → stage(sticky, 100svh) → 画像/ぼかし/スクリム/ブレンド + テキスト。
 export function HeroScrollZoom() {
   const { trackRef, stageRef, reduced } = useHeroZoom({ targetScale: 9, blurStart: 0.42 })
+
+  // セッションが残っているログイン済みユーザーには CTA を出し分ける。
+  // ハイドレーション確定前は認証UIを出さない（Header と同じ hasHydrated 方式でちらつき防止）。
+  const isAuthenticated = useAuthStore((s) => s.isAuthenticated)
+  const hasHydrated = useAuthStore((s) => s.hasHydrated)
+  const clearAuth = useAuthStore((s) => s.clearAuth)
+  const resetItems = useItemsStore((s) => s.resetItems)
+  const showAuthed = hasHydrated && isAuthenticated
+
+  const handleLogout = async () => {
+    try {
+      await signOut()
+    } catch {
+      // トークン切れでも clearAuth は実行する
+    }
+    resetItems()
+    clearAuth()
+    // LP 上なのでリダイレクトせず、CTA が未ログイン向けに切り替わるだけにする。
+  }
 
   return (
     <section ref={trackRef} className="hero-track" data-reduced={reduced ? 'true' : 'false'}>
@@ -92,23 +114,52 @@ export function HeroScrollZoom() {
           </h1>
           <p className="text-base md:text-lg max-w-md mb-10" style={{ color: '#4A4A4A' }}>
             AIが単語を画像カードに変換。
+            <br />
             自分だけの記憶の宮殿を、少しずつ育てていけます。
           </p>
-          <div className="flex w-full max-w-sm flex-col sm:w-auto sm:max-w-none sm:flex-row gap-3">
-            <Link href="/signup" className="w-full sm:w-44">
-              <Button
-                size="lg"
-                className="w-full px-8 text-base sm:w-44"
-                style={{ backgroundColor: 'var(--palace)', color: '#fff', border: 'none' }}
-              >
-                無料ではじめる
-              </Button>
-            </Link>
-            <Link href="/login" className="w-full sm:w-44">
-              <Button size="lg" variant="outline" className="w-full px-8 text-base sm:w-44">
-                ログイン
-              </Button>
-            </Link>
+          <div
+            className={`flex w-full max-w-sm flex-col sm:w-auto sm:max-w-none sm:flex-row gap-3 ${
+              hasHydrated ? '' : 'invisible'
+            }`}
+          >
+            {showAuthed ? (
+              <>
+                <Link href="/entrance" className="w-full sm:w-44">
+                  <Button
+                    size="lg"
+                    className="w-full px-8 text-base sm:w-44"
+                    style={{ backgroundColor: 'var(--palace)', color: '#fff', border: 'none' }}
+                  >
+                    宮殿にはいる
+                  </Button>
+                </Link>
+                <Button
+                  size="lg"
+                  variant="outline"
+                  onClick={handleLogout}
+                  className="w-full px-8 text-base sm:w-44"
+                >
+                  ログアウト
+                </Button>
+              </>
+            ) : (
+              <>
+                <Link href="/signup" className="w-full sm:w-44">
+                  <Button
+                    size="lg"
+                    className="w-full px-8 text-base sm:w-44"
+                    style={{ backgroundColor: 'var(--palace)', color: '#fff', border: 'none' }}
+                  >
+                    無料ではじめる
+                  </Button>
+                </Link>
+                <Link href="/login" className="w-full sm:w-44">
+                  <Button size="lg" variant="outline" className="w-full px-8 text-base sm:w-44">
+                    ログイン
+                  </Button>
+                </Link>
+              </>
+            )}
           </div>
         </div>
 
