@@ -85,7 +85,7 @@ export function HeroScrollZoom() {
           <p className="text-sm tracking-widest mb-4 font-medium" style={{ color: 'var(--palace)' }}>
             IMAGE PALACE
           </p>
-          <h1 className="text-4xl md:text-5xl font-bold tracking-tight mb-6 leading-tight" style={{ color: '#111111' }}>
+          <h1 className="text-[clamp(1.5rem,7vw,2.25rem)] md:text-5xl font-bold tracking-tight mb-6 leading-tight" style={{ color: '#111111' }}>
             言葉をイメージに変えて、
             <br />
             記憶の宮殿をつくる。
