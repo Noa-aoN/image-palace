@@ -3,7 +3,7 @@
 import { useEffect } from 'react'
 import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
-import { CircleUser, Castle, Coins } from 'lucide-react'
+import { CircleUser, Castle, Coins, Bell } from 'lucide-react'
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -77,6 +77,25 @@ export function AppHeader() {
             <span className="font-medium tabular-nums">{billingSummary.available_credits}</span>
             <span className="text-xs text-muted-foreground">{CREDIT_UNIT_SHORT}</span>
           </Link>
+        )}
+        {/* 通知（現状は器のみ。後日、お知らせ・生成状況の通知をここに表示する） */}
+        {showUserMenu && (
+          <DropdownMenu>
+            <DropdownMenuTrigger
+              className="rounded-full p-1.5 hover:bg-black/5 transition-colors"
+              title="お知らせ"
+              aria-label="お知らせ"
+            >
+              <Bell size={20} style={{ color: 'var(--palace)' }} />
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="w-64">
+              <DropdownMenuLabel>お知らせ</DropdownMenuLabel>
+              <DropdownMenuSeparator />
+              <div className="px-2 py-6 text-center text-sm text-muted-foreground">
+                お知らせはありません
+              </div>
+            </DropdownMenuContent>
+          </DropdownMenu>
         )}
         {showUserMenu ? (
           <DropdownMenu>
