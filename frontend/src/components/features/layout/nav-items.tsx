@@ -12,6 +12,7 @@ import {
   BarChart3,
   Palette,
   Boxes,
+  List,
   Search,
   Tag,
   Wand2,
@@ -44,6 +45,7 @@ export interface NavSection {
 export const GLOBAL_ACTIONS: NavNode[] = [
   { href: '/search', icon: <Search size={20} />, label: '横断検索' },
   { href: '/tags', icon: <Tag size={20} />, label: 'タグ' },
+  { href: '/index', icon: <List size={20} />, label: 'インデックス' },
 ]
 
 // サイドバー（デスクトップ）とモバイルドロワーで共有するセクション付きナビ。
