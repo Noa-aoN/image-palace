@@ -22,6 +22,13 @@ class SpacePoint < ApplicationRecord
   scope :named, -> { where.not(name: [ nil, "" ]) }
   scope :created_this_month, -> { where(created_at: Time.current.beginning_of_month..) }
 
+  # 生成が pending/processing のまま滞留している孤児候補（Item.stuck_generation と同義）。
+  # デプロイ/再起動で GeneratePointImageJob が pruned されると発生する。
+  # 空ポイント（name 無し）は生成対象外なので、呼び出し側で named と併用する。
+  scope :stuck_generation, ->(cutoff) {
+    where(generation_status: %w[pending processing]).where(updated_at: ..cutoff)
+  }
+
   def metadata_without_generation_error
     (metadata || {}).except(*GENERATION_ERROR_KEYS)
   end

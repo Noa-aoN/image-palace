@@ -29,6 +29,13 @@ class Item < ApplicationRecord
   # 当月（月初〜）に作成されたアイテム。月間生成上限の判定・残量表示に使う
   scope :created_this_month, -> { where(created_at: Time.current.beginning_of_month..) }
 
+  # 生成が pending/processing のまま滞留している孤児候補。
+  # デプロイ/再起動で Solid Queue のワーカーが pruned されると処理中ジョブが失われ、
+  # アイテムが「生成中」のまま取り残される。cutoff より更新が古いものを stuck とみなす。
+  scope :stuck_generation, ->(cutoff) {
+    where(generation_status: %w[pending processing]).where(updated_at: ..cutoff)
+  }
+
   def primary_media
     if association(:medias).loaded?
       medias.min_by { |media| [ media.position || Float::INFINITY, media.created_at ] }
