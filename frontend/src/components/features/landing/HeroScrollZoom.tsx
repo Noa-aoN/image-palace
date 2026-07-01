@@ -130,7 +130,7 @@ export function HeroScrollZoom() {
                     className="w-full px-8 text-base sm:w-44"
                     style={{ backgroundColor: 'var(--palace)', color: '#fff', border: 'none' }}
                   >
-                    宮殿にはいる
+                    宮殿に入る
                   </Button>
                 </Link>
                 <Button
