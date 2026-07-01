@@ -12,7 +12,7 @@ export interface OracleRecord {
   createdAt: number
 }
 
-interface DelphiStore {
+interface AcropolisStore {
   history: OracleRecord[]
   addRecord: (record: OracleRecord) => void
   clearHistory: () => void
@@ -20,8 +20,8 @@ interface DelphiStore {
 
 const HISTORY_LIMIT = 50
 
-// デルフォイ（神託）の履歴。localStorage に永続化する（端末ごと）。
-export const useDelphiStore = create<DelphiStore>()(
+// アクロポリス（神託）の履歴。localStorage に永続化する（端末ごと）。
+export const useAcropolisStore = create<AcropolisStore>()(
   persist(
     (set) => ({
       history: [],
@@ -29,6 +29,6 @@ export const useDelphiStore = create<DelphiStore>()(
         set((state) => ({ history: [record, ...state.history].slice(0, HISTORY_LIMIT) })),
       clearHistory: () => set({ history: [] }),
     }),
-    { name: 'ip-delphi' }
+    { name: 'ip-acropolis' }
   )
 )
