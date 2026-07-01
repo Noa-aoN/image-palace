@@ -1,13 +1,6 @@
-import type { Metadata } from 'next'
-import { PlaceholderPage } from '@/components/features/common/PlaceholderPage'
+import { redirect } from 'next/navigation'
 
-export const metadata: Metadata = { title: 'アリーナ' }
-
-export default function ArenaPage() {
-  return (
-    <PlaceholderPage
-      title="アリーナ"
-      description="ゲーム形式の学習コンテンツで競い合えるページです。"
-    />
-  )
+// 旧 /arena は /stadion に改名済み。ブックマーク等の救済として恒久リダイレクトする。
+export default function ArenaRedirectPage() {
+  redirect('/stadion')
 }

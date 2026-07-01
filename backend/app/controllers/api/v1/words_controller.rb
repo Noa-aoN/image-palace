@@ -2,7 +2,7 @@ module Api
   module V1
     class WordsController < BaseController
       # テーマ/ジャンルから学習単語を生成して返す（テキストのみ＝クレジット消費なし）。
-      # ワードリスト作成フォームとデルフォイ（ガチャ）から利用する。
+      # ワードリスト作成フォームとアクロポリス（ガチャ）から利用する。
       def generate
         # count 未指定（nil/空）は「おまかせ（自動）」としてサービス側に委ねる。
         # exclude=既出（絶対に出さない）, avoid=キャンセル済み（確率を大きく下げる）。
