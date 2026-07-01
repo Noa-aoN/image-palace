@@ -18,6 +18,12 @@ if ENV["SENTRY_DSN"].present?
     # 個人情報（PII）はデフォルトで送らない
     config.send_default_pii = false
 
+    # 送信先（sentry.io）への到達が遅い/不通のとき、バックグラウンドワーカーが
+    # 長時間ブロックしないよう transport のタイムアウトを短く明示する（fail-fast）。
+    # 2026-07-01 の障害時に "Failed to open TCP connection ... execution expired" が発生した対策。
+    config.transport.timeout = ENV.fetch("SENTRY_TRANSPORT_TIMEOUT", "2").to_f
+    config.transport.open_timeout = ENV.fetch("SENTRY_TRANSPORT_OPEN_TIMEOUT", "2").to_f
+
     # ヘルスチェックなど監視ノイズになるトランザクションは除外する
     config.before_send_transaction = lambda do |event, _hint|
       name = event.transaction.to_s
