@@ -1,6 +1,7 @@
 'use client'
 
 import { useCallback, useEffect, useRef, useState } from 'react'
+import dynamic from 'next/dynamic'
 import Link from 'next/link'
 import { useParams, useRouter } from 'next/navigation'
 import { Trash2, Pencil, Check, X, Plus, ChevronUp, ChevronDown, Search, Loader2, Route, DoorOpen } from 'lucide-react'
@@ -20,7 +21,11 @@ import {
 } from '@/lib/api/spaces'
 import { getItemsPage } from '@/lib/api/items'
 import { spaceTypeLabel } from '@/lib/space-types'
-import { RoomCanvas } from '@/components/features/views/RoomCanvas'
+// キャンバスはクライアント専用（React Flow 等の重い依存）。サーバ Worker から外すため ssr:false で遅延読込。
+const RoomCanvas = dynamic(
+  () => import('@/components/features/views/RoomCanvas').then((m) => m.RoomCanvas),
+  { ssr: false, loading: () => <div className="h-[60vh] animate-pulse rounded-xl bg-muted" /> }
+)
 import { EntityCover } from '@/components/features/shared/EntityCover'
 import { CoverSettings } from '@/components/features/shared/CoverSettings'
 import type { SpaceDetail, SpacePoint } from '@/types/space'
