@@ -7,11 +7,11 @@ import { initOpenNextCloudflareForDev } from "@opennextjs/cloudflare"
 // それでも object/frame-ancestors/base-uri/connect の制限で XSS の被害面は縮小される。
 const contentSecurityPolicy = [
   "default-src 'self'",
-  "script-src 'self' 'unsafe-inline' https://static.cloudflareinsights.com",
+  "script-src 'self' 'unsafe-inline' https://static.cloudflareinsights.com https://www.googletagmanager.com",
   "style-src 'self' 'unsafe-inline'",
   "img-src 'self' data: blob: https:",
   "font-src 'self' data:",
-  "connect-src 'self' https://image-palace-api.fly.dev https://*.sentry.io https://cloudflareinsights.com",
+  "connect-src 'self' https://image-palace-api.fly.dev https://*.sentry.io https://cloudflareinsights.com https://*.google-analytics.com https://*.analytics.google.com",
   "frame-ancestors 'none'",
   "base-uri 'self'",
   "form-action 'self'",
