@@ -633,6 +633,41 @@ RSpec.describe "Api::V1::Items", type: :request do
     end
   end
 
+  describe "GET /api/v1/items/:id のサムネ・LQIP（media.thumb_url / media.blur）" do
+    around do |example|
+      # CDN_BASE_URL を設定すると media_url が公開 URL（末尾が blob.key）を返すため、
+      # どの blob が使われているかを URL から検証できる。
+      original = ENV["CDN_BASE_URL"]
+      ENV["CDN_BASE_URL"] = "https://cdn.test.example"
+      example.run
+      ENV["CDN_BASE_URL"] = original
+    end
+
+    it "事前生成済みサムネがある場合、thumb_url はフル画像ではなく thumb blob を指す" do
+      item = create(:item, :completed, user: user)
+      media = create(:media, :with_thumb, item: item)
+
+      get "/api/v1/items/#{item.id}", headers: headers
+
+      expect(response).to have_http_status(:ok)
+      url = json_response.dig("media", "url")
+      thumb_url = json_response.dig("media", "thumb_url")
+      expect(url).to end_with(media.file.blob.key)
+      expect(thumb_url).to end_with(media.thumb.blob.key)
+      expect(thumb_url).not_to eq(url)
+    end
+
+    it "LQIP（lqip メタ）があれば blur に data URL を返す" do
+      item = create(:item, :completed, user: user)
+      create(:media, :with_thumb, item: item, metadata: { "lqip" => "data:image/webp;base64,AAAA" })
+
+      get "/api/v1/items/#{item.id}", headers: headers
+
+      expect(response).to have_http_status(:ok)
+      expect(json_response.dig("media", "blur")).to eq("data:image/webp;base64,AAAA")
+    end
+  end
+
   describe "DELETE /api/v1/items/bulk_destroy" do
     it "指定した自分のカードを一括削除し deleted_ids を返す" do
       a = create(:item, user: user)

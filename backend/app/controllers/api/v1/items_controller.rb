@@ -1,6 +1,8 @@
 module Api
   module V1
     class ItemsController < BaseController
+      include ItemSerialization
+
       before_action :set_item, only: [ :show, :update, :destroy, :retry, :meaning, :generate_tags, :fact_check ]
 
       DEFAULT_PER_PAGE = 24
@@ -350,6 +352,8 @@ module Api
         { id: item_type.id, name: item_type.name, label: item_type.label }
       end
 
+      # ItemSerialization#serialize_media を、生成メタ情報（ⓘ 用）を足して上書きする。
+      # サムネは media_thumb_url が事前生成済み thumb を CDN 直配信し、無ければ variant にフォールバックする。
       def serialize_media(media)
         return nil unless media&.file&.attached?
         return nil unless blob_available?(media.file.blob)
@@ -359,7 +363,8 @@ module Api
         {
           id: media.id,
           url: media_url(blob),
-          thumb_url: thumbnail_url(blob),
+          thumb_url: media_thumb_url(media, blob),
+          blur: media.metadata&.dig("lqip"),
           media_type: media.media_type,
           generation_info: media_generation_info(media)
         }
@@ -380,23 +385,8 @@ module Api
         info.presence
       end
 
-      def media_url(blob)
-        cdn_base = ENV["CDN_BASE_URL"]
-        return rails_storage_proxy_url(blob) if blob.service_name == "local"
-        return url_for(blob) if cdn_base.blank?
-
-        "#{cdn_base}/#{blob.key}"
-      end
-
-      def thumbnail_url(blob)
-        return media_url(blob) unless blob.image?
-        return media_url(blob) if blob.service_name == "local"
-
-        variant = blob.variant(resize_to_limit: [ 480, 480 ]).processed
-        url_for(variant)
-      rescue LoadError, StandardError
-        media_url(blob)
-      end
+      # media_url / thumbnail_url / blob_available? は ItemSerialization concern を再利用する
+      # （CDN 直配信・local プロキシ対応。以前はこのクラスに重複定義していた）。
 
       MISSING_MEDIA_REPAIR_GRACE_PERIOD = 30.seconds
 
@@ -412,15 +402,6 @@ module Api
           code: "missing_media"
         )
         item.reload
-      end
-
-      def blob_available?(blob)
-        return false if blob.blank?
-
-        service = blob.service
-        return true unless service.respond_to?(:path_for)
-
-        File.exist?(service.path_for(blob.key))
       end
 
       def set_item
