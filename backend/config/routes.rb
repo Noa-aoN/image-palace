@@ -14,6 +14,10 @@ Rails.application.routes.draw do
       post "words/generate", to: "words#generate"
       get "account/export", to: "account#export"
       delete "account", to: "account#destroy"
+      # プロフィール（アバター）
+      get "account/profile", to: "account/profiles#show"
+      post "account/avatar", to: "account/avatars#create"
+      delete "account/avatar", to: "account/avatars#destroy"
 
       # 課金（Stripe）
       namespace :billing do

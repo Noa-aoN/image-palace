@@ -11,7 +11,7 @@ module Billing
 
     def call(kind: :item_generation, **_context)
       case kind
-      when :item_generation, :point_generation
+      when :item_generation, :point_generation, :avatar
         BASE_GENERATION
       else
         BASE_GENERATION

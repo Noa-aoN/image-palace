@@ -100,7 +100,17 @@ export function AppHeader() {
         {showUserMenu ? (
           <DropdownMenu>
             <DropdownMenuTrigger className="rounded-full p-1 hover:bg-black/5 transition-colors">
-              <CircleUser size={32} strokeWidth={1.5} />
+              {(user?.avatar_thumb_url ?? user?.avatar_url) ? (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img
+                  src={(user?.avatar_thumb_url ?? user?.avatar_url) as string}
+                  alt="プロフィールアイコン"
+                  className="size-8 rounded-full object-cover"
+                  decoding="async"
+                />
+              ) : (
+                <CircleUser size={32} strokeWidth={1.5} />
+              )}
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end">
               {/* ユーザー名（表示名が無ければメールアドレス） */}

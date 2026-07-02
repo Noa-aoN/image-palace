@@ -10,3 +10,32 @@ export async function exportAccountData(): Promise<unknown> {
 export async function deleteAccount(): Promise<void> {
   await apiClient.delete('/api/v1/account')
 }
+
+export interface Profile {
+  name: string | null
+  email: string
+  avatar_url: string | null
+  avatar_thumb_url: string | null
+  avatar_generation_status: string | null
+  avatar_generation_error?: string | null
+}
+
+// 現在ユーザーのプロフィール（アバター URL・生成ステータス含む）。生成のポーリング先。
+export async function getProfile(): Promise<Profile> {
+  const res = await apiClient.get<Profile>('/api/v1/account/profile')
+  return res.data
+}
+
+// プロフィールアイコンの生成を開始（非同期・1cr 消費）。返る status は pending。
+export async function generateAvatar(prompt: string, style?: string): Promise<Profile> {
+  const res = await apiClient.post<Profile>('/api/v1/account/avatar', {
+    avatar: { prompt, ...(style ? { style } : {}) },
+  })
+  return res.data
+}
+
+// プロフィールアイコンを削除する。
+export async function deleteAvatar(): Promise<Profile> {
+  const res = await apiClient.delete<Profile>('/api/v1/account/avatar')
+  return res.data
+}

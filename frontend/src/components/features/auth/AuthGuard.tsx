@@ -3,10 +3,12 @@
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { useAuthStore } from '@/stores/auth'
+import { getProfile } from '@/lib/api/account'
 
 export function AuthGuard({ children }: { children: React.ReactNode }) {
   const router = useRouter()
   const isAuthenticated = useAuthStore((s) => s.isAuthenticated)
+  const updateUser = useAuthStore((s) => s.updateUser)
 
   // SSR とクライアント初期レンダリングの両方で false から始める（hydration mismatch 防止）。
   // useEffect 内でのみ window に依存した値を参照する。
@@ -27,6 +29,21 @@ export function AuthGuard({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     if (hasHydrated && !isAuthenticated) router.replace('/login')
   }, [hasHydrated, isAuthenticated, router])
+
+  // 認証済みになったら一度プロフィールを取得し、アバターをストアに反映する
+  // （ヘッダー等でアバターを全ページ表示するため。ログインレスポンスには含まれない）。
+  useEffect(() => {
+    if (!hasHydrated || !isAuthenticated) return
+    getProfile()
+      .then((p) =>
+        updateUser({
+          avatar_url: p.avatar_url,
+          avatar_thumb_url: p.avatar_thumb_url,
+          avatar_generation_status: p.avatar_generation_status,
+        })
+      )
+      .catch(() => {})
+  }, [hasHydrated, isAuthenticated, updateUser])
 
   // Hydration 完了前: ローディング表示（ヘッダー/サイドバーは外側で既に表示済み）
   if (!hasHydrated) {
