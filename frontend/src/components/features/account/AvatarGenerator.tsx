@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from 'react'
 import Link from 'next/link'
-import { UserRound, Sparkles, Trash2 } from 'lucide-react'
+import { UserRound, Sparkles, Trash2, Download } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Spinner } from '@/components/ui/spinner'
@@ -25,9 +25,12 @@ export function AvatarGenerator() {
   const [style, setStyle] = useState('photo')
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [zoomed, setZoomed] = useState(false)
   const pollRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   const avatarUrl = user?.avatar_thumb_url ?? user?.avatar_url ?? null
+  // 拡大・ダウンロードは原寸（サムネでなく本体）を使う。
+  const fullAvatarUrl = user?.avatar_url ?? user?.avatar_thumb_url ?? null
   const status = user?.avatar_generation_status ?? null
   const generating = submitting || status === 'pending' || status === 'processing'
 
@@ -69,6 +72,16 @@ export function AvatarGenerator() {
     fetchBilling()
   }, [fetchBilling])
 
+  // 拡大表示中は Escape で閉じる。
+  useEffect(() => {
+    if (!zoomed) return
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') setZoomed(false)
+    }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [zoomed])
+
   // 生成中に離脱→戻った場合など、pending/processing のままなら再開する。
   useEffect(() => {
     if ((status === 'pending' || status === 'processing') && !pollRef.current) {
@@ -97,6 +110,25 @@ export function AvatarGenerator() {
     }
   }
 
+  const handleDownload = async () => {
+    if (!fullAvatarUrl) return
+    try {
+      const res = await fetch(fullAvatarUrl)
+      const blob = await res.blob()
+      const objectUrl = URL.createObjectURL(blob)
+      const a = document.createElement('a')
+      a.href = objectUrl
+      a.download = `image-palace-avatar.${blob.type.includes('png') ? 'png' : 'webp'}`
+      document.body.appendChild(a)
+      a.click()
+      a.remove()
+      URL.revokeObjectURL(objectUrl)
+    } catch {
+      // CORS 等で fetch できない場合は新規タブで開く（そこから保存できる）。
+      window.open(fullAvatarUrl, '_blank', 'noopener')
+    }
+  }
+
   const handleDelete = async () => {
     try {
       const p = await deleteAvatar()
@@ -118,7 +150,13 @@ export function AvatarGenerator() {
             <Spinner size={20} label="生成中" />
           ) : avatarUrl ? (
             // eslint-disable-next-line @next/next/no-img-element
-            <img src={avatarUrl} alt="プロフィールアイコン" className="size-16 object-cover" decoding="async" />
+            <img
+              src={avatarUrl}
+              alt="プロフィールアイコン"
+              className="size-16 cursor-zoom-in object-cover"
+              decoding="async"
+              onClick={() => setZoomed(true)}
+            />
           ) : (
             <UserRound size={28} className="text-muted-foreground" />
           )}
@@ -129,13 +167,22 @@ export function AvatarGenerator() {
             {generating ? '生成中です。数十秒お待ちください…' : 'プロンプトから自分だけのアイコンを生成できます。'}
           </p>
           {avatarUrl && !generating && (
-            <button
-              type="button"
-              onClick={handleDelete}
-              className="mt-1 inline-flex items-center gap-1 text-xs text-muted-foreground hover:text-destructive"
-            >
-              <Trash2 size={12} /> アイコンを削除
-            </button>
+            <div className="mt-1 flex items-center gap-3">
+              <button
+                type="button"
+                onClick={handleDownload}
+                className="inline-flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground"
+              >
+                <Download size={12} /> ダウンロード
+              </button>
+              <button
+                type="button"
+                onClick={handleDelete}
+                className="inline-flex items-center gap-1 text-xs text-muted-foreground hover:text-destructive"
+              >
+                <Trash2 size={12} /> 削除
+              </button>
+            </div>
           )}
         </div>
       </div>
@@ -194,6 +241,23 @@ export function AvatarGenerator() {
         </p>
       )}
       {error && <p className="text-sm text-destructive">{error}</p>}
+
+      {zoomed && fullAvatarUrl && (
+        <div
+          role="dialog"
+          aria-modal="true"
+          aria-label="プロフィールアイコン（拡大）"
+          className="fixed inset-0 z-50 flex cursor-zoom-out items-center justify-center bg-black/80 p-4"
+          onClick={() => setZoomed(false)}
+        >
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img
+            src={fullAvatarUrl}
+            alt="プロフィールアイコン"
+            className="max-h-full max-w-full rounded-xl object-contain"
+          />
+        </div>
+      )}
     </section>
   )
 }
