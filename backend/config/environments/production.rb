@@ -21,6 +21,10 @@ Rails.application.configure do
   # Store uploaded files on Cloudflare R2 (see config/storage.yml for options).
   config.active_storage.service = :cloudflare_r2
 
+  # 動的 variant（事前生成サムネが無い旧メディアのフォールバック）を libvips で処理する。
+  # 本番イメージには ImageMagick を同梱せず libvips42 のみのため、既定の mini_magick では失敗する。
+  config.active_storage.variant_processor = :vips
+
   # Assume all access to the app is happening through a SSL-terminating reverse proxy.
   config.assume_ssl = true
 
