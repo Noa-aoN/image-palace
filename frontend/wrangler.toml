@@ -3,6 +3,12 @@ main = ".open-next/worker.js"
 compatibility_date = "2024-12-30"
 compatibility_flags = ["nodejs_compat", "global_fetch_strictly_public"]
 
+# Workers Paid プランの CPU 予算を明示する（既定と同値の 30 秒）。
+# Free の 10ms 制限に対し、OpenNext の SSR/RSC が CPU 超過(Error 1102)で落ちないための余裕。
+# 暴走時の上限にもなる。必要なら最大 300000ms(5分) まで引き上げ可。
+[limits]
+cpu_ms = 30000
+
 [assets]
 directory = ".open-next/assets"
 binding = "ASSETS"
