@@ -6,6 +6,9 @@ import { useRouter } from 'next/navigation'
 import { ChevronLeft, ChevronRight, Search, X, Trash2, CheckSquare, Square, Tags, Tag as TagIcon, ShieldCheck, FileText } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Spinner } from '@/components/ui/spinner'
+import { CardGridSkeleton } from '@/components/ui/skeleton'
+import { GeneratingOverlay } from '@/components/features/items/GeneratingOverlay'
+import { STATUS_LABEL, STATUS_COLOR, POLLING_STATUSES } from '@/lib/item-status'
 import {
   getItemsPage,
   getItemSuggestions,
@@ -23,20 +26,6 @@ import type { Item } from '@/types/item'
 import type { Tag } from '@/types/tag'
 
 const PER_PAGE = 24
-
-const STATUS_LABEL: Record<string, string> = {
-  pending: '生成待ち',
-  processing: '生成中',
-  completed: '完了',
-  failed: '失敗',
-}
-
-const STATUS_COLOR: Record<string, string> = {
-  pending: 'bg-yellow-100 text-yellow-800',
-  processing: 'bg-blue-100 text-blue-800',
-  completed: 'bg-green-100 text-green-800',
-  failed: 'bg-red-100 text-red-800',
-}
 
 // 一括AI操作の per-item 結果（完了後の確認ダイアログ用）
 type BulkResultEntry = {
@@ -115,7 +104,6 @@ function factCheckTitleClass(status?: string | null): string {
   return ''
 }
 
-const POLLING_STATUSES = new Set(['pending', 'processing'])
 
 type ItemCardProps = {
   item: Item
@@ -127,7 +115,6 @@ type ItemCardProps = {
 function ItemCard({ item, selectionMode, selected, onToggle }: ItemCardProps) {
   const router = useRouter()
   const [failedImageUrl, setFailedImageUrl] = useState<string | null>(null)
-  const isGenerating = POLLING_STATUSES.has(item.generation_status)
   const warmedRef = useRef(false)
   const imageUrl = item.media?.thumb_url ?? item.media?.url
   const resolvedImageUrl = imageUrl ?? null
@@ -173,14 +160,12 @@ function ItemCard({ item, selectionMode, selected, onToggle }: ItemCardProps) {
             onError={() => setFailedImageUrl(resolvedImageUrl)}
           />
         ) : (
-          <div className="relative flex h-full w-full items-center justify-center bg-muted">
-            {isGenerating && (
-              <div className="absolute inset-0 animate-pulse bg-[linear-gradient(135deg,rgba(255,255,255,0.22),transparent_40%,rgba(255,255,255,0.14))]" />
-            )}
-            <span className="relative z-10 text-muted-foreground text-xs px-2 text-center">
-              {hasImageError ? '期限切れ' : (STATUS_LABEL[item.generation_status] ?? item.generation_status)}
-            </span>
-          </div>
+          <GeneratingOverlay
+            status={item.generation_status}
+            label={hasImageError ? '期限切れ' : STATUS_LABEL[item.generation_status]}
+            className="h-full w-full"
+            textClassName="text-muted-foreground text-xs"
+          />
         )}
       </div>
     </>
@@ -647,16 +632,7 @@ export function ItemList({ initialTag = null }: { initialTag?: string | null }) 
     return (
       <div className="space-y-6">
         {filterBar}
-        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
-          {Array.from({ length: 8 }).map((_, i) => (
-            <div key={i} className="rounded-xl border border-border overflow-hidden">
-              <div className="w-full aspect-square bg-muted animate-pulse" />
-              <div className="px-3 py-2">
-                <div className="h-3 bg-muted rounded animate-pulse w-3/4" />
-              </div>
-            </div>
-          ))}
-        </div>
+        <CardGridSkeleton withTitle />
       </div>
     )
   }

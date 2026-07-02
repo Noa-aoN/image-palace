@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react'
 import Link from 'next/link'
 import { Plus } from 'lucide-react'
 import { Button } from '@/components/ui/button'
+import { CardGridSkeleton } from '@/components/ui/skeleton'
 import { getCollections } from '@/lib/api/collections'
 import { CreateCollectionForm } from '@/components/features/collections/CreateCollectionForm'
 import { EntityCover } from '@/components/features/shared/EntityCover'
@@ -58,11 +59,7 @@ export default function CollectionsPage() {
       )}
 
       {loading ? (
-        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
-          {Array.from({ length: 8 }).map((_, i) => (
-            <div key={i} className="aspect-square rounded-xl border border-border bg-muted animate-pulse" />
-          ))}
-        </div>
+        <CardGridSkeleton />
       ) : error ? (
         <p className="text-destructive text-sm">{error}</p>
       ) : collections.length === 0 ? (

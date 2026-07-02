@@ -4,6 +4,7 @@ import { useEffect, useState, useSyncExternalStore } from 'react'
 import Link from 'next/link'
 import { Tag as TagIcon, Pencil, Check, X, Trash2, Plus, Pin, ChevronDown, ChevronRight } from 'lucide-react'
 import { Button } from '@/components/ui/button'
+import { Skeleton } from '@/components/ui/skeleton'
 import { Input } from '@/components/ui/input'
 import { getTags, createTag, updateTag, deleteTag, setTagPinned } from '@/lib/api/tags'
 import type { Tag } from '@/types/tag'
@@ -283,7 +284,7 @@ export default function TagsPage() {
       {loading ? (
         <div className="space-y-2">
           {Array.from({ length: 5 }).map((_, i) => (
-            <div key={i} className="h-14 rounded-xl border border-border bg-muted animate-pulse" />
+            <Skeleton key={i} className="h-14 rounded-xl border border-border" />
           ))}
         </div>
       ) : error ? (

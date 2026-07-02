@@ -13,22 +13,9 @@ import { GenerationInfo } from '@/components/features/items/GenerationInfo'
 import { getItem, getItems, deleteItem, updateItem } from '@/lib/api/items'
 import { useItemsStore } from '@/stores/items'
 import type { Item } from '@/types/item'
-
-const STATUS_LABEL: Record<string, string> = {
-  pending: '生成待ち',
-  processing: '生成中',
-  completed: '完了',
-  failed: '失敗',
-}
-
-const STATUS_COLOR: Record<string, string> = {
-  pending: 'bg-yellow-100 text-yellow-800',
-  processing: 'bg-blue-100 text-blue-800',
-  completed: 'bg-green-100 text-green-800',
-  failed: 'bg-red-100 text-red-800',
-}
-
-const POLLING_STATUSES = new Set(['pending', 'processing'])
+import { GeneratingOverlay } from '@/components/features/items/GeneratingOverlay'
+import { Skeleton } from '@/components/ui/skeleton'
+import { STATUS_LABEL, STATUS_COLOR, POLLING_STATUSES } from '@/lib/item-status'
 
 export default function ItemDetailPage() {
   const { id } = useParams<{ id: string }>()
@@ -197,18 +184,17 @@ export default function ItemDetailPage() {
   if (!item) {
     return (
       <div className="max-w-lg mx-auto w-full px-6 py-12 space-y-6">
-        <div className="h-9 w-32 rounded bg-muted animate-pulse" />
-        <div className="aspect-square w-full rounded-xl bg-muted animate-pulse" />
+        <Skeleton className="h-9 w-32" />
+        <Skeleton className="aspect-square w-full rounded-xl" />
         <div className="flex items-center justify-between gap-3">
-          <div className="h-8 w-40 rounded bg-muted animate-pulse" />
-          <div className="h-8 w-16 rounded-full bg-muted animate-pulse" />
+          <Skeleton className="h-8 w-40" />
+          <Skeleton className="h-8 w-16 rounded-full" />
         </div>
       </div>
     )
   }
 
   const navBtnBase = 'flex items-center justify-center rounded-full p-2 text-muted-foreground hover:text-foreground hover:bg-black/8 transition-colors'
-  const isGenerating = POLLING_STATUSES.has(item.generation_status)
 
   return (
     <div className="relative flex flex-col min-h-full">
@@ -331,14 +317,12 @@ export default function ItemDetailPage() {
                 />
               </div>
             ) : (
-              <div className="relative w-full aspect-square rounded-xl bg-muted flex items-center justify-center overflow-hidden text-muted-foreground text-sm">
-                {isGenerating && (
-                  <div className="absolute inset-0 animate-pulse bg-[linear-gradient(135deg,rgba(255,255,255,0.24),transparent_42%,rgba(255,255,255,0.14))]" />
-                )}
-                <span className="relative z-10">
-                  {imgError ? '画像を表示できません' : (STATUS_LABEL[item.generation_status] ?? item.generation_status)}
-                </span>
-              </div>
+              <GeneratingOverlay
+                status={item.generation_status}
+                label={imgError ? '画像を表示できません' : STATUS_LABEL[item.generation_status]}
+                className="w-full aspect-square rounded-xl text-muted-foreground"
+                textClassName="text-sm"
+              />
             )}
           </div>
 

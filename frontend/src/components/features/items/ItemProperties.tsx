@@ -1,7 +1,8 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { Loader2, Pencil, Check, X, Sparkles } from 'lucide-react'
+import { Pencil, Check, X, Sparkles } from 'lucide-react'
+import { Spinner } from '@/components/ui/spinner'
 import { Button } from '@/components/ui/button'
 import { getItemTypes, updateItem, generateMeaning, generateTags, isItemSkip } from '@/lib/api/items'
 import { MEANING_LEVELS, meaningLevelLabel, DEFAULT_MEANING_LEVEL } from '@/lib/meaning-levels'
@@ -296,7 +297,7 @@ export function ItemProperties({ item, onUpdated }: ItemPropertiesProps) {
               </option>
             ))}
           </select>
-          {savingType && <Loader2 size={16} className="animate-spin text-muted-foreground" />}
+          {savingType && <Spinner size={16} className="text-muted-foreground" />}
         </div>
         {typeError && <p className="text-xs text-destructive">{typeError}</p>}
       </div>
@@ -314,7 +315,7 @@ export function ItemProperties({ item, onUpdated }: ItemPropertiesProps) {
                 aria-label="AIで意味・説明を生成"
                 title="AIで生成"
               >
-                {generatingMeaning ? <Loader2 size={14} className="animate-spin" /> : <Sparkles size={14} />}
+                {generatingMeaning ? <Spinner size={14} /> : <Sparkles size={14} />}
                 {item.meaning ? '再生成' : 'AIで生成'}
               </button>
               <button
@@ -365,7 +366,7 @@ export function ItemProperties({ item, onUpdated }: ItemPropertiesProps) {
             />
             <div className="flex gap-2">
               <Button size="sm" onClick={handleSaveMeaning} disabled={savingMeaning} className="flex items-center gap-1.5">
-                {savingMeaning ? <Loader2 size={14} className="animate-spin" /> : <Check size={14} />}
+                {savingMeaning ? <Spinner size={14} /> : <Check size={14} />}
                 保存
               </Button>
               <Button
@@ -408,7 +409,7 @@ export function ItemProperties({ item, onUpdated }: ItemPropertiesProps) {
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
             <span className="text-sm font-medium">タグ</span>
-            {savingTags && <Loader2 size={14} className="animate-spin text-muted-foreground" />}
+            {savingTags && <Spinner size={14} className="text-muted-foreground" />}
           </div>
           <button
             onClick={handleGenerateTags}
@@ -417,7 +418,7 @@ export function ItemProperties({ item, onUpdated }: ItemPropertiesProps) {
             aria-label="AIでタグを生成"
             title="AIで生成"
           >
-            {generatingTags ? <Loader2 size={14} className="animate-spin" /> : <Sparkles size={14} />}
+            {generatingTags ? <Spinner size={14} /> : <Sparkles size={14} />}
             AIで生成
           </button>
         </div>

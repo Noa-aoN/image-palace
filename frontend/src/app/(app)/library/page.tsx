@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react'
 import Link from 'next/link'
 import { GalleryHorizontal, Library, Layers, LayoutGrid, Frame, MapPin, ChevronRight, Plus, Search, X, Route, DoorOpen, ListChecks, Boxes, Images, CheckSquare, Square, Trash2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
+import { Skeleton } from '@/components/ui/skeleton'
 import { getItems, getItemsSummary, bulkDeleteItems } from '@/lib/api/items'
 import { getCollections } from '@/lib/api/collections'
 import { getSpaces } from '@/lib/api/spaces'
@@ -353,10 +354,10 @@ function SearchResultsView({
   if (!results || (searching && total === 0)) {
     return (
       <div className="space-y-3">
-        <div className="h-5 w-32 rounded bg-muted animate-pulse" />
+        <Skeleton className="h-5 w-32" />
         <div className="flex gap-3">
           {Array.from({ length: 4 }).map((_, i) => (
-            <div key={i} className="h-32 w-32 rounded-xl bg-muted animate-pulse shrink-0" />
+            <Skeleton key={i} className="h-32 w-32 rounded-xl shrink-0" />
           ))}
         </div>
       </div>
@@ -555,10 +556,10 @@ export default function LibraryPage() {
       <div className="max-w-7xl mx-auto px-6 py-12 space-y-10">
         {Array.from({ length: 3 }).map((_, i) => (
           <div key={i} className="space-y-3">
-            <div className="h-5 w-32 rounded bg-muted animate-pulse" />
+            <Skeleton className="h-5 w-32" />
             <div className="flex gap-3">
               {Array.from({ length: 5 }).map((_, j) => (
-                <div key={j} className="h-32 w-32 rounded-xl bg-muted animate-pulse shrink-0" />
+                <Skeleton key={j} className="h-32 w-32 rounded-xl shrink-0" />
               ))}
             </div>
           </div>
