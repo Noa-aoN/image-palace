@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useState } from 'react'
+import dynamic from 'next/dynamic'
 import Link from 'next/link'
 import { useParams, useRouter } from 'next/navigation'
 import { Trash2, Pencil, Check, X } from 'lucide-react'
@@ -10,9 +11,22 @@ import { getViewDetail, updateView, deleteView, uploadViewCover, removeViewCover
 import { viewTypeLabel } from '@/lib/view-types'
 import type { ViewDetail } from '@/types/view'
 import type { CoverType } from '@/types/cover'
-import { FreeboardCanvas } from '@/components/features/views/FreeboardCanvas'
-import { SpaceMapCanvas } from '@/components/features/views/SpaceMapCanvas'
-import { DeckBoard } from '@/components/features/views/DeckBoard'
+
+// キャンバスはクライアント専用（React Flow 等の重い依存を含む）。
+// サーバ Worker のバンドルから外すため ssr:false で遅延読込する。
+const canvasLoading = () => <div className="h-[60vh] animate-pulse rounded-xl bg-muted" />
+const FreeboardCanvas = dynamic(
+  () => import('@/components/features/views/FreeboardCanvas').then((m) => m.FreeboardCanvas),
+  { ssr: false, loading: canvasLoading }
+)
+const SpaceMapCanvas = dynamic(
+  () => import('@/components/features/views/SpaceMapCanvas').then((m) => m.SpaceMapCanvas),
+  { ssr: false, loading: canvasLoading }
+)
+const DeckBoard = dynamic(
+  () => import('@/components/features/views/DeckBoard').then((m) => m.DeckBoard),
+  { ssr: false, loading: canvasLoading }
+)
 import { EntityCover } from '@/components/features/shared/EntityCover'
 import { CoverSettings } from '@/components/features/shared/CoverSettings'
 
