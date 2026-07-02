@@ -1,0 +1,28 @@
+import type { GenerationStatus } from '@/types/item'
+
+// 生成ステータスの表示ラベル。カード一覧・詳細で共通利用する。
+export const STATUS_LABEL: Record<GenerationStatus, string> = {
+  pending: '生成待ち',
+  processing: '生成中',
+  completed: '完了',
+  failed: '失敗',
+}
+
+// ステータスバッジの配色。
+export const STATUS_COLOR: Record<GenerationStatus, string> = {
+  pending: 'bg-yellow-100 text-yellow-800',
+  processing: 'bg-blue-100 text-blue-800',
+  completed: 'bg-green-100 text-green-800',
+  failed: 'bg-red-100 text-red-800',
+}
+
+// 生成中（＝ポーリングを継続する）ステータス集合。
+export const POLLING_STATUSES: ReadonlySet<GenerationStatus> = new Set<GenerationStatus>([
+  'pending',
+  'processing',
+])
+
+// まだ生成中（pending / processing）か。
+export function isGenerating(status: GenerationStatus): boolean {
+  return POLLING_STATUSES.has(status)
+}

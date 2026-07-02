@@ -5,6 +5,7 @@ import Link from 'next/link'
 import { useSearchParams } from 'next/navigation'
 import { Plus } from 'lucide-react'
 import { Button } from '@/components/ui/button'
+import { CardGridSkeleton } from '@/components/ui/skeleton'
 import { getViews } from '@/lib/api/views'
 import { viewTypeLabel } from '@/lib/view-types'
 import { CreateViewForm } from '@/components/features/views/CreateViewForm'
@@ -78,11 +79,7 @@ function ViewsPageInner() {
       )}
 
       {loading ? (
-        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
-          {Array.from({ length: 8 }).map((_, i) => (
-            <div key={i} className="aspect-square rounded-xl border border-border bg-muted animate-pulse" />
-          ))}
-        </div>
+        <CardGridSkeleton />
       ) : error ? (
         <p className="text-destructive text-sm">{error}</p>
       ) : visibleViews.length === 0 ? (

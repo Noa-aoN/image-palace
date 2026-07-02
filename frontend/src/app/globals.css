@@ -559,3 +559,22 @@
     display: none;
   }
 }
+
+/* 生成中カードのシマー（左→右へ光が流れる）。GeneratingOverlay で使用。 */
+@keyframes shimmer {
+  from {
+    transform: translateX(-100%);
+  }
+  to {
+    transform: translateX(100%);
+  }
+}
+.animate-shimmer {
+  background: linear-gradient(100deg, transparent 30%, rgba(255, 255, 255, 0.4) 50%, transparent 70%);
+  animation: shimmer 1.6s ease-in-out infinite;
+}
+@media (prefers-reduced-motion: reduce) {
+  .animate-shimmer {
+    animation: none;
+  }
+}
