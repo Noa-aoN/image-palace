@@ -6,6 +6,7 @@ import { User, Globe, Trash2, AlertTriangle, IdCard } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { CategorySections, type CategorySection } from '@/components/features/myroom/CategorySections'
 import { ComingSoon } from '@/components/features/myroom/ComingSoon'
+import { AvatarGenerator } from '@/components/features/account/AvatarGenerator'
 import { deleteAccount } from '@/lib/api/account'
 import { useAuthStore } from '@/stores/auth'
 import { useItemsStore } from '@/stores/items'
@@ -81,10 +82,13 @@ export default function AccountPage() {
       label: '基本プロフィール',
       icon: <User size={16} />,
       content: (
-        <ComingSoon
-          description="アイコンや言語設定、ログイン連携、パスワード変更などは順次対応予定です。"
-          items={['アイコン', 'アプリ内の呼び名', '言語 / タイムゾーン', '学習目的 / デフォルト学習ジャンル', '自分用メモ', 'ログイン連携（Google / GitHub / Apple）', 'メールアドレス変更', 'パスワード / 二要素認証']}
-        />
+        <div className="space-y-4">
+          <AvatarGenerator />
+          <ComingSoon
+            description="言語設定、ログイン連携、パスワード変更などは順次対応予定です。"
+            items={['アプリ内の呼び名', '言語 / タイムゾーン', '学習目的 / デフォルト学習ジャンル', '自分用メモ', 'ログイン連携（Google / GitHub / Apple）', 'メールアドレス変更', 'パスワード / 二要素認証']}
+          />
+        </div>
       ),
     },
     {

@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_07_01_000002) do
+ActiveRecord::Schema[8.1].define(version: 2026_07_02_073852) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
   enable_extension "pgcrypto"
@@ -415,6 +415,8 @@ ActiveRecord::Schema[8.1].define(version: 2026_07_01_000002) do
 
   create_table "users", id: :uuid, default: -> { "gen_random_uuid()" }, force: :cascade do |t|
     t.boolean "allow_password_change", default: false, null: false
+    t.string "avatar_generation_error"
+    t.string "avatar_generation_status"
     t.datetime "confirmation_sent_at"
     t.string "confirmation_token"
     t.datetime "confirmed_at"

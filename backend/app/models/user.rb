@@ -27,6 +27,23 @@ class User < ApplicationRecord
   has_many :credit_transactions, dependent: :destroy
   has_many :credit_grants, dependent: :destroy
 
+  # == プロフィールアイコン（AI生成）========================================
+  # GenerateAvatarJob が生成画像を添付する。avatar_thumb は一覧/ヘッダー用のサムネ。
+  has_one_attached :avatar
+  has_one_attached :avatar_thumb
+
+  AVATAR_GENERATION_STATUSES = %w[pending processing completed failed].freeze
+
+  # 生成ステータス遷移（エラーはクリア）。
+  def update_avatar_status!(status)
+    update!(avatar_generation_status: status, avatar_generation_error: nil)
+  end
+
+  # 生成失敗（ユーザー向け文言を保存）。
+  def mark_avatar_failed!(message)
+    update!(avatar_generation_status: "failed", avatar_generation_error: message)
+  end
+
   # 当月の生成数。カード（items）と、名前付きスペースポイント（画像生成を伴う）を
   # 合算して数える。月間生成上限（月100枚）は両者で共有する。
   def monthly_generation_count
