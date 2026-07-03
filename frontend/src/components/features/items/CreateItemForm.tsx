@@ -214,24 +214,6 @@ export function CreateItemForm() {
         <p className="text-xs text-muted-foreground">プロンプトに追記され、画像の雰囲気を調整できます。</p>
       </div>
 
-      <div className="space-y-2">
-        <Label htmlFor="tags">タグ（任意）</Label>
-        <input
-          id="tags"
-          type="text"
-          value={tagsInput}
-          onChange={(e) => setTagsInput(e.target.value)}
-          disabled={submitting}
-          placeholder="スペース区切りで入力（例: 英語 IT）"
-          className="w-full rounded-lg border border-input bg-background px-3 py-2 text-sm placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-        />
-        {tagNames.length > 0 && (
-          <p className="text-xs text-muted-foreground">
-            {tagNames.length}個のタグを、作成するすべてのカードに付与します
-          </p>
-        )}
-      </div>
-
       {/* スタイル（プリセット） */}
       <div className="space-y-2">
         <Label>スタイル（任意）</Label>
@@ -255,6 +237,24 @@ export function CreateItemForm() {
           })}
         </div>
         <p className="text-xs text-muted-foreground">作成するすべてのカードに同じスタイルが適用されます。</p>
+      </div>
+
+      <div className="space-y-2">
+        <Label htmlFor="tags">タグ（任意）</Label>
+        <input
+          id="tags"
+          type="text"
+          value={tagsInput}
+          onChange={(e) => setTagsInput(e.target.value)}
+          disabled={submitting}
+          placeholder="スペース区切りで入力（例: 英語 IT）"
+          className="w-full rounded-lg border border-input bg-background px-3 py-2 text-sm placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+        />
+        {tagNames.length > 0 && (
+          <p className="text-xs text-muted-foreground">
+            {tagNames.length}個のタグを、作成するすべてのカードに付与します
+          </p>
+        )}
       </div>
 
       <label className="flex items-start gap-3 rounded-xl border border-border/70 bg-background px-4 py-3">
