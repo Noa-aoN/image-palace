@@ -6,10 +6,10 @@ import { GalleryHorizontal, Library, Layers, LayoutGrid, Frame, MapPin, ChevronR
 import { Button } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/skeleton'
 import { getItems, getItemsSummary, bulkDeleteItems } from '@/lib/api/items'
-import { getCollections } from '@/lib/api/collections'
-import { getSpaces } from '@/lib/api/spaces'
-import { getViews } from '@/lib/api/views'
-import { getWordlists } from '@/lib/api/wordlists'
+import { getCollections, deleteCollection } from '@/lib/api/collections'
+import { getSpaces, deleteSpace } from '@/lib/api/spaces'
+import { getViews, deleteView } from '@/lib/api/views'
+import { getWordlists, deleteWordlist } from '@/lib/api/wordlists'
 import { searchLibrary } from '@/lib/api/search'
 import { EntityCover } from '@/components/features/shared/EntityCover'
 import type { Item } from '@/types/item'
@@ -23,6 +23,62 @@ import type { SearchResults, SearchCard, SearchDeck } from '@/types/search'
 import { CardImage } from '@/components/ui/card-image'
 
 const PREVIEW_LIMIT = 12
+
+// 選択対象の形式。ID は形式内でしか一意でないため、選択キーは "形式:ID" で持つ。
+type SelectableType = 'card' | 'collection' | 'space' | 'view' | 'wordlist'
+const selKey = (type: SelectableType, id: string) => `${type}:${id}`
+
+// タイル共通シェル。通常はリンク、選択モードでは選択トグル（チェック表示）になる。
+function SelectableTile({
+  href,
+  className,
+  selectionMode = false,
+  selected = false,
+  onToggle,
+  children,
+}: {
+  href: string
+  className: string
+  selectionMode?: boolean
+  selected?: boolean
+  onToggle?: () => void
+  children: React.ReactNode
+}) {
+  if (selectionMode) {
+    // タイル内部にカバー画像のカルーセル操作ボタンが入りうるため、ラッパは button ではなく
+    // div[role=button] にする（button の入れ子は不正）。内部は pointer-events-none にして
+    // クリックを選択トグルへ集約する。
+    return (
+      <div
+        role="button"
+        tabIndex={0}
+        onClick={onToggle}
+        onKeyDown={(e) => {
+          if (e.key === 'Enter' || e.key === ' ') {
+            e.preventDefault()
+            onToggle?.()
+          }
+        }}
+        aria-pressed={selected}
+        className={`${className} relative cursor-pointer text-left ${selected ? 'border-[var(--palace)] ring-2 ring-[var(--palace)]' : 'border-border hover:shadow-md'}`}
+      >
+        <div className="pointer-events-none">{children}</div>
+        <span className="absolute right-1.5 top-1.5 rounded-md bg-white/90 p-0.5 shadow-sm">
+          {selected ? (
+            <CheckSquare size={18} className="text-[var(--palace)]" />
+          ) : (
+            <Square size={18} className="text-muted-foreground" />
+          )}
+        </span>
+      </div>
+    )
+  }
+  return (
+    <Link href={href} className={`${className} border-border hover:shadow-md`}>
+      {children}
+    </Link>
+  )
+}
 
 // シェルフ共通の枠（href があれば見出し自体が一覧へのリンク＝シェブロン付き＋横スクロールの中身）
 function Shelf({
@@ -165,11 +221,23 @@ function SpaceCoverFallback({ spaceType }: { spaceType: string }) {
   )
 }
 
-function CollectionTile({ collection }: { collection: Collection }) {
+// 名前付きタイル共通の枠クラス（枠色/hover は SelectableTile 側で付与）
+const NAMED_TILE_CLASS = 'shrink-0 w-40 flex flex-col rounded-xl border overflow-hidden bg-card transition-shadow'
+
+type TileSelectionProps = {
+  selectionMode?: boolean
+  selected?: boolean
+  onToggle?: () => void
+}
+
+function CollectionTile({ collection, selectionMode, selected, onToggle }: { collection: Collection } & TileSelectionProps) {
   return (
-    <Link
+    <SelectableTile
       href={`/collections/${collection.id}`}
-      className="shrink-0 w-40 flex flex-col rounded-xl border border-border overflow-hidden bg-card hover:shadow-md transition-shadow"
+      className={NAMED_TILE_CLASS}
+      selectionMode={selectionMode}
+      selected={selected}
+      onToggle={onToggle}
     >
       <div className="px-3 py-2 flex items-center justify-between gap-1">
         <span className="text-sm font-medium truncate">{collection.name}</span>
@@ -178,15 +246,18 @@ function CollectionTile({ collection }: { collection: Collection }) {
       <div className="w-full aspect-square bg-muted overflow-hidden">
         <EntityCover cover={collection} />
       </div>
-    </Link>
+    </SelectableTile>
   )
 }
 
-function WordlistTile({ wordlist }: { wordlist: Wordlist }) {
+function WordlistTile({ wordlist, selectionMode, selected, onToggle }: { wordlist: Wordlist } & TileSelectionProps) {
   return (
-    <Link
+    <SelectableTile
       href={`/wordlists/${wordlist.id}`}
-      className="shrink-0 w-40 flex flex-col rounded-xl border border-border overflow-hidden bg-card hover:shadow-md transition-shadow"
+      className={NAMED_TILE_CLASS}
+      selectionMode={selectionMode}
+      selected={selected}
+      onToggle={onToggle}
     >
       <div className="px-3 py-2 flex items-center justify-between gap-1">
         <span className="text-sm font-medium truncate">{wordlist.name}</span>
@@ -195,15 +266,18 @@ function WordlistTile({ wordlist }: { wordlist: Wordlist }) {
       <div className="w-full aspect-square bg-muted flex items-center justify-center">
         <ListChecks size={28} className="text-muted-foreground/50" />
       </div>
-    </Link>
+    </SelectableTile>
   )
 }
 
-function SpaceTile({ space }: { space: Space }) {
+function SpaceTile({ space, selectionMode, selected, onToggle }: { space: Space } & TileSelectionProps) {
   return (
-    <Link
+    <SelectableTile
       href={`/spaces/${space.id}`}
-      className="shrink-0 w-40 flex flex-col rounded-xl border border-border overflow-hidden bg-card hover:shadow-md transition-shadow"
+      className={NAMED_TILE_CLASS}
+      selectionMode={selectionMode}
+      selected={selected}
+      onToggle={onToggle}
     >
       <div className="px-3 py-2 flex items-center justify-between gap-1">
         <span className="text-sm font-medium truncate">{space.name}</span>
@@ -212,15 +286,18 @@ function SpaceTile({ space }: { space: Space }) {
       <div className="w-full aspect-square bg-muted overflow-hidden">
         <EntityCover cover={space} fallback={<SpaceCoverFallback spaceType={space.space_type} />} />
       </div>
-    </Link>
+    </SelectableTile>
   )
 }
 
-function ViewTile({ view }: { view: View }) {
+function ViewTile({ view, selectionMode, selected, onToggle }: { view: View } & TileSelectionProps) {
   return (
-    <Link
+    <SelectableTile
       href={`/views/${view.id}`}
-      className="shrink-0 w-40 flex flex-col rounded-xl border border-border overflow-hidden bg-card hover:shadow-md transition-shadow"
+      className={NAMED_TILE_CLASS}
+      selectionMode={selectionMode}
+      selected={selected}
+      onToggle={onToggle}
     >
       <div className="px-3 py-2 flex items-center justify-between gap-1">
         <span className="text-sm font-medium truncate">{view.name}</span>
@@ -229,7 +306,7 @@ function ViewTile({ view }: { view: View }) {
       <div className="w-full aspect-square bg-muted overflow-hidden">
         <EntityCover cover={view} />
       </div>
-    </Link>
+    </SelectableTile>
   )
 }
 
@@ -451,17 +528,20 @@ export default function LibraryPage() {
   const [query, setQuery] = useState('')
   const [results, setResults] = useState<SearchResults | null>(null)
   const [searching, setSearching] = useState(false)
-  // カードの選択モード（一括削除など）
+  // ライブラリ全体の選択モード（全形式を横断して選択 → 一括削除）
   const [selectionMode, setSelectionMode] = useState(false)
-  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set())
+  const [selectedKeys, setSelectedKeys] = useState<Set<string>>(new Set())
   const [confirmBulkDelete, setConfirmBulkDelete] = useState(false)
   const [deleting, setDeleting] = useState(false)
 
-  const toggleSelect = (id: string) => {
-    setSelectedIds((prev) => {
+  const isSelected = (type: SelectableType, id: string) => selectedKeys.has(selKey(type, id))
+
+  const toggleSelect = (type: SelectableType, id: string) => {
+    setSelectedKeys((prev) => {
+      const key = selKey(type, id)
       const next = new Set(prev)
-      if (next.has(id)) next.delete(id)
-      else next.add(id)
+      if (next.has(key)) next.delete(key)
+      else next.add(key)
       return next
     })
     setConfirmBulkDelete(false)
@@ -469,27 +549,59 @@ export default function LibraryPage() {
 
   const exitSelection = () => {
     setSelectionMode(false)
-    setSelectedIds(new Set())
+    setSelectedKeys(new Set())
     setConfirmBulkDelete(false)
   }
 
-  // 2段階確認 → bulk_destroy（所有者スコープ・上限200）。削除後はプレビューと件数を更新。
+  // 2段階確認 → 形式ごとに削除（カードは bulk API、他形式は単体削除をまとめて実行）。
+  // 成功したものだけをローカル状態から取り除く。
   const handleBulkDelete = async () => {
-    if (selectedIds.size === 0) return
+    if (selectedKeys.size === 0) return
     if (!confirmBulkDelete) {
       setConfirmBulkDelete(true)
       return
     }
     setDeleting(true)
     try {
-      const deleted = new Set(await bulkDeleteItems([...selectedIds]))
-      setCards((prev) => prev.filter((c) => !deleted.has(c.id)))
-      setCardCount((prev) => (prev === undefined ? prev : Math.max(0, prev - deleted.size)))
+      const byType: Record<SelectableType, string[]> = { card: [], collection: [], space: [], view: [], wordlist: [] }
+      for (const key of selectedKeys) {
+        const idx = key.indexOf(':')
+        const type = key.slice(0, idx) as SelectableType
+        byType[type].push(key.slice(idx + 1))
+      }
+
+      // 単体削除APIを束ねて実行し、成功した ID のみ集める
+      const deleteEach = async (ids: string[], fn: (id: string) => Promise<void>) => {
+        const settled = await Promise.allSettled(ids.map((id) => fn(id).then(() => id)))
+        return new Set(
+          settled.filter((r): r is PromiseFulfilledResult<string> => r.status === 'fulfilled').map((r) => r.value)
+        )
+      }
+
+      const [deletedCards, delCollections, delSpaces, delViews, delWordlists] = await Promise.all([
+        byType.card.length > 0 ? bulkDeleteItems(byType.card).then((ids) => new Set(ids)) : Promise.resolve(new Set<string>()),
+        deleteEach(byType.collection, deleteCollection),
+        deleteEach(byType.space, deleteSpace),
+        deleteEach(byType.view, deleteView),
+        deleteEach(byType.wordlist, deleteWordlist),
+      ])
+
+      if (deletedCards.size > 0) {
+        setCards((prev) => prev.filter((c) => !deletedCards.has(c.id)))
+        setCardCount((prev) => (prev === undefined ? prev : Math.max(0, prev - deletedCards.size)))
+      }
+      if (delCollections.size > 0) setCollections((prev) => prev.filter((c) => !delCollections.has(c.id)))
+      if (delSpaces.size > 0) setSpaces((prev) => prev.filter((s) => !delSpaces.has(s.id)))
+      if (delViews.size > 0) setViews((prev) => prev.filter((v) => !delViews.has(v.id)))
+      if (delWordlists.size > 0) setWordlists((prev) => prev.filter((w) => !delWordlists.has(w.id)))
+
       exitSelection()
     } finally {
       setDeleting(false)
     }
   }
+
+  const selectedCount = selectedKeys.size
 
   useEffect(() => {
     let cancelled = false
@@ -570,11 +682,44 @@ export default function LibraryPage() {
 
   return (
     <div className="max-w-7xl mx-auto px-6 py-12 space-y-12">
-      <div>
-        <h1 className="text-xl font-semibold">ライブラリ</h1>
-        <p className="mt-1 text-sm text-muted-foreground">
-          カード・コレクションなど、形式ごとに知識を棚で見渡せます。
-        </p>
+      <div className="flex items-start justify-between gap-3">
+        <div>
+          <h1 className="text-xl font-semibold">ライブラリ</h1>
+          <p className="mt-1 text-sm text-muted-foreground">
+            カード・コレクションなど、形式ごとに知識を棚で見渡せます。
+          </p>
+        </div>
+        {/* ライブラリ全体の選択（全形式横断）。検索中は非表示。 */}
+        {!hasQuery &&
+          (selectionMode ? (
+            <div className="flex items-center gap-2 shrink-0">
+              <span className="whitespace-nowrap text-sm text-muted-foreground">{selectedCount}件を選択中</span>
+              <Button
+                variant={confirmBulkDelete ? 'destructive' : 'outline'}
+                size="sm"
+                disabled={selectedCount === 0 || deleting}
+                onClick={handleBulkDelete}
+                onBlur={() => setConfirmBulkDelete(false)}
+                className="flex items-center gap-1"
+              >
+                <Trash2 size={14} />
+                {deleting ? '削除中…' : confirmBulkDelete ? '本当に削除' : '削除'}
+              </Button>
+              <Button variant="ghost" size="sm" onClick={exitSelection}>
+                キャンセル
+              </Button>
+            </div>
+          ) : (
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setSelectionMode(true)}
+              className="flex shrink-0 items-center gap-1"
+            >
+              <CheckSquare size={14} />
+              選択
+            </Button>
+          ))}
       </div>
 
       {/* 横断検索 */}
@@ -614,39 +759,13 @@ export default function LibraryPage() {
         count={cardCount}
         href={selectionMode ? undefined : '/items'}
         action={
-          selectionMode ? (
-            <div className="flex items-center gap-2">
-              <span className="text-sm text-muted-foreground">{selectedIds.size}件を選択中</span>
-              <Button
-                variant={confirmBulkDelete ? 'destructive' : 'outline'}
-                size="sm"
-                disabled={selectedIds.size === 0 || deleting}
-                onClick={handleBulkDelete}
-                onBlur={() => setConfirmBulkDelete(false)}
-                className="flex items-center gap-1"
-              >
-                <Trash2 size={14} />
-                {deleting ? '削除中…' : confirmBulkDelete ? '本当に削除' : '削除'}
+          selectionMode ? undefined : (
+            <Link href="/items/new">
+              <Button variant="outline" size="sm" className="flex items-center gap-1">
+                <Plus size={14} />
+                作成
               </Button>
-              <Button variant="ghost" size="sm" onClick={exitSelection}>
-                キャンセル
-              </Button>
-            </div>
-          ) : (
-            <>
-              {cards.length > 0 && (
-                <Button variant="outline" size="sm" onClick={() => setSelectionMode(true)} className="flex items-center gap-1">
-                  <CheckSquare size={14} />
-                  選択
-                </Button>
-              )}
-              <Link href="/items/new">
-                <Button variant="outline" size="sm" className="flex items-center gap-1">
-                  <Plus size={14} />
-                  作成
-                </Button>
-              </Link>
-            </>
+            </Link>
           )
         }
       >
@@ -662,8 +781,8 @@ export default function LibraryPage() {
                 key={item.id}
                 item={item}
                 selectionMode={selectionMode}
-                selected={selectedIds.has(item.id)}
-                onToggle={() => toggleSelect(item.id)}
+                selected={isSelected('card', item.id)}
+                onToggle={() => toggleSelect('card', item.id)}
               />
             ))}
           </Rail>
@@ -675,7 +794,7 @@ export default function LibraryPage() {
         icon={<Library size={20} />}
         title="コレクション"
         count={collections.length}
-        href="/collections"
+        href={selectionMode ? undefined : '/collections'}
       >
         {collections.length === 0 ? (
           <EmptyRail
@@ -685,7 +804,13 @@ export default function LibraryPage() {
         ) : (
           <Rail>
             {collections.slice(0, PREVIEW_LIMIT).map((collection) => (
-              <CollectionTile key={collection.id} collection={collection} />
+              <CollectionTile
+                key={collection.id}
+                collection={collection}
+                selectionMode={selectionMode}
+                selected={isSelected('collection', collection.id)}
+                onToggle={() => toggleSelect('collection', collection.id)}
+              />
             ))}
           </Rail>
         )}
@@ -693,7 +818,7 @@ export default function LibraryPage() {
 
       {/* キャンバス（表示・学習形式：デッキ / フリーボード等） */}
       <Section icon={<LayoutGrid size={22} />} title="キャンバス" description="カードの表示・学習形式">
-        <Shelf icon={<Layers size={18} />} title="デッキ" count={deckViews.length} href="/views?type=deck">
+        <Shelf icon={<Layers size={18} />} title="デッキ" count={deckViews.length} href={selectionMode ? undefined : '/views?type=deck'}>
           {deckViews.length === 0 ? (
             <EmptyRail
               message="まだデッキがありません。"
@@ -702,12 +827,18 @@ export default function LibraryPage() {
           ) : (
             <Rail>
               {deckViews.slice(0, PREVIEW_LIMIT).map((view) => (
-                <ViewTile key={view.id} view={view} />
+                <ViewTile
+                  key={view.id}
+                  view={view}
+                  selectionMode={selectionMode}
+                  selected={isSelected('view', view.id)}
+                  onToggle={() => toggleSelect('view', view.id)}
+                />
               ))}
             </Rail>
           )}
         </Shelf>
-        <Shelf icon={<LayoutGrid size={18} />} title="フリーボード" count={freeboardViews.length} href="/views?type=freeboard">
+        <Shelf icon={<LayoutGrid size={18} />} title="フリーボード" count={freeboardViews.length} href={selectionMode ? undefined : '/views?type=freeboard'}>
           {freeboardViews.length === 0 ? (
             <EmptyRail
               message="まだフリーボードがありません。"
@@ -716,12 +847,18 @@ export default function LibraryPage() {
           ) : (
             <Rail>
               {freeboardViews.slice(0, PREVIEW_LIMIT).map((view) => (
-                <ViewTile key={view.id} view={view} />
+                <ViewTile
+                  key={view.id}
+                  view={view}
+                  selectionMode={selectionMode}
+                  selected={isSelected('view', view.id)}
+                  onToggle={() => toggleSelect('view', view.id)}
+                />
               ))}
             </Rail>
           )}
         </Shelf>
-        <Shelf icon={<MapPin size={18} />} title="スペース配置" count={spaceMapViews.length} href="/views?type=space_map">
+        <Shelf icon={<MapPin size={18} />} title="スペース配置" count={spaceMapViews.length} href={selectionMode ? undefined : '/views?type=space_map'}>
           {spaceMapViews.length === 0 ? (
             <EmptyRail
               message="まだスペース配置がありません。"
@@ -730,7 +867,13 @@ export default function LibraryPage() {
           ) : (
             <Rail>
               {spaceMapViews.slice(0, PREVIEW_LIMIT).map((view) => (
-                <ViewTile key={view.id} view={view} />
+                <ViewTile
+                  key={view.id}
+                  view={view}
+                  selectionMode={selectionMode}
+                  selected={isSelected('view', view.id)}
+                  onToggle={() => toggleSelect('view', view.id)}
+                />
               ))}
             </Rail>
           )}
@@ -746,24 +889,36 @@ export default function LibraryPage() {
           />
         ) : (
           <>
-            <Shelf icon={<Route size={18} />} title="ロード" count={roadSpaces.length} href="/spaces?type=road">
+            <Shelf icon={<Route size={18} />} title="ロード" count={roadSpaces.length} href={selectionMode ? undefined : '/spaces?type=road'}>
               {roadSpaces.length === 0 ? (
                 <EmptyRail message="ロードはまだありません。" cta={<Link href="/spaces?type=road"><Button size="sm">作成</Button></Link>} />
               ) : (
                 <Rail>
                   {roadSpaces.slice(0, PREVIEW_LIMIT).map((space) => (
-                    <SpaceTile key={space.id} space={space} />
+                    <SpaceTile
+                      key={space.id}
+                      space={space}
+                      selectionMode={selectionMode}
+                      selected={isSelected('space', space.id)}
+                      onToggle={() => toggleSelect('space', space.id)}
+                    />
                   ))}
                 </Rail>
               )}
             </Shelf>
-            <Shelf icon={<DoorOpen size={18} />} title="ルーム" count={roomSpaces.length} href="/spaces?type=room">
+            <Shelf icon={<DoorOpen size={18} />} title="ルーム" count={roomSpaces.length} href={selectionMode ? undefined : '/spaces?type=room'}>
               {roomSpaces.length === 0 ? (
                 <EmptyRail message="ルームはまだありません。" cta={<Link href="/spaces?type=room"><Button size="sm">作成</Button></Link>} />
               ) : (
                 <Rail>
                   {roomSpaces.slice(0, PREVIEW_LIMIT).map((space) => (
-                    <SpaceTile key={space.id} space={space} />
+                    <SpaceTile
+                      key={space.id}
+                      space={space}
+                      selectionMode={selectionMode}
+                      selected={isSelected('space', space.id)}
+                      onToggle={() => toggleSelect('space', space.id)}
+                    />
                   ))}
                 </Rail>
               )}
@@ -774,7 +929,7 @@ export default function LibraryPage() {
 
       {/* マテリアル（カード化の前の素材） */}
       <Section icon={<Boxes size={22} />} title="マテリアル" description="カード化の前の素材">
-        <Shelf icon={<ListChecks size={18} />} title="ワードリスト" count={wordlists.length} href="/wordlists">
+        <Shelf icon={<ListChecks size={18} />} title="ワードリスト" count={wordlists.length} href={selectionMode ? undefined : '/wordlists'}>
           {wordlists.length === 0 ? (
             <EmptyRail
               message="まだワードリストがありません。"
@@ -783,7 +938,13 @@ export default function LibraryPage() {
           ) : (
             <Rail>
               {wordlists.slice(0, PREVIEW_LIMIT).map((wordlist) => (
-                <WordlistTile key={wordlist.id} wordlist={wordlist} />
+                <WordlistTile
+                  key={wordlist.id}
+                  wordlist={wordlist}
+                  selectionMode={selectionMode}
+                  selected={isSelected('wordlist', wordlist.id)}
+                  onToggle={() => toggleSelect('wordlist', wordlist.id)}
+                />
               ))}
             </Rail>
           )}

@@ -60,9 +60,16 @@ export function AppHeader() {
       {/* 左: モバイルのハンバーガー（認証時のみ）＋ ロゴ */}
       <div className="flex items-center gap-1">
         {showUserMenu && <MobileNav />}
-        <Link href={isAuthenticated ? '/entrance' : '/'} className="flex items-center" aria-label="ImagePalace ホーム">
+        <Link href={isAuthenticated ? '/entrance' : '/'} className="flex items-center gap-1.5" aria-label="ImagePalace ホーム">
           {/* ロゴは仮置き（宮殿アイコン）。正式ロゴ確定までのプレースホルダ */}
           <Castle size={32} style={{ color: 'var(--palace)' }} />
+          {/* 開発段階を示すバッジ。正式リリースまで表示する */}
+          <span
+            className="rounded-full border border-border px-1.5 py-0.5 text-[10px] font-medium leading-none text-muted-foreground"
+            aria-label="アルファ版"
+          >
+            α版
+          </span>
         </Link>
       </div>
 
