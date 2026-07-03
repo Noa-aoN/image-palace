@@ -45,14 +45,24 @@ function SelectableTile({
   children: React.ReactNode
 }) {
   if (selectionMode) {
+    // タイル内部にカバー画像のカルーセル操作ボタンが入りうるため、ラッパは button ではなく
+    // div[role=button] にする（button の入れ子は不正）。内部は pointer-events-none にして
+    // クリックを選択トグルへ集約する。
     return (
-      <button
-        type="button"
+      <div
+        role="button"
+        tabIndex={0}
         onClick={onToggle}
+        onKeyDown={(e) => {
+          if (e.key === 'Enter' || e.key === ' ') {
+            e.preventDefault()
+            onToggle?.()
+          }
+        }}
         aria-pressed={selected}
-        className={`${className} relative text-left ${selected ? 'border-[var(--palace)] ring-2 ring-[var(--palace)]' : 'border-border hover:shadow-md'}`}
+        className={`${className} relative cursor-pointer text-left ${selected ? 'border-[var(--palace)] ring-2 ring-[var(--palace)]' : 'border-border hover:shadow-md'}`}
       >
-        {children}
+        <div className="pointer-events-none">{children}</div>
         <span className="absolute right-1.5 top-1.5 rounded-md bg-white/90 p-0.5 shadow-sm">
           {selected ? (
             <CheckSquare size={18} className="text-[var(--palace)]" />
@@ -60,7 +70,7 @@ function SelectableTile({
             <Square size={18} className="text-muted-foreground" />
           )}
         </span>
-      </button>
+      </div>
     )
   }
   return (
