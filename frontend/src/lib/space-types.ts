@@ -1,4 +1,4 @@
-// スペース種別。room（棚＝コレクション）/ road（連結法＝序数ポイント）。
+// スペース種別。room（棚＝ボックス）/ road（連結法＝序数ポイント）。
 // バックエンドの Space::SPACE_TYPES と一致させること。
 export const SPACE_TYPES = ['room', 'road'] as const
 

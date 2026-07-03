@@ -24,7 +24,7 @@ export default function CollectionsPage() {
         if (!cancelled) setCollections(data)
       })
       .catch(() => {
-        if (!cancelled) setError('コレクションの取得に失敗しました')
+        if (!cancelled) setError('ボックスの取得に失敗しました')
       })
       .finally(() => {
         if (!cancelled) setLoading(false)
@@ -37,7 +37,7 @@ export default function CollectionsPage() {
   return (
     <div className="max-w-7xl mx-auto px-6 py-12">
       <div className="flex items-center justify-between mb-6">
-        <h1 className="text-xl font-semibold">コレクション</h1>
+        <h1 className="text-xl font-semibold">ボックス</h1>
         {!creating && (
           <Button size="sm" onClick={() => setCreating(true)} className="flex items-center gap-1.5">
             <Plus size={16} />
@@ -65,10 +65,10 @@ export default function CollectionsPage() {
       ) : collections.length === 0 ? (
         <div className="text-center py-16 space-y-4">
           <p className="text-muted-foreground">
-            まだコレクションがありません。カードをテーマごとにまとめてみましょう。
+            まだボックスがありません。カードをテーマごとにまとめてみましょう。
           </p>
           {!creating && (
-            <Button onClick={() => setCreating(true)}>最初のコレクションを作成</Button>
+            <Button onClick={() => setCreating(true)}>最初のボックスを作成</Button>
           )}
         </div>
       ) : (
@@ -76,7 +76,7 @@ export default function CollectionsPage() {
           {collections.map((collection) => (
             <Link
               key={collection.id}
-              href={`/collections/${collection.id}`}
+              href={`/boxes/${collection.id}`}
               className="flex flex-col rounded-xl border border-border overflow-hidden bg-card hover:shadow-md transition-shadow"
             >
               <div className="px-4 py-3 flex items-center justify-between gap-2">

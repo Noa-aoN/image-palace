@@ -68,7 +68,7 @@ export default function SearchPage() {
     <div className="max-w-2xl mx-auto px-6 py-12">
       <h1 className="text-2xl font-semibold">横断検索</h1>
       <p className="mt-2 text-muted-foreground">
-        カード・コレクション・キャンバス・スペースをまとめて検索します。
+        カード・ボックス・キャンバス・スペースをまとめて検索します。
       </p>
 
       <div className="relative mt-6">
@@ -95,8 +95,8 @@ export default function SearchPage() {
               items={results.items.map((i) => ({ id: i.id, href: `/items/${i.id}`, label: i.title }))}
             />
             <ResultGroup
-              title="コレクション"
-              items={results.collections.map((c) => ({ id: c.id, href: `/collections/${c.id}`, label: c.name }))}
+              title="ボックス"
+              items={results.collections.map((c) => ({ id: c.id, href: `/boxes/${c.id}`, label: c.name }))}
             />
             <ResultGroup
               title="キャンバス"

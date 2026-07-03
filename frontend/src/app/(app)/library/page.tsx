@@ -233,7 +233,7 @@ type TileSelectionProps = {
 function CollectionTile({ collection, selectionMode, selected, onToggle }: { collection: Collection } & TileSelectionProps) {
   return (
     <SelectableTile
-      href={`/collections/${collection.id}`}
+      href={`/boxes/${collection.id}`}
       className={NAMED_TILE_CLASS}
       selectionMode={selectionMode}
       selected={selected}
@@ -470,12 +470,12 @@ function SearchResultsView({
         </ResultGroup>
       )}
       {results.collections.length > 0 && (
-        <ResultGroup icon={<Library size={18} />} title="コレクション" count={results.collections.length}>
+        <ResultGroup icon={<Library size={18} />} title="ボックス" count={results.collections.length}>
           <Rail>
             {results.collections.map((collection) => (
               <SearchNamedTile
                 key={collection.id}
-                href={`/collections/${collection.id}`}
+                href={`/boxes/${collection.id}`}
                 icon={<Library size={16} />}
                 name={collection.name}
                 sub={`${collection.entry_count} 件`}
@@ -686,7 +686,7 @@ export default function LibraryPage() {
         <div>
           <h1 className="text-xl font-semibold">ライブラリ</h1>
           <p className="mt-1 text-sm text-muted-foreground">
-            カード・コレクションなど、形式ごとに知識を棚で見渡せます。
+            カード・ボックスなど、形式ごとに知識を棚で見渡せます。
           </p>
         </div>
         {/* ライブラリ全体の選択（全形式横断）。検索中は非表示。 */}
@@ -732,7 +732,7 @@ export default function LibraryPage() {
           type="search"
           value={query}
           onChange={(e) => handleQueryChange(e.target.value)}
-          placeholder="カード・デッキ・コレクション・スペース・キャンバスを横断検索"
+          placeholder="カード・デッキ・ボックス・スペース・キャンバスを横断検索"
           className="w-full rounded-xl border border-border bg-card py-2.5 pl-10 pr-10 text-sm outline-none focus:border-[var(--palace)] focus:ring-1 focus:ring-[var(--palace)]"
           aria-label="ライブラリ横断検索"
         />
@@ -789,17 +789,17 @@ export default function LibraryPage() {
         )}
       </Shelf>
 
-      {/* コレクション */}
+      {/* ボックス */}
       <Shelf
         icon={<Library size={20} />}
-        title="コレクション"
+        title="ボックス"
         count={collections.length}
-        href={selectionMode ? undefined : '/collections'}
+        href={selectionMode ? undefined : '/boxes'}
       >
         {collections.length === 0 ? (
           <EmptyRail
-            message="まだコレクションがありません。"
-            cta={<Link href="/collections"><Button size="sm">コレクションを作成</Button></Link>}
+            message="まだボックスがありません。"
+            cta={<Link href="/boxes"><Button size="sm">ボックスを作成</Button></Link>}
           />
         ) : (
           <Rail>

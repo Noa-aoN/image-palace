@@ -25,7 +25,7 @@ const STUDY_MODES: StudyMode[] = [
     href: '/study/quiz',
     icon: <HelpCircle size={20} />,
     label: 'クイズ',
-    description: '選んだカードやコレクションから問題を作って確認します。',
+    description: '選んだカードやボックスから問題を作って確認します。',
   },
   {
     href: '/study/game',
@@ -46,7 +46,7 @@ export default function StudyPage() {
     <div className="max-w-2xl mx-auto px-6 py-12">
       <h1 className="text-2xl font-semibold">スタディ</h1>
       <p className="mt-2 text-muted-foreground">
-        保存したカードやコレクションを使って、記憶を定着させます。
+        保存したカードやボックスを使って、記憶を定着させます。
       </p>
 
       <div className="mt-8 grid gap-4 sm:grid-cols-2">

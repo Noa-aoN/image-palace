@@ -11,7 +11,7 @@ RSpec.describe "Api::V1 entity covers", type: :request do
     let(:collection) { user.collections.create!(name: "英単語") }
 
     it "cover_type を更新でき、シリアライズに cover 各種を含む" do
-      patch "/api/v1/collections/#{collection.id}",
+      patch "/api/v1/boxes/#{collection.id}",
         params: { collection: { cover_type: "collage" } }, headers: headers, as: :json
 
       expect(response).to have_http_status(:ok)
@@ -22,20 +22,20 @@ RSpec.describe "Api::V1 entity covers", type: :request do
 
     it "コレクション内のカードのみ表紙に指定できる" do
       collection.collection_entries.create!(entry_type: "Item", entry_id: item.id)
-      patch "/api/v1/collections/#{collection.id}",
+      patch "/api/v1/boxes/#{collection.id}",
         params: { collection: { cover_item_id: item.id } }, headers: headers, as: :json
       expect(response).to have_http_status(:ok)
       expect(json_response["cover_item_id"]).to eq(item.id)
 
       outsider = create(:item, user: user, item_type: item_type, title: "外部")
-      patch "/api/v1/collections/#{collection.id}",
+      patch "/api/v1/boxes/#{collection.id}",
         params: { collection: { cover_item_id: outsider.id } }, headers: headers, as: :json
       expect(response).to have_http_status(:unprocessable_entity)
     end
 
     it "カバー画像を削除すると first_card に戻る" do
       collection.update!(cover_type: "custom")
-      delete "/api/v1/collections/#{collection.id}/cover_image", headers: headers, as: :json
+      delete "/api/v1/boxes/#{collection.id}/cover_image", headers: headers, as: :json
       expect(response).to have_http_status(:ok)
       expect(json_response["cover_type"]).to eq("first_card")
     end
@@ -47,7 +47,7 @@ RSpec.describe "Api::V1 entity covers", type: :request do
       png.write(Vips::Image.black(1600, 1200).pngsave_buffer)
       png.rewind
 
-      post "/api/v1/collections/#{collection.id}/cover_image",
+      post "/api/v1/boxes/#{collection.id}/cover_image",
         params: { cover_image: Rack::Test::UploadedFile.new(png.path, "image/png") }, headers: headers
 
       expect(response).to have_http_status(:ok)
@@ -64,7 +64,7 @@ RSpec.describe "Api::V1 entity covers", type: :request do
       txt.write("not an image")
       txt.rewind
 
-      post "/api/v1/collections/#{collection.id}/cover_image",
+      post "/api/v1/boxes/#{collection.id}/cover_image",
         params: { cover_image: Rack::Test::UploadedFile.new(txt.path, "text/plain") }, headers: headers
 
       expect(response).to have_http_status(:unprocessable_entity)

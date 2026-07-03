@@ -32,7 +32,7 @@ const EMPTY_SUMMARY: ItemsSummary = {
 // 「所有」セクションの統計カード。クリックで該当の一覧ページへ遷移する。
 const OWNED_CARDS: { label: string; href: string; icon: ReactNode; value: (s: ItemsSummary) => string }[] = [
   { label: 'カード', href: '/items', icon: <GalleryVerticalEnd size={18} />, value: (s) => `${s.total_count}` },
-  { label: 'コレクション', href: '/collections', icon: <Library size={18} />, value: (s) => `${s.collections_count}` },
+  { label: 'ボックス', href: '/boxes', icon: <Library size={18} />, value: (s) => `${s.collections_count}` },
   { label: 'キャンバス', href: '/views', icon: <LayoutGrid size={18} />, value: (s) => `${s.views_count}` },
   { label: 'スペース', href: '/spaces', icon: <Frame size={18} />, value: (s) => `${s.spaces_count}` },
 ]

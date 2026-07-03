@@ -62,7 +62,7 @@ export const NAV_SECTIONS: NavSection[] = [
         children: [
           { href: '/materials/new', icon: <Boxes size={20} />, label: 'マテリアルを作成' },
           { href: '/items/new', icon: <GalleryHorizontal size={20} />, label: 'カードを作成' },
-          { href: '/collections/new', icon: <Library size={20} />, label: 'コレクションを作成' },
+          { href: '/boxes/new', icon: <Library size={20} />, label: 'ボックスを作成' },
           { href: '/views/new', icon: <LayoutGrid size={20} />, label: 'キャンバスを作成' },
           { href: '/spaces/new', icon: <Frame size={20} />, label: 'スペースを作成' },
         ],
@@ -74,7 +74,7 @@ export const NAV_SECTIONS: NavSection[] = [
         children: [
           { href: '/materials', icon: <Boxes size={20} />, label: 'マテリアル一覧' },
           { href: '/items', icon: <GalleryHorizontal size={20} />, label: 'カード一覧' },
-          { href: '/collections', icon: <Library size={20} />, label: 'コレクション一覧' },
+          { href: '/boxes', icon: <Library size={20} />, label: 'ボックス一覧' },
           { href: '/views', icon: <LayoutGrid size={20} />, label: 'キャンバス一覧' },
           { href: '/spaces', icon: <Frame size={20} />, label: 'スペース一覧' },
         ],

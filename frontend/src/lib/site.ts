@@ -15,7 +15,7 @@ export const PRIVATE_PATHS = [
   '/items',
   '/library',
   '/decks',
-  '/collections',
+  '/boxes',
   '/views',
   '/spaces',
   '/tags',

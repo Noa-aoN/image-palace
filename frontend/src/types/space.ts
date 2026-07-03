@@ -15,7 +15,7 @@ export interface Space {
   created_at: string
 }
 
-// room 種別: 並べるコレクションの軽量表現
+// room 種別: 並べるボックスの軽量表現
 export interface SpaceCollectionRef {
   id: string
   name: string
@@ -52,6 +52,6 @@ export interface SpacePoint {
 }
 
 export interface SpaceDetail extends Space {
-  collections?: SpaceCollectionRef[] // room 種別（コレクション棚・暫定）
+  collections?: SpaceCollectionRef[] // room 種別（ボックス棚・暫定）
   points?: SpacePoint[] // road / room 種別の loci ポイント
 }

@@ -116,10 +116,10 @@ export function TargetPicker({ selectedKey, onSelect, hideComingSoon = false }: 
         <StarBtn saved={savedKeys.has('all')} onClick={() => toggleSave(allTarget)} />
       </div>
 
-      {/* コレクション（展開で検索＋リスト） */}
+      {/* ボックス（展開で検索＋リスト） */}
       <MediumAccordion
         icon={<Library size={18} />}
-        title="コレクション"
+        title="ボックス"
         count={collections.length}
         opened={open === 'collection'}
         onToggle={() => toggle('collection')}
@@ -127,8 +127,8 @@ export function TargetPicker({ selectedKey, onSelect, hideComingSoon = false }: 
         <MediumList
           query={query}
           onQuery={setQuery}
-          placeholder="コレクションを検索"
-          empty={collections.length === 0 ? 'コレクションがありません。' : '該当するコレクションがありません。'}
+          placeholder="ボックスを検索"
+          empty={collections.length === 0 ? 'ボックスがありません。' : '該当するボックスがありません。'}
           items={filteredCollections}
         >
           {filteredCollections.map((c) => {
