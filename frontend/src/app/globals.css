@@ -606,6 +606,19 @@
   filter: blur(calc(1.4px * var(--road-p, 0)));
   will-change: transform, filter;
 }
+/* 下端の軽いブラー帯（HA ヒーローの hero-blur を踏襲）。下ほど強く上へフェード。 */
+.road-blur {
+  position: absolute;
+  inset-inline: 0;
+  bottom: 0;
+  z-index: 1;
+  height: 22%;
+  pointer-events: none;
+  backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: blur(4px);
+  -webkit-mask-image: linear-gradient(to top, #000 0%, transparent 100%);
+  mask-image: linear-gradient(to top, #000 0%, transparent 100%);
+}
 @media (prefers-reduced-motion: reduce) {
   .road-bg__img {
     transform: none;

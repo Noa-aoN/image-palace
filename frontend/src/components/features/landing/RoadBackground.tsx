@@ -40,10 +40,14 @@ export function RoadBackground() {
   }, [])
 
   return (
-    <div ref={ref} aria-hidden className="road-bg">
-      {/* 背景透過PNG。変形/ぼかしは CSS(.road-bg__img) 側で --road-p により駆動 */}
-      {/* eslint-disable-next-line @next/next/no-img-element */}
-      <img src="/road.png" alt="" className="road-bg__img" />
-    </div>
+    <>
+      <div ref={ref} aria-hidden className="road-bg">
+        {/* 背景透過PNG。変形/ぼかしは CSS(.road-bg__img) 側で --road-p により駆動 */}
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img src="/road.png" alt="" className="road-bg__img" />
+      </div>
+      {/* 下端の軽いブラー帯（HA ヒーローの hero-blur を踏襲。手前の被写界深度） */}
+      <div aria-hidden className="road-blur" />
+    </>
   )
 }
