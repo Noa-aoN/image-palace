@@ -7,6 +7,7 @@ import { LandingFooter } from '@/components/features/layout/LandingFooter'
 import { HeroScrollZoom } from '@/components/features/landing/HeroScrollZoom'
 import { ScrollCue } from '@/components/features/landing/ScrollCue'
 import { SectionDivider } from '@/components/features/landing/SectionDivider'
+import { RoadBackground } from '@/components/features/landing/RoadBackground'
 import { SITE_URL, SITE_NAME, SITE_DESCRIPTION } from '@/lib/site'
 
 export const metadata: Metadata = {
@@ -58,7 +59,10 @@ function Section({
       className="relative isolate flex min-h-svh flex-col items-center justify-center overflow-hidden px-6 py-20 text-center"
       style={bg ? { backgroundColor: bg } : undefined}
     >
-      <div aria-hidden data-anim-layer className="pointer-events-none absolute inset-0 z-0" />
+      <div aria-hidden data-anim-layer className="pointer-events-none absolute inset-0 z-0">
+        {/* 各セクション下部に道を敷く（ヒーローは Section を通らないため対象外） */}
+        <RoadBackground />
+      </div>
       {topDividerFrom && <SectionDivider fill={topDividerFrom} />}
       <div className="relative z-10 mx-auto w-full max-w-4xl">{children}</div>
       {cueTo && <ScrollCue targetId={cueTo} className="absolute bottom-6 left-1/2 z-20 -translate-x-1/2" />}
