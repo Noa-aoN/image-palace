@@ -41,7 +41,7 @@ export function RoadBackground() {
 
   return (
     <div ref={ref} aria-hidden className="road-bg">
-      {/* 画像は透過なし（白背景）のため CSS の mix-blend-mode: multiply で背景を飛ばす */}
+      {/* 背景透過PNG。変形/ぼかしは CSS(.road-bg__img) 側で --road-p により駆動 */}
       {/* eslint-disable-next-line @next/next/no-img-element */}
       <img src="/road.png" alt="" className="road-bg__img" />
     </div>

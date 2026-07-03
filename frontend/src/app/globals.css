@@ -596,11 +596,11 @@
   mask-image: linear-gradient(to top, #000 22%, transparent 92%);
 }
 .road-bg__img {
-  width: min(88%, 860px);
+  width: min(92%, 960px);
   height: auto;
-  /* 道画像は透過なし（白背景）。multiply で白を飛ばして道だけ背景に馴染ませる */
-  mix-blend-mode: multiply;
-  opacity: 0.55;
+  /* 背景透過PNG。そのまま重ねる（合成モード不要） */
+  opacity: 0.7;
+  /* 下端起点に。スクロール進捗(--road-p)で 1→1.35 ズーム＝道を進む演出 */
   transform-origin: 50% 100%;
   transform: scale(calc(1 + 0.35 * var(--road-p, 0))) translateY(calc(-3% * var(--road-p, 0)));
   filter: blur(calc(1.4px * var(--road-p, 0)));
