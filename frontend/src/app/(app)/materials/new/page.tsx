@@ -19,7 +19,7 @@ const MATERIAL_ACTIONS: MaterialAction[] = [
     href: '/wordlists/new',
     icon: <ListChecks size={20} />,
     label: 'ワードリストを作成',
-    description: '単語・用語・概念をまとめた素材。カード生成やコレクションの元データにします。',
+    description: '単語・用語・概念をまとめた素材。カード生成やボックスの元データにします。',
   },
   {
     icon: <Images size={20} />,

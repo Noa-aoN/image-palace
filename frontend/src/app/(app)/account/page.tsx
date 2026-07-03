@@ -98,7 +98,7 @@ export default function AccountPage() {
       content: (
         <ComingSoon
           description="他のユーザーへ見せる公開ページの設定は順次対応予定です。"
-          items={['公開名 / 公開アイコン', '自己紹介', 'SNS / 外部リンク', '公開プロフィール URL', '公開コレクション / 公開トロフィー', '公開 / 非公開の切り替え']}
+          items={['公開名 / 公開アイコン', '自己紹介', 'SNS / 外部リンク', '公開プロフィール URL', '公開ボックス / 公開トロフィー', '公開 / 非公開の切り替え']}
         />
       ),
     },
@@ -113,7 +113,7 @@ export default function AccountPage() {
             <h2 className="text-base font-semibold text-destructive">退会（アカウントの削除）</h2>
           </div>
           <p className="text-sm text-muted-foreground">
-            アカウントを削除すると、すべてのカード・画像・デッキ・コレクションなどが完全に削除されます。
+            アカウントを削除すると、すべてのカード・画像・デッキ・ボックスなどが完全に削除されます。
             この操作は取り消せません。
           </p>
 

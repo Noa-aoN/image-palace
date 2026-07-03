@@ -45,7 +45,8 @@ Rails.application.routes.draw do
       resources :item_types, only: [ :index ]
       resources :tags, only: [ :index, :create, :update, :destroy ]
       resources :wordlists, only: [ :index, :create, :show, :destroy ]
-      resources :collections, only: [ :index, :create, :show, :update, :destroy ] do
+      # URL は /api/v1/boxes（表示名「ボックス」）。コントローラ・モデルは Collection のまま。
+      resources :collections, only: [ :index, :create, :show, :update, :destroy ], path: "boxes" do
         member do
           post "entries", action: :add_entry
           delete "entries/:entry_type/:entry_id", action: :remove_entry
@@ -55,8 +56,8 @@ Rails.application.routes.draw do
       end
       resources :spaces, only: [ :index, :create, :show, :update, :destroy ] do
         member do
-          post "collections", action: :add_collection
-          delete "collections/:collection_id", action: :remove_collection
+          post "boxes", action: :add_collection
+          delete "boxes/:collection_id", action: :remove_collection
           post "cover_image", action: :upload_cover
           delete "cover_image", action: :remove_cover
         end

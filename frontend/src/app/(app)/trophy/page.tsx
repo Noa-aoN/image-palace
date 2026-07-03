@@ -24,7 +24,7 @@ const sections: CategorySection<TabKey>[] = [
     icon: <Medal size={16} />,
     content: (
       <ComingSoon
-        description="獲得したバッジのコレクション表示は順次対応予定です。"
+        description="獲得したバッジのボックス表示は順次対応予定です。"
         items={['獲得バッジ', 'レアバッジ', '未獲得バッジ']}
       />
     ),

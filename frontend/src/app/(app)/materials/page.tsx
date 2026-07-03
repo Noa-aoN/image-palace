@@ -19,7 +19,7 @@ const MATERIAL_KINDS: MaterialKind[] = [
     href: '/wordlists',
     icon: <ListChecks size={20} />,
     label: 'ワードリスト',
-    description: '単語・用語・概念をまとめた素材。カード生成やコレクションの元データになります。',
+    description: '単語・用語・概念をまとめた素材。カード生成やボックスの元データになります。',
   },
   {
     icon: <Images size={20} />,

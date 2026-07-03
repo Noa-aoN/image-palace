@@ -9,7 +9,7 @@ export const metadata: Metadata = { title: 'アトリエ' }
 const CREATE_ACTIONS: { href: string; icon: ReactNode; label: string; description: string }[] = [
   { href: '/materials/new', icon: <Boxes size={20} />, label: 'マテリアルを作成', description: 'カード化の前の素材（ワードリスト等）をまとめて用意します。' },
   { href: '/items/new', icon: <GalleryHorizontal size={20} />, label: 'カードを作成', description: '単語や概念をAI画像のカードにします。' },
-  { href: '/collections/new', icon: <Library size={20} />, label: 'コレクションを作成', description: 'カードをテーマごとにまとめます。' },
+  { href: '/boxes/new', icon: <Library size={20} />, label: 'ボックスを作成', description: 'カードをテーマごとにまとめます。' },
   { href: '/views/new', icon: <LayoutGrid size={20} />, label: 'キャンバスを作成', description: 'カードを自由に配置するキャンバスを作ります。' },
   { href: '/spaces/new', icon: <Frame size={20} />, label: 'スペースを作成', description: '記憶の場所（ルーム／ロード）を作ります。' },
 ]

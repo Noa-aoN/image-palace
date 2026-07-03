@@ -75,7 +75,7 @@ function SpacesPageInner() {
         )}
       </div>
       <p className="text-sm text-muted-foreground mb-6">
-        記憶の場所。種別を選んで作ります — ルーム（棚にコレクションを並べる）/ ロード（順路にカードを置く連結法）。
+        記憶の場所。種別を選んで作ります — ルーム（棚にボックスを並べる）/ ロード（順路にカードを置く連結法）。
       </p>
 
       {creating && (

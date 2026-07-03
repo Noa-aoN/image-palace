@@ -122,7 +122,7 @@ export default function QuizPage() {
             <Button variant="ghost" className="text-sm px-0 mb-4">← スタディへ戻る</Button>
           </Link>
           <h1 className="text-2xl font-semibold">クイズ</h1>
-          <p className="mt-2 text-muted-foreground">選んだカードやコレクションから問題を作って確認します。</p>
+          <p className="mt-2 text-muted-foreground">選んだカードやボックスから問題を作って確認します。</p>
         </div>
 
         <StudyArea title="① 出題対象" description="クイズにするカードの範囲を選びます。">

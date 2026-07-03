@@ -114,7 +114,7 @@ module Api
         return if @collection.cover_item_id.blank?
         return if @collection.collection_entries.exists?(entry_type: "Item", entry_id: @collection.cover_item_id)
 
-        @collection.errors.add(:cover_item_id, "はこのコレクション内のカードを指定してください")
+        @collection.errors.add(:cover_item_id, "はこのボックス内のカードを指定してください")
         raise ActiveRecord::RecordInvalid, @collection
       end
 

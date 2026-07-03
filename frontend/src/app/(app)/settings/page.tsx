@@ -307,7 +307,7 @@ export default function SettingsPage() {
               <h2 className="text-base font-semibold">データのエクスポート</h2>
             </div>
             <p className="text-sm text-muted-foreground">
-              あなたのカード・デッキ・コレクションなどのデータを JSON 形式でダウンロードします。
+              あなたのカード・デッキ・ボックスなどのデータを JSON 形式でダウンロードします。
             </p>
             <Button onClick={handleExport} disabled={exporting} className="flex items-center gap-1">
               <Download size={15} />

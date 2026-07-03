@@ -47,13 +47,13 @@ export async function deleteSpace(id: string): Promise<void> {
   await apiClient.delete(`/api/v1/spaces/${id}`)
 }
 
-// room 種別: コレクションの配置
+// room 種別: ボックスの配置
 export async function addCollectionToSpace(spaceId: string, collectionId: string): Promise<void> {
-  await apiClient.post(`/api/v1/spaces/${spaceId}/collections`, { collection_id: collectionId })
+  await apiClient.post(`/api/v1/spaces/${spaceId}/boxes`, { collection_id: collectionId })
 }
 
 export async function removeCollectionFromSpace(spaceId: string, collectionId: string): Promise<void> {
-  await apiClient.delete(`/api/v1/spaces/${spaceId}/collections/${collectionId}`)
+  await apiClient.delete(`/api/v1/spaces/${spaceId}/boxes/${collectionId}`)
 }
 
 // road 種別: 序数ポイント

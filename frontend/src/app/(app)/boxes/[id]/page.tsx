@@ -108,7 +108,7 @@ export default function CollectionDetailPage() {
         if (!cancelled) setCollection(data)
       })
       .catch(() => {
-        if (!cancelled) setError('コレクションの取得に失敗しました')
+        if (!cancelled) setError('ボックスの取得に失敗しました')
       })
     return () => {
       cancelled = true
@@ -147,7 +147,7 @@ export default function CollectionDetailPage() {
       setCollection({ ...collection, name: updated.name })
       setEditing(false)
     } catch {
-      setError('コレクション名の更新に失敗しました')
+      setError('ボックス名の更新に失敗しました')
     } finally {
       setSaving(false)
     }
@@ -158,7 +158,7 @@ export default function CollectionDetailPage() {
     setDeleting(true)
     try {
       await deleteCollection(id)
-      router.push('/collections')
+      router.push('/boxes')
     } catch {
       setError('削除に失敗しました')
       setDeleting(false)
@@ -238,7 +238,7 @@ export default function CollectionDetailPage() {
     return (
       <div className="max-w-lg mx-auto px-6 py-12 text-center space-y-4">
         <p className="text-destructive">{error}</p>
-        <Link href="/collections"><Button variant="outline">← コレクション一覧へ</Button></Link>
+        <Link href="/boxes"><Button variant="outline">← ボックス一覧へ</Button></Link>
       </div>
     )
   }
@@ -263,8 +263,8 @@ export default function CollectionDetailPage() {
 
   return (
     <div className="max-w-7xl mx-auto px-6 py-12">
-      <Link href="/collections">
-        <Button variant="ghost" className="text-sm px-0 mb-4">← コレクション一覧へ</Button>
+      <Link href="/boxes">
+        <Button variant="ghost" className="text-sm px-0 mb-4">← ボックス一覧へ</Button>
       </Link>
 
       <div className="flex items-center justify-between gap-3 mb-2">
@@ -276,7 +276,7 @@ export default function CollectionDetailPage() {
               onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); handleSaveName() } if (e.key === 'Escape') setEditing(false) }}
               disabled={saving}
               autoFocus
-              aria-label="コレクション名"
+              aria-label="ボックス名"
               className="text-lg max-w-sm"
             />
             <Button size="sm" onClick={handleSaveName} disabled={saving} aria-label="保存"><Check size={16} /></Button>
@@ -289,7 +289,7 @@ export default function CollectionDetailPage() {
             <button
               onClick={() => { setNameDraft(collection.name); setEditing(true) }}
               className="shrink-0 text-muted-foreground hover:text-foreground transition-colors"
-              aria-label="コレクション名を編集"
+              aria-label="ボックス名を編集"
             >
               <Pencil size={16} />
             </button>
@@ -321,7 +321,7 @@ export default function CollectionDetailPage() {
             coverType={collection.cover_type}
             busy={coverBusy}
             hasCustom={!!collection.cover_image}
-            helpText="先頭: コレクション内カードの先頭 / コラージュ: 最大4枚 / カスタム: アップロード画像"
+            helpText="先頭: ボックス内カードの先頭 / コラージュ: 最大4枚 / カスタム: アップロード画像"
             onSelectType={handleSetCoverType}
             onUpload={handleUploadCover}
             onRemove={handleRemoveCover}

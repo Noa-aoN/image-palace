@@ -16,7 +16,7 @@ interface Props {
 }
 
 /**
- * コレクション作成フォーム。一覧ページのインライン作成と /collections/new で共有する。
+ * ボックス作成フォーム。一覧ページのインライン作成と /boxes/new で共有する。
  */
 export function CreateCollectionForm({ onCreated, redirectBase, onCancel }: Props) {
   const router = useRouter()
@@ -28,7 +28,7 @@ export function CreateCollectionForm({ onCreated, redirectBase, onCancel }: Prop
     e.preventDefault()
     const trimmed = name.trim()
     if (!trimmed) {
-      setError('コレクション名を入力してください')
+      setError('ボックス名を入力してください')
       return
     }
     setSubmitting(true)
@@ -40,7 +40,7 @@ export function CreateCollectionForm({ onCreated, redirectBase, onCancel }: Prop
       if (redirectBase) router.push(`${redirectBase}/${created.id}`)
     } catch (err: unknown) {
       const axiosErr = err as { response?: { data?: { errors?: string[] } } }
-      setError(axiosErr?.response?.data?.errors?.[0] ?? 'コレクションの作成に失敗しました')
+      setError(axiosErr?.response?.data?.errors?.[0] ?? 'ボックスの作成に失敗しました')
     } finally {
       setSubmitting(false)
     }
@@ -52,10 +52,10 @@ export function CreateCollectionForm({ onCreated, redirectBase, onCancel }: Prop
         <Input
           value={name}
           onChange={(e) => setName(e.target.value)}
-          placeholder="コレクション名（例: 英単語、Rails用語）"
+          placeholder="ボックス名（例: 英単語、Rails用語）"
           autoFocus
           disabled={submitting}
-          aria-label="コレクション名"
+          aria-label="ボックス名"
         />
         {error && <p className="mt-1 text-sm text-destructive">{error}</p>}
       </div>

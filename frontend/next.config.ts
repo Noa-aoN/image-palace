@@ -39,6 +39,13 @@ const nextConfig: NextConfig = {
       },
     ]
   },
+  // 旧URL /collections を /boxes へ（「コレクション」→「ボックス」改名の後方互換）。
+  async redirects() {
+    return [
+      { source: "/collections", destination: "/boxes", permanent: false },
+      { source: "/collections/:path*", destination: "/boxes/:path*", permanent: false },
+    ]
+  },
 }
 
 export default nextConfig

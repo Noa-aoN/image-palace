@@ -104,7 +104,7 @@ function Collage({ images, name }: { images: CoverImageLike[]; name: string }) {
 }
 
 /**
- * エンティティ（デッキ/コレクション/スペース/キャンバス）のカバーを、
+ * エンティティ（デッキ/ボックス/スペース/キャンバス）のカバーを、
  * モード（first_card / collage / custom）に応じて描画する汎用コンポーネント。
  * 親が正方形の枠（aspect-square）を与える想定。
  * fallback で画像が無いときの表示（例: スペースの部屋/道アイコン）を差し替えられる。

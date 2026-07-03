@@ -3,17 +3,17 @@ import type { Collection, CollectionDetail, CollectionEntryType } from '@/types/
 import type { CoverType } from '@/types/cover'
 
 export async function getCollections(): Promise<Collection[]> {
-  const res = await apiClient.get<{ collections: Collection[] }>('/api/v1/collections')
+  const res = await apiClient.get<{ collections: Collection[] }>('/api/v1/boxes')
   return res.data.collections
 }
 
 export async function getCollection(id: string): Promise<CollectionDetail> {
-  const res = await apiClient.get<CollectionDetail>(`/api/v1/collections/${id}`)
+  const res = await apiClient.get<CollectionDetail>(`/api/v1/boxes/${id}`)
   return res.data
 }
 
 export async function createCollection(name: string, description?: string): Promise<Collection> {
-  const res = await apiClient.post<Collection>('/api/v1/collections', {
+  const res = await apiClient.post<Collection>('/api/v1/boxes', {
     collection: { name, description },
   })
   return res.data
@@ -23,7 +23,7 @@ export async function updateCollection(
   id: string,
   payload: { name?: string; description?: string; cover_item_id?: string | null; cover_type?: CoverType }
 ): Promise<Collection> {
-  const res = await apiClient.patch<Collection>(`/api/v1/collections/${id}`, { collection: payload })
+  const res = await apiClient.patch<Collection>(`/api/v1/boxes/${id}`, { collection: payload })
   return res.data
 }
 
@@ -31,18 +31,18 @@ export async function updateCollection(
 export async function uploadCollectionCover(id: string, file: File): Promise<Collection> {
   const form = new FormData()
   form.append('cover_image', file)
-  const res = await apiClient.post<Collection>(`/api/v1/collections/${id}/cover_image`, form)
+  const res = await apiClient.post<Collection>(`/api/v1/boxes/${id}/cover_image`, form)
   return res.data
 }
 
 // カバー画像の削除（cover_type は first_card に戻る）
 export async function removeCollectionCover(id: string): Promise<Collection> {
-  const res = await apiClient.delete<Collection>(`/api/v1/collections/${id}/cover_image`)
+  const res = await apiClient.delete<Collection>(`/api/v1/boxes/${id}/cover_image`)
   return res.data
 }
 
 export async function deleteCollection(id: string): Promise<void> {
-  await apiClient.delete(`/api/v1/collections/${id}`)
+  await apiClient.delete(`/api/v1/boxes/${id}`)
 }
 
 export async function addEntryToCollection(
@@ -50,7 +50,7 @@ export async function addEntryToCollection(
   entryType: CollectionEntryType,
   entryId: string
 ): Promise<void> {
-  await apiClient.post(`/api/v1/collections/${collectionId}/entries`, {
+  await apiClient.post(`/api/v1/boxes/${collectionId}/entries`, {
     entry_type: entryType,
     entry_id: entryId,
   })
@@ -61,5 +61,5 @@ export async function removeEntryFromCollection(
   entryType: CollectionEntryType,
   entryId: string
 ): Promise<void> {
-  await apiClient.delete(`/api/v1/collections/${collectionId}/entries/${entryType}/${entryId}`)
+  await apiClient.delete(`/api/v1/boxes/${collectionId}/entries/${entryType}/${entryId}`)
 }
