@@ -1,6 +1,6 @@
 // スタディ＞クイズの純粋ロジック（データ取得・設問生成）。UIから切り離してテスト・拡張しやすくする。
 import { getItems } from '@/lib/api/items'
-import { getCollection } from '@/lib/api/collections'
+import { getBox } from '@/lib/api/boxes'
 import { getViewDetail } from '@/lib/api/views'
 import { shuffle } from '@/lib/shuffle'
 
@@ -10,7 +10,7 @@ export type QuizCard = { id: string; title: string; image: string }
 // クイズ対象。将来 'recent' / 'tag' / 'space' / 'weak' を足せる。
 export type QuizTarget =
   | { kind: 'all' }
-  | { kind: 'collection'; id: string; name: string }
+  | { kind: 'box'; id: string; name: string }
   | { kind: 'view'; id: string; name: string }
 
 // 対象を一意に識別するキー（選択ハイライト・最近の対象の重複排除に使う）
@@ -56,9 +56,9 @@ export async function loadQuizCards(target: QuizTarget): Promise<QuizCard[]> {
     return toQuizCards(items)
   }
 
-  if (target.kind === 'collection') {
-    // collection: entries のうち Item かつ画像ありのものだけ
-    const detail = await getCollection(target.id)
+  if (target.kind === 'box') {
+    // box: entries のうち Item かつ画像ありのものだけ
+    const detail = await getBox(target.id)
     const items = detail.entries
       .filter((e): e is Extract<typeof e, { entry_type: 'Item' }> => e.entry_type === 'Item')
       .map((e) => ({ id: e.id, title: e.title, generation_status: 'completed', media: e.media }))

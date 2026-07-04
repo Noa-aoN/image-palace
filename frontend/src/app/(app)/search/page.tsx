@@ -59,7 +59,7 @@ export default function SearchPage() {
   const total = results
     ? results.items.length +
       results.decks.length +
-      results.collections.length +
+      results.boxes.length +
       results.views.length +
       results.spaces.length
     : 0
@@ -96,7 +96,7 @@ export default function SearchPage() {
             />
             <ResultGroup
               title="ボックス"
-              items={results.collections.map((c) => ({ id: c.id, href: `/boxes/${c.id}`, label: c.name }))}
+              items={results.boxes.map((c) => ({ id: c.id, href: `/boxes/${c.id}`, label: c.name }))}
             />
             <ResultGroup
               title="キャンバス"

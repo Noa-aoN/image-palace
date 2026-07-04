@@ -4,12 +4,12 @@ import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
-import { createCollection } from '@/lib/api/collections'
-import type { Collection } from '@/types/collection'
+import { createBox } from '@/lib/api/boxes'
+import type { Box } from '@/types/box'
 
 interface Props {
   // 一覧ページ用: 作成後に一覧へ反映する。
-  onCreated?: (collection: Collection) => void
+  onCreated?: (box: Box) => void
   // /new ページ用: 作成後に `${redirectBase}/${id}` へ遷移する。
   redirectBase?: string
   onCancel?: () => void
@@ -18,7 +18,7 @@ interface Props {
 /**
  * ボックス作成フォーム。一覧ページのインライン作成と /boxes/new で共有する。
  */
-export function CreateCollectionForm({ onCreated, redirectBase, onCancel }: Props) {
+export function CreateBoxForm({ onCreated, redirectBase, onCancel }: Props) {
   const router = useRouter()
   const [name, setName] = useState('')
   const [submitting, setSubmitting] = useState(false)
@@ -34,7 +34,7 @@ export function CreateCollectionForm({ onCreated, redirectBase, onCancel }: Prop
     setSubmitting(true)
     setError(null)
     try {
-      const created = await createCollection(trimmed)
+      const created = await createBox(trimmed)
       setName('')
       onCreated?.(created)
       if (redirectBase) router.push(`${redirectBase}/${created.id}`)

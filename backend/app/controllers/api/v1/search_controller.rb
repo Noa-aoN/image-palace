@@ -14,7 +14,7 @@ module Api
       private
 
       def empty_result
-        { items: [], decks: [], collections: [], spaces: [], views: [] }
+        { items: [], decks: [], boxes: [], spaces: [], views: [] }
       end
 
       def search(query)
@@ -32,11 +32,11 @@ module Api
                              .order(created_at: :desc).limit(LIMIT)
                              .includes(view_items: { item: { medias: { file_attachment: :blob } } })
                              .map { |v| serialize_deck_view(v) },
-          collections: current_user.collections
+          boxes: current_user.boxes
                                    .where("name ILIKE ?", like)
                                    .order(created_at: :desc).limit(LIMIT)
-                                   .includes(:collection_entries)
-                                   .map { |c| serialize_collection(c) },
+                                   .includes(:box_entries)
+                                   .map { |c| serialize_box(c) },
           spaces: current_user.spaces
                               .where("name ILIKE ?", like)
                               .order(created_at: :desc).limit(LIMIT)
@@ -58,8 +58,8 @@ module Api
         }
       end
 
-      def serialize_collection(collection)
-        { id: collection.id, name: collection.name, entry_count: collection.collection_entries.size }
+      def serialize_box(box)
+        { id: box.id, name: box.name, entry_count: box.box_entries.size }
       end
     end
   end

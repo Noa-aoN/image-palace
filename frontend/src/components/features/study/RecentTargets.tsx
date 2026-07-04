@@ -6,7 +6,7 @@ import type { QuizTarget } from '@/lib/quiz'
 
 function kindIcon(kind: SavedTarget['kind']) {
   if (kind === 'all') return <GalleryHorizontal size={15} />
-  if (kind === 'collection') return <Library size={15} />
+  if (kind === 'box') return <Library size={15} />
   return <LayoutGrid size={15} />
 }
 

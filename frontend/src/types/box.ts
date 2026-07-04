@@ -1,7 +1,7 @@
 import type { ItemMedia } from './item'
 import type { CoverType, CoverImage } from './cover'
 
-export interface Collection {
+export interface Box {
   id: string
   name: string
   description: string | null
@@ -14,14 +14,14 @@ export interface Collection {
   created_at: string
 }
 
-export type CollectionEntryType = 'Item' | 'Space' | 'View'
+export type BoxEntryType = 'Item' | 'Space' | 'View'
 
 // ボックスにまとめられた要素（カード/スペース/キャンバスの混在。デッキはキャンバスに統合済み）
-export type CollectionEntry =
+export type BoxEntry =
   | { entry_type: 'Item'; id: string; title: string; media: ItemMedia | null }
   | { entry_type: 'Space'; id: string; name: string; cover: CoverImage | null }
   | { entry_type: 'View'; id: string; name: string; cover: ItemMedia | null }
 
-export interface CollectionDetail extends Collection {
-  entries: CollectionEntry[]
+export interface BoxDetail extends Box {
+  entries: BoxEntry[]
 }

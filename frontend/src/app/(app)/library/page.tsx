@@ -6,14 +6,14 @@ import { GalleryHorizontal, Library, Layers, LayoutGrid, Frame, MapPin, ChevronR
 import { Button } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/skeleton'
 import { getItems, getItemsSummary, bulkDeleteItems } from '@/lib/api/items'
-import { getCollections, deleteCollection } from '@/lib/api/collections'
+import { getBoxes, deleteBox } from '@/lib/api/boxes'
 import { getSpaces, deleteSpace } from '@/lib/api/spaces'
 import { getViews, deleteView } from '@/lib/api/views'
 import { getWordlists, deleteWordlist } from '@/lib/api/wordlists'
 import { searchLibrary } from '@/lib/api/search'
 import { EntityCover } from '@/components/features/shared/EntityCover'
 import type { Item } from '@/types/item'
-import type { Collection } from '@/types/collection'
+import type { Box } from '@/types/box'
 import type { Space } from '@/types/space'
 import type { View } from '@/types/view'
 import type { Wordlist } from '@/types/wordlist'
@@ -25,7 +25,7 @@ import { CardImage } from '@/components/ui/card-image'
 const PREVIEW_LIMIT = 12
 
 // 選択対象の形式。ID は形式内でしか一意でないため、選択キーは "形式:ID" で持つ。
-type SelectableType = 'card' | 'collection' | 'space' | 'view' | 'wordlist'
+type SelectableType = 'card' | 'box' | 'space' | 'view' | 'wordlist'
 const selKey = (type: SelectableType, id: string) => `${type}:${id}`
 
 // タイル共通シェル。通常はリンク、選択モードでは選択トグル（チェック表示）になる。
@@ -230,21 +230,21 @@ type TileSelectionProps = {
   onToggle?: () => void
 }
 
-function CollectionTile({ collection, selectionMode, selected, onToggle }: { collection: Collection } & TileSelectionProps) {
+function BoxTile({ box, selectionMode, selected, onToggle }: { box: Box } & TileSelectionProps) {
   return (
     <SelectableTile
-      href={`/boxes/${collection.id}`}
+      href={`/boxes/${box.id}`}
       className={NAMED_TILE_CLASS}
       selectionMode={selectionMode}
       selected={selected}
       onToggle={onToggle}
     >
       <div className="px-3 py-2 flex items-center justify-between gap-1">
-        <span className="text-sm font-medium truncate">{collection.name}</span>
-        <span className="text-xs text-muted-foreground shrink-0">{collection.entry_count}</span>
+        <span className="text-sm font-medium truncate">{box.name}</span>
+        <span className="text-xs text-muted-foreground shrink-0">{box.entry_count}</span>
       </div>
       <div className="w-full aspect-square bg-muted overflow-hidden">
-        <EntityCover cover={collection} />
+        <EntityCover cover={box} />
       </div>
     </SelectableTile>
   )
@@ -423,7 +423,7 @@ function SearchResultsView({
   const total = results
     ? results.items.length +
       results.decks.length +
-      results.collections.length +
+      results.boxes.length +
       results.spaces.length +
       results.views.length
     : 0
@@ -469,16 +469,16 @@ function SearchResultsView({
           </Rail>
         </ResultGroup>
       )}
-      {results.collections.length > 0 && (
-        <ResultGroup icon={<Library size={18} />} title="ボックス" count={results.collections.length}>
+      {results.boxes.length > 0 && (
+        <ResultGroup icon={<Library size={18} />} title="ボックス" count={results.boxes.length}>
           <Rail>
-            {results.collections.map((collection) => (
+            {results.boxes.map((box) => (
               <SearchNamedTile
-                key={collection.id}
-                href={`/boxes/${collection.id}`}
+                key={box.id}
+                href={`/boxes/${box.id}`}
                 icon={<Library size={16} />}
-                name={collection.name}
-                sub={`${collection.entry_count} 件`}
+                name={box.name}
+                sub={`${box.entry_count} 件`}
               />
             ))}
           </Rail>
@@ -520,7 +520,7 @@ function SearchResultsView({
 export default function LibraryPage() {
   const [cards, setCards] = useState<Item[]>([])
   const [cardCount, setCardCount] = useState<number | undefined>(undefined)
-  const [collections, setCollections] = useState<Collection[]>([])
+  const [boxes, setBoxes] = useState<Box[]>([])
   const [wordlists, setWordlists] = useState<Wordlist[]>([])
   const [spaces, setSpaces] = useState<Space[]>([])
   const [views, setViews] = useState<View[]>([])
@@ -563,7 +563,7 @@ export default function LibraryPage() {
     }
     setDeleting(true)
     try {
-      const byType: Record<SelectableType, string[]> = { card: [], collection: [], space: [], view: [], wordlist: [] }
+      const byType: Record<SelectableType, string[]> = { card: [], box: [], space: [], view: [], wordlist: [] }
       for (const key of selectedKeys) {
         const idx = key.indexOf(':')
         const type = key.slice(0, idx) as SelectableType
@@ -578,9 +578,9 @@ export default function LibraryPage() {
         )
       }
 
-      const [deletedCards, delCollections, delSpaces, delViews, delWordlists] = await Promise.all([
+      const [deletedCards, delBoxes, delSpaces, delViews, delWordlists] = await Promise.all([
         byType.card.length > 0 ? bulkDeleteItems(byType.card).then((ids) => new Set(ids)) : Promise.resolve(new Set<string>()),
-        deleteEach(byType.collection, deleteCollection),
+        deleteEach(byType.box, deleteBox),
         deleteEach(byType.space, deleteSpace),
         deleteEach(byType.view, deleteView),
         deleteEach(byType.wordlist, deleteWordlist),
@@ -590,7 +590,7 @@ export default function LibraryPage() {
         setCards((prev) => prev.filter((c) => !deletedCards.has(c.id)))
         setCardCount((prev) => (prev === undefined ? prev : Math.max(0, prev - deletedCards.size)))
       }
-      if (delCollections.size > 0) setCollections((prev) => prev.filter((c) => !delCollections.has(c.id)))
+      if (delBoxes.size > 0) setBoxes((prev) => prev.filter((c) => !delBoxes.has(c.id)))
       if (delSpaces.size > 0) setSpaces((prev) => prev.filter((s) => !delSpaces.has(s.id)))
       if (delViews.size > 0) setViews((prev) => prev.filter((v) => !delViews.has(v.id)))
       if (delWordlists.size > 0) setWordlists((prev) => prev.filter((w) => !delWordlists.has(w.id)))
@@ -605,12 +605,12 @@ export default function LibraryPage() {
 
   useEffect(() => {
     let cancelled = false
-    Promise.allSettled([getItems(), getItemsSummary(), getCollections(), getSpaces(), getViews(), getWordlists()])
-      .then(([itemsRes, summaryRes, collectionsRes, spacesRes, viewsRes, wordlistsRes]) => {
+    Promise.allSettled([getItems(), getItemsSummary(), getBoxes(), getSpaces(), getViews(), getWordlists()])
+      .then(([itemsRes, summaryRes, boxesRes, spacesRes, viewsRes, wordlistsRes]) => {
         if (cancelled) return
         if (itemsRes.status === 'fulfilled') setCards(itemsRes.value.slice(0, PREVIEW_LIMIT))
         if (summaryRes.status === 'fulfilled') setCardCount(summaryRes.value.total_count)
-        if (collectionsRes.status === 'fulfilled') setCollections(collectionsRes.value)
+        if (boxesRes.status === 'fulfilled') setBoxes(boxesRes.value)
         if (spacesRes.status === 'fulfilled') setSpaces(spacesRes.value)
         if (viewsRes.status === 'fulfilled') setViews(viewsRes.value)
         if (wordlistsRes.status === 'fulfilled') setWordlists(wordlistsRes.value)
@@ -634,7 +634,7 @@ export default function LibraryPage() {
           if (!cancelled) setResults(res)
         })
         .catch(() => {
-          if (!cancelled) setResults({ items: [], decks: [], collections: [], spaces: [], views: [] })
+          if (!cancelled) setResults({ items: [], decks: [], boxes: [], spaces: [], views: [] })
         })
         .finally(() => {
           if (!cancelled) setSearching(false)
@@ -793,23 +793,23 @@ export default function LibraryPage() {
       <Shelf
         icon={<Library size={20} />}
         title="ボックス"
-        count={collections.length}
+        count={boxes.length}
         href={selectionMode ? undefined : '/boxes'}
       >
-        {collections.length === 0 ? (
+        {boxes.length === 0 ? (
           <EmptyRail
             message="まだボックスがありません。"
             cta={<Link href="/boxes"><Button size="sm">ボックスを作成</Button></Link>}
           />
         ) : (
           <Rail>
-            {collections.slice(0, PREVIEW_LIMIT).map((collection) => (
-              <CollectionTile
-                key={collection.id}
-                collection={collection}
+            {boxes.slice(0, PREVIEW_LIMIT).map((box) => (
+              <BoxTile
+                key={box.id}
+                box={box}
                 selectionMode={selectionMode}
-                selected={isSelected('collection', collection.id)}
-                onToggle={() => toggleSelect('collection', collection.id)}
+                selected={isSelected('box', box.id)}
+                onToggle={() => toggleSelect('box', box.id)}
               />
             ))}
           </Rail>

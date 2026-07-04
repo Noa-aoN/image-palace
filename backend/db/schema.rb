@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_07_02_073852) do
+ActiveRecord::Schema[8.1].define(version: 2026_07_04_044428) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
   enable_extension "pgcrypto"
@@ -43,29 +43,29 @@ ActiveRecord::Schema[8.1].define(version: 2026_07_02_073852) do
     t.index ["blob_id", "variation_digest"], name: "index_active_storage_variant_records_uniqueness", unique: true
   end
 
-  create_table "collection_entries", id: :uuid, default: -> { "gen_random_uuid()" }, force: :cascade do |t|
-    t.uuid "collection_id", null: false
+  create_table "box_entries", id: :uuid, default: -> { "gen_random_uuid()" }, force: :cascade do |t|
+    t.uuid "box_id", null: false
     t.datetime "created_at", null: false
     t.uuid "entry_id", null: false
     t.string "entry_type", null: false
     t.integer "position"
     t.datetime "updated_at", null: false
-    t.index ["collection_id", "entry_type", "entry_id"], name: "index_collection_entries_uniqueness", unique: true
-    t.index ["collection_id"], name: "index_collection_entries_on_collection_id"
-    t.index ["entry_type", "entry_id"], name: "index_collection_entries_on_entry_type_and_entry_id"
+    t.index ["box_id", "entry_type", "entry_id"], name: "index_collection_entries_uniqueness", unique: true
+    t.index ["box_id"], name: "index_box_entries_on_box_id"
+    t.index ["entry_type", "entry_id"], name: "index_box_entries_on_entry_type_and_entry_id"
   end
 
-  create_table "collection_items", id: :uuid, default: -> { "gen_random_uuid()" }, force: :cascade do |t|
-    t.uuid "collection_id", null: false
+  create_table "box_items", id: :uuid, default: -> { "gen_random_uuid()" }, force: :cascade do |t|
+    t.uuid "box_id", null: false
     t.datetime "created_at", null: false
     t.uuid "item_id", null: false
     t.integer "position"
     t.datetime "updated_at", null: false
-    t.index ["collection_id", "item_id"], name: "index_collection_items_on_collection_id_and_item_id", unique: true
-    t.index ["collection_id"], name: "index_collection_items_on_collection_id"
+    t.index ["box_id", "item_id"], name: "index_box_items_on_box_id_and_item_id", unique: true
+    t.index ["box_id"], name: "index_box_items_on_box_id"
   end
 
-  create_table "collections", id: :uuid, default: -> { "gen_random_uuid()" }, force: :cascade do |t|
+  create_table "boxes", id: :uuid, default: -> { "gen_random_uuid()" }, force: :cascade do |t|
     t.uuid "cover_item_id"
     t.string "cover_type", default: "first_card", null: false
     t.datetime "created_at", null: false
@@ -73,9 +73,9 @@ ActiveRecord::Schema[8.1].define(version: 2026_07_02_073852) do
     t.string "name", null: false
     t.datetime "updated_at", null: false
     t.uuid "user_id", null: false
-    t.index ["cover_item_id"], name: "index_collections_on_cover_item_id"
-    t.index ["user_id", "created_at"], name: "index_collections_on_user_id_and_created_at"
-    t.index ["user_id"], name: "index_collections_on_user_id"
+    t.index ["cover_item_id"], name: "index_boxes_on_cover_item_id"
+    t.index ["user_id", "created_at"], name: "index_boxes_on_user_id_and_created_at"
+    t.index ["user_id"], name: "index_boxes_on_user_id"
   end
 
   create_table "credit_grants", id: :uuid, default: -> { "gen_random_uuid()" }, force: :cascade do |t|
@@ -343,14 +343,14 @@ ActiveRecord::Schema[8.1].define(version: 2026_07_02_073852) do
     t.index ["key"], name: "index_solid_queue_semaphores_on_key", unique: true
   end
 
-  create_table "space_collections", id: :uuid, default: -> { "gen_random_uuid()" }, force: :cascade do |t|
-    t.uuid "collection_id", null: false
+  create_table "space_boxes", id: :uuid, default: -> { "gen_random_uuid()" }, force: :cascade do |t|
+    t.uuid "box_id", null: false
     t.datetime "created_at", null: false
     t.integer "position"
     t.uuid "space_id", null: false
     t.datetime "updated_at", null: false
-    t.index ["space_id", "collection_id"], name: "index_space_collections_on_space_id_and_collection_id", unique: true
-    t.index ["space_id"], name: "index_space_collections_on_space_id"
+    t.index ["space_id", "box_id"], name: "index_space_boxes_on_space_id_and_box_id", unique: true
+    t.index ["space_id"], name: "index_space_boxes_on_space_id"
   end
 
   create_table "space_points", id: :uuid, default: -> { "gen_random_uuid()" }, force: :cascade do |t|
@@ -486,11 +486,11 @@ ActiveRecord::Schema[8.1].define(version: 2026_07_02_073852) do
 
   add_foreign_key "active_storage_attachments", "active_storage_blobs", column: "blob_id"
   add_foreign_key "active_storage_variant_records", "active_storage_blobs", column: "blob_id"
-  add_foreign_key "collection_entries", "collections", on_delete: :cascade
-  add_foreign_key "collection_items", "collections", on_delete: :cascade
-  add_foreign_key "collection_items", "items", on_delete: :cascade
-  add_foreign_key "collections", "items", column: "cover_item_id", on_delete: :nullify
-  add_foreign_key "collections", "users", on_delete: :cascade
+  add_foreign_key "box_entries", "boxes", on_delete: :cascade
+  add_foreign_key "box_items", "boxes", on_delete: :cascade
+  add_foreign_key "box_items", "items", on_delete: :cascade
+  add_foreign_key "boxes", "items", column: "cover_item_id", on_delete: :nullify
+  add_foreign_key "boxes", "users", on_delete: :cascade
   add_foreign_key "credit_grants", "users"
   add_foreign_key "credit_transactions", "users", on_delete: :cascade
   add_foreign_key "item_tags", "items", on_delete: :cascade
@@ -510,8 +510,8 @@ ActiveRecord::Schema[8.1].define(version: 2026_07_02_073852) do
   add_foreign_key "solid_queue_ready_executions", "solid_queue_jobs", column: "job_id", on_delete: :cascade
   add_foreign_key "solid_queue_recurring_executions", "solid_queue_jobs", column: "job_id", on_delete: :cascade
   add_foreign_key "solid_queue_scheduled_executions", "solid_queue_jobs", column: "job_id", on_delete: :cascade
-  add_foreign_key "space_collections", "collections", on_delete: :cascade
-  add_foreign_key "space_collections", "spaces", on_delete: :cascade
+  add_foreign_key "space_boxes", "boxes", on_delete: :cascade
+  add_foreign_key "space_boxes", "spaces", on_delete: :cascade
   add_foreign_key "space_points", "items", on_delete: :nullify
   add_foreign_key "space_points", "spaces", on_delete: :cascade
   add_foreign_key "spaces", "space_points", column: "cover_space_point_id", on_delete: :nullify

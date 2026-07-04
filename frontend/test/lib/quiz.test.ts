@@ -8,8 +8,8 @@ describe('targetKey', () => {
   it('all は "all"', () => {
     expect(targetKey({ kind: 'all' })).toBe('all')
   })
-  it('collection/view は kind:id', () => {
-    expect(targetKey({ kind: 'collection', id: 'x', name: 'X' })).toBe('collection:x')
+  it('box/view は kind:id', () => {
+    expect(targetKey({ kind: 'box', id: 'x', name: 'X' })).toBe('box:x')
     expect(targetKey({ kind: 'view', id: 'y', name: 'Y' })).toBe('view:y')
   })
 })
@@ -17,7 +17,7 @@ describe('targetKey', () => {
 describe('targetLabel', () => {
   it('all は固定ラベル、その他は name', () => {
     expect(targetLabel({ kind: 'all' })).toBe('すべてのカード')
-    expect(targetLabel({ kind: 'collection', id: 'x', name: 'マイ単語帳' })).toBe('マイ単語帳')
+    expect(targetLabel({ kind: 'box', id: 'x', name: 'マイ単語帳' })).toBe('マイ単語帳')
   })
 })
 

@@ -16,12 +16,12 @@ import {
   Frame,
   AlertTriangle,
 } from 'lucide-react'
-import { getCollections } from '@/lib/api/collections'
+import { getBoxes } from '@/lib/api/boxes'
 import { getViews } from '@/lib/api/views'
 import { viewTypeLabel } from '@/lib/view-types'
 import { useStudyTargetStore } from '@/stores/studyTargets'
 import { targetKey, type QuizTarget } from '@/lib/quiz'
-import type { Collection } from '@/types/collection'
+import type { Box } from '@/types/box'
 import type { View } from '@/types/view'
 
 const COMING_SOON_TARGETS: { icon: ReactNode; label: string }[] = [
@@ -31,7 +31,7 @@ const COMING_SOON_TARGETS: { icon: ReactNode; label: string }[] = [
   { icon: <AlertTriangle size={15} />, label: '苦手カード' },
 ]
 
-type OpenMedium = 'collection' | 'view' | null
+type OpenMedium = 'box' | 'view' | null
 
 // 「その他（準備中）」の対象候補をチップで表示する（単体でも使える）。
 export function ComingSoonTargets() {
@@ -62,7 +62,7 @@ interface Props {
  * 各行の★で対象を保存できる（保存した対象は②に表示される）。
  */
 export function TargetPicker({ selectedKey, onSelect, hideComingSoon = false }: Props) {
-  const [collections, setCollections] = useState<Collection[]>([])
+  const [boxes, setBoxes] = useState<Box[]>([])
   const [views, setViews] = useState<View[]>([])
   const [open, setOpen] = useState<OpenMedium>(null)
   const [query, setQuery] = useState('')
@@ -72,7 +72,7 @@ export function TargetPicker({ selectedKey, onSelect, hideComingSoon = false }: 
   const savedKeys = useMemo(() => new Set(savedTargets.map((t) => t.key)), [savedTargets])
 
   useEffect(() => {
-    getCollections().then(setCollections).catch(() => setCollections([]))
+    getBoxes().then(setBoxes).catch(() => setBoxes([]))
     getViews().then(setViews).catch(() => setViews([]))
   }, [])
 
@@ -82,9 +82,9 @@ export function TargetPicker({ selectedKey, onSelect, hideComingSoon = false }: 
   }
 
   const q = query.trim().toLowerCase()
-  const filteredCollections = useMemo(
-    () => (q ? collections.filter((c) => c.name.toLowerCase().includes(q)) : collections),
-    [collections, q]
+  const filteredBoxes = useMemo(
+    () => (q ? boxes.filter((c) => c.name.toLowerCase().includes(q)) : boxes),
+    [boxes, q]
   )
   const filteredViews = useMemo(
     () => (q ? views.filter((v) => v.name.toLowerCase().includes(q)) : views),
@@ -120,19 +120,19 @@ export function TargetPicker({ selectedKey, onSelect, hideComingSoon = false }: 
       <MediumAccordion
         icon={<Library size={18} />}
         title="ボックス"
-        count={collections.length}
-        opened={open === 'collection'}
-        onToggle={() => toggle('collection')}
+        count={boxes.length}
+        opened={open === 'box'}
+        onToggle={() => toggle('box')}
       >
         <MediumList
           query={query}
           onQuery={setQuery}
           placeholder="ボックスを検索"
-          empty={collections.length === 0 ? 'ボックスがありません。' : '該当するボックスがありません。'}
-          items={filteredCollections}
+          empty={boxes.length === 0 ? 'ボックスがありません。' : '該当するボックスがありません。'}
+          items={filteredBoxes}
         >
-          {filteredCollections.map((c) => {
-            const t: QuizTarget = { kind: 'collection', id: c.id, name: c.name }
+          {filteredBoxes.map((c) => {
+            const t: QuizTarget = { kind: 'box', id: c.id, name: c.name }
             const key = targetKey(t)
             return (
               <ItemRow

@@ -7,22 +7,22 @@ RSpec.describe "Api::V1::Spaces children", type: :request do
 
   describe "room 種別: コレクション" do
     let(:space) { create(:space, user: user, space_type: "room") }
-    let(:collection) { user.collections.create!(name: "英単語") }
+    let(:box) { user.boxes.create!(name: "英単語") }
 
     # 詳細表示はポイントベースに統一したが、コレクション棚の追加・削除 API は温存している。
     it "コレクションを追加・削除できる" do
-      post "/api/v1/spaces/#{space.id}/boxes", params: { collection_id: collection.id }, headers: headers
+      post "/api/v1/spaces/#{space.id}/boxes", params: { box_id: box.id }, headers: headers
       expect(response).to have_http_status(:no_content)
-      expect(space.collections.reload.map(&:name)).to eq([ "英単語" ])
+      expect(space.boxes.reload.map(&:name)).to eq([ "英単語" ])
 
-      delete "/api/v1/spaces/#{space.id}/boxes/#{collection.id}", headers: headers
+      delete "/api/v1/spaces/#{space.id}/boxes/#{box.id}", headers: headers
       expect(response).to have_http_status(:no_content)
-      expect(space.collections.reload.count).to eq(0)
+      expect(space.boxes.reload.count).to eq(0)
     end
 
     it "他ユーザーのコレクションは追加できない（404）" do
-      other_collection = create(:user, :confirmed).collections.create!(name: "他人")
-      post "/api/v1/spaces/#{space.id}/boxes", params: { collection_id: other_collection.id }, headers: headers
+      other_box = create(:user, :confirmed).boxes.create!(name: "他人")
+      post "/api/v1/spaces/#{space.id}/boxes", params: { box_id: other_box.id }, headers: headers
       expect(response).to have_http_status(:not_found)
     end
 

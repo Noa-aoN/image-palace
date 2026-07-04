@@ -3,9 +3,9 @@ class Item < ApplicationRecord
   belongs_to :item_type
   has_many :meanings, dependent: :destroy
   has_many :medias, dependent: :destroy
-  has_many :collection_items, dependent: :destroy
-  has_many :collections, through: :collection_items
-  has_many :collection_entries, as: :entry, dependent: :destroy
+  has_many :box_items, dependent: :destroy
+  has_many :boxes, through: :box_items
+  has_many :box_entries, as: :entry, dependent: :destroy
   has_many :item_tags, dependent: :destroy
   has_many :tags, through: :item_tags
   has_many :from_relations, class_name: "Relation", foreign_key: :from_item_id, dependent: :destroy

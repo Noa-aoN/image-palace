@@ -1,10 +1,10 @@
-class CollectionEntry < ApplicationRecord
-  belongs_to :collection
+class BoxEntry < ApplicationRecord
+  belongs_to :box
   belongs_to :entry, polymorphic: true
 
   # コレクションにまとめられるオブジェクトの種別（デッキはキャンバスに統合済み）
   ENTRY_TYPES = %w[Item Space View].freeze
 
   validates :entry_type, inclusion: { in: ENTRY_TYPES }
-  validates :entry_id, uniqueness: { scope: [ :collection_id, :entry_type ] }
+  validates :entry_id, uniqueness: { scope: [ :box_id, :entry_type ] }
 end

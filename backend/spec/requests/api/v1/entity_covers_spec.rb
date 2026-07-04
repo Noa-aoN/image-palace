@@ -8,11 +8,11 @@ RSpec.describe "Api::V1 entity covers", type: :request do
   let(:item) { create(:item, user: user, item_type: item_type, title: "りんご") }
 
   describe "コレクション" do
-    let(:collection) { user.collections.create!(name: "英単語") }
+    let(:box) { user.boxes.create!(name: "英単語") }
 
     it "cover_type を更新でき、シリアライズに cover 各種を含む" do
-      patch "/api/v1/boxes/#{collection.id}",
-        params: { collection: { cover_type: "collage" } }, headers: headers, as: :json
+      patch "/api/v1/boxes/#{box.id}",
+        params: { box: { cover_type: "collage" } }, headers: headers, as: :json
 
       expect(response).to have_http_status(:ok)
       expect(json_response["cover_type"]).to eq("collage")
@@ -21,21 +21,21 @@ RSpec.describe "Api::V1 entity covers", type: :request do
     end
 
     it "コレクション内のカードのみ表紙に指定できる" do
-      collection.collection_entries.create!(entry_type: "Item", entry_id: item.id)
-      patch "/api/v1/boxes/#{collection.id}",
-        params: { collection: { cover_item_id: item.id } }, headers: headers, as: :json
+      box.box_entries.create!(entry_type: "Item", entry_id: item.id)
+      patch "/api/v1/boxes/#{box.id}",
+        params: { box: { cover_item_id: item.id } }, headers: headers, as: :json
       expect(response).to have_http_status(:ok)
       expect(json_response["cover_item_id"]).to eq(item.id)
 
       outsider = create(:item, user: user, item_type: item_type, title: "外部")
-      patch "/api/v1/boxes/#{collection.id}",
-        params: { collection: { cover_item_id: outsider.id } }, headers: headers, as: :json
+      patch "/api/v1/boxes/#{box.id}",
+        params: { box: { cover_item_id: outsider.id } }, headers: headers, as: :json
       expect(response).to have_http_status(:unprocessable_entity)
     end
 
     it "カバー画像を削除すると first_card に戻る" do
-      collection.update!(cover_type: "custom")
-      delete "/api/v1/boxes/#{collection.id}/cover_image", headers: headers, as: :json
+      box.update!(cover_type: "custom")
+      delete "/api/v1/boxes/#{box.id}/cover_image", headers: headers, as: :json
       expect(response).to have_http_status(:ok)
       expect(json_response["cover_type"]).to eq("first_card")
     end
@@ -47,14 +47,14 @@ RSpec.describe "Api::V1 entity covers", type: :request do
       png.write(Vips::Image.black(1600, 1200).pngsave_buffer)
       png.rewind
 
-      post "/api/v1/boxes/#{collection.id}/cover_image",
+      post "/api/v1/boxes/#{box.id}/cover_image",
         params: { cover_image: Rack::Test::UploadedFile.new(png.path, "image/png") }, headers: headers
 
       expect(response).to have_http_status(:ok)
-      collection.reload
-      expect(collection.cover_image.blob.content_type).to eq("image/webp")
-      expect(collection.cover_thumb).to be_attached
-      expect(collection.cover_type).to eq("custom")
+      box.reload
+      expect(box.cover_image.blob.content_type).to eq("image/webp")
+      expect(box.cover_thumb).to be_attached
+      expect(box.cover_type).to eq("custom")
     ensure
       png&.close!
     end
@@ -64,7 +64,7 @@ RSpec.describe "Api::V1 entity covers", type: :request do
       txt.write("not an image")
       txt.rewind
 
-      post "/api/v1/boxes/#{collection.id}/cover_image",
+      post "/api/v1/boxes/#{box.id}/cover_image",
         params: { cover_image: Rack::Test::UploadedFile.new(txt.path, "text/plain") }, headers: headers
 
       expect(response).to have_http_status(:unprocessable_entity)
