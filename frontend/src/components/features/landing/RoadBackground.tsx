@@ -2,10 +2,14 @@
 
 import { useEffect, useRef } from 'react'
 
-// LP の各セクション下部に「道」を敷き、スクロール進捗に応じてズーム＋ブラーで
-// 道を進んでいるように見せる装飾レイヤー。進捗は CSS 変数 --road-p(0→1) に書き、
-// 変形/ぼかしは CSS 側で行う（React 再描画なし・コンポジタで動く）。
-// prefers-reduced-motion 時は listener を張らず静止表示にする。
+// 「続く1本の道を歩く」体験。縦にタイルできる平坦な道テクスチャを repeat-y で敷き、
+// ページ全体のスクロール量に応じて背景を縦スクロール（トレッドミル）させる。
+// repeat-y が継ぎ目なく折り返すため無限ループになり、全セクションが同一オフセットを
+// 参照するので「同じ1本の道が全ページを貫いて続く」ように見える。
+// prefers-reduced-motion 時は listener を張らず静止。
+
+const SPEED = 0.6 // スクロール量に対する道の流れる速さ（歩行速度）
+
 export function RoadBackground() {
   const ref = useRef<HTMLDivElement>(null)
 
@@ -13,17 +17,12 @@ export function RoadBackground() {
     const el = ref.current
     if (!el) return
     if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return
-    const section = el.closest('section')
-    if (!section) return
 
     let raf = 0
     const update = () => {
       raf = 0
-      const rect = section.getBoundingClientRect()
-      const vh = window.innerHeight || 1
-      // セクション上端がビュー下端→上端へ移動する間を 0→1 とする（下へスクロール＝前進）
-      const p = Math.min(1, Math.max(0, (vh - rect.top) / vh))
-      el.style.setProperty('--road-p', p.toFixed(4))
+      // 下へスクロール＝道が手前(下)へ流れる＝前進。repeat-y が自動で折り返す。
+      el.style.setProperty('--road-shift', (window.scrollY * SPEED).toFixed(1))
     }
     const onScroll = () => {
       if (!raf) raf = requestAnimationFrame(update)
@@ -40,14 +39,13 @@ export function RoadBackground() {
   }, [])
 
   return (
-    <>
-      <div ref={ref} aria-hidden className="road-bg">
-        {/* 背景透過PNG。変形/ぼかしは CSS(.road-bg__img) 側で --road-p により駆動 */}
-        {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img src="/road.png" alt="" className="road-bg__img" />
-      </div>
-      {/* 下端の軽いブラー帯（HA ヒーローの hero-blur を踏襲。手前の被写界深度） */}
-      <div aria-hidden className="road-blur" />
-    </>
+    <div ref={ref} aria-hidden className="road-bg">
+      {/* 平坦な道テクスチャ（透過PNG）を repeat-y で敷き、background-position を scroll で動かす */}
+      <div className="road-bg__strip" />
+      {/* 上端（奥）を強くぼかして遠くへ霞ませる */}
+      <div className="road-blur road-blur--top" />
+      {/* 下端の軽いブラー帯（HA ヒーローの hero-blur 踏襲。手前の被写界深度） */}
+      <div className="road-blur" />
+    </div>
   )
 }
