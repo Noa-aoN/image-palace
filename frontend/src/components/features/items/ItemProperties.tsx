@@ -1,10 +1,10 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { Pencil, Check, X, Sparkles } from 'lucide-react'
+import { Pencil, Check, X, Sparkles, ShieldCheck } from 'lucide-react'
 import { Spinner } from '@/components/ui/spinner'
 import { Button } from '@/components/ui/button'
-import { getItemTypes, updateItem, generateMeaning, generateTags, isItemSkip } from '@/lib/api/items'
+import { getItemTypes, updateItem, generateMeaning, generateTags, factCheckItem, isItemSkip } from '@/lib/api/items'
 import { MEANING_LEVELS, meaningLevelLabel, DEFAULT_MEANING_LEVEL } from '@/lib/meaning-levels'
 import { getTags } from '@/lib/api/tags'
 import type { Item, ItemType } from '@/types/item'
@@ -149,6 +149,22 @@ export function ItemProperties({ item, onUpdated }: ItemPropertiesProps) {
       setMeaningError('意味の生成に失敗しました。時間を置いて再度お試しください。')
     } finally {
       setGeneratingMeaning(false)
+    }
+  }
+
+  const [checkingFact, setCheckingFact] = useState(false)
+
+  // 説明が事実として正しいかをAIでチェックする（結果は FactCheckResult に反映される）
+  const handleFactCheck = async () => {
+    setCheckingFact(true)
+    setMeaningError(null)
+    try {
+      const updated = await factCheckItem(item.id)
+      if (!isItemSkip(updated)) onUpdated(updated)
+    } catch {
+      setMeaningError('AIチェックに失敗しました。時間を置いて再度お試しください。')
+    } finally {
+      setCheckingFact(false)
     }
   }
 
@@ -318,6 +334,18 @@ export function ItemProperties({ item, onUpdated }: ItemPropertiesProps) {
                 {generatingMeaning ? <Spinner size={14} /> : <Sparkles size={14} />}
                 {item.meaning ? '再生成' : 'AIで生成'}
               </button>
+              {item.meaning && (
+                <button
+                  onClick={handleFactCheck}
+                  disabled={checkingFact}
+                  className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground transition-colors disabled:opacity-50"
+                  aria-label="説明をAIでファクトチェック"
+                  title="説明が事実として正しいかAIでチェックし、訂正案を出します"
+                >
+                  {checkingFact ? <Spinner size={14} /> : <ShieldCheck size={14} />}
+                  AIチェック
+                </button>
+              )}
               <button
                 onClick={startEditMeaning}
                 className="text-muted-foreground hover:text-foreground transition-colors"
