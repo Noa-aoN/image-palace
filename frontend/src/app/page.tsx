@@ -45,18 +45,20 @@ function Section({
   bg,
   cueTo,
   topDividerFrom,
+  className,
   children,
 }: {
   id?: string
   bg?: string
   cueTo?: string
   topDividerFrom?: string
+  className?: string
   children: ReactNode
 }) {
   return (
     <section
       id={id}
-      className="relative isolate flex min-h-svh flex-col items-center justify-center overflow-hidden px-6 py-20 text-center"
+      className={`relative isolate flex min-h-svh flex-col items-center justify-center overflow-hidden px-6 py-20 text-center${className ? ` ${className}` : ''}`}
       style={bg ? { backgroundColor: bg } : undefined}
     >
       <div aria-hidden data-anim-layer className="pointer-events-none absolute inset-0 z-0">
@@ -82,8 +84,8 @@ export default function TopPage() {
       {/* HA: ヒーロー（スクロール連動ズーム） */}
       <HeroScrollZoom />
 
-      {/* 1. コンセプト（仮） */}
-      <Section id="concept" cueTo="features" bg="var(--ivory)">
+      {/* 1. コンセプト（仮）。ヒーロー終盤へ少しだけ重ね、余白を程よく詰める */}
+      <Section id="concept" cueTo="features" bg="var(--ivory)" className="-mt-[10svh]">
         <p className="mb-4 text-sm font-medium tracking-widest" style={{ color: 'var(--palace)' }}>CONCEPT</p>
         <h2 className="mb-6 text-3xl font-bold tracking-tight md:text-4xl" style={{ color: '#111111' }}>
           記憶を、設計する。

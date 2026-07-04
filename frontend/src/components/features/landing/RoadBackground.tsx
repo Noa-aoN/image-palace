@@ -2,17 +2,13 @@
 
 import { useEffect, useRef } from 'react'
 
-// 「続く1本の道を歩く」体験。ページ全体のスクロール量から連続位相を算出し、
-// 2枚の道画像をクロスフェードしながら手前へドリー（ズーム）させることで、
-// セクション境界でリセットせず・継ぎ目なく前進し続けるループにする。
-// 全ロード要素が同一の window.scrollY を参照するため互いに同期する。
-// prefers-reduced-motion 時は listener を張らず静止（CSS 変数のフォールバックで1枚表示）。
+// 「続く1本の道を歩く」体験。縦にタイルできる平坦な道テクスチャを repeat-y で敷き、
+// ページ全体のスクロール量に応じて背景を縦スクロール（トレッドミル）させる。
+// repeat-y が継ぎ目なく折り返すため無限ループになり、全セクションが同一オフセットを
+// 参照するので「同じ1本の道が全ページを貫いて続く」ように見える。
+// prefers-reduced-motion 時は listener を張らず静止。
 
-const LOOP_DISTANCE = 620 // このpxスクロールで道が1周（手前へ流れる）＝歩行速度
-const MAX_SCALE = 1.9 // ドリーの最大ズーム
-const BASE_OPACITY = 0.72 // クロスフェードのピーク不透明度
-
-const mod = (n: number, m: number) => ((n % m) + m) % m
+const SPEED = 0.6 // スクロール量に対する道の流れる速さ（歩行速度）
 
 export function RoadBackground() {
   const ref = useRef<HTMLDivElement>(null)
@@ -25,13 +21,8 @@ export function RoadBackground() {
     let raf = 0
     const update = () => {
       raf = 0
-      const phaseA = mod(window.scrollY / LOOP_DISTANCE, 1)
-      const phaseB = mod(phaseA + 0.5, 1) // Bは半周ずらし＝常にどちらかが可視
-      el.style.setProperty('--road-scale-a', (1 + (MAX_SCALE - 1) * phaseA).toFixed(4))
-      el.style.setProperty('--road-scale-b', (1 + (MAX_SCALE - 1) * phaseB).toFixed(4))
-      // 端(0,1)で0・中央(0.5)で最大の三角状フェードで継ぎ目を隠す
-      el.style.setProperty('--road-opa-a', (BASE_OPACITY * Math.sin(phaseA * Math.PI)).toFixed(4))
-      el.style.setProperty('--road-opa-b', (BASE_OPACITY * Math.sin(phaseB * Math.PI)).toFixed(4))
+      // 下へスクロール＝道が手前(下)へ流れる＝前進。repeat-y が自動で折り返す。
+      el.style.setProperty('--road-shift', (window.scrollY * SPEED).toFixed(1))
     }
     const onScroll = () => {
       if (!raf) raf = requestAnimationFrame(update)
@@ -48,16 +39,13 @@ export function RoadBackground() {
   }, [])
 
   return (
-    <>
-      <div ref={ref} aria-hidden className="road-bg">
-        {/* 2枚を半周ずらしてクロスフェード＝継ぎ目レスな無限ドリー（HAドア同様 CSS変数駆動） */}
-        {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img src="/road.png" alt="" className="road-bg__img road-bg__img--a" />
-        {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img src="/road.png" alt="" className="road-bg__img road-bg__img--b" />
-      </div>
-      {/* 下端の軽いブラー帯（HA ヒーローの hero-blur を踏襲。手前の被写界深度） */}
-      <div aria-hidden className="road-blur" />
-    </>
+    <div ref={ref} aria-hidden className="road-bg">
+      {/* 平坦な道テクスチャ（透過PNG）を repeat-y で敷き、background-position を scroll で動かす */}
+      <div className="road-bg__strip" />
+      {/* 上端（奥）を強くぼかして遠くへ霞ませる */}
+      <div className="road-blur road-blur--top" />
+      {/* 下端の軽いブラー帯（HA ヒーローの hero-blur 踏襲。手前の被写界深度） */}
+      <div className="road-blur" />
+    </div>
   )
 }

@@ -134,7 +134,7 @@
 
 /* --- LP ヒーロー：スクロール連動ズーム（useHeroZoom が --zoom/--fade/--blend を駆動） --- */
 :root {
-  --hero-track-vh: 250vh;
+  --hero-track-vh: 160vh;
   /* 扉の青ピクセル解析で実測: 画像内の扉中心 x≈50% / y≈63%。
      object-position をこの値にすると全画面比で扉が viewport の同位置に出る＝
      focal point・オーバーレイと一致する。 */
@@ -579,37 +579,34 @@
   }
 }
 
-/* LP: 「続く1本の道」。2枚をクロスフェードしながら手前へドリー＝継ぎ目レスな無限ループ。
-   位相は RoadBackground が window.scrollY から算出し、全セクションで同期する。 */
+/* LP: 「続く1本の道」。縦タイルの平坦テクスチャを repeat-y で敷き、background-position を
+   window.scrollY で動かすトレッドミル＝継ぎ目レスな無限ループ。全セクション同一オフセットで
+   1本の道が全ページを貫く。RoadBackground が --road-shift(px) を駆動。 */
 .road-bg {
   position: absolute;
-  inset-inline: 0;
-  bottom: 0;
+  inset: 0; /* セクション全体に道を通す */
   z-index: 0;
-  height: 52%;
   overflow: hidden;
   pointer-events: none;
-  /* 上へ向かってフェードし、セクション内容と自然につなぐ */
-  -webkit-mask-image: linear-gradient(to top, #000 22%, transparent 92%);
-  mask-image: linear-gradient(to top, #000 22%, transparent 92%);
+  /* 上端・下端ともなめらかにフェード（波型なし・直線グラデ） */
+  -webkit-mask-image: linear-gradient(to bottom, transparent 0%, #000 18%, #000 92%, transparent 100%);
+  mask-image: linear-gradient(to bottom, transparent 0%, #000 18%, #000 92%, transparent 100%);
 }
-.road-bg__img {
+.road-bg__strip {
   position: absolute;
+  top: 0;
   bottom: 0;
   left: 50%;
-  width: min(92%, 960px);
-  height: auto;
-  transform-origin: 50% 100%; /* 下端起点＝手前が拡大＝前進 */
-  will-change: transform, opacity;
-}
-/* 2枚を半周ずらしてクロスフェード（JSが --road-scale/-opa を駆動）。既定値はJS未駆動/reduced時の静止表示 */
-.road-bg__img--a {
-  opacity: var(--road-opa-a, 0.7);
-  transform: translateX(-50%) scale(var(--road-scale-a, 1));
-}
-.road-bg__img--b {
-  opacity: var(--road-opa-b, 0);
-  transform: translateX(-50%) scale(var(--road-scale-b, 1.45));
+  width: min(108%, 1110px); /* 元幅(72%)の約1.5倍 */
+  transform: translateX(-50%);
+  opacity: 0.6;
+  filter: blur(1px); /* 少し薄く・軽くぼかして背景に馴染ませる */
+  /* 角度なしのまっすぐな道。repeat-y を background-position で縦に流すだけ */
+  background-image: url('/road.png');
+  background-repeat: repeat-y;
+  background-size: 100% auto;
+  background-position: center calc(var(--road-shift, 0) * 1px);
+  will-change: background-position;
 }
 /* 下端の軽いブラー帯（HA ヒーローの hero-blur を踏襲）。下ほど強く上へフェード。 */
 .road-blur {
@@ -617,20 +614,26 @@
   inset-inline: 0;
   bottom: 0;
   z-index: 1;
-  height: 22%;
+  height: 20%;
   pointer-events: none;
   backdrop-filter: blur(4px);
   -webkit-backdrop-filter: blur(4px);
   -webkit-mask-image: linear-gradient(to top, #000 0%, transparent 100%);
   mask-image: linear-gradient(to top, #000 0%, transparent 100%);
 }
+/* 上端（道の一番奥）を強くぼかして遠くへ霞ませる。上ほど強く下へフェード。 */
+.road-blur--top {
+  top: 0;
+  bottom: auto;
+  height: 30%;
+  backdrop-filter: blur(9px);
+  -webkit-backdrop-filter: blur(9px);
+  -webkit-mask-image: linear-gradient(to bottom, #000 0%, transparent 100%);
+  mask-image: linear-gradient(to bottom, #000 0%, transparent 100%);
+}
 @media (prefers-reduced-motion: reduce) {
-  /* ループを止め、道を1枚だけ静止表示（中央寄せは維持） */
-  .road-bg__img--a {
-    opacity: 0.6;
-    transform: translateX(-50%) scale(1.05);
-  }
-  .road-bg__img--b {
-    opacity: 0;
+  /* スクロール連動を止め静止（背景は既定位置で表示） */
+  .road-bg__strip {
+    background-position: center 0;
   }
 }
