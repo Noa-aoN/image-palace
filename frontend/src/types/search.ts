@@ -21,7 +21,7 @@ export interface SearchNamed {
 export interface SearchResults {
   items: SearchCard[]
   decks: SearchDeck[]
-  collections: (SearchNamed & { entry_count: number })[]
+  boxes: (SearchNamed & { entry_count: number })[]
   spaces: SearchNamed[]
   views: SearchNamed[]
 }

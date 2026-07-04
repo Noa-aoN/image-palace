@@ -1,9 +1,9 @@
-class Collection < ApplicationRecord
+class Box < ApplicationRecord
   belongs_to :user
   # コレクションはカード/スペース/キャンバスをまとめる汎用コンテナ（ポリモーフィック）
-  has_many :collection_entries, dependent: :destroy
-  has_many :collection_items, dependent: :destroy
-  has_many :space_collections, dependent: :destroy
+  has_many :box_entries, dependent: :destroy
+  has_many :box_items, dependent: :destroy
+  has_many :space_boxes, dependent: :destroy
   # カバー（デッキ踏襲）。表紙はコレクション内の Item を指定。
   belongs_to :cover_item, class_name: "Item", optional: true
   has_one_attached :cover_image
@@ -23,7 +23,7 @@ class Collection < ApplicationRecord
   # Item エントリはそのカード、View エントリ（デッキ含む）はその表紙カードを使う
   # （コレクションがキャンバス等だけでもカバーに中身の画像が反映されるようにする）。
   def cover_item_candidates
-    collection_entries.sort_by(&:created_at).filter_map do |e|
+    box_entries.sort_by(&:created_at).filter_map do |e|
       case e.entry_type
       when "Item" then e.entry
       when "View" then e.entry&.cover

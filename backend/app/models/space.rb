@@ -1,9 +1,9 @@
 class Space < ApplicationRecord
   belongs_to :user
-  has_many :space_collections, dependent: :destroy
-  has_many :collections, through: :space_collections
+  has_many :space_boxes, dependent: :destroy
+  has_many :boxes, through: :space_boxes
   has_many :space_points, dependent: :destroy
-  has_many :collection_entries, as: :entry, dependent: :destroy
+  has_many :box_entries, as: :entry, dependent: :destroy
   # カバー（デッキ踏襲）。カバー候補はポイントの生成画像。表紙は SpacePoint を指定。
   belongs_to :cover_space_point, class_name: "SpacePoint", optional: true
   has_one_attached :cover_image

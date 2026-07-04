@@ -5,13 +5,13 @@ import Link from 'next/link'
 import { Plus } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { CardGridSkeleton } from '@/components/ui/skeleton'
-import { getCollections } from '@/lib/api/collections'
-import { CreateCollectionForm } from '@/components/features/collections/CreateCollectionForm'
+import { getBoxes } from '@/lib/api/boxes'
+import { CreateBoxForm } from '@/components/features/boxes/CreateBoxForm'
 import { EntityCover } from '@/components/features/shared/EntityCover'
-import type { Collection } from '@/types/collection'
+import type { Box } from '@/types/box'
 
-export default function CollectionsPage() {
-  const [collections, setCollections] = useState<Collection[]>([])
+export default function BoxesPage() {
+  const [boxes, setBoxes] = useState<Box[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
@@ -19,9 +19,9 @@ export default function CollectionsPage() {
 
   useEffect(() => {
     let cancelled = false
-    getCollections()
+    getBoxes()
       .then((data) => {
-        if (!cancelled) setCollections(data)
+        if (!cancelled) setBoxes(data)
       })
       .catch(() => {
         if (!cancelled) setError('ボックスの取得に失敗しました')
@@ -48,9 +48,9 @@ export default function CollectionsPage() {
 
       {creating && (
         <div className="mb-8">
-          <CreateCollectionForm
+          <CreateBoxForm
             onCreated={(created) => {
-              setCollections((current) => [created, ...current])
+              setBoxes((current) => [created, ...current])
               setCreating(false)
             }}
             onCancel={() => setCreating(false)}
@@ -62,7 +62,7 @@ export default function CollectionsPage() {
         <CardGridSkeleton />
       ) : error ? (
         <p className="text-destructive text-sm">{error}</p>
-      ) : collections.length === 0 ? (
+      ) : boxes.length === 0 ? (
         <div className="text-center py-16 space-y-4">
           <p className="text-muted-foreground">
             まだボックスがありません。カードをテーマごとにまとめてみましょう。
@@ -73,18 +73,18 @@ export default function CollectionsPage() {
         </div>
       ) : (
         <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
-          {collections.map((collection) => (
+          {boxes.map((box) => (
             <Link
-              key={collection.id}
-              href={`/boxes/${collection.id}`}
+              key={box.id}
+              href={`/boxes/${box.id}`}
               className="flex flex-col rounded-xl border border-border overflow-hidden bg-card hover:shadow-md transition-shadow"
             >
               <div className="px-4 py-3 flex items-center justify-between gap-2">
-                <span className="font-medium truncate">{collection.name}</span>
-                <span className="text-xs text-muted-foreground shrink-0">{collection.entry_count} 件</span>
+                <span className="font-medium truncate">{box.name}</span>
+                <span className="text-xs text-muted-foreground shrink-0">{box.entry_count} 件</span>
               </div>
               <div className="w-full aspect-square bg-muted overflow-hidden">
-                <EntityCover cover={collection} />
+                <EntityCover cover={box} />
               </div>
             </Link>
           ))}

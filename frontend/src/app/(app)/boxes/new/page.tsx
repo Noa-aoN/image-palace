@@ -1,11 +1,11 @@
 import type { Metadata } from 'next'
 import Link from 'next/link'
 import { Button } from '@/components/ui/button'
-import { CreateCollectionForm } from '@/components/features/collections/CreateCollectionForm'
+import { CreateBoxForm } from '@/components/features/boxes/CreateBoxForm'
 
 export const metadata: Metadata = { title: 'ボックスを作成' }
 
-export default function NewCollectionPage() {
+export default function NewBoxPage() {
   return (
     <div className="max-w-2xl mx-auto px-6 py-12">
       <div className="mb-8">
@@ -17,7 +17,7 @@ export default function NewCollectionPage() {
           カードをテーマごとにまとめるボックスを作成します。
         </p>
       </div>
-      <CreateCollectionForm redirectBase="/boxes" />
+      <CreateBoxForm redirectBase="/boxes" />
     </div>
   )
 }

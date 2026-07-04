@@ -5,7 +5,7 @@ module Api
       include CoverImageUpload
 
       before_action :set_space, only: [
-        :show, :update, :destroy, :add_collection, :remove_collection, :upload_cover, :remove_cover
+        :show, :update, :destroy, :add_box, :remove_box, :upload_cover, :remove_cover
       ]
 
       def index
@@ -44,16 +44,16 @@ module Api
       end
 
       # room 種別: コレクションを並べる
-      def add_collection
-        collection = current_user.collections.find(params[:collection_id])
-        @space.space_collections.find_or_create_by!(collection: collection)
+      def add_box
+        box = current_user.boxes.find(params[:box_id])
+        @space.space_boxes.find_or_create_by!(box: box)
         head :no_content
       rescue ActiveRecord::RecordInvalid => e
         render json: { errors: e.record.errors.full_messages }, status: :unprocessable_entity
       end
 
-      def remove_collection
-        @space.space_collections.find_by(collection_id: params[:collection_id])&.destroy!
+      def remove_box
+        @space.space_boxes.find_by(box_id: params[:box_id])&.destroy!
         head :no_content
       end
 
@@ -121,7 +121,7 @@ module Api
       end
 
       # road / room とも loci ポイント（序数＋ポイント名＋画像、割当カード）を返す。
-      # ※ room のコレクション棚（space_collections）はデータ・API は温存しつつ、
+      # ※ room のコレクション棚（space_boxes）はデータ・API は温存しつつ、
       #   詳細表示はポイントベースに統一する（設計: docs/decisions/space-mapping-design.md）。
       def serialize_space_detail(space)
         points = space.space_points.ordered.includes(

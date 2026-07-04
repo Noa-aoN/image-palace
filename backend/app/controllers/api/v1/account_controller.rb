@@ -13,7 +13,7 @@ module Api
           exported_at: Time.current.iso8601,
           user: export_user,
           items: export_items,
-          collections: name_records(current_user.collections),
+          boxes: name_records(current_user.boxes),
           spaces: name_records(current_user.spaces),
           views: name_records(current_user.views),
           tags: current_user.tags.order(:created_at).map { |t| { id: t.id, name: t.name } }

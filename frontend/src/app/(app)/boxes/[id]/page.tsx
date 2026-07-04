@@ -7,43 +7,43 @@ import { Trash2, Pencil, Check, X, Plus, GalleryHorizontal, LayoutGrid, Frame } 
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import {
-  getCollection, updateCollection, deleteCollection,
-  addEntryToCollection, removeEntryFromCollection,
-  uploadCollectionCover, removeCollectionCover,
-} from '@/lib/api/collections'
+  getBox, updateBox, deleteBox,
+  addEntryToBox, removeEntryFromBox,
+  uploadBoxCover, removeBoxCover,
+} from '@/lib/api/boxes'
 import { getItems } from '@/lib/api/items'
 import { getSpaces } from '@/lib/api/spaces'
 import { getViews } from '@/lib/api/views'
 import { viewTypeLabel } from '@/lib/view-types'
 import { EntityCover } from '@/components/features/shared/EntityCover'
 import { CoverSettings } from '@/components/features/shared/CoverSettings'
-import type { CollectionDetail, CollectionEntry, CollectionEntryType } from '@/types/collection'
+import type { BoxDetail, BoxEntry, BoxEntryType } from '@/types/box'
 import type { CoverType } from '@/types/cover'
 
 // 追加候補の正規化表現
 type Pickable = { id: string; label: string; image: string | null; sub?: string }
 
-const TYPE_META: Record<CollectionEntryType, { label: string; icon: React.ReactNode; path: string }> = {
+const TYPE_META: Record<BoxEntryType, { label: string; icon: React.ReactNode; path: string }> = {
   Item: { label: 'カード', icon: <GalleryHorizontal size={16} />, path: 'items' },
   Space: { label: 'スペース', icon: <Frame size={16} />, path: 'spaces' },
   View: { label: 'キャンバス', icon: <LayoutGrid size={16} />, path: 'views' },
 }
-const TYPE_ORDER: CollectionEntryType[] = ['Item', 'Space', 'View']
+const TYPE_ORDER: BoxEntryType[] = ['Item', 'Space', 'View']
 
-function entryHref(e: CollectionEntry): string {
+function entryHref(e: BoxEntry): string {
   return `/${TYPE_META[e.entry_type].path}/${e.id}`
 }
-function entryLabel(e: CollectionEntry): string {
+function entryLabel(e: BoxEntry): string {
   return e.entry_type === 'Item' ? e.title : e.name
 }
-function entryImage(e: CollectionEntry): string | null {
+function entryImage(e: BoxEntry): string | null {
   if (e.entry_type === 'Item') return e.media?.thumb_url ?? e.media?.url ?? null
   // Space / View はそれぞれのカバー画像
   return e.cover?.thumb_url ?? e.cover?.url ?? null
 }
 
 // 全種別を正方形カバータイルに統一（名前=上・カバー=下、カバーが無ければ種別アイコン）
-function EntryTile({ entry, onRemove, busy }: { entry: CollectionEntry; onRemove: () => void; busy: boolean }) {
+function EntryTile({ entry, onRemove, busy }: { entry: BoxEntry; onRemove: () => void; busy: boolean }) {
   const image = entryImage(entry)
   const removeBtn = (
     <Button
@@ -78,11 +78,11 @@ function EntryTile({ entry, onRemove, busy }: { entry: CollectionEntry; onRemove
   )
 }
 
-export default function CollectionDetailPage() {
+export default function BoxDetailPage() {
   const { id } = useParams<{ id: string }>()
   const router = useRouter()
 
-  const [collection, setCollection] = useState<CollectionDetail | null>(null)
+  const [box, setBox] = useState<BoxDetail | null>(null)
   const [error, setError] = useState<string | null>(null)
 
   const [editing, setEditing] = useState(false)
@@ -91,21 +91,21 @@ export default function CollectionDetailPage() {
   const [confirmDelete, setConfirmDelete] = useState(false)
   const [deleting, setDeleting] = useState(false)
 
-  const [pickerType, setPickerType] = useState<CollectionEntryType | null>(null)
+  const [pickerType, setPickerType] = useState<BoxEntryType | null>(null)
   const [pickables, setPickables] = useState<Pickable[]>([])
   const [pickerLoading, setPickerLoading] = useState(false)
   const [busyKey, setBusyKey] = useState<string | null>(null)
 
   const reload = async () => {
-    const data = await getCollection(id)
-    setCollection(data)
+    const data = await getBox(id)
+    setBox(data)
   }
 
   useEffect(() => {
     let cancelled = false
-    getCollection(id)
+    getBox(id)
       .then((data) => {
-        if (!cancelled) setCollection(data)
+        if (!cancelled) setBox(data)
       })
       .catch(() => {
         if (!cancelled) setError('ボックスの取得に失敗しました')
@@ -115,7 +115,7 @@ export default function CollectionDetailPage() {
     }
   }, [id])
 
-  const openPicker = async (type: CollectionEntryType) => {
+  const openPicker = async (type: BoxEntryType) => {
     setPickerType(type)
     setPickerLoading(true)
     try {
@@ -137,14 +137,14 @@ export default function CollectionDetailPage() {
 
   const handleSaveName = async () => {
     const trimmed = nameDraft.trim()
-    if (!trimmed || !collection) {
+    if (!trimmed || !box) {
       setEditing(false)
       return
     }
     setSaving(true)
     try {
-      const updated = await updateCollection(id, { name: trimmed })
-      setCollection({ ...collection, name: updated.name })
+      const updated = await updateBox(id, { name: trimmed })
+      setBox({ ...box, name: updated.name })
       setEditing(false)
     } catch {
       setError('ボックス名の更新に失敗しました')
@@ -157,7 +157,7 @@ export default function CollectionDetailPage() {
     if (!confirmDelete) { setConfirmDelete(true); return }
     setDeleting(true)
     try {
-      await deleteCollection(id)
+      await deleteBox(id)
       router.push('/boxes')
     } catch {
       setError('削除に失敗しました')
@@ -169,11 +169,11 @@ export default function CollectionDetailPage() {
   // カバー設定（デッキ踏襲）
   const [coverBusy, setCoverBusy] = useState(false)
   const handleSetCoverType = async (coverType: CoverType) => {
-    if (!collection || collection.cover_type === coverType) return
+    if (!box || box.cover_type === coverType) return
     setCoverBusy(true)
     try {
-      const updated = await updateCollection(id, { cover_type: coverType })
-      setCollection({ ...collection, ...updated })
+      const updated = await updateBox(id, { cover_type: coverType })
+      setBox({ ...box, ...updated })
     } catch {
       setError('カバー表示の変更に失敗しました')
     } finally {
@@ -181,11 +181,11 @@ export default function CollectionDetailPage() {
     }
   }
   const handleUploadCover = async (file: File) => {
-    if (!collection) return
+    if (!box) return
     setCoverBusy(true)
     try {
-      const updated = await uploadCollectionCover(id, file)
-      setCollection({ ...collection, ...updated })
+      const updated = await uploadBoxCover(id, file)
+      setBox({ ...box, ...updated })
     } catch {
       setError('画像のアップロードに失敗しました')
     } finally {
@@ -193,11 +193,11 @@ export default function CollectionDetailPage() {
     }
   }
   const handleRemoveCover = async () => {
-    if (!collection) return
+    if (!box) return
     setCoverBusy(true)
     try {
-      const updated = await removeCollectionCover(id)
-      setCollection({ ...collection, ...updated })
+      const updated = await removeBoxCover(id)
+      setBox({ ...box, ...updated })
     } catch {
       setError('画像の削除に失敗しました')
     } finally {
@@ -205,10 +205,10 @@ export default function CollectionDetailPage() {
     }
   }
 
-  const handleAdd = async (type: CollectionEntryType, entryId: string) => {
+  const handleAdd = async (type: BoxEntryType, entryId: string) => {
     setBusyKey(`${type}:${entryId}`)
     try {
-      await addEntryToCollection(id, type, entryId)
+      await addEntryToBox(id, type, entryId)
       await reload()
     } catch {
       setError('追加に失敗しました')
@@ -217,15 +217,15 @@ export default function CollectionDetailPage() {
     }
   }
 
-  const handleRemove = async (entry: CollectionEntry) => {
-    if (!collection) return
+  const handleRemove = async (entry: BoxEntry) => {
+    if (!box) return
     setBusyKey(`${entry.entry_type}:${entry.id}`)
     try {
-      await removeEntryFromCollection(id, entry.entry_type, entry.id)
-      setCollection({
-        ...collection,
-        entries: collection.entries.filter((e) => !(e.entry_type === entry.entry_type && e.id === entry.id)),
-        entry_count: Math.max(collection.entry_count - 1, 0),
+      await removeEntryFromBox(id, entry.entry_type, entry.id)
+      setBox({
+        ...box,
+        entries: box.entries.filter((e) => !(e.entry_type === entry.entry_type && e.id === entry.id)),
+        entry_count: Math.max(box.entry_count - 1, 0),
       })
     } catch {
       setError('除外に失敗しました')
@@ -234,7 +234,7 @@ export default function CollectionDetailPage() {
     }
   }
 
-  if (error && !collection) {
+  if (error && !box) {
     return (
       <div className="max-w-lg mx-auto px-6 py-12 text-center space-y-4">
         <p className="text-destructive">{error}</p>
@@ -243,7 +243,7 @@ export default function CollectionDetailPage() {
     )
   }
 
-  if (!collection) {
+  if (!box) {
     return (
       <div className="max-w-7xl mx-auto px-6 py-12 space-y-6">
         <div className="h-8 w-48 rounded bg-muted animate-pulse" />
@@ -256,9 +256,9 @@ export default function CollectionDetailPage() {
     )
   }
 
-  const inCollection = new Set(collection.entries.map((e) => `${e.entry_type}:${e.id}`))
+  const inBox = new Set(box.entries.map((e) => `${e.entry_type}:${e.id}`))
   const pickable = pickerType
-    ? pickables.filter((p) => !inCollection.has(`${pickerType}:${p.id}`))
+    ? pickables.filter((p) => !inBox.has(`${pickerType}:${p.id}`))
     : []
 
   return (
@@ -284,10 +284,10 @@ export default function CollectionDetailPage() {
           </div>
         ) : (
           <div className="flex items-center gap-2 min-w-0">
-            <h1 className="text-2xl font-semibold truncate">{collection.name}</h1>
-            <span className="text-sm text-muted-foreground shrink-0">{collection.entry_count} 件</span>
+            <h1 className="text-2xl font-semibold truncate">{box.name}</h1>
+            <span className="text-sm text-muted-foreground shrink-0">{box.entry_count} 件</span>
             <button
-              onClick={() => { setNameDraft(collection.name); setEditing(true) }}
+              onClick={() => { setNameDraft(box.name); setEditing(true) }}
               className="shrink-0 text-muted-foreground hover:text-foreground transition-colors"
               aria-label="ボックス名を編集"
             >
@@ -314,13 +314,13 @@ export default function CollectionDetailPage() {
       {/* カバー（ヘッダー）設定 */}
       <div className="mb-8 flex flex-col gap-4 sm:flex-row sm:items-start">
         <div className="aspect-square w-40 shrink-0 overflow-hidden rounded-xl border border-border bg-muted">
-          <EntityCover cover={collection} />
+          <EntityCover cover={box} />
         </div>
         <div className="flex-1">
           <CoverSettings
-            coverType={collection.cover_type}
+            coverType={box.cover_type}
             busy={coverBusy}
-            hasCustom={!!collection.cover_image}
+            hasCustom={!!box.cover_image}
             helpText="先頭: ボックス内カードの先頭 / コラージュ: 最大4枚 / カスタム: アップロード画像"
             onSelectType={handleSetCoverType}
             onUpload={handleUploadCover}
@@ -393,14 +393,14 @@ export default function CollectionDetailPage() {
       </div>
 
       {/* エントリ（種別ごとに表示） */}
-      {collection.entries.length === 0 ? (
+      {box.entries.length === 0 ? (
         <p className="text-center text-muted-foreground py-12">
           まだ何もありません。上の「追加」からまとめましょう。
         </p>
       ) : (
         <div className="space-y-8">
           {TYPE_ORDER.map((type) => {
-            const entries = collection.entries.filter((e) => e.entry_type === type)
+            const entries = box.entries.filter((e) => e.entry_type === type)
             if (entries.length === 0) return null
             return (
               <section key={type} className="space-y-3">

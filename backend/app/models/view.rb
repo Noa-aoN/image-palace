@@ -4,7 +4,7 @@ class View < ApplicationRecord
   belongs_to :user
   # space_map 種別: 配置先のスペース（作成済みの road/room）
   belongs_to :space, optional: true
-  has_many :collection_entries, as: :entry, dependent: :destroy
+  has_many :box_entries, as: :entry, dependent: :destroy
   has_many :view_items, dependent: :destroy
   has_many :items, through: :view_items
   # カバー（デッキ踏襲）。表紙はキャンバスに配置した Item を指定。

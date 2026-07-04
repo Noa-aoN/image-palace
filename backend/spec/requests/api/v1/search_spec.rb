@@ -13,10 +13,10 @@ RSpec.describe "Api::V1::Search", type: :request do
   end
 
   describe "GET /api/v1/search" do
-    it "returns matching results across cards/decks/collections/spaces/views" do
+    it "returns matching results across cards/decks/boxes/spaces/views" do
       user.items.create!(title: "英語ノート", item_type: item_type, generation_status: "completed")
       user.views.create!(name: "英語デッキ", view_type: "deck")
-      user.collections.create!(name: "英語コレクション")
+      user.boxes.create!(name: "英語コレクション")
       user.spaces.create!(name: "英語スペース")
       user.views.create!(name: "英語ビュー")
       # 非該当
@@ -27,7 +27,7 @@ RSpec.describe "Api::V1::Search", type: :request do
       expect(response).to have_http_status(:success)
       expect(json_response["items"].map { |i| i["title"] }).to eq([ "英語ノート" ])
       expect(json_response["decks"].map { |d| d["name"] }).to eq([ "英語デッキ" ])
-      expect(json_response["collections"].map { |c| c["name"] }).to eq([ "英語コレクション" ])
+      expect(json_response["boxes"].map { |c| c["name"] }).to eq([ "英語コレクション" ])
       expect(json_response["spaces"].map { |s| s["name"] }).to eq([ "英語スペース" ])
       expect(json_response["views"].map { |v| v["name"] }).to eq([ "英語ビュー" ])
     end
@@ -38,7 +38,7 @@ RSpec.describe "Api::V1::Search", type: :request do
       get "/api/v1/search", params: { q: "" }, headers: headers
 
       expect(response).to have_http_status(:success)
-      expect(json_response.values_at("items", "decks", "collections", "spaces", "views")).to all(eq([]))
+      expect(json_response.values_at("items", "decks", "boxes", "spaces", "views")).to all(eq([]))
     end
 
     it "does not return other users objects" do

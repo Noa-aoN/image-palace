@@ -40,7 +40,7 @@ module ItemSerialization
   end
 
   # has_one_attached の custom カバー画像（デッキ/コレクション/スペース/キャンバス共通）
-  # record は cover_image / cover_thumb を持つ Collection / Space / View。
+  # record は cover_image / cover_thumb を持つ Box / Space / View。
   def serialize_attached_cover(record)
     attachment = record.cover_image
     return nil unless attachment.attached?

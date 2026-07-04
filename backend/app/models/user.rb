@@ -13,7 +13,7 @@ class User < ApplicationRecord
   # == 関連付け ==============================================================
   has_one :setting, dependent: :destroy
   has_many :items, dependent: :destroy
-  has_many :collections, dependent: :destroy
+  has_many :boxes, dependent: :destroy
   has_many :spaces, dependent: :destroy
   has_many :space_points, through: :spaces
   has_many :views, dependent: :destroy
