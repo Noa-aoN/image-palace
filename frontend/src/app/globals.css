@@ -1105,15 +1105,16 @@
   );
   will-change: opacity, transform;
 }
-/* 爪先の開き: scaleY(0.52) が回転の後に掛かり見かけの角度が約2倍に増幅される
-   （tanθ/0.52）ため、指定は 3.5deg に抑えて見かけ約6.5°の自然な開きにする */
+/* 爪先の向き: 道の遠近線と同じく、先端を中央（消失点）へ向けて内向きにする。
+   遠近線の見かけの傾き ≈ 9°。scaleY(0.52) が回転の後に掛かり見かけの角度が
+   約2倍に増幅される（tanθ/0.52）ため、指定は 4.5deg で見かけ約9°になる */
 .road-intro__step--l {
   --step-side: -1;
-  transform: scale(var(--cs)) scaleY(0.52) rotate(-3.5deg);
+  transform: scale(var(--cs)) scaleY(0.52) rotate(4.5deg);
 }
 .road-intro__step--r {
   --step-side: 1;
-  transform: scale(var(--cs)) scaleY(0.52) rotate(3.5deg) scaleX(-1);
+  transform: scale(var(--cs)) scaleY(0.52) rotate(-4.5deg) scaleX(-1);
 }
 
 @media (prefers-reduced-motion: reduce) {
