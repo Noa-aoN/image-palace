@@ -1211,11 +1211,12 @@
   content: '';
   position: absolute;
   inset: 0;
+  /* HA の陽光感に寄せた暖色ゴールドのスクリム（純アイボリーより温かい） */
   background: linear-gradient(
     180deg,
-    rgba(255, 253, 247, 0.82) 0%,
-    rgba(255, 253, 247, 0.62) 45%,
-    rgba(255, 253, 247, 0.52) 100%
+    rgba(251, 242, 222, 0.8) 0%,
+    rgba(250, 240, 219, 0.6) 45%,
+    rgba(249, 238, 216, 0.5) 100%
   );
 }
 
@@ -1235,8 +1236,8 @@
      頂部をヘッダー直下(3.5rem)に固定し、伸びる分は上ではなく下（フッター側）へ。
      余った下部はフッター裏へ回り込み、下端 blur/フェードで溶ける */
   background: url('/auth-gate.webp') center 3.5rem / 100% auto no-repeat;
-  /* 背後の風景より前に立てるため、壁はやや実体化（風景は主に開口部から覗く） */
-  opacity: 0.82;
+  /* 背後の風景より前に立てるため、壁を実体化（白っぽさ回避＝ivory と混ざりすぎない） */
+  opacity: 0.92;
   /* 下端は blur を主役にするため opacity フェードは浅め（base が唐突に消えないように） */
   -webkit-mask-image: linear-gradient(to bottom, #000 0, #000 94%, transparent 100%);
   mask-image: linear-gradient(to bottom, #000 0, #000 94%, transparent 100%);
