@@ -5,7 +5,7 @@ export const metadata: Metadata = { title: 'ログイン' }
 
 export default function LoginPage() {
   return (
-    <div className="relative z-10 flex flex-1 items-center justify-center px-6 py-12">
+    <div className="relative z-10 flex flex-1 items-center justify-center px-6 py-6">
       {/* 背景の大理石アーチ門（装飾）。カードが門の開口部に収まる構図 */}
       <div aria-hidden className="auth-arch" />
       <div
