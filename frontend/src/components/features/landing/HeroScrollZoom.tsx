@@ -46,15 +46,25 @@ export function HeroScrollZoom() {
             扉は厚みエッジ付きの3Dパネル。開くほどフレア（光条）が扉の奥から輝く */}
         <div aria-hidden className="hero-doors">
           <div className="hero-door-glow" />
+          {/* 各扉は前面/背面＋4辺の木口からなる3Dスラブ。既存の扉画像を前面・背面
+              （鏡像・暗め）のテクスチャとして使い、厚みのある板として開閉する */}
           <div className="hero-door-panel hero-door-panel--left">
             {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src="/hero-door-left.png?v=2" alt="" decoding="async" className="hero-door-face hero-door-face--left" />
-            <span className="hero-door-edge hero-door-edge--left" />
+            <img src="/hero-door-left.png?v=2" alt="" decoding="async" className="hero-door-face hero-door-face--front hero-door-face--left" />
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src="/hero-door-left.png?v=2" alt="" decoding="async" className="hero-door-face hero-door-face--back hero-door-face--left" />
+            <span className="hero-door-edge hero-door-edge--seam-left" />
+            <span className="hero-door-edge hero-door-edge--top" />
+            <span className="hero-door-edge hero-door-edge--bottom" />
           </div>
           <div className="hero-door-panel hero-door-panel--right">
             {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src="/hero-door-right.png?v=2" alt="" decoding="async" className="hero-door-face hero-door-face--right" />
-            <span className="hero-door-edge hero-door-edge--right" />
+            <img src="/hero-door-right.png?v=2" alt="" decoding="async" className="hero-door-face hero-door-face--front hero-door-face--right" />
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src="/hero-door-right.png?v=2" alt="" decoding="async" className="hero-door-face hero-door-face--back hero-door-face--right" />
+            <span className="hero-door-edge hero-door-edge--seam-right" />
+            <span className="hero-door-edge hero-door-edge--top" />
+            <span className="hero-door-edge hero-door-edge--bottom" />
           </div>
           {/* 開扉に連動して輝くフレア。不規則な光芒2層＋アナモルフィック光条（ハロ＋芯）＋
               リングハロ＋コアの多層構成で、レンズフレアらしい柔らかい輝きにする */}
