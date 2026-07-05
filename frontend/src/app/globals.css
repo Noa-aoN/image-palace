@@ -661,7 +661,8 @@
   opacity: calc(min(mod(var(--pillar-base, 0) + var(--road-shift, 0), 2160) / 720, 1) * 0.75);
   will-change: transform, opacity;
 }
-/* 柱の実体。下部は sharp→blur のクロスフェードで接地を道に馴染ませる */
+/* 柱の実体。下部は sharp→blur のクロスフェードで接地を道に馴染ませ、
+   上部はさらに強いブラー層で空へ霞ませる */
 .road-bg__pillar-img {
   position: absolute;
   inset: 0;
@@ -669,13 +670,18 @@
   height: 100%;
 }
 .road-bg__pillar-img--sharp {
-  -webkit-mask-image: linear-gradient(to top, transparent 3%, #000 24%);
-  mask-image: linear-gradient(to top, transparent 3%, #000 24%);
+  -webkit-mask-image: linear-gradient(to bottom, transparent 6%, #000 34%, #000 76%, transparent 97%);
+  mask-image: linear-gradient(to bottom, transparent 6%, #000 34%, #000 76%, transparent 97%);
 }
 .road-bg__pillar-img--blur {
   filter: blur(3px);
   -webkit-mask-image: linear-gradient(to top, #000 6%, transparent 26%);
   mask-image: linear-gradient(to top, #000 6%, transparent 26%);
+}
+.road-bg__pillar-img--blur-top {
+  filter: blur(5px);
+  -webkit-mask-image: linear-gradient(to bottom, #000 10%, transparent 38%);
+  mask-image: linear-gradient(to bottom, #000 10%, transparent 38%);
 }
 .road-bg__pillar--l {
   left: 145px; /* 中心 215px = 道の左端(約240px)のすぐ外 */

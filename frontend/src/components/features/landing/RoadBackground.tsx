@@ -91,6 +91,14 @@ export function RoadBackground({ fadeTop, fadeBottom }: RoadBackgroundProps) {
                     loading="lazy"
                     className="road-bg__pillar-img road-bg__pillar-img--blur"
                   />
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img
+                    src="/road-pillar.png"
+                    alt=""
+                    decoding="async"
+                    loading="lazy"
+                    className="road-bg__pillar-img road-bg__pillar-img--blur-top"
+                  />
                 </div>
               )),
             )}
