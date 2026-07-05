@@ -28,12 +28,13 @@ const PILLAR_SIDES = ['l', 'r'] as const
 // 左右の開きは道と同じ遠近の平行線: 消失点（y≈20%）へ向かう2本の
 // 直線上に乗るよう、横ずれ量を (y - 20%) に比例させている
 const INTRO_STEPS = [
-  { i: 0, x: '43.3%', y: '71%', s: 1.2, side: 'l' },
-  { i: 1, x: '55.6%', y: '62%', s: 0.95, side: 'r' },
-  { i: 2, x: '45.9%', y: '54%', s: 0.76, side: 'l' },
-  { i: 3, x: '53.4%', y: '47%', s: 0.59, side: 'r' },
-  { i: 4, x: '47.7%', y: '41%', s: 0.45, side: 'l' },
-  { i: 5, x: '51.8%', y: '36%', s: 0.35, side: 'r' },
+  { i: 0, x: '57.5%', y: '80%', s: 1.4, side: 'r' },
+  { i: 1, x: '43.3%', y: '71%', s: 1.2, side: 'l' },
+  { i: 2, x: '55.6%', y: '62%', s: 0.95, side: 'r' },
+  { i: 3, x: '45.9%', y: '54%', s: 0.76, side: 'l' },
+  { i: 4, x: '53.4%', y: '47%', s: 0.59, side: 'r' },
+  { i: 5, x: '47.7%', y: '41%', s: 0.45, side: 'l' },
+  { i: 6, x: '51.8%', y: '36%', s: 0.35, side: 'r' },
 ] as const
 
 type RoadBackgroundProps = {
@@ -223,7 +224,7 @@ export function RoadBackground({ fadeTop, fadeBottom, intro }: RoadBackgroundPro
                 left: st.x,
                 top: st.y,
                 '--step-scale': st.s,
-                '--step-t': st.i / 7,
+                '--step-t': st.i / 8,
               } as CSSProperties
             }
           />

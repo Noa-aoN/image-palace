@@ -1011,17 +1011,19 @@
   opacity: var(--road-intro, 0);
 }
 
-/* 先導する渡鴉。画面上部（上空）だけを飛び回る長尺ループ:
-   左から入る → ひと回り旋回（円・左右の方向転換つき）→ 前方遠くへ
-   誘うように滑空 → 上方向へ抜けてフレームアウト → また左から現れる。
+/* 先導する渡鴉。上部のふちからゆっくり入り、中央遠く（道の先の空）を
+   主な滞在域として旋回・方向転換しながら漂い、最後は上方向へ抜けて
+   フレームアウト → また上から現れる長尺ループ。
    停止する瞬間のない、なだらかな飛行（linear ＋ 不可視区間で位置を戻す）。
    左右反転は hero-raven 同様 step-end の極小区間で行い潰れを防ぐ。
-   退場フェード（--road-out）は keyframes の opacity と衝突しないよう
-   ホルダー側に掛ける */
+   遠くの鳥として薄く・ぼんやり見せる blur はホルダー側に掛け、
+   退場フェード（--road-out）も keyframes の opacity と衝突しないよう
+   ホルダー側で掛ける */
 .road-intro__raven-holder {
   position: absolute;
   inset: 0;
   opacity: var(--road-out, 1);
+  filter: blur(1.1px);
 }
 .road-intro__raven {
   position: absolute;
@@ -1036,28 +1038,26 @@
   animation: road-intro-raven 22s linear infinite;
 }
 
-/* 高度と大きさを連動: 下（手前の空）に来るほど大きく、上（遠く）ほど小さい。
-   13-48%: 旋回（右向き→頂点で左向き→戻って右向き）、48-82%: 前方への滑空、
-   82-90%: 上方向へ抜けて退場、90-100%: 不可視のまま左の開始位置へ戻る */
+/* 中央遠く（道の先＝画面中央上方）を主な滞在域とし、ループ時間の大半を
+   その周辺の旋回・漂いに使う。0-18%: 上部からゆっくり降りて入る、
+   18-72%: 中央遠くで旋回・方向転換（滞在）、72-88%: 上方向へ抜けて退場、
+   88-100%: 不可視のまま上の開始位置へ戻る */
 @keyframes road-intro-raven {
-  0%    { transform: translate3d(-14vw, 30vh, 0) scale(1.15, 1.15) rotate(-4deg); opacity: 0; filter: brightness(1); }
-  3%    { opacity: 0.9; }
-  13%   { transform: translate3d(14vw, 20vh, 0) scale(0.95, 0.95) rotate(3deg); filter: brightness(1.03); }
-  18%   { transform: translate3d(26vw, 23vh, 0) scale(0.92, 0.92) rotate(6deg); filter: brightness(1.03); }
-  23%   { transform: translate3d(35vw, 18vh, 0) scale(0.9, 0.9) rotate(-8deg); filter: brightness(1.05); }
-  26.5% { transform: translate3d(37.5vw, 12vh, 0) scale(0.88, 0.88) rotate(-16deg); filter: brightness(1.06); animation-timing-function: step-end; }
-  27%   { transform: translate3d(37.5vw, 12vh, 0) scale(-0.88, 0.88) rotate(14deg); filter: brightness(1.06); }
-  33%   { transform: translate3d(27vw, 6vh, 0) scale(-0.86, 0.86) rotate(-4deg); filter: brightness(1.08); }
-  38%   { transform: translate3d(19vw, 12vh, 0) scale(-0.9, 0.9) rotate(-12deg); filter: brightness(1.05); }
-  41.5% { transform: translate3d(18vw, 18vh, 0) scale(-0.92, 0.92) rotate(-18deg); filter: brightness(1.03); animation-timing-function: step-end; }
-  42%   { transform: translate3d(18vw, 18vh, 0) scale(0.92, 0.92) rotate(12deg); filter: brightness(1.03); }
-  48%   { transform: translate3d(30vw, 21vh, 0) scale(0.88, 0.88) rotate(4deg); filter: brightness(1.04); }
-  62%   { transform: translate3d(52vw, 13vh, 0) scale(0.7, 0.7) rotate(-3deg); opacity: 0.85; filter: brightness(1.08); }
-  74%   { transform: translate3d(70vw, 15vh, 0) scale(0.56, 0.56) rotate(4deg); opacity: 0.75; filter: brightness(1.12); }
-  82%   { transform: translate3d(82vw, 8vh, 0) scale(0.46, 0.46) rotate(-10deg); opacity: 0.65; filter: brightness(1.16); }
-  89%   { transform: translate3d(89vw, -26vh, 0) scale(0.38, 0.38) rotate(-18deg); opacity: 0.45; filter: brightness(1.2); }
-  90%   { opacity: 0; }
-  100%  { transform: translate3d(-14vw, 30vh, 0) scale(1.15, 1.15) rotate(-4deg); opacity: 0; filter: brightness(1); }
+  0%    { transform: translate3d(32vw, -26vh, 0) scale(0.5, 0.5) rotate(6deg); opacity: 0; filter: brightness(1.1); }
+  7%    { opacity: 0.55; }
+  18%   { transform: translate3d(44vw, 9vh, 0) scale(0.56, 0.56) rotate(4deg); filter: brightness(1.08); }
+  26%   { transform: translate3d(52vw, 13vh, 0) scale(0.6, 0.6) rotate(-4deg); filter: brightness(1.06); }
+  33%   { transform: translate3d(56vw, 8vh, 0) scale(0.56, 0.56) rotate(-12deg); filter: brightness(1.08); animation-timing-function: step-end; }
+  33.5% { transform: translate3d(56vw, 8vh, 0) scale(-0.56, 0.56) rotate(10deg); filter: brightness(1.08); }
+  42%   { transform: translate3d(48vw, 5vh, 0) scale(-0.52, 0.52) rotate(-2deg); filter: brightness(1.1); }
+  49%   { transform: translate3d(42vw, 10vh, 0) scale(-0.56, 0.56) rotate(-10deg); filter: brightness(1.08); animation-timing-function: step-end; }
+  49.5% { transform: translate3d(42vw, 10vh, 0) scale(0.56, 0.56) rotate(8deg); filter: brightness(1.08); }
+  58%   { transform: translate3d(50vw, 15vh, 0) scale(0.62, 0.62) rotate(3deg); filter: brightness(1.05); }
+  65%   { transform: translate3d(55vw, 11vh, 0) scale(0.56, 0.56) rotate(-5deg); filter: brightness(1.07); }
+  72%   { transform: translate3d(58vw, 6vh, 0) scale(0.5, 0.5) rotate(-12deg); opacity: 0.5; filter: brightness(1.1); }
+  86%   { transform: translate3d(63vw, -26vh, 0) scale(0.42, 0.42) rotate(-16deg); opacity: 0.35; filter: brightness(1.14); }
+  87%   { opacity: 0; }
+  100%  { transform: translate3d(32vw, -26vh, 0) scale(0.5, 0.5) rotate(6deg); opacity: 0; filter: brightness(1.1); }
 }
 
 /* 足跡。ゴールドの足形（足裏＋かかとの2楕円 SVG）。時間ループではなく
@@ -1083,7 +1083,7 @@
   opacity: calc(
     clamp(0, (var(--road-walk, 0) - var(--step-t, 0)) * 12, 1) *
     (1 - clamp(0, (var(--road-walkout, 0) - var(--step-t, 0)) * 12, 1)) *
-    (1 - clamp(0, (var(--road-topout, 0) - (0.72 - var(--step-t, 0))) * 12, 1)) *
+    (1 - clamp(0, (var(--road-topout, 0) - (0.78 - var(--step-t, 0))) * 12, 1)) *
     (0.2 + var(--step-scale, 1) * 0.12)
   );
   will-change: opacity;
