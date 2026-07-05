@@ -43,8 +43,7 @@ export function HeroScrollZoom() {
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img src="/hero-palace.jpg?v=2" alt="" aria-hidden fetchPriority="high" decoding="async" className="hero-zoom" />
         {/* 宮殿の扉オーバーレイ：focal point に重ねズームで拡大→スクロールで観音開き・奥から光。
-            扉は厚みエッジ付きの3Dパネル。開くほどフレア（光条）が扉の奥から輝き、
-            radial の hero-whiteout と合わせて「光の先の道」へ接続する */}
+            扉は厚みエッジ付きの3Dパネル。開くほどフレア（光条）が扉の奥から輝く */}
         <div aria-hidden className="hero-doors">
           <div className="hero-door-glow" />
           <div className="hero-door-panel hero-door-panel--left">

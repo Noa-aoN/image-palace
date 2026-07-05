@@ -378,19 +378,13 @@
   opacity: var(--blend, 0);
 }
 
-/* 終盤に扉の位置から暖かい光が放射状に満ち、次セクション（道）のアイボリーへ
-   シームレスに接続する（--blend連動）。「開いた扉の光の先に道が続く」演出 */
+/* 終盤に画面全体が次セクションと同じアイボリーで満ちる＝シームレスに接続（--blend連動） */
 .hero-whiteout {
   position: absolute;
   inset: 0;
   z-index: 36;
   pointer-events: none;
-  background: radial-gradient(
-    120% 90% at var(--hero-door-x) var(--hero-door-y),
-    #fffbef 0%,
-    #faf3e2 42%,
-    var(--ivory) 100%
-  );
+  background: var(--ivory);
   opacity: var(--blend, 0);
 }
 
