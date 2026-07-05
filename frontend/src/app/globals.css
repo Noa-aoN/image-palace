@@ -996,9 +996,79 @@
   -webkit-mask-image: linear-gradient(to bottom, #000 0%, rgba(0, 0, 0, 0.55) 55%, transparent 100%);
   mask-image: linear-gradient(to bottom, #000 0%, rgba(0, 0, 0, 0.55) 55%, transparent 100%);
 }
+/* 道の出現前の余白を埋める誘導演出（渡鴉＋足跡）。concept セクションの
+   intro インスタンスだけに描画される。可視度は JS が書く --road-intro
+   （道リビールの少し手前で 1→0）で制御し、concept のテキストが画面に
+   入る頃には消えている。スクロール戻しで再表示（可逆）。
+   JS 非駆動時は既定 0 ＝常に非表示 */
+.road-intro {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  opacity: var(--road-intro, 0);
+}
+
+/* 先導する渡鴉。左下から弧を描いて画面中央（道の地平線方向）へ
+   小さくなりながら飛び、霞に消えてループする。
+   余白ゾーンはセクションが下から迫り上がるクリップ表示のため、
+   経路は画面の下半分（88vh→52vh）に収める */
+.road-intro__raven {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 72px;
+  height: auto;
+  opacity: 0;
+  transform-origin: 50% 50%;
+  will-change: transform, opacity;
+  animation: road-intro-raven 8s ease-in-out infinite;
+}
+
+@keyframes road-intro-raven {
+  0%   { transform: translate3d(14vw, 88vh, 0) scale(0.66) rotate(-4deg); opacity: 0; filter: brightness(1); }
+  7%   { opacity: 0.85; }
+  38%  { transform: translate3d(35vw, 73vh, 0) scale(0.46) rotate(3deg); opacity: 0.8; filter: brightness(1.08); }
+  68%  { transform: translate3d(46vw, 60vh, 0) scale(0.28) rotate(-2deg); opacity: 0.55; filter: brightness(1.16); }
+  84%  { transform: translate3d(50vw, 53vh, 0) scale(0.19) rotate(0deg); opacity: 0; filter: brightness(1.22); }
+  100% { transform: translate3d(50vw, 53vh, 0) scale(0.19) rotate(0deg); opacity: 0; filter: brightness(1.22); }
+}
+
+/* 足跡。ゴールドの足形（足裏＋かかとの2楕円 SVG）が手前から奥へ順に
+   ふわっと現れ、しばらく残って消える＝歩いて進むリズムのループ。
+   奥の一歩ほど --step-scale で小さく（配置は RoadBackground.tsx 側） */
+.road-intro__step {
+  position: absolute;
+  width: 21px;
+  height: 34px;
+  margin: -17px 0 0 -10.5px;
+  background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 20 32'%3E%3Cellipse cx='10' cy='10.5' rx='6' ry='9.5' fill='%23AF8B48'/%3E%3Cellipse cx='10' cy='26.5' rx='4.4' ry='5' fill='%23AF8B48'/%3E%3C/svg%3E")
+    center / contain no-repeat;
+  opacity: 0;
+  will-change: opacity;
+  animation: road-intro-step 4.4s ease-in-out infinite;
+  animation-delay: var(--step-delay, 0s);
+}
+.road-intro__step--l {
+  transform: scale(var(--step-scale, 1)) rotate(-7deg);
+}
+.road-intro__step--r {
+  transform: scale(var(--step-scale, 1)) rotate(7deg) scaleX(-1);
+}
+
+@keyframes road-intro-step {
+  0%   { opacity: 0; }
+  6%   { opacity: 0.8; }
+  55%  { opacity: 0.8; }
+  80%  { opacity: 0; }
+  100% { opacity: 0; }
+}
+
 @media (prefers-reduced-motion: reduce) {
-  /* スクロール連動を止め静止（背景・柱は既定位置で表示） */
+  /* スクロール連動を止め静止（背景・柱は既定位置で表示）。誘導演出も出さない */
   .road-bg__plane {
     background-position: center 0;
+  }
+  .road-intro {
+    display: none;
   }
 }

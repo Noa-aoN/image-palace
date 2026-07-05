@@ -21,14 +21,29 @@ const SPEED = 0.6 // スクロール量に対する道の流れる速さ（歩�
 const PILLAR_BASES = [0, 360, 720, 1080, 1440, 1800]
 const PILLAR_SIDES = ['l', 'r'] as const
 
+// 足跡の並び（手前→奥）。左右交互に、奥ほど中央へ寄り小さく・薄くなる。
+// i はスタガー用のインデックス（0 が最初に現れる手前の一歩）。
+// 余白ゾーンでは concept セクションが画面下部から迫り上がってくる
+// （クリップで下側だけ見える）ため、構図は画面の下半分に収める
+const INTRO_STEPS = [
+  { i: 0, x: '46.5%', y: '92%', s: 1, side: 'l' },
+  { i: 1, x: '52.5%', y: '83%', s: 0.88, side: 'r' },
+  { i: 2, x: '47.4%', y: '74%', s: 0.76, side: 'l' },
+  { i: 3, x: '51.8%', y: '66%', s: 0.64, side: 'r' },
+  { i: 4, x: '48.2%', y: '59%', s: 0.52, side: 'l' },
+  { i: 5, x: '51%', y: '53%', s: 0.42, side: 'r' },
+] as const
+
 type RoadBackgroundProps = {
   /** 最初のセクション用: 上端（ヒーローとの境界）で道をフェードインさせる */
   fadeTop?: boolean
   /** 最後のセクション用: 下端（フッターとの境界）で道をフェードアウトさせる */
   fadeBottom?: boolean
+  /** 最初のセクション用: 道の出現前の余白に渡鴉＋足跡の誘導アニメーションを出す */
+  intro?: boolean
 }
 
-export function RoadBackground({ fadeTop, fadeBottom }: RoadBackgroundProps) {
+export function RoadBackground({ fadeTop, fadeBottom, intro }: RoadBackgroundProps) {
   const ref = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
@@ -46,11 +61,17 @@ export function RoadBackground({ fadeTop, fadeBottom }: RoadBackgroundProps) {
     // 0.75 画面分のスクロールで奥→手前へ伸びきる。
     let revealStart = 0
     let revealLen = 1
+    let introFadeStart = 0
+    let introFadeLen = 1
     const measure = () => {
       const hero = document.querySelector<HTMLElement>('.hero-track')
       const ih = window.innerHeight
       revealStart = hero ? hero.offsetTop + hero.offsetHeight - ih + ih * 0.4 : 0
       revealLen = ih * 0.75
+      // 誘導演出（渡鴉＋足跡）は道リビールの少し手前から消え始め、
+      // concept のテキストが画面に入ってくる頃には消えている
+      introFadeStart = revealStart - ih * 0.3
+      introFadeLen = ih * 0.28
     }
 
     let raf = 0
@@ -61,6 +82,9 @@ export function RoadBackground({ fadeTop, fadeBottom }: RoadBackgroundProps) {
       // 初回リビール（0=奥の霞だけ → 1=全表示）。JS 非駆動時は CSS 既定の 1（全表示）。
       const reveal = Math.min(1, Math.max(0, (window.scrollY - revealStart) / revealLen))
       el.style.setProperty('--road-reveal', reveal.toFixed(3))
+      // 誘導演出の可視度（1=表示 → 0=消灯）。JS 非駆動時は CSS 既定の 0（非表示）
+      const introFade = Math.min(1, Math.max(0, (window.scrollY - introFadeStart) / introFadeLen))
+      el.style.setProperty('--road-intro', (1 - introFade).toFixed(3))
     }
     const onScroll = () => {
       if (!raf) raf = requestAnimationFrame(update)
@@ -130,6 +154,29 @@ export function RoadBackground({ fadeTop, fadeBottom }: RoadBackgroundProps) {
             )}
           </div>
         </div>
+        {/* 道の出現前の余白（ホワイトアウト後〜リビール開始）を埋める誘導演出。
+            渡鴉が奥へ飛び、足跡が手前から奥へ順に現れて「この先の道」を予告する。
+            --road-reveal が伸びるにつれて CSS 側でフェードアウトする（可逆） */}
+        {intro && (
+          <div className="road-intro" aria-hidden>
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src="/hero-raven.png" alt="" decoding="async" loading="lazy" className="road-intro__raven" />
+            {INTRO_STEPS.map((st) => (
+              <span
+                key={st.i}
+                className={`road-intro__step road-intro__step--${st.side}`}
+                style={
+                  {
+                    left: st.x,
+                    top: st.y,
+                    '--step-scale': st.s,
+                    '--step-delay': `${st.i * 0.55}s`,
+                  } as CSSProperties
+                }
+              />
+            ))}
+          </div>
+        )}
         {/* 上端（地平線まわり）を強くぼかして遠くへ霞ませる */}
         <div className="road-blur road-blur--top" />
         {/* 下端の軽いブラー帯（HA ヒーローの hero-blur 踏襲。手前の被写界深度） */}

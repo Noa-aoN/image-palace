@@ -47,6 +47,7 @@ function Section({
   topDividerFrom,
   roadFadeTop,
   roadFadeBottom,
+  roadIntro,
   className,
   children,
 }: {
@@ -58,6 +59,8 @@ function Section({
   roadFadeTop?: boolean
   /** 最後のセクションで指定: フッター境界で道をフェードアウト */
   roadFadeBottom?: boolean
+  /** 最初のセクションで指定: 道の出現前の余白に渡鴉＋足跡の誘導演出を出す */
+  roadIntro?: boolean
   className?: string
   children: ReactNode
 }) {
@@ -70,7 +73,7 @@ function Section({
       <div aria-hidden data-anim-layer className="pointer-events-none absolute inset-0 z-0">
         {/* 全セクションで同一ビューの道ステージを clip して見せる（1つの道が貫く）。
             ヒーローは Section を通らないため対象外 */}
-        <RoadBackground fadeTop={roadFadeTop} fadeBottom={roadFadeBottom} />
+        <RoadBackground fadeTop={roadFadeTop} fadeBottom={roadFadeBottom} intro={roadIntro} />
       </div>
       {topDividerFrom && <SectionDivider fill={topDividerFrom} />}
       <div className="relative z-10 mx-auto w-full max-w-4xl">{children}</div>
@@ -92,7 +95,7 @@ export default function TopPage() {
       <HeroScrollZoom />
 
       {/* 1. コンセプト（仮）。ヒーロー終盤へ少しだけ重ね、余白を程よく詰める */}
-      <Section id="concept" cueTo="features" bg="var(--ivory)" roadFadeTop className="-mt-[10svh]">
+      <Section id="concept" cueTo="features" bg="var(--ivory)" roadFadeTop roadIntro className="-mt-[10svh]">
         <p className="mb-4 text-sm font-medium tracking-widest" style={{ color: 'var(--palace)' }}>CONCEPT</p>
         <h2 className="mb-6 text-3xl font-bold tracking-tight md:text-4xl" style={{ color: '#111111' }}>
           記憶を、設計する。
