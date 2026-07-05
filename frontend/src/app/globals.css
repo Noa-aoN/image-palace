@@ -1033,34 +1033,29 @@
   100% { transform: translate3d(50vw, 34vh, 0) scale(0.19) rotate(0deg); opacity: 0; filter: brightness(1.22); }
 }
 
-/* 足跡。ゴールドの足形（足裏＋かかとの2楕円 SVG）が手前から奥へ順に
-   ふわっと現れ、しばらく残って消える＝歩いて進むリズムのループ。
-   奥の一歩ほど --step-scale で小さく（配置は RoadBackground.tsx 側） */
+/* 足跡。ゴールドの足形（足裏＋かかとの2楕円 SVG）。時間ループではなく
+   スクロール連動の一回きり: 歩行進捗 --road-walk（JS書き込み・0→1）が
+   各足跡のしきい値 --step-t を越えるとふわっと現れ、そのまま残る
+   （スクロールを戻せば逆順に消える）。
+   3Dの道の上に付いた足跡に見えるよう、scaleY で遠近の押しつぶしを掛け、
+   軽い blur で地面に馴染ませる。奥の一歩ほど --step-scale で小さい
+   （配置・しきい値は RoadBackground.tsx 側） */
 .road-intro__step {
   position: absolute;
-  width: 21px;
-  height: 34px;
-  margin: -17px 0 0 -10.5px;
+  width: 30px;
+  height: 48px;
+  margin: -24px 0 0 -15px;
   background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 20 32'%3E%3Cellipse cx='10' cy='10.5' rx='6' ry='9.5' fill='%23AF8B48'/%3E%3Cellipse cx='10' cy='26.5' rx='4.4' ry='5' fill='%23AF8B48'/%3E%3C/svg%3E")
     center / contain no-repeat;
-  opacity: 0;
+  filter: blur(0.8px);
+  opacity: calc(clamp(0, (var(--road-walk, 0) - var(--step-t, 0)) * 12, 1) * 0.8);
   will-change: opacity;
-  animation: road-intro-step 4.4s ease-in-out infinite;
-  animation-delay: var(--step-delay, 0s);
 }
 .road-intro__step--l {
-  transform: scale(var(--step-scale, 1)) rotate(-7deg);
+  transform: scale(var(--step-scale, 1)) scaleY(0.52) rotate(-7deg);
 }
 .road-intro__step--r {
-  transform: scale(var(--step-scale, 1)) rotate(7deg) scaleX(-1);
-}
-
-@keyframes road-intro-step {
-  0%   { opacity: 0; }
-  6%   { opacity: 0.8; }
-  55%  { opacity: 0.8; }
-  80%  { opacity: 0; }
-  100% { opacity: 0; }
+  transform: scale(var(--step-scale, 1)) scaleY(0.52) rotate(7deg) scaleX(-1);
 }
 
 @media (prefers-reduced-motion: reduce) {

@@ -71,6 +71,8 @@ export function RoadBackground({ fadeTop, fadeBottom, intro }: RoadBackgroundPro
     let introAppearLen = 1
     let introFadeStart = 0
     let introFadeLen = 1
+    let walkStart = 0
+    let walkLen = 1
     const measure = () => {
       const hero = document.querySelector<HTMLElement>('.hero-track')
       const ih = window.innerHeight
@@ -84,6 +86,10 @@ export function RoadBackground({ fadeTop, fadeBottom, intro }: RoadBackgroundPro
       introAppearLen = ih * 0.1
       introFadeStart = revealStart - ih * 0.3
       introFadeLen = ih * 0.28
+      // 足跡の歩行進行（スクロール連動・一回きり）。レイヤーが見え始める頃に
+      // 1歩目、フェードアウトが始まる頃にちょうど最奥の一歩が現れ切る
+      walkStart = heroEnd - ih * 0.1
+      walkLen = introFadeStart - walkStart
     }
 
     let raf = 0
@@ -101,6 +107,10 @@ export function RoadBackground({ fadeTop, fadeBottom, intro }: RoadBackgroundPro
         const appear = Math.min(1, Math.max(0, (window.scrollY - introAppearStart) / introAppearLen))
         const fade = Math.min(1, Math.max(0, (window.scrollY - introFadeStart) / introFadeLen))
         introRef.current.style.setProperty('--road-intro', (appear * (1 - fade)).toFixed(3))
+        // 歩行進行（0→1）。各足跡は自分のしきい値(--step-t)を越えると現れ、
+        // 越えたまま留まる＝ループしない一回きりの歩み。戻せば逆再生
+        const walk = Math.min(1, Math.max(0, (window.scrollY - walkStart) / walkLen))
+        introRef.current.style.setProperty('--road-walk', walk.toFixed(3))
       }
     }
     const onScroll = () => {
@@ -195,7 +205,7 @@ export function RoadBackground({ fadeTop, fadeBottom, intro }: RoadBackgroundPro
                 left: st.x,
                 top: st.y,
                 '--step-scale': st.s,
-                '--step-delay': `${st.i * 0.55}s`,
+                '--step-t': st.i / 12,
               } as CSSProperties
             }
           />
