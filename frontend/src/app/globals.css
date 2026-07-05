@@ -169,6 +169,7 @@
   --blurpx: 0px;
   --zoombright: 1;
   --dooropen: 0;
+  --doorboost: 0;
 }
 
 .hero-zoom {
@@ -179,7 +180,8 @@
   height: 100%;
   object-fit: cover;
   object-position: var(--hero-door-x) var(--hero-door-y);
-  transform: scale(var(--zoom, 1));
+  /* 扉全開後は --doorboost で中心へ追いズーム（最大1.5倍） */
+  transform: scale(calc(var(--zoom, 1) * (1 + var(--doorboost, 0) * 0.5)));
   transform-origin: var(--hero-door-x) var(--hero-door-y);
   filter: blur(var(--blurpx, 0px)) brightness(var(--zoombright, 1));
   will-change: transform, filter;
@@ -193,7 +195,8 @@
   height: var(--door-h);
   /* 宮殿の開口部は細長（幅3.7%×高さ17%＝約0.22）。素材を寄せて充填する */
   aspect-ratio: var(--door-aspect, 0.36);
-  transform: translate(-50%, -50%) scale(var(--zoom, 1));
+  /* 背景と同率で拡大＋全開後の追いズーム（--doorboost）にも同期 */
+  transform: translate(-50%, -50%) scale(calc(var(--zoom, 1) * (1 + var(--doorboost, 0) * 0.5)));
   transform-origin: center;
   perspective: 1400px;
   z-index: 5;
@@ -256,10 +259,16 @@
 }
 
 /* 扉の木口（4辺）。前面(z=+t/2)と背面(z=-t/2)を繋ぐ面で、開くほど見えてくる。
-   扉画像（青漆＋金）に合わせた濃紺のトーン */
+   閉時は扉画像（青漆＋金）に合わせた濃紺。開くほど背景と同じ blur を受けつつ
+   明るく暖色へ寄せ、裏面の「光を反射する淡い金」トーンに馴染ませる */
 .hero-door-edge {
   position: absolute;
   background: linear-gradient(to bottom, #35476b, #22304d 55%, #172239);
+  filter: blur(var(--blurpx, 0px))
+    sepia(calc(var(--dooropen, 0) * 0.45))
+    saturate(calc(1 - var(--dooropen, 0) * 0.55))
+    brightness(calc(1 + var(--dooropen, 0) * 1.1));
+  will-change: filter;
 }
 /* 継ぎ目側の縦木口: 端の外側中心に置いてから90°立てる */
 .hero-door-edge--seam-left {
