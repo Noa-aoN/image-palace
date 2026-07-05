@@ -556,11 +556,11 @@
   background: url('/hero-clouds.png') repeat-x;
   /* タイル幅を 60vw に固定し、ちょうど1タイル分送る＝継ぎ目の分からないシームレスループ */
   background-size: 60vw 100%;
-  /* 1.6倍速でフェードアウト＝ズーム序盤（進捗~0.34）で早めに消える。
+  /* 3倍速＝スクロールを始めてすぐ動き出し、進捗~0.18で抜け切る。
      消えながらほんの少しズーム（1→1.18）しつつ上へ抜けてフレームアウトする */
-  opacity: calc((1 - min(1, var(--fade, 0) * 1.6)) * 0.55);
-  transform: translate3d(0, calc(min(1, var(--fade, 0) * 1.6) * -32vh), 0)
-    scale(calc(1 + min(1, var(--fade, 0) * 1.6) * 0.18));
+  opacity: calc((1 - min(1, var(--fade, 0) * 3)) * 0.55);
+  transform: translate3d(0, calc(min(1, var(--fade, 0) * 3) * -32vh), 0)
+    scale(calc(1 + min(1, var(--fade, 0) * 3) * 0.18));
   will-change: background-position, opacity, transform;
   animation: hero-cloud-drift 80s linear infinite;
 }
