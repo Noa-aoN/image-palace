@@ -999,9 +999,10 @@
 /* 道の出現前の誘導演出（渡鴉＋足跡）。concept セクションの intro
    インスタンスだけに描画される。.road-bg のクリップ外・ビューポート固定の
    兄弟レイヤーなので、ホワイトアウトが満ちる終盤からホワイトアウトの上に
-   全画面で表示できる。可視度は JS が書く --road-intro（ホワイトアウト終盤で
-   0→1、道リビールの少し手前で 1→0）で制御し、concept のテキストが画面に
-   入る頃には消えている。スクロール戻しで再表示（可逆）。
+   全画面で表示できる。レイヤーの可視度は JS が書く --road-intro
+   （ホワイトアウト終盤のフェードインのみ）。退場は個別に行う:
+   足跡は --road-walkout で手前から順に、渡鴉は --road-out で霞へ消え、
+   concept のテキストが画面に入る頃には消えている。スクロール戻しで再表示（可逆）。
    JS 非駆動時は既定 0 ＝常に非表示 */
 .road-intro {
   position: fixed;
@@ -1011,7 +1012,14 @@
 }
 
 /* 先導する渡鴉。左下から弧を描いて足跡の先（道の最上部＝地平線あたり）へ
-   小さくなりながら飛び、霞に消えてループする */
+   小さくなりながら飛び、霞に消えてループする。
+   退場フェード（--road-out）は keyframes の opacity と衝突しないよう
+   ホルダー側に掛ける */
+.road-intro__raven-holder {
+  position: absolute;
+  inset: 0;
+  opacity: var(--road-out, 1);
+}
 .road-intro__raven {
   position: absolute;
   top: 0;
@@ -1038,8 +1046,9 @@
    各足跡のしきい値 --step-t を越えるとふわっと現れ、そのまま残る
    （スクロールを戻せば逆順に消える）。
    3Dの道の上に付いた足跡に見えるよう、scaleY で遠近の押しつぶしを掛け、
-   軽い blur で地面に馴染ませる。奥の一歩ほど --step-scale で小さい
-   （配置・しきい値は RoadBackground.tsx 側） */
+   blur は手前でも 0.8px・奥ほど強く（空気遠近）掛けて地面に馴染ませる。
+   奥の一歩ほど --step-scale で小さい（配置・しきい値は RoadBackground.tsx 側）。
+   退場は --road-walkout が同じしきい値を越えた足跡から＝手前から順番に消える */
 .road-intro__step {
   position: absolute;
   width: 30px;
@@ -1047,8 +1056,12 @@
   margin: -24px 0 0 -15px;
   background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 20 32'%3E%3Cellipse cx='10' cy='10.5' rx='6' ry='9.5' fill='%23AF8B48'/%3E%3Cellipse cx='10' cy='26.5' rx='4.4' ry='5' fill='%23AF8B48'/%3E%3C/svg%3E")
     center / contain no-repeat;
-  filter: blur(0.8px);
-  opacity: calc(clamp(0, (var(--road-walk, 0) - var(--step-t, 0)) * 12, 1) * 0.8);
+  filter: blur(calc(0.8px + (1 - var(--step-scale, 1)) * 1.6px));
+  opacity: calc(
+    clamp(0, (var(--road-walk, 0) - var(--step-t, 0)) * 12, 1) *
+    (1 - clamp(0, (var(--road-walkout, 0) - var(--step-t, 0)) * 12, 1)) *
+    0.8
+  );
   will-change: opacity;
 }
 .road-intro__step--l {

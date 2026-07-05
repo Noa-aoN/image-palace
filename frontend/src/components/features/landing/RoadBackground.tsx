@@ -106,11 +106,16 @@ export function RoadBackground({ fadeTop, fadeBottom, intro }: RoadBackgroundPro
       if (introRef.current) {
         const appear = Math.min(1, Math.max(0, (window.scrollY - introAppearStart) / introAppearLen))
         const fade = Math.min(1, Math.max(0, (window.scrollY - introFadeStart) / introFadeLen))
-        introRef.current.style.setProperty('--road-intro', (appear * (1 - fade)).toFixed(3))
+        // レイヤー全体はホワイトアウト終盤のフェードインのみ担当
+        introRef.current.style.setProperty('--road-intro', appear.toFixed(3))
+        // 渡鴉の退場（道リビール前に霞へ消える）
+        introRef.current.style.setProperty('--road-out', (1 - fade).toFixed(3))
         // 歩行進行（0→1）。各足跡は自分のしきい値(--step-t)を越えると現れ、
         // 越えたまま留まる＝ループしない一回きりの歩み。戻せば逆再生
         const walk = Math.min(1, Math.max(0, (window.scrollY - walkStart) / walkLen))
         introRef.current.style.setProperty('--road-walk', walk.toFixed(3))
+        // 足跡の退場進行。同じしきい値を使うことで手前の一歩から順番に消える
+        introRef.current.style.setProperty('--road-walkout', fade.toFixed(3))
       }
     }
     const onScroll = () => {
@@ -194,8 +199,12 @@ export function RoadBackground({ fadeTop, fadeBottom, intro }: RoadBackgroundPro
         で制御し、道本体の変数・描画には一切影響しない */}
     {intro && (
       <div ref={introRef} className="road-intro" aria-hidden>
-        {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img src="/hero-raven.png" alt="" decoding="async" loading="lazy" className="road-intro__raven" />
+        {/* 渡鴉は飛行 keyframes が opacity を持つため、退場フェードは外側の
+            ホルダー（--road-out）で掛ける */}
+        <span className="road-intro__raven-holder">
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img src="/hero-raven.png" alt="" decoding="async" loading="lazy" className="road-intro__raven" />
+        </span>
         {INTRO_STEPS.map((st) => (
           <span
             key={st.i}
