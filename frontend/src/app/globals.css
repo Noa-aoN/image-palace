@@ -996,22 +996,22 @@
   -webkit-mask-image: linear-gradient(to bottom, #000 0%, rgba(0, 0, 0, 0.55) 55%, transparent 100%);
   mask-image: linear-gradient(to bottom, #000 0%, rgba(0, 0, 0, 0.55) 55%, transparent 100%);
 }
-/* 道の出現前の余白を埋める誘導演出（渡鴉＋足跡）。concept セクションの
-   intro インスタンスだけに描画される。可視度は JS が書く --road-intro
-   （道リビールの少し手前で 1→0）で制御し、concept のテキストが画面に
+/* 道の出現前の誘導演出（渡鴉＋足跡）。concept セクションの intro
+   インスタンスだけに描画される。.road-bg のクリップ外・ビューポート固定の
+   兄弟レイヤーなので、ホワイトアウトが満ちる終盤からホワイトアウトの上に
+   全画面で表示できる。可視度は JS が書く --road-intro（ホワイトアウト終盤で
+   0→1、道リビールの少し手前で 1→0）で制御し、concept のテキストが画面に
    入る頃には消えている。スクロール戻しで再表示（可逆）。
    JS 非駆動時は既定 0 ＝常に非表示 */
 .road-intro {
-  position: absolute;
+  position: fixed;
   inset: 0;
   pointer-events: none;
   opacity: var(--road-intro, 0);
 }
 
-/* 先導する渡鴉。左下から弧を描いて画面中央（道の地平線方向）へ
-   小さくなりながら飛び、霞に消えてループする。
-   余白ゾーンはセクションが下から迫り上がるクリップ表示のため、
-   経路は画面の下半分（88vh→52vh）に収める */
+/* 先導する渡鴉。左下から弧を描いて足跡の先（道の最上部＝地平線あたり）へ
+   小さくなりながら飛び、霞に消えてループする */
 .road-intro__raven {
   position: absolute;
   top: 0;
@@ -1027,10 +1027,10 @@
 @keyframes road-intro-raven {
   0%   { transform: translate3d(14vw, 88vh, 0) scale(0.66) rotate(-4deg); opacity: 0; filter: brightness(1); }
   7%   { opacity: 0.85; }
-  38%  { transform: translate3d(35vw, 73vh, 0) scale(0.46) rotate(3deg); opacity: 0.8; filter: brightness(1.08); }
-  68%  { transform: translate3d(46vw, 60vh, 0) scale(0.28) rotate(-2deg); opacity: 0.55; filter: brightness(1.16); }
-  84%  { transform: translate3d(50vw, 53vh, 0) scale(0.19) rotate(0deg); opacity: 0; filter: brightness(1.22); }
-  100% { transform: translate3d(50vw, 53vh, 0) scale(0.19) rotate(0deg); opacity: 0; filter: brightness(1.22); }
+  38%  { transform: translate3d(35vw, 66vh, 0) scale(0.46) rotate(3deg); opacity: 0.8; filter: brightness(1.08); }
+  68%  { transform: translate3d(46vw, 46vh, 0) scale(0.28) rotate(-2deg); opacity: 0.55; filter: brightness(1.16); }
+  84%  { transform: translate3d(50vw, 34vh, 0) scale(0.19) rotate(0deg); opacity: 0; filter: brightness(1.22); }
+  100% { transform: translate3d(50vw, 34vh, 0) scale(0.19) rotate(0deg); opacity: 0; filter: brightness(1.22); }
 }
 
 /* 足跡。ゴールドの足形（足裏＋かかとの2楕円 SVG）が手前から奥へ順に

@@ -21,17 +21,22 @@ const SPEED = 0.6 // スクロール量に対する道の流れる速さ（歩�
 const PILLAR_BASES = [0, 360, 720, 1080, 1440, 1800]
 const PILLAR_SIDES = ['l', 'r'] as const
 
-// 足跡の並び（手前→奥）。左右交互に、奥ほど中央へ寄り小さく・薄くなる。
-// i はスタガー用のインデックス（0 が最初に現れる手前の一歩）。
-// 余白ゾーンでは concept セクションが画面下部から迫り上がってくる
-// （クリップで下側だけ見える）ため、構図は画面の下半分に収める
+// 足跡の並び（手前→奥）。左右交互に、道の遠近に合わせて奥ほど中央へ
+// 収束しながら小さくなる。画面下端（92%）から道の最上部あたり（34%）まで
+// 歩幅も奥ほど詰まる（遠近感）。i はスタガー用のインデックス
+// （0 が最初に現れる手前の一歩）
 const INTRO_STEPS = [
   { i: 0, x: '46.5%', y: '92%', s: 1, side: 'l' },
-  { i: 1, x: '52.5%', y: '83%', s: 0.88, side: 'r' },
-  { i: 2, x: '47.4%', y: '74%', s: 0.76, side: 'l' },
-  { i: 3, x: '51.8%', y: '66%', s: 0.64, side: 'r' },
-  { i: 4, x: '48.2%', y: '59%', s: 0.52, side: 'l' },
-  { i: 5, x: '51%', y: '53%', s: 0.42, side: 'r' },
+  { i: 1, x: '52.6%', y: '84%', s: 0.9, side: 'r' },
+  { i: 2, x: '47.2%', y: '76.5%', s: 0.8, side: 'l' },
+  { i: 3, x: '52.2%', y: '69.5%', s: 0.71, side: 'r' },
+  { i: 4, x: '47.9%', y: '63%', s: 0.62, side: 'l' },
+  { i: 5, x: '51.7%', y: '57%', s: 0.54, side: 'r' },
+  { i: 6, x: '48.5%', y: '51.5%', s: 0.46, side: 'l' },
+  { i: 7, x: '51.3%', y: '46.5%', s: 0.39, side: 'r' },
+  { i: 8, x: '49%', y: '42%', s: 0.33, side: 'l' },
+  { i: 9, x: '50.9%', y: '38%', s: 0.28, side: 'r' },
+  { i: 10, x: '49.4%', y: '34.5%', s: 0.24, side: 'l' },
 ] as const
 
 type RoadBackgroundProps = {
@@ -45,6 +50,7 @@ type RoadBackgroundProps = {
 
 export function RoadBackground({ fadeTop, fadeBottom, intro }: RoadBackgroundProps) {
   const ref = useRef<HTMLDivElement>(null)
+  const introRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
     const el = ref.current
@@ -61,15 +67,21 @@ export function RoadBackground({ fadeTop, fadeBottom, intro }: RoadBackgroundPro
     // 0.75 画面分のスクロールで奥→手前へ伸びきる。
     let revealStart = 0
     let revealLen = 1
+    let introAppearStart = 0
+    let introAppearLen = 1
     let introFadeStart = 0
     let introFadeLen = 1
     const measure = () => {
       const hero = document.querySelector<HTMLElement>('.hero-track')
       const ih = window.innerHeight
-      revealStart = hero ? hero.offsetTop + hero.offsetHeight - ih + ih * 0.4 : 0
+      const heroEnd = hero ? hero.offsetTop + hero.offsetHeight - ih : 0
+      revealStart = heroEnd + ih * 0.4
       revealLen = ih * 0.75
-      // 誘導演出（渡鴉＋足跡）は道リビールの少し手前から消え始め、
-      // concept のテキストが画面に入ってくる頃には消えている
+      // 誘導演出（渡鴉＋足跡）はホワイトアウトが満ちる終盤（ヒーロー終端の
+      // 少し手前）にホワイトアウトの上へフェードインし、道リビールの少し
+      // 手前から消え始めて concept のテキストが画面に入る頃には消えている
+      introAppearStart = heroEnd - ih * 0.12
+      introAppearLen = ih * 0.1
       introFadeStart = revealStart - ih * 0.3
       introFadeLen = ih * 0.28
     }
@@ -82,9 +94,14 @@ export function RoadBackground({ fadeTop, fadeBottom, intro }: RoadBackgroundPro
       // 初回リビール（0=奥の霞だけ → 1=全表示）。JS 非駆動時は CSS 既定の 1（全表示）。
       const reveal = Math.min(1, Math.max(0, (window.scrollY - revealStart) / revealLen))
       el.style.setProperty('--road-reveal', reveal.toFixed(3))
-      // 誘導演出の可視度（1=表示 → 0=消灯）。JS 非駆動時は CSS 既定の 0（非表示）
-      const introFade = Math.min(1, Math.max(0, (window.scrollY - introFadeStart) / introFadeLen))
-      el.style.setProperty('--road-intro', (1 - introFade).toFixed(3))
+      // 誘導演出の可視度（フェードイン × フェードアウト）。道本体とは独立した
+      // 専用要素に書き込む（道側の変数・描画には影響しない）。
+      // JS 非駆動時は CSS 既定の 0（非表示）
+      if (introRef.current) {
+        const appear = Math.min(1, Math.max(0, (window.scrollY - introAppearStart) / introAppearLen))
+        const fade = Math.min(1, Math.max(0, (window.scrollY - introFadeStart) / introFadeLen))
+        introRef.current.style.setProperty('--road-intro', (appear * (1 - fade)).toFixed(3))
+      }
     }
     const onScroll = () => {
       if (!raf) raf = requestAnimationFrame(update)
@@ -109,6 +126,7 @@ export function RoadBackground({ fadeTop, fadeBottom, intro }: RoadBackgroundPro
   const modifiers = `${fadeTop ? ' road-bg--fade-top' : ''}${fadeBottom ? ' road-bg--fade-bottom' : ''}`
 
   return (
+    <>
     <div ref={ref} aria-hidden className={`road-bg${modifiers}`}>
       {/* ビューポート固定のステージ。clip-path でセクション範囲だけ見える */}
       <div className="road-bg__viewport">
@@ -154,34 +172,36 @@ export function RoadBackground({ fadeTop, fadeBottom, intro }: RoadBackgroundPro
             )}
           </div>
         </div>
-        {/* 道の出現前の余白（ホワイトアウト後〜リビール開始）を埋める誘導演出。
-            渡鴉が奥へ飛び、足跡が手前から奥へ順に現れて「この先の道」を予告する。
-            --road-reveal が伸びるにつれて CSS 側でフェードアウトする（可逆） */}
-        {intro && (
-          <div className="road-intro" aria-hidden>
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src="/hero-raven.png" alt="" decoding="async" loading="lazy" className="road-intro__raven" />
-            {INTRO_STEPS.map((st) => (
-              <span
-                key={st.i}
-                className={`road-intro__step road-intro__step--${st.side}`}
-                style={
-                  {
-                    left: st.x,
-                    top: st.y,
-                    '--step-scale': st.s,
-                    '--step-delay': `${st.i * 0.55}s`,
-                  } as CSSProperties
-                }
-              />
-            ))}
-          </div>
-        )}
         {/* 上端（地平線まわり）を強くぼかして遠くへ霞ませる */}
         <div className="road-blur road-blur--top" />
         {/* 下端の軽いブラー帯（HA ヒーローの hero-blur 踏襲。手前の被写界深度） */}
         <div className="road-blur" />
       </div>
     </div>
+    {/* 道の出現前の誘導演出（渡鴉＋足跡）。.road-bg のクリップ外・ビューポート
+        固定の兄弟レイヤーとして描画するため、ホワイトアウト（ヒーロー側）の上にも
+        全画面で表示できる。可視度は専用の --road-intro（introRef に直接書き込み）
+        で制御し、道本体の変数・描画には一切影響しない */}
+    {intro && (
+      <div ref={introRef} className="road-intro" aria-hidden>
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img src="/hero-raven.png" alt="" decoding="async" loading="lazy" className="road-intro__raven" />
+        {INTRO_STEPS.map((st) => (
+          <span
+            key={st.i}
+            className={`road-intro__step road-intro__step--${st.side}`}
+            style={
+              {
+                left: st.x,
+                top: st.y,
+                '--step-scale': st.s,
+                '--step-delay': `${st.i * 0.55}s`,
+              } as CSSProperties
+            }
+          />
+        ))}
+      </div>
+    )}
+    </>
   )
 }
