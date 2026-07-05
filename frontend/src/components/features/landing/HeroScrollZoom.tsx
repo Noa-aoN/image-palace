@@ -11,8 +11,9 @@ import { ScrollCue } from './ScrollCue'
 // LP ヒーロー：スクロールで画像中央のドアへズームし、終盤に次セクションへブレンドする。
 // 構造: track(縦長) → stage(sticky, 100svh) → 画像/ぼかし/スクリム/ブレンド + テキスト。
 export function HeroScrollZoom() {
-  // doorOpenEnd を 0.95 に上げ、ドアが開き切った直後にヒーローを抜けて次セクションの道へ繋ぐ
-  const { trackRef, stageRef, reduced } = useHeroZoom({ targetScale: 9, blurStart: 0.42, doorOpenEnd: 0.95 })
+  // doorOpenEnd 0.95: ドアが開き切った直後にヒーローを抜けて次セクションの道へ繋ぐ。
+  // blendStart 0.88: 開いた扉の間を抜ける（--doorboost）様子が見えてからアイボリーで満たす
+  const { trackRef, stageRef, reduced } = useHeroZoom({ targetScale: 9, blurStart: 0.42, doorOpenEnd: 0.95, blendStart: 0.88 })
 
   // セッションが残っているログイン済みユーザーには CTA を出し分ける。
   // ハイドレーション確定前は認証UIを出さない（Header と同じ hasHydrated 方式でちらつき防止）。

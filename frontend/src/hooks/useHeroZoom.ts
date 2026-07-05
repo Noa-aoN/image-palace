@@ -17,6 +17,9 @@ export interface HeroZoomOptions {
   doorOpenStart?: number
   /** 扉が開ききる進捗（0〜1） */
   doorOpenEnd?: number
+  /** 扉の通り抜けブースト（追加ズーム）が始まる進捗（0〜1）。
+      開いた扉の裏面が画面端を過ぎるまで加速拡大する */
+  doorBoostStart?: number
 }
 
 const clamp = (v: number, min: number, max: number) => Math.min(max, Math.max(min, v))
@@ -37,6 +40,7 @@ export function useHeroZoom(opts: HeroZoomOptions = {}) {
     maxBlurPx = 5,
     doorOpenStart = 0.5,
     doorOpenEnd = 0.9,
+    doorBoostStart = 0.7,
   } = opts
   const trackRef = useRef<HTMLElement | null>(null)
   const stageRef = useRef<HTMLDivElement | null>(null)
@@ -71,6 +75,8 @@ export function useHeroZoom(opts: HeroZoomOptions = {}) {
       // 扉の開き（ズームが寄ってから開く）。滑らかに加減速。
       const doorRamp = clamp((progress - doorOpenStart) / (doorOpenEnd - doorOpenStart), 0, 1)
       const doorOpen = doorRamp * doorRamp * (3 - 2 * doorRamp) // smoothstep
+      // 通り抜けブースト: 終盤に扉コンテナだけ追加ズーム（加速しながら扉の間を抜ける）
+      const doorBoost = easeInQuad(clamp((progress - doorBoostStart) / (1 - doorBoostStart), 0, 1))
 
       // 書き込み（後でまとめて＝レイアウトスラッシュ回避）
       stage.style.setProperty('--zoom', String(scale))
@@ -79,6 +85,7 @@ export function useHeroZoom(opts: HeroZoomOptions = {}) {
       stage.style.setProperty('--blurpx', `${easeInQuad(blurRamp) * maxBlurPx}px`)
       stage.style.setProperty('--zoombright', String(1 + blurRamp * 0.08))
       stage.style.setProperty('--dooropen', String(doorOpen))
+      stage.style.setProperty('--doorboost', String(doorBoost))
     }
 
     const onScroll = () => {
@@ -100,7 +107,7 @@ export function useHeroZoom(opts: HeroZoomOptions = {}) {
       window.removeEventListener('resize', onScroll)
       cancelAnimationFrame(rafId)
     }
-  }, [targetScale, fadeEnd, blendStart, blurStart, maxBlurPx, doorOpenStart, doorOpenEnd])
+  }, [targetScale, fadeEnd, blendStart, blurStart, maxBlurPx, doorOpenStart, doorOpenEnd, doorBoostStart])
 
   return { trackRef, stageRef, reduced }
 }

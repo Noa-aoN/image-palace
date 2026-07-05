@@ -167,6 +167,7 @@
   --blurpx: 0px;
   --zoombright: 1;
   --dooropen: 0;
+  --doorboost: 0;
 }
 
 .hero-zoom {
@@ -191,7 +192,9 @@
   height: var(--door-h);
   /* 宮殿の開口部は細長（幅3.7%×高さ17%＝約0.22）。素材を寄せて充填する */
   aspect-ratio: var(--door-aspect, 0.36);
-  transform: translate(-50%, -50%) scale(var(--zoom, 1));
+  /* 終盤は --doorboost で扉コンテナだけ追加ズームし、外開きした扉の裏面が
+     画面端を通り過ぎる＝「扉の間を抜けて先の道へ出る」動線にする */
+  transform: translate(-50%, -50%) scale(calc(var(--zoom, 1) * (1 + var(--doorboost, 0) * 2.4)));
   transform-origin: center;
   perspective: 1400px;
   z-index: 5;
