@@ -878,18 +878,18 @@
      （JS 非駆動・reduced 時は既定 1＝全表示） */
   /* 注: perspective 620px のため画面に映るのは平面 y≈0〜650px のみ（それより
      手前はカメラ背後）。リビール前線はこの可視ウィンドウ内で動かす。
-     r=0 では遠方の霞（0-200px のフェード帯）だけが薄く見え、r=1 で全表示 */
+     r=0 では遠方の霞（0-320px のフェード帯）だけが薄く見え、r=1 で全表示 */
   -webkit-mask-image: linear-gradient(
     to bottom,
     transparent 0,
-    #000 200px, /* 道をより地平線近く(奥)から見せる */
+    #000 320px,
     #000 calc(-50px + var(--road-reveal, 1) * 750px),
     transparent calc(200px + var(--road-reveal, 1) * 750px)
   );
   mask-image: linear-gradient(
     to bottom,
     transparent 0,
-    #000 200px, /* 道をより地平線近く(奥)から見せる */
+    #000 320px,
     #000 calc(-50px + var(--road-reveal, 1) * 750px),
     transparent calc(200px + var(--road-reveal, 1) * 750px)
   );
