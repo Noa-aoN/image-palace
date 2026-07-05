@@ -193,9 +193,15 @@
   position: absolute;
   left: var(--hero-door-x);
   top: var(--hero-door-y);
-  height: var(--door-h);
+  /* 高さは背景画像(1656×941, aspect 1.76)の object-fit: cover に追従させる。
+     縦長〜1.76 までは高さ基準（画像の扉高 ∝ vh）で 9.6vh がぴったり。
+     それより横長の大窓では幅基準（扉高 ∝ vw/1.76）に切り替わるため、
+     9.6vh のままだと上下に黒い隙間が出る → max() で 5.46vw(=9.6/1.76 vw) へ
+     自動スイッチして高さだけ伸ばす。幅は従来どおり 9.6vh 基準で固定
+     （開口部より十分広く、全ウィンドウサイズで過不足なし） */
+  height: max(var(--door-h), 5.46vw);
   /* 宮殿の開口部は細長（幅3.7%×高さ17%＝約0.22）。素材を寄せて充填する */
-  aspect-ratio: var(--door-aspect, 0.36);
+  width: calc(var(--door-h) * var(--door-aspect, 0.36));
   /* 背景と同率で拡大＋全開後の追いズーム（--doorboost）にも同期 */
   transform: translate(-50%, -50%) scale(calc(var(--zoom, 1) * (1 + var(--doorboost, 0) * 0.5)));
   transform-origin: center;
@@ -996,9 +1002,127 @@
   -webkit-mask-image: linear-gradient(to bottom, #000 0%, rgba(0, 0, 0, 0.55) 55%, transparent 100%);
   mask-image: linear-gradient(to bottom, #000 0%, rgba(0, 0, 0, 0.55) 55%, transparent 100%);
 }
+/* 道の出現前の誘導演出（渡鴉＋足跡）。concept セクションの intro
+   インスタンスだけに描画される。.road-bg のクリップ外・ビューポート固定の
+   兄弟レイヤーなので、ホワイトアウトが満ちる終盤からホワイトアウトの上に
+   全画面で表示できる。レイヤーの可視度は JS が書く --road-intro
+   （ホワイトアウト終盤のフェードインのみ）。退場は個別に行う:
+   足跡は --road-walkout で手前から順に、渡鴉は --road-out で霞へ消え、
+   concept のテキストが画面に入る頃には消えている。スクロール戻しで再表示（可逆）。
+   JS 非駆動時は既定 0 ＝常に非表示 */
+.road-intro {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  opacity: var(--road-intro, 0);
+}
+
+/* 先導する渡鴉。上部のふちからゆっくり入り、中央遠く（道の先の空）を
+   主な滞在域として旋回・方向転換しながら漂い、最後は上方向へ抜けて
+   フレームアウト → また上から現れる長尺ループ。
+   停止する瞬間のない、なだらかな飛行（linear ＋ 不可視区間で位置を戻す）。
+   左右反転は hero-raven 同様 step-end の極小区間で行い潰れを防ぐ。
+   遠くの鳥として薄く・ぼんやり見せる blur はホルダー側に掛け、
+   退場フェード（--road-out）も keyframes の opacity と衝突しないよう
+   ホルダー側で掛ける */
+.road-intro__raven-holder {
+  position: absolute;
+  inset: 0;
+  opacity: var(--road-out, 1);
+  filter: blur(1.1px);
+}
+.road-intro__raven {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 230px;
+  height: auto;
+  opacity: 0;
+  transform-origin: 50% 50%;
+  will-change: transform, opacity;
+  /* linear + キーフレーム%を移動距離に比例配分＝区間の継ぎ目でも減速しない等速飛行 */
+  animation: road-intro-raven 22s linear infinite;
+}
+
+/* 中央遠く（道の先＝画面中央上方）を主な滞在域とし、ループ時間の大半を
+   その周辺の旋回・漂いに使う。0-18%: 上部からゆっくり降りて入る、
+   18-72%: 中央遠くで旋回・方向転換（滞在）、72-88%: 上方向へ抜けて退場、
+   88-100%: 不可視のまま上の開始位置へ戻る */
+@keyframes road-intro-raven {
+  0%    { transform: translate3d(32vw, -26vh, 0) scale(0.5, 0.5) rotate(6deg); opacity: 0; filter: brightness(1.1); }
+  7%    { opacity: 0.55; }
+  18%   { transform: translate3d(44vw, 9vh, 0) scale(0.56, 0.56) rotate(4deg); filter: brightness(1.08); }
+  26%   { transform: translate3d(52vw, 13vh, 0) scale(0.6, 0.6) rotate(-4deg); filter: brightness(1.06); }
+  33%   { transform: translate3d(56vw, 8vh, 0) scale(0.56, 0.56) rotate(-12deg); filter: brightness(1.08); animation-timing-function: step-end; }
+  33.5% { transform: translate3d(56vw, 8vh, 0) scale(-0.56, 0.56) rotate(10deg); filter: brightness(1.08); }
+  42%   { transform: translate3d(48vw, 5vh, 0) scale(-0.52, 0.52) rotate(-2deg); filter: brightness(1.1); }
+  49%   { transform: translate3d(42vw, 10vh, 0) scale(-0.56, 0.56) rotate(-10deg); filter: brightness(1.08); animation-timing-function: step-end; }
+  49.5% { transform: translate3d(42vw, 10vh, 0) scale(0.56, 0.56) rotate(8deg); filter: brightness(1.08); }
+  58%   { transform: translate3d(50vw, 15vh, 0) scale(0.62, 0.62) rotate(3deg); filter: brightness(1.05); }
+  65%   { transform: translate3d(55vw, 11vh, 0) scale(0.56, 0.56) rotate(-5deg); filter: brightness(1.07); }
+  72%   { transform: translate3d(58vw, 6vh, 0) scale(0.5, 0.5) rotate(-12deg); opacity: 0.5; filter: brightness(1.1); }
+  86%   { transform: translate3d(63vw, -26vh, 0) scale(0.42, 0.42) rotate(-16deg); opacity: 0.35; filter: brightness(1.14); }
+  87%   { opacity: 0; }
+  100%  { transform: translate3d(32vw, -26vh, 0) scale(0.5, 0.5) rotate(6deg); opacity: 0; filter: brightness(1.1); }
+}
+
+/* 足跡。ゴールドの足形（足裏＋かかとの2楕円 SVG）。
+   道と一緒に流れるトレッドミル: 周回座標 c = mod(--road-walkc + base, 1)
+   （0=最奥 → 1=最手前）から画面上の位置・大きさ・ぼかし・濃さを導出する。
+   スクロールすると c が進み、足跡は道の遠近線に沿って手前へ滑り、
+   下端で薄れて奥へ回り込む無限ループ（戻せば逆流）。
+   - 縦位置: y = 41% + 36.5% × c²（c² で奥ほど詰まる遠近圧縮。高さ幅は従来どおり）
+   - 横位置: 消失点(y≈20%)へ向かう平行線上 dev = (y - 20) × 0.125（左右は --step-side）
+   - 大きさ: 0.3 + 1.1c²（最奥0.3 → 最手前1.4）
+   3D の道の上に付いて見えるよう scaleY(0.52) の遠近押しつぶしと
+   距離連動 blur（手前 約1.0px → 奥 約2.1px）を掛ける。
+   退場ゲートは2系統 — 手前(c大)からの --road-walkout（CONCEPTが重なる頃）と、
+   奥(c小)からの --road-topout（道が十分重なってから）。
+   --road-dim: 石畳が表示され始めたら全体をさらに淡くする（JS書き込み 1→0.55） */
+.road-intro__step {
+  --c: mod(var(--road-walkc, 0) + var(--step-base, 0), 1);
+  --cs: calc(0.3 + 1.1 * var(--c) * var(--c));
+  position: absolute;
+  top: calc((41 + 36.5 * var(--c) * var(--c)) * 1%);
+  left: calc((50 + var(--step-side, 1) * (21 + 36.5 * var(--c) * var(--c)) * 0.125) * 1%);
+  width: 30px;
+  height: 48px;
+  margin: -24px 0 0 -15px;
+  background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 20 32'%3E%3Cellipse cx='10' cy='10.5' rx='6' ry='9.5' fill='%23AF8B48'/%3E%3Cellipse cx='10' cy='26.5' rx='4.4' ry='5' fill='%23AF8B48'/%3E%3C/svg%3E")
+    center / contain no-repeat;
+  filter: blur(calc((1.3 + (1 - var(--cs)) * 1.2) * 1px));
+  /* 手前側の約3足だけ表示: 奥側の表示境界は 1 - --road-grow。
+     --road-grow（JS書き込み 0.13→0.42）で境界が手前から奥へ広がり、
+     最初は1足 → スクロールに応じて1つずつ増えて最大3足になる。
+     以後は c ≈ 0.58 から湧いて手前へ流れ、下端で抜ける。濃さは距離連動で淡く */
+  opacity: calc(
+    clamp(0, (var(--c) - (1 - var(--road-grow, 0.42))) * 8, 1) *
+    clamp(0, (1 - var(--c)) * 8, 1) *
+    (1 - clamp(0, (var(--road-walkout, 0) - (1 - var(--c))) * 3, 1)) *
+    (1 - clamp(0, (var(--road-topout, 0) - var(--c)) * 3, 1)) *
+    (0.15 + var(--cs) * 0.09) *
+    var(--road-dim, 1)
+  );
+  will-change: opacity, transform;
+}
+/* 爪先の向き: 道の遠近線と同じく、先端を中央（消失点）へ向けて内向きにする。
+   遠近線の見かけの傾き ≈ 9°。scaleY(0.52) が回転の後に掛かり見かけの角度が
+   約2倍に増幅される（tanθ/0.52）ため、指定は 4.5deg で見かけ約9°になる */
+.road-intro__step--l {
+  --step-side: -1;
+  transform: scale(var(--cs)) scaleY(0.52) rotate(4.5deg);
+}
+.road-intro__step--r {
+  --step-side: 1;
+  transform: scale(var(--cs)) scaleY(0.52) rotate(-4.5deg) scaleX(-1);
+}
+
 @media (prefers-reduced-motion: reduce) {
-  /* スクロール連動を止め静止（背景・柱は既定位置で表示） */
+  /* スクロール連動を止め静止（背景・柱は既定位置で表示）。誘導演出も出さない */
   .road-bg__plane {
     background-position: center 0;
+  }
+  .road-intro {
+    display: none;
   }
 }
