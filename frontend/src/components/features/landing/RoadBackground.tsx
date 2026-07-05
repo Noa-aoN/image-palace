@@ -39,7 +39,9 @@ export function RoadBackground({ fadeTop, fadeBottom }: RoadBackgroundProps) {
     // 初回リビールの基準点。ステージはセクション領域でクリップされるため、
     // セクションが画面をほぼ覆い「地平線が画面内に入る」まで待ってから
     // リビールを始める（早く始めるとクリップの都合で手前側から見えてしまう）。
-    // 基準はヒーロー終端 + 0.35 画面分（ドア後の余白を短くし早めに始める）。
+    // 基準はヒーロー終端 + 0.4 画面分。この値は「道の自然な遠端（遠方フェードが
+    // 明けるあたり・画面上 約50%）がセクションのクリップ内に入る瞬間」に合わせて
+    // おり、道は必ず表示エリアの最上端から見え始めて手前へ伸びる。
     // 全インスタンスが同じ値を参照することで固定ステージの同期が保たれる。
     // 0.75 画面分のスクロールで奥→手前へ伸びきる。
     let revealStart = 0
@@ -47,7 +49,7 @@ export function RoadBackground({ fadeTop, fadeBottom }: RoadBackgroundProps) {
     const measure = () => {
       const hero = document.querySelector<HTMLElement>('.hero-track')
       const ih = window.innerHeight
-      revealStart = hero ? hero.offsetTop + hero.offsetHeight - ih + ih * 0.35 : 0
+      revealStart = hero ? hero.offsetTop + hero.offsetHeight - ih + ih * 0.4 : 0
       revealLen = ih * 0.75
     }
 
