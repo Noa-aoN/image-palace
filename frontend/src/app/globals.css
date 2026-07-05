@@ -1084,11 +1084,18 @@
   /* 手前の一歩にもしっかり blur（1.0px〜）を掛け、奥ほどさらに強く */
   filter: blur(calc(1.3px + (1 - var(--step-scale, 1)) * 1.2px));
   /* 出現時からごく淡く、濃さは距離連動: 手前(scale大)でも約0.28、奥は約0.18。
+     点灯はスクロール連動のループ歩行:
+     --road-walkn（連続歩数）に対し各足跡の位相 = mod(walkn - i, 7)。
+     位相 0〜5 で点灯・5〜6 で消灯・6〜7 は暗転し、次の周回で再点灯する
+     ＝古い一歩から順に消えては下から新しい一歩が現れ続ける（配置は不変）。
+     初回のみ walkn が自分の番号に達するまで点灯させない一回きりゲートを併用。
      退場ゲートは2系統 — 手前からの --road-walkout（CONCEPTが重なる頃）と、
-     奥からの --road-topout（道が十分重なってから・しきい値反転）*/
-  /* --road-dim: 石畳が表示され始めたら全体をさらに淡くする（JS書き込み 1→0.55） */
+     奥からの --road-topout（道が十分重なってから・しきい値反転）。
+     --road-dim: 石畳が表示され始めたら全体をさらに淡くする（JS書き込み 1→0.55） */
   opacity: calc(
-    clamp(0, (var(--road-walk, 0) - var(--step-t, 0)) * 12, 1) *
+    clamp(0, (var(--road-walkn, 0) - var(--step-i, 0)) * 2, 1) *
+    clamp(0, mod(var(--road-walkn, 0) - var(--step-i, 0), 7) * 2, 1) *
+    (1 - clamp(0, mod(var(--road-walkn, 0) - var(--step-i, 0), 7) - 5, 1)) *
     (1 - clamp(0, (var(--road-walkout, 0) - var(--step-t, 0)) * 12, 1)) *
     (1 - clamp(0, (var(--road-topout, 0) - (0.78 - var(--step-t, 0))) * 12, 1)) *
     (0.15 + var(--step-scale, 1) * 0.09) *

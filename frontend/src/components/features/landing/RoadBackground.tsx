@@ -89,11 +89,11 @@ export function RoadBackground({ fadeTop, fadeBottom, intro }: RoadBackgroundPro
       // それまで足跡は道の上に残り続ける
       introFadeStart = heroEnd + ih * 0.45
       introFadeLen = ih * 0.45
-      // 足跡の歩行進行（スクロール連動・一回きり）。レイヤーが見えてから
-      // 1歩目、0.6画面分のスクロールでとてもゆっくり最奥の一歩まで現れ切る
-      // （最奥が現れ切るのは CONCEPT 到達による退場開始の直前）
+      // 足跡の歩行進行（スクロール連動・ループ）。レイヤーが見えてから1歩目。
+      // 1歩 = walkLen/8 スクロール px。道の流れ（柱が 600px スクロールごとに
+      // 1本通過）に対して 1 ストライド ≈ 72px と、地面の移動速度に近い歩調にする
       walkStart = heroEnd - ih * 0.02
-      walkLen = ih * 0.6
+      walkLen = ih * 0.72
       // 道の表示が足跡へ十分重なってから、奥（上）の足跡も道に
       // 飲み込まれるように上からゆっくり消していく（手前側の退場より遅い）
       topOutStart = revealStart + ih * 0.3
@@ -120,10 +120,10 @@ export function RoadBackground({ fadeTop, fadeBottom, intro }: RoadBackgroundPro
         introRef.current.style.setProperty('--road-intro', appear.toFixed(3))
         // 渡鴉の退場（道リビール前に霞へ消える）
         introRef.current.style.setProperty('--road-out', (1 - fade).toFixed(3))
-        // 歩行進行（0→1）。各足跡は自分のしきい値(--step-t)を越えると現れ、
-        // 越えたまま留まる＝ループしない一回きりの歩み。戻せば逆再生
-        const walk = Math.min(1, Math.max(0, (window.scrollY - walkStart) / walkLen))
-        introRef.current.style.setProperty('--road-walk', walk.toFixed(3))
+        // 歩行進行（連続歩数・上限なし）。1 進むごとに次の一歩が現れ、
+        // 7歩で一巡するループを CSS の mod() 側で作る。戻せば逆再生
+        const walkN = Math.max(0, (window.scrollY - walkStart) / (walkLen / 8))
+        introRef.current.style.setProperty('--road-walkn', walkN.toFixed(3))
         // 足跡の退場進行。同じしきい値を使うことで手前の一歩から順番に消える
         introRef.current.style.setProperty('--road-walkout', fade.toFixed(3))
         // 道の重なりによる退場進行（奥＝上の足跡から順番に消える）
@@ -231,6 +231,7 @@ export function RoadBackground({ fadeTop, fadeBottom, intro }: RoadBackgroundPro
                 top: st.y,
                 '--step-scale': st.s,
                 '--step-t': st.i / 8,
+                '--step-i': st.i,
               } as CSSProperties
             }
           />
