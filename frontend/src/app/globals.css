@@ -579,7 +579,8 @@
   }
 }
 
-/* LP: 「続く1本の道」。縦タイルの平坦テクスチャを repeat-y で敷き、background-position を
+/* LP: 「続く1本の道」（3D遠近版・/dev/road-animations 案A採用）。
+   perspective をかけた平面に道テクスチャを repeat-y で敷き、background-position を
    window.scrollY で動かすトレッドミル＝継ぎ目レスな無限ループ。全セクション同一オフセットで
    1本の道が全ページを貫く。RoadBackground が --road-shift(px) を駆動。 */
 .road-bg {
@@ -588,25 +589,61 @@
   z-index: 0;
   overflow: hidden;
   pointer-events: none;
-  /* 上端・下端ともなめらかにフェード（波型なし・直線グラデ） */
+  /* 上端（地平線側）・下端ともなめらかにフェード（波型なし・直線グラデ） */
   -webkit-mask-image: linear-gradient(to bottom, transparent 0%, #000 18%, #000 92%, transparent 100%);
   mask-image: linear-gradient(to bottom, transparent 0%, #000 18%, #000 92%, transparent 100%);
 }
-.road-bg__strip {
+.road-bg__scene {
   position: absolute;
-  top: 0;
-  bottom: 0;
+  inset: 0;
+  perspective: 620px;
+  perspective-origin: 50% 32%;
+}
+.road-bg__plane {
+  position: absolute;
   left: 50%;
-  width: min(108%, 1110px); /* 元幅(72%)の約1.5倍 */
-  transform: translateX(-50%);
-  opacity: 0.6;
-  filter: blur(1px); /* 少し薄く・軽くぼかして背景に馴染ませる */
-  /* 角度なしのまっすぐな道。repeat-y を background-position で縦に流すだけ */
+  top: 26%; /* この高さが地平線になる */
+  width: 720px;
+  height: 2160px; /* タイル高(1080)の2枚分。柱の折り返し(mod 2160)と同期 */
+  margin-left: -360px;
+  transform-origin: 50% 0;
+  transform: rotateX(72deg);
+  /* 柱を平面上の3D空間に立てる。opacity 等のグルーピングプロパティを
+     ここに置くと preserve-3d が無効化され柱が潰れるので、テクスチャは
+     子レイヤー .road-bg__road に分離して透過させる */
+  transform-style: preserve-3d;
+}
+.road-bg__road {
+  position: absolute;
+  inset: 0;
+  opacity: 0.55; /* コンテンツより控えめに。旧俯瞰版(0.6)よりやや薄く */
   background-image: url('/road.png');
   background-repeat: repeat-y;
-  background-size: 100% auto;
+  background-size: 720px 1080px; /* road.png は 2:3。1タイル=1080px で継ぎ目レス */
   background-position: center calc(var(--road-shift, 0) * 1px);
   will-change: background-position;
+}
+/* 両脇の柱。平面上の点 (left, --pillar-base + --road-shift) に底辺を置き、
+   rotateX(-72deg) で平面の傾きを打ち消して直立させる（底辺を軸に起こす）。
+   道と同じオフセットで手前へ流れ、平面長 2160 で折り返す。 */
+.road-bg__pillar {
+  position: absolute;
+  width: 140px;
+  height: 187px; /* 540x720(3:4) を幅140に合わせた高さ。底辺基準の配置に必要 */
+  top: -187px; /* 底辺を平面 y=0 に置き、translateY で道と同オフセットに送る */
+  transform-origin: 50% 100%;
+  /* 底辺を軸に rotateX(-72deg) で直立させてから、道と同じ量だけ手前へ流す。
+     top ではなく transform で動かしてレイアウトを発生させない */
+  transform: translateY(calc(mod(var(--pillar-base, 0) + var(--road-shift, 0), 2160) * 1px))
+    rotateX(-72deg);
+  opacity: 0.75;
+  will-change: transform;
+}
+.road-bg__pillar--l {
+  left: 145px; /* 中心 215px = 道の左端(約240px)のすぐ外 */
+}
+.road-bg__pillar--r {
+  left: 440px; /* 中心 510px = 道の右端(約485px)のすぐ外 */
 }
 /* 下端の軽いブラー帯（HA ヒーローの hero-blur を踏襲）。下ほど強く上へフェード。 */
 .road-blur {
@@ -632,8 +669,8 @@
   mask-image: linear-gradient(to bottom, #000 0%, transparent 100%);
 }
 @media (prefers-reduced-motion: reduce) {
-  /* スクロール連動を止め静止（背景は既定位置で表示） */
-  .road-bg__strip {
+  /* スクロール連動を止め静止（背景・柱は既定位置で表示） */
+  .road-bg__plane {
     background-position: center 0;
   }
 }
