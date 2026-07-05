@@ -56,11 +56,15 @@ export function HeroScrollZoom() {
             <img src="/hero-door-right.png?v=2" alt="" decoding="async" className="hero-door-face hero-door-face--right" />
             <span className="hero-door-edge hero-door-edge--right" />
           </div>
-          {/* 開扉に連動して輝くフレア（光条＋光芒＋コア） */}
+          {/* 開扉に連動して輝くフレア。不規則な光芒2層＋アナモルフィック光条（ハロ＋芯）＋
+              リングハロ＋コアの多層構成で、レンズフレアらしい柔らかい輝きにする */}
           <div className="hero-flare">
-            <span className="hero-flare__rays" />
+            <span className="hero-flare__rays hero-flare__rays--a" />
+            <span className="hero-flare__rays hero-flare__rays--b" />
             <span className="hero-flare__streak hero-flare__streak--v" />
             <span className="hero-flare__streak hero-flare__streak--h" />
+            <span className="hero-flare__streak hero-flare__streak--h-core" />
+            <span className="hero-flare__halo" />
             <span className="hero-flare__core" />
           </div>
         </div>

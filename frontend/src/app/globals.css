@@ -261,30 +261,53 @@
   transform: rotateY(-90deg);
 }
 
-/* 開扉に連動するフレア。--flare は扉が1/4開いてから立ち上がる */
+/* 開扉に連動するフレア。--flare は扉が1/4開いてから smoothstep で立ち上がる。
+   微小 blur はコンテナの --zoom 拡大に乗って増幅されるため小さい値でよい */
 .hero-flare {
   position: absolute;
   inset: 0;
   z-index: 2;
   pointer-events: none;
   --flare: calc(max(0, var(--dooropen, 0) - 0.25) / 0.75);
-  opacity: var(--flare);
+  opacity: calc(var(--flare) * var(--flare) * (3 - 2 * var(--flare)));
 }
+/* コア: 白→暖金→透明の多段グラデで柔らかく発光 */
 .hero-flare__core {
   position: absolute;
   left: 50%;
   top: 44%;
-  width: 170%;
+  width: 200%;
   aspect-ratio: 1;
   transform: translate(-50%, -50%) scale(calc(0.5 + var(--flare) * 0.9));
   background: radial-gradient(
     circle,
-    rgba(255, 253, 244, 0.95) 0%,
-    rgba(255, 233, 172, 0.55) 30%,
-    rgba(255, 214, 120, 0) 64%
+    rgba(255, 255, 252, 0.98) 0%,
+    rgba(255, 248, 228, 0.85) 9%,
+    rgba(255, 234, 178, 0.45) 24%,
+    rgba(255, 216, 130, 0.16) 42%,
+    rgba(255, 210, 120, 0) 60%
   );
+  filter: blur(0.4px);
 }
-/* 水平/垂直の光条（レンズフレアの筋） */
+/* リングハロ（レンズの淡い輪） */
+.hero-flare__halo {
+  position: absolute;
+  left: 50%;
+  top: 44%;
+  width: 280%;
+  aspect-ratio: 1;
+  transform: translate(-50%, -50%) scale(calc(0.7 + var(--flare) * 0.5));
+  background: radial-gradient(
+    circle,
+    transparent 38%,
+    rgba(255, 233, 170, 0.1) 46%,
+    rgba(255, 240, 196, 0.16) 50%,
+    rgba(255, 233, 170, 0.08) 54%,
+    transparent 62%
+  );
+  filter: blur(0.6px);
+}
+/* アナモルフィックな光条（水平=ハロ＋芯の2層、垂直=淡い1層） */
 .hero-flare__streak {
   position: absolute;
   left: 50%;
@@ -292,34 +315,115 @@
   border-radius: 9999px;
 }
 .hero-flare__streak--h {
-  width: 560%;
-  height: 4.5%;
+  width: 620%;
+  height: 7%;
   transform: translate(-50%, -50%) scaleX(calc(0.25 + var(--flare) * 0.75));
-  background: linear-gradient(90deg, transparent, rgba(255, 243, 205, 0.9) 50%, transparent);
+  background: linear-gradient(
+    90deg,
+    transparent 0%,
+    rgba(255, 236, 186, 0.22) 22%,
+    rgba(255, 243, 205, 0.6) 50%,
+    rgba(255, 236, 186, 0.22) 78%,
+    transparent 100%
+  );
+  filter: blur(0.8px);
+}
+.hero-flare__streak--h-core {
+  width: 480%;
+  height: 1.6%;
+  transform: translate(-50%, -50%) scaleX(calc(0.2 + var(--flare) * 0.8));
+  background: linear-gradient(
+    90deg,
+    transparent 0%,
+    rgba(255, 252, 240, 0.55) 28%,
+    rgba(255, 255, 250, 0.95) 50%,
+    rgba(255, 252, 240, 0.55) 72%,
+    transparent 100%
+  );
+  filter: blur(0.3px);
 }
 .hero-flare__streak--v {
-  width: 9%;
-  height: 240%;
+  width: 7%;
+  height: 260%;
   transform: translate(-50%, -50%) scaleY(calc(0.3 + var(--flare) * 0.7));
-  background: linear-gradient(180deg, transparent, rgba(255, 243, 205, 0.55) 50%, transparent);
+  background: linear-gradient(
+    180deg,
+    transparent 0%,
+    rgba(255, 240, 196, 0.16) 26%,
+    rgba(255, 243, 205, 0.42) 50%,
+    rgba(255, 240, 196, 0.16) 74%,
+    transparent 100%
+  );
+  filter: blur(0.8px);
 }
-/* 放射状の光芒（星型バースト）。中心から外へ薄く伸びる */
+/* 放射状の光芒2層。太さ・角度が不規則なスポークを重ね、逆回転させて自然な星型に */
 .hero-flare__rays {
   position: absolute;
   left: 50%;
   top: 44%;
-  width: 460%;
   aspect-ratio: 1;
   border-radius: 50%;
-  transform: translate(-50%, -50%) rotate(calc(var(--flare) * 14deg))
+  -webkit-mask-image: radial-gradient(circle, #000 8%, rgba(0, 0, 0, 0.5) 34%, transparent 58%);
+  mask-image: radial-gradient(circle, #000 8%, rgba(0, 0, 0, 0.5) 34%, transparent 58%);
+}
+.hero-flare__rays--a {
+  width: 480%;
+  transform: translate(-50%, -50%) rotate(calc(var(--flare) * 10deg))
     scale(calc(0.6 + var(--flare) * 0.6));
-  background: repeating-conic-gradient(
-    from 8deg,
-    rgba(255, 238, 186, 0.32) 0deg 3deg,
-    transparent 3deg 26deg
+  background: conic-gradient(
+    from 0deg,
+    transparent 0deg,
+    rgba(255, 244, 214, 0.4) 2deg,
+    transparent 6deg,
+    transparent 47deg,
+    rgba(255, 238, 196, 0.26) 50deg,
+    transparent 55deg,
+    transparent 86deg,
+    rgba(255, 246, 220, 0.45) 89deg,
+    transparent 92deg,
+    transparent 132deg,
+    rgba(255, 238, 196, 0.2) 136deg,
+    transparent 141deg,
+    transparent 178deg,
+    rgba(255, 244, 214, 0.38) 181deg,
+    transparent 185deg,
+    transparent 226deg,
+    rgba(255, 238, 196, 0.24) 229deg,
+    transparent 234deg,
+    transparent 268deg,
+    rgba(255, 246, 220, 0.42) 271deg,
+    transparent 274deg,
+    transparent 314deg,
+    rgba(255, 238, 196, 0.18) 318deg,
+    transparent 323deg,
+    transparent 360deg
   );
-  -webkit-mask-image: radial-gradient(circle, #000 0%, transparent 62%);
-  mask-image: radial-gradient(circle, #000 0%, transparent 62%);
+  filter: blur(0.5px);
+}
+.hero-flare__rays--b {
+  width: 390%;
+  transform: translate(-50%, -50%) rotate(calc(var(--flare) * -7deg))
+    scale(calc(0.65 + var(--flare) * 0.5));
+  background: conic-gradient(
+    from 21deg,
+    transparent 0deg,
+    rgba(255, 240, 200, 0.18) 4deg,
+    transparent 10deg,
+    transparent 64deg,
+    rgba(255, 240, 200, 0.14) 69deg,
+    transparent 76deg,
+    transparent 118deg,
+    rgba(255, 240, 200, 0.2) 123deg,
+    transparent 129deg,
+    transparent 199deg,
+    rgba(255, 240, 200, 0.16) 204deg,
+    transparent 211deg,
+    transparent 262deg,
+    rgba(255, 240, 200, 0.2) 266deg,
+    transparent 272deg,
+    transparent 360deg
+  );
+  filter: blur(0.9px);
 }
 
 /* 扉の奥から差し込む金色の光（開くほど強く） */
