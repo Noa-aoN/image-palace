@@ -3,8 +3,8 @@ import Link from 'next/link'
 export function AuthFooter() {
   return (
     <footer
-      className="py-4 text-center text-xs text-muted-foreground"
-      style={{ borderTop: '1px solid var(--palace)' }}
+      className="relative z-10 py-4 text-center text-xs text-muted-foreground"
+      style={{ borderTop: '1px solid var(--palace)', backgroundColor: 'var(--ivory)' }}
     >
       <p>
         <Link href="/terms" className="hover:underline">利用規約</Link>

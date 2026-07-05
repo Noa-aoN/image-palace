@@ -44,7 +44,7 @@ type RoadBackgroundProps = {
   fadeTop?: boolean
   /** 最後のセクション用: 下端（フッターとの境界）で道をフェードアウトさせる */
   fadeBottom?: boolean
-  /** 最初のセクション用: 道の出現前の余白に渡鴉＋足跡の誘導アニメーションを出す */
+  /** 最初のセクション用: 道の出現前の余白に足跡の誘導アニメーションを出す */
   intro?: boolean
 }
 
@@ -77,13 +77,15 @@ export function RoadBackground({ fadeTop, fadeBottom, intro }: RoadBackgroundPro
     let topOutLen = 1
     let dimLen = 1
     let growLen = 1
+    let glowLen = 1
+    let glowZoomLen = 1
     const measure = () => {
       const hero = document.querySelector<HTMLElement>('.hero-track')
       const ih = window.innerHeight
       const heroEnd = hero ? hero.offsetTop + hero.offsetHeight - ih : 0
       revealStart = heroEnd + ih * 0.4
       revealLen = ih * 0.75
-      // 誘導演出（渡鴉＋足跡）はホワイトアウトが満ちる終盤（ヒーロー終端の
+      // 誘導演出（足跡）はホワイトアウトが満ちる終盤（ヒーロー終端の
       // 少し手前）にホワイトアウトの上へフェードインし、道リビールの少し
       // 手前から消え始めて concept のテキストが画面に入る頃には消えている
       introAppearStart = heroEnd - ih * 0.06
@@ -104,8 +106,13 @@ export function RoadBackground({ fadeTop, fadeBottom, intro }: RoadBackgroundPro
       topOutLen = ih * 0.4
       // 石畳の表示に伴う全体減光のスクロール長
       dimLen = ih * 0.3
-      // 足跡の初期成長（1足→3足）にかけるスクロール長。約100pxごとに1足増える
+      // 足跡の初期成長（1足→4足）にかけるスクロール長。約100pxごとに1足増える
       growLen = ih * 0.5
+      // 遠くの光のフェードイン長。足跡と同時に始まり、ゆっくり満ちる
+      glowLen = ih * 0.7
+      // 遠くの光のズーム長。半分サイズから、フェードより長くかけて
+      // スクロールと共に少しずつ等倍へ近づく
+      glowZoomLen = ih * 1.6
     }
 
     let raf = 0
@@ -116,6 +123,14 @@ export function RoadBackground({ fadeTop, fadeBottom, intro }: RoadBackgroundPro
       // 初回リビール（0=奥の霞だけ → 1=全表示）。JS 非駆動時は CSS 既定の 1（全表示）。
       const reveal = Math.min(1, Math.max(0, (window.scrollY - revealStart) / revealLen))
       el.style.setProperty('--road-reveal', reveal.toFixed(3))
+      // 遠くの光の可視度。足跡と同じタイミングからゆっくり満ち、以降は 1 のまま
+      // ＝全セクションのステージで道の先に灯り続ける（フッターでは
+      // fade-bottom マスクにより道と一緒に消える）
+      const glow = Math.min(1, Math.max(0, (window.scrollY - walkStart) / glowLen))
+      el.style.setProperty('--road-glow', glow.toFixed(3))
+      // ズーム進行（0=半分 → 1=等倍）。フェードより長くゆっくり
+      const glowZoom = Math.min(1, Math.max(0, (window.scrollY - walkStart) / glowZoomLen))
+      el.style.setProperty('--road-glowz', glowZoom.toFixed(3))
       // 誘導演出の可視度（フェードイン × フェードアウト）。道本体とは独立した
       // 専用要素に書き込む（道側の変数・描画には影響しない）。
       // JS 非駆動時は CSS 既定の 0（非表示）
@@ -124,14 +139,12 @@ export function RoadBackground({ fadeTop, fadeBottom, intro }: RoadBackgroundPro
         const fade = Math.min(1, Math.max(0, (window.scrollY - introFadeStart) / introFadeLen))
         // レイヤー全体はホワイトアウト終盤のフェードインのみ担当
         introRef.current.style.setProperty('--road-intro', appear.toFixed(3))
-        // 渡鴉の退場（道リビール前に霞へ消える）
-        introRef.current.style.setProperty('--road-out', (1 - fade).toFixed(3))
         // 周回進行（周数・上限なし）。CSS 側で mod(walkc + base, 1) が
         // 各足跡の周回座標 c になる。戻せば逆流
         const walkC = Math.max(0, (window.scrollY - walkStart) / walkLen)
         introRef.current.style.setProperty('--road-walkc', walkC.toFixed(4))
-        // 初期成長: 表示窓を手前(0.13)から奥(0.42)へ広げ、1足→3足へ1つずつ増やす
-        const grow = Math.min(0.42, 0.13 + (Math.max(0, window.scrollY - walkStart) / growLen) * 0.52)
+        // 初期成長: 表示窓を手前(0.13)から奥(0.545)へ広げ、1足→4足へ1つずつ増やす
+        const grow = Math.min(0.545, 0.13 + (Math.max(0, window.scrollY - walkStart) / growLen) * 0.52)
         introRef.current.style.setProperty('--road-grow', grow.toFixed(3))
         // 足跡の退場進行。同じしきい値を使うことで手前の一歩から順番に消える
         introRef.current.style.setProperty('--road-walkout', fade.toFixed(3))
@@ -141,6 +154,9 @@ export function RoadBackground({ fadeTop, fadeBottom, intro }: RoadBackgroundPro
         // 石畳が表示され始めたら足跡全体をさらに淡くする（1 → 0.55）
         const dim = 1 - 0.45 * Math.min(1, Math.max(0, (window.scrollY - revealStart) / dimLen))
         introRef.current.style.setProperty('--road-dim', dim.toFixed(3))
+        // 遠くの光（ホワイトアウト上のイントロ側にも同じ値を書く）
+        introRef.current.style.setProperty('--road-glow', glow.toFixed(3))
+        introRef.current.style.setProperty('--road-glowz', glowZoom.toFixed(3))
       }
     }
     const onScroll = () => {
@@ -212,24 +228,24 @@ export function RoadBackground({ fadeTop, fadeBottom, intro }: RoadBackgroundPro
             )}
           </div>
         </div>
+        {/* 道の先に灯る遠くの淡い光。intro インスタンスはクリップ外の
+            .road-intro__glow が同位置に描くため二重にしない */}
+        {!intro && <span className="road-bg__glow" />}
         {/* 上端（地平線まわり）を強くぼかして遠くへ霞ませる */}
         <div className="road-blur road-blur--top" />
         {/* 下端の軽いブラー帯（HA ヒーローの hero-blur 踏襲。手前の被写界深度） */}
         <div className="road-blur" />
       </div>
     </div>
-    {/* 道の出現前の誘導演出（渡鴉＋足跡）。.road-bg のクリップ外・ビューポート
+    {/* 道の出現前の誘導演出（足跡＋遠くの光）。.road-bg のクリップ外・ビューポート
         固定の兄弟レイヤーとして描画するため、ホワイトアウト（ヒーロー側）の上にも
         全画面で表示できる。可視度は専用の --road-intro（introRef に直接書き込み）
         で制御し、道本体の変数・描画には一切影響しない */}
     {intro && (
       <div ref={introRef} className="road-intro" aria-hidden>
-        {/* 渡鴉は飛行 keyframes が opacity を持つため、退場フェードは外側の
-            ホルダー（--road-out）で掛ける */}
-        <span className="road-intro__raven-holder">
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src="/hero-raven.png" alt="" decoding="async" loading="lazy" className="road-intro__raven" />
-        </span>
+        {/* 道の先（消失点の上）に灯る遠くの淡い光。足跡と同じタイミングで
+            --road-glow によりゆっくり浮かび上がり、以降のセクションでも灯り続ける */}
+        <span className="road-intro__glow" />
         {INTRO_STEPS.map((st) => (
           <span
             key={st.i}

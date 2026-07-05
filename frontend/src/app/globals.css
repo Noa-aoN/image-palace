@@ -1002,14 +1002,13 @@
   -webkit-mask-image: linear-gradient(to bottom, #000 0%, rgba(0, 0, 0, 0.55) 55%, transparent 100%);
   mask-image: linear-gradient(to bottom, #000 0%, rgba(0, 0, 0, 0.55) 55%, transparent 100%);
 }
-/* 道の出現前の誘導演出（渡鴉＋足跡）。concept セクションの intro
+/* 道の出現前の誘導演出（足跡）。concept セクションの intro
    インスタンスだけに描画される。.road-bg のクリップ外・ビューポート固定の
    兄弟レイヤーなので、ホワイトアウトが満ちる終盤からホワイトアウトの上に
    全画面で表示できる。レイヤーの可視度は JS が書く --road-intro
-   （ホワイトアウト終盤のフェードインのみ）。退場は個別に行う:
-   足跡は --road-walkout で手前から順に、渡鴉は --road-out で霞へ消え、
-   concept のテキストが画面に入る頃には消えている。スクロール戻しで再表示（可逆）。
-   JS 非駆動時は既定 0 ＝常に非表示 */
+   （ホワイトアウト終盤のフェードインのみ）。退場は --road-walkout で
+   手前から順に消え、concept のテキストが画面に入る頃には消えている。
+   スクロール戻しで再表示（可逆）。JS 非駆動時は既定 0 ＝常に非表示 */
 .road-intro {
   position: fixed;
   inset: 0;
@@ -1017,53 +1016,114 @@
   opacity: var(--road-intro, 0);
 }
 
-/* 先導する渡鴉。上部のふちからゆっくり入り、中央遠く（道の先の空）を
-   主な滞在域として旋回・方向転換しながら漂い、最後は上方向へ抜けて
-   フレームアウト → また上から現れる長尺ループ。
-   停止する瞬間のない、なだらかな飛行（linear ＋ 不可視区間で位置を戻す）。
-   左右反転は hero-raven 同様 step-end の極小区間で行い潰れを防ぐ。
-   遠くの鳥として薄く・ぼんやり見せる blur はホルダー側に掛け、
-   退場フェード（--road-out）も keyframes の opacity と衝突しないよう
-   ホルダー側で掛ける */
-.road-intro__raven-holder {
+/* 道の先（消失点の上）に灯る遠くの淡い光。小さなラジアルグラデーションの
+   光暈がゆっくり明滅する。足跡と同じタイミング（ホワイトアウト終盤）から
+   JS が書く --road-glow（0→1・約0.7画面分）でゆっくり浮かび上がる。
+   ホワイトアウト上は .road-intro__glow（クリップ外レイヤー）が、
+   以降の各セクションでは .road-bg__glow（各道ステージ内・道と同じ
+   クリップで連続）が同じ位置に描き、最後まで灯り続ける。
+   JS 非駆動時は既定 0＝非表示 */
+.road-bg__glow,
+.road-intro__glow {
+  position: absolute;
+  left: 50%;
+  top: 17.5%;
+  width: 150px;
+  height: 105px;
+  margin: -52px 0 0 -75px;
+  filter: blur(4px);
+  opacity: calc(0.4 * var(--road-glow, 0));
+  /* スクロールに合わせた微ズーム: 半分サイズから --road-glowz（フェードより
+     長い 0→1）で少しずつ等倍へ近づく＝奥から光が近づいてくる感じ */
+  transform: scale(calc(0.5 + 0.5 * var(--road-glowz, 0)));
+  transform-origin: 50% 50%;
+}
+/* コア: 開扉フレア（hero-flare__core）を踏襲した 白→暖金 の柔らかい発光。
+   不規則なリズムでふわっと強弱する（等間隔サインの単調さを避ける） */
+.road-bg__glow::before,
+.road-intro__glow::before {
+  content: '';
   position: absolute;
   inset: 0;
-  opacity: var(--road-out, 1);
-  filter: blur(1.1px);
-}
-.road-intro__raven {
-  position: absolute;
-  top: 0;
-  left: 0;
-  width: 230px;
-  height: auto;
-  opacity: 0;
+  background: radial-gradient(
+    closest-side,
+    rgba(255, 253, 246, 0.95),
+    rgba(247, 228, 185, 0.4) 42%,
+    rgba(247, 228, 185, 0) 72%
+  );
   transform-origin: 50% 50%;
+  animation: road-glow-flicker 7.5s ease-in-out infinite;
   will-change: transform, opacity;
-  /* linear + キーフレーム%を移動距離に比例配分＝区間の継ぎ目でも減速しない等速飛行 */
-  animation: road-intro-raven 22s linear infinite;
 }
-
-/* 中央遠く（道の先＝画面中央上方）を主な滞在域とし、ループ時間の大半を
-   その周辺の旋回・漂いに使う。0-18%: 上部からゆっくり降りて入る、
-   18-72%: 中央遠くで旋回・方向転換（滞在）、72-88%: 上方向へ抜けて退場、
-   88-100%: 不可視のまま上の開始位置へ戻る */
-@keyframes road-intro-raven {
-  0%    { transform: translate3d(32vw, -26vh, 0) scale(0.5, 0.5) rotate(6deg); opacity: 0; filter: brightness(1.1); }
-  7%    { opacity: 0.55; }
-  18%   { transform: translate3d(44vw, 9vh, 0) scale(0.56, 0.56) rotate(4deg); filter: brightness(1.08); }
-  26%   { transform: translate3d(52vw, 13vh, 0) scale(0.6, 0.6) rotate(-4deg); filter: brightness(1.06); }
-  33%   { transform: translate3d(56vw, 8vh, 0) scale(0.56, 0.56) rotate(-12deg); filter: brightness(1.08); animation-timing-function: step-end; }
-  33.5% { transform: translate3d(56vw, 8vh, 0) scale(-0.56, 0.56) rotate(10deg); filter: brightness(1.08); }
-  42%   { transform: translate3d(48vw, 5vh, 0) scale(-0.52, 0.52) rotate(-2deg); filter: brightness(1.1); }
-  49%   { transform: translate3d(42vw, 10vh, 0) scale(-0.56, 0.56) rotate(-10deg); filter: brightness(1.08); animation-timing-function: step-end; }
-  49.5% { transform: translate3d(42vw, 10vh, 0) scale(0.56, 0.56) rotate(8deg); filter: brightness(1.08); }
-  58%   { transform: translate3d(50vw, 15vh, 0) scale(0.62, 0.62) rotate(3deg); filter: brightness(1.05); }
-  65%   { transform: translate3d(55vw, 11vh, 0) scale(0.56, 0.56) rotate(-5deg); filter: brightness(1.07); }
-  72%   { transform: translate3d(58vw, 6vh, 0) scale(0.5, 0.5) rotate(-12deg); opacity: 0.5; filter: brightness(1.1); }
-  86%   { transform: translate3d(63vw, -26vh, 0) scale(0.42, 0.42) rotate(-16deg); opacity: 0.35; filter: brightness(1.14); }
-  87%   { opacity: 0; }
-  100%  { transform: translate3d(32vw, -26vh, 0) scale(0.5, 0.5) rotate(6deg); opacity: 0; filter: brightness(1.1); }
+/* アナモルフィックな水平光条（hero-flare__streak--h の遠景版）。
+   コアと同じリズムで横に伸縮し、フレアらしさを添える */
+.road-bg__glow::after,
+.road-intro__glow::after {
+  content: '';
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 210%;
+  height: 24%;
+  border-radius: 9999px;
+  background: linear-gradient(
+    90deg,
+    transparent 0%,
+    rgba(252, 240, 210, 0.4) 28%,
+    rgba(255, 252, 242, 0.7) 50%,
+    rgba(252, 240, 210, 0.4) 72%,
+    transparent 100%
+  );
+  filter: blur(3px);
+  transform: translate(-50%, -50%);
+  animation: road-glow-streak 7.5s ease-in-out infinite;
+  will-change: transform, opacity;
+}
+@keyframes road-glow-flicker {
+  0%,
+  100% {
+    transform: scale(1);
+    opacity: 0.82;
+  }
+  18% {
+    transform: scale(1.12);
+    opacity: 1;
+  }
+  38% {
+    transform: scale(1.02);
+    opacity: 0.78;
+  }
+  57% {
+    transform: scale(1.18);
+    opacity: 0.94;
+  }
+  76% {
+    transform: scale(1.04);
+    opacity: 0.75;
+  }
+}
+@keyframes road-glow-streak {
+  0%,
+  100% {
+    transform: translate(-50%, -50%) scaleX(0.72);
+    opacity: 0.45;
+  }
+  18% {
+    transform: translate(-50%, -50%) scaleX(1.06);
+    opacity: 0.85;
+  }
+  38% {
+    transform: translate(-50%, -50%) scaleX(0.86);
+    opacity: 0.5;
+  }
+  57% {
+    transform: translate(-50%, -50%) scaleX(1.16);
+    opacity: 0.78;
+  }
+  76% {
+    transform: translate(-50%, -50%) scaleX(0.8);
+    opacity: 0.45;
+  }
 }
 
 /* 足跡。ゴールドの足形（足裏＋かかとの2楕円 SVG）。
@@ -1091,12 +1151,12 @@
   background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 20 32'%3E%3Cellipse cx='10' cy='10.5' rx='6' ry='9.5' fill='%23AF8B48'/%3E%3Cellipse cx='10' cy='26.5' rx='4.4' ry='5' fill='%23AF8B48'/%3E%3C/svg%3E")
     center / contain no-repeat;
   filter: blur(calc((1.3 + (1 - var(--cs)) * 1.2) * 1px));
-  /* 手前側の約3足だけ表示: 奥側の表示境界は 1 - --road-grow。
-     --road-grow（JS書き込み 0.13→0.42）で境界が手前から奥へ広がり、
-     最初は1足 → スクロールに応じて1つずつ増えて最大3足になる。
-     以後は c ≈ 0.58 から湧いて手前へ流れ、下端で抜ける。濃さは距離連動で淡く */
+  /* 手前側の約4足だけ表示: 奥側の表示境界は 1 - --road-grow。
+     --road-grow（JS書き込み 0.13→0.545）で境界が手前から奥へ広がり、
+     最初は1足 → スクロールに応じて1つずつ増えて最大4足になる。
+     以後は c ≈ 0.455 から湧いて手前へ流れ、下端で抜ける。濃さは距離連動で淡く */
   opacity: calc(
-    clamp(0, (var(--c) - (1 - var(--road-grow, 0.42))) * 8, 1) *
+    clamp(0, (var(--c) - (1 - var(--road-grow, 0.545))) * 8, 1) *
     clamp(0, (1 - var(--c)) * 8, 1) *
     (1 - clamp(0, (var(--road-walkout, 0) - (1 - var(--c))) * 3, 1)) *
     (1 - clamp(0, (var(--road-topout, 0) - var(--c)) * 3, 1)) *
@@ -1125,4 +1185,56 @@
   .road-intro {
     display: none;
   }
+  .road-bg__glow {
+    opacity: 0;
+  }
+  .road-bg__glow::before,
+  .road-bg__glow::after {
+    animation: none;
+  }
+}
+
+/* 認証（登録/ログイン）画面の背景。大理石の門付き城壁をカードの背後に薄く敷き、
+   「宮殿の門の前に立つ」構図にする。門がカードを囲み、壁が左右へ画面幅いっぱい
+   に伸びる。下端は霞に溶かして接地の唐突さを消す */
+.auth-arch {
+  /* ビューポート全面に固定。フレックスの高さ制約から切り離し、門の縦のあふれを
+     ヘッダー(z-30,不透明)・フッターの裏へ回り込ませて隠す＝門自体は切れない */
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  /* 幅100%（比率固定）＝門の左右端がウィンドウ左右端に届く。
+     頂部をヘッダー直下(3.5rem)に固定し、伸びる分は上ではなく下（フッター側）へ。
+     余った下部はフッター裏へ回り込み、下端 blur/フェードで溶ける */
+  background: url('/auth-gate.webp') center 3.5rem / 100% auto no-repeat;
+  opacity: 0.5;
+  /* 下端は blur を主役にするため opacity フェードは浅め（base が唐突に消えないように） */
+  -webkit-mask-image: linear-gradient(to bottom, #000 0, #000 94%, transparent 100%);
+  mask-image: linear-gradient(to bottom, #000 0, #000 94%, transparent 100%);
+}
+/* 画面の左右端をぼかす帯。超横長ウィンドウで壁画像の端（切れ目）が
+   見える場合も、霞に溶けて目立たない */
+.auth-arch::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  backdrop-filter: blur(5px);
+  -webkit-backdrop-filter: blur(5px);
+  -webkit-mask-image: linear-gradient(90deg, #000 0%, transparent 12%, transparent 88%, #000 100%);
+  mask-image: linear-gradient(90deg, #000 0%, transparent 12%, transparent 88%, #000 100%);
+}
+/* 門下部の被写界深度 blur（LP の .hero-blur / .road-blur を踏襲）。
+   下ほど強く、上へフェード＝柱脚が手前でふわっとぼける */
+.auth-arch::after {
+  content: '';
+  position: absolute;
+  inset-inline: 0;
+  bottom: 0;
+  height: 34%;
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  /* 下端側は solid にして柱脚をしっかりぼかし、上へフェード（LP hero-blur 踏襲） */
+  -webkit-mask-image: linear-gradient(to top, #000 30%, transparent 100%);
+  mask-image: linear-gradient(to top, #000 30%, transparent 100%);
 }
