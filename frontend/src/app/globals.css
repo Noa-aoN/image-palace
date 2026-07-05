@@ -1247,9 +1247,9 @@
   z-index: 0;
   pointer-events: none;
   /* 幅100%（比率固定）＝門の左右端がウィンドウ左右端に届く。
-     頂部をヘッダー下から少し下げた位置(5rem)に固定し、伸びる分は上ではなく下（フッター側）へ。
-     余った下部はフッター裏へ回り込み、下端 blur/フェードで溶ける */
-  background: url('/auth-gate.webp') center 6.5rem / 100% auto no-repeat;
+     下端をビューポート底に接地（bottom 合わせ）＝どのウィンドウ比でも柱脚が底まで届き浮かない。
+     縦に余る分は上側（頂部より上）に出てヘッダー裏・空へ抜ける */
+  background: url('/auth-gate.webp') center bottom / 100% auto no-repeat;
   /* 背後の風景より前に立てるため、壁を実体化（白っぽさ回避＝ivory と混ざりすぎない） */
   opacity: 0.92;
   /* 下端は blur を主役にするため opacity フェードは浅め（base が唐突に消えないように） */
