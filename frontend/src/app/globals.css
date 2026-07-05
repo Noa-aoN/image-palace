@@ -556,14 +556,15 @@
   background: url('/hero-clouds.png') repeat-x;
   /* タイル幅を 60vw に固定し、ちょうど1タイル分送る＝継ぎ目の分からないシームレスループ */
   background-size: 60vw 100%;
-  /* フェードは3倍速（進捗~0.18で透明）。上方向の移動はさらに先行する4.5倍速・
-     -40vh で、まだ半透明のうちに帯ごと画面上端の外へ抜け切る（見えるフレームアウト）。
-     ズーム（1→1.45）も移動に同期。origin を帯の下端に置き、雲が頭上へ
+  /* フレームアウトは fade 0.08（スクロール数十px）から始め、3倍速でゆっくり
+     -40vh 上へ抜ける。フェードは2.4倍速で移動よりわずかに遅れて透明になるため、
+     まだ見えているうちに帯が動く（見えるフレームアウト）。
+     ズーム（1→1.75）も移動に同期。origin を帯の下端に置き、雲が頭上へ
      迫り出しながら抜けていく感じを強調する */
-  opacity: calc((1 - min(1, var(--fade, 0) * 3)) * 0.55);
+  opacity: calc((1 - min(1, max(0, var(--fade, 0) - 0.08) * 2.4)) * 0.55);
   transform-origin: 50% 100%;
-  transform: translate3d(0, calc(min(1, var(--fade, 0) * 4.5) * -40vh), 0)
-    scale(calc(1 + min(1, var(--fade, 0) * 4.5) * 0.45));
+  transform: translate3d(0, calc(min(1, max(0, var(--fade, 0) - 0.08) * 3) * -40vh), 0)
+    scale(calc(1 + min(1, max(0, var(--fade, 0) - 0.08) * 3) * 0.75));
   will-change: background-position, opacity, transform;
   animation: hero-cloud-drift 80s linear infinite;
 }
@@ -691,8 +692,8 @@
   }
   .hero-clouds {
     height: 22%;
-    /* デスクトップと同じ3倍速フェードに合わせる（等速だと移動とズレる） */
-    opacity: calc((1 - min(1, var(--fade, 0) * 3)) * 0.4);
+    /* デスクトップと同じ遅延つき2.4倍速フェードに合わせる（等速だと移動とズレる） */
+    opacity: calc((1 - min(1, max(0, var(--fade, 0) - 0.08) * 2.4)) * 0.4);
   }
 }
 
