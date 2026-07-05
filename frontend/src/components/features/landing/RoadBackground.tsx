@@ -26,7 +26,8 @@ const PILLAR_SIDES = ['l', 'r'] as const
 // スクロールで進む --road-walkc が全員の c を進める＝道と一緒に手前へ
 // 流れて下端で消え、奥へ回り込んで再び現れるループ。
 // 画面上の位置・サイズ・ぼかし・濃さはすべて CSS 側で c から導出する。
-// 左右（side）は base 順に交互＝空間上も左右交互の歩みになる
+// 左右（side）は base 順に交互＝空間上も左右交互の歩みになる。
+// 偶数個（8）にすることで周回の継ぎ目でも左右交互が崩れない
 const INTRO_STEPS = [
   { i: 0, side: 'r' },
   { i: 1, side: 'l' },
@@ -35,6 +36,7 @@ const INTRO_STEPS = [
   { i: 4, side: 'r' },
   { i: 5, side: 'l' },
   { i: 6, side: 'r' },
+  { i: 7, side: 'l' },
 ] as const
 
 type RoadBackgroundProps = {
@@ -226,7 +228,7 @@ export function RoadBackground({ fadeTop, fadeBottom, intro }: RoadBackgroundPro
           <span
             key={st.i}
             className={`road-intro__step road-intro__step--${st.side}`}
-            style={{ '--step-base': st.i / 7 } as CSSProperties}
+            style={{ '--step-base': st.i / 8 } as CSSProperties}
           />
         ))}
       </div>
