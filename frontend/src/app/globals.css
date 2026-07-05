@@ -825,10 +825,10 @@
 /* 最初のセクションのみ: ヒーローとの境界で道をフェードイン。
    セクション間の境界はステージが同一ビューのためフェード不要（完全に連続する） */
 .road-bg--fade-top {
-  /* ドア全開→道の登場の間にひと呼吸置く（4%までは完全に無、15%で全開）。
-     初出の18%は遅すぎ・10%は早すぎたため中間に調整 */
-  -webkit-mask-image: linear-gradient(to bottom, transparent 4%, #000 15%);
-  mask-image: linear-gradient(to bottom, transparent 4%, #000 15%);
+  /* ドア全開→道の登場の間のアイボリーの「間」。7%までは完全に無、18%で全開
+     （10%=早い・4-15%=やや短い、を経て +3% 延長で調整） */
+  -webkit-mask-image: linear-gradient(to bottom, transparent 7%, #000 18%);
+  mask-image: linear-gradient(to bottom, transparent 7%, #000 18%);
 }
 /* 最後のセクションのみ: フッターとの境界で道をフェードアウト */
 .road-bg--fade-bottom {
