@@ -1213,16 +1213,21 @@
   -webkit-mask-image: linear-gradient(to bottom, #000 0, #000 94%, transparent 100%);
   mask-image: linear-gradient(to bottom, #000 0, #000 94%, transparent 100%);
 }
-/* 画面の左右端をぼかす帯。超横長ウィンドウで壁画像の端（切れ目）が
-   見える場合も、霞に溶けて目立たない */
+/* 左右端＋上端をぼかす帯（弱め blur 5px）。左右は超横長での壁の切れ目を霞に溶かし、
+   上端は門の頂部（ペディメント）付近をわずかにぼかす。2つのマスク層の和集合（既定の add 合成）で
+   「左右エッジ」＋「上端16%の帯」を露出させ、同一 backdrop-filter を適用する */
 .auth-arch::before {
   content: '';
   position: absolute;
   inset: 0;
   backdrop-filter: blur(5px);
   -webkit-backdrop-filter: blur(5px);
-  -webkit-mask-image: linear-gradient(90deg, #000 0%, transparent 12%, transparent 88%, #000 100%);
-  mask-image: linear-gradient(90deg, #000 0%, transparent 12%, transparent 88%, #000 100%);
+  -webkit-mask-image:
+    linear-gradient(90deg, #000 0%, transparent 12%, transparent 88%, #000 100%),
+    linear-gradient(to bottom, #000 0%, transparent 16%);
+  mask-image:
+    linear-gradient(90deg, #000 0%, transparent 12%, transparent 88%, #000 100%),
+    linear-gradient(to bottom, #000 0%, transparent 16%);
 }
 /* 門下部の被写界深度 blur（LP の .hero-blur / .road-blur を踏襲）。
    下ほど強く、上へフェード＝柱脚が手前でふわっとぼける */
