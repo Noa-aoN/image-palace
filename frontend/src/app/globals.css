@@ -134,7 +134,9 @@
 
 /* --- LP ヒーロー：スクロール連動ズーム（useHeroZoom が --zoom/--fade/--blend を駆動） --- */
 :root {
-  --hero-track-vh: 160vh;
+  /* 175vh: 扉全開(進捗0.85)後にも十分なスクロール余韻を残し、
+     ホワイトアウト〜次セクションへの接続をゆっくり馴染ませる */
+  --hero-track-vh: 175vh;
   /* 扉の青ピクセル解析で実測: 画像内の扉中心 x≈50% / y≈63%。
      object-position をこの値にすると全画面比で扉が viewport の同位置に出る＝
      focal point・オーバーレイと一致する。 */
@@ -144,6 +146,8 @@
   --door-h: 9.6vh;
   --door-aspect: 0.594;
   --door-open-deg: 95deg;
+  /* 扉スラブの厚み（片扉幅 約2.85vh の8%程度）。--zoom 拡大に乗って見た目も太る */
+  --door-thick: 0.225vh;
 }
 
 .hero-track {
@@ -197,36 +201,261 @@
   will-change: transform;
 }
 
-.hero-door {
+/* 扉パネル＝厚みエッジを持つ3D板。ヒンジ軸で回転し、面（img）とエッジを一緒に運ぶ */
+.hero-door-panel {
   position: absolute;
   top: 0;
   height: 100%;
   width: 50%;
+  transform-style: preserve-3d;
+  will-change: transform;
+}
+/* 左扉=左ヒンジ。継ぎ目(右端)を中央に寄せ、左軸で手前へ開く（外開き） */
+.hero-door-panel--left {
+  left: 0;
+  transform-origin: left center;
+  transform: rotateY(calc(var(--dooropen, 0) * var(--door-open-deg) * -1));
+}
+/* 右扉=右ヒンジ。継ぎ目(左端)を中央に寄せ、右軸で手前へ開く（外開き） */
+.hero-door-panel--right {
+  right: 0;
+  transform-origin: right center;
+  transform: rotateY(calc(var(--dooropen, 0) * var(--door-open-deg)));
+}
+
+.hero-door-face {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
   /* 細長い開口部にあわせて充填（素材より細く）。継ぎ目側を中央へ */
   object-fit: fill;
   backface-visibility: hidden;
-  /* 背景と同じ blur＋彩度を落とし暖色寄せで風景に馴染ませる＋落ち影で重み＋開くほど面が陰る */
+  will-change: filter;
+}
+.hero-door-face--left {
+  object-position: right center;
+}
+.hero-door-face--right {
+  object-position: left center;
+}
+/* 前面: スラブ厚の半分だけ手前へ。
+   背景と同じ blur＋彩度を落とし暖色寄せで風景に馴染ませる＋落ち影で重み＋開くほど面が陰る */
+.hero-door-face--front {
+  transform: translateZ(calc(var(--door-thick) / 2));
   filter: blur(var(--blurpx, 0px))
     saturate(0.8) sepia(0.08)
     brightness(calc(1.04 - var(--dooropen, 0) * 0.28))
     drop-shadow(0 6px 16px rgba(18, 16, 32, 0.5));
-  will-change: transform, filter;
+}
+/* 背面: 180°回転（自動で鏡像）で厚みの奥側に。内側なので暗く沈める */
+.hero-door-face--back {
+  transform: rotateY(180deg) translateZ(calc(var(--door-thick) / 2));
+  filter: blur(var(--blurpx, 0px)) saturate(0.55) brightness(0.55);
 }
 
-/* 左扉=左ヒンジ。継ぎ目(右端)を中央に寄せ、左軸で奥へ開く */
-.hero-door--left {
-  left: 0;
-  object-position: right center;
-  transform-origin: left center;
-  transform: rotateY(calc(var(--dooropen, 0) * var(--door-open-deg)));
+/* 扉の木口（4辺）。前面(z=+t/2)と背面(z=-t/2)を繋ぐ面で、開くほど見えてくる。
+   扉画像（青漆＋金）に合わせた濃紺のトーン */
+.hero-door-edge {
+  position: absolute;
+  background: linear-gradient(to bottom, #35476b, #22304d 55%, #172239);
 }
-
-/* 右扉=右ヒンジ。継ぎ目(左端)を中央に寄せ、右軸で奥へ開く */
-.hero-door--right {
+/* 継ぎ目側の縦木口: 端の外側中心に置いてから90°立てる */
+.hero-door-edge--seam-left {
+  top: 0;
   right: 0;
-  object-position: left center;
-  transform-origin: right center;
-  transform: rotateY(calc(var(--dooropen, 0) * var(--door-open-deg) * -1));
+  width: var(--door-thick);
+  height: 100%;
+  transform: translateX(calc(var(--door-thick) / 2)) rotateY(90deg);
+}
+.hero-door-edge--seam-right {
+  top: 0;
+  left: 0;
+  width: var(--door-thick);
+  height: 100%;
+  transform: translateX(calc(var(--door-thick) / -2)) rotateY(90deg);
+}
+/* 上下の木口（視線がほぼ水平なので細く見える程度だが、開いた時の輪郭が締まる） */
+.hero-door-edge--top {
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: var(--door-thick);
+  background: #2b3a5c;
+  transform: translateY(calc(var(--door-thick) / -2)) rotateX(90deg);
+}
+.hero-door-edge--bottom {
+  bottom: 0;
+  left: 0;
+  width: 100%;
+  height: var(--door-thick);
+  background: #172239;
+  transform: translateY(calc(var(--door-thick) / 2)) rotateX(90deg);
+}
+
+/* 開扉に連動するフレア。--flare は扉が1/4開いてから smoothstep で立ち上がる。
+   微小 blur はコンテナの --zoom 拡大に乗って増幅されるため小さい値でよい */
+.hero-flare {
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  pointer-events: none;
+  --flare: calc(max(0, var(--dooropen, 0) - 0.25) / 0.75);
+  opacity: calc(var(--flare) * var(--flare) * (3 - 2 * var(--flare)));
+}
+/* コア: 白→暖金→透明の多段グラデで柔らかく発光 */
+.hero-flare__core {
+  position: absolute;
+  left: 50%;
+  top: 44%;
+  width: 200%;
+  aspect-ratio: 1;
+  transform: translate(-50%, -50%) scale(calc(0.5 + var(--flare) * 0.9));
+  background: radial-gradient(
+    circle,
+    rgba(255, 255, 252, 0.98) 0%,
+    rgba(255, 248, 228, 0.85) 9%,
+    rgba(255, 234, 178, 0.45) 24%,
+    rgba(255, 216, 130, 0.16) 42%,
+    rgba(255, 210, 120, 0) 60%
+  );
+  filter: blur(0.4px);
+}
+/* リングハロ（レンズの淡い輪） */
+.hero-flare__halo {
+  position: absolute;
+  left: 50%;
+  top: 44%;
+  width: 280%;
+  aspect-ratio: 1;
+  transform: translate(-50%, -50%) scale(calc(0.7 + var(--flare) * 0.5));
+  background: radial-gradient(
+    circle,
+    transparent 38%,
+    rgba(255, 233, 170, 0.1) 46%,
+    rgba(255, 240, 196, 0.16) 50%,
+    rgba(255, 233, 170, 0.08) 54%,
+    transparent 62%
+  );
+  filter: blur(0.6px);
+}
+/* アナモルフィックな光条（水平=ハロ＋芯の2層、垂直=淡い1層） */
+.hero-flare__streak {
+  position: absolute;
+  left: 50%;
+  top: 44%;
+  border-radius: 9999px;
+}
+.hero-flare__streak--h {
+  width: 620%;
+  height: 7%;
+  transform: translate(-50%, -50%) scaleX(calc(0.25 + var(--flare) * 0.75));
+  background: linear-gradient(
+    90deg,
+    transparent 0%,
+    rgba(255, 236, 186, 0.22) 22%,
+    rgba(255, 243, 205, 0.6) 50%,
+    rgba(255, 236, 186, 0.22) 78%,
+    transparent 100%
+  );
+  filter: blur(0.8px);
+}
+.hero-flare__streak--h-core {
+  width: 480%;
+  height: 1.6%;
+  transform: translate(-50%, -50%) scaleX(calc(0.2 + var(--flare) * 0.8));
+  background: linear-gradient(
+    90deg,
+    transparent 0%,
+    rgba(255, 252, 240, 0.55) 28%,
+    rgba(255, 255, 250, 0.95) 50%,
+    rgba(255, 252, 240, 0.55) 72%,
+    transparent 100%
+  );
+  filter: blur(0.3px);
+}
+.hero-flare__streak--v {
+  width: 7%;
+  height: 260%;
+  transform: translate(-50%, -50%) scaleY(calc(0.3 + var(--flare) * 0.7));
+  background: linear-gradient(
+    180deg,
+    transparent 0%,
+    rgba(255, 240, 196, 0.16) 26%,
+    rgba(255, 243, 205, 0.42) 50%,
+    rgba(255, 240, 196, 0.16) 74%,
+    transparent 100%
+  );
+  filter: blur(0.8px);
+}
+/* 放射状の光芒2層。太さ・角度が不規則なスポークを重ね、逆回転させて自然な星型に */
+.hero-flare__rays {
+  position: absolute;
+  left: 50%;
+  top: 44%;
+  aspect-ratio: 1;
+  border-radius: 50%;
+  -webkit-mask-image: radial-gradient(circle, #000 8%, rgba(0, 0, 0, 0.5) 34%, transparent 58%);
+  mask-image: radial-gradient(circle, #000 8%, rgba(0, 0, 0, 0.5) 34%, transparent 58%);
+}
+.hero-flare__rays--a {
+  width: 480%;
+  transform: translate(-50%, -50%) rotate(calc(var(--flare) * 10deg))
+    scale(calc(0.6 + var(--flare) * 0.6));
+  background: conic-gradient(
+    from 0deg,
+    transparent 0deg,
+    rgba(255, 244, 214, 0.4) 2deg,
+    transparent 6deg,
+    transparent 47deg,
+    rgba(255, 238, 196, 0.26) 50deg,
+    transparent 55deg,
+    transparent 86deg,
+    rgba(255, 246, 220, 0.45) 89deg,
+    transparent 92deg,
+    transparent 132deg,
+    rgba(255, 238, 196, 0.2) 136deg,
+    transparent 141deg,
+    transparent 178deg,
+    rgba(255, 244, 214, 0.38) 181deg,
+    transparent 185deg,
+    transparent 226deg,
+    rgba(255, 238, 196, 0.24) 229deg,
+    transparent 234deg,
+    transparent 268deg,
+    rgba(255, 246, 220, 0.42) 271deg,
+    transparent 274deg,
+    transparent 314deg,
+    rgba(255, 238, 196, 0.18) 318deg,
+    transparent 323deg,
+    transparent 360deg
+  );
+  filter: blur(0.5px);
+}
+.hero-flare__rays--b {
+  width: 390%;
+  transform: translate(-50%, -50%) rotate(calc(var(--flare) * -7deg))
+    scale(calc(0.65 + var(--flare) * 0.5));
+  background: conic-gradient(
+    from 21deg,
+    transparent 0deg,
+    rgba(255, 240, 200, 0.18) 4deg,
+    transparent 10deg,
+    transparent 64deg,
+    rgba(255, 240, 200, 0.14) 69deg,
+    transparent 76deg,
+    transparent 118deg,
+    rgba(255, 240, 200, 0.2) 123deg,
+    transparent 129deg,
+    transparent 199deg,
+    rgba(255, 240, 200, 0.16) 204deg,
+    transparent 211deg,
+    transparent 262deg,
+    rgba(255, 240, 200, 0.2) 266deg,
+    transparent 272deg,
+    transparent 360deg
+  );
+  filter: blur(0.9px);
 }
 
 /* 扉の奥から差し込む金色の光（開くほど強く） */
@@ -579,34 +808,117 @@
   }
 }
 
-/* LP: 「続く1本の道」。縦タイルの平坦テクスチャを repeat-y で敷き、background-position を
-   window.scrollY で動かすトレッドミル＝継ぎ目レスな無限ループ。全セクション同一オフセットで
-   1本の道が全ページを貫く。RoadBackground が --road-shift(px) を駆動。 */
+/* LP: 「続く1本の道」（3D遠近版・/dev/road-animations 案A採用）。
+   道のステージ（.road-bg__viewport）は position: fixed でビューポートに固定し、
+   親 .road-bg の clip-path でセクション範囲だけを見せる。全セクションのステージが
+   同一ビューを映すため境界で道が完全に連続し、「1つの道を進み続ける」ように見える。
+   テクスチャは repeat-y のトレッドミル＝継ぎ目レスな無限ループ。
+   RoadBackground が --road-shift(px) を駆動。 */
 .road-bg {
   position: absolute;
   inset: 0; /* セクション全体に道を通す */
   z-index: 0;
-  overflow: hidden;
   pointer-events: none;
-  /* 上端・下端ともなめらかにフェード（波型なし・直線グラデ） */
-  -webkit-mask-image: linear-gradient(to bottom, transparent 0%, #000 18%, #000 92%, transparent 100%);
-  mask-image: linear-gradient(to bottom, transparent 0%, #000 18%, #000 92%, transparent 100%);
+  /* overflow: hidden では fixed 子要素を切り抜けないため clip-path を使う */
+  clip-path: inset(0);
 }
-.road-bg__strip {
+/* 最初のセクションのみ: ヒーローとの境界で道をフェードイン。
+   セクション間の境界はステージが同一ビューのためフェード不要（完全に連続する） */
+.road-bg--fade-top {
+  /* ドア全開→道の登場の間のアイボリーの「間」。7%までは完全に無、18%で全開
+     （10%=早い・4-15%=やや短い、を経て +3% 延長で調整） */
+  -webkit-mask-image: linear-gradient(to bottom, transparent 7%, #000 18%);
+  mask-image: linear-gradient(to bottom, transparent 7%, #000 18%);
+}
+/* 最後のセクションのみ: フッターとの境界で道をフェードアウト */
+.road-bg--fade-bottom {
+  -webkit-mask-image: linear-gradient(to bottom, #000 88%, transparent 100%);
+  mask-image: linear-gradient(to bottom, #000 88%, transparent 100%);
+}
+/* ビューポート固定のステージ。全セクションで同じビューを共有する */
+.road-bg__viewport {
+  position: fixed;
+  inset: 0;
+}
+.road-bg__scene {
   position: absolute;
-  top: 0;
-  bottom: 0;
+  inset: 0;
+  perspective: 620px;
+  perspective-origin: 50% 32%;
+}
+.road-bg__plane {
+  position: absolute;
   left: 50%;
-  width: min(108%, 1110px); /* 元幅(72%)の約1.5倍 */
-  transform: translateX(-50%);
-  opacity: 0.6;
-  filter: blur(1px); /* 少し薄く・軽くぼかして背景に馴染ませる */
-  /* 角度なしのまっすぐな道。repeat-y を background-position で縦に流すだけ */
+  top: 26%; /* この高さが地平線になる */
+  width: 720px;
+  height: 2160px; /* タイル高(1080)の2枚分。柱の折り返し(mod 2160)と同期 */
+  margin-left: -360px;
+  transform-origin: 50% 0;
+  transform: rotateX(72deg);
+  /* 柱を平面上の3D空間に立てる。opacity 等のグルーピングプロパティを
+     ここに置くと preserve-3d が無効化され柱が潰れるので、テクスチャは
+     子レイヤー .road-bg__road に分離して透過させる */
+  transform-style: preserve-3d;
+}
+.road-bg__road {
+  position: absolute;
+  inset: 0;
+  opacity: 0.55; /* コンテンツより控えめに。旧俯瞰版(0.6)よりやや薄く */
   background-image: url('/road.png');
   background-repeat: repeat-y;
-  background-size: 100% auto;
+  background-size: 720px 1080px; /* road.png は 2:3。1タイル=1080px で継ぎ目レス */
   background-position: center calc(var(--road-shift, 0) * 1px);
   will-change: background-position;
+  /* 道の果て（平面の上端＝地平線）が硬いエッジで浮かないよう、
+     平面座標で遠端をフェードさせて霞に溶かす。柱には掛けない */
+  -webkit-mask-image: linear-gradient(to bottom, transparent 0, #000 320px);
+  mask-image: linear-gradient(to bottom, transparent 0, #000 320px);
+}
+/* 両脇の柱。平面上の点 (left, --pillar-base + --road-shift) に底辺を置き、
+   rotateX(-72deg) で平面の傾きを打ち消して直立させる（底辺を軸に起こす）。
+   道と同じオフセットで手前へ流れ、平面長 2160 で折り返す。 */
+.road-bg__pillar {
+  position: absolute;
+  width: 140px;
+  height: 210px; /* 480x720(2:3) を幅140に合わせた高さ。底辺基準の配置に必要 */
+  top: -210px; /* 底辺を平面 y=0 に置き、translateY で道と同オフセットに送る */
+  transform-origin: 50% 100%;
+  /* 底辺を軸に rotateX(-72deg) で直立させてから、道と同じ量だけ手前へ流す。
+     top ではなく transform で動かしてレイアウトを発生させない */
+  transform: translateY(calc(mod(var(--pillar-base, 0) + var(--road-shift, 0), 2160) * 1px))
+    rotateX(-72deg);
+  /* 出現は霞からゆっくり: 平面位置 0(地平線)〜720px で透明度を 0→0.75 に
+     立ち上げる。遠い柱ほど薄くなり、列全体が距離のグラデーションになる */
+  opacity: calc(min(mod(var(--pillar-base, 0) + var(--road-shift, 0), 2160) / 720, 1) * 0.75);
+  will-change: transform, opacity;
+}
+/* 柱の実体。下部は sharp→blur のクロスフェードで接地を道に馴染ませ、
+   上部はさらに強いブラー層で空へ霞ませる */
+.road-bg__pillar-img {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+}
+.road-bg__pillar-img--sharp {
+  -webkit-mask-image: linear-gradient(to bottom, transparent 6%, #000 34%, #000 76%, transparent 97%);
+  mask-image: linear-gradient(to bottom, transparent 6%, #000 34%, #000 76%, transparent 97%);
+}
+.road-bg__pillar-img--blur {
+  filter: blur(3px);
+  -webkit-mask-image: linear-gradient(to top, #000 6%, transparent 26%);
+  mask-image: linear-gradient(to top, #000 6%, transparent 26%);
+}
+.road-bg__pillar-img--blur-top {
+  filter: blur(5px);
+  -webkit-mask-image: linear-gradient(to bottom, #000 10%, transparent 38%);
+  mask-image: linear-gradient(to bottom, #000 10%, transparent 38%);
+}
+.road-bg__pillar--l {
+  left: 145px; /* 中心 215px = 道の左端(約240px)のすぐ外 */
+}
+.road-bg__pillar--r {
+  left: 440px; /* 中心 510px = 道の右端(約485px)のすぐ外 */
 }
 /* 下端の軽いブラー帯（HA ヒーローの hero-blur を踏襲）。下ほど強く上へフェード。 */
 .road-blur {
@@ -621,19 +933,21 @@
   -webkit-mask-image: linear-gradient(to top, #000 0%, transparent 100%);
   mask-image: linear-gradient(to top, #000 0%, transparent 100%);
 }
-/* 上端（道の一番奥）を強くぼかして遠くへ霞ませる。上ほど強く下へフェード。 */
+/* 上端（道の一番奥）を強くぼかして遠くへ霞ませる。上ほど強く下へフェード。
+   ステージは画面固定＝画面上の高さがそのまま距離なので、この帯が
+   「遠い柱・道ほど強いブラー」（空気遠近）を最終解像度で実現する */
 .road-blur--top {
   top: 0;
   bottom: auto;
-  height: 30%;
+  height: 44%;
   backdrop-filter: blur(9px);
   -webkit-backdrop-filter: blur(9px);
-  -webkit-mask-image: linear-gradient(to bottom, #000 0%, transparent 100%);
-  mask-image: linear-gradient(to bottom, #000 0%, transparent 100%);
+  -webkit-mask-image: linear-gradient(to bottom, #000 0%, rgba(0, 0, 0, 0.55) 55%, transparent 100%);
+  mask-image: linear-gradient(to bottom, #000 0%, rgba(0, 0, 0, 0.55) 55%, transparent 100%);
 }
 @media (prefers-reduced-motion: reduce) {
-  /* スクロール連動を止め静止（背景は既定位置で表示） */
-  .road-bg__strip {
+  /* スクロール連動を止め静止（背景・柱は既定位置で表示） */
+  .road-bg__plane {
     background-position: center 0;
   }
 }

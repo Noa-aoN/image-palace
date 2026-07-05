@@ -11,8 +11,9 @@ import { ScrollCue } from './ScrollCue'
 // LP ヒーロー：スクロールで画像中央のドアへズームし、終盤に次セクションへブレンドする。
 // 構造: track(縦長) → stage(sticky, 100svh) → 画像/ぼかし/スクリム/ブレンド + テキスト。
 export function HeroScrollZoom() {
-  // doorOpenEnd を 0.95 に上げ、ドアが開き切った直後にヒーローを抜けて次セクションの道へ繋ぐ
-  const { trackRef, stageRef, reduced } = useHeroZoom({ targetScale: 9, blurStart: 0.42, doorOpenEnd: 0.95 })
+  // doorOpenEnd 0.85: 扉が開き切ったあとトラック終端まで余韻を残し（track 175vh とセット）、
+  // ホワイトアウトの中をゆっくり進んでから次セクションの道へ繋ぐ
+  const { trackRef, stageRef, reduced } = useHeroZoom({ targetScale: 9, blurStart: 0.42, doorOpenEnd: 0.85 })
 
   // セッションが残っているログイン済みユーザーには CTA を出し分ける。
   // ハイドレーション確定前は認証UIを出さない（Header と同じ hasHydrated 方式でちらつき防止）。
@@ -42,13 +43,41 @@ export function HeroScrollZoom() {
         {/* 背景画像（ズーム対象・最背面） */}
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img src="/hero-palace.jpg?v=2" alt="" aria-hidden fetchPriority="high" decoding="async" className="hero-zoom" />
-        {/* 宮殿の扉オーバーレイ：focal point に重ねズームで拡大→スクロールで観音開き・奥から光 */}
+        {/* 宮殿の扉オーバーレイ：focal point に重ねズームで拡大→スクロールで観音開き・奥から光。
+            扉は厚みエッジ付きの3Dパネル。開くほどフレア（光条）が扉の奥から輝く */}
         <div aria-hidden className="hero-doors">
           <div className="hero-door-glow" />
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src="/hero-door-left.png?v=2" alt="" decoding="async" className="hero-door hero-door--left" />
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src="/hero-door-right.png?v=2" alt="" decoding="async" className="hero-door hero-door--right" />
+          {/* 各扉は前面/背面＋4辺の木口からなる3Dスラブ。既存の扉画像を前面・背面
+              （鏡像・暗め）のテクスチャとして使い、厚みのある板として開閉する */}
+          <div className="hero-door-panel hero-door-panel--left">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src="/hero-door-left.png?v=2" alt="" decoding="async" className="hero-door-face hero-door-face--front hero-door-face--left" />
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src="/hero-door-left.png?v=2" alt="" decoding="async" className="hero-door-face hero-door-face--back hero-door-face--left" />
+            <span className="hero-door-edge hero-door-edge--seam-left" />
+            <span className="hero-door-edge hero-door-edge--top" />
+            <span className="hero-door-edge hero-door-edge--bottom" />
+          </div>
+          <div className="hero-door-panel hero-door-panel--right">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src="/hero-door-right.png?v=2" alt="" decoding="async" className="hero-door-face hero-door-face--front hero-door-face--right" />
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src="/hero-door-right.png?v=2" alt="" decoding="async" className="hero-door-face hero-door-face--back hero-door-face--right" />
+            <span className="hero-door-edge hero-door-edge--seam-right" />
+            <span className="hero-door-edge hero-door-edge--top" />
+            <span className="hero-door-edge hero-door-edge--bottom" />
+          </div>
+          {/* 開扉に連動して輝くフレア。不規則な光芒2層＋アナモルフィック光条（ハロ＋芯）＋
+              リングハロ＋コアの多層構成で、レンズフレアらしい柔らかい輝きにする */}
+          <div className="hero-flare">
+            <span className="hero-flare__rays hero-flare__rays--a" />
+            <span className="hero-flare__rays hero-flare__rays--b" />
+            <span className="hero-flare__streak hero-flare__streak--v" />
+            <span className="hero-flare__streak hero-flare__streak--h" />
+            <span className="hero-flare__streak hero-flare__streak--h-core" />
+            <span className="hero-flare__halo" />
+            <span className="hero-flare__core" />
+          </div>
         </div>
         {/* 流れる雲（上空・スクリムの下で馴染ませる。ズームでフェード） */}
         <div aria-hidden className="hero-clouds" />
