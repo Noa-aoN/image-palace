@@ -1202,9 +1202,23 @@
   z-index: 0;
   pointer-events: none;
   background: url('/auth-scene.webp') center / cover no-repeat;
-  /* 遠景ぼかし＋わずかに持ち上げ。scale で blur のにじみ端を画面外へ逃がす */
-  filter: blur(10px) saturate(0.92) brightness(1.03);
+  /* 遠景ぼかし＋わずかに持ち上げ。scale で blur のにじみ端を画面外へ逃がす。
+     全体のぼかしは少し弱める（10→8） */
+  filter: blur(8px) saturate(0.92) brightness(1.03);
   transform: scale(1.08);
+}
+/* 近景レイヤー：同じ風景を弱ぼかしで下側だけ重ね、下へ行くほどシャープにする
+   （手前＝道の足元がくっきり、奥＝山ほど霞む空気遠近） */
+.auth-scene--near {
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  background: url('/auth-scene.webp') center / cover no-repeat;
+  filter: blur(3px) saturate(0.92) brightness(1.03);
+  transform: scale(1.08);
+  -webkit-mask-image: linear-gradient(to top, #000 0%, #000 18%, transparent 60%);
+  mask-image: linear-gradient(to top, #000 0%, #000 18%, transparent 60%);
 }
 /* ivory スクリム（LP .hero-scrim 相当）。風景を palette に寄せ、主張を抑えて門・カードを立てる */
 .auth-scene::after {
@@ -1233,9 +1247,9 @@
   z-index: 0;
   pointer-events: none;
   /* 幅100%（比率固定）＝門の左右端がウィンドウ左右端に届く。
-     頂部をヘッダー直下(3.5rem)に固定し、伸びる分は上ではなく下（フッター側）へ。
+     頂部をヘッダー下から少し下げた位置(5rem)に固定し、伸びる分は上ではなく下（フッター側）へ。
      余った下部はフッター裏へ回り込み、下端 blur/フェードで溶ける */
-  background: url('/auth-gate.webp') center 3.5rem / 100% auto no-repeat;
+  background: url('/auth-gate.webp') center 6.5rem / 100% auto no-repeat;
   /* 背後の風景より前に立てるため、壁を実体化（白っぽさ回避＝ivory と混ざりすぎない） */
   opacity: 0.92;
   /* 下端は blur を主役にするため opacity フェードは浅め（base が唐突に消えないように） */
@@ -1253,10 +1267,21 @@
   -webkit-backdrop-filter: blur(5px);
   -webkit-mask-image:
     linear-gradient(90deg, #000 0%, transparent 12%, transparent 88%, #000 100%),
-    linear-gradient(to bottom, #000 0%, transparent 16%);
+    linear-gradient(to bottom, #000 0%, transparent 30%);
   mask-image:
     linear-gradient(90deg, #000 0%, transparent 12%, transparent 88%, #000 100%),
-    linear-gradient(to bottom, #000 0%, transparent 16%);
+    linear-gradient(to bottom, #000 0%, transparent 30%);
+}
+/* 乳白色フィルター（HA のようなやわらかい乳白トーン）。門とカードの間に敷き、
+   風景・門を薄いミルク色＋ごく軽いフロストで包んで柔らかく光らせる */
+.auth-veil {
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  background: rgba(255, 251, 244, 0.26);
+  backdrop-filter: blur(1.2px);
+  -webkit-backdrop-filter: blur(1.2px);
 }
 /* 門下部の被写界深度 blur（LP の .hero-blur / .road-blur を踏襲）。
    下ほど強く、上へフェード＝柱脚が手前でふわっとぼける */
