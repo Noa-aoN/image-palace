@@ -870,9 +870,27 @@
   background-position: center calc(var(--road-shift, 0) * 1px);
   will-change: background-position;
   /* 道の果て（平面の上端＝地平線）が硬いエッジで浮かないよう、
-     平面座標で遠端をフェードさせて霞に溶かす。柱には掛けない */
-  -webkit-mask-image: linear-gradient(to bottom, transparent 0, #000 320px);
-  mask-image: linear-gradient(to bottom, transparent 0, #000 320px);
+     平面座標で遠端をフェードさせて霞に溶かす。柱には掛けない。
+     さらに --road-reveal(0→1) で「見える範囲の手前側境界」を奥から手前へ進め、
+     最初の道セクションで道が奥からだんだん伸びてくる初回リビールを作る
+     （JS 非駆動・reduced 時は既定 1＝全表示） */
+  /* 注: perspective 620px のため画面に映るのは平面 y≈0〜650px のみ（それより
+     手前はカメラ背後）。リビール前線はこの可視ウィンドウ内で動かす。
+     r=0 では遠方の霞（0-320px のフェード帯）だけが薄く見え、r=1 で全表示 */
+  -webkit-mask-image: linear-gradient(
+    to bottom,
+    transparent 0,
+    #000 320px,
+    #000 calc(-50px + var(--road-reveal, 1) * 750px),
+    transparent calc(200px + var(--road-reveal, 1) * 750px)
+  );
+  mask-image: linear-gradient(
+    to bottom,
+    transparent 0,
+    #000 320px,
+    #000 calc(-50px + var(--road-reveal, 1) * 750px),
+    transparent calc(200px + var(--road-reveal, 1) * 750px)
+  );
 }
 /* 両脇の柱。平面上の点 (left, --pillar-base + --road-shift) に底辺を置き、
    rotateX(-72deg) で平面の傾きを打ち消して直立させる（底辺を軸に起こす）。
@@ -888,8 +906,17 @@
   transform: translateY(calc(mod(var(--pillar-base, 0) + var(--road-shift, 0), 2160) * 1px))
     rotateX(-72deg);
   /* 出現は霞からゆっくり: 平面位置 0(地平線)〜720px で透明度を 0→0.75 に
-     立ち上げる。遠い柱ほど薄くなり、列全体が距離のグラデーションになる */
-  opacity: calc(min(mod(var(--pillar-base, 0) + var(--road-shift, 0), 2160) / 720, 1) * 0.75);
+     立ち上げる。遠い柱ほど薄くなり、列全体が距離のグラデーションになる。
+     さらに道のリビール前線（320 + reveal×2200）が自分の位置に到達するまでは
+     透明のまま＝初回は前線が進むにつれ奥の柱から順に現れる */
+  opacity: calc(
+    min(mod(var(--pillar-base, 0) + var(--road-shift, 0), 2160) / 720, 1) * 0.75 *
+      clamp(
+        0,
+        (-50 + var(--road-reveal, 1) * 750 - mod(var(--pillar-base, 0) + var(--road-shift, 0), 2160)) / 150,
+        1
+      )
+  );
   will-change: transform, opacity;
 }
 /* 柱の実体。下部は sharp→blur のクロスフェードで接地を道に馴染ませ、

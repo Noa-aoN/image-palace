@@ -36,22 +36,43 @@ export function RoadBackground({ fadeTop, fadeBottom }: RoadBackgroundProps) {
     if (!el) return
     if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return
 
+    // 初回リビールの基準点: ヒーロー終端（sticky が解けて道が見え始める scrollY）。
+    // 全インスタンスが同じ値を参照することで固定ステージの同期が保たれる。
+    // ページ高の 0.7 倍分のスクロールで奥→手前へ道が伸びきる。
+    let revealStart = 0
+    let revealLen = 1
+    const measure = () => {
+      const hero = document.querySelector<HTMLElement>('.hero-track')
+      const ih = window.innerHeight
+      revealStart = hero ? hero.offsetTop + hero.offsetHeight - ih : 0
+      revealLen = ih * 0.7
+    }
+
     let raf = 0
     const update = () => {
       raf = 0
       // 下へスクロール＝道が手前(下)へ流れる＝前進。repeat-y が自動で折り返す。
       el.style.setProperty('--road-shift', (window.scrollY * SPEED).toFixed(1))
+      // 初回リビール（0=奥の霞だけ → 1=全表示）。JS 非駆動時は CSS 既定の 1（全表示）。
+      const reveal = Math.min(1, Math.max(0, (window.scrollY - revealStart) / revealLen))
+      el.style.setProperty('--road-reveal', reveal.toFixed(3))
     }
     const onScroll = () => {
       if (!raf) raf = requestAnimationFrame(update)
     }
 
+    const onResize = () => {
+      measure()
+      onScroll()
+    }
+
+    measure()
     update()
     window.addEventListener('scroll', onScroll, { passive: true })
-    window.addEventListener('resize', onScroll, { passive: true })
+    window.addEventListener('resize', onResize, { passive: true })
     return () => {
       window.removeEventListener('scroll', onScroll)
-      window.removeEventListener('resize', onScroll)
+      window.removeEventListener('resize', onResize)
       if (raf) cancelAnimationFrame(raf)
     }
   }, [])
