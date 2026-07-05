@@ -25,15 +25,17 @@ const PILLAR_SIDES = ['l', 'r'] as const
 // 収束しながら小さくなる。手前ほど左右に大きく開き・サイズも大きい。
 // 画面下端（92%）から道の最上部あたり（36%）まで歩幅も奥ほど詰まる（遠近感）。
 // i はスタガー用のインデックス（0 が最初に現れる手前の一歩）
+// 左右の開きは道と同じ遠近の平行線: 消失点（y≈20%）へ向かう2本の
+// 直線上に乗るよう、横ずれ量を (y - 20%) に比例させている
 const INTRO_STEPS = [
   { i: 0, x: '42%', y: '92%', s: 1.25, side: 'l' },
-  { i: 1, x: '57%', y: '81%', s: 1.05, side: 'r' },
-  { i: 2, x: '44.5%', y: '71%', s: 0.85, side: 'l' },
-  { i: 3, x: '55%', y: '62%', s: 0.68, side: 'r' },
+  { i: 1, x: '56.4%', y: '81%', s: 1.05, side: 'r' },
+  { i: 2, x: '44.7%', y: '71%', s: 0.85, side: 'l' },
+  { i: 3, x: '54.4%', y: '62%', s: 0.68, side: 'r' },
   { i: 4, x: '46.5%', y: '54%', s: 0.54, side: 'l' },
-  { i: 5, x: '53%', y: '47%', s: 0.42, side: 'r' },
-  { i: 6, x: '48.5%', y: '41%', s: 0.32, side: 'l' },
-  { i: 7, x: '51.3%', y: '36%', s: 0.25, side: 'r' },
+  { i: 5, x: '52.8%', y: '47%', s: 0.42, side: 'r' },
+  { i: 6, x: '47.8%', y: '41%', s: 0.32, side: 'l' },
+  { i: 7, x: '51.7%', y: '36%', s: 0.25, side: 'r' },
 ] as const
 
 type RoadBackgroundProps = {
@@ -70,6 +72,8 @@ export function RoadBackground({ fadeTop, fadeBottom, intro }: RoadBackgroundPro
     let introFadeLen = 1
     let walkStart = 0
     let walkLen = 1
+    let topOutStart = 0
+    let topOutLen = 1
     const measure = () => {
       const hero = document.querySelector<HTMLElement>('.hero-track')
       const ih = window.innerHeight
@@ -86,9 +90,13 @@ export function RoadBackground({ fadeTop, fadeBottom, intro }: RoadBackgroundPro
       introFadeStart = heroEnd + ih * 0.35
       introFadeLen = ih * 0.28
       // 足跡の歩行進行（スクロール連動・一回きり）。レイヤーが見え始める頃に
-      // 1歩目、0.2画面分のスクロールで最奥の一歩まで現れ切る
+      // 1歩目、0.35画面分のスクロールでゆっくり最奥の一歩まで現れ切る
       walkStart = heroEnd - ih * 0.1
-      walkLen = ih * 0.2
+      walkLen = ih * 0.35
+      // 道の表示が足跡に重なり始めるあたりから、奥（上）の足跡も道に
+      // 飲み込まれるように上から順に消していく
+      topOutStart = revealStart
+      topOutLen = ih * 0.3
     }
 
     let raf = 0
@@ -115,6 +123,9 @@ export function RoadBackground({ fadeTop, fadeBottom, intro }: RoadBackgroundPro
         introRef.current.style.setProperty('--road-walk', walk.toFixed(3))
         // 足跡の退場進行。同じしきい値を使うことで手前の一歩から順番に消える
         introRef.current.style.setProperty('--road-walkout', fade.toFixed(3))
+        // 道の重なりによる退場進行（奥＝上の足跡から順番に消える）
+        const topOut = Math.min(1, Math.max(0, (window.scrollY - topOutStart) / topOutLen))
+        introRef.current.style.setProperty('--road-topout', topOut.toFixed(3))
       }
     }
     const onScroll = () => {

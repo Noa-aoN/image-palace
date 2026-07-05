@@ -1056,12 +1056,16 @@
   margin: -24px 0 0 -15px;
   background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 20 32'%3E%3Cellipse cx='10' cy='10.5' rx='6' ry='9.5' fill='%23AF8B48'/%3E%3Cellipse cx='10' cy='26.5' rx='4.4' ry='5' fill='%23AF8B48'/%3E%3C/svg%3E")
     center / contain no-repeat;
-  filter: blur(calc(0.8px + (1 - var(--step-scale, 1)) * 1.6px));
-  /* 濃さも距離連動: 手前(scale大)ほど濃く、奥ほど薄い（空気遠近） */
+  /* 手前の一歩にもしっかり blur（1.0px〜）を掛け、奥ほどさらに強く */
+  filter: blur(calc(1.3px + (1 - var(--step-scale, 1)) * 1.2px));
+  /* 全体に淡く、濃さは距離連動: 手前(scale大)でも約0.45、奥は約0.25。
+     退場ゲートは2系統 — 手前からの --road-walkout（文字が重なる頃）と、
+     奥からの --road-topout（道の表示が重なり始める頃・しきい値反転）*/
   opacity: calc(
     clamp(0, (var(--road-walk, 0) - var(--step-t, 0)) * 12, 1) *
     (1 - clamp(0, (var(--road-walkout, 0) - var(--step-t, 0)) * 12, 1)) *
-    (0.25 + var(--step-scale, 1) * 0.45)
+    (1 - clamp(0, (var(--road-topout, 0) - (0.78 - var(--step-t, 0))) * 12, 1)) *
+    (0.2 + var(--step-scale, 1) * 0.2)
   );
   will-change: opacity;
 }
