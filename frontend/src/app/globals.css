@@ -1011,9 +1011,11 @@
   opacity: var(--road-intro, 0);
 }
 
-/* 先導する渡鴉。画面上部（上空）だけを、左端の外から入り前方遠く
-   （右上・縮小）へ誘うように滑空し、右端の外へフレームアウトして
-   また左から現れる＝飛び回るループ。停止する瞬間のない、なだらかな飛行。
+/* 先導する渡鴉。画面上部（上空）だけを飛び回る長尺ループ:
+   左から入る → ひと回り旋回（円・左右の方向転換つき）→ 前方遠くへ
+   誘うように滑空 → 上方向へ抜けてフレームアウト → また左から現れる。
+   停止する瞬間のない、なだらかな飛行（linear ＋ 不可視区間で位置を戻す）。
+   左右反転は hero-raven 同様 step-end の極小区間で行い潰れを防ぐ。
    退場フェード（--road-out）は keyframes の opacity と衝突しないよう
    ホルダー側に掛ける */
 .road-intro__raven-holder {
@@ -1030,18 +1032,32 @@
   opacity: 0;
   transform-origin: 50% 50%;
   will-change: transform, opacity;
-  /* linear + キーフレーム%を移動距離に比例配分＝区間の継ぎ目でも減速しない等速滑空 */
-  animation: road-intro-raven 9s linear infinite;
+  /* linear + キーフレーム%を移動距離に比例配分＝区間の継ぎ目でも減速しない等速飛行 */
+  animation: road-intro-raven 22s linear infinite;
 }
 
-/* 高度と大きさを連動: 下（手前の空）に来るほど大きく、上（遠く）ほど小さい */
+/* 高度と大きさを連動: 下（手前の空）に来るほど大きく、上（遠く）ほど小さい。
+   13-48%: 旋回（右向き→頂点で左向き→戻って右向き）、48-82%: 前方への滑空、
+   82-90%: 上方向へ抜けて退場、90-100%: 不可視のまま左の開始位置へ戻る */
 @keyframes road-intro-raven {
-  0%   { transform: translate3d(-14vw, 34vh, 0) scale(1.2) rotate(-5deg); opacity: 0; filter: brightness(1); }
-  8%   { opacity: 0.9; }
-  27%  { transform: translate3d(20vw, 20vh, 0) scale(0.85) rotate(4deg); filter: brightness(1.04); }
-  52%  { transform: translate3d(52vw, 9vh, 0) scale(0.5) rotate(-3deg); opacity: 0.8; filter: brightness(1.1); }
-  78%  { transform: translate3d(86vw, 11vh, 0) scale(0.42) rotate(2deg); opacity: 0.6; filter: brightness(1.16); }
-  100% { transform: translate3d(114vw, 6vh, 0) scale(0.3) rotate(1deg); opacity: 0.45; filter: brightness(1.2); }
+  0%    { transform: translate3d(-14vw, 30vh, 0) scale(1.15, 1.15) rotate(-4deg); opacity: 0; filter: brightness(1); }
+  3%    { opacity: 0.9; }
+  13%   { transform: translate3d(14vw, 20vh, 0) scale(0.95, 0.95) rotate(3deg); filter: brightness(1.03); }
+  18%   { transform: translate3d(26vw, 23vh, 0) scale(0.92, 0.92) rotate(6deg); filter: brightness(1.03); }
+  23%   { transform: translate3d(35vw, 18vh, 0) scale(0.9, 0.9) rotate(-8deg); filter: brightness(1.05); }
+  26.5% { transform: translate3d(37.5vw, 12vh, 0) scale(0.88, 0.88) rotate(-16deg); filter: brightness(1.06); animation-timing-function: step-end; }
+  27%   { transform: translate3d(37.5vw, 12vh, 0) scale(-0.88, 0.88) rotate(14deg); filter: brightness(1.06); }
+  33%   { transform: translate3d(27vw, 6vh, 0) scale(-0.86, 0.86) rotate(-4deg); filter: brightness(1.08); }
+  38%   { transform: translate3d(19vw, 12vh, 0) scale(-0.9, 0.9) rotate(-12deg); filter: brightness(1.05); }
+  41.5% { transform: translate3d(18vw, 18vh, 0) scale(-0.92, 0.92) rotate(-18deg); filter: brightness(1.03); animation-timing-function: step-end; }
+  42%   { transform: translate3d(18vw, 18vh, 0) scale(0.92, 0.92) rotate(12deg); filter: brightness(1.03); }
+  48%   { transform: translate3d(30vw, 21vh, 0) scale(0.88, 0.88) rotate(4deg); filter: brightness(1.04); }
+  62%   { transform: translate3d(52vw, 13vh, 0) scale(0.7, 0.7) rotate(-3deg); opacity: 0.85; filter: brightness(1.08); }
+  74%   { transform: translate3d(70vw, 15vh, 0) scale(0.56, 0.56) rotate(4deg); opacity: 0.75; filter: brightness(1.12); }
+  82%   { transform: translate3d(82vw, 8vh, 0) scale(0.46, 0.46) rotate(-10deg); opacity: 0.65; filter: brightness(1.16); }
+  89%   { transform: translate3d(89vw, -26vh, 0) scale(0.38, 0.38) rotate(-18deg); opacity: 0.45; filter: brightness(1.2); }
+  90%   { opacity: 0; }
+  100%  { transform: translate3d(-14vw, 30vh, 0) scale(1.15, 1.15) rotate(-4deg); opacity: 0; filter: brightness(1); }
 }
 
 /* 足跡。ゴールドの足形（足裏＋かかとの2楕円 SVG）。時間ループではなく
