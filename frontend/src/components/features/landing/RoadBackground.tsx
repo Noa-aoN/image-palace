@@ -22,21 +22,18 @@ const PILLAR_BASES = [0, 360, 720, 1080, 1440, 1800]
 const PILLAR_SIDES = ['l', 'r'] as const
 
 // 足跡の並び（手前→奥）。左右交互に、道の遠近に合わせて奥ほど中央へ
-// 収束しながら小さくなる。画面下端（92%）から道の最上部あたり（34%）まで
-// 歩幅も奥ほど詰まる（遠近感）。i はスタガー用のインデックス
-// （0 が最初に現れる手前の一歩）
+// 収束しながら小さくなる。手前ほど左右に大きく開き・サイズも大きい。
+// 画面下端（92%）から道の最上部あたり（36%）まで歩幅も奥ほど詰まる（遠近感）。
+// i はスタガー用のインデックス（0 が最初に現れる手前の一歩）
 const INTRO_STEPS = [
-  { i: 0, x: '46.5%', y: '92%', s: 1, side: 'l' },
-  { i: 1, x: '52.6%', y: '84%', s: 0.9, side: 'r' },
-  { i: 2, x: '47.2%', y: '76.5%', s: 0.8, side: 'l' },
-  { i: 3, x: '52.2%', y: '69.5%', s: 0.71, side: 'r' },
-  { i: 4, x: '47.9%', y: '63%', s: 0.62, side: 'l' },
-  { i: 5, x: '51.7%', y: '57%', s: 0.54, side: 'r' },
-  { i: 6, x: '48.5%', y: '51.5%', s: 0.46, side: 'l' },
-  { i: 7, x: '51.3%', y: '46.5%', s: 0.39, side: 'r' },
-  { i: 8, x: '49%', y: '42%', s: 0.33, side: 'l' },
-  { i: 9, x: '50.9%', y: '38%', s: 0.28, side: 'r' },
-  { i: 10, x: '49.4%', y: '34.5%', s: 0.24, side: 'l' },
+  { i: 0, x: '42%', y: '92%', s: 1.25, side: 'l' },
+  { i: 1, x: '57%', y: '81%', s: 1.05, side: 'r' },
+  { i: 2, x: '44.5%', y: '71%', s: 0.85, side: 'l' },
+  { i: 3, x: '55%', y: '62%', s: 0.68, side: 'r' },
+  { i: 4, x: '46.5%', y: '54%', s: 0.54, side: 'l' },
+  { i: 5, x: '53%', y: '47%', s: 0.42, side: 'r' },
+  { i: 6, x: '48.5%', y: '41%', s: 0.32, side: 'l' },
+  { i: 7, x: '51.3%', y: '36%', s: 0.25, side: 'r' },
 ] as const
 
 type RoadBackgroundProps = {
@@ -84,12 +81,14 @@ export function RoadBackground({ fadeTop, fadeBottom, intro }: RoadBackgroundPro
       // 手前から消え始めて concept のテキストが画面に入る頃には消えている
       introAppearStart = heroEnd - ih * 0.12
       introAppearLen = ih * 0.1
-      introFadeStart = revealStart - ih * 0.3
+      // 退場は concept セクションの文字が足跡エリアに重なり始める頃から
+      // （リビール開始より遅い）。それまで足跡は道の上に残り続ける
+      introFadeStart = heroEnd + ih * 0.35
       introFadeLen = ih * 0.28
       // 足跡の歩行進行（スクロール連動・一回きり）。レイヤーが見え始める頃に
-      // 1歩目、フェードアウトが始まる頃にちょうど最奥の一歩が現れ切る
+      // 1歩目、0.2画面分のスクロールで最奥の一歩まで現れ切る
       walkStart = heroEnd - ih * 0.1
-      walkLen = introFadeStart - walkStart
+      walkLen = ih * 0.2
     }
 
     let raf = 0
@@ -214,7 +213,7 @@ export function RoadBackground({ fadeTop, fadeBottom, intro }: RoadBackgroundPro
                 left: st.x,
                 top: st.y,
                 '--step-scale': st.s,
-                '--step-t': st.i / 12,
+                '--step-t': st.i / 9,
               } as CSSProperties
             }
           />
