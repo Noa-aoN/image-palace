@@ -1105,13 +1105,15 @@
   );
   will-change: opacity, transform;
 }
+/* 爪先の開き: scaleY(0.52) が回転の後に掛かり見かけの角度が約2倍に増幅される
+   （tanθ/0.52）ため、指定は 3.5deg に抑えて見かけ約6.5°の自然な開きにする */
 .road-intro__step--l {
   --step-side: -1;
-  transform: scale(var(--cs)) scaleY(0.52) rotate(-7deg);
+  transform: scale(var(--cs)) scaleY(0.52) rotate(-3.5deg);
 }
 .road-intro__step--r {
   --step-side: 1;
-  transform: scale(var(--cs)) scaleY(0.52) rotate(7deg) scaleX(-1);
+  transform: scale(var(--cs)) scaleY(0.52) rotate(3.5deg) scaleX(-1);
 }
 
 @media (prefers-reduced-motion: reduce) {
