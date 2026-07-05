@@ -77,6 +77,9 @@ export function useHeroZoom(opts: HeroZoomOptions = {}) {
       const doorOpen = doorRamp * doorRamp * (3 - 2 * doorRamp) // smoothstep
       // 全開後の追いズーム（加速しながら扉中心へ寄り続ける）
       const doorBoost = easeInQuad(clamp((progress - doorBoostStart) / (1 - doorBoostStart), 0, 1))
+      // 蝶の退場（進捗0.38〜0.80）。smoothstep で入り・抜けともなだらかに
+      const bflyRamp = clamp((progress - 0.38) / 0.42, 0, 1)
+      const bflyOut = bflyRamp * bflyRamp * (3 - 2 * bflyRamp)
 
       // 書き込み（後でまとめて＝レイアウトスラッシュ回避）
       stage.style.setProperty('--zoom', String(scale))
@@ -86,6 +89,7 @@ export function useHeroZoom(opts: HeroZoomOptions = {}) {
       stage.style.setProperty('--zoombright', String(1 + blurRamp * 0.08))
       stage.style.setProperty('--dooropen', String(doorOpen))
       stage.style.setProperty('--doorboost', String(doorBoost))
+      stage.style.setProperty('--bflyout', String(bflyOut))
     }
 
     const onScroll = () => {

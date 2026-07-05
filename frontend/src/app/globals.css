@@ -170,6 +170,7 @@
   --zoombright: 1;
   --dooropen: 0;
   --doorboost: 0;
+  --bflyout: 0;
 }
 
 .hero-zoom {
@@ -555,9 +556,16 @@
   background: url('/hero-clouds.png') repeat-x;
   /* タイル幅を 60vw に固定し、ちょうど1タイル分送る＝継ぎ目の分からないシームレスループ */
   background-size: 60vw 100%;
-  /* 1.6倍速でフェードアウト＝ズーム序盤（進捗~0.34）で早めに消える */
-  opacity: calc((1 - min(1, var(--fade, 0) * 1.6)) * 0.55);
-  will-change: background-position, opacity;
+  /* ズームとフェードは HAの文字（.hero-content は fade 0 から動き出す）と
+     同時に始まる。フレームアウト（上移動）だけは fade 0.22 まで遅らせ、
+     迫り出し・フェードが進んでから 2.2倍速でゆっくり -40vh 上へ抜ける。
+     ズーム（1→1.75）は4倍速の別ランプで移動より速く変化し、
+     origin を帯の下端に置いて雲が頭上へ迫り出す感じを強調する */
+  opacity: calc((1 - min(1, var(--fade, 0) * 1.8)) * 0.55);
+  transform-origin: 50% 100%;
+  transform: translate3d(0, calc(min(1, max(0, var(--fade, 0) - 0.22) * 2.2) * -40vh), 0)
+    scale(calc(1 + min(1, var(--fade, 0) * 4) * 0.75));
+  will-change: background-position, opacity, transform;
   animation: hero-cloud-drift 80s linear infinite;
 }
 
@@ -605,13 +613,13 @@
   z-index: 30;
   width: 16px;
   pointer-events: none;
-  /* フレームアウトは --fade ではなく --dooropen（進捗0.5〜0.85）駆動。
-     テキストが消えたあともしばらく舞い続け、扉が開くのに合わせて飛び去る */
-  opacity: calc((1 - var(--dooropen, 0)) * 0.82);
+  /* フレームアウトは専用の --bflyout（進捗0.38〜0.80・smoothstep）駆動。
+     テキスト消失の少しあとから、なだらかに飛び去り始める */
+  opacity: calc((1 - var(--bflyout, 0)) * 0.82);
   /* スクロールに応じて左右(--bfly-dir)へ緩やかに飛び去り画面外へ抜ける（飛行経路で飛び回りながら） */
   transform: translate3d(
-    calc(var(--dooropen, 0) * var(--bfly-dir, 1) * 72vw),
-    calc(var(--dooropen, 0) * -8vh),
+    calc(var(--bflyout, 0) * var(--bfly-dir, 1) * 72vw),
+    calc(var(--bflyout, 0) * -8vh),
     0
   );
   will-change: transform, opacity;
@@ -684,7 +692,8 @@
   }
   .hero-clouds {
     height: 22%;
-    opacity: calc((1 - var(--fade, 0)) * 0.4);
+    /* デスクトップと同じ1.8倍速フェードに合わせる（等速だと移動とズレる） */
+    opacity: calc((1 - min(1, var(--fade, 0) * 1.8)) * 0.4);
   }
 }
 
