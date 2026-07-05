@@ -73,6 +73,7 @@ export function RoadBackground({ fadeTop, fadeBottom, intro }: RoadBackgroundPro
     let walkLen = 1
     let topOutStart = 0
     let topOutLen = 1
+    let dimLen = 1
     const measure = () => {
       const hero = document.querySelector<HTMLElement>('.hero-track')
       const ih = window.innerHeight
@@ -97,6 +98,8 @@ export function RoadBackground({ fadeTop, fadeBottom, intro }: RoadBackgroundPro
       // 飲み込まれるように上からゆっくり消していく（手前側の退場より遅い）
       topOutStart = revealStart + ih * 0.3
       topOutLen = ih * 0.4
+      // 石畳の表示に伴う全体減光のスクロール長
+      dimLen = ih * 0.3
     }
 
     let raf = 0
@@ -126,6 +129,9 @@ export function RoadBackground({ fadeTop, fadeBottom, intro }: RoadBackgroundPro
         // 道の重なりによる退場進行（奥＝上の足跡から順番に消える）
         const topOut = Math.min(1, Math.max(0, (window.scrollY - topOutStart) / topOutLen))
         introRef.current.style.setProperty('--road-topout', topOut.toFixed(3))
+        // 石畳が表示され始めたら足跡全体をさらに淡くする（1 → 0.55）
+        const dim = 1 - 0.45 * Math.min(1, Math.max(0, (window.scrollY - revealStart) / dimLen))
+        introRef.current.style.setProperty('--road-dim', dim.toFixed(3))
       }
     }
     const onScroll = () => {

@@ -1080,11 +1080,13 @@
   /* 全体にごく淡く、濃さは距離連動: 手前(scale大)でも約0.35、奥は約0.23。
      退場ゲートは2系統 — 手前からの --road-walkout（CONCEPTが重なる頃）と、
      奥からの --road-topout（道が十分重なってから・しきい値反転）*/
+  /* --road-dim: 石畳が表示され始めたら全体をさらに淡くする（JS書き込み 1→0.55） */
   opacity: calc(
     clamp(0, (var(--road-walk, 0) - var(--step-t, 0)) * 12, 1) *
     (1 - clamp(0, (var(--road-walkout, 0) - var(--step-t, 0)) * 12, 1)) *
     (1 - clamp(0, (var(--road-topout, 0) - (0.78 - var(--step-t, 0))) * 12, 1)) *
-    (0.2 + var(--step-scale, 1) * 0.12)
+    (0.2 + var(--step-scale, 1) * 0.12) *
+    var(--road-dim, 1)
   );
   will-change: opacity;
 }
