@@ -1091,12 +1091,12 @@
   background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 20 32'%3E%3Cellipse cx='10' cy='10.5' rx='6' ry='9.5' fill='%23AF8B48'/%3E%3Cellipse cx='10' cy='26.5' rx='4.4' ry='5' fill='%23AF8B48'/%3E%3C/svg%3E")
     center / contain no-repeat;
   filter: blur(calc((1.3 + (1 - var(--cs)) * 1.2) * 1px));
-  /* 手前側の約5足だけ表示: 奥側の表示境界は max(0.35, 1 - --road-grow)。
-     --road-grow（JS書き込み 0.13→0.65）で境界が手前から奥へ広がり、
-     最初は1足 → スクロールに応じて1つずつ増えて最大5足になる。
-     以後は c ≈ 0.35 から湧いて手前へ流れ、下端で抜ける。濃さは距離連動で淡く */
+  /* 手前側の約3足だけ表示: 奥側の表示境界は 1 - --road-grow。
+     --road-grow（JS書き込み 0.13→0.42）で境界が手前から奥へ広がり、
+     最初は1足 → スクロールに応じて1つずつ増えて最大3足になる。
+     以後は c ≈ 0.58 から湧いて手前へ流れ、下端で抜ける。濃さは距離連動で淡く */
   opacity: calc(
-    clamp(0, (var(--c) - max(0.35, 1 - var(--road-grow, 0.65))) * 8, 1) *
+    clamp(0, (var(--c) - (1 - var(--road-grow, 0.42))) * 8, 1) *
     clamp(0, (1 - var(--c)) * 8, 1) *
     (1 - clamp(0, (var(--road-walkout, 0) - (1 - var(--c))) * 3, 1)) *
     (1 - clamp(0, (var(--road-topout, 0) - var(--c)) * 3, 1)) *

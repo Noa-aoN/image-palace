@@ -104,7 +104,7 @@ export function RoadBackground({ fadeTop, fadeBottom, intro }: RoadBackgroundPro
       topOutLen = ih * 0.4
       // 石畳の表示に伴う全体減光のスクロール長
       dimLen = ih * 0.3
-      // 足跡の初期成長（1足→5足）にかけるスクロール長。約100pxごとに1足増える
+      // 足跡の初期成長（1足→3足）にかけるスクロール長。約100pxごとに1足増える
       growLen = ih * 0.5
     }
 
@@ -130,8 +130,8 @@ export function RoadBackground({ fadeTop, fadeBottom, intro }: RoadBackgroundPro
         // 各足跡の周回座標 c になる。戻せば逆流
         const walkC = Math.max(0, (window.scrollY - walkStart) / walkLen)
         introRef.current.style.setProperty('--road-walkc', walkC.toFixed(4))
-        // 初期成長: 表示窓を手前(0.13)から奥(0.65)へ広げ、1足→5足へ1つずつ増やす
-        const grow = Math.min(0.65, 0.13 + (Math.max(0, window.scrollY - walkStart) / growLen) * 0.52)
+        // 初期成長: 表示窓を手前(0.13)から奥(0.42)へ広げ、1足→3足へ1つずつ増やす
+        const grow = Math.min(0.42, 0.13 + (Math.max(0, window.scrollY - walkStart) / growLen) * 0.52)
         introRef.current.style.setProperty('--road-grow', grow.toFixed(3))
         // 足跡の退場進行。同じしきい値を使うことで手前の一歩から順番に消える
         introRef.current.style.setProperty('--road-walkout', fade.toFixed(3))
