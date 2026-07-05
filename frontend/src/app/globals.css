@@ -863,7 +863,9 @@
 .road-bg__road {
   position: absolute;
   inset: 0;
-  opacity: 0.55; /* コンテンツより控えめに。旧俯瞰版(0.6)よりやや薄く */
+  /* 基本 0.55（コンテンツより控えめ）。初回リビールの序盤(0〜30%)は全体を
+     フェードインさせ、遠方の霞から道が「現れる」ようにする */
+  opacity: calc(0.55 * clamp(0, var(--road-reveal, 1) * 3.3, 1));
   background-image: url('/road.png');
   background-repeat: repeat-y;
   background-size: 720px 1080px; /* road.png は 2:3。1タイル=1080px で継ぎ目レス */

@@ -36,16 +36,18 @@ export function RoadBackground({ fadeTop, fadeBottom }: RoadBackgroundProps) {
     if (!el) return
     if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return
 
-    // 初回リビールの基準点: ヒーロー終端（sticky が解けて道が見え始める scrollY）。
-    // 全インスタンスが同じ値を参照することで固定ステージの同期が保たれる。
-    // ページ高の 0.7 倍分のスクロールで奥→手前へ道が伸びきる。
+    // 初回リビールの基準点。ステージはセクション領域でクリップされるため、
+    // セクションが画面をほぼ覆い「地平線が画面内に入る」まで待ってから
+    // リビールを始める（早く始めるとクリップの都合で手前側から見えてしまう）。
+    // 基準はヒーロー終端 + 0.55 画面分。全インスタンスが同じ値を参照することで
+    // 固定ステージの同期が保たれる。0.85 画面分のスクロールで奥→手前へ伸びきる。
     let revealStart = 0
     let revealLen = 1
     const measure = () => {
       const hero = document.querySelector<HTMLElement>('.hero-track')
       const ih = window.innerHeight
-      revealStart = hero ? hero.offsetTop + hero.offsetHeight - ih : 0
-      revealLen = ih * 0.7
+      revealStart = hero ? hero.offsetTop + hero.offsetHeight - ih + ih * 0.55 : 0
+      revealLen = ih * 0.85
     }
 
     let raf = 0
