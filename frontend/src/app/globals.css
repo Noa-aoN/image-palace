@@ -1011,8 +1011,9 @@
   opacity: var(--road-intro, 0);
 }
 
-/* 先導する渡鴉。左下から弧を描いて足跡の先（道の最上部＝地平線あたり）へ
-   小さくなりながら飛び、霞に消えてループする。
+/* 先導する渡鴉。画面上部（上空）だけを、左端の外から入り前方遠く
+   （右上・縮小）へ誘うように滑空し、右端の外へフレームアウトして
+   また左から現れる＝飛び回るループ。停止する瞬間のない、なだらかな飛行。
    退場フェード（--road-out）は keyframes の opacity と衝突しないよう
    ホルダー側に掛ける */
 .road-intro__raven-holder {
@@ -1024,21 +1025,22 @@
   position: absolute;
   top: 0;
   left: 0;
-  width: 72px;
+  width: 230px;
   height: auto;
   opacity: 0;
   transform-origin: 50% 50%;
   will-change: transform, opacity;
-  animation: road-intro-raven 8s ease-in-out infinite;
+  animation: road-intro-raven 9s ease-in-out infinite;
 }
 
+/* 高度と大きさを連動: 下（手前の空）に来るほど大きく、上（遠く）ほど小さい */
 @keyframes road-intro-raven {
-  0%   { transform: translate3d(14vw, 88vh, 0) scale(0.66) rotate(-4deg); opacity: 0; filter: brightness(1); }
-  7%   { opacity: 0.85; }
-  38%  { transform: translate3d(35vw, 66vh, 0) scale(0.46) rotate(3deg); opacity: 0.8; filter: brightness(1.08); }
-  68%  { transform: translate3d(46vw, 46vh, 0) scale(0.28) rotate(-2deg); opacity: 0.55; filter: brightness(1.16); }
-  84%  { transform: translate3d(50vw, 34vh, 0) scale(0.19) rotate(0deg); opacity: 0; filter: brightness(1.22); }
-  100% { transform: translate3d(50vw, 34vh, 0) scale(0.19) rotate(0deg); opacity: 0; filter: brightness(1.22); }
+  0%   { transform: translate3d(-14vw, 34vh, 0) scale(1.2) rotate(-5deg); opacity: 0; filter: brightness(1); }
+  8%   { opacity: 0.9; }
+  30%  { transform: translate3d(20vw, 20vh, 0) scale(0.85) rotate(4deg); filter: brightness(1.04); }
+  60%  { transform: translate3d(52vw, 9vh, 0) scale(0.5) rotate(-3deg); opacity: 0.8; filter: brightness(1.1); }
+  85%  { transform: translate3d(86vw, 11vh, 0) scale(0.42) rotate(2deg); opacity: 0.6; filter: brightness(1.16); }
+  100% { transform: translate3d(114vw, 6vh, 0) scale(0.3) rotate(1deg); opacity: 0.45; filter: brightness(1.2); }
 }
 
 /* 足跡。ゴールドの足形（足裏＋かかとの2楕円 SVG）。時間ループではなく
@@ -1058,14 +1060,14 @@
     center / contain no-repeat;
   /* 手前の一歩にもしっかり blur（1.0px〜）を掛け、奥ほどさらに強く */
   filter: blur(calc(1.3px + (1 - var(--step-scale, 1)) * 1.2px));
-  /* 全体に淡く、濃さは距離連動: 手前(scale大)でも約0.45、奥は約0.25。
-     退場ゲートは2系統 — 手前からの --road-walkout（文字が重なる頃）と、
-     奥からの --road-topout（道の表示が重なり始める頃・しきい値反転）*/
+  /* 全体にごく淡く、濃さは距離連動: 手前(scale大)でも約0.35、奥は約0.23。
+     退場ゲートは2系統 — 手前からの --road-walkout（CONCEPTが重なる頃）と、
+     奥からの --road-topout（道が十分重なってから・しきい値反転）*/
   opacity: calc(
     clamp(0, (var(--road-walk, 0) - var(--step-t, 0)) * 12, 1) *
     (1 - clamp(0, (var(--road-walkout, 0) - var(--step-t, 0)) * 12, 1)) *
-    (1 - clamp(0, (var(--road-topout, 0) - (0.78 - var(--step-t, 0))) * 12, 1)) *
-    (0.2 + var(--step-scale, 1) * 0.2)
+    (1 - clamp(0, (var(--road-topout, 0) - (0.72 - var(--step-t, 0))) * 12, 1)) *
+    (0.2 + var(--step-scale, 1) * 0.12)
   );
   will-change: opacity;
 }

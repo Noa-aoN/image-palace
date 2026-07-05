@@ -22,20 +22,18 @@ const PILLAR_BASES = [0, 360, 720, 1080, 1440, 1800]
 const PILLAR_SIDES = ['l', 'r'] as const
 
 // 足跡の並び（手前→奥）。左右交互に、道の遠近に合わせて奥ほど中央へ
-// 収束しながら小さくなる。手前ほど左右に大きく開き・サイズも大きい。
-// 画面下端（92%）から道の最上部あたり（36%）まで歩幅も奥ほど詰まる（遠近感）。
+// 収束しながら小さくなる。手前ほど左右に開き・サイズも大きい。
+// 画面中下段（71%）から道の最上部あたり（36%）まで歩幅も奥ほど詰まる（遠近感）。
 // i はスタガー用のインデックス（0 が最初に現れる手前の一歩）
 // 左右の開きは道と同じ遠近の平行線: 消失点（y≈20%）へ向かう2本の
 // 直線上に乗るよう、横ずれ量を (y - 20%) に比例させている
 const INTRO_STEPS = [
-  { i: 0, x: '42%', y: '92%', s: 1.25, side: 'l' },
-  { i: 1, x: '56.4%', y: '81%', s: 1.05, side: 'r' },
-  { i: 2, x: '44.7%', y: '71%', s: 0.85, side: 'l' },
-  { i: 3, x: '54.4%', y: '62%', s: 0.68, side: 'r' },
-  { i: 4, x: '46.5%', y: '54%', s: 0.54, side: 'l' },
-  { i: 5, x: '52.8%', y: '47%', s: 0.42, side: 'r' },
-  { i: 6, x: '47.8%', y: '41%', s: 0.32, side: 'l' },
-  { i: 7, x: '51.7%', y: '36%', s: 0.25, side: 'r' },
+  { i: 0, x: '44.4%', y: '71%', s: 1.2, side: 'l' },
+  { i: 1, x: '54.7%', y: '62%', s: 0.95, side: 'r' },
+  { i: 2, x: '46.3%', y: '54%', s: 0.76, side: 'l' },
+  { i: 3, x: '53%', y: '47%', s: 0.59, side: 'r' },
+  { i: 4, x: '47.7%', y: '41%', s: 0.45, side: 'l' },
+  { i: 5, x: '51.8%', y: '36%', s: 0.35, side: 'r' },
 ] as const
 
 type RoadBackgroundProps = {
@@ -83,20 +81,20 @@ export function RoadBackground({ fadeTop, fadeBottom, intro }: RoadBackgroundPro
       // 誘導演出（渡鴉＋足跡）はホワイトアウトが満ちる終盤（ヒーロー終端の
       // 少し手前）にホワイトアウトの上へフェードインし、道リビールの少し
       // 手前から消え始めて concept のテキストが画面に入る頃には消えている
-      introAppearStart = heroEnd - ih * 0.12
+      introAppearStart = heroEnd - ih * 0.06
       introAppearLen = ih * 0.1
-      // 退場は concept セクションの文字が足跡エリアに重なり始める頃から
-      // （リビール開始より遅い）。それまで足跡は道の上に残り続ける
-      introFadeStart = heroEnd + ih * 0.35
-      introFadeLen = ih * 0.28
-      // 足跡の歩行進行（スクロール連動・一回きり）。レイヤーが見え始める頃に
+      // 退場は「CONCEPT」ラベルが足跡の高さにかかる頃から。
+      // それまで足跡は道の上に残り続ける
+      introFadeStart = heroEnd + ih * 0.45
+      introFadeLen = ih * 0.45
+      // 足跡の歩行進行（スクロール連動・一回きり）。レイヤーが見えてから
       // 1歩目、0.35画面分のスクロールでゆっくり最奥の一歩まで現れ切る
-      walkStart = heroEnd - ih * 0.1
+      walkStart = heroEnd - ih * 0.02
       walkLen = ih * 0.35
-      // 道の表示が足跡に重なり始めるあたりから、奥（上）の足跡も道に
-      // 飲み込まれるように上から順に消していく
-      topOutStart = revealStart
-      topOutLen = ih * 0.3
+      // 道の表示が足跡へ十分重なってから、奥（上）の足跡も道に
+      // 飲み込まれるように上からゆっくり消していく（手前側の退場より遅い）
+      topOutStart = revealStart + ih * 0.3
+      topOutLen = ih * 0.4
     }
 
     let raf = 0
@@ -224,7 +222,7 @@ export function RoadBackground({ fadeTop, fadeBottom, intro }: RoadBackgroundPro
                 left: st.x,
                 top: st.y,
                 '--step-scale': st.s,
-                '--step-t': st.i / 9,
+                '--step-t': st.i / 7,
               } as CSSProperties
             }
           />
