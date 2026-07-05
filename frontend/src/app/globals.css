@@ -145,7 +145,7 @@
   /* 扉オーバーレイのサイズ（宮殿の開口部に合わせる）と開き角 */
   --door-h: 9.6vh;
   --door-aspect: 0.594;
-  --door-open-deg: 95deg;
+  --door-open-deg: 138deg; /* 90°超まで大きく開く（裏面が反射トーンで見える） */
   /* 扉スラブの厚み（片扉幅 約2.85vh の8%程度）。--zoom 拡大に乗って見た目も太る */
   --door-thick: 0.225vh;
 }
@@ -169,6 +169,7 @@
   --blurpx: 0px;
   --zoombright: 1;
   --dooropen: 0;
+  --doorboost: 0;
 }
 
 .hero-zoom {
@@ -179,7 +180,8 @@
   height: 100%;
   object-fit: cover;
   object-position: var(--hero-door-x) var(--hero-door-y);
-  transform: scale(var(--zoom, 1));
+  /* 扉全開後は --doorboost で中心へ追いズーム（最大1.5倍） */
+  transform: scale(calc(var(--zoom, 1) * (1 + var(--doorboost, 0) * 0.5)));
   transform-origin: var(--hero-door-x) var(--hero-door-y);
   filter: blur(var(--blurpx, 0px)) brightness(var(--zoombright, 1));
   will-change: transform, filter;
@@ -193,7 +195,8 @@
   height: var(--door-h);
   /* 宮殿の開口部は細長（幅3.7%×高さ17%＝約0.22）。素材を寄せて充填する */
   aspect-ratio: var(--door-aspect, 0.36);
-  transform: translate(-50%, -50%) scale(var(--zoom, 1));
+  /* 背景と同率で拡大＋全開後の追いズーム（--doorboost）にも同期 */
+  transform: translate(-50%, -50%) scale(calc(var(--zoom, 1) * (1 + var(--doorboost, 0) * 0.5)));
   transform-origin: center;
   perspective: 1400px;
   z-index: 5;
@@ -248,17 +251,24 @@
     brightness(calc(1.04 - var(--dooropen, 0) * 0.28))
     drop-shadow(0 6px 16px rgba(18, 16, 32, 0.5));
 }
-/* 背面: 180°回転（自動で鏡像）で厚みの奥側に。内側なので暗く沈める */
+/* 背面: 180°回転（自動で鏡像）で厚みの奥側に。90°超の外開きで正面から見えるため、
+   彩度を落として暖色に寄せた「光を反射する淡い金」のトーンにする */
 .hero-door-face--back {
   transform: rotateY(180deg) translateZ(calc(var(--door-thick) / 2));
-  filter: blur(var(--blurpx, 0px)) saturate(0.55) brightness(0.55);
+  filter: blur(var(--blurpx, 0px)) saturate(0.35) sepia(0.45) brightness(1.05) contrast(0.9);
 }
 
 /* 扉の木口（4辺）。前面(z=+t/2)と背面(z=-t/2)を繋ぐ面で、開くほど見えてくる。
-   扉画像（青漆＋金）に合わせた濃紺のトーン */
+   閉時は扉画像（青漆＋金）に合わせた濃紺。開くほど背景と同じ blur を受けつつ
+   明るく暖色へ寄せ、裏面の「光を反射する淡い金」トーンに馴染ませる */
 .hero-door-edge {
   position: absolute;
   background: linear-gradient(to bottom, #35476b, #22304d 55%, #172239);
+  filter: blur(var(--blurpx, 0px))
+    sepia(calc(var(--dooropen, 0) * 0.45))
+    saturate(calc(1 - var(--dooropen, 0) * 0.55))
+    brightness(calc(1 + var(--dooropen, 0) * 1.1));
+  will-change: filter;
 }
 /* 継ぎ目側の縦木口: 端の外側中心に置いてから90°立てる */
 .hero-door-edge--seam-left {
@@ -545,7 +555,8 @@
   background: url('/hero-clouds.png') repeat-x;
   /* タイル幅を 60vw に固定し、ちょうど1タイル分送る＝継ぎ目の分からないシームレスループ */
   background-size: 60vw 100%;
-  opacity: calc((1 - var(--fade, 0)) * 0.55);
+  /* 1.6倍速でフェードアウト＝ズーム序盤（進捗~0.34）で早めに消える */
+  opacity: calc((1 - min(1, var(--fade, 0) * 1.6)) * 0.55);
   will-change: background-position, opacity;
   animation: hero-cloud-drift 80s linear infinite;
 }
@@ -594,11 +605,13 @@
   z-index: 30;
   width: 16px;
   pointer-events: none;
-  opacity: calc((1 - var(--fade, 0)) * 0.82);
+  /* フレームアウトは --fade ではなく --dooropen（進捗0.5〜0.85）駆動。
+     テキストが消えたあともしばらく舞い続け、扉が開くのに合わせて飛び去る */
+  opacity: calc((1 - var(--dooropen, 0)) * 0.82);
   /* スクロールに応じて左右(--bfly-dir)へ緩やかに飛び去り画面外へ抜ける（飛行経路で飛び回りながら） */
   transform: translate3d(
-    calc(var(--fade, 0) * var(--bfly-dir, 1) * 72vw),
-    calc(var(--fade, 0) * -8vh),
+    calc(var(--dooropen, 0) * var(--bfly-dir, 1) * 72vw),
+    calc(var(--dooropen, 0) * -8vh),
     0
   );
   will-change: transform, opacity;
@@ -863,16 +876,36 @@
 .road-bg__road {
   position: absolute;
   inset: 0;
-  opacity: 0.55; /* コンテンツより控えめに。旧俯瞰版(0.6)よりやや薄く */
+  /* 基本 0.55（コンテンツより控えめ）。初回リビールの序盤(0〜30%)は全体を
+     フェードインさせ、遠方の霞から道が「現れる」ようにする */
+  opacity: calc(0.55 * clamp(0, var(--road-reveal, 1) * 3.3, 1));
   background-image: url('/road.png');
   background-repeat: repeat-y;
   background-size: 720px 1080px; /* road.png は 2:3。1タイル=1080px で継ぎ目レス */
   background-position: center calc(var(--road-shift, 0) * 1px);
   will-change: background-position;
   /* 道の果て（平面の上端＝地平線）が硬いエッジで浮かないよう、
-     平面座標で遠端をフェードさせて霞に溶かす。柱には掛けない */
-  -webkit-mask-image: linear-gradient(to bottom, transparent 0, #000 320px);
-  mask-image: linear-gradient(to bottom, transparent 0, #000 320px);
+     平面座標で遠端をフェードさせて霞に溶かす。柱には掛けない。
+     さらに --road-reveal(0→1) で「見える範囲の手前側境界」を奥から手前へ進め、
+     最初の道セクションで道が奥からだんだん伸びてくる初回リビールを作る
+     （JS 非駆動・reduced 時は既定 1＝全表示） */
+  /* 注: perspective 620px のため画面に映るのは平面 y≈0〜650px のみ（それより
+     手前はカメラ背後）。リビール前線はこの可視ウィンドウ内で動かす。
+     r=0 では遠方の霞（0-320px のフェード帯）だけが薄く見え、r=1 で全表示 */
+  -webkit-mask-image: linear-gradient(
+    to bottom,
+    transparent 0,
+    #000 320px,
+    #000 calc(-50px + var(--road-reveal, 1) * 750px),
+    transparent calc(200px + var(--road-reveal, 1) * 750px)
+  );
+  mask-image: linear-gradient(
+    to bottom,
+    transparent 0,
+    #000 320px,
+    #000 calc(-50px + var(--road-reveal, 1) * 750px),
+    transparent calc(200px + var(--road-reveal, 1) * 750px)
+  );
 }
 /* 両脇の柱。平面上の点 (left, --pillar-base + --road-shift) に底辺を置き、
    rotateX(-72deg) で平面の傾きを打ち消して直立させる（底辺を軸に起こす）。
@@ -888,8 +921,17 @@
   transform: translateY(calc(mod(var(--pillar-base, 0) + var(--road-shift, 0), 2160) * 1px))
     rotateX(-72deg);
   /* 出現は霞からゆっくり: 平面位置 0(地平線)〜720px で透明度を 0→0.75 に
-     立ち上げる。遠い柱ほど薄くなり、列全体が距離のグラデーションになる */
-  opacity: calc(min(mod(var(--pillar-base, 0) + var(--road-shift, 0), 2160) / 720, 1) * 0.75);
+     立ち上げる。遠い柱ほど薄くなり、列全体が距離のグラデーションになる。
+     さらに道のリビール前線（320 + reveal×2200）が自分の位置に到達するまでは
+     透明のまま＝初回は前線が進むにつれ奥の柱から順に現れる */
+  opacity: calc(
+    min(mod(var(--pillar-base, 0) + var(--road-shift, 0), 2160) / 720, 1) * 0.75 *
+      clamp(
+        0,
+        (-50 + var(--road-reveal, 1) * 750 - mod(var(--pillar-base, 0) + var(--road-shift, 0), 2160)) / 150,
+        1
+      )
+  );
   will-change: transform, opacity;
 }
 /* 柱の実体。下部は sharp→blur のクロスフェードで接地を道に馴染ませ、

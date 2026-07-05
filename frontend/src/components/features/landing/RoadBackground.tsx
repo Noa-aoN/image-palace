@@ -36,22 +36,48 @@ export function RoadBackground({ fadeTop, fadeBottom }: RoadBackgroundProps) {
     if (!el) return
     if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return
 
+    // 初回リビールの基準点。ステージはセクション領域でクリップされるため、
+    // セクションが画面をほぼ覆い「地平線が画面内に入る」まで待ってから
+    // リビールを始める（早く始めるとクリップの都合で手前側から見えてしまう）。
+    // 基準はヒーロー終端 + 0.4 画面分。この値は「道の自然な遠端（遠方フェードが
+    // 明けるあたり・画面上 約50%）がセクションのクリップ内に入る瞬間」に合わせて
+    // おり、道は必ず表示エリアの最上端から見え始めて手前へ伸びる。
+    // 全インスタンスが同じ値を参照することで固定ステージの同期が保たれる。
+    // 0.75 画面分のスクロールで奥→手前へ伸びきる。
+    let revealStart = 0
+    let revealLen = 1
+    const measure = () => {
+      const hero = document.querySelector<HTMLElement>('.hero-track')
+      const ih = window.innerHeight
+      revealStart = hero ? hero.offsetTop + hero.offsetHeight - ih + ih * 0.4 : 0
+      revealLen = ih * 0.75
+    }
+
     let raf = 0
     const update = () => {
       raf = 0
       // 下へスクロール＝道が手前(下)へ流れる＝前進。repeat-y が自動で折り返す。
       el.style.setProperty('--road-shift', (window.scrollY * SPEED).toFixed(1))
+      // 初回リビール（0=奥の霞だけ → 1=全表示）。JS 非駆動時は CSS 既定の 1（全表示）。
+      const reveal = Math.min(1, Math.max(0, (window.scrollY - revealStart) / revealLen))
+      el.style.setProperty('--road-reveal', reveal.toFixed(3))
     }
     const onScroll = () => {
       if (!raf) raf = requestAnimationFrame(update)
     }
 
+    const onResize = () => {
+      measure()
+      onScroll()
+    }
+
+    measure()
     update()
     window.addEventListener('scroll', onScroll, { passive: true })
-    window.addEventListener('resize', onScroll, { passive: true })
+    window.addEventListener('resize', onResize, { passive: true })
     return () => {
       window.removeEventListener('scroll', onScroll)
-      window.removeEventListener('resize', onScroll)
+      window.removeEventListener('resize', onResize)
       if (raf) cancelAnimationFrame(raf)
     }
   }, [])
