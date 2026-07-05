@@ -145,7 +145,7 @@
   /* 扉オーバーレイのサイズ（宮殿の開口部に合わせる）と開き角 */
   --door-h: 9.6vh;
   --door-aspect: 0.594;
-  --door-open-deg: 95deg;
+  --door-open-deg: 138deg; /* 90°超まで大きく開く（裏面が反射トーンで見える） */
   /* 扉スラブの厚み（片扉幅 約2.85vh の8%程度）。--zoom 拡大に乗って見た目も太る */
   --door-thick: 0.225vh;
 }
@@ -248,10 +248,11 @@
     brightness(calc(1.04 - var(--dooropen, 0) * 0.28))
     drop-shadow(0 6px 16px rgba(18, 16, 32, 0.5));
 }
-/* 背面: 180°回転（自動で鏡像）で厚みの奥側に。内側なので暗く沈める */
+/* 背面: 180°回転（自動で鏡像）で厚みの奥側に。90°超の外開きで正面から見えるため、
+   彩度を落として暖色に寄せた「光を反射する淡い金」のトーンにする */
 .hero-door-face--back {
   transform: rotateY(180deg) translateZ(calc(var(--door-thick) / 2));
-  filter: blur(var(--blurpx, 0px)) saturate(0.55) brightness(0.55);
+  filter: blur(var(--blurpx, 0px)) saturate(0.35) sepia(0.45) brightness(1.05) contrast(0.9);
 }
 
 /* 扉の木口（4辺）。前面(z=+t/2)と背面(z=-t/2)を繋ぐ面で、開くほど見えてくる。
@@ -545,7 +546,8 @@
   background: url('/hero-clouds.png') repeat-x;
   /* タイル幅を 60vw に固定し、ちょうど1タイル分送る＝継ぎ目の分からないシームレスループ */
   background-size: 60vw 100%;
-  opacity: calc((1 - var(--fade, 0)) * 0.55);
+  /* 1.6倍速でフェードアウト＝ズーム序盤（進捗~0.34）で早めに消える */
+  opacity: calc((1 - min(1, var(--fade, 0) * 1.6)) * 0.55);
   will-change: background-position, opacity;
   animation: hero-cloud-drift 80s linear infinite;
 }
@@ -594,11 +596,13 @@
   z-index: 30;
   width: 16px;
   pointer-events: none;
-  opacity: calc((1 - var(--fade, 0)) * 0.82);
+  /* フレームアウトは --fade ではなく --dooropen（進捗0.5〜0.85）駆動。
+     テキストが消えたあともしばらく舞い続け、扉が開くのに合わせて飛び去る */
+  opacity: calc((1 - var(--dooropen, 0)) * 0.82);
   /* スクロールに応じて左右(--bfly-dir)へ緩やかに飛び去り画面外へ抜ける（飛行経路で飛び回りながら） */
   transform: translate3d(
-    calc(var(--fade, 0) * var(--bfly-dir, 1) * 72vw),
-    calc(var(--fade, 0) * -8vh),
+    calc(var(--dooropen, 0) * var(--bfly-dir, 1) * 72vw),
+    calc(var(--dooropen, 0) * -8vh),
     0
   );
   will-change: transform, opacity;
