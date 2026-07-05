@@ -1,0 +1,243 @@
+/* LP検討用: 「道をループして進む」アニメーション3案のデモ専用スタイル。
+   案Aを LP 本体（RoadBackground / globals.css の .road-bg）へ採用済み。
+   このページは演出検討の記録・比較用リファレンスとして残す（noindex・リンクなし）。 */
+
+/* ---------- 共通: プレビュー枠 ---------- */
+
+.rad-stage {
+  position: relative;
+  overflow: hidden;
+  height: min(70svh, 620px);
+  border-radius: 1rem;
+  border: 1px solid var(--border);
+  background: var(--ivory);
+}
+
+/* ---------- 案A: 一人称の道（3D遠近トレッドミル） ---------- */
+
+.rad-a__scene {
+  position: absolute;
+  inset: 0;
+  perspective: 620px;
+  perspective-origin: 50% 32%;
+}
+.rad-a__plane {
+  position: absolute;
+  left: 50%;
+  top: 26%;
+  width: 720px;
+  height: 1600px;
+  margin-left: -360px;
+  transform-origin: 50% 0;
+  transform: rotateX(72deg);
+  background-image: url('/road.png');
+  background-repeat: repeat-y;
+  background-size: 720px 1080px; /* road.png は 1024x1536(2:3)。1タイル=1080px で継ぎ目レス */
+  background-position: center 0;
+  animation: rad-a-walk 11s linear infinite;
+  will-change: background-position;
+}
+@keyframes rad-a-walk {
+  to {
+    /* ちょうど1タイル分流すと repeat-y が折り返して無限ループになる */
+    background-position: center 1080px;
+  }
+}
+/* 地平線の霞み: 奥ほどアイボリーに溶ける */
+.rad-a__haze {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    to bottom,
+    var(--ivory) 18%,
+    rgba(244, 239, 230, 0.85) 30%, /* --ivory の透過版 */
+    transparent 52%
+  );
+}
+/* 歩行の揺れ: 視点がわずかに上下する */
+.rad-a__bob {
+  position: absolute;
+  inset: 0;
+  animation: rad-a-bob 1.1s ease-in-out infinite alternate;
+}
+@keyframes rad-a-bob {
+  from {
+    transform: translateY(0);
+  }
+  to {
+    transform: translateY(5px);
+  }
+}
+
+/* ---------- 案B: 足あとの道（俯瞰トレッドミル＋足あと） ---------- */
+
+.rad-b__strip {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 50%;
+  width: 340px;
+  transform: translateX(-50%);
+  opacity: 0.85;
+  background-image: url('/road.png');
+  background-repeat: repeat-y;
+  background-size: 340px 510px;
+  background-position: center 0;
+  animation: rad-b-flow 8.5s linear infinite;
+  will-change: background-position;
+}
+@keyframes rad-b-flow {
+  to {
+    background-position: center 510px; /* 510px / 8.5s = 60px/s。足あとの移動速度と一致させる */
+  }
+}
+/* 上下端のフェード（LPの road-bg と同じ馴染ませ方） */
+.rad-b__mask {
+  position: absolute;
+  inset: 0;
+  -webkit-mask-image: linear-gradient(to bottom, transparent 0%, #000 15%, #000 88%, transparent 100%);
+  mask-image: linear-gradient(to bottom, transparent 0%, #000 15%, #000 88%, transparent 100%);
+}
+/* 足あと: 出現位置で「ぽん」と刻まれ、道と同じ 60px/s で流れつつ薄れて消える */
+.rad-b__foot {
+  position: absolute;
+  top: 24%;
+  left: 50%;
+  width: 13px;
+  height: 22px;
+  border-radius: 50% 50% 42% 42%;
+  background: rgba(107, 90, 62, 0.5);
+  opacity: 0;
+  animation: rad-b-step 6s linear infinite;
+  will-change: transform, opacity;
+}
+/* かかと */
+.rad-b__foot::after {
+  content: '';
+  position: absolute;
+  left: 50%;
+  bottom: -8px;
+  width: 9px;
+  height: 7px;
+  margin-left: -4.5px;
+  border-radius: 50%;
+  background: rgba(107, 90, 62, 0.5);
+}
+.rad-b__foot--l {
+  margin-left: -22px;
+  rotate: -7deg;
+}
+.rad-b__foot--r {
+  margin-left: 9px;
+  rotate: 7deg;
+}
+/* translateY は 6s かけて 360px = 60px/s（道と同速）。透明度だけ先に落として消す */
+@keyframes rad-b-step {
+  0% {
+    opacity: 0;
+    transform: translateY(0) scale(1.25);
+  }
+  4% {
+    opacity: 0.85;
+    transform: translateY(14.4px) scale(1);
+  }
+  55% {
+    opacity: 0;
+  }
+  100% {
+    opacity: 0;
+    transform: translateY(360px) scale(1);
+  }
+}
+
+/* ---------- 案C: 巡る道(SVGループ+旅人マーカー) ---------- */
+
+/* offset-path は px 座標のため、SVG とマーカーを同一の固定サイズ枠に入れて一緒に拡縮する */
+.rad-c__frame {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 400px;
+  height: 320px;
+  transform: translate(-50%, -50%);
+}
+@media (max-width: 440px) {
+  .rad-c__frame {
+    transform: translate(-50%, -50%) scale(0.82);
+  }
+}
+.rad-c__svg {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+}
+/* 中央の破線が進行方向へ流れ続ける */
+.rad-c__dash {
+  animation: rad-c-dash 1.6s linear infinite;
+}
+@keyframes rad-c-dash {
+  to {
+    stroke-dashoffset: -26; /* dasharray(10+16) と同じ周期でループ */
+  }
+}
+/* 旅人マーカー: 道のパスに沿って一周し続ける */
+.rad-c__walker {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 18px;
+  height: 18px;
+  margin: -9px 0 0 -9px;
+  border-radius: 9999px;
+  background: var(--palace);
+  border: 3px solid #fff;
+  box-shadow: 0 2px 8px rgba(107, 90, 62, 0.35);
+  offset-path: path(
+    'M 200 258 C 96 258 44 216 44 158 C 44 100 120 96 200 96 C 280 96 356 92 356 150 C 356 208 304 258 200 258 Z'
+  );
+  offset-rotate: 0deg;
+  animation: rad-c-travel 14s linear infinite;
+  will-change: offset-distance;
+}
+@keyframes rad-c-travel {
+  to {
+    offset-distance: 100%;
+  }
+}
+/* マーカーの淡い脈動（歩みのリズム） */
+.rad-c__walker::after {
+  content: '';
+  position: absolute;
+  inset: -8px;
+  border-radius: 9999px;
+  border: 2px solid rgba(198, 167, 94, 0.5);
+  animation: rad-c-pulse 1.4s ease-out infinite;
+}
+@keyframes rad-c-pulse {
+  from {
+    transform: scale(0.55);
+    opacity: 0.9;
+  }
+  to {
+    transform: scale(1.15);
+    opacity: 0;
+  }
+}
+
+/* ---------- reduced motion: 全案とも静止 ---------- */
+
+@media (prefers-reduced-motion: reduce) {
+  .rad-a__plane,
+  .rad-a__bob,
+  .rad-b__strip,
+  .rad-b__foot,
+  .rad-c__dash,
+  .rad-c__walker,
+  .rad-c__walker::after {
+    animation: none;
+  }
+  .rad-b__foot {
+    opacity: 0;
+  }
+}
