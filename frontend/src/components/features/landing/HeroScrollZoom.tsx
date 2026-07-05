@@ -42,13 +42,28 @@ export function HeroScrollZoom() {
         {/* 背景画像（ズーム対象・最背面） */}
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img src="/hero-palace.jpg?v=2" alt="" aria-hidden fetchPriority="high" decoding="async" className="hero-zoom" />
-        {/* 宮殿の扉オーバーレイ：focal point に重ねズームで拡大→スクロールで観音開き・奥から光 */}
+        {/* 宮殿の扉オーバーレイ：focal point に重ねズームで拡大→スクロールで観音開き・奥から光。
+            扉は厚みエッジ付きの3Dパネル。開くほどフレア（光条）が扉の奥から輝き、
+            radial の hero-whiteout と合わせて「光の先の道」へ接続する */}
         <div aria-hidden className="hero-doors">
           <div className="hero-door-glow" />
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src="/hero-door-left.png?v=2" alt="" decoding="async" className="hero-door hero-door--left" />
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src="/hero-door-right.png?v=2" alt="" decoding="async" className="hero-door hero-door--right" />
+          <div className="hero-door-panel hero-door-panel--left">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src="/hero-door-left.png?v=2" alt="" decoding="async" className="hero-door-face hero-door-face--left" />
+            <span className="hero-door-edge hero-door-edge--left" />
+          </div>
+          <div className="hero-door-panel hero-door-panel--right">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src="/hero-door-right.png?v=2" alt="" decoding="async" className="hero-door-face hero-door-face--right" />
+            <span className="hero-door-edge hero-door-edge--right" />
+          </div>
+          {/* 開扉に連動して輝くフレア（光条＋光芒＋コア） */}
+          <div className="hero-flare">
+            <span className="hero-flare__rays" />
+            <span className="hero-flare__streak hero-flare__streak--v" />
+            <span className="hero-flare__streak hero-flare__streak--h" />
+            <span className="hero-flare__core" />
+          </div>
         </div>
         {/* 流れる雲（上空・スクリムの下で馴染ませる。ズームでフェード） */}
         <div aria-hidden className="hero-clouds" />

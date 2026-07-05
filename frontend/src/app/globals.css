@@ -197,11 +197,33 @@
   will-change: transform;
 }
 
-.hero-door {
+/* 扉パネル＝厚みエッジを持つ3D板。ヒンジ軸で回転し、面（img）とエッジを一緒に運ぶ */
+.hero-door-panel {
   position: absolute;
   top: 0;
   height: 100%;
   width: 50%;
+  transform-style: preserve-3d;
+  will-change: transform;
+}
+/* 左扉=左ヒンジ。継ぎ目(右端)を中央に寄せ、左軸で奥へ開く */
+.hero-door-panel--left {
+  left: 0;
+  transform-origin: left center;
+  transform: rotateY(calc(var(--dooropen, 0) * var(--door-open-deg)));
+}
+/* 右扉=右ヒンジ。継ぎ目(左端)を中央に寄せ、右軸で奥へ開く */
+.hero-door-panel--right {
+  right: 0;
+  transform-origin: right center;
+  transform: rotateY(calc(var(--dooropen, 0) * var(--door-open-deg) * -1));
+}
+
+.hero-door-face {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
   /* 細長い開口部にあわせて充填（素材より細く）。継ぎ目側を中央へ */
   object-fit: fill;
   backface-visibility: hidden;
@@ -210,23 +232,94 @@
     saturate(0.8) sepia(0.08)
     brightness(calc(1.04 - var(--dooropen, 0) * 0.28))
     drop-shadow(0 6px 16px rgba(18, 16, 32, 0.5));
-  will-change: transform, filter;
+  will-change: filter;
 }
-
-/* 左扉=左ヒンジ。継ぎ目(右端)を中央に寄せ、左軸で奥へ開く */
-.hero-door--left {
-  left: 0;
+.hero-door-face--left {
   object-position: right center;
-  transform-origin: left center;
-  transform: rotateY(calc(var(--dooropen, 0) * var(--door-open-deg)));
+}
+.hero-door-face--right {
+  object-position: left center;
 }
 
-/* 右扉=右ヒンジ。継ぎ目(左端)を中央に寄せ、右軸で奥へ開く */
-.hero-door--right {
+/* 扉の厚み。継ぎ目側の木口を面に対して90°で立て、開くほど見えてくる */
+.hero-door-edge {
+  position: absolute;
+  top: 0;
+  height: 100%;
+  width: 5%;
+  background: linear-gradient(to bottom, #7a6136, #4a3a1e 55%, #33270f);
+  backface-visibility: hidden;
+}
+.hero-door-edge--left {
   right: 0;
-  object-position: left center;
   transform-origin: right center;
-  transform: rotateY(calc(var(--dooropen, 0) * var(--door-open-deg) * -1));
+  transform: rotateY(90deg);
+}
+.hero-door-edge--right {
+  left: 0;
+  transform-origin: left center;
+  transform: rotateY(-90deg);
+}
+
+/* 開扉に連動するフレア。--flare は扉が1/4開いてから立ち上がる */
+.hero-flare {
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  pointer-events: none;
+  --flare: calc(max(0, var(--dooropen, 0) - 0.25) / 0.75);
+  opacity: var(--flare);
+}
+.hero-flare__core {
+  position: absolute;
+  left: 50%;
+  top: 44%;
+  width: 170%;
+  aspect-ratio: 1;
+  transform: translate(-50%, -50%) scale(calc(0.5 + var(--flare) * 0.9));
+  background: radial-gradient(
+    circle,
+    rgba(255, 253, 244, 0.95) 0%,
+    rgba(255, 233, 172, 0.55) 30%,
+    rgba(255, 214, 120, 0) 64%
+  );
+}
+/* 水平/垂直の光条（レンズフレアの筋） */
+.hero-flare__streak {
+  position: absolute;
+  left: 50%;
+  top: 44%;
+  border-radius: 9999px;
+}
+.hero-flare__streak--h {
+  width: 560%;
+  height: 4.5%;
+  transform: translate(-50%, -50%) scaleX(calc(0.25 + var(--flare) * 0.75));
+  background: linear-gradient(90deg, transparent, rgba(255, 243, 205, 0.9) 50%, transparent);
+}
+.hero-flare__streak--v {
+  width: 9%;
+  height: 240%;
+  transform: translate(-50%, -50%) scaleY(calc(0.3 + var(--flare) * 0.7));
+  background: linear-gradient(180deg, transparent, rgba(255, 243, 205, 0.55) 50%, transparent);
+}
+/* 放射状の光芒（星型バースト）。中心から外へ薄く伸びる */
+.hero-flare__rays {
+  position: absolute;
+  left: 50%;
+  top: 44%;
+  width: 460%;
+  aspect-ratio: 1;
+  border-radius: 50%;
+  transform: translate(-50%, -50%) rotate(calc(var(--flare) * 14deg))
+    scale(calc(0.6 + var(--flare) * 0.6));
+  background: repeating-conic-gradient(
+    from 8deg,
+    rgba(255, 238, 186, 0.32) 0deg 3deg,
+    transparent 3deg 26deg
+  );
+  -webkit-mask-image: radial-gradient(circle, #000 0%, transparent 62%);
+  mask-image: radial-gradient(circle, #000 0%, transparent 62%);
 }
 
 /* 扉の奥から差し込む金色の光（開くほど強く） */
@@ -285,13 +378,19 @@
   opacity: var(--blend, 0);
 }
 
-/* 終盤に画面全体が次セクションと同じアイボリーで満ちる＝シームレスに接続（--blend連動） */
+/* 終盤に扉の位置から暖かい光が放射状に満ち、次セクション（道）のアイボリーへ
+   シームレスに接続する（--blend連動）。「開いた扉の光の先に道が続く」演出 */
 .hero-whiteout {
   position: absolute;
   inset: 0;
   z-index: 36;
   pointer-events: none;
-  background: var(--ivory);
+  background: radial-gradient(
+    120% 90% at var(--hero-door-x) var(--hero-door-y),
+    #fffbef 0%,
+    #faf3e2 42%,
+    var(--ivory) 100%
+  );
   opacity: var(--blend, 0);
 }
 
