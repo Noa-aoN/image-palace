@@ -208,17 +208,17 @@
   transform-style: preserve-3d;
   will-change: transform;
 }
-/* 左扉=左ヒンジ。継ぎ目(右端)を中央に寄せ、左軸で奥へ開く */
+/* 左扉=左ヒンジ。継ぎ目(右端)を中央に寄せ、左軸で手前へ開く（外開き） */
 .hero-door-panel--left {
   left: 0;
   transform-origin: left center;
-  transform: rotateY(calc(var(--dooropen, 0) * var(--door-open-deg)));
+  transform: rotateY(calc(var(--dooropen, 0) * var(--door-open-deg) * -1));
 }
-/* 右扉=右ヒンジ。継ぎ目(左端)を中央に寄せ、右軸で奥へ開く */
+/* 右扉=右ヒンジ。継ぎ目(左端)を中央に寄せ、右軸で手前へ開く（外開き） */
 .hero-door-panel--right {
   right: 0;
   transform-origin: right center;
-  transform: rotateY(calc(var(--dooropen, 0) * var(--door-open-deg) * -1));
+  transform: rotateY(calc(var(--dooropen, 0) * var(--door-open-deg)));
 }
 
 .hero-door-face {
