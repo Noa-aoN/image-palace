@@ -144,8 +144,8 @@
   --door-h: 9.6vh;
   --door-aspect: 0.594;
   --door-open-deg: 95deg;
-  /* 扉スラブの厚み（片扉幅 約2.85vh の16%程度）。--zoom 拡大に乗って見た目も太る */
-  --door-thick: 0.45vh;
+  /* 扉スラブの厚み（片扉幅 約2.85vh の8%程度）。--zoom 拡大に乗って見た目も太る */
+  --door-thick: 0.225vh;
 }
 
 .hero-track {
