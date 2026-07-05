@@ -649,8 +649,8 @@
 .road-bg__pillar {
   position: absolute;
   width: 140px;
-  height: 187px; /* 540x720(3:4) を幅140に合わせた高さ。底辺基準の配置に必要 */
-  top: -187px; /* 底辺を平面 y=0 に置き、translateY で道と同オフセットに送る */
+  height: 210px; /* 480x720(2:3) を幅140に合わせた高さ。底辺基準の配置に必要 */
+  top: -210px; /* 底辺を平面 y=0 に置き、translateY で道と同オフセットに送る */
   transform-origin: 50% 100%;
   /* 底辺を軸に rotateX(-72deg) で直立させてから、道と同じ量だけ手前へ流す。
      top ではなく transform で動かしてレイアウトを発生させない */
