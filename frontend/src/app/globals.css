@@ -656,8 +656,10 @@
      top ではなく transform で動かしてレイアウトを発生させない */
   transform: translateY(calc(mod(var(--pillar-base, 0) + var(--road-shift, 0), 2160) * 1px))
     rotateX(-72deg);
-  opacity: 0.75;
-  will-change: transform;
+  /* 出現は霞からゆっくり: 平面位置 0(地平線)〜720px で透明度を 0→0.75 に
+     立ち上げる。遠い柱ほど薄くなり、列全体が距離のグラデーションになる */
+  opacity: calc(min(mod(var(--pillar-base, 0) + var(--road-shift, 0), 2160) / 720, 1) * 0.75);
+  will-change: transform, opacity;
 }
 /* 柱の実体。下部は sharp→blur のクロスフェードで接地を道に馴染ませる */
 .road-bg__pillar-img {
