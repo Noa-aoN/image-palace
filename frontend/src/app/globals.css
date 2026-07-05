@@ -1066,48 +1066,49 @@
   100%  { transform: translate3d(32vw, -26vh, 0) scale(0.5, 0.5) rotate(6deg); opacity: 0; filter: brightness(1.1); }
 }
 
-/* 足跡。ゴールドの足形（足裏＋かかとの2楕円 SVG）。時間ループではなく
-   スクロール連動の一回きり: 歩行進捗 --road-walk（JS書き込み・0→1）が
-   各足跡のしきい値 --step-t を越えるとふわっと現れ、そのまま残る
-   （スクロールを戻せば逆順に消える）。
-   3Dの道の上に付いた足跡に見えるよう、scaleY で遠近の押しつぶしを掛け、
-   blur は手前でも 0.8px・奥ほど強く（空気遠近）掛けて地面に馴染ませる。
-   奥の一歩ほど --step-scale で小さい（配置・しきい値は RoadBackground.tsx 側）。
-   退場は --road-walkout が同じしきい値を越えた足跡から＝手前から順番に消える */
+/* 足跡。ゴールドの足形（足裏＋かかとの2楕円 SVG）。
+   道と一緒に流れるトレッドミル: 周回座標 c = mod(--road-walkc + base, 1)
+   （0=最奥 → 1=最手前）から画面上の位置・大きさ・ぼかし・濃さを導出する。
+   スクロールすると c が進み、足跡は道の遠近線に沿って手前へ滑り、
+   下端で薄れて奥へ回り込む無限ループ（戻せば逆流）。
+   - 縦位置: y = 41% + 36.5% × c²（c² で奥ほど詰まる遠近圧縮。高さ幅は従来どおり）
+   - 横位置: 消失点(y≈20%)へ向かう平行線上 dev = (y - 20) × 0.125（左右は --step-side）
+   - 大きさ: 0.3 + 1.1c²（最奥0.3 → 最手前1.4）
+   3D の道の上に付いて見えるよう scaleY(0.52) の遠近押しつぶしと
+   距離連動 blur（手前 約1.0px → 奥 約2.1px）を掛ける。
+   退場ゲートは2系統 — 手前(c大)からの --road-walkout（CONCEPTが重なる頃）と、
+   奥(c小)からの --road-topout（道が十分重なってから）。
+   --road-dim: 石畳が表示され始めたら全体をさらに淡くする（JS書き込み 1→0.55） */
 .road-intro__step {
+  --c: mod(var(--road-walkc, 0) + var(--step-base, 0), 1);
+  --cs: calc(0.3 + 1.1 * var(--c) * var(--c));
   position: absolute;
+  top: calc((41 + 36.5 * var(--c) * var(--c)) * 1%);
+  left: calc((50 + var(--step-side, 1) * (21 + 36.5 * var(--c) * var(--c)) * 0.125) * 1%);
   width: 30px;
   height: 48px;
   margin: -24px 0 0 -15px;
   background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 20 32'%3E%3Cellipse cx='10' cy='10.5' rx='6' ry='9.5' fill='%23AF8B48'/%3E%3Cellipse cx='10' cy='26.5' rx='4.4' ry='5' fill='%23AF8B48'/%3E%3C/svg%3E")
     center / contain no-repeat;
-  /* 手前の一歩にもしっかり blur（1.0px〜）を掛け、奥ほどさらに強く */
-  filter: blur(calc(1.3px + (1 - var(--step-scale, 1)) * 1.2px));
-  /* 出現時からごく淡く、濃さは距離連動: 手前(scale大)でも約0.28、奥は約0.18。
-     点灯はスクロール連動のループ歩行:
-     --road-walkn（連続歩数）に対し各足跡の位相 = mod(walkn - i, 7)。
-     位相 0〜5 で点灯・5〜6 で消灯・6〜7 は暗転し、次の周回で再点灯する
-     ＝古い一歩から順に消えては下から新しい一歩が現れ続ける（配置は不変）。
-     初回のみ walkn が自分の番号に達するまで点灯させない一回きりゲートを併用。
-     退場ゲートは2系統 — 手前からの --road-walkout（CONCEPTが重なる頃）と、
-     奥からの --road-topout（道が十分重なってから・しきい値反転）。
-     --road-dim: 石畳が表示され始めたら全体をさらに淡くする（JS書き込み 1→0.55） */
+  filter: blur(calc((1.3 + (1 - var(--cs)) * 1.2) * 1px));
+  /* 両端（奥への回り込み・手前の抜け）で滑らかに消えて湧く。濃さは距離連動で淡く */
   opacity: calc(
-    clamp(0, (var(--road-walkn, 0) - var(--step-i, 0)) * 2, 1) *
-    clamp(0, mod(var(--road-walkn, 0) - var(--step-i, 0), 7) * 2, 1) *
-    (1 - clamp(0, mod(var(--road-walkn, 0) - var(--step-i, 0), 7) - 5, 1)) *
-    (1 - clamp(0, (var(--road-walkout, 0) - var(--step-t, 0)) * 12, 1)) *
-    (1 - clamp(0, (var(--road-topout, 0) - (0.78 - var(--step-t, 0))) * 12, 1)) *
-    (0.15 + var(--step-scale, 1) * 0.09) *
+    clamp(0, var(--c) * 8, 1) *
+    clamp(0, (1 - var(--c)) * 8, 1) *
+    (1 - clamp(0, (var(--road-walkout, 0) - (1 - var(--c))) * 3, 1)) *
+    (1 - clamp(0, (var(--road-topout, 0) - var(--c)) * 3, 1)) *
+    (0.15 + var(--cs) * 0.09) *
     var(--road-dim, 1)
   );
-  will-change: opacity;
+  will-change: opacity, transform;
 }
 .road-intro__step--l {
-  transform: scale(var(--step-scale, 1)) scaleY(0.52) rotate(-7deg);
+  --step-side: -1;
+  transform: scale(var(--cs)) scaleY(0.52) rotate(-7deg);
 }
 .road-intro__step--r {
-  transform: scale(var(--step-scale, 1)) scaleY(0.52) rotate(7deg) scaleX(-1);
+  --step-side: 1;
+  transform: scale(var(--cs)) scaleY(0.52) rotate(7deg) scaleX(-1);
 }
 
 @media (prefers-reduced-motion: reduce) {

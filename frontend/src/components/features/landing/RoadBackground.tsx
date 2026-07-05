@@ -21,20 +21,20 @@ const SPEED = 0.6 // スクロール量に対する道の流れる速さ（歩�
 const PILLAR_BASES = [0, 360, 720, 1080, 1440, 1800]
 const PILLAR_SIDES = ['l', 'r'] as const
 
-// 足跡の並び（手前→奥）。左右交互に、道の遠近に合わせて奥ほど中央へ
-// 収束しながら小さくなる。手前ほど左右に開き・サイズも大きい。
-// 画面中下段（71%）から道の最上部あたり（36%）まで歩幅も奥ほど詰まる（遠近感）。
-// i はスタガー用のインデックス（0 が最初に現れる手前の一歩）
-// 左右の開きは道と同じ遠近の平行線: 消失点（y≈20%）へ向かう2本の
-// 直線上に乗るよう、横ずれ量を (y - 20%) に比例させている
+// 足跡は周回座標 c（0=最奥 → 1=最手前）で管理するトレッドミル。
+// 各足跡は base（0..1 を7等分）だけ位相をずらして道の上に等間隔に並び、
+// スクロールで進む --road-walkc が全員の c を進める＝道と一緒に手前へ
+// 流れて下端で消え、奥へ回り込んで再び現れるループ。
+// 画面上の位置・サイズ・ぼかし・濃さはすべて CSS 側で c から導出する。
+// 左右（side）は base 順に交互＝空間上も左右交互の歩みになる
 const INTRO_STEPS = [
-  { i: 0, x: '57.2%', y: '77.5%', s: 1.4, side: 'r' },
-  { i: 1, x: '43.5%', y: '69.5%', s: 1.2, side: 'l' },
-  { i: 2, x: '55.5%', y: '61.5%', s: 0.95, side: 'r' },
-  { i: 3, x: '45.9%', y: '54.5%', s: 0.76, side: 'l' },
-  { i: 4, x: '53.6%', y: '49%', s: 0.59, side: 'r' },
-  { i: 5, x: '47.5%', y: '44.5%', s: 0.45, side: 'l' },
-  { i: 6, x: '52.2%', y: '41%', s: 0.35, side: 'r' },
+  { i: 0, side: 'r' },
+  { i: 1, side: 'l' },
+  { i: 2, side: 'r' },
+  { i: 3, side: 'l' },
+  { i: 4, side: 'r' },
+  { i: 5, side: 'l' },
+  { i: 6, side: 'r' },
 ] as const
 
 type RoadBackgroundProps = {
@@ -89,11 +89,12 @@ export function RoadBackground({ fadeTop, fadeBottom, intro }: RoadBackgroundPro
       // それまで足跡は道の上に残り続ける
       introFadeStart = heroEnd + ih * 0.45
       introFadeLen = ih * 0.45
-      // 足跡の歩行進行（スクロール連動・ループ）。レイヤーが見えてから1歩目。
-      // 1歩 = walkLen/8 スクロール px。道の流れ（柱が 600px スクロールごとに
-      // 1本通過）に対して 1 ストライド ≈ 72px と、地面の移動速度に近い歩調にする
+      // 足跡の周回進行（スクロール連動・トレッドミル）。
+      // 1周（最奥→最手前）= 1.3 画面分のスクロール。道の地面は 0.6 平面px/
+      // スクロールpx で流れる（柱 360px 間隔が 600px ごとに通過）ので、
+      // トレイル全長 ≈ 630 平面px ÷ 0.6 ≈ 1050px ≒ 1.3ih と、道と同じ速度感になる
       walkStart = heroEnd - ih * 0.02
-      walkLen = ih * 0.72
+      walkLen = ih * 1.3
       // 道の表示が足跡へ十分重なってから、奥（上）の足跡も道に
       // 飲み込まれるように上からゆっくり消していく（手前側の退場より遅い）
       topOutStart = revealStart + ih * 0.3
@@ -120,10 +121,10 @@ export function RoadBackground({ fadeTop, fadeBottom, intro }: RoadBackgroundPro
         introRef.current.style.setProperty('--road-intro', appear.toFixed(3))
         // 渡鴉の退場（道リビール前に霞へ消える）
         introRef.current.style.setProperty('--road-out', (1 - fade).toFixed(3))
-        // 歩行進行（連続歩数・上限なし）。1 進むごとに次の一歩が現れ、
-        // 7歩で一巡するループを CSS の mod() 側で作る。戻せば逆再生
-        const walkN = Math.max(0, (window.scrollY - walkStart) / (walkLen / 8))
-        introRef.current.style.setProperty('--road-walkn', walkN.toFixed(3))
+        // 周回進行（周数・上限なし）。CSS 側で mod(walkc + base, 1) が
+        // 各足跡の周回座標 c になる。戻せば逆流
+        const walkC = Math.max(0, (window.scrollY - walkStart) / walkLen)
+        introRef.current.style.setProperty('--road-walkc', walkC.toFixed(4))
         // 足跡の退場進行。同じしきい値を使うことで手前の一歩から順番に消える
         introRef.current.style.setProperty('--road-walkout', fade.toFixed(3))
         // 道の重なりによる退場進行（奥＝上の足跡から順番に消える）
@@ -225,15 +226,7 @@ export function RoadBackground({ fadeTop, fadeBottom, intro }: RoadBackgroundPro
           <span
             key={st.i}
             className={`road-intro__step road-intro__step--${st.side}`}
-            style={
-              {
-                left: st.x,
-                top: st.y,
-                '--step-scale': st.s,
-                '--step-t': st.i / 8,
-                '--step-i': st.i,
-              } as CSSProperties
-            }
+            style={{ '--step-base': st.i / 7 } as CSSProperties}
           />
         ))}
       </div>
