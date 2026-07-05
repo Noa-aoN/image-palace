@@ -640,8 +640,8 @@
   will-change: background-position;
   /* 道の果て（平面の上端＝地平線）が硬いエッジで浮かないよう、
      平面座標で遠端をフェードさせて霞に溶かす。柱には掛けない */
-  -webkit-mask-image: linear-gradient(to bottom, transparent 0, #000 480px);
-  mask-image: linear-gradient(to bottom, transparent 0, #000 480px);
+  -webkit-mask-image: linear-gradient(to bottom, transparent 0, #000 320px);
+  mask-image: linear-gradient(to bottom, transparent 0, #000 320px);
 }
 /* 両脇の柱。平面上の点 (left, --pillar-base + --road-shift) に底辺を置き、
    rotateX(-72deg) で平面の傾きを打ち消して直立させる（底辺を軸に起こす）。
@@ -694,15 +694,17 @@
   -webkit-mask-image: linear-gradient(to top, #000 0%, transparent 100%);
   mask-image: linear-gradient(to top, #000 0%, transparent 100%);
 }
-/* 上端（道の一番奥）を強くぼかして遠くへ霞ませる。上ほど強く下へフェード。 */
+/* 上端（道の一番奥）を強くぼかして遠くへ霞ませる。上ほど強く下へフェード。
+   ステージは画面固定＝画面上の高さがそのまま距離なので、この帯が
+   「遠い柱・道ほど強いブラー」（空気遠近）を最終解像度で実現する */
 .road-blur--top {
   top: 0;
   bottom: auto;
-  height: 30%;
+  height: 44%;
   backdrop-filter: blur(9px);
   -webkit-backdrop-filter: blur(9px);
-  -webkit-mask-image: linear-gradient(to bottom, #000 0%, transparent 100%);
-  mask-image: linear-gradient(to bottom, #000 0%, transparent 100%);
+  -webkit-mask-image: linear-gradient(to bottom, #000 0%, rgba(0, 0, 0, 0.55) 55%, transparent 100%);
+  mask-image: linear-gradient(to bottom, #000 0%, rgba(0, 0, 0, 0.55) 55%, transparent 100%);
 }
 @media (prefers-reduced-motion: reduce) {
   /* スクロール連動を止め静止（背景・柱は既定位置で表示） */
