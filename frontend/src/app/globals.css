@@ -558,10 +558,12 @@
   background-size: 60vw 100%;
   /* フェードは3倍速（進捗~0.18で透明）。上方向の移動はさらに先行する4.5倍速・
      -40vh で、まだ半透明のうちに帯ごと画面上端の外へ抜け切る（見えるフレームアウト）。
-     微ズーム（1→1.18）も移動に同期 */
+     ズーム（1→1.45）も移動に同期。origin を帯の下端に置き、雲が頭上へ
+     迫り出しながら抜けていく感じを強調する */
   opacity: calc((1 - min(1, var(--fade, 0) * 3)) * 0.55);
+  transform-origin: 50% 100%;
   transform: translate3d(0, calc(min(1, var(--fade, 0) * 4.5) * -40vh), 0)
-    scale(calc(1 + min(1, var(--fade, 0) * 4.5) * 0.18));
+    scale(calc(1 + min(1, var(--fade, 0) * 4.5) * 0.45));
   will-change: background-position, opacity, transform;
   animation: hero-cloud-drift 80s linear infinite;
 }
@@ -689,7 +691,8 @@
   }
   .hero-clouds {
     height: 22%;
-    opacity: calc((1 - var(--fade, 0)) * 0.4);
+    /* デスクトップと同じ3倍速フェードに合わせる（等速だと移動とズレる） */
+    opacity: calc((1 - min(1, var(--fade, 0) * 3)) * 0.4);
   }
 }
 
