@@ -1030,16 +1030,17 @@
   opacity: 0;
   transform-origin: 50% 50%;
   will-change: transform, opacity;
-  animation: road-intro-raven 9s ease-in-out infinite;
+  /* linear + キーフレーム%を移動距離に比例配分＝区間の継ぎ目でも減速しない等速滑空 */
+  animation: road-intro-raven 9s linear infinite;
 }
 
 /* 高度と大きさを連動: 下（手前の空）に来るほど大きく、上（遠く）ほど小さい */
 @keyframes road-intro-raven {
   0%   { transform: translate3d(-14vw, 34vh, 0) scale(1.2) rotate(-5deg); opacity: 0; filter: brightness(1); }
   8%   { opacity: 0.9; }
-  30%  { transform: translate3d(20vw, 20vh, 0) scale(0.85) rotate(4deg); filter: brightness(1.04); }
-  60%  { transform: translate3d(52vw, 9vh, 0) scale(0.5) rotate(-3deg); opacity: 0.8; filter: brightness(1.1); }
-  85%  { transform: translate3d(86vw, 11vh, 0) scale(0.42) rotate(2deg); opacity: 0.6; filter: brightness(1.16); }
+  27%  { transform: translate3d(20vw, 20vh, 0) scale(0.85) rotate(4deg); filter: brightness(1.04); }
+  52%  { transform: translate3d(52vw, 9vh, 0) scale(0.5) rotate(-3deg); opacity: 0.8; filter: brightness(1.1); }
+  78%  { transform: translate3d(86vw, 11vh, 0) scale(0.42) rotate(2deg); opacity: 0.6; filter: brightness(1.16); }
   100% { transform: translate3d(114vw, 6vh, 0) scale(0.3) rotate(1deg); opacity: 0.45; filter: brightness(1.2); }
 }
 

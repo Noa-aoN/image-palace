@@ -28,10 +28,10 @@ const PILLAR_SIDES = ['l', 'r'] as const
 // 左右の開きは道と同じ遠近の平行線: 消失点（y≈20%）へ向かう2本の
 // 直線上に乗るよう、横ずれ量を (y - 20%) に比例させている
 const INTRO_STEPS = [
-  { i: 0, x: '44.4%', y: '71%', s: 1.2, side: 'l' },
-  { i: 1, x: '54.7%', y: '62%', s: 0.95, side: 'r' },
-  { i: 2, x: '46.3%', y: '54%', s: 0.76, side: 'l' },
-  { i: 3, x: '53%', y: '47%', s: 0.59, side: 'r' },
+  { i: 0, x: '43.3%', y: '71%', s: 1.2, side: 'l' },
+  { i: 1, x: '55.6%', y: '62%', s: 0.95, side: 'r' },
+  { i: 2, x: '45.9%', y: '54%', s: 0.76, side: 'l' },
+  { i: 3, x: '53.4%', y: '47%', s: 0.59, side: 'r' },
   { i: 4, x: '47.7%', y: '41%', s: 0.45, side: 'l' },
   { i: 5, x: '51.8%', y: '36%', s: 0.35, side: 'r' },
 ] as const
@@ -88,9 +88,10 @@ export function RoadBackground({ fadeTop, fadeBottom, intro }: RoadBackgroundPro
       introFadeStart = heroEnd + ih * 0.45
       introFadeLen = ih * 0.45
       // 足跡の歩行進行（スクロール連動・一回きり）。レイヤーが見えてから
-      // 1歩目、0.35画面分のスクロールでゆっくり最奥の一歩まで現れ切る
+      // 1歩目、0.6画面分のスクロールでとてもゆっくり最奥の一歩まで現れ切る
+      // （最奥が現れ切るのは CONCEPT 到達による退場開始の直前）
       walkStart = heroEnd - ih * 0.02
-      walkLen = ih * 0.35
+      walkLen = ih * 0.6
       // 道の表示が足跡へ十分重なってから、奥（上）の足跡も道に
       // 飲み込まれるように上からゆっくり消していく（手前側の退場より遅い）
       topOutStart = revealStart + ih * 0.3
