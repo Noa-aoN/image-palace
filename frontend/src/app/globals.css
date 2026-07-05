@@ -193,9 +193,15 @@
   position: absolute;
   left: var(--hero-door-x);
   top: var(--hero-door-y);
-  height: var(--door-h);
+  /* 高さは背景画像(1656×941, aspect 1.76)の object-fit: cover に追従させる。
+     縦長〜1.76 までは高さ基準（画像の扉高 ∝ vh）で 9.6vh がぴったり。
+     それより横長の大窓では幅基準（扉高 ∝ vw/1.76）に切り替わるため、
+     9.6vh のままだと上下に黒い隙間が出る → max() で 5.46vw(=9.6/1.76 vw) へ
+     自動スイッチして高さだけ伸ばす。幅は従来どおり 9.6vh 基準で固定
+     （開口部より十分広く、全ウィンドウサイズで過不足なし） */
+  height: max(var(--door-h), 5.46vw);
   /* 宮殿の開口部は細長（幅3.7%×高さ17%＝約0.22）。素材を寄せて充填する */
-  aspect-ratio: var(--door-aspect, 0.36);
+  width: calc(var(--door-h) * var(--door-aspect, 0.36));
   /* 背景と同率で拡大＋全開後の追いズーム（--doorboost）にも同期 */
   transform: translate(-50%, -50%) scale(calc(var(--zoom, 1) * (1 + var(--doorboost, 0) * 0.5)));
   transform-origin: center;
@@ -1077,7 +1083,7 @@
     center / contain no-repeat;
   /* 手前の一歩にもしっかり blur（1.0px〜）を掛け、奥ほどさらに強く */
   filter: blur(calc(1.3px + (1 - var(--step-scale, 1)) * 1.2px));
-  /* 全体にごく淡く、濃さは距離連動: 手前(scale大)でも約0.35、奥は約0.23。
+  /* 出現時からごく淡く、濃さは距離連動: 手前(scale大)でも約0.28、奥は約0.18。
      退場ゲートは2系統 — 手前からの --road-walkout（CONCEPTが重なる頃）と、
      奥からの --road-topout（道が十分重なってから・しきい値反転）*/
   /* --road-dim: 石畳が表示され始めたら全体をさらに淡くする（JS書き込み 1→0.55） */
@@ -1085,7 +1091,7 @@
     clamp(0, (var(--road-walk, 0) - var(--step-t, 0)) * 12, 1) *
     (1 - clamp(0, (var(--road-walkout, 0) - var(--step-t, 0)) * 12, 1)) *
     (1 - clamp(0, (var(--road-topout, 0) - (0.78 - var(--step-t, 0))) * 12, 1)) *
-    (0.2 + var(--step-scale, 1) * 0.12) *
+    (0.15 + var(--step-scale, 1) * 0.09) *
     var(--road-dim, 1)
   );
   will-change: opacity;
