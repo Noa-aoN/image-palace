@@ -4,7 +4,9 @@ default: &default
       batch_size: 500
   workers:
     - queues: "*"
-      threads: 3
+      # Web と同一 Puma プロセス（SOLID_QUEUE_IN_PUMA）で動くため、同時実行ジョブを絞って
+      # Web スレッド/CPU/DB接続の枯渇を防ぐ（重いジョブでヘルスチェックが落ちる問題の緩和）。
+      threads: <%= ENV.fetch("JOB_THREADS", 2) %>
       processes: <%= ENV.fetch("JOB_CONCURRENCY", 1) %>
       polling_interval: 0.1
 
