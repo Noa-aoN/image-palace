@@ -31,10 +31,12 @@ primary_region = 'nrt'
     soft_limit = 20
 
   [[http_service.checks]]
-    grace_period = "10s"
-    interval = "30s"
+    # 瞬間的なジョブ負荷で Web 応答が一時的に遅れても unhealthy にせず、
+    # ports 80/443 の間欠失敗を防ぐ（timeout/grace を延長、間隔を短縮して早期回復検知）。
+    grace_period = "30s"
+    interval = "15s"
     method = "GET"
-    timeout = "5s"
+    timeout = "10s"
     path = "/up"
 
 [[vm]]

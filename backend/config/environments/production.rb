@@ -25,6 +25,12 @@ Rails.application.configure do
   # 本番イメージには ImageMagick を同梱せず libvips42 のみのため、既定の mini_magick では失敗する。
   config.active_storage.variant_processor = :vips
 
+  # ActiveStorage の自動解析（AnalyzeJob）を無効化する。
+  # 寸法/LQIP は生成側の OptimizeImageService（libvips）がモデルの metadata 列へ保存しており、
+  # AS blob の解析メタデータは未使用。AnalyzeJob は R2 から blob を再ダウンロード（5〜11s）して
+  # Web と同居する Puma/SolidQueue を圧迫するだけなので停止する。
+  config.active_storage.analyzers = []
+
   # Assume all access to the app is happening through a SSL-terminating reverse proxy.
   config.assume_ssl = true
 
