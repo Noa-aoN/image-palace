@@ -15,7 +15,8 @@ import { useItemsStore } from '@/stores/items'
 import type { Item } from '@/types/item'
 import { GeneratingOverlay } from '@/components/features/items/GeneratingOverlay'
 import { Skeleton } from '@/components/ui/skeleton'
-import { STATUS_LABEL, STATUS_COLOR, POLLING_STATUSES } from '@/lib/item-status'
+import { STATUS_LABEL, POLLING_STATUSES } from '@/lib/item-status'
+import { StatusBadge } from '@/components/features/items/StatusBadge'
 
 export default function ItemDetailPage() {
   const { id } = useParams<{ id: string }>()
@@ -277,9 +278,7 @@ export default function ItemDetailPage() {
                 <Pencil size={16} />
               </button>
             </div>
-            <span className={`shrink-0 rounded-full px-3 py-1 text-sm font-medium ${STATUS_COLOR[item.generation_status] ?? ''}`}>
-              {STATUS_LABEL[item.generation_status] ?? item.generation_status}
-            </span>
+            <StatusBadge status={item.generation_status} size="lg" />
           </div>
         )}
 

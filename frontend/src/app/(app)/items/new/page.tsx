@@ -1,4 +1,5 @@
 import type { Metadata } from 'next'
+import { Suspense } from 'react'
 import Link from 'next/link'
 import { Button } from '@/components/ui/button'
 import { CreateItemForm } from '@/components/features/items/CreateItemForm'
@@ -17,7 +18,9 @@ export default function NewItemPage() {
           単語や概念を入力すると、AIが画像を生成します
         </p>
       </div>
-      <CreateItemForm />
+      <Suspense fallback={null}>
+        <CreateItemForm />
+      </Suspense>
     </div>
   )
 }

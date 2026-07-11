@@ -8,7 +8,8 @@ import { Button } from '@/components/ui/button'
 import { Spinner } from '@/components/ui/spinner'
 import { CardGridSkeleton } from '@/components/ui/skeleton'
 import { GeneratingOverlay } from '@/components/features/items/GeneratingOverlay'
-import { STATUS_LABEL, STATUS_COLOR, POLLING_STATUSES } from '@/lib/item-status'
+import { STATUS_LABEL, POLLING_STATUSES } from '@/lib/item-status'
+import { StatusBadge } from '@/components/features/items/StatusBadge'
 import {
   getItemsPage,
   getItemSuggestions,
@@ -141,11 +142,7 @@ function ItemCard({ item, selectionMode, selected, onToggle }: ItemCardProps) {
         >
           {item.title}
         </span>
-        <span
-          className={`shrink-0 rounded-full px-2 py-0.5 text-xs font-medium ${STATUS_COLOR[item.generation_status] ?? ''}`}
-        >
-          {STATUS_LABEL[item.generation_status] ?? item.generation_status}
-        </span>
+        <StatusBadge status={item.generation_status} />
       </div>
       <div className="w-full aspect-square bg-muted flex items-center justify-center overflow-hidden">
         {resolvedImageUrl && !hasImageError ? (

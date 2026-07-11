@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { useRouter } from 'next/navigation'
+import { useRouter, useSearchParams } from 'next/navigation'
 import Link from 'next/link'
 import { Button } from '@/components/ui/button'
 import { Label } from '@/components/ui/label'
@@ -30,6 +30,8 @@ function parseTitles(raw: string): string[] {
 
 export function CreateItemForm() {
   const router = useRouter()
+  // ワードリスト詳細から「?wordlist=<id>」で来た場合、その単語を入力欄へ初期投入する
+  const prefillWordlistId = useSearchParams().get('wordlist')
   const upsertItem = useItemsStore((state) => state.upsertItem)
   const billing = useBillingStore((s) => s.summary)
   const fetchBilling = useBillingStore((s) => s.fetchSummary)
@@ -54,7 +56,18 @@ export function CreateItemForm() {
   // 既存デッキ一覧と、意味自動生成のデフォルト値（ユーザー設定）を読み込む
   useEffect(() => {
     getViews().then((vs) => setDeckViews(vs.filter((v) => v.view_type === 'deck'))).catch(() => {})
-    getWordlists().then(setWordlists).catch(() => {})
+    getWordlists()
+      .then((lists) => {
+        setWordlists(lists)
+        // 指定ワードリストがあり、入力欄がまだ空なら、その単語を初期投入する
+        if (prefillWordlistId) {
+          const wl = lists.find((w) => w.id === prefillWordlistId)
+          if (wl && wl.words.length > 0) {
+            setInput((prev) => (prev.trim() ? prev : wl.words.join('\n')))
+          }
+        }
+      })
+      .catch(() => {})
     getSettings()
       .then((s) => {
         setGenerateMeaning(s.auto_generate_meanings)
@@ -62,7 +75,7 @@ export function CreateItemForm() {
       })
       .catch(() => {})
     fetchBilling()
-  }, [fetchBilling])
+  }, [fetchBilling, prefillWordlistId])
 
   const toggleDeck = (id: string) => {
     setSelectedDeckIds((prev) => (prev.includes(id) ? prev.filter((d) => d !== id) : [...prev, id]))

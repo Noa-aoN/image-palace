@@ -3,6 +3,7 @@ import type { ReactNode } from 'react'
 import Link from 'next/link'
 import { ChevronRight, ListChecks, Images } from 'lucide-react'
 import { Card, CardContent } from '@/components/ui/card'
+import { CreateIcon } from '@/components/features/layout/CreateIcon'
 
 export const metadata: Metadata = { title: 'マテリアルを作成' }
 
@@ -17,7 +18,7 @@ type MaterialAction = {
 const MATERIAL_ACTIONS: MaterialAction[] = [
   {
     href: '/wordlists/new',
-    icon: <ListChecks size={20} />,
+    icon: <CreateIcon><ListChecks size={20} /></CreateIcon>,
     label: 'ワードリストを作成',
     description: '単語・用語・概念をまとめた素材。カード生成やボックスの元データにします。',
   },
