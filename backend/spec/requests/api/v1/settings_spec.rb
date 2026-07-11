@@ -61,5 +61,27 @@ RSpec.describe "Api::V1::Settings", type: :request do
       expect(json_response["regenerate_with_meaning"]).to be(true)
       expect(user.reload.setting.regenerate_with_meaning).to be(true)
     end
+
+    it "図の表現とアニメーションの既定は 3d / auto で、更新できる" do
+      get "/api/v1/settings", headers: headers
+      expect(json_response["diagram_mode"]).to eq("3d")
+      expect(json_response["motion_mode"]).to eq("auto")
+
+      patch "/api/v1/settings", params: { setting: { diagram_mode: "2d", motion_mode: "off" } }, headers: headers
+
+      expect(response).to have_http_status(:success)
+      expect(json_response["diagram_mode"]).to eq("2d")
+      expect(json_response["motion_mode"]).to eq("off")
+      expect(user.reload.setting.diagram_mode).to eq("2d")
+      expect(user.setting.motion_mode).to eq("off")
+    end
+
+    it "不正な図の表現・アニメーション設定は 422 を返す" do
+      patch "/api/v1/settings", params: { setting: { diagram_mode: "4d" } }, headers: headers
+      expect(response).to have_http_status(:unprocessable_entity)
+
+      patch "/api/v1/settings", params: { setting: { motion_mode: "bogus" } }, headers: headers
+      expect(response).to have_http_status(:unprocessable_entity)
+    end
   end
 end

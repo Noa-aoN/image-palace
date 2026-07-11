@@ -1,5 +1,6 @@
 import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
+import type { DiagramMode } from '@/types/settings'
 
 interface UiStore {
   sidebarExpanded: boolean
@@ -10,6 +11,9 @@ interface UiStore {
   // カードの生成ステータスバッジを表示するか（既定 true）。完了バッジは別途常に非表示。
   showStatusBadges: boolean
   toggleStatusBadges: () => void
+  // 図ごとの 2D/3D の個別指定（key=図の識別子）。未設定ならアカウントの環境設定に従う。
+  diagramOverrides: Record<string, DiagramMode>
+  setDiagramOverride: (key: string, mode: DiagramMode) => void
 }
 
 export const useUiStore = create<UiStore>()(
@@ -24,6 +28,9 @@ export const useUiStore = create<UiStore>()(
         })),
       showStatusBadges: true,
       toggleStatusBadges: () => set((state) => ({ showStatusBadges: !state.showStatusBadges })),
+      diagramOverrides: {},
+      setDiagramOverride: (key, mode) =>
+        set((state) => ({ diagramOverrides: { ...state.diagramOverrides, [key]: mode } })),
     }),
     { name: 'ip-ui' }
   )

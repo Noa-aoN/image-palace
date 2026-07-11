@@ -1,12 +1,14 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { Download, Sparkles, Loader2, Share2, Plug, SlidersHorizontal, Bell, Database, Image as ImageIcon } from 'lucide-react'
+import { Download, Sparkles, Loader2, Share2, Plug, SlidersHorizontal, Bell, Database, Image as ImageIcon, Boxes, Zap } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { CategorySections, type CategorySection } from '@/components/features/myroom/CategorySections'
 import { ComingSoon } from '@/components/features/myroom/ComingSoon'
 import { exportAccountData } from '@/lib/api/account'
 import { getSettings, updateSettings } from '@/lib/api/settings'
+import { useSettingsStore } from '@/stores/settings'
+import type { DiagramMode, MotionMode } from '@/types/settings'
 import { STYLE_OPTIONS } from '@/lib/item-styles'
 import { useUiStore } from '@/stores/ui'
 
@@ -24,6 +26,13 @@ export default function SettingsPage() {
   // 生成ステータスバッジの表示（クライアント保持の表示設定）
   const showStatusBadges = useUiStore((s) => s.showStatusBadges)
   const toggleStatusBadges = useUiStore((s) => s.toggleStatusBadges)
+  // 図の 2D/3D とアニメーション（アカウントの設定。図のコンポーネントも同じストアを見る）
+  const diagramMode = useSettingsStore((s) => s.settings?.diagram_mode ?? null)
+  const motionMode = useSettingsStore((s) => s.settings?.motion_mode ?? null)
+  const patchSettings = useSettingsStore((s) => s.patchSettings)
+  const fetchSettings = useSettingsStore((s) => s.fetchSettings)
+  const [savingDisplay, setSavingDisplay] = useState(false)
+  const [savingMotion, setSavingMotion] = useState(false)
 
   useEffect(() => {
     let cancelled = false
@@ -40,6 +49,35 @@ export default function SettingsPage() {
       cancelled = true
     }
   }, [])
+
+  // 設定ストアが空（直リンクで開いた等）なら読み込む。
+  useEffect(() => {
+    if (diagramMode === null) fetchSettings()
+  }, [diagramMode, fetchSettings])
+
+  const changeDiagramMode = async (value: DiagramMode) => {
+    if (savingDisplay) return
+    setSavingDisplay(true)
+    try {
+      await patchSettings({ diagram_mode: value })
+    } catch {
+      // 失敗時はストア側で元に戻る
+    } finally {
+      setSavingDisplay(false)
+    }
+  }
+
+  const changeMotionMode = async (value: MotionMode) => {
+    if (savingMotion) return
+    setSavingMotion(true)
+    try {
+      await patchSettings({ motion_mode: value })
+    } catch {
+      // 失敗時はストア側で元に戻る
+    } finally {
+      setSavingMotion(false)
+    }
+  }
 
   const changeDefaultStyle = async (value: string) => {
     if (defaultStyle === null || savingStyle) return
@@ -283,9 +321,58 @@ export default function SettingsPage() {
             </div>
           </section>
 
+          <section className="space-y-3 rounded-xl border border-border bg-card p-5">
+            <div className="flex items-center gap-2">
+              <Boxes size={18} style={{ color: 'var(--palace)' }} />
+              <h2 className="text-base font-semibold">図の表示</h2>
+            </div>
+            <p className="text-sm text-muted-foreground">
+              宮殿の間取り図・記憶資産などの図を、平面（2D）と立体（3D）のどちらで描くかを選びます。
+              各カードのトグルで、図ごとに個別に切り替えることもできます。
+            </p>
+            <div className="flex items-center gap-2">
+              <select
+                aria-label="図の表示"
+                value={diagramMode ?? '3d'}
+                disabled={diagramMode === null || savingDisplay}
+                onChange={(e) => changeDiagramMode(e.target.value as DiagramMode)}
+                className="rounded-lg border border-border bg-background px-3 py-2 text-sm disabled:opacity-50"
+              >
+                <option value="3d">3D（立体）</option>
+                <option value="2d">2D（平面）</option>
+              </select>
+              {savingDisplay && <Loader2 size={14} className="animate-spin text-muted-foreground" />}
+            </div>
+          </section>
+
+          <section className="space-y-3 rounded-xl border border-border bg-card p-5">
+            <div className="flex items-center gap-2">
+              <Zap size={18} style={{ color: 'var(--palace)' }} />
+              <h2 className="text-base font-semibold">アニメーション</h2>
+            </div>
+            <p className="text-sm text-muted-foreground">
+              画面の動き（トップページの演出、図の切り替えなど）を動かすかどうかを選びます。
+              「自動」は端末（OS）の「視差効果を減らす」設定に従います。
+            </p>
+            <div className="flex items-center gap-2">
+              <select
+                aria-label="アニメーション"
+                value={motionMode ?? 'auto'}
+                disabled={motionMode === null || savingMotion}
+                onChange={(e) => changeMotionMode(e.target.value as MotionMode)}
+                className="rounded-lg border border-border bg-background px-3 py-2 text-sm disabled:opacity-50"
+              >
+                <option value="auto">自動（端末の設定に従う）</option>
+                <option value="on">ON（動かす）</option>
+                <option value="off">OFF（止める）</option>
+              </select>
+              {savingMotion && <Loader2 size={14} className="animate-spin text-muted-foreground" />}
+            </div>
+          </section>
+
           <ComingSoon
-            description="詳細ページの表示モード、アニメーション軽量化、マップ表示などは順次対応予定です。"
-            items={['詳細ページの表示モード', 'ホバー説明', 'アニメーション軽量化', 'シンプル表示', '2D / 3D マップ表示']}
+            description="詳細ページの表示モード、ホバー説明、シンプル表示などは順次対応予定です。"
+            items={['詳細ページの表示モード', 'ホバー説明', 'シンプル表示']}
           />
         </>
       ),

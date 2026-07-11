@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useRef, useState } from 'react'
+import { motionDisabled } from '@/lib/motion'
 
 export interface HeroZoomOptions {
   /** ズーム到達倍率（progress=1 のときの scale） */
@@ -48,9 +49,13 @@ export function useHeroZoom(opts: HeroZoomOptions = {}) {
 
   useEffect(() => {
     const mq = window.matchMedia('(prefers-reduced-motion: reduce)')
-    const applyReduced = () => setReduced(mq.matches)
+    // 環境設定（data-motion）が OS 設定より優先される。
+    const applyReduced = () => setReduced(motionDisabled())
     applyReduced()
     mq.addEventListener('change', applyReduced)
+    // 環境設定の切り替え（<html data-motion>）にも追従する。
+    const observer = new MutationObserver(applyReduced)
+    observer.observe(document.documentElement, { attributes: true, attributeFilter: ['data-motion'] })
 
     let ticking = false
     let rafId = 0
@@ -107,6 +112,7 @@ export function useHeroZoom(opts: HeroZoomOptions = {}) {
 
     return () => {
       mq.removeEventListener('change', applyReduced)
+      observer.disconnect()
       window.removeEventListener('scroll', onScroll)
       window.removeEventListener('resize', onScroll)
       cancelAnimationFrame(rafId)

@@ -817,6 +817,44 @@
   }
 }
 
+/* ユーザーが環境設定でアニメーションを OFF にしたときも、上と同じ静止状態にする */
+:root[data-motion='off'] .hero-track {
+    height: 100svh;
+  }
+:root[data-motion='off'] .scroll-cue__chevron {
+    animation: none;
+  }
+:root[data-motion='off'] .hero-zoom {
+    transform: none !important;
+    filter: none !important;
+  }
+:root[data-motion='off'] .hero-blur, :root[data-motion='off'] .hero-scrim, :root[data-motion='off'] .hero-content {
+    opacity: 1 !important;
+    transform: none !important;
+  }
+:root[data-motion='off'] .hero-blend {
+    opacity: 0 !important;
+  }
+:root[data-motion='off'] .hero-clouds, :root[data-motion='off'] .hero-raven {
+    animation: none !important;
+  }
+:root[data-motion='off'] .hero-raven {
+    display: none;
+  }
+:root[data-motion='off'] .hero-clouds {
+    opacity: calc((1 - var(--fade, 0)) * 0.35);
+  }
+:root[data-motion='off'] /* ズーム非駆動のため扉オーバーレイは隠す（貼り付き回避） */ .hero-doors {
+    display: none;
+  }
+:root[data-motion='off'] .hero-butterfly, :root[data-motion='off'] .hero-butterfly__path, :root[data-motion='off'] .hero-butterfly__wing {
+    animation: none !important;
+  }
+:root[data-motion='off'] .hero-butterfly {
+    display: none;
+  }
+
+
 /* 生成中カードのシマー（左→右へ光が流れる）。GeneratingOverlay で使用。 */
 @keyframes shimmer {
   from {
@@ -835,6 +873,12 @@
     animation: none;
   }
 }
+
+/* ユーザーが環境設定でアニメーションを OFF にしたときも、上と同じ静止状態にする */
+:root[data-motion='off'] .animate-shimmer {
+    animation: none;
+  }
+
 
 /* LP: 「続く1本の道」（3D遠近版・/dev/road-animations 案A採用）。
    道のステージ（.road-bg__viewport）は position: fixed でビューポートに固定し、
@@ -1194,6 +1238,21 @@
   }
 }
 
+/* ユーザーが環境設定でアニメーションを OFF にしたときも、上と同じ静止状態にする */
+:root[data-motion='off'] /* スクロール連動を止め静止（背景・柱は既定位置で表示）。誘導演出も出さない */ .road-bg__plane {
+    background-position: center 0;
+  }
+:root[data-motion='off'] .road-intro {
+    display: none;
+  }
+:root[data-motion='off'] .road-bg__glow {
+    opacity: 0;
+  }
+:root[data-motion='off'] .road-bg__glow::before, :root[data-motion='off'] .road-bg__glow::after {
+    animation: none;
+  }
+
+
 /* 認証背景の最奥レイヤー：ギリシャの山と石畳の道。LP の HA（hero）に倣い、
    blur で遠景化し ivory のスクリムで画面トーンに馴染ませる。門(.auth-arch)より奥に置く */
 .auth-scene {
@@ -1296,4 +1355,38 @@
   /* 下端側は solid にして柱脚をしっかりぼかし、上へフェード（LP hero-blur 踏襲） */
   -webkit-mask-image: linear-gradient(to top, #000 30%, transparent 100%);
   mask-image: linear-gradient(to top, #000 30%, transparent 100%);
+}
+
+/* エントランスの間取り図（3D）：アニメーション ON のときだけ、ターンテーブルのように
+   ゆっくり回転させる。道も一緒に回るよう、建物と道をまとめたステージごと回す。
+   ホバー／フォーカス中は止めて、部屋をクリックできるようにする。 */
+.palace3d-stage {
+  perspective: 1100px;
+}
+.palace3d-spin {
+  transform-style: preserve-3d;
+  animation: palace3d-spin 30s linear infinite;
+}
+.palace3d-stage:hover .palace3d-spin,
+.palace3d-stage:focus-within .palace3d-spin {
+  animation-play-state: paused;
+}
+@keyframes palace3d-spin {
+  from {
+    transform: rotateY(0deg);
+  }
+  to {
+    transform: rotateY(360deg);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .palace3d-spin {
+    animation: none;
+  }
+}
+
+/* ユーザーが環境設定でアニメーションを OFF にしたときも、上と同じ静止状態にする */
+:root[data-motion='off'] .palace3d-spin {
+  animation: none;
 }

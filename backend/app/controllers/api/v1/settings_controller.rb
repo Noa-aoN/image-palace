@@ -21,7 +21,8 @@ module Api
 
       def settings_params
         params.require(:setting).permit(
-          :auto_generate_meanings, :auto_generate_tags, :default_image_style, :regenerate_with_meaning
+          :auto_generate_meanings, :auto_generate_tags, :default_image_style, :regenerate_with_meaning,
+          :diagram_mode, :motion_mode
         )
       end
 
@@ -31,6 +32,8 @@ module Api
           auto_generate_tags: setting.auto_generate_tags,
           default_image_style: setting.default_image_style,
           regenerate_with_meaning: setting.regenerate_with_meaning,
+          diagram_mode: setting.diagram_mode,
+          motion_mode: setting.motion_mode,
           locale: setting.locale,
           timezone: setting.timezone
         }
