@@ -60,8 +60,9 @@ const COLUMNS: [number, number, number][] = [
 // エントランスと中庭の間の軽い仕切り（中央はドア開口として残す）。
 const PARTITION = 'M130,126 L160,126 M200,126 L230,126'
 
-// 玄関から手前へ伸びる道。奥（上）だけ残して手前へ溶かすフェード。
-const ROAD_FADE = 'linear-gradient(to bottom, black 15%, transparent)'
+// 玄関から手前へ伸びる道。中ほどまでは濃さを保って（フェードを弱めて）道を見せ、
+// 最下部だけ透明へ落として、カードの余白へ自然に溶けるようにする。
+const ROAD_FADE = 'linear-gradient(to bottom, black 30%, rgba(0,0,0,0.5) 72%, transparent 100%)'
 
 // 道の両脇に等間隔で立つ列柱（道のコンテナ 160×128 に対する座標）。
 // 道（幅96・中央＝x32〜128）の縁に乗る位置まで寄せ、玄関からやや下がった位置から並べる。
