@@ -20,6 +20,30 @@ export async function generateWords(theme: string, count?: number, opts?: Genera
   return res.data.words
 }
 
+// AIチェックの判定。バックエンドの CheckWordsService::VERDICTS と対応する（ok は返らない）。
+export type WordVerdict = 'off_theme' | 'duplicate' | 'inappropriate' | 'typo'
+
+export type WordCheckIssue = {
+  word: string
+  verdict: WordVerdict
+  reason: string
+  // 置き換え案。無ければ null（＝削除を検討する）
+  replacement: string | null
+}
+
+export type WordCheckResult = {
+  issues: WordCheckIssue[]
+  // テーマに対して欠けている単語の追加提案
+  additions: string[]
+}
+
+// 単語リストがテーマに沿っているかを AI で点検する（テキストのみ・クレジット消費なし）。
+// 提案の適用は呼び出し側でユーザーが承認する。
+export async function checkWords(theme: string, words: string[]): Promise<WordCheckResult> {
+  const res = await apiClient.post<WordCheckResult>('/api/v1/words/check', { theme, words })
+  return res.data
+}
+
 export async function getWordlists(): Promise<Wordlist[]> {
   const res = await apiClient.get<Wordlist[]>('/api/v1/wordlists')
   return res.data
@@ -32,6 +56,15 @@ export async function getWordlist(id: string): Promise<Wordlist> {
 
 export async function createWordlist(name: string, words: string[]): Promise<Wordlist> {
   const res = await apiClient.post<Wordlist>('/api/v1/wordlists', { wordlist: { name, words } })
+  return res.data
+}
+
+// リスト名・単語（並び順を含む）を更新する。words は配列の順序がそのまま保存される。
+export async function updateWordlist(
+  id: string,
+  payload: { name?: string; words?: string[] }
+): Promise<Wordlist> {
+  const res = await apiClient.patch<Wordlist>(`/api/v1/wordlists/${id}`, { wordlist: payload })
   return res.data
 }
 

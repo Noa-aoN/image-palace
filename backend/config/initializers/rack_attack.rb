@@ -57,6 +57,13 @@ class Rack::Attack
   end
 
   # データエクスポート（全データを返す重い操作）: 1 IP あたり 5 分間で 10 回まで。
+  # 単語の生成・点検（AI 呼び出し）。ワードリスト作成・アクロポリスから叩かれる。
+  throttle("words_generate/ip", limit: 30, period: 60.seconds) do |req|
+    req.ip if req.post? && req.path == "/api/v1/words/generate"
+  end
+  throttle("words_check/ip", limit: 20, period: 60.seconds) do |req|
+    req.ip if req.post? && req.path == "/api/v1/words/check"
+  end
   throttle("account_export/ip", limit: 10, period: 5.minutes) do |req|
     req.ip if req.get? && req.path == "/api/v1/account/export"
   end

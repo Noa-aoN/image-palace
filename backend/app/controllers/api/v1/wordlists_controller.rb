@@ -1,7 +1,7 @@
 module Api
   module V1
     class WordlistsController < BaseController
-      before_action :set_wordlist, only: [ :show, :destroy ]
+      before_action :set_wordlist, only: [ :show, :update, :destroy ]
 
       def index
         render json: current_user.wordlists.recent.map { |w| serialize_wordlist(w) }
@@ -17,6 +17,19 @@ module Api
           render json: serialize_wordlist(wordlist), status: :created
         else
           render json: { errors: wordlist.errors.full_messages }, status: :unprocessable_entity
+        end
+      end
+
+      # リスト名・単語（並び順を含む）を更新する。words は配列カラムなので順序がそのまま保存される。
+      def update
+        attrs = {}
+        attrs[:name] = params.dig(:wordlist, :name) if params.dig(:wordlist, :name).present?
+        attrs[:words] = cleaned_words if params.dig(:wordlist, :words)
+
+        if @wordlist.update(attrs)
+          render json: serialize_wordlist(@wordlist)
+        else
+          render json: { errors: @wordlist.errors.full_messages }, status: :unprocessable_entity
         end
       end
 
