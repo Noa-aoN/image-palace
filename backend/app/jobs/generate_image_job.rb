@@ -56,6 +56,7 @@ class GenerateImageJob < ApplicationJob
       end
 
       item.update_generation_status!("completed")
+      notify_completed!(item)
       Rails.logger.info "[GenerateImageJob] COMPLETE item_id=#{item.id}"
     end
   rescue StandardError => e
@@ -132,10 +133,39 @@ class GenerateImageJob < ApplicationJob
     item = Item.find_by(id: item_id)
     return unless item
 
+    message = user_facing_error_message(error)
     item.mark_generation_failed!(
-      message: user_facing_error_message(error),
+      message: message,
       code: error.class.name
     )
+    notify_failed!(item, message)
+  end
+
+  # 生成の結果をお知らせに残す。ページを離れていても後から結果に気づけるようにする。
+  # 通知の生成で本処理を壊さないよう、失敗してもログに残すだけにする。
+  def notify_completed!(item)
+    Notifications::CreateService.call(
+      user: item.user,
+      kind: "item_generation_completed",
+      title: "「#{item.title}」の画像生成が完了しました",
+      url: "/items/#{item.id}",
+      payload: { "item_id" => item.id }
+    )
+  rescue StandardError => e
+    Rails.logger.error "[GenerateImageJob] NOTIFY FAILED item_id=#{item.id} error=#{e.message}"
+  end
+
+  def notify_failed!(item, message)
+    Notifications::CreateService.call(
+      user: item.user,
+      kind: "item_generation_failed",
+      title: "「#{item.title}」の画像生成に失敗しました",
+      body: message,
+      url: "/items/#{item.id}",
+      payload: { "item_id" => item.id }
+    )
+  rescue StandardError => e
+    Rails.logger.error "[GenerateImageJob] NOTIFY FAILED item_id=#{item.id} error=#{e.message}"
   end
 
   # OpenAI のコンテンツポリシー違反は 400 系で返り、本文に moderation_blocked /

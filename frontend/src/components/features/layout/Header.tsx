@@ -3,7 +3,7 @@
 import { useEffect } from 'react'
 import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
-import { CircleUser, Castle, Coins, Mailbox, ArrowLeft } from 'lucide-react'
+import { CircleUser, Castle, Coins, ScrollText, ArrowLeft, CheckCircle2, AlertTriangle, Megaphone } from 'lucide-react'
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -16,9 +16,27 @@ import {
 import { useAuthStore } from '@/stores/auth'
 import { useItemsStore } from '@/stores/items'
 import { useBillingStore } from '@/stores/billing'
+import { useNotificationsStore } from '@/stores/notifications'
 import { signOut } from '@/lib/api/auth'
 import { CREDIT_UNIT_SHORT } from '@/lib/billing'
+import { formatRelativeTime } from '@/lib/datetime'
+import type { NotificationKind } from '@/lib/api/notifications'
 import { MobileNav } from '@/components/features/layout/MobileNav'
+
+// 未読バッジの更新間隔。生成の完了に程よく気づける程度に抑える。
+const UNREAD_POLL_MS = 30_000
+
+// お知らせの種別ごとのアイコン
+function notificationIcon(kind: NotificationKind) {
+  switch (kind) {
+    case 'item_generation_completed':
+      return <CheckCircle2 size={16} className="text-green-600" />
+    case 'item_generation_failed':
+      return <AlertTriangle size={16} className="text-red-600" />
+    default:
+      return <Megaphone size={16} style={{ color: 'var(--palace)' }} />
+  }
+}
 
 export function AppHeader() {
   const pathname = usePathname()
@@ -30,6 +48,12 @@ export function AppHeader() {
   const hasHydrated = useAuthStore((s) => s.hasHydrated)
   const billingSummary = useBillingStore((s) => s.summary)
   const fetchBillingSummary = useBillingStore((s) => s.fetchSummary)
+  const notifications = useNotificationsStore((s) => s.notifications)
+  const unreadCount = useNotificationsStore((s) => s.unreadCount)
+  const fetchUnreadCount = useNotificationsStore((s) => s.fetchUnreadCount)
+  const fetchNotifications = useNotificationsStore((s) => s.fetchList)
+  const markRead = useNotificationsStore((s) => s.markRead)
+  const markAllRead = useNotificationsStore((s) => s.markAllRead)
   const isAuthPage = pathname?.startsWith('/login') || pathname?.startsWith('/signup') || pathname?.startsWith('/auth/')
   const isLandingPage = pathname === '/'
   const showUserMenu = hasHydrated && isAuthenticated
@@ -37,6 +61,24 @@ export function AppHeader() {
   useEffect(() => {
     if (showUserMenu) fetchBillingSummary()
   }, [showUserMenu, fetchBillingSummary])
+
+  // 未読数を定期的に取りに行く。タブが裏にある間は叩かない（生成はサーバー側で進むので、
+  // 戻ってきたときに拾えれば十分）。
+  useEffect(() => {
+    if (!showUserMenu) return
+
+    const poll = () => {
+      if (document.visibilityState === 'visible') fetchUnreadCount()
+    }
+
+    poll()
+    const timer = setInterval(poll, UNREAD_POLL_MS)
+    document.addEventListener('visibilitychange', poll)
+    return () => {
+      clearInterval(timer)
+      document.removeEventListener('visibilitychange', poll)
+    }
+  }, [showUserMenu, fetchUnreadCount])
 
   const handleLogout = async () => {
     try {
@@ -95,22 +137,74 @@ export function AppHeader() {
             <span className="text-xs text-muted-foreground">{CREDIT_UNIT_SHORT}</span>
           </Link>
         )}
-        {/* 通知（現状は器のみ。後日、お知らせ・生成状況の通知をここに表示する） */}
+        {/* お知らせ（生成結果・運営からの通知）。未読があれば巻物にバッジを付ける */}
         {showUserMenu && (
-          <DropdownMenu>
+          <DropdownMenu onOpenChange={(open) => { if (open) fetchNotifications() }}>
             <DropdownMenuTrigger
-              className="rounded-full p-1.5 hover:bg-black/5 transition-colors"
+              className="relative rounded-full p-1.5 hover:bg-black/5 transition-colors"
               title="お知らせ"
-              aria-label="お知らせ"
+              aria-label={unreadCount > 0 ? `お知らせ（未読${unreadCount}件）` : 'お知らせ'}
             >
-              <Mailbox size={20} style={{ color: 'var(--palace)' }} />
+              <ScrollText size={20} style={{ color: 'var(--palace)' }} />
+              {unreadCount > 0 && (
+                <span className="absolute -right-0.5 -top-0.5 flex h-4 min-w-4 items-center justify-center rounded-full bg-red-600 px-1 text-[10px] font-bold leading-none text-white">
+                  {unreadCount > 99 ? '99+' : unreadCount}
+                </span>
+              )}
             </DropdownMenuTrigger>
-            <DropdownMenuContent align="end" className="w-64">
-              <DropdownMenuLabel>お知らせ</DropdownMenuLabel>
+            <DropdownMenuContent align="end" className="w-80">
+              <DropdownMenuLabel className="flex items-center justify-between">
+                <span>お知らせ</span>
+                {unreadCount > 0 && (
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.preventDefault()
+                      markAllRead()
+                    }}
+                    className="text-xs font-normal text-muted-foreground hover:text-foreground"
+                  >
+                    すべて既読にする
+                  </button>
+                )}
+              </DropdownMenuLabel>
               <DropdownMenuSeparator />
-              <div className="px-2 py-6 text-center text-sm text-muted-foreground">
-                お知らせはありません
-              </div>
+              {notifications.length === 0 ? (
+                <div className="px-2 py-6 text-center text-sm text-muted-foreground">
+                  お知らせはありません
+                </div>
+              ) : (
+                <div className="max-h-96 overflow-y-auto">
+                  {notifications.map((n) => (
+                    <DropdownMenuItem
+                      key={n.id}
+                      className="cursor-pointer flex-col items-start gap-0.5 py-2"
+                      onClick={() => {
+                        markRead(n.id)
+                        if (n.url) router.push(n.url)
+                      }}
+                    >
+                      <span className="flex w-full items-start gap-2">
+                        <span className="mt-0.5 shrink-0">{notificationIcon(n.kind)}</span>
+                        <span className={`flex-1 text-sm leading-snug ${n.read ? 'text-muted-foreground' : 'font-medium'}`}>
+                          {n.title}
+                        </span>
+                        {!n.read && (
+                          <span
+                            className="mt-1.5 size-1.5 shrink-0 rounded-full"
+                            style={{ backgroundColor: 'var(--palace)' }}
+                            aria-label="未読"
+                          />
+                        )}
+                      </span>
+                      {n.body && <span className="line-clamp-2 pl-6 text-xs text-muted-foreground">{n.body}</span>}
+                      <span className="pl-6 text-[11px] text-muted-foreground/70">
+                        {formatRelativeTime(n.created_at)}
+                      </span>
+                    </DropdownMenuItem>
+                  ))}
+                </div>
+              )}
             </DropdownMenuContent>
           </DropdownMenu>
         )}
