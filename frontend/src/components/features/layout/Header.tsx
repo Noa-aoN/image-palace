@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react'
 import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
-import { CircleUser, Castle, Coins, ScrollText, ArrowLeft } from 'lucide-react'
+import { CircleUser, Castle, Coins, ScrollText, ArrowLeft, X } from 'lucide-react'
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -38,6 +38,7 @@ export function AppHeader() {
   const unreadCount = useNotificationsStore((s) => s.unreadCount)
   const fetchUnreadCount = useNotificationsStore((s) => s.fetchUnreadCount)
   const [notificationsOpen, setNotificationsOpen] = useState(false)
+  const [menuOpen, setMenuOpen] = useState(false)
   const isAuthPage = pathname?.startsWith('/login') || pathname?.startsWith('/signup') || pathname?.startsWith('/auth/')
   const isLandingPage = pathname === '/'
   const showUserMenu = hasHydrated && isAuthenticated
@@ -139,7 +140,7 @@ export function AppHeader() {
           </button>
         )}
         {showUserMenu ? (
-          <DropdownMenu>
+          <DropdownMenu open={menuOpen} onOpenChange={setMenuOpen}>
             <DropdownMenuTrigger className="rounded-full p-1 hover:bg-black/5 transition-colors">
               {(user?.avatar_thumb_url ?? user?.avatar_url) ? (
                 // eslint-disable-next-line @next/next/no-img-element
@@ -153,11 +154,23 @@ export function AppHeader() {
                 <CircleUser size={32} strokeWidth={1.5} />
               )}
             </DropdownMenuTrigger>
-            <DropdownMenuContent align="end">
-              {/* ユーザー名（表示名が無ければメールアドレス） */}
+            {/* 幅・余白・位置はお知らせパネルに合わせる。パネルはヘッダー直下 4px・画面右から 8px に出るので、
+                トリガー（アバター）基準のこのメニューも sideOffset と translate-x で同じ位置に揃える。 */}
+            <DropdownMenuContent align="end" sideOffset={12} className="min-w-56 translate-x-4">
+              {/* ユーザー名（表示名が無ければメールアドレス）＋ 閉じる（パネルと同じ×） */}
               <DropdownMenuGroup>
-                <DropdownMenuLabel className="max-w-56 truncate">
-                  {user?.name?.trim() ? user.name : (user?.email ?? 'ゲスト')}
+                <DropdownMenuLabel className="flex items-center justify-between gap-2">
+                  <span className="max-w-48 truncate">
+                    {user?.name?.trim() ? user.name : (user?.email ?? 'ゲスト')}
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => setMenuOpen(false)}
+                    className="-mr-1 rounded-md p-1 transition-colors hover:bg-accent hover:text-accent-foreground"
+                    aria-label="閉じる"
+                  >
+                    <X size={14} />
+                  </button>
                 </DropdownMenuLabel>
               </DropdownMenuGroup>
               <DropdownMenuSeparator />

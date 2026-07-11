@@ -70,9 +70,9 @@ export function NotificationsPanel({ open, onClose }: { open: boolean; onClose: 
         role="dialog"
         aria-modal="true"
         aria-label="お知らせ"
-        className="fixed right-2 top-[calc(3.5rem+0.25rem)] z-50 w-[min(24rem,calc(100vw-1rem))] overflow-hidden rounded-lg bg-popover p-1 text-popover-foreground shadow-md ring-1 ring-foreground/10"
+        className="fixed right-2 top-[calc(3.5rem+0.25rem)] z-50 w-[min(24rem,calc(100vw-1rem))] overflow-hidden rounded-lg bg-popover p-1.5 text-popover-foreground shadow-md ring-1 ring-foreground/10"
       >
-        <div className="flex items-center justify-between px-1.5 py-1">
+        <div className="flex items-center justify-between px-2 py-1.5">
           <span className="text-xs font-medium text-muted-foreground">お知らせ</span>
           <div className="flex items-center gap-2">
             {unreadCount > 0 && (
@@ -95,11 +95,14 @@ export function NotificationsPanel({ open, onClose }: { open: boolean; onClose: 
           </div>
         </div>
 
+        {/* 区切り線はメニュー（DropdownMenuSeparator）と同じ寸法・色にする */}
+        <div className="-mx-1.5 my-1.5 h-px bg-border" aria-hidden />
+
         <div className="max-h-[60vh] overflow-y-auto">
           {loading && notifications.length === 0 ? (
-            <p className="px-1.5 py-8 text-center text-sm text-muted-foreground">読み込み中…</p>
+            <p className="px-2 py-8 text-center text-sm text-muted-foreground">読み込み中…</p>
           ) : notifications.length === 0 ? (
-            <p className="px-1.5 py-8 text-center text-sm text-muted-foreground">お知らせはありません</p>
+            <p className="px-2 py-8 text-center text-sm text-muted-foreground">お知らせはありません</p>
           ) : (
             <ul>
               {notifications.map((n) => (
