@@ -57,9 +57,10 @@ export function PalaceFloorplan() {
   )
 
   return (
-    <Card className="overflow-hidden">
+    <Card>
       <CardContent>
-        <div className="mb-2 flex justify-end">
+        {/* トグルは図より前面に置く（3D が上へはみ出しても、図が切れずに背後を通る） */}
+        <div className="relative z-10 mb-1 flex justify-end">
           <DiagramModeToggle mode={mode} onChange={setMode} label="宮殿の間取り図" />
         </div>
 
@@ -77,27 +78,46 @@ export function PalaceFloorplan() {
           <>
             <PalaceFloorplan2D onHint={setHint} icons={ROOM_ICONS} />
 
-            {/* エントランスのドアの下：LP の道を平面のまま小さく朧げに。左右に列柱を立て、
-                その上に説明の吹き出しと操作ヒントを重ねる。 */}
+            {/* エントランスのドアの下：玄関から手前へ続く道を、間取り図と同じ石畳の平面図で描く。
+                左右に列柱を立て、その上に説明の吹き出しと操作ヒントを重ねる。 */}
             <div className="relative -mt-1 h-32 w-full">
               <div className="absolute left-1/2 top-0 h-full w-40 -translate-x-1/2" aria-hidden>
-                <div
-                  className="absolute inset-y-0 left-1/2 w-24 -translate-x-1/2 opacity-30"
-                  style={{
-                    backgroundImage: "url('/road.png')",
-                    backgroundRepeat: 'repeat-y',
-                    // road.png は上下端が繋がるので、縦に潰しても継ぎ目は出ない
-                    backgroundSize: '96px 72px',
-                    backgroundPosition: 'center top',
-                    WebkitMaskImage: ROAD_FADE,
-                    maskImage: ROAD_FADE,
-                  }}
-                />
                 <svg
                   viewBox="0 0 160 128"
-                  className="absolute inset-0 h-full w-full opacity-30"
+                  className="absolute inset-0 h-full w-full"
                   style={{ WebkitMaskImage: ROAD_FADE, maskImage: ROAD_FADE }}
                 >
+                  {/* 道の路面（柱（x=48 / 112・r=6.5）に接しないよう、内側に細く通す） */}
+                  <rect x={62} y={0} width={36} height={128} fill="var(--palace)" fillOpacity={0.08} />
+                  {/* 石畳（細かめ。段ごとに半個ずらして敷く） */}
+                  {Array.from({ length: 16 }).map((_, row) => {
+                    const y = row * 8
+                    const offset = row % 2 === 0 ? 0 : -6
+                    return Array.from({ length: 4 }).map((__, col) => {
+                      const raw = 62 + offset + col * 12
+                      const x = Math.max(62, raw)
+                      const width = Math.min(12, 98 - x) - 1.5
+                      if (width <= 0) return null
+                      return (
+                        <rect
+                          key={`${row}-${col}`}
+                          x={x}
+                          y={y + 0.75}
+                          width={width}
+                          height={6.5}
+                          rx={0.8}
+                          fill="var(--palace)"
+                          fillOpacity={(row + col) % 2 === 0 ? 0.12 : 0.06}
+                          stroke="var(--palace)"
+                          strokeOpacity={0.28}
+                          strokeWidth={0.4}
+                        />
+                      )
+                    })
+                  })}
+                  {/* 道の両縁 */}
+                  <path d="M62,0 V128 M98,0 V128" stroke="var(--palace)" strokeOpacity={0.4} strokeWidth={0.8} />
+                  {/* 両脇の列柱 */}
                   {ROAD_COLUMNS_2D.map(([cx, cy], i) => (
                     <circle key={i} cx={cx} cy={cy} r={6.5} fill="rgba(198,167,94,0.5)" stroke="var(--palace)" strokeWidth={1.6} />
                   ))}

@@ -24,7 +24,7 @@ import { useMotion } from '@/hooks/useMotion'
 // 斜めの角度は「縦軸まわりの回転（yaw）」からだけ生まれる。
 const KY = 0.62
 const OX = 0
-const OY = 26
+const OY = 44
 // 建物は 2D と同じ枠（360×158）。道は描かないので、そのぶん宮殿を大きく取る。
 const VB = { w: 360, h: 158 }
 
@@ -40,8 +40,8 @@ const ROAD: Rect = { x: 142, y: 150, w: 76, h: 56 }
 
 // 回転の軸（宮殿の中心を貫く縦軸）。この点を中心に、平面ごと回してから投影する。
 const PIVOT = { x: 180, y: 72 }
-// 回っても枠に収まるよう、わずかに余白を残す（道が無いぶん大きく描ける）。
-const FIT = 1.06
+// 回っても枠に収まるよう、わずかに余白を残す。
+const FIT = 1
 
 // 平面座標を「縦軸まわりに yaw だけ回してから」アイソメへ投影する。
 // CSS で絵を回すのと違い、比率も接地も崩れない（記憶資産カードと同じ手法）。
@@ -256,6 +256,9 @@ export function PalaceFloorplan3D({
         <svg
           viewBox={`0 0 ${VB.w} ${VB.h}`}
           className="absolute inset-0 h-full w-full"
+          // 枠外（トグルの行や下の余白）へはみ出しても切り取らない。
+          // クリップされると、はみ出した柱や壁が直線でスパッと切れて見えるため。
+          style={{ overflow: 'visible' }}
           onMouseEnter={() => setHovered(true)}
           onMouseLeave={() => setHovered(false)}
         >
