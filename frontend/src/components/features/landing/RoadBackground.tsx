@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useRef, type CSSProperties } from 'react'
+import { motionDisabled } from '@/lib/motion'
 
 // 「続く1本の道を歩く」体験（3D遠近版・デモ /dev/road-animations の案A採用）。
 // 道のステージは position: fixed でビューポートに固定し、親 .road-bg の
@@ -55,7 +56,7 @@ export function RoadBackground({ fadeTop, fadeBottom, intro }: RoadBackgroundPro
   useEffect(() => {
     const el = ref.current
     if (!el) return
-    if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return
+    if (motionDisabled()) return
 
     // 初回リビールの基準点。ステージはセクション領域でクリップされるため、
     // セクションが画面をほぼ覆い「地平線が画面内に入る」まで待ってから

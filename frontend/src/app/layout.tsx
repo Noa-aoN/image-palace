@@ -3,6 +3,7 @@ import { Geist } from 'next/font/google'
 import Script from 'next/script'
 import './globals.css'
 import { AppHeader } from '@/components/features/layout/Header'
+import { SettingsBootstrap } from '@/components/features/layout/SettingsBootstrap'
 import { CookieConsentBanner } from '@/components/features/consent/CookieConsentBanner'
 import { Analytics } from '@/components/features/consent/Analytics'
 import { SITE_URL, SITE_NAME, SITE_DESCRIPTION } from '@/lib/site'
@@ -49,6 +50,7 @@ export default function RootLayout({
         style={{ backgroundColor: 'var(--ivory)' }}
         suppressHydrationWarning
       >
+        <SettingsBootstrap />
         <AppHeader />
         <div className="flex-1 flex flex-col min-h-0">
           {children}
