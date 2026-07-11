@@ -5,6 +5,7 @@ import Link from 'next/link'
 import { useParams, useRouter } from 'next/navigation'
 import { Trash2, ChevronLeft, ChevronRight, Pencil, Check, X } from 'lucide-react'
 import { Button } from '@/components/ui/button'
+import { Breadcrumb } from '@/components/ui/breadcrumb'
 import { Input } from '@/components/ui/input'
 import { Spinner } from '@/components/ui/spinner'
 import { ItemProperties } from '@/components/features/items/ItemProperties'
@@ -224,9 +225,7 @@ export default function ItemDetailPage() {
 
         {/* ヘッダー行 */}
         <div className="flex items-center justify-between">
-          <Link href={backHref}>
-            <Button variant="ghost" className="text-sm px-0">{backLabel}</Button>
-          </Link>
+          <Breadcrumb className="mb-0" items={[{ href: backHref, label: 'カード' }, { label: item.title }]} />
           <Button
             variant={confirmDelete ? 'destructive' : 'ghost'}
             size="sm"
