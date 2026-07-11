@@ -1,12 +1,12 @@
 'use client'
 
 import { useEffect, useRef, useState } from 'react'
-import type { ReactNode } from 'react'
 import Link from 'next/link'
-import { PenLine, Sparkles, GalleryVerticalEnd, Box, LayoutGrid, Frame, Loader2, ChevronRight, Coins, CreditCard, CheckCircle2 } from 'lucide-react'
+import { PenLine, Sparkles, GalleryVerticalEnd, Loader2, ChevronRight, Coins, CreditCard, CheckCircle2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
-import { PalaceMinimap } from '@/components/features/dashboard/PalaceMinimap'
+import { MemoryAssetsCard } from '@/components/features/dashboard/MemoryAssetsCard'
+import { PalaceFloorplan } from '@/components/features/dashboard/PalaceFloorplan'
 import { getItemsSummary, type ItemsSummary } from '@/lib/api/items'
 import { useBillingStore } from '@/stores/billing'
 import { tierLabel, CREDIT_UNIT, CREDIT_UNIT_SHORT } from '@/lib/billing'
@@ -29,14 +29,6 @@ const EMPTY_SUMMARY: ItemsSummary = {
   monthly_limit: 0,
   monthly_remaining: 0,
 }
-
-// 「所有」セクションの統計カード。クリックで該当の一覧ページへ遷移する。
-const OWNED_CARDS: { label: string; href: string; icon: ReactNode; value: (s: ItemsSummary) => string }[] = [
-  { label: 'カード', href: '/items', icon: <GalleryVerticalEnd size={18} />, value: (s) => `${s.total_count}` },
-  { label: 'ボックス', href: '/boxes', icon: <Box size={18} />, value: (s) => `${s.boxes_count}` },
-  { label: 'キャンバス', href: '/views', icon: <LayoutGrid size={18} />, value: (s) => `${s.views_count}` },
-  { label: 'スペース', href: '/spaces', icon: <Frame size={18} />, value: (s) => `${s.spaces_count}` },
-]
 
 // クレジットメーターの進捗率（残高 / 今期付与, 0〜100）。付与枠が無い/不明なら null。
 // 1生成＝1クレジットのため、残高がそのまま「あと何枚つくれるか」になる。
@@ -320,52 +312,33 @@ export function DashboardContent() {
         </section>
       )}
 
-      {/* 宮殿ミニマップ（所有数で姿が変わる装飾カード） */}
-      <PalaceMinimap summary={summary} />
-
-      {/* 所有 */}
+      {/* 宮殿の間取り（主要な場所への地図的な導線） */}
       <section className="space-y-3">
-        <h2 className="text-sm font-semibold text-muted-foreground">所有アイテム</h2>
-        <div className="grid grid-cols-2 gap-4">
-          {OWNED_CARDS.map((stat) => (
-            <Link
-              key={stat.label}
-              href={stat.href}
-              aria-label={`${stat.label}を見る`}
-              className="group block rounded-xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--palace)]"
-            >
-              <Card className="h-full cursor-pointer transition hover:border-[var(--palace)] hover:shadow-md">
-                <CardContent>
-                  <div className="flex items-center justify-between">
-                    <span className="flex items-center gap-2 text-sm text-muted-foreground">
-                      <span style={{ color: 'var(--palace)' }}>{stat.icon}</span>
-                      {stat.label}
-                    </span>
-                    <ChevronRight
-                      size={16}
-                      className="transition-transform group-hover:translate-x-0.5"
-                      style={{ color: 'var(--palace)' }}
-                    />
-                  </div>
-                  <p className="text-3xl font-bold mt-2">{stat.value(summary)}</p>
-                </CardContent>
-              </Card>
-            </Link>
-          ))}
-        </div>
+        <h2 className="text-sm font-semibold text-muted-foreground">宮殿の間取り図</h2>
+        <PalaceFloorplan />
       </section>
 
-      <div className="flex gap-3">
-        <Link href="/items/new">
-          <Button>+ カードを作成</Button>
-        </Link>
-        <Link href="/items">
-          <Button variant="outline">カードを見る</Button>
-        </Link>
-        <Link href="/library">
-          <Button variant="outline">ライブラリを見る</Button>
-        </Link>
-      </div>
+      {/* 記憶資産（種類ごとの積み上げ。各列クリックで一覧へ） */}
+      <section className="space-y-3">
+        <h2 className="text-sm font-semibold text-muted-foreground">宮殿の記憶資産</h2>
+        <MemoryAssetsCard summary={summary} />
+      </section>
+
+      {/* クイック操作 */}
+      <section className="space-y-3">
+        <h2 className="text-sm font-semibold text-muted-foreground">クイック操作</h2>
+        <div className="flex flex-wrap gap-3">
+          <Link href="/items/new">
+            <Button>+ カードを作成</Button>
+          </Link>
+          <Link href="/items">
+            <Button variant="outline">カードを見る</Button>
+          </Link>
+          <Link href="/library">
+            <Button variant="outline">ライブラリを見る</Button>
+          </Link>
+        </div>
+      </section>
     </div>
   )
 }
