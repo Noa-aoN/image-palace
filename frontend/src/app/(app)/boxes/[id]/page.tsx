@@ -5,6 +5,7 @@ import Link from 'next/link'
 import { useParams, useRouter } from 'next/navigation'
 import { Trash2, Pencil, Check, X, Plus, GalleryHorizontal, LayoutGrid, Frame } from 'lucide-react'
 import { Button } from '@/components/ui/button'
+import { Breadcrumb } from '@/components/ui/breadcrumb'
 import { Input } from '@/components/ui/input'
 import {
   getBox, updateBox, deleteBox,
@@ -263,9 +264,7 @@ export default function BoxDetailPage() {
 
   return (
     <div className="max-w-7xl mx-auto px-6 py-12">
-      <Link href="/boxes">
-        <Button variant="ghost" className="text-sm px-0 mb-4">← ボックス一覧へ</Button>
-      </Link>
+      <Breadcrumb items={[{ href: '/boxes', label: 'ボックス' }, { label: box.name }]} />
 
       <div className="flex items-center justify-between gap-3 mb-2">
         {editing ? (

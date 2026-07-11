@@ -1,12 +1,12 @@
 'use client'
 
-import { GalleryHorizontal, Library, LayoutGrid, Star } from 'lucide-react'
+import { GalleryHorizontal, Box, LayoutGrid, Star } from 'lucide-react'
 import { useStudyTargetStore, toQuizTarget, type SavedTarget } from '@/stores/studyTargets'
 import type { QuizTarget } from '@/lib/quiz'
 
 function kindIcon(kind: SavedTarget['kind']) {
   if (kind === 'all') return <GalleryHorizontal size={15} />
-  if (kind === 'box') return <Library size={15} />
+  if (kind === 'box') return <Box size={15} />
   return <LayoutGrid size={15} />
 }
 

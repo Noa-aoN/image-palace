@@ -1,7 +1,7 @@
 import type { Metadata } from 'next'
 import type { ReactNode } from 'react'
 import Link from 'next/link'
-import { ChevronRight, Boxes, GalleryHorizontal, Library, LayoutGrid, Frame } from 'lucide-react'
+import { ChevronRight, Boxes, GalleryHorizontal, Box, LayoutGrid, Frame } from 'lucide-react'
 import { Card, CardContent } from '@/components/ui/card'
 import { CreateIcon } from '@/components/features/layout/CreateIcon'
 
@@ -10,7 +10,7 @@ export const metadata: Metadata = { title: 'アトリエ' }
 const CREATE_ACTIONS: { href: string; icon: ReactNode; label: string; description: string }[] = [
   { href: '/materials/new', icon: <CreateIcon><Boxes size={20} /></CreateIcon>, label: 'マテリアルを作成', description: 'カード化の前の素材（ワードリスト等）をまとめて用意します。' },
   { href: '/items/new', icon: <CreateIcon><GalleryHorizontal size={20} /></CreateIcon>, label: 'カードを作成', description: '単語や概念をAI画像のカードにします。' },
-  { href: '/boxes/new', icon: <CreateIcon><Library size={20} /></CreateIcon>, label: 'ボックスを作成', description: 'カードをテーマごとにまとめます。' },
+  { href: '/boxes/new', icon: <CreateIcon><Box size={20} /></CreateIcon>, label: 'ボックスを作成', description: 'カードをテーマごとにまとめます。' },
   { href: '/views/new', icon: <CreateIcon><LayoutGrid size={20} /></CreateIcon>, label: 'キャンバスを作成', description: 'カードを自由に配置するキャンバスを作ります。' },
   { href: '/spaces/new', icon: <CreateIcon><Frame size={20} /></CreateIcon>, label: 'スペースを作成', description: '記憶の場所（ルーム／ロード）を作ります。' },
 ]

@@ -6,6 +6,7 @@ import Link from 'next/link'
 import { useParams, useRouter } from 'next/navigation'
 import { Trash2, Pencil, Check, X, Plus, ChevronUp, ChevronDown, Search, Loader2, Route, DoorOpen } from 'lucide-react'
 import { Button } from '@/components/ui/button'
+import { Breadcrumb } from '@/components/ui/breadcrumb'
 import { Input } from '@/components/ui/input'
 import { CardImage } from '@/components/ui/card-image'
 import {
@@ -486,9 +487,7 @@ export default function SpaceDetailPage() {
 
   return (
     <div className="max-w-3xl mx-auto px-6 py-12">
-      <Link href="/spaces">
-        <Button variant="ghost" className="text-sm px-0 mb-4">← スペース一覧へ</Button>
-      </Link>
+      <Breadcrumb items={[{ href: '/spaces', label: 'スペース' }, { label: space.name }]} />
 
       {editing ? (
         <div className="space-y-3 mb-8">

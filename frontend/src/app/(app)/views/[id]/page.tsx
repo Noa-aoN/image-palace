@@ -6,6 +6,7 @@ import Link from 'next/link'
 import { useParams, useRouter } from 'next/navigation'
 import { Trash2, Pencil, Check, X } from 'lucide-react'
 import { Button } from '@/components/ui/button'
+import { Breadcrumb } from '@/components/ui/breadcrumb'
 import { Input } from '@/components/ui/input'
 import { getViewDetail, updateView, deleteView, uploadViewCover, removeViewCover } from '@/lib/api/views'
 import { viewTypeLabel } from '@/lib/view-types'
@@ -147,9 +148,7 @@ export default function ViewEditorPage() {
 
   return (
     <div className="flex flex-col min-h-full px-6 py-12 max-w-7xl mx-auto w-full">
-      <Link href="/views">
-        <Button variant="ghost" className="text-sm px-0 mb-4 self-start">← キャンバス一覧へ</Button>
-      </Link>
+      <Breadcrumb className="self-start" items={[{ href: '/views', label: 'キャンバス' }, { label: view.name }]} />
 
       <div className="flex items-center justify-between gap-3 mb-6">
         {editing ? (

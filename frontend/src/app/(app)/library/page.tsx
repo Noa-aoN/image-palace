@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import Link from 'next/link'
-import { GalleryHorizontal, Library, Layers, LayoutGrid, Frame, MapPin, ChevronRight, Plus, Search, X, Route, DoorOpen, ListChecks, Boxes, Images, CheckSquare, Square, Trash2 } from 'lucide-react'
+import { GalleryHorizontal, Box as BoxIcon, Layers, LayoutGrid, Frame, MapPin, ChevronRight, Plus, Search, X, Route, DoorOpen, ListChecks, Boxes, Images, CheckSquare, Square, Trash2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/skeleton'
 import { getItems, getItemsSummary, bulkDeleteItems } from '@/lib/api/items'
@@ -470,13 +470,13 @@ function SearchResultsView({
         </ResultGroup>
       )}
       {results.boxes.length > 0 && (
-        <ResultGroup icon={<Library size={18} />} title="ボックス" count={results.boxes.length}>
+        <ResultGroup icon={<BoxIcon size={18} />} title="ボックス" count={results.boxes.length}>
           <Rail>
             {results.boxes.map((box) => (
               <SearchNamedTile
                 key={box.id}
                 href={`/boxes/${box.id}`}
-                icon={<Library size={16} />}
+                icon={<BoxIcon size={16} />}
                 name={box.name}
                 sub={`${box.entry_count} 件`}
               />
@@ -791,7 +791,7 @@ export default function LibraryPage() {
 
       {/* ボックス */}
       <Shelf
-        icon={<Library size={20} />}
+        icon={<BoxIcon size={20} />}
         title="ボックス"
         count={boxes.length}
         href={selectionMode ? undefined : '/boxes'}

@@ -5,6 +5,7 @@ import { useParams, useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { Sparkles } from 'lucide-react'
 import { Button } from '@/components/ui/button'
+import { Breadcrumb } from '@/components/ui/breadcrumb'
 import { getWordlist, deleteWordlist } from '@/lib/api/wordlists'
 import type { Wordlist } from '@/types/wordlist'
 
@@ -51,9 +52,7 @@ export default function WordlistDetailPage() {
 
   return (
     <div className="max-w-2xl mx-auto px-6 py-12">
-      <Link href="/wordlists">
-        <Button variant="ghost" className="text-sm px-0 mb-4">← ワードリストへ戻る</Button>
-      </Link>
+      <Breadcrumb items={[{ href: '/wordlists', label: 'ワードリスト' }, { label: wordlist.name }]} />
 
       <div className="flex items-start justify-between gap-3">
         <div>
