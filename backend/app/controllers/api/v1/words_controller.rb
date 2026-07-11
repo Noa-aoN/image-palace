@@ -17,6 +17,16 @@ module Api
         Rails.logger.warn "[WordsController#generate] failed: #{e.class}: #{e.message}"
         render json: { error: "単語の生成に失敗しました。時間を置いて再度お試しください。" }, status: :unprocessable_entity
       end
+
+      # 単語リストがテーマに沿っているかを点検し、訂正・追加の提案を返す（クレジット消費なし）。
+      # 提案の適用はフロント側でユーザーが一件ずつ承認する。
+      def check
+        result = CheckWordsService.call(theme: params[:theme], words: params[:words])
+        render json: { issues: result.issues, additions: result.additions }
+      rescue CheckWordsService::GenerationError, KeyError, Faraday::Error => e
+        Rails.logger.warn "[WordsController#check] failed: #{e.class}: #{e.message}"
+        render json: { error: "単語の点検に失敗しました。時間を置いて再度お試しください。" }, status: :unprocessable_entity
+      end
     end
   end
 end

@@ -12,6 +12,7 @@ Rails.application.routes.draw do
       get "health/authenticated", to: "health#show_authenticated"
       get "search", to: "search#index"
       post "words/generate", to: "words#generate"
+      post "words/check", to: "words#check"
       get "account/export", to: "account#export"
       delete "account", to: "account#destroy"
       # プロフィール（アバター）
@@ -56,7 +57,7 @@ Rails.application.routes.draw do
       end
       resources :item_types, only: [ :index ]
       resources :tags, only: [ :index, :create, :update, :destroy ]
-      resources :wordlists, only: [ :index, :create, :show, :destroy ]
+      resources :wordlists, only: [ :index, :create, :show, :update, :destroy ]
       # URL は /api/v1/boxes（表示名「ボックス」）。コントローラ・モデルは Box のまま。
       resources :boxes, only: [ :index, :create, :show, :update, :destroy ] do
         member do

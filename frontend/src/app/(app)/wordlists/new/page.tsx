@@ -2,28 +2,45 @@
 
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { Sparkles, X, Plus } from 'lucide-react'
+import { Sparkles, Plus, ShieldCheck } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Breadcrumb } from '@/components/ui/breadcrumb'
 import { Input } from '@/components/ui/input'
 import { Spinner } from '@/components/ui/spinner'
-import { generateWords, createWordlist } from '@/lib/api/wordlists'
+import { WordItems } from '@/components/features/wordlists/WordItems'
+import { generateWords, createWordlist, checkWords, type WordCheckIssue } from '@/lib/api/wordlists'
 
 export default function NewWordlistPage() {
   const router = useRouter()
   const [theme, setTheme] = useState('')
   const [count, setCount] = useState(10)
-  const [auto, setAuto] = useState(false)
+  // 単語数は既定で「おまかせ」。テーマに応じた自然な数（十二支なら12個など）をAIが決める。
+  const [auto, setAuto] = useState(true)
   const [generating, setGenerating] = useState(false)
   const [words, setWords] = useState<string[] | null>(null)
   const [name, setName] = useState('')
   const [newWord, setNewWord] = useState('')
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  // AIチェックの結果。単語を編集・並び替え・再生成したら破棄する（古い判定を残さない）。
+  const [checking, setChecking] = useState(false)
+  const [issues, setIssues] = useState<Map<string, WordCheckIssue> | null>(null)
+  const [additions, setAdditions] = useState<string[]>([])
+
+  const clearCheck = () => {
+    setIssues(null)
+    setAdditions([])
+  }
+
+  const updateWords = (next: string[]) => {
+    setWords(next)
+    clearCheck()
+  }
 
   const handleGenerate = async () => {
     setGenerating(true)
     setError(null)
+    clearCheck()
     try {
       const generated = await generateWords(theme.trim(), auto ? undefined : count)
       setWords(generated)
@@ -35,17 +52,30 @@ export default function NewWordlistPage() {
     }
   }
 
-  const removeWord = (target: number) =>
-    setWords((current) => (current ? current.filter((_, i) => i !== target) : current))
+  // テーマ（未入力ならリスト名）に沿っているかを点検する。適用は一件ずつユーザーが承認する。
+  const handleCheck = async () => {
+    if (!words || words.length === 0) return
+    setChecking(true)
+    setError(null)
+    try {
+      const result = await checkWords(theme.trim() || name.trim(), words)
+      setIssues(new Map(result.issues.map((issue) => [issue.word, issue])))
+      setAdditions(result.additions)
+    } catch {
+      setError('単語の点検に失敗しました。時間を置いて再度お試しください。')
+    } finally {
+      setChecking(false)
+    }
+  }
 
-  const addWord = () => {
-    const word = newWord.trim()
-    if (!word) return
+  const addWord = (word: string) => {
+    const value = word.trim()
+    if (!value) return
     setWords((current) => {
-      if (!current) return [word]
-      return current.includes(word) ? current : [...current, word]
+      if (!current) return [value]
+      return current.includes(value) ? current : [...current, value]
     })
-    setNewWord('')
+    setAdditions((current) => current.filter((w) => w !== value))
   }
 
   const handleSave = async () => {
@@ -70,13 +100,16 @@ export default function NewWordlistPage() {
     }
   }
 
+  const checked = issues !== null
+
   return (
     <div className="max-w-2xl mx-auto px-6 py-12">
       <div className="mb-8">
         <Breadcrumb items={[{ href: '/wordlists', label: 'ワードリスト' }, { label: '作成' }]} />
         <h1 className="text-2xl font-semibold">ワードリストを作成</h1>
         <p className="text-sm text-muted-foreground mt-1">
-          テーマと単語数を指定するとAIが単語を生成します。編集してから保存できます。
+          テーマを入れるとAIが単語を生成します。単語数はおまかせ（テーマに応じてAIが決める）が既定です。
+          並び替え・編集して、AIチェックで内容を確かめてから保存できます。
         </p>
       </div>
 
@@ -122,7 +155,7 @@ export default function NewWordlistPage() {
 
       {error && <p className="mt-4 text-sm text-destructive">{error}</p>}
 
-      {/* 生成結果（編集可能） */}
+      {/* 生成結果（編集・並び替え可能） */}
       {words && (
         <div className="mt-8 space-y-5">
           <div>
@@ -131,23 +164,66 @@ export default function NewWordlistPage() {
           </div>
 
           <div>
-            <p className="mb-2 text-sm font-medium">単語（{words.length}）</p>
-            <ul className="divide-y divide-border overflow-hidden rounded-xl border border-border bg-card">
-              {words.map((word, i) => (
-                <li key={`${word}-${i}`} className="flex items-center gap-3 px-4 py-2 text-sm">
-                  <span className="w-6 shrink-0 text-right text-xs tabular-nums text-muted-foreground">{i + 1}</span>
-                  <span className="flex-1">{word}</span>
-                  <button
-                    type="button"
-                    onClick={() => removeWord(i)}
-                    aria-label={`${word}を削除`}
-                    className="text-muted-foreground hover:text-destructive"
-                  >
-                    <X size={14} />
-                  </button>
-                </li>
-              ))}
-            </ul>
+            <div className="mb-2 flex items-center justify-between">
+              <p className="text-sm font-medium">単語（{words.length}）</p>
+              <Button
+                type="button"
+                variant="outline"
+                onClick={handleCheck}
+                disabled={checking || saving || words.length === 0}
+                className="flex items-center gap-1.5"
+              >
+                {checking ? <Spinner size={14} /> : <ShieldCheck size={15} />}
+                {checking ? 'チェック中...' : 'AIチェック'}
+              </Button>
+            </div>
+
+            <WordItems words={words} onChange={updateWords} issues={issues ?? undefined} disabled={saving} />
+
+            <p className="mt-2 text-xs text-muted-foreground">
+              ドラッグ、または ↑↓ で並び替えられます。
+            </p>
+
+            {/* AIチェックの結果 */}
+            {checked && (
+              <div className="mt-3 rounded-xl border border-border bg-muted/30 p-3">
+                <p className="text-sm font-medium">AIチェックの結果</p>
+                <p className="mt-1 text-xs text-muted-foreground">
+                  {issues.size === 0
+                    ? 'テーマから外れた単語は見つかりませんでした。'
+                    : `${issues.size}件の指摘があります。上のリストで置き換え・削除できます。`}
+                </p>
+
+                {additions.length > 0 && (
+                  <div className="mt-3">
+                    <div className="flex items-center justify-between">
+                      <p className="text-xs font-medium">追加の提案（{additions.length}）</p>
+                      <button
+                        type="button"
+                        onClick={() => additions.forEach(addWord)}
+                        className="text-xs text-muted-foreground hover:text-foreground"
+                      >
+                        すべて追加
+                      </button>
+                    </div>
+                    <div className="mt-1.5 flex flex-wrap gap-1.5">
+                      {additions.map((word) => (
+                        <button
+                          key={word}
+                          type="button"
+                          onClick={() => addWord(word)}
+                          className="flex items-center gap-1 rounded-full border border-border bg-card px-2 py-1 text-xs transition-colors hover:bg-accent hover:text-accent-foreground"
+                        >
+                          <Plus size={12} />
+                          {word}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
+
             <div className="mt-3 flex gap-2">
               <Input
                 value={newWord}
@@ -155,13 +231,23 @@ export default function NewWordlistPage() {
                 onKeyDown={(e) => {
                   if (e.key === 'Enter') {
                     e.preventDefault()
-                    addWord()
+                    addWord(newWord)
+                    setNewWord('')
                   }
                 }}
                 placeholder="単語を追加"
                 disabled={saving}
               />
-              <Button type="button" variant="outline" onClick={addWord} disabled={saving} className="flex items-center gap-1">
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => {
+                  addWord(newWord)
+                  setNewWord('')
+                }}
+                disabled={saving}
+                className="flex items-center gap-1"
+              >
                 <Plus size={16} />
                 追加
               </Button>

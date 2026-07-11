@@ -39,6 +39,54 @@ RSpec.describe "Api::V1::Wordlists", type: :request do
     expect(response).to have_http_status(:not_found)
   end
 
+  describe "PATCH /api/v1/wordlists/:id" do
+    it "認証なしは 401" do
+      wl = user.wordlists.create!(name: "果物", words: %w[りんご バナナ])
+      patch "/api/v1/wordlists/#{wl.id}", params: { wordlist: { words: %w[バナナ りんご] } }, as: :json
+      expect(response).to have_http_status(:unauthorized)
+    end
+
+    it "単語の並び順を保存できる" do
+      wl = user.wordlists.create!(name: "果物", words: %w[りんご バナナ さくらんぼ])
+
+      patch "/api/v1/wordlists/#{wl.id}",
+        params: { wordlist: { words: %w[さくらんぼ りんご バナナ] } }, headers: headers, as: :json
+
+      expect(response).to have_http_status(:success)
+      expect(json_response["words"]).to eq(%w[さくらんぼ りんご バナナ])
+      expect(wl.reload.words).to eq(%w[さくらんぼ りんご バナナ])
+    end
+
+    it "リスト名を更新できる" do
+      wl = user.wordlists.create!(name: "果物", words: %w[りんご])
+
+      patch "/api/v1/wordlists/#{wl.id}", params: { wordlist: { name: "くだもの" } }, headers: headers, as: :json
+
+      expect(response).to have_http_status(:success)
+      expect(wl.reload.name).to eq("くだもの")
+      expect(wl.words).to eq(%w[りんご])
+    end
+
+    it "空文字・重複は正規化される" do
+      wl = user.wordlists.create!(name: "果物", words: %w[りんご])
+
+      patch "/api/v1/wordlists/#{wl.id}",
+        params: { wordlist: { words: [ "もも", " ", "もも", "なし" ] } }, headers: headers, as: :json
+
+      expect(wl.reload.words).to eq(%w[もも なし])
+    end
+
+    it "他人のワードリストは更新できない（404）" do
+      other = create(:user, :confirmed)
+      wl = other.wordlists.create!(name: "他人のリスト", words: %w[x])
+
+      patch "/api/v1/wordlists/#{wl.id}", params: { wordlist: { words: %w[y] } }, headers: headers, as: :json
+
+      expect(response).to have_http_status(:not_found)
+      expect(wl.reload.words).to eq(%w[x])
+    end
+  end
+
   it "削除できる" do
     wl = user.wordlists.create!(name: "果物", words: %w[りんご])
     delete "/api/v1/wordlists/#{wl.id}", headers: headers, as: :json
