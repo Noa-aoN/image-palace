@@ -22,7 +22,7 @@ export default function NewWordlistPage() {
   const [newWord, setNewWord] = useState('')
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
-  // AIチェックの結果。単語を編集・並び替え・再生成したら破棄する（古い判定を残さない）。
+  // AIチェックの結果。対応（置換・削除）するまで指摘は出したままにする。再生成したときだけ捨てる。
   const [checking, setChecking] = useState(false)
   const [issues, setIssues] = useState<Map<string, WordCheckIssue> | null>(null)
   const [additions, setAdditions] = useState<string[]>([])
@@ -32,9 +32,13 @@ export default function NewWordlistPage() {
     setAdditions([])
   }
 
+  // 単語を編集・並び替えしても指摘は出したままにする。
+  // リストから消えた単語（置換・削除で対応済み）の指摘だけを落とす。
   const updateWords = (next: string[]) => {
     setWords(next)
-    clearCheck()
+    setIssues((current) =>
+      current ? new Map([...current].filter(([word]) => next.includes(word))) : current
+    )
   }
 
   const handleGenerate = async () => {
@@ -190,8 +194,8 @@ export default function NewWordlistPage() {
                 <p className="text-sm font-medium">AIチェックの結果</p>
                 <p className="mt-1 text-xs text-muted-foreground">
                   {issues.size === 0
-                    ? 'テーマから外れた単語は見つかりませんでした。'
-                    : `${issues.size}件の指摘があります。上のリストで置き換え・削除できます。`}
+                    ? '未対応の指摘はありません。'
+                    : `${issues.size}件の指摘があります（未対応のあいだ表示し続けます）。上のリストで置き換え・削除できます。`}
                 </p>
 
                 {additions.length > 0 && (
@@ -229,7 +233,8 @@ export default function NewWordlistPage() {
                 value={newWord}
                 onChange={(e) => setNewWord(e.target.value)}
                 onKeyDown={(e) => {
-                  if (e.key === 'Enter') {
+                  // IME の変換確定の Enter では追加しない（日本語入力で1回目の Enter は確定のため）。
+                  if (e.key === 'Enter' && !e.nativeEvent.isComposing) {
                     e.preventDefault()
                     addWord(newWord)
                     setNewWord('')

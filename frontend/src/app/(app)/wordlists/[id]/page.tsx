@@ -52,11 +52,13 @@ export default function WordlistDetailPage() {
     setEditing(true)
   }
 
-  // 単語を触ったら古いチェック結果は捨てる。
+  // 単語を編集・並び替えしても指摘は出したままにする。
+  // リストから消えた単語（置換・削除で対応済み）の指摘だけを落とす。
   const updateDraftWords = (next: string[]) => {
     setDraftWords(next)
-    setIssues(null)
-    setAdditions([])
+    setIssues((current) =>
+      current ? new Map([...current].filter(([word]) => next.includes(word))) : current
+    )
   }
 
   const addWord = (word: string) => {
@@ -203,8 +205,8 @@ export default function WordlistDetailPage() {
               <p className="text-sm font-medium">AIチェックの結果</p>
               <p className="mt-1 text-xs text-muted-foreground">
                 {issues.size === 0
-                  ? 'テーマから外れた単語は見つかりませんでした。'
-                  : `${issues.size}件の指摘があります。上のリストで置き換え・削除できます。`}
+                  ? '未対応の指摘はありません。'
+                  : `${issues.size}件の指摘があります（未対応のあいだ表示し続けます）。上のリストで置き換え・削除できます。`}
               </p>
 
               {additions.length > 0 && (
@@ -242,7 +244,8 @@ export default function WordlistDetailPage() {
               value={newWord}
               onChange={(e) => setNewWord(e.target.value)}
               onKeyDown={(e) => {
-                if (e.key === 'Enter') {
+                // IME の変換確定の Enter では追加しない（日本語入力で1回目の Enter は確定のため）。
+                if (e.key === 'Enter' && !e.nativeEvent.isComposing) {
                   e.preventDefault()
                   addWord(newWord)
                   setNewWord('')
