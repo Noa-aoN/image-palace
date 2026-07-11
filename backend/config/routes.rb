@@ -29,6 +29,18 @@ Rails.application.routes.draw do
       post "stripe/webhook", to: "stripe_webhooks#create"
 
       resource :settings, only: [ :show, :update ]
+
+      # お知らせ（生成結果・運営からの通知）
+      resources :notifications, only: [ :index ] do
+        member do
+          post :read
+        end
+        collection do
+          get :unread_count
+          post :read_all
+        end
+      end
+
       resources :items, only: [ :index, :create, :show, :update, :destroy ] do
         collection do
           get :summary

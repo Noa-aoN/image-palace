@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_07_04_044428) do
+ActiveRecord::Schema[8.1].define(version: 2026_07_11_000001) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
   enable_extension "pgcrypto"
@@ -167,6 +167,20 @@ ActiveRecord::Schema[8.1].define(version: 2026_07_04_044428) do
     t.text "url"
     t.index ["item_id", "position"], name: "index_medias_on_item_id_and_position"
     t.index ["item_id"], name: "index_medias_on_item_id"
+  end
+
+  create_table "notifications", id: :uuid, default: -> { "gen_random_uuid()" }, force: :cascade do |t|
+    t.text "body"
+    t.datetime "created_at", null: false
+    t.string "kind", null: false
+    t.jsonb "payload", default: {}, null: false
+    t.datetime "read_at"
+    t.string "title", null: false
+    t.datetime "updated_at", null: false
+    t.string "url"
+    t.uuid "user_id", null: false
+    t.index ["user_id", "created_at"], name: "index_notifications_on_user_id_and_created_at"
+    t.index ["user_id", "read_at"], name: "index_notifications_on_user_id_and_read_at"
   end
 
   create_table "plans", id: :uuid, default: -> { "gen_random_uuid()" }, force: :cascade do |t|
@@ -499,6 +513,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_07_04_044428) do
   add_foreign_key "items", "users", on_delete: :cascade
   add_foreign_key "meanings", "items", on_delete: :cascade
   add_foreign_key "medias", "items", on_delete: :cascade
+  add_foreign_key "notifications", "users", on_delete: :cascade
   add_foreign_key "relations", "items", column: "from_item_id", on_delete: :cascade
   add_foreign_key "relations", "items", column: "to_item_id", on_delete: :cascade
   add_foreign_key "relations", "users", on_delete: :cascade

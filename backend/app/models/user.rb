@@ -24,6 +24,7 @@ class User < ApplicationRecord
   has_many :subscriptions, dependent: :destroy
   # trialing も「有効な有料契約」として扱う（trial 中ユーザーに無料枠を二重付与しないため）。
   has_one :active_subscription, -> { where(status: %w[active trialing]) }, class_name: "Subscription"
+  has_many :notifications, dependent: :destroy
   has_many :credit_transactions, dependent: :destroy
   has_many :credit_grants, dependent: :destroy
 

@@ -1,9 +1,9 @@
 'use client'
 
-import { useEffect } from 'react'
+import { useEffect, useState } from 'react'
 import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
-import { CircleUser, Castle, Coins, Mailbox, ArrowLeft } from 'lucide-react'
+import { CircleUser, Castle, Coins, ScrollText, ArrowLeft, X } from 'lucide-react'
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -16,9 +16,14 @@ import {
 import { useAuthStore } from '@/stores/auth'
 import { useItemsStore } from '@/stores/items'
 import { useBillingStore } from '@/stores/billing'
+import { useNotificationsStore } from '@/stores/notifications'
 import { signOut } from '@/lib/api/auth'
 import { CREDIT_UNIT_SHORT } from '@/lib/billing'
 import { MobileNav } from '@/components/features/layout/MobileNav'
+import { NotificationsPanel } from '@/components/features/layout/NotificationsPanel'
+
+// 未読バッジの更新間隔。生成の完了に程よく気づける程度に抑える。
+const UNREAD_POLL_MS = 30_000
 
 export function AppHeader() {
   const pathname = usePathname()
@@ -30,6 +35,10 @@ export function AppHeader() {
   const hasHydrated = useAuthStore((s) => s.hasHydrated)
   const billingSummary = useBillingStore((s) => s.summary)
   const fetchBillingSummary = useBillingStore((s) => s.fetchSummary)
+  const unreadCount = useNotificationsStore((s) => s.unreadCount)
+  const fetchUnreadCount = useNotificationsStore((s) => s.fetchUnreadCount)
+  const [notificationsOpen, setNotificationsOpen] = useState(false)
+  const [menuOpen, setMenuOpen] = useState(false)
   const isAuthPage = pathname?.startsWith('/login') || pathname?.startsWith('/signup') || pathname?.startsWith('/auth/')
   const isLandingPage = pathname === '/'
   const showUserMenu = hasHydrated && isAuthenticated
@@ -37,6 +46,24 @@ export function AppHeader() {
   useEffect(() => {
     if (showUserMenu) fetchBillingSummary()
   }, [showUserMenu, fetchBillingSummary])
+
+  // 未読数を定期的に取りに行く。タブが裏にある間は叩かない（生成はサーバー側で進むので、
+  // 戻ってきたときに拾えれば十分）。
+  useEffect(() => {
+    if (!showUserMenu) return
+
+    const poll = () => {
+      if (document.visibilityState === 'visible') fetchUnreadCount()
+    }
+
+    poll()
+    const timer = setInterval(poll, UNREAD_POLL_MS)
+    document.addEventListener('visibilitychange', poll)
+    return () => {
+      clearInterval(timer)
+      document.removeEventListener('visibilitychange', poll)
+    }
+  }, [showUserMenu, fetchUnreadCount])
 
   const handleLogout = async () => {
     try {
@@ -98,27 +125,25 @@ export function AppHeader() {
             <span className="text-xs text-muted-foreground">{CREDIT_UNIT_SHORT}</span>
           </Link>
         )}
-        {/* 通知（現状は器のみ。後日、お知らせ・生成状況の通知をここに表示する） */}
+        {/* お知らせ（生成結果・運営からの通知）。未読があれば巻物にバッジを付け、クリックで一覧パネルを開く */}
         {showUserMenu && (
-          <DropdownMenu>
-            <DropdownMenuTrigger
-              className="rounded-full p-1.5 hover:bg-black/5 transition-colors"
-              title="お知らせ"
-              aria-label="お知らせ"
-            >
-              <Mailbox size={20} style={{ color: 'var(--palace)' }} />
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end" className="w-64">
-              <DropdownMenuLabel>お知らせ</DropdownMenuLabel>
-              <DropdownMenuSeparator />
-              <div className="px-2 py-6 text-center text-sm text-muted-foreground">
-                お知らせはありません
-              </div>
-            </DropdownMenuContent>
-          </DropdownMenu>
+          <button
+            type="button"
+            onClick={() => setNotificationsOpen(true)}
+            className="relative rounded-full p-1.5 transition-colors hover:bg-black/5"
+            title="お知らせ"
+            aria-label={unreadCount > 0 ? `お知らせ（未読${unreadCount}件）` : 'お知らせ'}
+          >
+            <ScrollText size={20} style={{ color: 'var(--palace)' }} />
+            {unreadCount > 0 && (
+              <span className="absolute -right-0.5 -top-0.5 flex h-4 min-w-4 items-center justify-center rounded-full bg-red-600 px-1 text-[10px] font-bold leading-none text-white">
+                {unreadCount > 99 ? '99+' : unreadCount}
+              </span>
+            )}
+          </button>
         )}
         {showUserMenu ? (
-          <DropdownMenu>
+          <DropdownMenu open={menuOpen} onOpenChange={setMenuOpen}>
             <DropdownMenuTrigger className="rounded-full p-1 hover:bg-black/5 transition-colors">
               {(user?.avatar_thumb_url ?? user?.avatar_url) ? (
                 // eslint-disable-next-line @next/next/no-img-element
@@ -132,11 +157,23 @@ export function AppHeader() {
                 <CircleUser size={32} strokeWidth={1.5} />
               )}
             </DropdownMenuTrigger>
-            <DropdownMenuContent align="end">
-              {/* ユーザー名（表示名が無ければメールアドレス） */}
+            {/* 幅・余白・位置はお知らせパネルに合わせる。パネルはヘッダー直下 4px・画面右から 8px に出るので、
+                トリガー（アバター）基準のこのメニューも sideOffset と translate-x で同じ位置に揃える。 */}
+            <DropdownMenuContent align="end" sideOffset={12} className="min-w-56 translate-x-4">
+              {/* ユーザー名（表示名が無ければメールアドレス）＋ 閉じる（パネルと同じ×） */}
               <DropdownMenuGroup>
-                <DropdownMenuLabel className="max-w-56 truncate">
-                  {user?.name?.trim() ? user.name : (user?.email ?? 'ゲスト')}
+                <DropdownMenuLabel className="flex items-center justify-between gap-2">
+                  <span className="max-w-48 truncate">
+                    {user?.name?.trim() ? user.name : (user?.email ?? 'ゲスト')}
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => setMenuOpen(false)}
+                    className="-mr-1 rounded-md p-1 transition-colors hover:bg-accent hover:text-accent-foreground"
+                    aria-label="閉じる"
+                  >
+                    <X size={14} />
+                  </button>
                 </DropdownMenuLabel>
               </DropdownMenuGroup>
               <DropdownMenuSeparator />
@@ -162,6 +199,8 @@ export function AppHeader() {
           <div className="min-w-9" aria-hidden={isAuthPage || isLandingPage} />
         )}
       </div>
+
+      <NotificationsPanel open={notificationsOpen} onClose={() => setNotificationsOpen(false)} />
     </header>
   )
 }

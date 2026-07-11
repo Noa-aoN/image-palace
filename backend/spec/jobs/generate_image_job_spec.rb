@@ -77,6 +77,46 @@ RSpec.describe GenerateImageJob, type: :job do
     end
   end
 
+  describe "お知らせ（通知）" do
+    it "生成が完了すると完了のお知らせを作る" do
+      create(:shared_media, :with_file,
+        user: user,
+        normalized_prompt: NormalizePromptService.call(PromptBuilderService.effective_prompt(item)),
+        metadata: { "provider" => "openai" })
+
+      expect { described_class.perform_now(item.id) }.to change { user.notifications.count }.by(1)
+
+      notification = user.notifications.recent.first
+      expect(notification.kind).to eq("item_generation_completed")
+      expect(notification.title).to include(item.title)
+      expect(notification.url).to eq("/items/#{item.id}")
+      expect(notification.payload["item_id"]).to eq(item.id)
+    end
+
+    it "生成が失敗すると失敗のお知らせを作る" do
+      error = Faraday::BadRequestError.new("400 Bad Request")
+
+      expect { described_class.new.send(:mark_failed!, item.id, error) }
+        .to change { user.notifications.count }.by(1)
+
+      notification = user.notifications.recent.first
+      expect(notification.kind).to eq("item_generation_failed")
+      expect(notification.title).to include(item.title)
+      expect(notification.body).to eq(item.reload.generation_error)
+    end
+
+    it "お知らせの作成に失敗しても生成そのものは失敗させない" do
+      allow(Notifications::CreateService).to receive(:call).and_raise(StandardError, "boom")
+      create(:shared_media, :with_file,
+        user: user,
+        normalized_prompt: NormalizePromptService.call(PromptBuilderService.effective_prompt(item)),
+        metadata: { "provider" => "openai" })
+
+      expect { described_class.perform_now(item.id) }.not_to raise_error
+      expect(item.reload.generation_status).to eq("completed")
+    end
+  end
+
   describe ".perform_now" do
     it "clears stale generation_error when cached media completes the item" do
       create(:shared_media, :with_file,
