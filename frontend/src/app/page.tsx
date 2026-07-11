@@ -1,10 +1,9 @@
 import type { Metadata } from 'next'
 import type { ReactNode } from 'react'
-import Link from 'next/link'
 import { Brain, Layers, Search, GalleryVerticalEnd } from 'lucide-react'
-import { Button } from '@/components/ui/button'
 import { LandingFooter } from '@/components/features/layout/LandingFooter'
 import { HeroScrollZoom } from '@/components/features/landing/HeroScrollZoom'
+import { LandingCta } from '@/components/features/landing/LandingCta'
 import { ScrollCue } from '@/components/features/landing/ScrollCue'
 import { SectionDivider } from '@/components/features/landing/SectionDivider'
 import { RoadBackground } from '@/components/features/landing/RoadBackground'
@@ -146,18 +145,8 @@ export default function TopPage() {
         <h2 className="mb-8 text-2xl font-bold md:text-3xl" style={{ color: '#111111' }}>
           今日から、記憶を育てはじめましょう。
         </h2>
-        <div className="flex w-full max-w-sm flex-col items-center gap-3 sm:mx-auto sm:max-w-none sm:flex-row sm:justify-center">
-          <Link href="/signup" className="w-full sm:w-44">
-            <Button size="lg" className="w-full px-8 text-base sm:w-44" style={{ backgroundColor: 'var(--palace)', color: '#fff', border: 'none' }}>
-              無料ではじめる
-            </Button>
-          </Link>
-          <Link href="/login" className="w-full sm:w-44">
-            <Button size="lg" variant="outline" className="w-full px-8 text-base sm:w-44">
-              ログイン
-            </Button>
-          </Link>
-        </div>
+        {/* ヒーローと同じくログイン有無で出し分ける */}
+        <LandingCta className="flex w-full max-w-sm flex-col items-center gap-3 sm:mx-auto sm:max-w-none sm:flex-row sm:justify-center" />
       </Section>
 
       <LandingFooter />
