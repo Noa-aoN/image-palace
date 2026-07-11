@@ -1,3 +1,4 @@
+import { Clock, Loader2, AlertTriangle, type LucideIcon } from 'lucide-react'
 import type { GenerationStatus } from '@/types/item'
 
 // 生成ステータスの表示ラベル。カード一覧・詳細で共通利用する。
@@ -14,6 +15,14 @@ export const STATUS_COLOR: Record<GenerationStatus, string> = {
   processing: 'bg-blue-100 text-blue-800',
   completed: 'bg-green-100 text-green-800',
   failed: 'bg-red-100 text-red-800',
+}
+
+// ステータスを表すアイコン。completed は画像で伝わるためアイコン無し（バッジ自体も出さない）。
+export const STATUS_ICON: Record<GenerationStatus, LucideIcon | null> = {
+  pending: Clock,
+  processing: Loader2,
+  completed: null,
+  failed: AlertTriangle,
 }
 
 // 生成中（＝ポーリングを継続する）ステータス集合。

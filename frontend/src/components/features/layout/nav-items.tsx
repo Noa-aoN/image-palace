@@ -26,6 +26,7 @@ import {
   BookOpen,
   Newspaper,
 } from 'lucide-react'
+import { CreateIcon } from './CreateIcon'
 
 export interface NavNode {
   label: string
@@ -60,11 +61,11 @@ export const NAV_SECTIONS: NavSection[] = [
         icon: <Palette size={22} />,
         label: 'アトリエ',
         children: [
-          { href: '/materials/new', icon: <Boxes size={20} />, label: 'マテリアルを作成' },
-          { href: '/items/new', icon: <GalleryHorizontal size={20} />, label: 'カードを作成' },
-          { href: '/boxes/new', icon: <Box size={20} />, label: 'ボックスを作成' },
-          { href: '/views/new', icon: <LayoutGrid size={20} />, label: 'キャンバスを作成' },
-          { href: '/spaces/new', icon: <Frame size={20} />, label: 'スペースを作成' },
+          { href: '/materials/new', icon: <CreateIcon><Boxes size={20} /></CreateIcon>, label: 'マテリアルを作成' },
+          { href: '/items/new', icon: <CreateIcon><GalleryHorizontal size={20} /></CreateIcon>, label: 'カードを作成' },
+          { href: '/boxes/new', icon: <CreateIcon><Box size={20} /></CreateIcon>, label: 'ボックスを作成' },
+          { href: '/views/new', icon: <CreateIcon><LayoutGrid size={20} /></CreateIcon>, label: 'キャンバスを作成' },
+          { href: '/spaces/new', icon: <CreateIcon><Frame size={20} /></CreateIcon>, label: 'スペースを作成' },
         ],
       },
       {

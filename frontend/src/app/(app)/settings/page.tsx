@@ -8,6 +8,7 @@ import { ComingSoon } from '@/components/features/myroom/ComingSoon'
 import { exportAccountData } from '@/lib/api/account'
 import { getSettings, updateSettings } from '@/lib/api/settings'
 import { STYLE_OPTIONS } from '@/lib/item-styles'
+import { useUiStore } from '@/stores/ui'
 
 type TabKey = 'generation' | 'display' | 'sharing' | 'notification' | 'integration' | 'data'
 
@@ -20,6 +21,9 @@ export default function SettingsPage() {
   // デフォルト画像スタイル（null = 読み込み中）
   const [defaultStyle, setDefaultStyle] = useState<string | null>(null)
   const [savingStyle, setSavingStyle] = useState(false)
+  // 生成ステータスバッジの表示（クライアント保持の表示設定）
+  const showStatusBadges = useUiStore((s) => s.showStatusBadges)
+  const toggleStatusBadges = useUiStore((s) => s.toggleStatusBadges)
 
   useEffect(() => {
     let cancelled = false
@@ -256,10 +260,34 @@ export default function SettingsPage() {
       label: '表示・操作',
       icon: <SlidersHorizontal size={16} />,
       content: (
-        <ComingSoon
-          description="詳細ページの表示モード、アニメーション軽量化、マップ表示などは順次対応予定です。"
-          items={['詳細ページの表示モード', 'ホバー説明', 'アニメーション軽量化', 'シンプル表示', '2D / 3D マップ表示']}
-        />
+        <>
+          <section className="space-y-3 rounded-xl border border-border bg-card p-5">
+            <div className="flex items-center gap-2">
+              <SlidersHorizontal size={18} style={{ color: 'var(--palace)' }} />
+              <h2 className="text-base font-semibold">カードの表示</h2>
+            </div>
+            <div className="flex items-start justify-between gap-4">
+              <div>
+                <p className="text-sm font-medium">生成ステータスのバッジを表示</p>
+                <p className="mt-1 text-sm text-muted-foreground">
+                  カードの「生成待ち」「生成中」「失敗」バッジを表示します。完了したカードは画像のみ表示され、バッジは出ません。
+                  OFF にするとバッジをすべて隠します。
+                </p>
+              </div>
+              <Toggle
+                checked={showStatusBadges}
+                label="生成ステータスのバッジを表示"
+                disabled={false}
+                onClick={toggleStatusBadges}
+              />
+            </div>
+          </section>
+
+          <ComingSoon
+            description="詳細ページの表示モード、アニメーション軽量化、マップ表示などは順次対応予定です。"
+            items={['詳細ページの表示モード', 'ホバー説明', 'アニメーション軽量化', 'シンプル表示', '2D / 3D マップ表示']}
+          />
+        </>
       ),
     },
     {

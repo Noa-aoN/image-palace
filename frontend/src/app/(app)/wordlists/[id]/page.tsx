@@ -2,6 +2,8 @@
 
 import { useEffect, useState } from 'react'
 import { useParams, useRouter } from 'next/navigation'
+import Link from 'next/link'
+import { Sparkles } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Breadcrumb } from '@/components/ui/breadcrumb'
 import { getWordlist, deleteWordlist } from '@/lib/api/wordlists'
@@ -68,6 +70,13 @@ export default function WordlistDetailPage() {
           <Button variant="ghost" size="sm" className="text-destructive" onClick={() => setConfirming(true)}>削除</Button>
         )}
       </div>
+
+      <Link href={`/items/new?wordlist=${wordlist.id}`} className="mt-5 block">
+        <Button className="w-full sm:w-auto flex items-center gap-1.5">
+          <Sparkles size={16} />
+          このワードリストでカードを作成
+        </Button>
+      </Link>
 
       <ol className="mt-6 divide-y divide-border overflow-hidden rounded-xl border border-border bg-card">
         {wordlist.words.map((word, i) => (
