@@ -3,7 +3,7 @@
 import { useEffect } from 'react'
 import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
-import { CircleUser, Castle, Coins, Mailbox, House } from 'lucide-react'
+import { CircleUser, Castle, Coins, Mailbox, ArrowLeft } from 'lucide-react'
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -60,18 +60,19 @@ export function AppHeader() {
       {/* 左: モバイルのハンバーガー（認証時のみ）＋ LP導線 ＋ ロゴ */}
       <div className="flex items-center gap-1">
         {showUserMenu && <MobileNav />}
-        {/* 常にLP（トップページ）へ戻れる小さめアイコン。ロゴは認証時 /entrance へ行くため導線を分ける */}
+        {/* 常にLP（トップページ）へ戻れる小さめアイコン。ロゴは認証時 /entrance へ行くため導線を分ける。
+            左端寄りに置きたいので負のマージンで px を少し打ち消す。 */}
         <Link
           href="/"
-          className="rounded-full p-1.5 hover:bg-black/5 transition-colors"
+          className="-ml-2 rounded-full p-1.5 hover:bg-black/5 transition-colors"
           title="トップページへ"
           aria-label="トップページ（LP）へ"
         >
-          <House size={18} style={{ color: 'var(--foreground)' }} />
+          <ArrowLeft size={18} style={{ color: 'var(--foreground)' }} />
         </Link>
         <Link href={isAuthenticated ? '/entrance' : '/'} className="flex items-center gap-1.5" aria-label="ImagePalace ホーム">
           {/* ロゴは仮置き（宮殿アイコン）。正式ロゴ確定までのプレースホルダ */}
-          <Castle size={32} style={{ color: 'var(--foreground)' }} />
+          <Castle size={32} style={{ color: 'var(--palace)' }} />
           {/* 開発段階を示すバッジ。正式リリースまで表示する */}
           <span
             className="rounded-full border border-border px-1.5 py-0.5 text-[10px] font-medium leading-none text-muted-foreground"

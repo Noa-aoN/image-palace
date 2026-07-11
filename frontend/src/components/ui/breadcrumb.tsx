@@ -13,7 +13,9 @@ export type Crumb = {
 export function Breadcrumb({ items, className }: { items: Crumb[]; className?: string }) {
   return (
     <nav aria-label="パンくずリスト" className={cn('mb-4', className)}>
-      <ol className="flex flex-wrap items-center gap-1 text-sm text-muted-foreground">
+      {/* 配色はサイドバーのナビ準拠：祖先リンク＝通常色(inherit)でホバーで金、
+          カレント＝アクティブ項目と同じ金(--palace)。文字は font-medium。 */}
+      <ol className="flex flex-wrap items-center gap-1 text-sm font-medium">
         {items.map((item, i) => {
           const isLast = i === items.length - 1
           return (
@@ -21,20 +23,21 @@ export function Breadcrumb({ items, className }: { items: Crumb[]; className?: s
               {item.href && !isLast ? (
                 <Link
                   href={item.href}
-                  className="truncate transition-colors hover:text-[var(--palace)]"
+                  className="truncate text-foreground transition-colors hover:text-[var(--palace)]"
                 >
                   {item.label}
                 </Link>
               ) : (
                 <span
-                  className={cn('truncate', isLast && 'font-medium text-foreground')}
+                  className="truncate"
+                  style={isLast ? { color: 'var(--palace)' } : undefined}
                   aria-current={isLast ? 'page' : undefined}
                 >
                   {item.label}
                 </span>
               )}
               {!isLast && (
-                <ChevronRight size={14} className="shrink-0 text-muted-foreground/60" aria-hidden />
+                <ChevronRight size={14} className="shrink-0 text-muted-foreground/50" aria-hidden />
               )}
             </li>
           )
