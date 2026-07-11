@@ -6,6 +6,7 @@ import Link from 'next/link'
 import { PenLine, Sparkles, GalleryVerticalEnd, Library, LayoutGrid, Frame, Loader2, ChevronRight, Coins, CreditCard, CheckCircle2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
+import { PalaceMinimap } from '@/components/features/dashboard/PalaceMinimap'
 import { getItemsSummary, type ItemsSummary } from '@/lib/api/items'
 import { useBillingStore } from '@/stores/billing'
 import { tierLabel, CREDIT_UNIT, CREDIT_UNIT_SHORT } from '@/lib/billing'
@@ -318,6 +319,9 @@ export function DashboardContent() {
           </Link>
         </section>
       )}
+
+      {/* 宮殿ミニマップ（所有数で姿が変わる装飾カード） */}
+      <PalaceMinimap summary={summary} />
 
       {/* 所有 */}
       <section className="space-y-3">
