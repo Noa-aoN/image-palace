@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from 'react'
 import type { ReactNode } from 'react'
 import Link from 'next/link'
-import { PenLine, Sparkles, GalleryVerticalEnd, Library, LayoutGrid, Frame, Loader2, ChevronRight, Coins, CreditCard, CheckCircle2 } from 'lucide-react'
+import { PenLine, Sparkles, GalleryVerticalEnd, Box, LayoutGrid, Frame, Loader2, ChevronRight, Coins, CreditCard, CheckCircle2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
 import { PalaceMinimap } from '@/components/features/dashboard/PalaceMinimap'
@@ -33,7 +33,7 @@ const EMPTY_SUMMARY: ItemsSummary = {
 // 「所有」セクションの統計カード。クリックで該当の一覧ページへ遷移する。
 const OWNED_CARDS: { label: string; href: string; icon: ReactNode; value: (s: ItemsSummary) => string }[] = [
   { label: 'カード', href: '/items', icon: <GalleryVerticalEnd size={18} />, value: (s) => `${s.total_count}` },
-  { label: 'ボックス', href: '/boxes', icon: <Library size={18} />, value: (s) => `${s.boxes_count}` },
+  { label: 'ボックス', href: '/boxes', icon: <Box size={18} />, value: (s) => `${s.boxes_count}` },
   { label: 'キャンバス', href: '/views', icon: <LayoutGrid size={18} />, value: (s) => `${s.views_count}` },
   { label: 'スペース', href: '/spaces', icon: <Frame size={18} />, value: (s) => `${s.spaces_count}` },
 ]

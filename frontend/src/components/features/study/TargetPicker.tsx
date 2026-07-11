@@ -4,7 +4,7 @@ import { useEffect, useMemo, useState } from 'react'
 import type { ReactNode } from 'react'
 import {
   GalleryHorizontal,
-  Library,
+  Box as BoxIcon,
   LayoutGrid,
   Search,
   X,
@@ -118,7 +118,7 @@ export function TargetPicker({ selectedKey, onSelect, hideComingSoon = false }: 
 
       {/* ボックス（展開で検索＋リスト） */}
       <MediumAccordion
-        icon={<Library size={18} />}
+        icon={<BoxIcon size={18} />}
         title="ボックス"
         count={boxes.length}
         opened={open === 'box'}
@@ -137,7 +137,7 @@ export function TargetPicker({ selectedKey, onSelect, hideComingSoon = false }: 
             return (
               <ItemRow
                 key={c.id}
-                icon={<Library size={16} />}
+                icon={<BoxIcon size={16} />}
                 label={c.name}
                 meta={`${c.entry_count} 件`}
                 active={selectedKey === key}
