@@ -4,6 +4,7 @@ import { useMemo, useState } from 'react'
 import Link from 'next/link'
 import { Layers, HelpCircle, Gamepad2, Flame } from 'lucide-react'
 import { Button } from '@/components/ui/button'
+import { Breadcrumb } from '@/components/ui/breadcrumb'
 import { Badge } from '@/components/ui/badge'
 import { StatCard } from '@/components/features/study/StatCard'
 import { useStudyRecordStore, type StudyRecord, type StudyGameKind } from '@/stores/studyRecords'
@@ -73,9 +74,7 @@ export default function RecordPage() {
 
   return (
     <div className="max-w-2xl mx-auto px-6 py-12">
-      <Link href="/study">
-        <Button variant="ghost" className="text-sm px-0 mb-4">← スタディへ戻る</Button>
-      </Link>
+      <Breadcrumb items={[{ href: '/study', label: 'スタディ' }, { label: 'レコード' }]} />
       <h1 className="text-2xl font-semibold">レコード</h1>
       <p className="mt-2 text-muted-foreground">プラクティス・クイズ・プレイの学習履歴と統計を確認します。</p>
 
