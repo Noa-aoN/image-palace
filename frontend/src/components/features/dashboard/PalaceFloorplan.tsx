@@ -65,10 +65,12 @@ export function PalaceFloorplan() {
 
         {mode === '3d' ? (
           // 3D では道も同じ投影で描くので、下の 2D 用の道は出さない。
-          // アニメーション ON のときは、建物と道をまとめてゆっくり回す（ホバー中は停止）。
-          <div className="palace3d-stage">
-            <div className="palace3d-spin">
-              <PalaceFloorplan3D onHint={setHint} icons={ROOM_ICONS} overlay={overlay} />
+          // アニメーション ON のときは、図（建物＋道）が縦軸まわりに回る（投影ごと回すので比率は崩れない）。
+          // 吹き出し・操作ヒントは回転の外に置くので回らない。
+          <div className="relative">
+            <PalaceFloorplan3D onHint={setHint} icons={ROOM_ICONS} />
+            <div className="pointer-events-none absolute inset-x-0 bottom-8 flex flex-col items-center px-2">
+              {overlay}
             </div>
           </div>
         ) : (

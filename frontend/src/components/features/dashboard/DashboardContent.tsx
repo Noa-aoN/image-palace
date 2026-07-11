@@ -312,16 +312,16 @@ export function DashboardContent() {
         </section>
       )}
 
-      {/* 宮殿の間取り（主要な場所への地図的な導線） */}
-      <section className="space-y-3">
-        <h2 className="text-sm font-semibold text-muted-foreground">宮殿の間取り図</h2>
-        <PalaceFloorplan />
-      </section>
-
       {/* 記憶資産（種類ごとの積み上げ。各列クリックで一覧へ） */}
       <section className="space-y-3">
         <h2 className="text-sm font-semibold text-muted-foreground">宮殿の記憶資産</h2>
         <MemoryAssetsCard summary={summary} />
+      </section>
+
+      {/* 宮殿の間取り（主要な場所への地図的な導線） */}
+      <section className="space-y-3">
+        <h2 className="text-sm font-semibold text-muted-foreground">宮殿の間取り図</h2>
+        <PalaceFloorplan />
       </section>
 
       {/* クイック操作 */}

@@ -1,7 +1,7 @@
 'use client'
 
 import { useRouter } from 'next/navigation'
-import type { ReactNode } from 'react'
+import { useEffect, useRef, useState, type ReactNode } from 'react'
 import {
   ROOMS,
   WALL_SEGMENTS,
@@ -17,57 +17,61 @@ import {
   type Room,
   type Segment,
 } from './floorplan-geometry'
+import { useMotion } from '@/hooks/useMotion'
 
-// 正面のまま立ち上げる 2.5D 投影（平面は 45° 回さない＝2D と同じ向きのまま）。
-// 奥行き（平面の y）は KY で圧縮し、高さ z は画面上方向へ持ち上げる。
-const KY = 0.72
-const OY = 30
-// 建物は 2D と同じ枠（360×158）。道は 2D と同じ 128px の帯に、続きの投影で描く。
+// 投影：平面の奥（+y）へ進むほど画面では上へ詰まり（KY）、高さ z は上へ持ち上げる。
+// 固定のせん断は入れない（yaw = 0 のとき＝正面向きは、傾かずまっすぐ見える）。
+// 斜めの角度は「縦軸まわりの回転（yaw）」からだけ生まれる。
+const KY = 0.62
+const OX = 0
+const OY = 26
+// 建物は 2D と同じ枠（360×158）。道は描かないので、そのぶん宮殿を大きく取る。
 const VB = { w: 360, h: 158 }
-const ROAD_VB = { y: 150, h: 62 }
 
-const WALL_H = 16 // 壁は低く抑え、上端をぼかして溶かす
+const WALL_H = 18 // 壁は低く抑え、上端をぼかして溶かす
 const WALL_T = 4 // 壁の厚み（2D の線の太さと同じ）
-const COLUMN_H = 22
-
-// 道（玄関から手前へ）。平面座標のまま、建物の下へ続ける。
-// 玄関（ポルチコ前・y=150）から道までを階段で繋ぐ。段は手前へ下りながら幅を絞る。
-const STAIRS = { y: 150, h: 18, steps: 4, topW: 144, bottomW: 92, z: 6 }
-const ROAD = { x: 140, y: 168, w: 80, h: 66 }
-const ROAD_COLUMNS: [number, number][] = [
-  [136, 180], [224, 180],
-  [136, 205], [224, 205],
-  [136, 230], [224, 230],
-]
-
-// 道は手前ほど広がる（建物の奥行き圧縮に馴染む角度）。
-const ROAD_FLARE = 0.55
+const COLUMN_H = 24
 
 type P = { x: number; y: number }
-
-const project = (x: number, y: number, z = 0): P => ({ x, y: y * KY - z + OY })
-
-// 道の台形（奥＝玄関側が狭く、手前ほど広い）。
-function roadPolygon(): string {
-  const back = project(0, ROAD.y)
-  const front = project(0, ROAD.y + ROAD.h)
-  const halfBack = ROAD.w / 2
-  const halfFront = (ROAD.w / 2) * (1 + ROAD_FLARE)
-  return [
-    `${180 - halfBack},${back.y.toFixed(1)}`,
-    `${180 + halfBack},${back.y.toFixed(1)}`,
-    `${180 + halfFront},${front.y.toFixed(1)}`,
-    `${180 - halfFront},${front.y.toFixed(1)}`,
-  ].join(' ')
-}
-
 type Rect = { x: number; y: number; w: number; h: number }
 
-// 平面の矩形（床）。正面投影なので画面上も矩形になる。
-function floorRect(r: Rect) {
-  const a = project(r.x, r.y)
-  const b = project(r.x + r.w, r.y + r.h)
-  return { x: a.x, y: a.y, width: r.w, height: b.y - a.y }
+// 玄関（ポルチコ前 y=150）の先へ続く道。宮殿と同じ平面座標で置く。
+const ROAD: Rect = { x: 142, y: 150, w: 76, h: 56 }
+
+// 回転の軸（宮殿の中心を貫く縦軸）。この点を中心に、平面ごと回してから投影する。
+const PIVOT = { x: 180, y: 72 }
+// 回っても枠に収まるよう、わずかに余白を残す（道が無いぶん大きく描ける）。
+const FIT = 1.06
+
+// 平面座標を「縦軸まわりに yaw だけ回してから」アイソメへ投影する。
+// CSS で絵を回すのと違い、比率も接地も崩れない（記憶資産カードと同じ手法）。
+function project(x: number, y: number, z = 0, yaw = 0): P {
+  const cos = Math.cos(yaw)
+  const sin = Math.sin(yaw)
+  const dx = x - PIVOT.x
+  const dy = y - PIVOT.y
+  const rx = PIVOT.x + dx * cos - dy * sin
+  const ry = PIVOT.y + dx * sin + dy * cos
+  const sx = rx + OX
+  const sy = ry * KY - z + OY
+  // 軸の投影点を中心に縮小して、回転しても枠から出ないようにする。
+  const px = PIVOT.x + OX
+  const py = PIVOT.y * KY + OY
+  return { x: px + (sx - px) * FIT, y: py + (sy - py) * FIT }
+}
+
+const p = (pt: P) => `${pt.x.toFixed(1)},${pt.y.toFixed(1)}`
+
+// 平面の矩形を、投影した四角形（回転すると平行四辺形になる）の points にする。
+function quad(r: Rect, z = 0, yaw = 0): string {
+  return [
+    project(r.x, r.y, z, yaw),
+    project(r.x + r.w, r.y, z, yaw),
+    project(r.x + r.w, r.y + r.h, z, yaw),
+    project(r.x, r.y + r.h, z, yaw),
+  ]
+    .map(p)
+    .join(' ')
 }
 
 // 線分を「厚みのある壁」の平面矩形にする。
@@ -81,46 +85,61 @@ function wallBox([x1, y1, x2, y2]: Segment): Rect {
   }
 }
 
-// 壁1枚を、天面（上）＋前面（手前）の2面で立体に見せる。
-function WallBox({ box, h = WALL_H }: { box: Rect; h?: number }) {
-  const topBack = project(box.x, box.y, h)
-  const topFront = project(box.x, box.y + box.h, h)
-  const frontBottom = project(box.x, box.y + box.h, 0)
+// 壁1枚を、天面・前面・側面の3面で立体に見せる（斜投影なので側面も見える）。
+function WallBox({ box, h = WALL_H, yaw = 0 }: { box: Rect; h?: number; yaw?: number }) {
+  const x0 = box.x
+  const x1 = box.x + box.w
+  const y0 = box.y
+  const y1 = box.y + box.h
+
+  // 底面の四隅（回転後）。側面は4枚とも作り、奥のものから描く。
+  const base = [
+    project(x0, y0, 0, yaw),
+    project(x1, y0, 0, yaw),
+    project(x1, y1, 0, yaw),
+    project(x0, y1, 0, yaw),
+  ]
+  const cx = (base[0].x + base[2].x) / 2
+
+  const sides = base.map((pt, i) => {
+    const next = base[(i + 1) % 4]
+    const mid = { x: (pt.x + next.x) / 2, y: (pt.y + next.y) / 2 }
+    return {
+      points: `${p(pt)} ${p(next)} ${p({ x: next.x, y: next.y - h })} ${p({ x: pt.x, y: pt.y - h })}`,
+      depth: mid.y,
+      // 画面の左を向く面は影側（濃く）、右を向く面は明るく。
+      fill: mid.x < cx ? 'url(#fp3d-wall-side)' : 'url(#fp3d-wall-front)',
+      lit: mid.x >= cx,
+    }
+  })
+  sides.sort((a, b) => a.depth - b.depth)
 
   return (
     <g>
-      {/* 前面（手前を向く面）。根元は濃く、上へ向かって溶ける */}
-      <rect x={box.x} y={topFront.y} width={box.w} height={frontBottom.y - topFront.y} fill="url(#fp3d-wall-front)" />
-      {/* 石積みの目地（上へ向かって薄れるよう、壁と同じフェードのマスクを掛ける） */}
-      <rect
-        x={box.x}
-        y={topFront.y}
-        width={box.w}
-        height={frontBottom.y - topFront.y}
-        fill="url(#fp3d-wall-stone)"
-        mask="url(#fp3d-wall-stone-fade)"
-      />
-      {/* 天面（薄い厚みの面。低い壁の「切り口」） */}
-      <rect x={box.x} y={topBack.y} width={box.w} height={topFront.y - topBack.y} fill="url(#fp3d-wall-top)" />
-      {/* 根元のライン（床との接地を締める） */}
-      <line x1={box.x} y1={frontBottom.y} x2={box.x + box.w} y2={frontBottom.y} stroke="var(--foreground)" strokeOpacity={0.35} strokeWidth={0.8} />
+      {sides.map((side, i) => (
+        <g key={i}>
+          <polygon points={side.points} fill={side.fill} />
+          {/* 石積みの目地（上へ向かって薄れる） */}
+          <polygon points={side.points} fill="url(#fp3d-wall-stone)" mask="url(#fp3d-wall-stone-fade)" />
+        </g>
+      ))}
+      {/* 天面（低い壁の切り口） */}
+      <polygon points={quad(box, h, yaw)} fill="url(#fp3d-wall-top)" />
     </g>
   )
 }
 
 /**
- * 列柱。LP と同じ柱画像（road-pillar.png）の「下半分」を使う。
- * preserveAspectRatio の slice ＋ 下寄せ（xMidYMax）で、画像の上側を切り落として足元だけを見せ、
- * さらに上端をフェード（fp3d-pillar-fade）して朧げに溶かす。
+ * 列柱。LP と同じ柱画像（road-pillar.png）の下側だけを使い、
+ * 壁より高い部分はマスクで透明へ溶かす。
  */
-function Column({ cx, cy, r, h = COLUMN_H, mask = 'url(#fp3d-pillar-fade)' }: { cx: number; cy: number; r: number; h?: number; mask?: string }) {
-  const base = project(cx, cy)
-  const w = r * 3.6 // 柱は太めに（壁より高い部分はマスクで消える）
+function Column({ cx, cy, r, h = COLUMN_H, yaw = 0 }: { cx: number; cy: number; r: number; h?: number; yaw?: number }) {
+  const base = project(cx, cy, 0, yaw)
+  const w = r * 3.6
   const top = base.y - h
 
   return (
     <g>
-      {/* 足元の影（床への接地） */}
       <ellipse cx={base.x} cy={base.y} rx={w * 0.55} ry={w * 0.55 * KY} fill="var(--palace)" fillOpacity={0.25} />
       <image
         href="/road-pillar.png"
@@ -129,273 +148,255 @@ function Column({ cx, cy, r, h = COLUMN_H, mask = 'url(#fp3d-pillar-fade)' }: { 
         width={w}
         height={h}
         preserveAspectRatio="xMidYMax slice"
-        mask={mask}
+        mask="url(#fp3d-pillar-fade)"
         opacity={0.8}
       />
     </g>
   )
 }
 
-/**
- * 宮殿の間取り図（3D）。2D と同じ平面データ（floorplan-geometry）を、正面のまま立ち上げる。
- * 壁は低く、上端をぼかして溶かす。玄関から手前へ続く道と、その両脇の列柱も同じ投影で立体化し、
- * 2D の平面図から見た「同じ間取り」がそのまま立ち上がったように見せる。
- */
-export function PalaceFloorplan3D({
-  onHint,
-  icons,
-  overlay,
-}: {
-  onHint: (hint: string | null) => void
-  icons: Record<string, ReactNode>
-  overlay?: ReactNode
-}) {
-  const router = useRouter()
-  const go = (room: Room) => router.push(room.href)
+// 縦軸まわりの回転（アニメーション ON のときだけ）。CSS で絵を回すと比率が崩れるため、
+// 記憶資産カードと同じく「平面で回してから投影する」方式にする。
+// 基本は正面向き（yaw = 0）で、そこを中心にゆっくり首を振る。
+const SWAY_PERIOD_MS = 24000
+const SWAY_MAX = (14 * Math.PI) / 180 // 片側 14°
 
-  // 奥（平面の y が小さい）から手前へ順に描く。
-  const walls = [...WALL_SEGMENTS, ...PORCH_SEGMENTS]
-    .map(wallBox)
-    .sort((a, b) => a.y - b.y)
+// enabled: アニメーション設定が ON か。paused: ホバー中か（その角度のまま止める）。
+function useYaw(enabled: boolean, paused: boolean): number {
+  const [yaw, setYaw] = useState(0)
+  const tRef = useRef(0)
+
+  useEffect(() => {
+    if (!enabled || paused) return
+
+    let raf = 0
+    let last: number | null = null
+    const tick = (now: number) => {
+      if (last !== null) {
+        tRef.current += now - last
+        setYaw(Math.sin((tRef.current / SWAY_PERIOD_MS) * Math.PI * 2) * SWAY_MAX)
+      }
+      last = now
+      raf = requestAnimationFrame(tick)
+    }
+    raf = requestAnimationFrame(tick)
+    return () => {
+      cancelAnimationFrame(raf)
+    }
+  }, [enabled, paused])
+
+  // アニメーション OFF のときは常に正面向き。ホバー中は最後の角度のまま止まる。
+  return enabled ? yaw : 0
+}
+
+// ラベルは回転しても水平のまま（位置だけ追随する）。回転コンテナ側の
+// palace3d-spin と同じ周期で逆回転させる（globals.css の palace3d-label）。
+function Label({ at, children }: { at: P; children: ReactNode }) {
+  return (
+    <div
+      className="pointer-events-none absolute flex -translate-x-1/2 -translate-y-1/2 flex-col items-center gap-0.5 text-center"
+      style={{ left: `${(at.x / VB.w) * 100}%`, top: `${(at.y / VB.h) * 100}%` }}
+    >
+      {children}
+    </div>
+  )
+}
+
+// 平面の矩形に画像を貼る。投影後は平行四辺形になるので、matrix で写す
+// （宮殿と同じ yaw で回るので、道も宮殿にぴったり追随する）。
+function PlanImage({ rect, href, yaw, opacity = 1, mask }: { rect: Rect; href: string; yaw: number; opacity?: number; mask?: string }) {
+  const o = project(rect.x, rect.y, 0, yaw)
+  const ex = project(rect.x + rect.w, rect.y, 0, yaw)
+  const ey = project(rect.x, rect.y + rect.h, 0, yaw)
+  const a = (ex.x - o.x) / rect.w
+  const b = (ex.y - o.y) / rect.w
+  const c = (ey.x - o.x) / rect.h
+  const d = (ey.y - o.y) / rect.h
 
   return (
-    <>
-      <div className="relative w-full" style={{ aspectRatio: `${VB.w} / ${VB.h}` }}>
-      <svg viewBox={`0 0 ${VB.w} ${VB.h}`} className="absolute inset-0 h-full w-full">
-        <defs>
-          {/* 壁の前面：根元は濃く、上へ向かって溶ける */}
-          <linearGradient id="fp3d-wall-front" x1="0" y1="1" x2="0" y2="0">
-            <stop offset="0" stopColor="var(--foreground)" stopOpacity={0.45} />
-            <stop offset="0.6" stopColor="var(--foreground)" stopOpacity={0.24} />
-            <stop offset="1" stopColor="var(--foreground)" stopOpacity={0.05} />
-          </linearGradient>
-          {/* 壁の天面：前面より明るい石の面 */}
-          <linearGradient id="fp3d-wall-top" x1="0" y1="0" x2="0" y2="1">
-            <stop offset="0" stopColor="var(--palace)" stopOpacity={0.35} />
-            <stop offset="1" stopColor="var(--palace)" stopOpacity={0.18} />
-          </linearGradient>
-          {/* 柱：壁の高さまでは見せ、それより上（＝壁から突き出る部分）は透明へ溶かす */}
-          <linearGradient id="fp3d-pillar-grad" x1="0" y1="1" x2="0" y2="0">
-            <stop offset="0" stopColor="#fff" stopOpacity={1} />
-            <stop offset={WALL_H / COLUMN_H} stopColor="#fff" stopOpacity={0.85} />
-            <stop offset="1" stopColor="#fff" stopOpacity={0} />
-          </linearGradient>
-          <mask id="fp3d-pillar-fade" maskContentUnits="objectBoundingBox">
-            <rect x="0" y="0" width="1" height="1" fill="url(#fp3d-pillar-grad)" />
-          </mask>
-          {/* 石積みの目地も上へ向かって溶かす */}
-          <linearGradient id="fp3d-stone-grad" x1="0" y1="1" x2="0" y2="0">
-            <stop offset="0" stopColor="#fff" stopOpacity={1} />
-            <stop offset="0.6" stopColor="#fff" stopOpacity={0.5} />
-            <stop offset="1" stopColor="#fff" stopOpacity={0} />
-          </linearGradient>
-          <mask id="fp3d-wall-stone-fade" maskContentUnits="objectBoundingBox">
-            <rect x="0" y="0" width="1" height="1" fill="url(#fp3d-stone-grad)" />
-          </mask>
-          {/* 壁の上部をぼかす */}
-          <filter id="fp3d-wall-blur" x="-10%" y="-20%" width="120%" height="140%">
-            <feGaussianBlur stdDeviation="0.8" />
-          </filter>
-          {/* 壁の石積み（目地の入った石ブロック） */}
-          <pattern id="fp3d-wall-stone" width="10" height="5" patternUnits="userSpaceOnUse">
-            <rect width="10" height="5" fill="none" />
-            {/* 横目地 */}
-            <path d="M0,0 H10 M0,5 H10" stroke="var(--foreground)" strokeOpacity={0.18} strokeWidth={0.4} />
-            {/* 縦目地（段ごとに半個ずらして石積みに見せる） */}
-            <path d="M5,0 V2.5 M0,2.5 V5 M10,2.5 V5" stroke="var(--foreground)" strokeOpacity={0.14} strokeWidth={0.4} />
-          </pattern>
-          {/* 床の石畳（薄い格子） */}
-          <pattern id="fp3d-floor" width="20" height={20 * KY} patternUnits="userSpaceOnUse">
-            <rect width="20" height={20 * KY} fill="var(--palace)" fillOpacity={0.05} />
-            <path d={`M0,0 H20 M0,0 V${20 * KY}`} stroke="var(--palace)" strokeOpacity={0.14} strokeWidth={0.5} />
-          </pattern>
-        </defs>
-
-        {/* 建物の下の地面（淡く敷いて、道や余白と馴染ませる） */}
-        <rect
-          x={STYLOBATE.x - 14}
-          y={project(0, STYLOBATE.y - 8).y}
-          width={STYLOBATE.w + 28}
-          height={project(0, STYLOBATE.y + STYLOBATE.h + 14).y - project(0, STYLOBATE.y - 8).y}
-          rx={6}
-          fill="var(--palace)"
-          fillOpacity={0.04}
-        />
-
-        {/* 基壇 → 建物の床（石畳）→ 中庭 → 玄関（現在地） */}
-        <rect {...floorRect(STYLOBATE)} fill="var(--palace)" fillOpacity={0.08} stroke="var(--palace)" strokeOpacity={0.3} strokeWidth={0.8} />
-        <rect {...floorRect(BUILDING_FLOOR)} fill="url(#fp3d-floor)" />
-        <rect {...floorRect(COURTYARD)} fill="var(--palace)" fillOpacity={0.04} stroke="var(--palace)" strokeOpacity={0.2} strokeWidth={0.6} />
-        <rect {...floorRect(PORCH_FLOOR)} fill="var(--palace)" fillOpacity={0.16} />
-
-        {/* 中庭の炉（泉） */}
-        <ellipse cx={HEARTH.x} cy={project(HEARTH.x, HEARTH.y).y} rx={9} ry={9 * KY} fill="none" stroke="var(--palace)" strokeOpacity={0.5} strokeWidth={1} />
-        <ellipse cx={HEARTH.x} cy={project(HEARTH.x, HEARTH.y).y} rx={3.6} ry={3.6 * KY} fill="var(--palace)" fillOpacity={0.4} />
-
-        {/* エントランスと中庭の間の低い仕切り */}
-        {PARTITION_SEGMENTS.map((seg, i) => (
-          <WallBox key={`part-${i}`} box={wallBox(seg)} h={6} />
-        ))}
-
-        {/* 壁（奥から手前へ）。上部がぼやけるよう、グループ全体に軽いブラーを掛ける */}
-        <g filter="url(#fp3d-wall-blur)">
-          {walls.map((box, i) => (
-            <WallBox key={`wall-${i}`} box={box} />
-          ))}
-        </g>
-
-        {/* 中庭・ポルチコの列柱（奥から手前へ） */}
-        {[...COLUMNS]
-          .sort((a, b) => a[1] - b[1])
-          .map(([cx, cy, r], i) => (
-            <Column key={`col-${i}`} cx={cx} cy={cy} r={r} />
-          ))}
-
-        {/* 部屋のクリック領域（床の上に重ねる） */}
-        {ROOMS.map((room) => (
-          <rect
-            key={room.key}
-            {...floorRect(room.rect)}
-            rx={2}
-            role="link"
-            tabIndex={0}
-            aria-label={`${room.label}へ`}
-            aria-current={room.current ? 'page' : undefined}
-            onClick={() => go(room)}
-            onKeyDown={(e) => {
-              if (e.key === 'Enter' || e.key === ' ') go(room)
-            }}
-            onMouseEnter={() => onHint(`${room.label} — ${room.desc}`)}
-            onMouseLeave={() => onHint(null)}
-            onFocus={() => onHint(`${room.label} — ${room.desc}`)}
-            onBlur={() => onHint(null)}
-            // 塗りは CSS で当てる（SVG の presentation 属性より CSS が優先されるので、ホバーで効く）
-            className="cursor-pointer fill-transparent outline-none transition-colors hover:fill-[rgba(198,167,94,0.18)] focus-visible:fill-[rgba(198,167,94,0.18)]"
-          />
-        ))}
-      </svg>
-
-      {/* 部屋のラベル（クリックは下の rect が受ける） */}
-      {ROOMS.map((room) => {
-        const c = project(room.rect.x + room.rect.w / 2, room.rect.y + room.rect.h / 2)
-        return (
-          <div
-            key={room.key}
-            className="pointer-events-none absolute flex -translate-x-1/2 -translate-y-1/2 flex-col items-center gap-0.5 text-center"
-            style={{ left: `${(c.x / VB.w) * 100}%`, top: `${(c.y / VB.h) * 100}%` }}
-          >
-            <span style={{ color: 'var(--palace)' }}>{icons[room.key]}</span>
-            <span className="text-[13px] font-medium leading-tight">{room.label}</span>
-            {room.current && <span className="text-[10px] font-medium text-muted-foreground">現在地</span>}
-          </div>
-        )
-      })}
-
-      {/* 裏口の行き先 */}
-      <span
-        className="pointer-events-none absolute -translate-x-1/2 -translate-y-1/2 whitespace-nowrap text-[10px] font-medium text-muted-foreground"
-        style={{
-          left: `${(BACK_EXIT.x / VB.w) * 100}%`,
-          top: `${((project(BACK_EXIT.x, BACK_EXIT.y).y - WALL_H - 8) / VB.h) * 100}%`,
-        }}
-      >
-        宮殿外へ
-      </span>
-      </div>
-
-      {/* 玄関の先へ続く道（2D と同じ高さの帯に、続きの投影で描く） */}
-      <Road3D overlay={overlay} />
-    </>
+    <image
+      href={href}
+      x={0}
+      y={0}
+      width={rect.w}
+      height={rect.h}
+      preserveAspectRatio="none"
+      transform={`matrix(${a.toFixed(4)} ${b.toFixed(4)} ${c.toFixed(4)} ${d.toFixed(4)} ${o.x.toFixed(2)} ${o.y.toFixed(2)})`}
+      opacity={opacity}
+      mask={mask}
+    />
   )
 }
 
 /**
- * 玄関の先へ続く道（3D）。建物と同じ投影で描き、2D と同じ高さの帯（128px）に収める。
- * 道の縁に沿って細い列柱を立て、手前ほど朧げに溶かす。
+ * 宮殿の間取り図（3D・アイソメの斜投影）。2D と同じ平面データ（floorplan-geometry）を立ち上げる。
+ * 壁は低く石積みで、上端はぼかして溶かす。玄関から下りる階段と、その先の道・列柱も同じ投影で描く。
  */
-function Road3D({ overlay }: { overlay?: ReactNode }) {
+export function PalaceFloorplan3D({
+  onHint,
+  icons,
+}: {
+  onHint: (hint: string | null) => void
+  icons: Record<string, ReactNode>
+}) {
+  const router = useRouter()
+  const go = (room: Room) => router.push(room.href)
+  const [hovered, setHovered] = useState(false)
+  const animations = useMotion()
+  const yaw = useYaw(animations, hovered)
+
+  // 回転後の奥行き（画面上の y）が小さいものから描く。
+  const walls = [...WALL_SEGMENTS, ...PORCH_SEGMENTS]
+    .map(wallBox)
+    .sort((a, b) => project(a.x + a.w / 2, a.y + a.h / 2, 0, yaw).y - project(b.x + b.w / 2, b.y + b.h / 2, 0, yaw).y)
+
   return (
-    <div className="relative -mt-1 h-32 w-full">
-      <svg
-        viewBox={`0 ${project(0, ROAD_VB.y).y} ${VB.w} ${ROAD_VB.h}`}
-        preserveAspectRatio="xMidYMin slice"
-        className="absolute inset-0 h-full w-full"
-        aria-hidden
-      >
-        <defs>
-          {/* 道のテクスチャ（LP と同じ road.png をタイルする） */}
-          <pattern id="fp3d-road" width={ROAD.w} height={30} patternUnits="userSpaceOnUse" patternTransform={`translate(${ROAD.x} 0)`}>
-            <image href="/road.png" width={ROAD.w} height={30} preserveAspectRatio="none" />
-          </pattern>
-          {/* 柱は上へ向かって朧げに溶ける */}
-          <linearGradient id="fp3d-road-pillar-grad" x1="0" y1="1" x2="0" y2="0">
-            <stop offset="0" stopColor="#fff" stopOpacity={1} />
-            <stop offset="0.55" stopColor="#fff" stopOpacity={0.75} />
-            <stop offset="1" stopColor="#fff" stopOpacity={0} />
-          </linearGradient>
-          <mask id="fp3d-pillar-fade" maskContentUnits="objectBoundingBox">
-            <rect x="0" y="0" width="1" height="1" fill="url(#fp3d-road-pillar-grad)" />
-          </mask>
-          {/* 手前ほど溶けるフェード（道の範囲ぴったりに掛ける） */}
-          <linearGradient
-            id="fp3d-road-fade"
-            gradientUnits="userSpaceOnUse"
-            x1="0"
-            y1={project(0, ROAD.y).y}
-            x2="0"
-            y2={project(0, ROAD.y + ROAD.h).y}
-          >
-            <stop offset="0" stopColor="#fff" stopOpacity={1} />
-            <stop offset="0.62" stopColor="#fff" stopOpacity={0.6} />
-            <stop offset="1" stopColor="#fff" stopOpacity={0} />
-          </linearGradient>
-          <mask id="fp3d-road-mask" maskUnits="userSpaceOnUse" x="0" y={project(0, ROAD.y).y} width={VB.w} height={ROAD_VB.h}>
-            <rect x="0" y={project(0, ROAD.y).y} width={VB.w} height={ROAD_VB.h} fill="url(#fp3d-road-fade)" />
-          </mask>
-        </defs>
+    <>
+      <div className="relative w-full" style={{ aspectRatio: `${VB.w} / ${VB.h}` }}>
+        <svg
+          viewBox={`0 0 ${VB.w} ${VB.h}`}
+          className="absolute inset-0 h-full w-full"
+          onMouseEnter={() => setHovered(true)}
+          onMouseLeave={() => setHovered(false)}
+        >
+          <defs>
+            {/* 壁は「日に焼けた石灰岩」の色。面の向きで明るさを変える（天面＝陽が当たる、
+                前面＝中間、側面＝影）。暗い foreground ではなく、宮殿の石の色（--palace 系）で組む。 */}
+            <linearGradient id="fp3d-wall-front" x1="0" y1="1" x2="0" y2="0">
+              <stop offset="0" stopColor="#D9C79B" stopOpacity={0.95} />
+              <stop offset="0.55" stopColor="#E3D5B2" stopOpacity={0.75} />
+              <stop offset="1" stopColor="#EFE6CE" stopOpacity={0.12} />
+            </linearGradient>
+            <linearGradient id="fp3d-wall-side" x1="0" y1="1" x2="0" y2="0">
+              <stop offset="0" stopColor="#BFA779" stopOpacity={0.95} />
+              <stop offset="0.55" stopColor="#CDB88E" stopOpacity={0.7} />
+              <stop offset="1" stopColor="#DCCEAE" stopOpacity={0.1} />
+            </linearGradient>
+            <linearGradient id="fp3d-wall-top" x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0" stopColor="#F3EAD3" stopOpacity={0.95} />
+              <stop offset="1" stopColor="#E2D3AE" stopOpacity={0.9} />
+            </linearGradient>
+            {/* 壁の石積み（目地。段ごとに半個ずらす） */}
+            <pattern id="fp3d-wall-stone" width="10" height="5" patternUnits="userSpaceOnUse">
+              <path d="M0,0 H10 M0,5 H10" stroke="#9C8552" strokeOpacity={0.35} strokeWidth={0.4} />
+              <path d="M5,0 V2.5 M0,2.5 V5 M10,2.5 V5" stroke="#9C8552" strokeOpacity={0.28} strokeWidth={0.4} />
+            </pattern>
+            <linearGradient id="fp3d-stone-grad" x1="0" y1="1" x2="0" y2="0">
+              <stop offset="0" stopColor="#fff" stopOpacity={1} />
+              <stop offset="0.6" stopColor="#fff" stopOpacity={0.5} />
+              <stop offset="1" stopColor="#fff" stopOpacity={0} />
+            </linearGradient>
+            <mask id="fp3d-wall-stone-fade" maskContentUnits="objectBoundingBox">
+              <rect x="0" y="0" width="1" height="1" fill="url(#fp3d-stone-grad)" />
+            </mask>
+            {/* 柱：壁の高さまでは見せ、それより上は透明へ溶かす */}
+            <linearGradient id="fp3d-pillar-grad" x1="0" y1="1" x2="0" y2="0">
+              <stop offset="0" stopColor="#fff" stopOpacity={1} />
+              <stop offset={WALL_H / COLUMN_H} stopColor="#fff" stopOpacity={0.85} />
+              <stop offset="1" stopColor="#fff" stopOpacity={0} />
+            </linearGradient>
+            <mask id="fp3d-pillar-fade" maskContentUnits="objectBoundingBox">
+              <rect x="0" y="0" width="1" height="1" fill="url(#fp3d-pillar-grad)" />
+            </mask>
+            {/* 壁の上部をぼかす */}
+            <filter id="fp3d-wall-blur" x="-10%" y="-20%" width="120%" height="140%">
+              <feGaussianBlur stdDeviation="0.8" />
+            </filter>
+            {/* 道は手前へ向かって溶ける（画像の切り口を隠す） */}
+            <linearGradient id="fp3d-road-grad" x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0" stopColor="#fff" stopOpacity={0.9} />
+              <stop offset="0.6" stopColor="#fff" stopOpacity={0.5} />
+              <stop offset="1" stopColor="#fff" stopOpacity={0} />
+            </linearGradient>
+            <mask id="fp3d-road-fade" maskContentUnits="objectBoundingBox">
+              <rect x="0" y="0" width="1" height="1" fill="url(#fp3d-road-grad)" />
+            </mask>
+            {/* 床の石畳（斜投影に合わせて平行四辺形の格子にする） */}
+            <pattern id="fp3d-floor" width={20} height={20 * KY} patternUnits="userSpaceOnUse">
+              <rect width={20} height={20 * KY} fill="var(--palace)" fillOpacity={0.05} />
+              <path d={`M0,0 H20 M0,0 V${20 * KY}`} stroke="var(--palace)" strokeOpacity={0.14} strokeWidth={0.5} />
+            </pattern>
+          </defs>
 
-        {/* エントランスから下りる階段（奥ほど幅広・手前へ下る）。玄関と道の高さを繋ぐ */}
-        {Array.from({ length: STAIRS.steps }).map((_, i) => {
-          const t0 = i / STAIRS.steps
-          const t1 = (i + 1) / STAIRS.steps
-          const y0 = STAIRS.y + STAIRS.h * t0
-          const y1 = STAIRS.y + STAIRS.h * t1
-          const w0 = STAIRS.topW + (STAIRS.bottomW - STAIRS.topW) * t0
-          const z = STAIRS.z * (1 - t0)
-          const top0 = project(0, y0, z)
-          const top1 = project(0, y1, z)
-          const front = project(0, y1, z - STAIRS.z / STAIRS.steps)
-          return (
-            <g key={`stair-${i}`}>
-              {/* 踏み面 */}
-              <rect x={180 - w0 / 2} y={top0.y} width={w0} height={top1.y - top0.y} fill="var(--palace)" fillOpacity={0.12} />
-              {/* 蹴上げ（段の立ち上がり） */}
-              <rect x={180 - w0 / 2} y={top1.y} width={w0} height={front.y - top1.y} fill="var(--foreground)" fillOpacity={0.12} />
-              <line x1={180 - w0 / 2} y1={top1.y} x2={180 + w0 / 2} y2={top1.y} stroke="var(--palace)" strokeOpacity={0.4} strokeWidth={0.5} />
-            </g>
-          )
-        })}
+          {/* 建物の下の地面（淡く敷いて、道や余白と馴染ませる） */}
+          <polygon
+            points={quad({ x: STYLOBATE.x - 12, y: STYLOBATE.y - 8, w: STYLOBATE.w + 24, h: STYLOBATE.h + 22 }, 0, yaw)}
+            fill="var(--palace)"
+            fillOpacity={0.04}
+          />
 
-        <g mask="url(#fp3d-road-mask)" opacity={0.6}>
-          {/* 道：建物の投影に合わせ、奥（玄関側）ほど狭い台形にする */}
-          <polygon points={roadPolygon()} fill="url(#fp3d-road)" opacity={0.5} />
-          <polygon points={roadPolygon()} fill="var(--palace)" fillOpacity={0.06} />
-          {[...ROAD_COLUMNS]
-            .sort((a, b) => a[1] - b[1])
-            .map(([cx, cy], i) => {
-              // 柱は道の縁に沿わせる（手前ほど広がる）。
-              const t = (cy - ROAD.y) / ROAD.h
-              const halfW = (ROAD.w / 2) * (1 + t * ROAD_FLARE)
-              const x = cx < 180 ? 180 - halfW - 4 : 180 + halfW + 4
-              return <Column key={`road-col-${i}`} cx={x} cy={cy} r={2.4 + t * 1.2} h={13 + t * 5} />
-            })}
-        </g>
-      </svg>
+          {/* 現在地（エントランス）の下から手前へ続く道。宮殿と同じ角度・回転で敷く */}
+          <PlanImage rect={ROAD} href="/road.png" yaw={yaw} opacity={0.35} mask="url(#fp3d-road-fade)" />
 
-      {/* 道の上に重ねる説明（吹き出し・操作ヒント） */}
-      {overlay && (
-        <div className="absolute inset-x-0 top-1/2 flex -translate-y-1/2 flex-col items-center px-2">{overlay}</div>
-      )}
-    </div>
+          {/* 基壇 → 建物の床（石畳）→ 中庭 → 玄関（現在地） */}
+          <polygon points={quad(STYLOBATE, 0, yaw)} fill="var(--palace)" fillOpacity={0.08} stroke="var(--palace)" strokeOpacity={0.3} strokeWidth={0.8} />
+          <polygon points={quad(BUILDING_FLOOR, 0, yaw)} fill="var(--palace)" fillOpacity={0.05} />
+          <polygon points={quad(COURTYARD, 0, yaw)} fill="var(--palace)" fillOpacity={0.04} stroke="var(--palace)" strokeOpacity={0.2} strokeWidth={0.6} />
+          <polygon points={quad(PORCH_FLOOR, 0, yaw)} fill="var(--palace)" fillOpacity={0.16} />
+
+          {/* 中庭の炉（泉） */}
+          <ellipse cx={project(HEARTH.x, HEARTH.y, 0, yaw).x} cy={project(HEARTH.x, HEARTH.y, 0, yaw).y} rx={9 * FIT} ry={9 * KY * FIT} fill="none" stroke="var(--palace)" strokeOpacity={0.5} strokeWidth={1} />
+          <ellipse cx={project(HEARTH.x, HEARTH.y, 0, yaw).x} cy={project(HEARTH.x, HEARTH.y, 0, yaw).y} rx={3.6 * FIT} ry={3.6 * KY * FIT} fill="var(--palace)" fillOpacity={0.4} />
+
+          {/* エントランスと中庭の間の低い仕切り */}
+          {PARTITION_SEGMENTS.map((seg, i) => (
+            <WallBox key={`part-${i}`} box={wallBox(seg)} h={6} yaw={yaw} />
+          ))}
+
+          {/* 壁（奥から手前へ）。上部がぼやけるよう軽くブラーを掛ける */}
+          <g filter="url(#fp3d-wall-blur)">
+            {walls.map((box, i) => (
+              <WallBox key={`wall-${i}`} box={box} yaw={yaw} />
+            ))}
+          </g>
+
+          {/* 列柱（奥から手前へ） */}
+          {[...COLUMNS]
+            .sort((a, b) => project(a[0], a[1], 0, yaw).y - project(b[0], b[1], 0, yaw).y)
+            .map(([cx, cy, r], i) => (
+              <Column key={`col-${i}`} cx={cx} cy={cy} r={r} yaw={yaw} />
+            ))}
+
+          {/* 部屋のクリック領域（床の上に重ねる） */}
+          {ROOMS.map((room) => (
+            <polygon
+              key={room.key}
+              points={quad(room.rect, 0, yaw)}
+              role="link"
+              tabIndex={0}
+              aria-label={`${room.label}へ`}
+              aria-current={room.current ? 'page' : undefined}
+              onClick={() => go(room)}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter' || e.key === ' ') go(room)
+              }}
+              onMouseEnter={() => onHint(`${room.label} — ${room.desc}`)}
+              onMouseLeave={() => onHint(null)}
+              onFocus={() => onHint(`${room.label} — ${room.desc}`)}
+              onBlur={() => onHint(null)}
+              // 塗りは CSS で当てる（SVG の presentation 属性より CSS が優先されるので、ホバーで効く）
+              className="cursor-pointer fill-transparent outline-none transition-colors hover:fill-[rgba(198,167,94,0.18)] focus-visible:fill-[rgba(198,167,94,0.18)]"
+            />
+          ))}
+        </svg>
+
+        {/* 部屋のラベル（回転しても水平のまま。位置だけ追随する） */}
+        {ROOMS.map((room) => (
+          <Label key={room.key} at={project(room.rect.x + room.rect.w / 2, room.rect.y + room.rect.h / 2, 0, yaw)}>
+            <span style={{ color: 'var(--palace)' }}>{icons[room.key]}</span>
+            <span className="text-[13px] font-medium leading-tight">{room.label}</span>
+            {room.current && <span className="text-[10px] font-medium text-muted-foreground">現在地</span>}
+          </Label>
+        ))}
+
+        {/* 裏口の行き先 */}
+        <Label at={{ ...project(BACK_EXIT.x, BACK_EXIT.y, 0, yaw), y: project(BACK_EXIT.x, BACK_EXIT.y, WALL_H + 8, yaw).y }}>
+          <span className="whitespace-nowrap text-[10px] font-medium text-muted-foreground">宮殿外へ</span>
+        </Label>
+      </div>
+
+      {/* 吹き出し・操作ヒント用の余白（2D の道の帯と同じ高さにして、カードの高さを揃える） */}
+      <div className="h-32 w-full" aria-hidden />
+    </>
   )
 }
