@@ -79,7 +79,7 @@ export type PracticeCard = QuizCard & { meaning: string | null }
 
 // 対象のカードを取得し、所有カードの意味を id で突き合わせて添える。
 export async function loadPracticeCards(target: QuizTarget): Promise<PracticeCard[]> {
-  // 'all' は loadQuizCards が内部で getItems() を呼ぶため、二重取得を避けて単一フェッチから組み立てる。
+  // 'all' は loadQuizCards が内部で全ページ取得するため、二重取得を避けて単一フェッチから組み立てる。
   if (target.kind === 'all') {
     const items = await getItems()
     return items

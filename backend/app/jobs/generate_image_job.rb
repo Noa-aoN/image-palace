@@ -35,7 +35,8 @@ class GenerateImageJob < ApplicationJob
       prompt_key = Digest::SHA256.hexdigest(normalized)[0, 8]
       Rails.logger.info "[GenerateImageJob] START item_id=#{item.id} prompt_key=#{prompt_key} prompt_len=#{effective_prompt.length}"
 
-      cached = force_generate ? nil : SharedMedia.for_prompt(normalized).detect { |shared| blob_available?(shared.file.blob) }
+      lock_shared_media_cache!(normalized) unless force_generate
+      cached = force_generate ? nil : cached_shared_media(normalized)
 
       if cached
         Rails.logger.info "[GenerateImageJob] CACHE HIT prompt_key=#{prompt_key} shared_media_id=#{cached.id}"
@@ -46,11 +47,7 @@ class GenerateImageJob < ApplicationJob
         end
         Rails.logger.info "[GenerateImageJob] CACHE MISS prompt_key=#{prompt_key}"
         result = GenerateImageService.call(prompt: effective_prompt)
-        shared_media = SharedMedia.create!(
-          normalized_prompt: normalized,
-          user_id: item.user_id,
-          metadata: result.metadata
-        )
+        shared_media = create_shared_media!(item, shared_media_key(normalized, force_generate:), result)
         attach_image_data(shared_media, result.image_data, result.content_type)
         attach_from_shared_media(item, shared_media)
       end
@@ -79,6 +76,34 @@ class GenerateImageJob < ApplicationJob
     Net::ReadTimeout,
     OpenSSL::SSL::SSLError
   ].freeze
+
+  def cached_shared_media(normalized)
+    SharedMedia.for_prompt(normalized).detect { |shared| blob_available?(shared.file.blob) }
+  end
+
+  def create_shared_media!(item, normalized, result)
+    SharedMedia.create!(
+      normalized_prompt: normalized,
+      user_id: item.user_id,
+      metadata: result.metadata
+    )
+  rescue ActiveRecord::RecordNotUnique
+    shared_media = cached_shared_media(normalized)
+    return shared_media if shared_media
+
+    raise
+  end
+
+  def shared_media_key(normalized, force_generate:)
+    return normalized unless force_generate
+
+    "#{normalized}\nforce:#{SecureRandom.uuid}"
+  end
+
+  def lock_shared_media_cache!(normalized)
+    key = Digest::SHA256.hexdigest(normalized)[0, 15].to_i(16)
+    ActiveRecord::Base.connection.execute("SELECT pg_advisory_xact_lock(#{key})")
+  end
 
   def attach_from_shared_media(item, shared_media)
     media = item.primary_media || item.medias.build

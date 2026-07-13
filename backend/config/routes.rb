@@ -46,6 +46,7 @@ Rails.application.routes.draw do
         collection do
           get :summary
           get :suggest
+          get :navigation
           delete :bulk_destroy
         end
         member do

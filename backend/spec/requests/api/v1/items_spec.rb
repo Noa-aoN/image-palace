@@ -260,6 +260,27 @@ RSpec.describe "Api::V1::Items", type: :request do
     end
   end
 
+  describe "GET /api/v1/items/navigation" do
+    it "returns all own item ids ordered like the default item list" do
+      created = 30.times.map do |i|
+        user.items.create!(
+          title: "カード#{i}",
+          item_type: item_type,
+          generation_status: "completed",
+          created_at: i.minutes.ago
+        )
+      end
+      other = create(:user, :confirmed)
+      other.items.create!(title: "他人", item_type: item_type, generation_status: "completed")
+
+      get "/api/v1/items/navigation", headers: headers, as: :json
+
+      expect(response).to have_http_status(:success)
+      expect(json_response.fetch("ids")).to eq(created.map(&:id))
+      expect(json_response.fetch("ids").size).to eq(30)
+    end
+  end
+
   describe "GET /api/v1/items/summary" do
     it "returns counts grouped by generation status" do
       user.items.create!(title: "pending", item_type: item_type, generation_status: "pending")

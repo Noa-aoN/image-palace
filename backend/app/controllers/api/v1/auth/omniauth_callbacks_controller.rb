@@ -38,17 +38,25 @@ module Api
           # レスポンスヘッダーにトークン情報を設定
           response.headers.merge!(auth_header)
 
-          frontend_url = ENV.fetch("FRONTEND_URL", "http://localhost:3000")
-          parsed = URI.parse(frontend_url)
-          unless %w[http https].include?(parsed.scheme) && parsed.host.present?
-            render json: { error: "FRONTEND_URL の設定が不正です" }, status: :internal_server_error
-            return
-          end
-
           # トークンをURLフラグメント(#)で渡す。クエリパラメータ(?)だとサーバーログ・
           # ブラウザ履歴・Refererヘッダーにトークンが残るため、フラグメントを使用する。
           # フラグメントはサーバーに送信されないため、ログに残らない。
-          redirect_to "#{frontend_url}/auth/callback##{auth_header.to_query}", allow_other_host: true
+          redirect_to frontend_callback_uri(auth_header).to_s, allow_other_host: true
+        rescue URI::InvalidURIError
+          render json: { error: "FRONTEND_URL の設定が不正です" }, status: :internal_server_error
+        end
+
+        private
+
+        def frontend_callback_uri(auth_header)
+          uri = URI.parse(ENV.fetch("FRONTEND_URL", "http://localhost:3000"))
+          valid_scheme = Rails.env.production? ? uri.scheme == "https" : %w[http https].include?(uri.scheme)
+          raise URI::InvalidURIError unless valid_scheme && uri.host.present?
+
+          uri.path = "/auth/callback"
+          uri.query = nil
+          uri.fragment = auth_header.to_query
+          uri
         end
       end
     end

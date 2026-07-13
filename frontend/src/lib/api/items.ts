@@ -58,11 +58,6 @@ export interface ItemsPage {
   meta: PaginationMeta
 }
 
-export async function getItems(): Promise<Item[]> {
-  const res = await apiClient.get<{ items: Item[] }>('/api/v1/items')
-  return res.data.items
-}
-
 export interface ItemsPageOptions {
   tagId?: string
   query?: string
@@ -80,6 +75,27 @@ export async function getItemsPage(page: number, per: number, opts: ItemsPageOpt
   if (opts.status) params.status = opts.status
   const res = await apiClient.get<ItemsPage>('/api/v1/items', { params })
   return res.data
+}
+
+const MAX_ITEMS_PAGE_SIZE = 100
+
+export async function getItems(opts: ItemsPageOptions = {}): Promise<Item[]> {
+  const first = await getItemsPage(1, MAX_ITEMS_PAGE_SIZE, opts)
+  const totalPages = first.meta.total_pages
+  if (totalPages <= 1) return first.items
+
+  const rest = await Promise.all(
+    Array.from({ length: totalPages - 1 }, (_, index) => getItemsPage(index + 2, MAX_ITEMS_PAGE_SIZE, opts))
+  )
+  return [first, ...rest].flatMap((page) => page.items)
+}
+
+export async function getItemNavigationIds(opts: Pick<ItemsPageOptions, 'sort' | 'direction'> = {}): Promise<string[]> {
+  const params: Record<string, string> = {}
+  if (opts.sort) params.sort = opts.sort
+  if (opts.direction) params.direction = opts.direction
+  const res = await apiClient.get<{ ids: string[] }>('/api/v1/items/navigation', { params })
+  return res.data.ids
 }
 
 export interface ItemSuggestion {

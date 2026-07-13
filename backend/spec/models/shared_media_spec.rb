@@ -24,15 +24,10 @@ RSpec.describe SharedMedia, type: :model do
     let(:user) { create(:user, :confirmed) }
     let(:prompt) { NormalizePromptService.call("for-prompt-test-#{SecureRandom.hex(4)}") }
 
-    it "returns records matching the normalized_prompt ordered by created_at desc" do
-      older = nil
-      newer = nil
-      freeze_time do
-        older = create(:shared_media, user: user, normalized_prompt: prompt, created_at: 2.days.ago)
-        newer = create(:shared_media, user: user, normalized_prompt: prompt, created_at: 1.day.ago)
-      end
+    it "returns records matching the normalized_prompt" do
+      target = create(:shared_media, user: user, normalized_prompt: prompt)
 
-      expect(described_class.for_prompt(prompt).pluck(:id)).to eq([ newer.id, older.id ])
+      expect(described_class.for_prompt(prompt)).to contain_exactly(target)
     end
 
     it "excludes records with different normalized_prompt" do

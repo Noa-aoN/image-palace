@@ -84,6 +84,12 @@ module Api
         }
       end
 
+      # 詳細画面の前後ナビゲーション用。画像・意味・タグを含めず ID だけ返す。
+      def navigation
+        ids = current_user.items.order(sort_clause).pluck(:id)
+        render json: { ids: ids }
+      end
+
       def create
         result = Items::CreateService.call(user: current_user, params: item_params)
         assign_tags!(result.item)

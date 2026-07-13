@@ -52,13 +52,13 @@ module ItemSerialization
     }
   end
 
-  # 事前生成済みの cover_thumb があれば CDN 直配信。無い古いカバーは variant にフォールバック。
+  # 事前生成済みの cover_thumb があれば CDN 直配信。無い古いカバーは元画像にフォールバック。
   def cover_thumb_url(record, fallback_blob)
     thumb = record.cover_thumb if record.respond_to?(:cover_thumb)
     if thumb&.attached? && blob_available?(thumb.blob)
       media_url(thumb.blob)
     else
-      thumbnail_url(fallback_blob)
+      media_url(fallback_blob)
     end
   end
 
@@ -78,12 +78,12 @@ module ItemSerialization
   end
 
   # 事前生成済みサムネがあれば CDN 直配信（Rails プロキシを経由しない）。
-  # 無ければ従来の ActiveStorage variant にフォールバックする。
+  # 無ければ元画像にフォールバックし、読み取りリクエスト中の動的 variant 生成は避ける。
   def media_thumb_url(media, fallback_blob)
     if media.respond_to?(:thumb) && media.thumb.attached? && blob_available?(media.thumb.blob)
       media_url(media.thumb.blob)
     else
-      thumbnail_url(fallback_blob)
+      media_url(fallback_blob)
     end
   end
 
@@ -93,16 +93,6 @@ module ItemSerialization
     return url_for(blob) if cdn_base.blank?
 
     "#{cdn_base}/#{blob.key}"
-  end
-
-  def thumbnail_url(blob)
-    return media_url(blob) unless blob.image?
-    return media_url(blob) if blob.service_name == "local"
-
-    variant = blob.variant(resize_to_limit: [ 480, 480 ]).processed
-    url_for(variant)
-  rescue LoadError, StandardError
-    media_url(blob)
   end
 
   def blob_available?(blob)

@@ -36,6 +36,24 @@ RSpec.describe GeneratePointImageJob, type: :job do
       expect(point.revised_prompt).to eq("a vivid 玄関")
     end
 
+    it "force_generate は同じプロンプトの既存キャッシュがあっても新規生成できる" do
+      normalized = NormalizePromptService.call(point.name)
+      create(:shared_media, :with_file, user: user, normalized_prompt: normalized)
+      result = GenerateImageService::Result.new(
+        image_data: "\x89PNG\r\n\x1A\nforce",
+        content_type: "image/png",
+        metadata: { "provider" => "openai" }
+      )
+      allow(GenerateImageService).to receive(:call).and_return(result)
+
+      expect {
+        described_class.new.perform(point.id, force_generate: true)
+      }.to change { SharedMedia.count }.by(1)
+
+      expect(GenerateImageService).to have_received(:call)
+      expect(point.reload.generation_status).to eq("completed")
+    end
+
     it "marks failed on a non-retryable bad request" do
       allow(GenerateImageService).to receive(:call).and_raise(Faraday::BadRequestError.new("400 Bad Request"))
 

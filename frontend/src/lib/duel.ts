@@ -46,7 +46,7 @@ export const DUEL_MIN_CARDS = 6
 
 // 対象カードを取得し、所有カードの tags を突き合わせてモンスター化する。
 export async function loadDuelMonsters(target: QuizTarget): Promise<Monster[]> {
-  // 'all' は loadQuizCards が内部で getItems() を呼ぶため、二重取得を避けて単一フェッチから組み立てる。
+  // 'all' は loadQuizCards が内部で全ページ取得するため、二重取得を避けて単一フェッチから組み立てる。
   if (target.kind === 'all') {
     const items = await getItems()
     return items

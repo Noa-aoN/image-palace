@@ -201,5 +201,21 @@ RSpec.describe GenerateImageJob, type: :job do
       # スタイル付きは別キーなのでキャッシュHITせず生成が呼ばれる
       expect(GenerateImageService).to have_received(:call)
     end
+
+    it "force_generate は同じプロンプトの既存キャッシュがあっても新規生成できる" do
+      normalized = NormalizePromptService.call(PromptBuilderService.effective_prompt(item))
+      create(:shared_media, :with_file, user: user, normalized_prompt: normalized, metadata: {})
+      result = GenerateImageService::Result.new(
+        image_data: "\x89PNG\r\n\x1A\nforce", content_type: "image/png", metadata: {}
+      )
+      allow(GenerateImageService).to receive(:call).and_return(result)
+
+      expect {
+        described_class.perform_now(item.id, force_generate: true)
+      }.to change { SharedMedia.count }.by(1)
+
+      expect(GenerateImageService).to have_received(:call)
+      expect(item.reload.generation_status).to eq("completed")
+    end
   end
 end

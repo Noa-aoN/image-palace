@@ -5,7 +5,7 @@ import Link from 'next/link'
 import { GalleryHorizontal, Box as BoxIcon, Layers, LayoutGrid, Frame, MapPin, ChevronRight, Plus, Search, X, Route, DoorOpen, ListChecks, Boxes, Images, CheckSquare, Square, Trash2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/skeleton'
-import { getItems, getItemsSummary, bulkDeleteItems } from '@/lib/api/items'
+import { getItemsPage, getItemsSummary, bulkDeleteItems } from '@/lib/api/items'
 import { getBoxes, deleteBox } from '@/lib/api/boxes'
 import { getSpaces, deleteSpace } from '@/lib/api/spaces'
 import { getViews, deleteView } from '@/lib/api/views'
@@ -605,10 +605,10 @@ export default function LibraryPage() {
 
   useEffect(() => {
     let cancelled = false
-    Promise.allSettled([getItems(), getItemsSummary(), getBoxes(), getSpaces(), getViews(), getWordlists()])
+    Promise.allSettled([getItemsPage(1, PREVIEW_LIMIT), getItemsSummary(), getBoxes(), getSpaces(), getViews(), getWordlists()])
       .then(([itemsRes, summaryRes, boxesRes, spacesRes, viewsRes, wordlistsRes]) => {
         if (cancelled) return
-        if (itemsRes.status === 'fulfilled') setCards(itemsRes.value.slice(0, PREVIEW_LIMIT))
+        if (itemsRes.status === 'fulfilled') setCards(itemsRes.value.items)
         if (summaryRes.status === 'fulfilled') setCardCount(summaryRes.value.total_count)
         if (boxesRes.status === 'fulfilled') setBoxes(boxesRes.value)
         if (spacesRes.status === 'fulfilled') setSpaces(spacesRes.value)

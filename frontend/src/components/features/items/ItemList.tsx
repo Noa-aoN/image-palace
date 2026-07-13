@@ -482,6 +482,11 @@ export function ItemList({ initialTag = null }: { initialTag?: string | null }) 
     setLoading(true)
 
     const poll = async () => {
+      if (typeof document !== 'undefined' && document.hidden) {
+        timerRef.current = setTimeout(poll, 10000)
+        return
+      }
+
       const fetched = await fetchPage(page)
       if (cancelled) return
 

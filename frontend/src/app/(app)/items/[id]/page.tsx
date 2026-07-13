@@ -11,7 +11,7 @@ import { Spinner } from '@/components/ui/spinner'
 import { ItemProperties } from '@/components/features/items/ItemProperties'
 import { RegeneratePanel } from '@/components/features/items/RegeneratePanel'
 import { GenerationInfo } from '@/components/features/items/GenerationInfo'
-import { getItem, getItems, deleteItem, updateItem } from '@/lib/api/items'
+import { getItem, getItemNavigationIds, deleteItem, updateItem } from '@/lib/api/items'
 import { useItemsStore } from '@/stores/items'
 import type { Item } from '@/types/item'
 import { GeneratingOverlay } from '@/components/features/items/GeneratingOverlay'
@@ -62,20 +62,12 @@ export default function ItemDetailPage() {
       .catch(() => setError('カードの取得に失敗しました'))
   }, [id, upsertItem])
 
-  // Effect 2: allIds 管理（キャッシュがあればそれを優先）
+  // Effect 2: 前後ナビ用 ID 一覧。ページング済みの一覧キャッシュには依存しない。
   useEffect(() => {
-    if (cachedItems.length > 0) {
-      setAllIds(cachedItems.map((i) => i.id))
-      return
-    }
-
-    getItems()
-      .then((items) => {
-        setAllIds(items.map((current) => current.id))
-        useItemsStore.getState().setItems(items)
-      })
+    getItemNavigationIds()
+      .then(setAllIds)
       .catch(() => {})
-  }, [cachedItems])
+  }, [])
 
   // Effect 3: pending/processing 中はポーリング
   const generationStatus = item?.generation_status
@@ -86,6 +78,11 @@ export default function ItemDetailPage() {
     let timer: ReturnType<typeof setTimeout> | null = null
 
     const poll = async () => {
+      if (typeof document !== 'undefined' && document.hidden) {
+        timer = setTimeout(poll, 10000)
+        return
+      }
+
       try {
         const fetched = await getItem(id)
         if (cancelled) return
@@ -97,7 +94,7 @@ export default function ItemDetailPage() {
           timer = setTimeout(poll, 2000)
         }
       } catch {
-        if (timer) clearTimeout(timer)
+        if (!cancelled) timer = setTimeout(poll, 5000)
       }
     }
 

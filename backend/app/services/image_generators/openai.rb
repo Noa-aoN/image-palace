@@ -83,8 +83,9 @@ module ImageGenerators
         attempts += 1
         raise if attempts > MAX_RETRIES
 
+        prompt_key = Digest::SHA256.hexdigest(prompt)[0, 8]
         Rails.logger.warn(
-          "[ImageGenerators::Openai] retry=#{attempts} prompt=#{prompt} error=#{e.class}: #{e.message}"
+          "[ImageGenerators::Openai] retry=#{attempts} prompt_key=#{prompt_key} prompt_len=#{prompt.length} error=#{e.class}: #{e.message}"
         )
         sleep(attempts)
         retry
