@@ -32,7 +32,21 @@ class MakeSharedMediaNormalizedPromptUnique < ActiveRecord::Migration[8.1]
 
   def deduplicate_shared_medias!
     execute <<~SQL.squish
-      CREATE TEMP TABLE duplicate_shared_media_ids AS
+      WITH duplicate_shared_media_ids AS (#{duplicate_shared_media_ids_sql})
+      DELETE FROM active_storage_attachments
+      WHERE record_type = 'SharedMedia'
+        AND record_id IN (SELECT id::text FROM duplicate_shared_media_ids)
+    SQL
+
+    execute <<~SQL.squish
+      WITH duplicate_shared_media_ids AS (#{duplicate_shared_media_ids_sql})
+      DELETE FROM shared_medias
+      WHERE id IN (SELECT id FROM duplicate_shared_media_ids)
+    SQL
+  end
+
+  def duplicate_shared_media_ids_sql
+    <<~SQL.squish
       WITH ranked AS (
         SELECT
           shared_medias.id,
@@ -55,18 +69,5 @@ class MakeSharedMediaNormalizedPromptUnique < ActiveRecord::Migration[8.1]
       FROM ranked
       WHERE row_number > 1
     SQL
-
-    execute <<~SQL.squish
-      DELETE FROM active_storage_attachments
-      WHERE record_type = 'SharedMedia'
-        AND record_id IN (SELECT id::text FROM duplicate_shared_media_ids)
-    SQL
-
-    execute <<~SQL.squish
-      DELETE FROM shared_medias
-      WHERE id IN (SELECT id FROM duplicate_shared_media_ids)
-    SQL
-
-    execute "DROP TABLE duplicate_shared_media_ids"
   end
 end
