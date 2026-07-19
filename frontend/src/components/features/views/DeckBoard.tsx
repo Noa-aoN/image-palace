@@ -134,7 +134,7 @@ export function DeckBoard({ viewId, initialItems }: { viewId: string; initialIte
                     <img src={url} alt={vi.item.title} className="h-full w-full object-cover" loading="lazy" />
                   ) : null}
                 </div>
-                <Link href={`/items/${vi.item_id}`} className="min-w-0 flex-1 truncate text-sm font-medium hover:underline">
+                <Link href={`/items/${vi.item_id}?deck=${viewId}`} className="min-w-0 flex-1 truncate text-sm font-medium hover:underline">
                   {vi.item.title}
                 </Link>
                 <div className="flex shrink-0 items-center gap-1">
