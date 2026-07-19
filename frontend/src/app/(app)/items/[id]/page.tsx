@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import Link from 'next/link'
-import { useParams, useRouter } from 'next/navigation'
+import { useParams, useRouter, useSearchParams } from 'next/navigation'
 import { Trash2, ChevronLeft, ChevronRight, Pencil, Check, X } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Breadcrumb } from '@/components/ui/breadcrumb'
@@ -12,6 +12,7 @@ import { ItemProperties } from '@/components/features/items/ItemProperties'
 import { RegeneratePanel } from '@/components/features/items/RegeneratePanel'
 import { GenerationInfo } from '@/components/features/items/GenerationInfo'
 import { getItem, getItemNavigationIds, deleteItem, updateItem } from '@/lib/api/items'
+import { getViewDetail } from '@/lib/api/views'
 import { useItemsStore } from '@/stores/items'
 import type { Item } from '@/types/item'
 import { GeneratingOverlay } from '@/components/features/items/GeneratingOverlay'
@@ -22,9 +23,15 @@ import { StatusBadge } from '@/components/features/items/StatusBadge'
 export default function ItemDetailPage() {
   const { id } = useParams<{ id: string }>()
   const router = useRouter()
-  const backHref = '/items'
-  const backLabel = '← カードへ戻る'
-  const itemHref = (targetId: string) => `/items/${targetId}`
+  const searchParams = useSearchParams()
+  // デッキ経由で開いた場合は viewId を保持し、前後ナビをそのデッキの並び順に切り替える。
+  const deckId = searchParams.get('deck')
+  const [deckName, setDeckName] = useState<string | null>(null)
+  const backHref = deckId ? `/views/${deckId}` : '/items'
+  const backLabel = deckId ? '← デッキへ戻る' : '← カードへ戻る'
+  // 前後移動でもデッキ文脈を維持するため、遷移先 URL に deck クエリを引き継ぐ。
+  const itemHref = (targetId: string) =>
+    deckId ? `/items/${targetId}?deck=${deckId}` : `/items/${targetId}`
   const cachedItems = useItemsStore((s) => s.items)
   const upsertItem = useItemsStore((s) => s.upsertItem)
   const removeItem = useItemsStore((s) => s.removeItem)
@@ -62,12 +69,23 @@ export default function ItemDetailPage() {
       .catch(() => setError('カードの取得に失敗しました'))
   }, [id, upsertItem])
 
-  // Effect 2: 前後ナビ用 ID 一覧。ページング済みの一覧キャッシュには依存しない。
+  // Effect 2: 前後ナビ用 ID 一覧。
+  // デッキ経由なら「そのデッキの並び順（position 順）」を、それ以外はライブラリ全体順を使う。
+  // 一覧のページングキャッシュには依存しない。
   useEffect(() => {
-    getItemNavigationIds()
-      .then(setAllIds)
-      .catch(() => {})
-  }, [])
+    if (deckId) {
+      getViewDetail(deckId)
+        .then((view) => {
+          setAllIds((view.items ?? []).map((vi) => vi.item_id))
+          setDeckName(view.name)
+        })
+        .catch(() => {})
+    } else {
+      getItemNavigationIds()
+        .then(setAllIds)
+        .catch(() => {})
+    }
+  }, [deckId])
 
   // Effect 3: pending/processing 中はポーリング
   const generationStatus = item?.generation_status
@@ -223,7 +241,7 @@ export default function ItemDetailPage() {
 
         {/* ヘッダー行 */}
         <div className="flex items-center justify-between">
-          <Breadcrumb className="mb-0" items={[{ href: backHref, label: 'カード' }, { label: item.title }]} />
+          <Breadcrumb className="mb-0" items={[{ href: backHref, label: deckId ? (deckName ?? 'デッキ') : 'カード' }, { label: item.title }]} />
           <Button
             variant={confirmDelete ? 'destructive' : 'ghost'}
             size="sm"
