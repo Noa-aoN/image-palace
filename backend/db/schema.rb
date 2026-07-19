@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_07_12_000002) do
+ActiveRecord::Schema[8.1].define(version: 2026_07_20_000001) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
   enable_extension "pgcrypto"
@@ -464,11 +464,13 @@ ActiveRecord::Schema[8.1].define(version: 2026_07_12_000002) do
 
   create_table "view_items", id: :uuid, default: -> { "gen_random_uuid()" }, force: :cascade do |t|
     t.datetime "created_at", null: false
+    t.float "height"
     t.uuid "item_id", null: false
     t.integer "position"
     t.uuid "space_point_id"
     t.datetime "updated_at", null: false
     t.uuid "view_id", null: false
+    t.float "width"
     t.float "x", default: 0.0, null: false
     t.float "y", default: 0.0, null: false
     t.integer "z_index", default: 0, null: false

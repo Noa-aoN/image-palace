@@ -28,4 +28,13 @@ RSpec.describe ViewItem, type: :model do
   it "z_index は整数が必須" do
     expect(build(:view_item, view: view, item: item, z_index: 1.5)).not_to be_valid
   end
+
+  it "width/height は未指定（nil）でも有効" do
+    expect(build(:view_item, view: view, item: item, width: nil, height: nil)).to be_valid
+  end
+
+  it "width/height は 0 以下だと無効" do
+    expect(build(:view_item, view: view, item: item, width: 0)).not_to be_valid
+    expect(build(:view_item, view: view, item: item, height: -10)).not_to be_valid
+  end
 end

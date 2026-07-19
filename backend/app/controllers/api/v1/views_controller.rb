@@ -162,7 +162,7 @@ module Api
       end
 
       def placement_params
-        params.permit(:x, :y, :z_index)
+        params.permit(:x, :y, :z_index, :width, :height)
       end
 
       # deck の末尾 position（最大 + 1）
@@ -232,6 +232,8 @@ module Api
           x: view_item.x,
           y: view_item.y,
           z_index: view_item.z_index,
+          width: view_item.width,
+          height: view_item.height,
           position: view_item.position,
           item: serialize_item(view_item.item)
         }
