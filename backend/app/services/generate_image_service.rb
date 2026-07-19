@@ -1,9 +1,18 @@
 class GenerateImageService
+  # 画像生成プロバイダの登録表。モデルを増やすときはここに1行足すだけ。
   PROVIDERS = {
-    "openai" => ImageGenerators::Openai
+    "openai" => ImageGenerators::Openai,
+    "flux" => ImageGenerators::Flux
     # 将来の追加例:
-    # "stability" => ImageGenerators::Stability
+    # "bedrock" => ImageGenerators::Bedrock
   }.freeze
+
+  DEFAULT_PROVIDER = "openai".freeze
+
+  # 既存キャッシュ（provider を意識せず生成された shared_media）を壊さないための後方互換の既定。
+  # この provider/model の組み合わせのときだけ、キャッシュキーに名前空間を付けない。
+  LEGACY_PROVIDER = "openai".freeze
+  LEGACY_MODEL = "gpt-image-1".freeze
 
   Result = Struct.new(:image_data, :content_type, :metadata, keyword_init: true)
 
@@ -11,13 +20,36 @@ class GenerateImageService
     new.call(prompt:)
   end
 
-  def call(prompt:)
-    provider_name = ENV.fetch("IMAGE_GENERATION_PROVIDER", "openai")
-    generator_class = PROVIDERS.fetch(provider_name) do
+  # 現在有効な provider 名。
+  def self.provider_name
+    ENV.fetch("IMAGE_GENERATION_PROVIDER", DEFAULT_PROVIDER)
+  end
+
+  def self.generator_class
+    PROVIDERS.fetch(provider_name) do
       raise ArgumentError, "未対応のプロバイダー: #{provider_name}"
     end
+  end
 
-    result = generator_class.new.generate(prompt:)
+  # 現在有効な provider / model の記述子。キャッシュ名前空間・記録に使う。
+  def self.descriptor
+    { provider: provider_name, model: generator_class.new.model }
+  end
+
+  # キャッシュキーを provider/model で名前空間化する。
+  # モデルが増えても「同一プロンプトで別モデル画像が先勝ち共有」されないようにする。
+  # 既定(openai/gpt-image-1)は後方互換のため素の normalized をそのまま使う（既存キャッシュ維持）。
+  def self.namespaced_cache_key(normalized)
+    descriptor = self.descriptor
+    if descriptor[:provider] == LEGACY_PROVIDER && descriptor[:model] == LEGACY_MODEL
+      normalized
+    else
+      "#{descriptor[:provider]}:#{descriptor[:model]}:#{normalized}"
+    end
+  end
+
+  def call(prompt:)
+    result = self.class.generator_class.new.generate(prompt:)
     Result.new(
       image_data: result[:image_data],
       content_type: result[:content_type],

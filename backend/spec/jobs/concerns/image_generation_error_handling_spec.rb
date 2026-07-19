@@ -1,0 +1,60 @@
+require "rails_helper"
+
+RSpec.describe ImageGenerationErrorHandling do
+  let(:handler) do
+    Class.new do
+      include ImageGenerationErrorHandling
+    end.new
+  end
+
+  def non_retryable?(error) = handler.send(:non_retryable?, error)
+  def message_for(error) = handler.send(:user_facing_error_message, error)
+
+  describe "#non_retryable?" do
+    it "provider 非依存 taxonomy の NonRetryableError は true" do
+      expect(non_retryable?(ImageGenerators::NonRetryableError.new)).to be(true)
+      expect(non_retryable?(ImageGenerators::ContentPolicyError.new)).to be(true)
+      expect(non_retryable?(ImageGenerators::QuotaError.new)).to be(true)
+    end
+
+    it "RetryableError は false" do
+      expect(non_retryable?(ImageGenerators::RetryableError.new)).to be(false)
+    end
+
+    it "生の Faraday::BadRequestError（後方互換）は true" do
+      expect(non_retryable?(Faraday::BadRequestError.new("400"))).to be(true)
+    end
+
+    it "請求上限コードを含む Faraday エラーは true" do
+      error = Faraday::BadRequestError.new(
+        "400", { status: 400, body: { "error" => { "code" => "billing_hard_limit_reached" } } }
+      )
+      expect(non_retryable?(error)).to be(true)
+    end
+
+    it "ネットワークエラーは false（リトライ対象）" do
+      expect(non_retryable?(Faraday::TimeoutError.new("timeout"))).to be(false)
+    end
+  end
+
+  describe "#user_facing_error_message" do
+    it "taxonomy エラーは自身の user_message を返す" do
+      expect(message_for(ImageGenerators::ContentPolicyError.new)).to include("コンテンツポリシー")
+      expect(message_for(ImageGenerators::QuotaError.new)).to include("一時的に利用できません")
+      expect(message_for(ImageGenerators::RetryableError.new)).to include("通信が不安定")
+    end
+
+    it "生の Faraday 400 は曖昧入力メッセージ" do
+      expect(message_for(Faraday::BadRequestError.new("400"))).to include("入力が曖昧")
+    end
+
+    it "コンテンツポリシー違反の 400 は専用メッセージ" do
+      error = Faraday::BadRequestError.new("400 rejected by the safety system (moderation_blocked)")
+      expect(message_for(error)).to include("コンテンツポリシー")
+    end
+
+    it "ネットワークエラーは再試行を促すメッセージ" do
+      expect(message_for(Faraday::SSLError.new("eof"))).to include("通信が不安定")
+    end
+  end
+end
