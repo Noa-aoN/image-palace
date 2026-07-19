@@ -58,7 +58,8 @@ export function RightPanel() {
   return (
     <aside
       // サイドバー（左）の対となる構造パネル。ivory 背景＋palace ボーダーで対称に、影は付けない。
-      className="absolute right-0 top-0 bottom-0 z-30 hidden md:block"
+      // モバイルでも表示し、画面外にはみ出さないよう最大 90vw に収める（狭幅ではほぼ全幅）。
+      className="absolute right-0 top-0 bottom-0 z-30 max-w-[90vw]"
       style={{ width, backgroundColor: 'var(--ivory)', borderLeft: '1px solid var(--palace)' }}
     >
       {/* 幅調整ハンドル（左端） */}

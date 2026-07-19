@@ -18,6 +18,7 @@ import { Plus, List } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { addViewItem, removeViewItem, updateViewItemPosition } from '@/lib/api/views'
 import { useRightPanelStore } from '@/stores/rightPanel'
+import { useUiStore } from '@/stores/ui'
 import type { ViewItemPlacement } from '@/types/view'
 import type { Item } from '@/types/item'
 import { BoardActionsContext, CardNode, CARD_DEFAULT_W, CARD_DEFAULT_H, type CardNodeType } from './CardNode'
@@ -49,6 +50,8 @@ function Canvas({ viewId, initialItems }: FreeboardCanvasProps) {
   const [nodes, setNodes, onNodesChange] = useNodesState<CardNodeType>(initialItems.map(toNode))
   const { screenToFlowPosition, setCenter, getZoom } = useReactFlow()
 
+  const panelMode = useRightPanelStore((s) => s.mode)
+  const panelWidth = useUiStore((s) => s.rightPanelWidth)
   const openCard = useRightPanelStore((s) => s.openCard)
   const openBoardCards = useRightPanelStore((s) => s.openBoardCards)
   const openAddCards = useRightPanelStore((s) => s.openAddCards)
@@ -204,7 +207,8 @@ function Canvas({ viewId, initialItems }: FreeboardCanvasProps) {
           >
             <Background variant={BackgroundVariant.Dots} gap={22} size={2.4} color="#ffffff" />
             <Controls showInteractive={false} />
-            <MiniMap pannable zoomable />
+            {/* 右パネルを開いている間はミニマップをパネル幅ぶん左へ寄せて隠れないようにする */}
+            <MiniMap pannable zoomable style={panelMode === 'closed' ? undefined : { right: panelWidth + 12 }} />
           </ReactFlow>
 
           {nodes.length === 0 && (
