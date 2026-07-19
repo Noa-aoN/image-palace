@@ -1,4 +1,6 @@
 class GeneratePointImageJob < ApplicationJob
+  include ImageGenerationErrorHandling
+
   queue_as :default
 
   # GenerateImageJob と同じリトライ戦略（15s → 60s → 240s、最大3回）。
@@ -28,11 +30,13 @@ class GeneratePointImageJob < ApplicationJob
 
       prompt = point.name
       normalized = NormalizePromptService.call(prompt)
-      prompt_key = Digest::SHA256.hexdigest(normalized)[0, 8]
+      # provider/model が変わればキャッシュも分ける（既定 openai/gpt-image-1 は後方互換で素のキー）。
+      cache_key = GenerateImageService.namespaced_cache_key(normalized)
+      prompt_key = Digest::SHA256.hexdigest(cache_key)[0, 8]
       Rails.logger.info "[GeneratePointImageJob] START point_id=#{point.id} prompt_key=#{prompt_key}"
 
-      lock_shared_media_cache!(normalized) unless force_generate
-      cached = force_generate ? nil : cached_shared_media(normalized)
+      lock_shared_media_cache!(cache_key) unless force_generate
+      cached = force_generate ? nil : cached_shared_media(cache_key)
 
       if cached
         Rails.logger.info "[GeneratePointImageJob] CACHE HIT prompt_key=#{prompt_key} shared_media_id=#{cached.id}"
@@ -40,7 +44,7 @@ class GeneratePointImageJob < ApplicationJob
       else
         Rails.logger.info "[GeneratePointImageJob] CACHE MISS prompt_key=#{prompt_key}"
         result = GenerateImageService.call(prompt: prompt)
-        shared_media = create_shared_media!(point, shared_media_key(normalized, force_generate:), result)
+        shared_media = create_shared_media!(point, shared_media_key(cache_key, force_generate:), result)
         attach_image_data(shared_media, result.image_data, result.content_type)
       end
 
@@ -63,21 +67,6 @@ class GeneratePointImageJob < ApplicationJob
   end
 
   private
-
-  NETWORK_ERRORS = [
-    EOFError,
-    Errno::ECONNRESET,
-    Faraday::ConnectionFailed,
-    Faraday::SSLError,
-    Faraday::TimeoutError,
-    Net::ReadTimeout,
-    OpenSSL::SSL::SSLError
-  ].freeze
-
-  CONTENT_POLICY_MARKERS = /moderation_blocked|content[_ ]?policy|safety system/i
-  QUOTA_ERROR_CODES = %w[
-    billing_hard_limit_reached billing_limit_reached billing_limit_user_error insufficient_quota
-  ].freeze
 
   def cached_shared_media(normalized)
     SharedMedia.for_prompt(normalized).detect { |shared| blob_available?(shared.file.blob) }
@@ -152,61 +141,5 @@ class GeneratePointImageJob < ApplicationJob
       message: user_facing_error_message(error),
       code: error.class.name
     )
-  end
-
-  def user_facing_error_message(error)
-    return quota_error_message if quota_error?(error)
-
-    case error
-    when Faraday::BadRequestError
-      if content_policy_violation?(error)
-        "入力がコンテンツポリシーに反するため画像を生成できませんでした。別の語でお試しください。"
-      else
-        "入力が曖昧なため画像を生成できませんでした。別の語や具体的な表現でお試しください。"
-      end
-    when *NETWORK_ERRORS
-      "通信が不安定だったため画像を生成できませんでした。時間を置いて再試行してください。"
-    else
-      "画像生成に失敗しました。時間を置いて再試行してください。"
-    end
-  end
-
-  def quota_error_message
-    "現在、画像生成を一時的に利用できません。時間をおいて再度お試しいただくか、運営者にお問い合わせください。"
-  end
-
-  def non_retryable?(error)
-    error.is_a?(Faraday::BadRequestError) || quota_error?(error)
-  end
-
-  def quota_error?(error)
-    QUOTA_ERROR_CODES.include?(openai_error_code(error).to_s)
-  end
-
-  def content_policy_violation?(error)
-    body = openai_error_body(error)
-    marker = "#{error.message} #{body&.dig('error', 'code')} #{body&.dig('error', 'message')}"
-    CONTENT_POLICY_MARKERS.match?(marker)
-  end
-
-  def openai_error_body(error)
-    return nil unless error.respond_to?(:response) && error.response.is_a?(Hash)
-
-    body = error.response[:body]
-    body = parse_json(body) if body.is_a?(String)
-    body.is_a?(Hash) ? body : nil
-  end
-
-  def openai_error_code(error)
-    body = openai_error_body(error)
-    return nil unless body
-
-    body.dig("error", "code") || body.dig("error", "type")
-  end
-
-  def parse_json(str)
-    JSON.parse(str)
-  rescue JSON::ParserError
-    nil
   end
 end
