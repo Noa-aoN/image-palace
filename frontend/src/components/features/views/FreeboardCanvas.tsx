@@ -1,6 +1,6 @@
 'use client'
 
-import { useCallback, useMemo, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef } from 'react'
 import {
   Background,
   BackgroundVariant,
@@ -11,20 +11,21 @@ import {
   useNodesState,
   useReactFlow,
   type OnNodeDrag,
+  type NodeMouseHandler,
 } from '@xyflow/react'
 import '@xyflow/react/dist/style.css'
-import { Plus } from 'lucide-react'
+import { Plus, List } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { addViewItem, removeViewItem, updateViewItemPosition } from '@/lib/api/views'
+import { useRightPanelStore } from '@/stores/rightPanel'
 import type { ViewItemPlacement } from '@/types/view'
 import type { Item } from '@/types/item'
-import { BoardActionsContext, CardNode, type CardNodeType } from './CardNode'
-import { AddCardsPanel } from './AddCardsPanel'
+import { BoardActionsContext, CardNode, CARD_DEFAULT_W, CARD_DEFAULT_H, type CardNodeType } from './CardNode'
 
 const nodeTypes = { card: CardNode }
-// カードノードのおおよそのサイズ（中央寄せ計算用）
-const CARD_W = 144
-const CARD_H = 172
+// カードノードの既定サイズ（中央寄せ計算・未指定サイズのフォールバック）
+const CARD_W = CARD_DEFAULT_W
+const CARD_H = CARD_DEFAULT_H
 
 function toNode(placement: ViewItemPlacement): CardNodeType {
   return {
@@ -32,6 +33,8 @@ function toNode(placement: ViewItemPlacement): CardNodeType {
     type: 'card',
     position: { x: placement.x, y: placement.y },
     data: { item: placement.item },
+    width: placement.width ?? CARD_DEFAULT_W,
+    height: placement.height ?? CARD_DEFAULT_H,
     zIndex: placement.z_index,
   }
 }
@@ -44,8 +47,15 @@ type FreeboardCanvasProps = {
 function Canvas({ viewId, initialItems }: FreeboardCanvasProps) {
   const boardRef = useRef<HTMLDivElement>(null)
   const [nodes, setNodes, onNodesChange] = useNodesState<CardNodeType>(initialItems.map(toNode))
-  const [panelOpen, setPanelOpen] = useState(false)
   const { screenToFlowPosition, setCenter, getZoom } = useReactFlow()
+
+  const openCard = useRightPanelStore((s) => s.openCard)
+  const openBoardCards = useRightPanelStore((s) => s.openBoardCards)
+  const openAddCards = useRightPanelStore((s) => s.openAddCards)
+  const pendingAddItem = useRightPanelStore((s) => s.pendingAddItem)
+  const consumeAdd = useRightPanelStore((s) => s.consumeAdd)
+  const focusItemId = useRightPanelStore((s) => s.focusItemId)
+  const consumeFocus = useRightPanelStore((s) => s.consumeFocus)
 
   const placedIds = useMemo(() => new Set(nodes.map((n) => n.id)), [nodes])
 
@@ -66,6 +76,38 @@ function Canvas({ viewId, initialItems }: FreeboardCanvasProps) {
       }).catch(() => {})
     },
     [viewId]
+  )
+
+  // リサイズ確定時にサイズと座標を保存（左上以外を掴むと位置も動くため x,y も送る）
+  const handleResizeEnd = useCallback(
+    (itemId: string, size: { x: number; y: number; width: number; height: number }) => {
+      updateViewItemPosition(viewId, itemId, {
+        x: Math.round(size.x),
+        y: Math.round(size.y),
+        width: Math.round(size.width),
+        height: Math.round(size.height),
+      }).catch(() => {})
+    },
+    [viewId]
+  )
+
+  // ダブルクリックで既定サイズに戻す
+  const handleNodeDoubleClick: NodeMouseHandler<CardNodeType> = useCallback(
+    (_event, node) => {
+      setNodes((ns) =>
+        ns.map((n) => (n.id === node.id ? { ...n, width: CARD_DEFAULT_W, height: CARD_DEFAULT_H } : n))
+      )
+      updateViewItemPosition(viewId, node.id, { width: CARD_DEFAULT_W, height: CARD_DEFAULT_H }).catch(() => {})
+    },
+    [viewId, setNodes]
+  )
+
+  // カードクリックで右パネルにそのカードの詳細を開く
+  const handleNodeClick: NodeMouseHandler<CardNodeType> = useCallback(
+    (_event, node) => {
+      openCard(node.id, viewId)
+    },
+    [openCard, viewId]
   )
 
   const handleAdd = useCallback(
@@ -102,48 +144,75 @@ function Canvas({ viewId, initialItems }: FreeboardCanvasProps) {
     [viewId, placedIds, nodes.length, screenToFlowPosition, setCenter, getZoom, setNodes]
   )
 
-  const boardActions = useMemo(() => ({ onRemove: handleRemove }), [handleRemove])
+  // 右パネルの追加操作を消費してボードに配置する
+  useEffect(() => {
+    if (!pendingAddItem) return
+    handleAdd(pendingAddItem)
+    consumeAdd()
+  }, [pendingAddItem, handleAdd, consumeAdd])
+
+  // 右パネルの一覧クリックを消費して該当カードへパンする
+  useEffect(() => {
+    if (!focusItemId) return
+    const node = nodes.find((n) => n.id === focusItemId)
+    if (node) {
+      const w = node.width ?? CARD_W
+      const h = node.height ?? CARD_H
+      setCenter(node.position.x + w / 2, node.position.y + h / 2, { zoom: getZoom(), duration: 350 })
+    }
+    consumeFocus()
+  }, [focusItemId, nodes, setCenter, getZoom, consumeFocus])
+
+  const boardActions = useMemo(
+    () => ({ onRemove: handleRemove, onResizeEnd: handleResizeEnd }),
+    [handleRemove, handleResizeEnd]
+  )
 
   return (
     <BoardActionsContext.Provider value={boardActions}>
-      <div
-        ref={boardRef}
-        className="relative h-[72vh] w-full overflow-hidden rounded-xl border border-border"
-        style={{ backgroundColor: 'var(--ivory-dark)' }}
-      >
-        <ReactFlow
-          nodes={nodes}
-          nodeTypes={nodeTypes}
-          onNodesChange={onNodesChange}
-          onNodeDragStop={handleDragStop}
-          fitView
-          fitViewOptions={{ padding: 0.3, maxZoom: 1 }}
-          minZoom={0.2}
-          maxZoom={2}
-          proOptions={{ hideAttribution: true }}
-          style={{ backgroundColor: 'transparent' }}
-        >
-          <Background variant={BackgroundVariant.Dots} gap={22} size={2.4} color="#ffffff" />
-          <Controls showInteractive={false} />
-          <MiniMap pannable zoomable />
-        </ReactFlow>
-
-        <div className="absolute left-3 top-3 z-10">
-          <Button size="sm" onClick={() => setPanelOpen((o) => !o)} className="flex items-center gap-1">
+      <div className="flex flex-col gap-2">
+        {/* 上部ツールバー（ボード面を遮らない操作系） */}
+        <div className="flex items-center gap-2">
+          <Button size="sm" onClick={() => openAddCards(viewId)} className="flex items-center gap-1">
             <Plus size={15} />
             カードを追加
           </Button>
+          <Button size="sm" variant="outline" onClick={() => openBoardCards(viewId)} className="flex items-center gap-1">
+            <List size={15} />
+            一覧
+          </Button>
         </div>
 
-        {nodes.length === 0 && !panelOpen && (
-          <div className="pointer-events-none absolute inset-0 flex items-center justify-center">
-            <p className="text-sm text-muted-foreground">「カードを追加」からカードを置いてみましょう。</p>
-          </div>
-        )}
+        <div
+          ref={boardRef}
+          className="relative h-[72vh] w-full overflow-hidden rounded-xl border border-border"
+          style={{ backgroundColor: 'var(--ivory-dark)' }}
+        >
+          <ReactFlow
+            nodes={nodes}
+            nodeTypes={nodeTypes}
+            onNodesChange={onNodesChange}
+            onNodeDragStop={handleDragStop}
+            onNodeClick={handleNodeClick}
+            onNodeDoubleClick={handleNodeDoubleClick}
+            fitView
+            fitViewOptions={{ padding: 0.3, maxZoom: 1 }}
+            minZoom={0.2}
+            maxZoom={2}
+            proOptions={{ hideAttribution: true }}
+            style={{ backgroundColor: 'transparent' }}
+          >
+            <Background variant={BackgroundVariant.Dots} gap={22} size={2.4} color="#ffffff" />
+            <Controls showInteractive={false} />
+            <MiniMap pannable zoomable />
+          </ReactFlow>
 
-        {panelOpen && (
-          <AddCardsPanel placedIds={placedIds} onAdd={handleAdd} onClose={() => setPanelOpen(false)} />
-        )}
+          {nodes.length === 0 && (
+            <div className="pointer-events-none absolute inset-0 flex items-center justify-center">
+              <p className="text-sm text-muted-foreground">上の「カードを追加」からカードを置いてみましょう。</p>
+            </div>
+          )}
+        </div>
       </div>
     </BoardActionsContext.Provider>
   )

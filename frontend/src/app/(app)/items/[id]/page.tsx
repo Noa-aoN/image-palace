@@ -24,14 +24,18 @@ export default function ItemDetailPage() {
   const { id } = useParams<{ id: string }>()
   const router = useRouter()
   const searchParams = useSearchParams()
-  // デッキ経由で開いた場合は viewId を保持し、前後ナビをそのデッキの並び順に切り替える。
+  // デッキ/ボード経由で開いた場合は元の view を保持し、前後ナビをその並び順（view 由来）に切り替える。
   const deckId = searchParams.get('deck')
-  const [deckName, setDeckName] = useState<string | null>(null)
-  const backHref = deckId ? `/views/${deckId}` : '/items'
-  const backLabel = deckId ? '← デッキへ戻る' : '← カードへ戻る'
-  // 前後移動でもデッキ文脈を維持するため、遷移先 URL に deck クエリを引き継ぐ。
+  const boardId = searchParams.get('board')
+  const fromViewId = deckId ?? boardId
+  const fromParam = deckId ? `deck=${deckId}` : boardId ? `board=${boardId}` : null
+  const fromLabel = deckId ? 'デッキ' : boardId ? 'ボード' : 'カード'
+  const [fromViewName, setFromViewName] = useState<string | null>(null)
+  const backHref = fromViewId ? `/views/${fromViewId}` : '/items'
+  const backLabel = fromViewId ? `← ${fromLabel}へ戻る` : '← カードへ戻る'
+  // 前後移動でも文脈を維持するため、遷移先 URL に元のクエリを引き継ぐ。
   const itemHref = (targetId: string) =>
-    deckId ? `/items/${targetId}?deck=${deckId}` : `/items/${targetId}`
+    fromParam ? `/items/${targetId}?${fromParam}` : `/items/${targetId}`
   const cachedItems = useItemsStore((s) => s.items)
   const upsertItem = useItemsStore((s) => s.upsertItem)
   const removeItem = useItemsStore((s) => s.removeItem)
@@ -70,14 +74,14 @@ export default function ItemDetailPage() {
   }, [id, upsertItem])
 
   // Effect 2: 前後ナビ用 ID 一覧。
-  // デッキ経由なら「そのデッキの並び順（position 順）」を、それ以外はライブラリ全体順を使う。
+  // デッキ/ボード経由なら「その view の並び順」を、それ以外はライブラリ全体順を使う。
   // 一覧のページングキャッシュには依存しない。
   useEffect(() => {
-    if (deckId) {
-      getViewDetail(deckId)
+    if (fromViewId) {
+      getViewDetail(fromViewId)
         .then((view) => {
           setAllIds((view.items ?? []).map((vi) => vi.item_id))
-          setDeckName(view.name)
+          setFromViewName(view.name)
         })
         .catch(() => {})
     } else {
@@ -85,7 +89,7 @@ export default function ItemDetailPage() {
         .then(setAllIds)
         .catch(() => {})
     }
-  }, [deckId])
+  }, [fromViewId])
 
   // Effect 3: pending/processing 中はポーリング
   const generationStatus = item?.generation_status
@@ -241,7 +245,7 @@ export default function ItemDetailPage() {
 
         {/* ヘッダー行 */}
         <div className="flex items-center justify-between">
-          <Breadcrumb className="mb-0" items={[{ href: backHref, label: deckId ? (deckName ?? 'デッキ') : 'カード' }, { label: item.title }]} />
+          <Breadcrumb className="mb-0" items={[{ href: backHref, label: fromViewId ? (fromViewName ?? fromLabel) : 'カード' }, { label: item.title }]} />
           <Button
             variant={confirmDelete ? 'destructive' : 'ghost'}
             size="sm"

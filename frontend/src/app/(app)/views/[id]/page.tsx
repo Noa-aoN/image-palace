@@ -147,7 +147,11 @@ export default function ViewEditorPage() {
   }
 
   return (
-    <div className="flex flex-col min-h-full px-6 py-12 max-w-7xl mx-auto w-full">
+    <div
+      className={`flex flex-col min-h-full w-full px-6 py-12 ${
+        view.view_type === 'freeboard' ? '' : 'max-w-7xl mx-auto'
+      }`}
+    >
       <Breadcrumb className="self-start" items={[{ href: '/views', label: 'キャンバス' }, { label: view.name }]} />
 
       <div className="flex items-center justify-between gap-3 mb-6">

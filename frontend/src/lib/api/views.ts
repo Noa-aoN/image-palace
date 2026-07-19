@@ -33,11 +33,11 @@ export async function addViewItem(
   return res.data
 }
 
-// 配置（座標・重なり順）を更新する
+// 配置（座標・重なり順・サイズ）を更新する
 export async function updateViewItemPosition(
   viewId: string,
   itemId: string,
-  payload: { x?: number; y?: number; z_index?: number }
+  payload: { x?: number; y?: number; z_index?: number; width?: number; height?: number }
 ): Promise<void> {
   await apiClient.patch(`/api/v1/views/${viewId}/items/${itemId}`, payload)
 }

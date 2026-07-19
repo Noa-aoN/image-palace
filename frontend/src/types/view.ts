@@ -20,6 +20,9 @@ export interface ViewItemPlacement {
   x: number
   y: number
   z_index: number
+  // freeboard カードのサイズ。null はクライアント既定サイズ。
+  width?: number | null
+  height?: number | null
   position?: number | null
   item: {
     id: string
