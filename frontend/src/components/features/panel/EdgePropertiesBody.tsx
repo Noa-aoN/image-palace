@@ -51,6 +51,7 @@ function toApiInput(c: Partial<ViewEdge>): ViewEdgeInput {
   if (c.target !== undefined) out.target_node_id = c.target
   if (c.source_handle !== undefined) out.source_handle = c.source_handle
   if (c.target_handle !== undefined) out.target_handle = c.target_handle
+  if (c.points !== undefined) out.points = c.points ?? []
   return out
 }
 
@@ -188,6 +189,7 @@ export function EdgePropertiesBody({ viewId }: { viewId: string }) {
       target: current.source,
       source_handle: current.target_handle ?? null,
       target_handle: current.source_handle ?? null,
+      points: [...(current.points ?? [])].reverse(),
     })
   const del = () => {
     requestEdgeRemove(current.id)

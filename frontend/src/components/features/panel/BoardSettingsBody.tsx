@@ -1,9 +1,7 @@
 'use client'
 
-import { useRef, type ChangeEvent } from 'react'
-import { ImagePlus, Trash2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
-import { updateView, uploadBoardBackground, removeBoardBackground } from '@/lib/api/views'
+import { updateView } from '@/lib/api/views'
 import { useBoardSettingsStore } from '@/stores/boardSettings'
 import { useRightPanelStore } from '@/stores/rightPanel'
 import { cn } from '@/lib/utils'
@@ -15,6 +13,7 @@ const BG_COLORS = [
   { label: '白', value: '#ffffff' },
   { label: 'グレー', value: '#e9e9ec' },
   { label: 'ダーク', value: '#2a2a2e' },
+  { label: '黒板', value: '#2f4030' },
 ]
 const PATTERNS: { label: string; value: NonNullable<BoardSettings['bg_pattern']> }[] = [
   { label: 'ドット', value: 'dots' },
@@ -42,14 +41,11 @@ function ToggleRow({ label, checked, onChange }: { label: string; checked: boole
   )
 }
 
-// 右パネル: フリーボード全体の設定（背景色・背景模様・背景画像・表示トグル）。
+// 右パネル: フリーボード全体の設定（背景色・背景模様・カード文字サイズ・表示トグル）。
 export function BoardSettingsBody() {
   const viewId = useRightPanelStore((s) => s.viewId)
   const settings = useBoardSettingsStore((s) => s.settings)
   const setSettings = useBoardSettingsStore((s) => s.setSettings)
-  const backgroundImageUrl = useBoardSettingsStore((s) => s.backgroundImageUrl)
-  const setBackgroundImageUrl = useBoardSettingsStore((s) => s.setBackgroundImageUrl)
-  const fileRef = useRef<HTMLInputElement>(null)
 
   if (!viewId) return null
 
@@ -57,22 +53,6 @@ export function BoardSettingsBody() {
   const patch = (partial: Partial<BoardSettings>) => {
     setSettings(partial)
     updateView(viewId, { settings: { ...settings, ...partial } }).catch(() => {})
-  }
-
-  const onPickFile = async (e: ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0]
-    e.target.value = ''
-    if (!file) return
-    try {
-      const updated = await uploadBoardBackground(viewId, file)
-      setBackgroundImageUrl(updated.background_image?.url ?? null)
-    } catch {
-      // アップロード失敗時は無視（トースト等は今後）
-    }
-  }
-  const onRemoveBg = () => {
-    setBackgroundImageUrl(null)
-    removeBoardBackground(viewId).catch(() => {})
   }
 
   const pattern = settings.bg_pattern ?? 'dots'
@@ -151,34 +131,6 @@ export function BoardSettingsBody() {
             />
             <span className="text-xs text-muted-foreground">px</span>
           </div>
-        </div>
-      </section>
-
-      <section className="space-y-2">
-        <h3 className="text-xs font-semibold text-muted-foreground">背景画像</h3>
-        {backgroundImageUrl && (
-          <div className="overflow-hidden rounded-lg border border-border">
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src={backgroundImageUrl} alt="ボード背景" className="h-24 w-full object-cover" />
-          </div>
-        )}
-        <div className="flex gap-2">
-          <input ref={fileRef} type="file" accept="image/*" onChange={onPickFile} className="hidden" />
-          <Button variant="outline" size="sm" onClick={() => fileRef.current?.click()} className="flex items-center gap-1.5">
-            <ImagePlus size={14} />
-            {backgroundImageUrl ? '変更' : 'アップロード'}
-          </Button>
-          {backgroundImageUrl && (
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={onRemoveBg}
-              className="flex items-center gap-1.5 text-destructive hover:text-destructive"
-            >
-              <Trash2 size={14} />
-              削除
-            </Button>
-          )}
         </div>
       </section>
 

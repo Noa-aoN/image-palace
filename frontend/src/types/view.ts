@@ -62,6 +62,12 @@ export interface SpaceMapPoint {
 // freeboard: カード間の接続線（フローチャート）のスタイル
 export type EdgeMarker = 'none' | 'arrow'
 
+// freeboard: 接続線の手動折れ点（フロー座標）
+export interface EdgePoint {
+  x: number
+  y: number
+}
+
 export interface ViewEdgeStyle {
   color?: string
   dashed?: boolean
@@ -85,6 +91,7 @@ export interface ViewEdge {
   target_handle?: string | null
   label?: string | null
   style?: ViewEdgeStyle | null
+  points?: EdgePoint[] | null // 手動折れ点（空=自動ルーティング）
 }
 
 export interface ViewDetail extends View {

@@ -23,14 +23,14 @@ import {
 import '@xyflow/react/dist/style.css'
 import { Plus, List, Spline, Settings } from 'lucide-react'
 import { Button } from '@/components/ui/button'
-import { addViewItem, removeViewItem, updateViewItemPosition, addViewEdge, removeViewEdge } from '@/lib/api/views'
+import { addViewItem, removeViewItem, updateViewItemPosition, addViewEdge, updateViewEdge, removeViewEdge } from '@/lib/api/views'
 import { useRightPanelStore } from '@/stores/rightPanel'
 import { useUiStore } from '@/stores/ui'
 import { useBoardSettingsStore } from '@/stores/boardSettings'
-import type { ViewItemPlacement, ViewEdge, ViewEdgeStyle } from '@/types/view'
+import type { ViewItemPlacement, ViewEdge, ViewEdgeStyle, EdgePoint } from '@/types/view'
 import type { Item } from '@/types/item'
 import { BoardActionsContext, CardNode, CARD_DEFAULT_W, CARD_DEFAULT_H, type CardNodeType } from './CardNode'
-import { EditableEdge } from './EditableEdge'
+import { EditableEdge, EdgeActionsContext } from './EditableEdge'
 
 const nodeTypes = { card: CardNode }
 const edgeTypes = { editable: EditableEdge }
@@ -50,7 +50,7 @@ function toNode(placement: ViewItemPlacement): CardNodeType {
   }
 }
 
-type EdgeData = { edgeStyle: ViewEdgeStyle; label: string | null }
+type EdgeData = { edgeStyle: ViewEdgeStyle; label: string | null; points: EdgePoint[] }
 
 // 正規のスタイル(ViewEdgeStyle)から React Flow のパス描画プロパティ（stroke/矢印）を作る。
 // ラベルはカスタム edge(EditableEdge) が data から HTML で描画するため、ここでは扱わない。
@@ -86,7 +86,7 @@ function viewToEdge(e: ViewEdge): Edge {
     sourceHandle: e.source_handle ?? undefined,
     targetHandle: e.target_handle ?? undefined,
     type: 'editable',
-    data: { edgeStyle: style, label } satisfies EdgeData,
+    data: { edgeStyle: style, label, points: e.points ?? [] } satisfies EdgeData,
     ...edgeVisuals(style),
   }
 }
@@ -102,6 +102,7 @@ function edgeToView(e: Edge): ViewEdge {
     target_handle: e.targetHandle ?? null,
     label: d.label ?? (typeof e.label === 'string' ? e.label : null),
     style: d.edgeStyle ?? {},
+    points: d.points ?? null,
   }
 }
 
@@ -205,7 +206,7 @@ function Canvas({ viewId, initialItems, initialEdges }: FreeboardCanvasProps) {
         sourceHandle: conn.sourceHandle ?? undefined,
         targetHandle: conn.targetHandle ?? undefined,
         type: 'editable',
-        data: { edgeStyle: {}, label: null } satisfies EdgeData,
+        data: { edgeStyle: {}, label: null, points: [] } satisfies EdgeData,
         ...edgeVisuals({}),
       }
       setEdges((es) => addEdge(newEdge, es))
@@ -312,13 +313,15 @@ function Canvas({ viewId, initialItems, initialEdges }: FreeboardCanvasProps) {
         const prev = (e.data ?? {}) as Partial<EdgeData>
         const nextStyle = changes.style !== undefined ? (changes.style ?? {}) : (prev.edgeStyle ?? {})
         const nextLabel = changes.label !== undefined ? (changes.label ?? null) : (prev.label ?? null)
+        // points は必ず引き継ぐ（変更が来たときだけ差し替え）。落とすと色変更等で折れ点が消える。
+        const nextPoints = changes.points !== undefined ? (changes.points ?? []) : (prev.points ?? [])
         return {
           ...e,
           source: changes.source ?? e.source,
           target: changes.target ?? e.target,
           sourceHandle: changes.source_handle !== undefined ? (changes.source_handle ?? undefined) : e.sourceHandle,
           targetHandle: changes.target_handle !== undefined ? (changes.target_handle ?? undefined) : e.targetHandle,
-          data: { edgeStyle: nextStyle, label: nextLabel } satisfies EdgeData,
+          data: { edgeStyle: nextStyle, label: nextLabel, points: nextPoints } satisfies EdgeData,
           ...edgeVisuals(nextStyle),
         }
       })
@@ -333,13 +336,24 @@ function Canvas({ viewId, initialItems, initialEdges }: FreeboardCanvasProps) {
     consumeEdgeRemove()
   }, [edgeRemoveId, setEdges, consumeEdgeRemove])
 
+  // waypoint 確定時の保存（tmp- の楽観 edge は保存前なので送らない）
+  const commitPoints = useCallback(
+    (edgeId: string, points: EdgePoint[]) => {
+      if (edgeId.startsWith('tmp-')) return
+      updateViewEdge(viewId, edgeId, { points }).catch(() => {})
+    },
+    [viewId]
+  )
+
   const boardActions = useMemo(
     () => ({ onRemove: handleRemove, onResizeEnd: handleResizeEnd }),
     [handleRemove, handleResizeEnd]
   )
+  const edgeActions = useMemo(() => ({ commitPoints }), [commitPoints])
 
   return (
     <BoardActionsContext.Provider value={boardActions}>
+      <EdgeActionsContext.Provider value={edgeActions}>
       <div className="flex flex-col gap-2">
         {/* 上部ツールバー（ボード面を遮らない操作系） */}
         <div className="flex items-center gap-2">
@@ -413,6 +427,7 @@ function Canvas({ viewId, initialItems, initialEdges }: FreeboardCanvasProps) {
           )}
         </div>
       </div>
+      </EdgeActionsContext.Provider>
     </BoardActionsContext.Provider>
   )
 }

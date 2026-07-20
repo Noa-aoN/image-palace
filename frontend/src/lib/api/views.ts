@@ -22,6 +22,7 @@ export type ViewEdgeInput = {
     label_opacity?: number
     label_vertical?: boolean
   }
+  points?: { x: number; y: number }[]
 }
 
 export async function getViews(): Promise<View[]> {
