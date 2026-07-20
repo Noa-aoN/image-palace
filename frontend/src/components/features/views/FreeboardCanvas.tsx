@@ -17,7 +17,7 @@ import {
   type OnNodeDrag,
   type NodeMouseHandler,
   type OnConnect,
-  type EdgeMouseHandler,
+  type OnSelectionChangeFunc,
   type Edge,
 } from '@xyflow/react'
 import '@xyflow/react/dist/style.css'
@@ -128,6 +128,7 @@ function Canvas({ viewId, initialItems, initialEdges }: FreeboardCanvasProps) {
   const boardSettings = useBoardSettingsStore((s) => s.settings)
   const backgroundImageUrl = useBoardSettingsStore((s) => s.backgroundImageUrl)
   const openEdge = useRightPanelStore((s) => s.openEdge)
+  const openBulk = useRightPanelStore((s) => s.openBulk)
   const pendingAddItem = useRightPanelStore((s) => s.pendingAddItem)
   const consumeAdd = useRightPanelStore((s) => s.consumeAdd)
   const focusItemId = useRightPanelStore((s) => s.focusItemId)
@@ -138,6 +139,12 @@ function Canvas({ viewId, initialItems, initialEdges }: FreeboardCanvasProps) {
   const consumeEdgePatch = useRightPanelStore((s) => s.consumeEdgePatch)
   const edgeRemoveId = useRightPanelStore((s) => s.edgeRemoveId)
   const consumeEdgeRemove = useRightPanelStore((s) => s.consumeEdgeRemove)
+  const bulkStylePatch = useRightPanelStore((s) => s.bulkStylePatch)
+  const consumeBulkStylePatch = useRightPanelStore((s) => s.consumeBulkStylePatch)
+  const bulkResize = useRightPanelStore((s) => s.bulkResize)
+  const consumeBulkResize = useRightPanelStore((s) => s.consumeBulkResize)
+  const bulkRemove = useRightPanelStore((s) => s.bulkRemove)
+  const consumeBulkRemove = useRightPanelStore((s) => s.consumeBulkRemove)
 
   const placedIds = useMemo(() => new Set(nodes.map((n) => n.id)), [nodes])
 
@@ -186,12 +193,21 @@ function Canvas({ viewId, initialItems, initialEdges }: FreeboardCanvasProps) {
     [viewId, setNodes]
   )
 
-  // カードクリックで右パネルに詳細を開く
-  const handleNodeClick: NodeMouseHandler<CardNodeType> = useCallback(
-    (_event, node) => {
-      openCard(node.id, viewId)
+  // 選択変更を右パネルに一本化する（単一→カード/接続線、複数→一括）。
+  // onNodeClick/onEdgeClick を使うと複数選択時に単一パネルへ戻ってしまうため選択で駆動する。
+  const handleSelectionChange: OnSelectionChangeFunc = useCallback(
+    ({ nodes: selNodes, edges: selEdges }) => {
+      const count = selNodes.length + selEdges.length
+      if (count > 1) {
+        openBulk(viewId, selNodes.map((n) => n.id), selEdges.map((e) => e.id))
+      } else if (selNodes.length === 1) {
+        openCard(selNodes[0].id, viewId)
+      } else if (selEdges.length === 1) {
+        openEdge(viewId, edgeToView(selEdges[0]))
+      }
+      // count === 0 は何もしない（明示的な操作までパネルを維持する）
     },
-    [openCard, viewId]
+    [viewId, openBulk, openCard, openEdge]
   )
 
   // ハンドルをドラッグして接続線を作る
@@ -230,14 +246,6 @@ function Canvas({ viewId, initialItems, initialEdges }: FreeboardCanvasProps) {
       })
     },
     [viewId]
-  )
-
-  // 接続線クリックで右パネルの編集を開く
-  const handleEdgeClick: EdgeMouseHandler = useCallback(
-    (_event, edge) => {
-      openEdge(viewId, edgeToView(edge))
-    },
-    [openEdge, viewId]
   )
 
   const handleAdd = useCallback(
@@ -336,6 +344,57 @@ function Canvas({ viewId, initialItems, initialEdges }: FreeboardCanvasProps) {
     consumeEdgeRemove()
   }, [edgeRemoveId, setEdges, consumeEdgeRemove])
 
+  // 一括: 選択した接続線すべてに style を部分マージして反映＋永続化する
+  useEffect(() => {
+    if (!bulkStylePatch) return
+    const { edgeIds, partial } = bulkStylePatch
+    const idSet = new Set(edgeIds)
+    setEdges((es) =>
+      es.map((e) => {
+        if (!idSet.has(e.id)) return e
+        const prev = (e.data ?? {}) as Partial<EdgeData>
+        const merged = { ...(prev.edgeStyle ?? {}), ...partial }
+        return {
+          ...e,
+          data: { edgeStyle: merged, label: prev.label ?? null, points: prev.points ?? [] } satisfies EdgeData,
+          ...edgeVisuals(merged),
+        }
+      })
+    )
+    // 各 edge の現在 style にマージした結果を保存（tmp- は保存前なので送らない）
+    edges.forEach((e) => {
+      if (!idSet.has(e.id) || e.id.startsWith('tmp-')) return
+      const prev = (e.data ?? {}) as Partial<EdgeData>
+      updateViewEdge(viewId, e.id, { style: { ...(prev.edgeStyle ?? {}), ...partial } }).catch(() => {})
+    })
+    consumeBulkStylePatch()
+  }, [bulkStylePatch, edges, viewId, setEdges, consumeBulkStylePatch])
+
+  // 一括: 選択したカードを同じサイズにそろえる＋永続化する
+  useEffect(() => {
+    if (!bulkResize) return
+    const { itemIds, width, height } = bulkResize
+    const idSet = new Set(itemIds)
+    setNodes((ns) => ns.map((n) => (idSet.has(n.id) ? { ...n, width, height } : n)))
+    itemIds.forEach((id) => updateViewItemPosition(viewId, id, { width, height }).catch(() => {}))
+    consumeBulkResize()
+  }, [bulkResize, viewId, setNodes, consumeBulkResize])
+
+  // 一括: 選択したカード・接続線をまとめて削除する（端点が消える接続線も除去）
+  useEffect(() => {
+    if (!bulkRemove) return
+    const { itemIds, edgeIds } = bulkRemove
+    const nodeSet = new Set(itemIds)
+    const edgeSet = new Set(edgeIds)
+    setNodes((ns) => ns.filter((n) => !nodeSet.has(n.id)))
+    setEdges((es) => es.filter((e) => !edgeSet.has(e.id) && !nodeSet.has(e.source) && !nodeSet.has(e.target)))
+    itemIds.forEach((id) => removeViewItem(viewId, id).catch(() => {}))
+    edgeIds.forEach((id) => {
+      if (!id.startsWith('tmp-')) removeViewEdge(viewId, id).catch(() => {})
+    })
+    consumeBulkRemove()
+  }, [bulkRemove, viewId, setNodes, setEdges, consumeBulkRemove])
+
   // waypoint 確定時の保存（tmp- の楽観 edge は保存前なので送らない）
   const commitPoints = useCallback(
     (edgeId: string, points: EdgePoint[]) => {
@@ -356,7 +415,7 @@ function Canvas({ viewId, initialItems, initialEdges }: FreeboardCanvasProps) {
       <EdgeActionsContext.Provider value={edgeActions}>
       <div className="flex flex-col gap-2">
         {/* 上部ツールバー（ボード面を遮らない操作系） */}
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2">
           <Button size="sm" onClick={() => openAddCards(viewId)} className="flex items-center gap-1">
             <Plus size={15} />
             カードを配置
@@ -373,6 +432,7 @@ function Canvas({ viewId, initialItems, initialEdges }: FreeboardCanvasProps) {
             <Settings size={15} />
             ボード設定
           </Button>
+          <span className="ml-auto text-xs text-muted-foreground">Shift＋クリックで追加選択 / Shift＋ドラッグで範囲選択</span>
         </div>
 
         <div
@@ -391,11 +451,11 @@ function Canvas({ viewId, initialItems, initialEdges }: FreeboardCanvasProps) {
             onNodesChange={onNodesChange}
             onEdgesChange={onEdgesChange}
             onNodeDragStop={handleDragStop}
-            onNodeClick={handleNodeClick}
             onNodeDoubleClick={handleNodeDoubleClick}
             onConnect={handleConnect}
             onEdgesDelete={handleEdgesDelete}
-            onEdgeClick={handleEdgeClick}
+            onSelectionChange={handleSelectionChange}
+            multiSelectionKeyCode="Shift"
             connectionMode={ConnectionMode.Loose}
             defaultEdgeOptions={{ type: 'editable' }}
             fitView

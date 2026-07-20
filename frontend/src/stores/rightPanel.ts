@@ -1,10 +1,10 @@
 import { create } from 'zustand'
 import type { Item } from '@/types/item'
-import type { ViewEdge } from '@/types/view'
+import type { ViewEdge, ViewEdgeStyle } from '@/types/view'
 
 // 右パネル（統一インスペクタ）の表示モード。
 // closed=非表示 / card=カード詳細 / board-cards=配置カード一覧 / add-cards=カード追加
-// board-objects=オブジェクト（接続線・図形）一覧 / edge=接続線編集 / board-settings=ボード設定
+// board-objects=オブジェクト（接続線・図形）一覧 / edge=接続線編集 / board-settings=ボード設定 / bulk=複数選択の一括
 export type RightPanelMode =
   | 'closed'
   | 'card'
@@ -13,18 +13,25 @@ export type RightPanelMode =
   | 'board-objects'
   | 'edge'
   | 'board-settings'
+  | 'bulk'
 
 interface RightPanelState {
   mode: RightPanelMode
   itemId: string | null // card モードで表示するカード
   viewId: string | null // ボード文脈（一覧/追加/ボード由来のカード詳細/接続線）
   edge: ViewEdge | null // edge モードで編集する接続線のスナップショット
+  // bulk モードの選択集合
+  bulkItemIds: string[]
+  bulkEdgeIds: string[]
   // ボード↔パネルの疎結合シグナル（ボード側が検知して消費する）
   focusItemId: string | null // カード一覧クリック → ボードが該当カードへパン
   focusEdgeId: string | null // オブジェクト一覧クリック → ボードが該当接続線へパン
   pendingAddItem: Item | null // 追加パネルのクリック → ボードが中央に配置
   edgePatch: { id: string; changes: Partial<ViewEdge> } | null // edge 編集 → ボードが線を更新
   edgeRemoveId: string | null // edge 削除 → ボードが線を除去
+  bulkStylePatch: { edgeIds: string[]; partial: Partial<ViewEdgeStyle> } | null // 接続線スタイル一括
+  bulkResize: { itemIds: string[]; width: number; height: number } | null // カードサイズ揃え
+  bulkRemove: { itemIds: string[]; edgeIds: string[] } | null // まとめて削除
 
   openCard: (itemId: string, viewId?: string | null) => void
   openBoardCards: (viewId: string) => void
@@ -32,6 +39,7 @@ interface RightPanelState {
   openBoardObjects: (viewId: string) => void
   openBoardSettings: (viewId: string) => void
   openEdge: (viewId: string, edge: ViewEdge) => void
+  openBulk: (viewId: string, itemIds: string[], edgeIds: string[]) => void
   close: () => void
   requestFocus: (itemId: string) => void
   consumeFocus: () => void
@@ -43,6 +51,12 @@ interface RightPanelState {
   consumeEdgePatch: () => void
   requestEdgeRemove: (id: string) => void
   consumeEdgeRemove: () => void
+  requestBulkStylePatch: (edgeIds: string[], partial: Partial<ViewEdgeStyle>) => void
+  consumeBulkStylePatch: () => void
+  requestBulkResize: (itemIds: string[], width: number, height: number) => void
+  consumeBulkResize: () => void
+  requestBulkRemove: (itemIds: string[], edgeIds: string[]) => void
+  consumeBulkRemove: () => void
 }
 
 export const useRightPanelStore = create<RightPanelState>()((set) => ({
@@ -50,11 +64,16 @@ export const useRightPanelStore = create<RightPanelState>()((set) => ({
   itemId: null,
   viewId: null,
   edge: null,
+  bulkItemIds: [],
+  bulkEdgeIds: [],
   focusItemId: null,
   focusEdgeId: null,
   pendingAddItem: null,
   edgePatch: null,
   edgeRemoveId: null,
+  bulkStylePatch: null,
+  bulkResize: null,
+  bulkRemove: null,
 
   // viewId 省略時は既存のボード文脈を保持する（ボードから開いたカード詳細で往復できるように）
   openCard: (itemId, viewId) => set((s) => ({ mode: 'card', itemId, viewId: viewId ?? s.viewId })),
@@ -63,8 +82,18 @@ export const useRightPanelStore = create<RightPanelState>()((set) => ({
   openBoardObjects: (viewId) => set({ mode: 'board-objects', viewId }),
   openBoardSettings: (viewId) => set({ mode: 'board-settings', viewId }),
   openEdge: (viewId, edge) => set({ mode: 'edge', viewId, edge }),
+  openBulk: (viewId, itemIds, edgeIds) => set({ mode: 'bulk', viewId, bulkItemIds: itemIds, bulkEdgeIds: edgeIds }),
   close: () =>
-    set({ mode: 'closed', itemId: null, edge: null, focusItemId: null, focusEdgeId: null, pendingAddItem: null }),
+    set({
+      mode: 'closed',
+      itemId: null,
+      edge: null,
+      bulkItemIds: [],
+      bulkEdgeIds: [],
+      focusItemId: null,
+      focusEdgeId: null,
+      pendingAddItem: null,
+    }),
 
   requestFocus: (itemId) => set({ focusItemId: itemId }),
   consumeFocus: () => set({ focusItemId: null }),
@@ -76,4 +105,10 @@ export const useRightPanelStore = create<RightPanelState>()((set) => ({
   consumeEdgePatch: () => set({ edgePatch: null }),
   requestEdgeRemove: (id) => set({ edgeRemoveId: id }),
   consumeEdgeRemove: () => set({ edgeRemoveId: null }),
+  requestBulkStylePatch: (edgeIds, partial) => set({ bulkStylePatch: { edgeIds, partial } }),
+  consumeBulkStylePatch: () => set({ bulkStylePatch: null }),
+  requestBulkResize: (itemIds, width, height) => set({ bulkResize: { itemIds, width, height } }),
+  consumeBulkResize: () => set({ bulkResize: null }),
+  requestBulkRemove: (itemIds, edgeIds) => set({ bulkRemove: { itemIds, edgeIds } }),
+  consumeBulkRemove: () => set({ bulkRemove: null }),
 }))

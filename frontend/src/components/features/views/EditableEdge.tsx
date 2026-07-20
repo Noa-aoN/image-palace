@@ -103,6 +103,19 @@ function EditableEdgeComponent(props: EdgeProps) {
 
   return (
     <>
+      {/* 選択中は線の下にハローを敷き、脈動させて、複数選択でもどの線が選ばれているか分かるようにする */}
+      {selected && (
+        <path
+          d={edgePath}
+          fill="none"
+          stroke="var(--palace)"
+          strokeWidth={(s.width || 2) + 6}
+          strokeLinecap="round"
+          style={{ pointerEvents: 'none' }}
+        >
+          <animate attributeName="stroke-opacity" values="0.1;0.8;0.1" dur="0.8s" repeatCount="indefinite" />
+        </path>
+      )}
       <BaseEdge id={id} path={edgePath} markerStart={markerStart} markerEnd={markerEnd} style={style} />
       <EdgeLabelRenderer>
         {label && (

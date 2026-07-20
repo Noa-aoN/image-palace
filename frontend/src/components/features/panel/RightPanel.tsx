@@ -12,6 +12,7 @@ import { AddCardsBody } from './AddCardsBody'
 import { ObjectList } from './ObjectList'
 import { EdgePropertiesBody } from './EdgePropertiesBody'
 import { BoardSettingsBody } from './BoardSettingsBody'
+import { BulkEditBody } from './BulkEditBody'
 import { PanelShell } from './PanelShell'
 
 const MIN_W = 300
@@ -24,6 +25,8 @@ export function RightPanel() {
   const itemId = useRightPanelStore((s) => s.itemId)
   const viewId = useRightPanelStore((s) => s.viewId)
   const edge = useRightPanelStore((s) => s.edge)
+  const bulkItemIds = useRightPanelStore((s) => s.bulkItemIds)
+  const bulkEdgeIds = useRightPanelStore((s) => s.bulkEdgeIds)
   const close = useRightPanelStore((s) => s.close)
   const openBoardCards = useRightPanelStore((s) => s.openBoardCards)
   const openBoardObjects = useRightPanelStore((s) => s.openBoardObjects)
@@ -67,7 +70,14 @@ export function RightPanel() {
           ? 'オブジェクト一覧'
           : mode === 'board-settings'
             ? 'ボード設定'
-            : undefined
+            : mode === 'bulk'
+              ? `複数選択中（${[
+                  bulkItemIds.length > 0 ? `カード${bulkItemIds.length}` : null,
+                  bulkEdgeIds.length > 0 ? `接続線${bulkEdgeIds.length}` : null,
+                ]
+                  .filter(Boolean)
+                  .join('・')}）`
+              : undefined
 
   // 一覧 > 詳細 の親子関係。詳細/編集からは対応する一覧へ戻す。
   const onBack =
@@ -117,6 +127,7 @@ export function RightPanel() {
         {mode === 'add-cards' && viewId && <AddCardsBody viewId={viewId} />}
         {mode === 'board-objects' && viewId && <ObjectList viewId={viewId} />}
         {mode === 'board-settings' && viewId && <BoardSettingsBody />}
+        {mode === 'bulk' && viewId && <BulkEditBody />}
         {mode === 'edge' && viewId && edge && <EdgePropertiesBody key={edge.id} viewId={viewId} />}
       </PanelShell>
     </aside>
