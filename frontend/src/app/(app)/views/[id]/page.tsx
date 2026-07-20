@@ -10,6 +10,7 @@ import { Breadcrumb } from '@/components/ui/breadcrumb'
 import { Input } from '@/components/ui/input'
 import { getViewDetail, updateView, deleteView, uploadViewCover, removeViewCover } from '@/lib/api/views'
 import { viewTypeLabel } from '@/lib/view-types'
+import { useBoardSettingsStore } from '@/stores/boardSettings'
 import type { ViewDetail } from '@/types/view'
 import type { CoverType } from '@/types/cover'
 
@@ -48,7 +49,11 @@ export default function ViewEditorPage() {
     let cancelled = false
     getViewDetail(id)
       .then((data) => {
-        if (!cancelled) setView(data)
+        if (cancelled) return
+        setView(data)
+        if (data.view_type === 'freeboard') {
+          useBoardSettingsStore.getState().init(data.id, data.settings, data.background_image?.url ?? null)
+        }
       })
       .catch(() => {
         if (!cancelled) setError('キャンバスの取得に失敗しました')

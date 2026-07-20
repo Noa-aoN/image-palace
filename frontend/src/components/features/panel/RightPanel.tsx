@@ -11,6 +11,7 @@ import { BoardCardsList } from './BoardCardsList'
 import { AddCardsBody } from './AddCardsBody'
 import { ObjectList } from './ObjectList'
 import { EdgePropertiesBody } from './EdgePropertiesBody'
+import { BoardSettingsBody } from './BoardSettingsBody'
 import { PanelShell } from './PanelShell'
 
 const MIN_W = 300
@@ -61,10 +62,12 @@ export function RightPanel() {
     mode === 'board-cards'
       ? '配置カード一覧'
       : mode === 'add-cards'
-        ? 'カードを追加'
+        ? 'カードを配置'
         : mode === 'board-objects'
           ? 'オブジェクト一覧'
-          : undefined
+          : mode === 'board-settings'
+            ? 'ボード設定'
+            : undefined
 
   // 一覧 > 詳細 の親子関係。詳細/編集からは対応する一覧へ戻す。
   const onBack =
@@ -113,6 +116,7 @@ export function RightPanel() {
         {mode === 'board-cards' && viewId && <BoardCardsList viewId={viewId} />}
         {mode === 'add-cards' && viewId && <AddCardsBody viewId={viewId} />}
         {mode === 'board-objects' && viewId && <ObjectList viewId={viewId} />}
+        {mode === 'board-settings' && viewId && <BoardSettingsBody />}
         {mode === 'edge' && viewId && edge && <EdgePropertiesBody key={edge.id} viewId={viewId} />}
       </PanelShell>
     </aside>

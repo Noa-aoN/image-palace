@@ -10,6 +10,7 @@ import type { ViewEdge } from '@/types/view'
 // クリックでそれぞれの設定へ（接続線 → edge 編集）。
 export function ObjectList({ viewId }: { viewId: string }) {
   const openEdge = useRightPanelStore((s) => s.openEdge)
+  const requestFocusEdge = useRightPanelStore((s) => s.requestFocusEdge)
   const [edges, setEdges] = useState<ViewEdge[] | null>(null)
 
   useEffect(() => {
@@ -37,7 +38,10 @@ export function ObjectList({ viewId }: { viewId: string }) {
         <li key={e.id}>
           <button
             type="button"
-            onClick={() => openEdge(viewId, e)}
+            onClick={() => {
+              openEdge(viewId, e)
+              requestFocusEdge(e.id)
+            }}
             className="flex w-full items-center gap-2.5 rounded-lg border border-border bg-card p-2 text-left transition-colors hover:bg-muted"
           >
             <span

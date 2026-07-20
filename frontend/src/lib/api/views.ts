@@ -1,5 +1,5 @@
 import { apiClient } from './client'
-import type { View, ViewDetail, ViewItemPlacement, ViewEdge, SpaceMapPoint } from '@/types/view'
+import type { View, ViewDetail, ViewItemPlacement, ViewEdge, SpaceMapPoint, BoardSettings } from '@/types/view'
 import type { CoverType } from '@/types/cover'
 
 // freeboard の接続線 API の入力
@@ -14,10 +14,13 @@ export type ViewEdgeInput = {
     dashed?: boolean
     width?: number
     opacity?: number
+    marker_start?: string
+    marker_end?: string
     label_color?: string
     label_size?: number
     label_bg?: string
     label_opacity?: number
+    label_vertical?: boolean
   }
 }
 
@@ -124,9 +127,22 @@ export async function clearPointPlacement(viewId: string, spacePointId: string):
 
 export async function updateView(
   id: string,
-  payload: { name?: string; cover_item_id?: string | null; cover_type?: CoverType }
+  payload: { name?: string; cover_item_id?: string | null; cover_type?: CoverType; settings?: BoardSettings }
 ): Promise<View> {
   const res = await apiClient.patch<View>(`/api/v1/views/${id}`, { view: payload })
+  return res.data
+}
+
+// freeboard: ボード背景画像をアップロード / 削除
+export async function uploadBoardBackground(id: string, file: File): Promise<View> {
+  const form = new FormData()
+  form.append('background_image', file)
+  const res = await apiClient.post<View>(`/api/v1/views/${id}/background_image`, form)
+  return res.data
+}
+
+export async function removeBoardBackground(id: string): Promise<View> {
+  const res = await apiClient.delete<View>(`/api/v1/views/${id}/background_image`)
   return res.data
 }
 

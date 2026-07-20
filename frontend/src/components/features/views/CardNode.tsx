@@ -3,6 +3,7 @@
 import { createContext, memo, useContext } from 'react'
 import { X } from 'lucide-react'
 import { NodeResizer, Handle, Position, type Node, type NodeProps } from '@xyflow/react'
+import { useBoardSettingsStore } from '@/stores/boardSettings'
 import type { ViewItemPlacement } from '@/types/view'
 
 // ノード data に関数を入れると render 中の ref 参照になり lint に触れるため、
@@ -38,6 +39,7 @@ export type CardNodeType = Node<CardNodeData, 'card'>
 function CardNodeComponent({ id, data }: NodeProps<CardNodeType>) {
   const { onRemove, onResizeEnd } = useContext(BoardActionsContext)
   const { item } = data
+  const cardFontSize = useBoardSettingsStore((s) => s.settings.card_font_size)
   const imageUrl = item.media?.thumb_url ?? item.media?.url ?? null
 
   return (
@@ -67,7 +69,12 @@ function CardNodeComponent({ id, data }: NodeProps<CardNodeType>) {
           >
             <X size={13} />
           </button>
-          <div className="shrink-0 truncate px-2 py-1.5 text-xs font-medium">{item.title}</div>
+          <div
+            className="shrink-0 truncate px-2 py-1.5 text-xs font-medium"
+            style={cardFontSize ? { fontSize: cardFontSize } : undefined}
+          >
+            {item.title}
+          </div>
           <div className="flex min-h-0 flex-1 items-center justify-center overflow-hidden bg-muted">
             {imageUrl ? (
               // eslint-disable-next-line @next/next/no-img-element

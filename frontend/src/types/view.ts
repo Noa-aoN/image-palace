@@ -1,6 +1,16 @@
 import type { ItemMedia, GenerationStatus } from './item'
 import type { CoverType, CoverImage } from './cover'
 
+// freeboard: ボード全体設定
+export interface BoardSettings {
+  bg_color?: string
+  bg_pattern?: 'dots' | 'grid' | 'none'
+  pattern_color?: string // 背景模様（ドット/グリッド線）の色
+  card_font_size?: number // カードの単語文字サイズ(px)
+  minimap?: boolean
+  controls?: boolean
+}
+
 export interface View {
   id: string
   name: string
@@ -11,6 +21,8 @@ export interface View {
   cover: ItemMedia | null
   cover_images: ItemMedia[]
   cover_image: CoverImage | null
+  settings?: BoardSettings // freeboard のボード設定
+  background_image?: { url: string } | null // freeboard の背景画像
   created_at: string
 }
 
@@ -48,15 +60,20 @@ export interface SpaceMapPoint {
 }
 
 // freeboard: カード間の接続線（フローチャート）のスタイル
+export type EdgeMarker = 'none' | 'arrow'
+
 export interface ViewEdgeStyle {
   color?: string
   dashed?: boolean
   width?: number // 線の太さ(px)
   opacity?: number // 線の不透明度(0-100)
+  marker_start?: EdgeMarker // 始端の形（既定 none）
+  marker_end?: EdgeMarker // 終端の形（既定 arrow）
   label_color?: string // ラベルの文字色
   label_size?: number // ラベルの文字サイズ(px)
   label_bg?: string // ラベルの背景色（空=なし）
   label_opacity?: number // ラベルの不透明度(0-100)
+  label_vertical?: boolean // ラベルを縦書きにする
 }
 
 // freeboard: カード間の接続線。source/target は文字列ノード id（カードは item_id）。

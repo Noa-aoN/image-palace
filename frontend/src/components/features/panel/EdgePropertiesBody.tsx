@@ -7,20 +7,41 @@ import { Input } from '@/components/ui/input'
 import { updateViewEdge, removeViewEdge, type ViewEdgeInput } from '@/lib/api/views'
 import { useRightPanelStore } from '@/stores/rightPanel'
 import { cn } from '@/lib/utils'
-import type { ViewEdge, ViewEdgeStyle } from '@/types/view'
+import type { ViewEdge, ViewEdgeStyle, EdgeMarker } from '@/types/view'
 
-const COLORS = [
-  { label: '既定', value: '' },
+const MARKERS: { label: string; value: EdgeMarker }[] = [
+  { label: 'なし', value: 'none' },
+  { label: '矢印', value: 'arrow' },
+]
+
+type SwatchOption = { label: string; value: string; swatch?: string; none?: boolean }
+
+// 線の色（既定＝黒）
+const COLORS: SwatchOption[] = [
+  { label: '既定（黒）', value: '', swatch: '#1a1a1a' },
   { label: '赤', value: '#e5484d' },
   { label: '青', value: '#3b82f6' },
   { label: '緑', value: '#22a06b' },
   { label: '灰', value: '#8b8b8b' },
 ]
-const LABEL_BGS = [
-  { label: 'なし', value: '' },
+// ラベル文字色（既定＝黒。白も選べる）
+const LABEL_TEXT_COLORS: SwatchOption[] = [
+  { label: '既定（黒）', value: '', swatch: '#111111' },
+  { label: '白', value: '#ffffff' },
+  { label: '赤', value: '#e5484d' },
+  { label: '青', value: '#3b82f6' },
+  { label: '緑', value: '#22a06b' },
+  { label: '灰', value: '#8b8b8b' },
+]
+// ラベル背景（なし＝透明。蛍光マーカー系の淡色）
+const LABEL_BGS: SwatchOption[] = [
+  { label: 'なし', value: '', none: true },
   { label: '白', value: '#ffffff' },
   { label: '黒', value: '#111111' },
   { label: '黄', value: '#fde68a' },
+  { label: '赤', value: '#e5484d' },
+  { label: '青', value: '#3b82f6' },
+  { label: '緑', value: '#22a06b' },
 ]
 function toApiInput(c: Partial<ViewEdge>): ViewEdgeInput {
   const out: ViewEdgeInput = {}
@@ -39,7 +60,7 @@ function Swatches({
   active,
   onSelect,
 }: {
-  options: { label: string; value: string }[]
+  options: SwatchOption[]
   active: string
   onSelect: (v: string) => void
 }) {
@@ -52,11 +73,23 @@ function Swatches({
           onClick={() => onSelect(o.value)}
           aria-label={o.label}
           className={cn(
-            'h-7 w-7 rounded-full border-2 transition-colors',
+            'relative h-7 w-7 overflow-hidden rounded-full border-2 transition-colors',
             active === o.value ? 'border-foreground' : 'border-border'
           )}
-          style={{ backgroundColor: o.value || 'var(--muted)' }}
-        />
+          style={{ backgroundColor: o.none ? '#ffffff' : o.swatch ?? o.value ?? 'var(--muted)' }}
+        >
+          {/* 透明（なし）は斜め線で示す */}
+          {o.none && (
+            <span
+              aria-hidden="true"
+              className="pointer-events-none absolute inset-0"
+              style={{
+                background:
+                  'linear-gradient(to top right, transparent calc(50% - 1px), #e5484d calc(50% - 1px), #e5484d calc(50% + 1px), transparent calc(50% + 1px))',
+              }}
+            />
+          )}
+        </button>
       ))}
     </div>
   )
@@ -185,13 +218,24 @@ export function EdgePropertiesBody({ viewId }: { viewId: string }) {
         <NumberField label="文字サイズ" value={s.label_size ?? 13} min={8} max={48} onChange={(v) => patchStyle({ label_size: v })} />
         <div className="space-y-1.5">
           <span className="text-xs text-muted-foreground">文字色</span>
-          <Swatches options={COLORS} active={s.label_color ?? ''} onSelect={(v) => patchStyle({ label_color: v || undefined })} />
+          <Swatches options={LABEL_TEXT_COLORS} active={s.label_color ?? ''} onSelect={(v) => patchStyle({ label_color: v || undefined })} />
         </div>
         <div className="space-y-1.5">
           <span className="text-xs text-muted-foreground">背景色</span>
           <Swatches options={LABEL_BGS} active={s.label_bg ?? ''} onSelect={(v) => patchStyle({ label_bg: v || undefined })} />
         </div>
         <NumberField label="不透明度" value={s.label_opacity ?? 100} min={0} max={100} unit="%" onChange={(v) => patchStyle({ label_opacity: v })} />
+        <div className="space-y-1.5">
+          <span className="text-xs text-muted-foreground">向き</span>
+          <Segmented
+            options={[
+              { label: '横書き', value: 'h' },
+              { label: '縦書き', value: 'v' },
+            ]}
+            active={s.label_vertical ? 'v' : 'h'}
+            onSelect={(v) => patchStyle({ label_vertical: v === 'v' })}
+          />
+        </div>
       </section>
 
       {/* 線 */}
@@ -212,6 +256,14 @@ export function EdgePropertiesBody({ viewId }: { viewId: string }) {
             active={s.dashed ? 'dashed' : 'solid'}
             onSelect={(v) => patchStyle({ dashed: v === 'dashed' })}
           />
+        </div>
+        <div className="space-y-1.5">
+          <span className="text-xs text-muted-foreground">始端</span>
+          <Segmented options={MARKERS} active={s.marker_start ?? 'none'} onSelect={(v) => patchStyle({ marker_start: v })} />
+        </div>
+        <div className="space-y-1.5">
+          <span className="text-xs text-muted-foreground">終端</span>
+          <Segmented options={MARKERS} active={s.marker_end ?? 'arrow'} onSelect={(v) => patchStyle({ marker_end: v })} />
         </div>
         <NumberField label="不透明度" value={s.opacity ?? 100} min={0} max={100} unit="%" onChange={(v) => patchStyle({ opacity: v })} />
       </section>

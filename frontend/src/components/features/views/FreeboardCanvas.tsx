@@ -21,16 +21,19 @@ import {
   type Edge,
 } from '@xyflow/react'
 import '@xyflow/react/dist/style.css'
-import { Plus, List, Spline } from 'lucide-react'
+import { Plus, List, Spline, Settings } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { addViewItem, removeViewItem, updateViewItemPosition, addViewEdge, removeViewEdge } from '@/lib/api/views'
 import { useRightPanelStore } from '@/stores/rightPanel'
 import { useUiStore } from '@/stores/ui'
+import { useBoardSettingsStore } from '@/stores/boardSettings'
 import type { ViewItemPlacement, ViewEdge, ViewEdgeStyle } from '@/types/view'
 import type { Item } from '@/types/item'
 import { BoardActionsContext, CardNode, CARD_DEFAULT_W, CARD_DEFAULT_H, type CardNodeType } from './CardNode'
+import { EditableEdge } from './EditableEdge'
 
 const nodeTypes = { card: CardNode }
+const edgeTypes = { editable: EditableEdge }
 // カードノードの既定サイズ（中央寄せ計算・未指定サイズのフォールバック）
 const CARD_W = CARD_DEFAULT_W
 const CARD_H = CARD_DEFAULT_H
@@ -49,26 +52,26 @@ function toNode(placement: ViewItemPlacement): CardNodeType {
 
 type EdgeData = { edgeStyle: ViewEdgeStyle; label: string | null }
 
-// 正規のスタイル(ViewEdgeStyle)から React Flow の描画プロパティを作る。
-// 正本は edge.data に持ち、見た目はここから毎回導出する（往復で欠落しない）。
-function edgeVisuals(style: ViewEdgeStyle | null | undefined, label: string | null | undefined) {
+// 正規のスタイル(ViewEdgeStyle)から React Flow のパス描画プロパティ（stroke/矢印）を作る。
+// ラベルはカスタム edge(EditableEdge) が data から HTML で描画するため、ここでは扱わない。
+function edgeVisuals(style: ViewEdgeStyle | null | undefined) {
   const s = style ?? {}
   const lineOpacity = s.opacity != null ? s.opacity / 100 : undefined
-  const labelOpacity = s.label_opacity != null ? s.label_opacity / 100 : undefined
+  // 既定の線・矢印は黒（濃色）。color を常に確定させることで矢印の塗りも消えない。
+  const strokeColor = s.color || '#1a1a1a'
+  const arrow = { type: MarkerType.ArrowClosed, color: strokeColor }
+  // 既定は終端=矢印・始端=なし。設定で 'none' / 'arrow' を切替。
+  const markerStart = (s.marker_start ?? 'none') === 'arrow' ? arrow : undefined
+  const markerEnd = (s.marker_end ?? 'arrow') === 'arrow' ? arrow : undefined
   return {
-    label: label ?? undefined,
-    markerEnd: { type: MarkerType.ArrowClosed, color: s.color || undefined },
+    markerStart,
+    markerEnd,
     style: {
-      stroke: s.color || undefined,
+      stroke: strokeColor,
       strokeWidth: s.width || undefined,
       strokeDasharray: s.dashed ? '6 4' : undefined,
       opacity: lineOpacity,
     },
-    labelStyle: { fill: s.label_color || undefined, fontSize: s.label_size || undefined, opacity: labelOpacity },
-    labelBgStyle: s.label_bg ? { fill: s.label_bg, opacity: labelOpacity } : undefined,
-    labelShowBg: !!s.label_bg,
-    labelBgPadding: [ 6, 3 ] as [number, number],
-    labelBgBorderRadius: 4,
   }
 }
 
@@ -82,9 +85,9 @@ function viewToEdge(e: ViewEdge): Edge {
     target: e.target,
     sourceHandle: e.source_handle ?? undefined,
     targetHandle: e.target_handle ?? undefined,
-    type: 'smoothstep',
+    type: 'editable',
     data: { edgeStyle: style, label } satisfies EdgeData,
-    ...edgeVisuals(style, label),
+    ...edgeVisuals(style),
   }
 }
 
@@ -120,11 +123,16 @@ function Canvas({ viewId, initialItems, initialEdges }: FreeboardCanvasProps) {
   const openBoardCards = useRightPanelStore((s) => s.openBoardCards)
   const openAddCards = useRightPanelStore((s) => s.openAddCards)
   const openBoardObjects = useRightPanelStore((s) => s.openBoardObjects)
+  const openBoardSettings = useRightPanelStore((s) => s.openBoardSettings)
+  const boardSettings = useBoardSettingsStore((s) => s.settings)
+  const backgroundImageUrl = useBoardSettingsStore((s) => s.backgroundImageUrl)
   const openEdge = useRightPanelStore((s) => s.openEdge)
   const pendingAddItem = useRightPanelStore((s) => s.pendingAddItem)
   const consumeAdd = useRightPanelStore((s) => s.consumeAdd)
   const focusItemId = useRightPanelStore((s) => s.focusItemId)
   const consumeFocus = useRightPanelStore((s) => s.consumeFocus)
+  const focusEdgeId = useRightPanelStore((s) => s.focusEdgeId)
+  const consumeFocusEdge = useRightPanelStore((s) => s.consumeFocusEdge)
   const edgePatch = useRightPanelStore((s) => s.edgePatch)
   const consumeEdgePatch = useRightPanelStore((s) => s.consumeEdgePatch)
   const edgeRemoveId = useRightPanelStore((s) => s.edgeRemoveId)
@@ -196,9 +204,9 @@ function Canvas({ viewId, initialItems, initialEdges }: FreeboardCanvasProps) {
         target: conn.target,
         sourceHandle: conn.sourceHandle ?? undefined,
         targetHandle: conn.targetHandle ?? undefined,
-        type: 'smoothstep',
+        type: 'editable',
         data: { edgeStyle: {}, label: null } satisfies EdgeData,
-        ...edgeVisuals({}, null),
+        ...edgeVisuals({}),
       }
       setEdges((es) => addEdge(newEdge, es))
       addViewEdge(viewId, {
@@ -280,6 +288,20 @@ function Canvas({ viewId, initialItems, initialEdges }: FreeboardCanvasProps) {
     consumeFocus()
   }, [focusItemId, nodes, setCenter, getZoom, consumeFocus])
 
+  // オブジェクト一覧の接続線クリックを消費して、その線（端点ノードの中点）へパンする
+  useEffect(() => {
+    if (!focusEdgeId) return
+    const edge = edges.find((e) => e.id === focusEdgeId)
+    const src = edge && nodes.find((n) => n.id === edge.source)
+    const tgt = edge && nodes.find((n) => n.id === edge.target)
+    if (src && tgt) {
+      const cx = (n: (typeof nodes)[number]) => n.position.x + (n.width ?? CARD_W) / 2
+      const cy = (n: (typeof nodes)[number]) => n.position.y + (n.height ?? CARD_H) / 2
+      setCenter((cx(src) + cx(tgt)) / 2, (cy(src) + cy(tgt)) / 2, { zoom: getZoom(), duration: 350 })
+    }
+    consumeFocusEdge()
+  }, [focusEdgeId, edges, nodes, setCenter, getZoom, consumeFocusEdge])
+
   // 右パネルでの接続線編集を消費して線を更新する
   useEffect(() => {
     if (!edgePatch) return
@@ -297,7 +319,7 @@ function Canvas({ viewId, initialItems, initialEdges }: FreeboardCanvasProps) {
           sourceHandle: changes.source_handle !== undefined ? (changes.source_handle ?? undefined) : e.sourceHandle,
           targetHandle: changes.target_handle !== undefined ? (changes.target_handle ?? undefined) : e.targetHandle,
           data: { edgeStyle: nextStyle, label: nextLabel } satisfies EdgeData,
-          ...edgeVisuals(nextStyle, nextLabel),
+          ...edgeVisuals(nextStyle),
         }
       })
     )
@@ -323,7 +345,7 @@ function Canvas({ viewId, initialItems, initialEdges }: FreeboardCanvasProps) {
         <div className="flex items-center gap-2">
           <Button size="sm" onClick={() => openAddCards(viewId)} className="flex items-center gap-1">
             <Plus size={15} />
-            カードを追加
+            カードを配置
           </Button>
           <Button size="sm" variant="outline" onClick={() => openBoardCards(viewId)} className="flex items-center gap-1">
             <List size={15} />
@@ -333,17 +355,25 @@ function Canvas({ viewId, initialItems, initialEdges }: FreeboardCanvasProps) {
             <Spline size={15} />
             オブジェクト一覧
           </Button>
+          <Button size="sm" variant="outline" onClick={() => openBoardSettings(viewId)} className="flex items-center gap-1">
+            <Settings size={15} />
+            ボード設定
+          </Button>
         </div>
 
         <div
           ref={boardRef}
-          className="relative h-[72vh] w-full overflow-hidden rounded-xl border border-border"
-          style={{ backgroundColor: 'var(--ivory-dark)' }}
+          className="relative h-[72vh] w-full overflow-hidden rounded-xl border border-border bg-center bg-cover"
+          style={{
+            backgroundColor: boardSettings.bg_color || 'var(--ivory-dark)',
+            ...(backgroundImageUrl ? { backgroundImage: `url("${backgroundImageUrl}")` } : {}),
+          }}
         >
           <ReactFlow
             nodes={nodes}
             edges={edges}
             nodeTypes={nodeTypes}
+            edgeTypes={edgeTypes}
             onNodesChange={onNodesChange}
             onEdgesChange={onEdgesChange}
             onNodeDragStop={handleDragStop}
@@ -353,7 +383,7 @@ function Canvas({ viewId, initialItems, initialEdges }: FreeboardCanvasProps) {
             onEdgesDelete={handleEdgesDelete}
             onEdgeClick={handleEdgeClick}
             connectionMode={ConnectionMode.Loose}
-            defaultEdgeOptions={{ type: 'smoothstep', markerEnd: { type: MarkerType.ArrowClosed } }}
+            defaultEdgeOptions={{ type: 'editable' }}
             fitView
             fitViewOptions={{ padding: 0.3, maxZoom: 1 }}
             minZoom={0.2}
@@ -361,15 +391,24 @@ function Canvas({ viewId, initialItems, initialEdges }: FreeboardCanvasProps) {
             proOptions={{ hideAttribution: true }}
             style={{ backgroundColor: 'transparent' }}
           >
-            <Background variant={BackgroundVariant.Dots} gap={22} size={2.4} color="#ffffff" />
-            <Controls showInteractive={false} />
+            {(boardSettings.bg_pattern ?? 'dots') !== 'none' && (
+              <Background
+                variant={boardSettings.bg_pattern === 'grid' ? BackgroundVariant.Lines : BackgroundVariant.Dots}
+                gap={22}
+                size={2.4}
+                color={boardSettings.pattern_color || '#ffffff'}
+              />
+            )}
+            {boardSettings.controls !== false && <Controls showInteractive={false} />}
             {/* 右パネルを開いている間はミニマップをパネル幅ぶん左へ寄せて隠れないようにする */}
-            <MiniMap pannable zoomable style={panelMode === 'closed' ? undefined : { right: panelWidth + 12 }} />
+            {boardSettings.minimap !== false && (
+              <MiniMap pannable zoomable style={panelMode === 'closed' ? undefined : { right: panelWidth + 12 }} />
+            )}
           </ReactFlow>
 
           {nodes.length === 0 && (
             <div className="pointer-events-none absolute inset-0 flex items-center justify-center">
-              <p className="text-sm text-muted-foreground">上の「カードを追加」からカードを置いてみましょう。</p>
+              <p className="text-sm text-muted-foreground">上の「カードを配置」からカードを置いてみましょう。</p>
             </div>
           )}
         </div>
