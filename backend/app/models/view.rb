@@ -7,6 +7,8 @@ class View < ApplicationRecord
   has_many :box_entries, as: :entry, dependent: :destroy
   has_many :view_items, dependent: :destroy
   has_many :items, through: :view_items
+  # freeboard: カード間の接続線（フローチャート）
+  has_many :view_edges, dependent: :destroy
   # カバー（デッキ踏襲）。表紙はキャンバスに配置した Item を指定。
   belongs_to :cover_item, class_name: "Item", optional: true
   has_one_attached :cover_image
@@ -35,6 +37,10 @@ class View < ApplicationRecord
 
   def deck?
     view_type == "deck"
+  end
+
+  def freeboard?
+    view_type == "freeboard"
   end
 
   # カバー候補カード（キャンバスに配置したカードを追加順で）

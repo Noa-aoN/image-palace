@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_07_20_000001) do
+ActiveRecord::Schema[8.1].define(version: 2026_07_20_000002) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
   enable_extension "pgcrypto"
@@ -462,6 +462,19 @@ ActiveRecord::Schema[8.1].define(version: 2026_07_20_000001) do
     t.index ["stripe_customer_id"], name: "index_users_on_stripe_customer_id", unique: true
   end
 
+  create_table "view_edges", id: :uuid, default: -> { "gen_random_uuid()" }, force: :cascade do |t|
+    t.datetime "created_at", null: false
+    t.string "label"
+    t.string "source_handle"
+    t.string "source_node_id", null: false
+    t.jsonb "style", default: {}, null: false
+    t.string "target_handle"
+    t.string "target_node_id", null: false
+    t.datetime "updated_at", null: false
+    t.uuid "view_id", null: false
+    t.index ["view_id"], name: "index_view_edges_on_view_id"
+  end
+
   create_table "view_items", id: :uuid, default: -> { "gen_random_uuid()" }, force: :cascade do |t|
     t.datetime "created_at", null: false
     t.float "height"
@@ -541,6 +554,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_07_20_000001) do
   add_foreign_key "subscriptions", "plans", on_delete: :restrict
   add_foreign_key "subscriptions", "users", on_delete: :cascade
   add_foreign_key "tags", "users", on_delete: :cascade
+  add_foreign_key "view_edges", "views"
   add_foreign_key "view_items", "items", on_delete: :cascade
   add_foreign_key "view_items", "space_points", on_delete: :cascade
   add_foreign_key "view_items", "views", on_delete: :cascade

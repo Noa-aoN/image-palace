@@ -83,6 +83,8 @@ module Api
       # カードを外す
       def remove_item
         @view.view_items.find_by(item_id: params[:item_id])&.destroy!
+        # そのカードを端点に持つ接続線も掃除する（孤児 edge を残さない）
+        @view.view_edges.where("source_node_id = :id OR target_node_id = :id", id: params[:item_id]).delete_all
         head :no_content
       end
 
@@ -193,7 +195,10 @@ module Api
         placements = view.view_items
                          .includes(item: [ :item_type, { medias: { file_attachment: :blob } } ])
                          .order(order)
-        serialize_view(view).merge(items: placements.map { |vi| serialize_placement(vi) })
+        base = serialize_view(view).merge(items: placements.map { |vi| serialize_placement(vi) })
+        # freeboard のみ接続線を返す（deck は順序のみ）
+        base = base.merge(edges: view.view_edges.map { |edge| serialize_edge(edge) }) if view.freeboard?
+        base
       end
 
       # space_map: スペースのポイント一覧（序数＋名前＋ポイント画像）と、各ポイントへの配置カードを返す
@@ -236,6 +241,18 @@ module Api
           height: view_item.height,
           position: view_item.position,
           item: serialize_item(view_item.item)
+        }
+      end
+
+      def serialize_edge(edge)
+        {
+          id: edge.id,
+          source: edge.source_node_id,
+          target: edge.target_node_id,
+          source_handle: edge.source_handle,
+          target_handle: edge.target_handle,
+          label: edge.label,
+          style: edge.style
         }
       end
     end
