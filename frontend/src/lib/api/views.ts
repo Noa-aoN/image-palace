@@ -1,6 +1,25 @@
 import { apiClient } from './client'
-import type { View, ViewDetail, ViewItemPlacement, SpaceMapPoint } from '@/types/view'
+import type { View, ViewDetail, ViewItemPlacement, ViewEdge, SpaceMapPoint } from '@/types/view'
 import type { CoverType } from '@/types/cover'
+
+// freeboard の接続線 API の入力
+export type ViewEdgeInput = {
+  source_node_id?: string
+  target_node_id?: string
+  source_handle?: string | null
+  target_handle?: string | null
+  label?: string | null
+  style?: {
+    color?: string
+    dashed?: boolean
+    width?: number
+    opacity?: number
+    label_color?: string
+    label_size?: number
+    label_bg?: string
+    label_opacity?: number
+  }
+}
 
 export async function getViews(): Promise<View[]> {
   const res = await apiClient.get<{ views: View[] }>('/api/v1/views')
@@ -55,6 +74,23 @@ export async function addDeckCard(viewId: string, itemId: string): Promise<void>
 // deck: カードの並び替え（ordered_item_ids の順に position を振り直す）
 export async function reorderDeckCards(viewId: string, orderedItemIds: string[]): Promise<void> {
   await apiClient.patch(`/api/v1/views/${viewId}/reorder`, { ordered_item_ids: orderedItemIds })
+}
+
+// freeboard: 接続線を作成する
+export async function addViewEdge(viewId: string, payload: ViewEdgeInput): Promise<ViewEdge> {
+  const res = await apiClient.post<ViewEdge>(`/api/v1/views/${viewId}/edges`, payload)
+  return res.data
+}
+
+// freeboard: 接続線を更新する（ラベル・スタイル・向き反転）
+export async function updateViewEdge(viewId: string, edgeId: string, patch: ViewEdgeInput): Promise<ViewEdge> {
+  const res = await apiClient.patch<ViewEdge>(`/api/v1/views/${viewId}/edges/${edgeId}`, patch)
+  return res.data
+}
+
+// freeboard: 接続線を削除する
+export async function removeViewEdge(viewId: string, edgeId: string): Promise<void> {
+  await apiClient.delete(`/api/v1/views/${viewId}/edges/${edgeId}`)
 }
 
 export async function createView(

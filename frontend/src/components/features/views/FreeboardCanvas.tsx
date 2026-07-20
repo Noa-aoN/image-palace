@@ -8,18 +8,25 @@ import {
   MiniMap,
   ReactFlow,
   ReactFlowProvider,
+  addEdge,
   useNodesState,
+  useEdgesState,
   useReactFlow,
+  ConnectionMode,
+  MarkerType,
   type OnNodeDrag,
   type NodeMouseHandler,
+  type OnConnect,
+  type EdgeMouseHandler,
+  type Edge,
 } from '@xyflow/react'
 import '@xyflow/react/dist/style.css'
-import { Plus, List } from 'lucide-react'
+import { Plus, List, Spline } from 'lucide-react'
 import { Button } from '@/components/ui/button'
-import { addViewItem, removeViewItem, updateViewItemPosition } from '@/lib/api/views'
+import { addViewItem, removeViewItem, updateViewItemPosition, addViewEdge, removeViewEdge } from '@/lib/api/views'
 import { useRightPanelStore } from '@/stores/rightPanel'
 import { useUiStore } from '@/stores/ui'
-import type { ViewItemPlacement } from '@/types/view'
+import type { ViewItemPlacement, ViewEdge, ViewEdgeStyle } from '@/types/view'
 import type { Item } from '@/types/item'
 import { BoardActionsContext, CardNode, CARD_DEFAULT_W, CARD_DEFAULT_H, type CardNodeType } from './CardNode'
 
@@ -40,14 +47,71 @@ function toNode(placement: ViewItemPlacement): CardNodeType {
   }
 }
 
+type EdgeData = { edgeStyle: ViewEdgeStyle; label: string | null }
+
+// 正規のスタイル(ViewEdgeStyle)から React Flow の描画プロパティを作る。
+// 正本は edge.data に持ち、見た目はここから毎回導出する（往復で欠落しない）。
+function edgeVisuals(style: ViewEdgeStyle | null | undefined, label: string | null | undefined) {
+  const s = style ?? {}
+  const lineOpacity = s.opacity != null ? s.opacity / 100 : undefined
+  const labelOpacity = s.label_opacity != null ? s.label_opacity / 100 : undefined
+  return {
+    label: label ?? undefined,
+    markerEnd: { type: MarkerType.ArrowClosed, color: s.color || undefined },
+    style: {
+      stroke: s.color || undefined,
+      strokeWidth: s.width || undefined,
+      strokeDasharray: s.dashed ? '6 4' : undefined,
+      opacity: lineOpacity,
+    },
+    labelStyle: { fill: s.label_color || undefined, fontSize: s.label_size || undefined, opacity: labelOpacity },
+    labelBgStyle: s.label_bg ? { fill: s.label_bg, opacity: labelOpacity } : undefined,
+    labelShowBg: !!s.label_bg,
+    labelBgPadding: [ 6, 3 ] as [number, number],
+    labelBgBorderRadius: 4,
+  }
+}
+
+// ViewEdge(サーバ) → React Flow の Edge
+function viewToEdge(e: ViewEdge): Edge {
+  const style = e.style ?? {}
+  const label = e.label ?? null
+  return {
+    id: e.id,
+    source: e.source,
+    target: e.target,
+    sourceHandle: e.source_handle ?? undefined,
+    targetHandle: e.target_handle ?? undefined,
+    type: 'smoothstep',
+    data: { edgeStyle: style, label } satisfies EdgeData,
+    ...edgeVisuals(style, label),
+  }
+}
+
+// React Flow の Edge → ViewEdge スナップショット（右パネル編集用）。正本は data から取る。
+function edgeToView(e: Edge): ViewEdge {
+  const d = (e.data ?? {}) as Partial<EdgeData>
+  return {
+    id: e.id,
+    source: e.source,
+    target: e.target,
+    source_handle: e.sourceHandle ?? null,
+    target_handle: e.targetHandle ?? null,
+    label: d.label ?? (typeof e.label === 'string' ? e.label : null),
+    style: d.edgeStyle ?? {},
+  }
+}
+
 type FreeboardCanvasProps = {
   viewId: string
   initialItems: ViewItemPlacement[]
+  initialEdges: ViewEdge[]
 }
 
-function Canvas({ viewId, initialItems }: FreeboardCanvasProps) {
+function Canvas({ viewId, initialItems, initialEdges }: FreeboardCanvasProps) {
   const boardRef = useRef<HTMLDivElement>(null)
   const [nodes, setNodes, onNodesChange] = useNodesState<CardNodeType>(initialItems.map(toNode))
+  const [edges, setEdges, onEdgesChange] = useEdgesState<Edge>(initialEdges.map(viewToEdge))
   const { screenToFlowPosition, setCenter, getZoom } = useReactFlow()
 
   const panelMode = useRightPanelStore((s) => s.mode)
@@ -55,22 +119,30 @@ function Canvas({ viewId, initialItems }: FreeboardCanvasProps) {
   const openCard = useRightPanelStore((s) => s.openCard)
   const openBoardCards = useRightPanelStore((s) => s.openBoardCards)
   const openAddCards = useRightPanelStore((s) => s.openAddCards)
+  const openBoardObjects = useRightPanelStore((s) => s.openBoardObjects)
+  const openEdge = useRightPanelStore((s) => s.openEdge)
   const pendingAddItem = useRightPanelStore((s) => s.pendingAddItem)
   const consumeAdd = useRightPanelStore((s) => s.consumeAdd)
   const focusItemId = useRightPanelStore((s) => s.focusItemId)
   const consumeFocus = useRightPanelStore((s) => s.consumeFocus)
+  const edgePatch = useRightPanelStore((s) => s.edgePatch)
+  const consumeEdgePatch = useRightPanelStore((s) => s.consumeEdgePatch)
+  const edgeRemoveId = useRightPanelStore((s) => s.edgeRemoveId)
+  const consumeEdgeRemove = useRightPanelStore((s) => s.consumeEdgeRemove)
 
   const placedIds = useMemo(() => new Set(nodes.map((n) => n.id)), [nodes])
 
   const handleRemove = useCallback(
     (itemId: string) => {
       setNodes((ns) => ns.filter((n) => n.id !== itemId))
+      // そのカードを端点に持つ接続線もローカルから除去（サーバ側は remove_item が掃除する）
+      setEdges((es) => es.filter((e) => e.source !== itemId && e.target !== itemId))
       removeViewItem(viewId, itemId).catch(() => {})
     },
-    [viewId, setNodes]
+    [viewId, setNodes, setEdges]
   )
 
-  // ドラッグ完了時に座標を保存（onNodeDragStop はドラッグ毎に1回だけ発火する）
+  // ドラッグ完了時に座標を保存
   const handleDragStop: OnNodeDrag<CardNodeType> = useCallback(
     (_event, node) => {
       updateViewItemPosition(viewId, node.id, {
@@ -81,7 +153,7 @@ function Canvas({ viewId, initialItems }: FreeboardCanvasProps) {
     [viewId]
   )
 
-  // リサイズ確定時にサイズと座標を保存（左上以外を掴むと位置も動くため x,y も送る）
+  // リサイズ確定時にサイズと座標を保存
   const handleResizeEnd = useCallback(
     (itemId: string, size: { x: number; y: number; width: number; height: number }) => {
       updateViewItemPosition(viewId, itemId, {
@@ -105,7 +177,7 @@ function Canvas({ viewId, initialItems }: FreeboardCanvasProps) {
     [viewId, setNodes]
   )
 
-  // カードクリックで右パネルにそのカードの詳細を開く
+  // カードクリックで右パネルに詳細を開く
   const handleNodeClick: NodeMouseHandler<CardNodeType> = useCallback(
     (_event, node) => {
       openCard(node.id, viewId)
@@ -113,17 +185,61 @@ function Canvas({ viewId, initialItems }: FreeboardCanvasProps) {
     [openCard, viewId]
   )
 
+  // ハンドルをドラッグして接続線を作る
+  const handleConnect: OnConnect = useCallback(
+    (conn) => {
+      if (!conn.source || !conn.target) return
+      const tempId = `tmp-${crypto.randomUUID()}`
+      const newEdge: Edge = {
+        id: tempId,
+        source: conn.source,
+        target: conn.target,
+        sourceHandle: conn.sourceHandle ?? undefined,
+        targetHandle: conn.targetHandle ?? undefined,
+        type: 'smoothstep',
+        data: { edgeStyle: {}, label: null } satisfies EdgeData,
+        ...edgeVisuals({}, null),
+      }
+      setEdges((es) => addEdge(newEdge, es))
+      addViewEdge(viewId, {
+        source_node_id: conn.source,
+        target_node_id: conn.target,
+        source_handle: conn.sourceHandle,
+        target_handle: conn.targetHandle,
+      })
+        .then((saved) => setEdges((es) => es.map((e) => (e.id === tempId ? { ...e, id: saved.id } : e))))
+        .catch(() => setEdges((es) => es.filter((e) => e.id !== tempId)))
+    },
+    [viewId, setEdges]
+  )
+
+  // 選択＋Delete で接続線を削除
+  const handleEdgesDelete = useCallback(
+    (deleted: Edge[]) => {
+      deleted.forEach((e) => {
+        if (!e.id.startsWith('tmp-')) removeViewEdge(viewId, e.id).catch(() => {})
+      })
+    },
+    [viewId]
+  )
+
+  // 接続線クリックで右パネルの編集を開く
+  const handleEdgeClick: EdgeMouseHandler = useCallback(
+    (_event, edge) => {
+      openEdge(viewId, edgeToView(edge))
+    },
+    [openEdge, viewId]
+  )
+
   const handleAdd = useCallback(
     (item: Item) => {
       if (placedIds.has(item.id)) return
 
-      // 表示中のボード中央の座標に置く（ボード要素の中心 → フロー座標）
       const rect = boardRef.current?.getBoundingClientRect()
       const screenCenter = rect
         ? { x: rect.left + rect.width / 2, y: rect.top + rect.height / 2 }
         : { x: window.innerWidth / 2, y: window.innerHeight / 2 }
       const flow = screenToFlowPosition(screenCenter)
-      // 連続追加で完全に重ならないよう少しずつずらす
       const offset = (nodes.length % 6) * 26
       const x = Math.round(flow.x - CARD_W / 2 + offset)
       const y = Math.round(flow.y - CARD_H / 2 + offset)
@@ -136,11 +252,9 @@ function Canvas({ viewId, initialItems }: FreeboardCanvasProps) {
         item: { id: item.id, title: item.title, generation_status: item.generation_status, media: item.media },
       }
       setNodes((ns) => [...ns, toNode(placement)])
-      // 追加したカードへパンして必ず見えるようにする
       setCenter(x + CARD_W / 2, y + CARD_H / 2, { zoom: getZoom(), duration: 350 })
 
       addViewItem(viewId, item.id, x, y).catch(() => {
-        // 失敗したらロールバック
         setNodes((ns) => ns.filter((n) => n.id !== item.id))
       })
     },
@@ -166,6 +280,37 @@ function Canvas({ viewId, initialItems }: FreeboardCanvasProps) {
     consumeFocus()
   }, [focusItemId, nodes, setCenter, getZoom, consumeFocus])
 
+  // 右パネルでの接続線編集を消費して線を更新する
+  useEffect(() => {
+    if (!edgePatch) return
+    const { id, changes } = edgePatch
+    setEdges((es) =>
+      es.map((e) => {
+        if (e.id !== id) return e
+        const prev = (e.data ?? {}) as Partial<EdgeData>
+        const nextStyle = changes.style !== undefined ? (changes.style ?? {}) : (prev.edgeStyle ?? {})
+        const nextLabel = changes.label !== undefined ? (changes.label ?? null) : (prev.label ?? null)
+        return {
+          ...e,
+          source: changes.source ?? e.source,
+          target: changes.target ?? e.target,
+          sourceHandle: changes.source_handle !== undefined ? (changes.source_handle ?? undefined) : e.sourceHandle,
+          targetHandle: changes.target_handle !== undefined ? (changes.target_handle ?? undefined) : e.targetHandle,
+          data: { edgeStyle: nextStyle, label: nextLabel } satisfies EdgeData,
+          ...edgeVisuals(nextStyle, nextLabel),
+        }
+      })
+    )
+    consumeEdgePatch()
+  }, [edgePatch, setEdges, consumeEdgePatch])
+
+  // 右パネルでの接続線削除を消費して線を除去する
+  useEffect(() => {
+    if (!edgeRemoveId) return
+    setEdges((es) => es.filter((e) => e.id !== edgeRemoveId))
+    consumeEdgeRemove()
+  }, [edgeRemoveId, setEdges, consumeEdgeRemove])
+
   const boardActions = useMemo(
     () => ({ onRemove: handleRemove, onResizeEnd: handleResizeEnd }),
     [handleRemove, handleResizeEnd]
@@ -182,7 +327,11 @@ function Canvas({ viewId, initialItems }: FreeboardCanvasProps) {
           </Button>
           <Button size="sm" variant="outline" onClick={() => openBoardCards(viewId)} className="flex items-center gap-1">
             <List size={15} />
-            一覧
+            配置カード一覧
+          </Button>
+          <Button size="sm" variant="outline" onClick={() => openBoardObjects(viewId)} className="flex items-center gap-1">
+            <Spline size={15} />
+            オブジェクト一覧
           </Button>
         </div>
 
@@ -193,11 +342,18 @@ function Canvas({ viewId, initialItems }: FreeboardCanvasProps) {
         >
           <ReactFlow
             nodes={nodes}
+            edges={edges}
             nodeTypes={nodeTypes}
             onNodesChange={onNodesChange}
+            onEdgesChange={onEdgesChange}
             onNodeDragStop={handleDragStop}
             onNodeClick={handleNodeClick}
             onNodeDoubleClick={handleNodeDoubleClick}
+            onConnect={handleConnect}
+            onEdgesDelete={handleEdgesDelete}
+            onEdgeClick={handleEdgeClick}
+            connectionMode={ConnectionMode.Loose}
+            defaultEdgeOptions={{ type: 'smoothstep', markerEnd: { type: MarkerType.ArrowClosed } }}
             fitView
             fitViewOptions={{ padding: 0.3, maxZoom: 1 }}
             minZoom={0.2}

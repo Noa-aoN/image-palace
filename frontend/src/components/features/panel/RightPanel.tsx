@@ -9,6 +9,8 @@ import { useUiStore } from '@/stores/ui'
 import { ItemDetailBody } from '@/components/features/items/ItemDetailBody'
 import { BoardCardsList } from './BoardCardsList'
 import { AddCardsBody } from './AddCardsBody'
+import { ObjectList } from './ObjectList'
+import { EdgePropertiesBody } from './EdgePropertiesBody'
 import { PanelShell } from './PanelShell'
 
 const MIN_W = 300
@@ -20,8 +22,10 @@ export function RightPanel() {
   const mode = useRightPanelStore((s) => s.mode)
   const itemId = useRightPanelStore((s) => s.itemId)
   const viewId = useRightPanelStore((s) => s.viewId)
+  const edge = useRightPanelStore((s) => s.edge)
   const close = useRightPanelStore((s) => s.close)
   const openBoardCards = useRightPanelStore((s) => s.openBoardCards)
+  const openBoardObjects = useRightPanelStore((s) => s.openBoardObjects)
   const width = useUiStore((s) => s.rightPanelWidth)
   const setWidth = useUiStore((s) => s.setRightPanelWidth)
   const pathname = usePathname()
@@ -52,8 +56,24 @@ export function RightPanel() {
 
   if (mode === 'closed') return null
 
-  // カード詳細モードは「＜ カード一覧」の戻るラベルで文脈が分かるためタイトルは省略する。
-  const title = mode === 'board-cards' ? 'ボードのカード' : mode === 'add-cards' ? 'カードを追加' : undefined
+  // 詳細/編集モードは戻るラベルで文脈が分かるためタイトルは省略する。
+  const title =
+    mode === 'board-cards'
+      ? '配置カード一覧'
+      : mode === 'add-cards'
+        ? 'カードを追加'
+        : mode === 'board-objects'
+          ? 'オブジェクト一覧'
+          : undefined
+
+  // 一覧 > 詳細 の親子関係。詳細/編集からは対応する一覧へ戻す。
+  const onBack =
+    mode === 'card' && viewId
+      ? () => openBoardCards(viewId)
+      : mode === 'edge' && viewId
+        ? () => openBoardObjects(viewId)
+        : undefined
+  const backLabel = mode === 'card' ? '配置カード一覧' : mode === 'edge' ? 'オブジェクト一覧' : undefined
 
   return (
     <aside
@@ -72,8 +92,8 @@ export function RightPanel() {
       />
       <PanelShell
         title={title}
-        onBack={mode === 'card' && viewId ? () => openBoardCards(viewId) : undefined}
-        backLabel="カード一覧"
+        onBack={onBack}
+        backLabel={backLabel}
         onClose={close}
         headerAction={
           mode === 'card' && itemId ? (
@@ -92,6 +112,8 @@ export function RightPanel() {
         {mode === 'card' && itemId && <ItemDetailBody itemId={itemId} />}
         {mode === 'board-cards' && viewId && <BoardCardsList viewId={viewId} />}
         {mode === 'add-cards' && viewId && <AddCardsBody viewId={viewId} />}
+        {mode === 'board-objects' && viewId && <ObjectList viewId={viewId} />}
+        {mode === 'edge' && viewId && edge && <EdgePropertiesBody key={edge.id} viewId={viewId} />}
       </PanelShell>
     </aside>
   )
