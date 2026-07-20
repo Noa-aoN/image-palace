@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_07_21_000000) do
+ActiveRecord::Schema[8.1].define(version: 2026_07_21_000001) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
   enable_extension "pgcrypto"
@@ -465,6 +465,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_07_21_000000) do
   create_table "view_edges", id: :uuid, default: -> { "gen_random_uuid()" }, force: :cascade do |t|
     t.datetime "created_at", null: false
     t.string "label"
+    t.jsonb "points", default: [], null: false
     t.string "source_handle"
     t.string "source_node_id", null: false
     t.jsonb "style", default: {}, null: false

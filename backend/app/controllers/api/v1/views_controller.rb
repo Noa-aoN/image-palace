@@ -282,7 +282,8 @@ module Api
           source_handle: edge.source_handle,
           target_handle: edge.target_handle,
           label: edge.label,
-          style: edge.style
+          style: edge.style,
+          points: edge.points
         }
       end
     end

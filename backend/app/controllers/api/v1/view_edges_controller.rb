@@ -35,7 +35,8 @@ module Api
         params.permit(
           :source_node_id, :target_node_id, :source_handle, :target_handle, :label,
           style: [ :color, :dashed, :width, :opacity, :marker_start, :marker_end,
-                   :label_color, :label_size, :label_bg, :label_opacity, :label_vertical ]
+                   :label_color, :label_size, :label_bg, :label_opacity, :label_vertical ],
+          points: [ :x, :y ]
         )
       end
 
@@ -47,7 +48,8 @@ module Api
           source_handle: edge.source_handle,
           target_handle: edge.target_handle,
           label: edge.label,
-          style: edge.style
+          style: edge.style,
+          points: edge.points
         }
       end
     end

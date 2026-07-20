@@ -28,6 +28,18 @@ RSpec.describe "Api::V1::Views edges (freeboard)", type: :request do
       expect(view.view_edges.count).to eq(1)
     end
 
+    it "手動折れ点(points)を保存・取得する" do
+      post "/api/v1/views/#{view.id}/edges",
+        params: {
+          source_node_id: item_a.id, target_node_id: item_b.id,
+          points: [ { x: 10, y: 20 }, { x: 30, y: 40 } ]
+        }, headers: headers, as: :json
+
+      expect(response).to have_http_status(:created)
+      expect(json_response["points"]).to eq([ { "x" => 10, "y" => 20 }, { "x" => 30, "y" => 40 } ])
+      expect(view.view_edges.last.points.size).to eq(2)
+    end
+
     it "source/target が無いと 422" do
       post "/api/v1/views/#{view.id}/edges", params: { source_node_id: item_a.id }, headers: headers
       expect(response).to have_http_status(:unprocessable_entity)
