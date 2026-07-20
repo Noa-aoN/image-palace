@@ -14,6 +14,8 @@ class View < ApplicationRecord
   has_one_attached :cover_image
   # 一覧用サムネ（480px WebP）。CDN 直配信のためアップロード時に作成する。
   has_one_attached :cover_thumb
+  # freeboard: ボードの背景画像（任意）
+  has_one_attached :background_image
 
   NAME_MAX_LENGTH = 100
   # freeboard / space_map / deck を実装。他は種別を仮置き（詳細画面は「準備中」表示）。

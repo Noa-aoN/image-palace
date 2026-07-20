@@ -34,7 +34,8 @@ module Api
       def edge_params
         params.permit(
           :source_node_id, :target_node_id, :source_handle, :target_handle, :label,
-          style: [ :color, :dashed, :width, :opacity, :label_color, :label_size, :label_bg, :label_opacity ]
+          style: [ :color, :dashed, :width, :opacity, :marker_start, :marker_end,
+                   :label_color, :label_size, :label_bg, :label_opacity, :label_vertical ]
         )
       end
 

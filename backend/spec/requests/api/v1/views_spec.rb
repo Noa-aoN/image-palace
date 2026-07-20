@@ -150,4 +150,37 @@ RSpec.describe "Api::V1::Views", type: :request do
       expect(deck_view.view_items.order(:position).pluck(:item_id)).to eq([ card_b.id, card_a.id ])
     end
   end
+
+  describe "ボード設定 (settings)" do
+    it "settings を保存し詳細で返す" do
+      view = user.views.create!(name: "board")
+
+      patch "/api/v1/views/#{view.id}",
+        params: { view: { settings: { bg_color: "#111111", bg_pattern: "grid", minimap: false, controls: true } } },
+        headers:, as: :json
+
+      expect(response).to have_http_status(:success)
+      view.reload
+      expect(view.settings["bg_pattern"]).to eq("grid")
+      expect(view.settings["minimap"]).to be(false)
+
+      get "/api/v1/views/#{view.id}", headers:, as: :json
+      expect(json_response["settings"]["bg_color"]).to eq("#111111")
+    end
+  end
+
+  describe "背景画像" do
+    let(:view) { user.views.create!(name: "board") }
+
+    it "ファイル未指定は 422" do
+      post "/api/v1/views/#{view.id}/background_image", headers:, as: :json
+      expect(response).to have_http_status(:unprocessable_content)
+    end
+
+    it "未添付でも DELETE は成功する（background_image は nil）" do
+      delete "/api/v1/views/#{view.id}/background_image", headers:, as: :json
+      expect(response).to have_http_status(:success)
+      expect(json_response["background_image"]).to be_nil
+    end
+  end
 end

@@ -6,7 +6,7 @@ module Api
 
       before_action :set_view, only: [
         :show, :update, :destroy, :add_item, :update_item, :remove_item, :reorder, :place_on_point, :clear_point,
-        :upload_cover, :remove_cover
+        :upload_cover, :remove_cover, :upload_background, :remove_background
       ]
 
       def index
@@ -124,6 +124,23 @@ module Api
         render json: serialize_view(@view)
       end
 
+      # POST /api/v1/views/:id/background_image （multipart: background_image）
+      def upload_background
+        file = params[:background_image]
+        return render(json: { errors: [ "画像が指定されていません" ] }, status: :unprocessable_entity) if file.blank?
+
+        attach_optimized_image!(@view.background_image, file)
+        render json: serialize_view(@view)
+      rescue CoverImageUpload::InvalidCover => e
+        render json: { errors: [ e.message ] }, status: :unprocessable_entity
+      end
+
+      # DELETE /api/v1/views/:id/background_image
+      def remove_background
+        @view.background_image.purge if @view.background_image.attached?
+        render json: serialize_view(@view)
+      end
+
       # space_map: ポイントからカードを外す
       def clear_point
         @view.view_items.find_by(space_point_id: params[:space_point_id])&.destroy!
@@ -151,7 +168,10 @@ module Api
       end
 
       def view_update_params
-        params.require(:view).permit(:name, :cover_item_id, :cover_type)
+        params.require(:view).permit(
+          :name, :cover_item_id, :cover_type,
+          settings: [ :bg_color, :bg_pattern, :pattern_color, :card_font_size, :minimap, :controls ]
+        )
       end
 
       # 表紙はキャンバスに配置したカードのみ指定可能
@@ -183,6 +203,8 @@ module Api
           cover: serialize_media(view.cover&.primary_media),
           cover_images: view.cover_cards.map { |item| serialize_media(item.primary_media) }.compact,
           cover_image: serialize_attached_cover(view),
+          settings: view.settings,
+          background_image: serialize_attached_background(view),
           created_at: view.created_at
         }
       end
@@ -242,6 +264,14 @@ module Api
           position: view_item.position,
           item: serialize_item(view_item.item)
         }
+      end
+
+      def serialize_attached_background(view)
+        attachment = view.background_image
+        return nil unless attachment.attached?
+        return nil unless blob_available?(attachment.blob)
+
+        { url: media_url(attachment.blob) }
       end
 
       def serialize_edge(edge)

@@ -94,6 +94,9 @@ Rails.application.routes.draw do
           patch "reorder", action: :reorder
           post "cover_image", action: :upload_cover
           delete "cover_image", action: :remove_cover
+          # freeboard: ボード背景画像
+          post "background_image", action: :upload_background
+          delete "background_image", action: :remove_background
           # space_map 種別: スペースのポイントへカードを配置/クリア
           post "points/:space_point_id", action: :place_on_point
           delete "points/:space_point_id", action: :clear_point

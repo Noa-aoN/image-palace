@@ -58,6 +58,18 @@ RSpec.describe "Api::V1::Views edges (freeboard)", type: :request do
       expect(edge.style["dashed"]).to be(true)
       expect(edge.source_node_id).to eq(item_b.id)
     end
+
+    it "始端・終端マーカーを保存する" do
+      edge = create(:view_edge, view: view, source_node_id: item_a.id, target_node_id: item_b.id)
+
+      patch "/api/v1/views/#{view.id}/edges/#{edge.id}",
+        params: { style: { marker_start: "arrow", marker_end: "none" } }, headers: headers, as: :json
+
+      expect(response).to have_http_status(:success)
+      edge.reload
+      expect(edge.style["marker_start"]).to eq("arrow")
+      expect(edge.style["marker_end"]).to eq("none")
+    end
   end
 
   describe "DELETE /api/v1/views/:id/edges/:edge_id" do

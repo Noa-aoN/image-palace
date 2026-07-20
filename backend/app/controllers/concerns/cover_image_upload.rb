@@ -32,4 +32,19 @@ module CoverImageUpload
       content_type: "image/webp"
     )
   end
+
+  # ボード背景など、サムネ不要の単一画像を最適化して添付する（attach 先を引数で指定）。
+  def attach_optimized_image!(attachment, file)
+    require "stringio"
+    raise InvalidCover, "画像が大きすぎます（10MB まで）" if file.size.to_i > MAX_UPLOAD_BYTES
+
+    optimized = OptimizeImageService.call(image_data: file.read, content_type: file.content_type)
+    raise InvalidCover, "画像として読み込めませんでした。別のファイルでお試しください。" unless optimized.extension == "webp"
+
+    attachment.attach(
+      io: StringIO.new(optimized.data),
+      filename: "#{SecureRandom.uuid}.webp",
+      content_type: "image/webp"
+    )
+  end
 end
