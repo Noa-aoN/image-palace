@@ -80,6 +80,16 @@ export async function reorderDeckCards(viewId: string, orderedItemIds: string[])
   await apiClient.patch(`/api/v1/views/${viewId}/reorder`, { ordered_item_ids: orderedItemIds })
 }
 
+// freeboard: レイヤー順の並び替え（先頭=手前。サーバが z_index を振り直す）
+export async function reorderBoardLayers(viewId: string, frontToBackItemIds: string[]): Promise<void> {
+  await apiClient.patch(`/api/v1/views/${viewId}/reorder`, { ordered_item_ids: frontToBackItemIds })
+}
+
+// freeboard: 接続線のレイヤー順を並び替える（先頭=手前。サーバが z_index を振り直す）
+export async function reorderViewEdges(viewId: string, frontToBackEdgeIds: string[]): Promise<void> {
+  await apiClient.patch(`/api/v1/views/${viewId}/edges/reorder`, { ordered_edge_ids: frontToBackEdgeIds })
+}
+
 // freeboard: 接続線を作成する
 export async function addViewEdge(viewId: string, payload: ViewEdgeInput): Promise<ViewEdge> {
   const res = await apiClient.post<ViewEdge>(`/api/v1/views/${viewId}/edges`, payload)

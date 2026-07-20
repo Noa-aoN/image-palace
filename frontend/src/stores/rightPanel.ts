@@ -32,6 +32,7 @@ interface RightPanelState {
   bulkStylePatch: { edgeIds: string[]; partial: Partial<ViewEdgeStyle> } | null // 接続線スタイル一括
   bulkResize: { itemIds: string[]; width: number; height: number } | null // カードサイズ揃え
   bulkRemove: { itemIds: string[]; edgeIds: string[] } | null // まとめて削除
+  layerPatch: { id: string; z: number }[] | null // 一覧の並べ替え → ボードが重なり順を再適用
 
   openCard: (itemId: string, viewId?: string | null) => void
   openBoardCards: (viewId: string) => void
@@ -57,6 +58,8 @@ interface RightPanelState {
   consumeBulkResize: () => void
   requestBulkRemove: (itemIds: string[], edgeIds: string[]) => void
   consumeBulkRemove: () => void
+  requestLayerPatch: (updates: { id: string; z: number }[]) => void
+  consumeLayerPatch: () => void
 }
 
 export const useRightPanelStore = create<RightPanelState>()((set) => ({
@@ -74,6 +77,7 @@ export const useRightPanelStore = create<RightPanelState>()((set) => ({
   bulkStylePatch: null,
   bulkResize: null,
   bulkRemove: null,
+  layerPatch: null,
 
   // viewId 省略時は既存のボード文脈を保持する（ボードから開いたカード詳細で往復できるように）
   openCard: (itemId, viewId) => set((s) => ({ mode: 'card', itemId, viewId: viewId ?? s.viewId })),
@@ -111,4 +115,6 @@ export const useRightPanelStore = create<RightPanelState>()((set) => ({
   consumeBulkResize: () => set({ bulkResize: null }),
   requestBulkRemove: (itemIds, edgeIds) => set({ bulkRemove: { itemIds, edgeIds } }),
   consumeBulkRemove: () => set({ bulkRemove: null }),
+  requestLayerPatch: (updates) => set({ layerPatch: updates }),
+  consumeLayerPatch: () => set({ layerPatch: null }),
 }))

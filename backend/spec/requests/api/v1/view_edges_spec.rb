@@ -84,6 +84,29 @@ RSpec.describe "Api::V1::Views edges (freeboard)", type: :request do
     end
   end
 
+  describe "PATCH /api/v1/views/:id/edges/reorder" do
+    it "ordered_edge_ids の順に z_index を振り直す（先頭=手前=最大）" do
+      edge_a = create(:view_edge, view: view, source_node_id: item_a.id, target_node_id: item_b.id, z_index: 0)
+      edge_b = create(:view_edge, view: view, source_node_id: item_b.id, target_node_id: item_a.id, z_index: 0)
+
+      patch "/api/v1/views/#{view.id}/edges/reorder",
+        params: { ordered_edge_ids: [ edge_b.id, edge_a.id ] }, headers: headers, as: :json
+
+      expect(response).to have_http_status(:no_content)
+      expect(edge_b.reload.z_index).to eq(2)
+      expect(edge_a.reload.z_index).to eq(1)
+    end
+
+    it "詳細は z_index 昇順で edges を返す" do
+      create(:view_edge, view: view, source_node_id: item_a.id, target_node_id: item_b.id, z_index: 2, label: "front")
+      create(:view_edge, view: view, source_node_id: item_b.id, target_node_id: item_a.id, z_index: 1, label: "back")
+
+      get "/api/v1/views/#{view.id}", headers: headers
+
+      expect(json_response["edges"].map { |e| e["label"] }).to eq([ "back", "front" ])
+    end
+  end
+
   describe "DELETE /api/v1/views/:id/edges/:edge_id" do
     it "接続線を削除する" do
       edge = create(:view_edge, view: view)

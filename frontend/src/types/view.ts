@@ -92,6 +92,7 @@ export interface ViewEdge {
   label?: string | null
   style?: ViewEdgeStyle | null
   points?: EdgePoint[] | null // 手動折れ点（空=自動ルーティング）
+  z_index?: number // 重なり順（大きいほど手前）
 }
 
 export interface ViewDetail extends View {

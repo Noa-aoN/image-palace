@@ -74,7 +74,9 @@ module Api
         ids = Array(params[:ordered_item_ids])
         ViewItem.transaction do
           ids.each_with_index do |item_id, index|
-            @view.view_items.where(item_id: item_id).update_all(position: index + 1, updated_at: Time.current)
+            # デッキは position（先頭=1）。フリーボード等はレイヤー＝z_index（先頭=手前=最大）。
+            attrs = @view.deck? ? { position: index + 1 } : { z_index: ids.size - index }
+            @view.view_items.where(item_id: item_id).update_all(**attrs, updated_at: Time.current)
           end
         end
         head :no_content
@@ -218,8 +220,8 @@ module Api
                          .includes(item: [ :item_type, { medias: { file_attachment: :blob } } ])
                          .order(order)
         base = serialize_view(view).merge(items: placements.map { |vi| serialize_placement(vi) })
-        # freeboard のみ接続線を返す（deck は順序のみ）
-        base = base.merge(edges: view.view_edges.map { |edge| serialize_edge(edge) }) if view.freeboard?
+        # freeboard のみ接続線を返す（deck は順序のみ）。重なり順（z_index）昇順で返す。
+        base = base.merge(edges: view.view_edges.order(:z_index, :created_at).map { |edge| serialize_edge(edge) }) if view.freeboard?
         base
       end
 
@@ -283,7 +285,8 @@ module Api
           target_handle: edge.target_handle,
           label: edge.label,
           style: edge.style,
-          points: edge.points
+          points: edge.points,
+          z_index: edge.z_index
         }
       end
     end

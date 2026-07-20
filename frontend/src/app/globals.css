@@ -2737,3 +2737,30 @@
   background: var(--palace);
   border: 2px solid var(--background);
 }
+
+/* フリーボード: 接続線の端点（付け替えアンカー）。当たり判定は常時有効にしつつ、
+   通常は透明。線にホバー/選択したとき白丸＋ブランド色リングで表示し、
+   ドラッグで別ノードへ付け替えられることを示す。 */
+.react-flow__edgeupdater {
+  fill: #fff;
+  fill-opacity: 0;
+  stroke: var(--palace);
+  stroke-opacity: 0;
+  stroke-width: 2.5;
+  cursor: grab;
+  pointer-events: all;
+  transition: fill-opacity 0.12s ease, stroke-opacity 0.12s ease;
+}
+.react-flow__edge:hover .react-flow__edgeupdater,
+.react-flow__edge.selected .react-flow__edgeupdater {
+  fill-opacity: 1;
+  stroke-opacity: 1;
+}
+/* アンカー自体にカーソルを重ねたら掴めることをさらに強調 */
+.react-flow__edgeupdater:hover {
+  fill: var(--palace);
+  fill-opacity: 1;
+}
+.react-flow__edgeupdater:active {
+  cursor: grabbing;
+}

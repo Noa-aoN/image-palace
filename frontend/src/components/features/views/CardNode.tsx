@@ -91,7 +91,7 @@ function CardNodeComponent({ id, data }: NodeProps<CardNodeType>) {
             id={h.id}
             type="source"
             position={h.position}
-            className="!z-10 !h-4 !w-4 !border-2 !border-background !bg-[var(--palace)] !opacity-0 transition-opacity group-hover:!opacity-100"
+            className="!pointer-events-none !z-10 !h-4 !w-4 !border-2 !border-background !bg-[var(--palace)] !opacity-0 transition-opacity group-hover:!pointer-events-auto group-hover:!opacity-100"
           />
         ))}
       </div>

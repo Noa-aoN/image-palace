@@ -88,6 +88,7 @@ Rails.application.routes.draw do
           delete "items/:item_id", action: :remove_item
           # freeboard 種別: カード間の接続線（フローチャート）
           post "edges", to: "view_edges#create"
+          patch "edges/reorder", to: "view_edges#reorder"
           patch "edges/:edge_id", to: "view_edges#update"
           delete "edges/:edge_id", to: "view_edges#destroy"
           # deck 種別: カードの並び替え

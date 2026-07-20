@@ -25,6 +25,17 @@ module Api
         head :no_content
       end
 
+      # 重なり順の並び替え（ordered_edge_ids は手前→奥。先頭ほど大きい z_index）
+      def reorder
+        ids = Array(params[:ordered_edge_ids])
+        ViewEdge.transaction do
+          ids.each_with_index do |edge_id, index|
+            @view.view_edges.where(id: edge_id).update_all(z_index: ids.size - index, updated_at: Time.current)
+          end
+        end
+        head :no_content
+      end
+
       private
 
       def set_view
@@ -33,7 +44,7 @@ module Api
 
       def edge_params
         params.permit(
-          :source_node_id, :target_node_id, :source_handle, :target_handle, :label,
+          :source_node_id, :target_node_id, :source_handle, :target_handle, :label, :z_index,
           style: [ :color, :dashed, :width, :opacity, :marker_start, :marker_end,
                    :label_color, :label_size, :label_bg, :label_opacity, :label_vertical ],
           points: [ :x, :y ]
@@ -49,7 +60,8 @@ module Api
           target_handle: edge.target_handle,
           label: edge.label,
           style: edge.style,
-          points: edge.points
+          points: edge.points,
+          z_index: edge.z_index
         }
       end
     end

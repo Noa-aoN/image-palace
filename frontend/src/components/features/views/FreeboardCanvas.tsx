@@ -1,6 +1,6 @@
 'use client'
 
-import { useCallback, useEffect, useMemo, useRef } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import {
   Background,
   BackgroundVariant,
@@ -9,6 +9,7 @@ import {
   ReactFlow,
   ReactFlowProvider,
   addEdge,
+  reconnectEdge,
   useNodesState,
   useEdgesState,
   useReactFlow,
@@ -16,14 +17,25 @@ import {
   MarkerType,
   type OnNodeDrag,
   type NodeMouseHandler,
+  type EdgeMouseHandler,
   type OnConnect,
   type OnSelectionChangeFunc,
+  type Connection,
   type Edge,
 } from '@xyflow/react'
 import '@xyflow/react/dist/style.css'
-import { Plus, List, Spline, Settings } from 'lucide-react'
+import { Plus, List, Spline, Settings, ArrowUpToLine, ArrowDownToLine, ArrowUp, ArrowDown, Trash2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
-import { addViewItem, removeViewItem, updateViewItemPosition, addViewEdge, updateViewEdge, removeViewEdge } from '@/lib/api/views'
+import {
+  addViewItem,
+  removeViewItem,
+  updateViewItemPosition,
+  addViewEdge,
+  updateViewEdge,
+  removeViewEdge,
+  reorderBoardLayers,
+  reorderViewEdges,
+} from '@/lib/api/views'
 import { useRightPanelStore } from '@/stores/rightPanel'
 import { useUiStore } from '@/stores/ui'
 import { useBoardSettingsStore } from '@/stores/boardSettings'
@@ -86,6 +98,7 @@ function viewToEdge(e: ViewEdge): Edge {
     sourceHandle: e.source_handle ?? undefined,
     targetHandle: e.target_handle ?? undefined,
     type: 'editable',
+    zIndex: e.z_index ?? 0,
     data: { edgeStyle: style, label, points: e.points ?? [] } satisfies EdgeData,
     ...edgeVisuals(style),
   }
@@ -104,6 +117,34 @@ function edgeToView(e: Edge): ViewEdge {
     style: d.edgeStyle ?? {},
     points: d.points ?? null,
   }
+}
+
+type LayerOp = 'front' | 'back' | 'forward' | 'backward'
+
+// 現在の重なり順（zIndex 昇順、同値は配列順で安定）を back→front で求め、
+// レイヤー操作を適用した新しい back→front 配列を返す。カード・接続線で共用する。
+function computeLayerOrder<T extends { id: string }>(
+  items: T[],
+  zOf: (t: T) => number,
+  op: LayerOp,
+  targetIds: Set<string>
+): T[] {
+  const ordered = items
+    .map((it, i) => ({ it, i }))
+    .sort((a, b) => zOf(a.it) - zOf(b.it) || a.i - b.i)
+    .map((x) => x.it)
+  if (op === 'front' || op === 'back') {
+    const targets = ordered.filter((x) => targetIds.has(x.id))
+    const rest = ordered.filter((x) => !targetIds.has(x.id))
+    return op === 'front' ? [...rest, ...targets] : [...targets, ...rest]
+  }
+  // 1段ずつ（単一対象）：隣と入れ替える
+  const pos = ordered.findIndex((x) => targetIds.has(x.id))
+  const swap = op === 'forward' ? pos + 1 : pos - 1
+  if (pos < 0 || swap < 0 || swap >= ordered.length) return ordered
+  const copy = [...ordered]
+  ;[copy[pos], copy[swap]] = [copy[swap], copy[pos]]
+  return copy
 }
 
 type FreeboardCanvasProps = {
@@ -145,6 +186,8 @@ function Canvas({ viewId, initialItems, initialEdges }: FreeboardCanvasProps) {
   const consumeBulkResize = useRightPanelStore((s) => s.consumeBulkResize)
   const bulkRemove = useRightPanelStore((s) => s.bulkRemove)
   const consumeBulkRemove = useRightPanelStore((s) => s.consumeBulkRemove)
+  const layerPatch = useRightPanelStore((s) => s.layerPatch)
+  const consumeLayerPatch = useRightPanelStore((s) => s.consumeLayerPatch)
 
   const placedIds = useMemo(() => new Set(nodes.map((n) => n.id)), [nodes])
 
@@ -210,6 +253,72 @@ function Canvas({ viewId, initialItems, initialEdges }: FreeboardCanvasProps) {
     [viewId, openBulk, openCard, openEdge]
   )
 
+  // 右クリックのコンテキストメニュー（レイヤー操作＋ボードから削除）。位置はボード左上からの相対座標。
+  const [ctxMenu, setCtxMenu] = useState<{ x: number; y: number; kind: 'card' | 'edge'; targetIds: string[] } | null>(null)
+
+  const openCtxMenu = useCallback(
+    (event: { clientX: number; clientY: number }, kind: 'card' | 'edge', targetIds: string[]) => {
+      const rect = boardRef.current?.getBoundingClientRect()
+      setCtxMenu({ x: event.clientX - (rect?.left ?? 0), y: event.clientY - (rect?.top ?? 0), kind, targetIds })
+    },
+    []
+  )
+
+  const handleNodeContextMenu: NodeMouseHandler<CardNodeType> = useCallback(
+    (event, node) => {
+      event.preventDefault()
+      // 選択中のカードを右クリックしたら選択集合すべてに適用（複数選択バルク）
+      const selectedIds = nodes.filter((n) => n.selected).map((n) => n.id)
+      openCtxMenu(event, 'card', selectedIds.length > 1 && selectedIds.includes(node.id) ? selectedIds : [node.id])
+    },
+    [nodes, openCtxMenu]
+  )
+
+  const handleEdgeContextMenu: EdgeMouseHandler = useCallback(
+    (event, edge) => {
+      event.preventDefault()
+      const selectedIds = edges.filter((e) => e.selected).map((e) => e.id)
+      openCtxMenu(event, 'edge', selectedIds.length > 1 && selectedIds.includes(edge.id) ? selectedIds : [edge.id])
+    },
+    [edges, openCtxMenu]
+  )
+
+  // レイヤー操作：対象種別に応じて全体の z を order 通りに振り直し（reorder エンドポイントで一括永続化）。
+  const applyLayer = useCallback(
+    (op: LayerOp) => {
+      if (!ctxMenu) return
+      const targets = new Set(ctxMenu.targetIds)
+      if (ctxMenu.kind === 'card') {
+        const ordered = computeLayerOrder(nodes, (n) => n.zIndex ?? 0, op, targets)
+        const map = new Map(ordered.map((n, i) => [n.id, i + 1]))
+        setNodes((ns) => ns.map((n) => ({ ...n, zIndex: map.get(n.id) ?? n.zIndex })))
+        reorderBoardLayers(viewId, [...ordered].reverse().map((n) => n.id)).catch(() => {})
+      } else {
+        const ordered = computeLayerOrder(edges, (e) => (typeof e.zIndex === 'number' ? e.zIndex : 0), op, targets)
+        const map = new Map(ordered.map((e, i) => [e.id, i + 1]))
+        setEdges((es) => es.map((e) => ({ ...e, zIndex: map.get(e.id) ?? e.zIndex })))
+        reorderViewEdges(viewId, [...ordered].reverse().map((e) => e.id)).catch(() => {})
+      }
+      setCtxMenu(null)
+    },
+    [ctxMenu, nodes, edges, viewId, setNodes, setEdges]
+  )
+
+  // ボードから削除（カード＝端点の接続線も掃除／接続線＝その線のみ）。
+  const applyDelete = useCallback(() => {
+    if (!ctxMenu) return
+    if (ctxMenu.kind === 'card') {
+      ctxMenu.targetIds.forEach((id) => handleRemove(id))
+    } else {
+      const ids = new Set(ctxMenu.targetIds)
+      setEdges((es) => es.filter((e) => !ids.has(e.id)))
+      ctxMenu.targetIds.forEach((id) => {
+        if (!id.startsWith('tmp-')) removeViewEdge(viewId, id).catch(() => {})
+      })
+    }
+    setCtxMenu(null)
+  }, [ctxMenu, handleRemove, setEdges, viewId])
+
   // ハンドルをドラッグして接続線を作る
   const handleConnect: OnConnect = useCallback(
     (conn) => {
@@ -234,6 +343,21 @@ function Canvas({ viewId, initialItems, initialEdges }: FreeboardCanvasProps) {
       })
         .then((saved) => setEdges((es) => es.map((e) => (e.id === tempId ? { ...e, id: saved.id } : e))))
         .catch(() => setEdges((es) => es.filter((e) => e.id !== tempId)))
+    },
+    [viewId, setEdges]
+  )
+
+  // 既存の接続線の端点（始端/終端）を別ノードへドラッグで付け替える
+  const handleReconnect = useCallback(
+    (oldEdge: Edge, newConnection: Connection) => {
+      setEdges((els) => reconnectEdge(oldEdge, newConnection, els))
+      if (oldEdge.id.startsWith('tmp-')) return // 未保存の楽観 edge は保存後に確定
+      updateViewEdge(viewId, oldEdge.id, {
+        source_node_id: newConnection.source ?? undefined,
+        target_node_id: newConnection.target ?? undefined,
+        source_handle: newConnection.sourceHandle ?? null,
+        target_handle: newConnection.targetHandle ?? null,
+      }).catch(() => {})
     },
     [viewId, setEdges]
   )
@@ -395,6 +519,14 @@ function Canvas({ viewId, initialItems, initialEdges }: FreeboardCanvasProps) {
     consumeBulkRemove()
   }, [bulkRemove, viewId, setNodes, setEdges, consumeBulkRemove])
 
+  // 一覧のドラッグ並べ替えを消費して重なり順を反映する（永続化は一覧側で実施済み）
+  useEffect(() => {
+    if (!layerPatch) return
+    const map = new Map(layerPatch.map((u) => [u.id, u.z]))
+    setNodes((ns) => ns.map((n) => (map.has(n.id) ? { ...n, zIndex: map.get(n.id) } : n)))
+    consumeLayerPatch()
+  }, [layerPatch, setNodes, consumeLayerPatch])
+
   // waypoint 確定時の保存（tmp- の楽観 edge は保存前なので送らない）
   const commitPoints = useCallback(
     (edgeId: string, points: EdgePoint[]) => {
@@ -452,7 +584,14 @@ function Canvas({ viewId, initialItems, initialEdges }: FreeboardCanvasProps) {
             onEdgesChange={onEdgesChange}
             onNodeDragStop={handleDragStop}
             onNodeDoubleClick={handleNodeDoubleClick}
+            onNodeContextMenu={handleNodeContextMenu}
+            onEdgeContextMenu={handleEdgeContextMenu}
+            onPaneContextMenu={(e) => {
+              e.preventDefault()
+              setCtxMenu(null)
+            }}
             onConnect={handleConnect}
+            onReconnect={handleReconnect}
             onEdgesDelete={handleEdgesDelete}
             onSelectionChange={handleSelectionChange}
             multiSelectionKeyCode="Shift"
@@ -484,6 +623,53 @@ function Canvas({ viewId, initialItems, initialEdges }: FreeboardCanvasProps) {
             <div className="pointer-events-none absolute inset-0 flex items-center justify-center">
               <p className="text-sm text-muted-foreground">上の「カードを配置」からカードを置いてみましょう。</p>
             </div>
+          )}
+
+          {/* 右クリックのコンテキストメニュー（外側クリックで閉じる） */}
+          {ctxMenu && (
+            <>
+              <div className="absolute inset-0 z-40" onClick={() => setCtxMenu(null)} onContextMenu={(e) => e.preventDefault()} />
+              <div
+                className="absolute z-50 min-w-[168px] overflow-hidden rounded-lg border border-border bg-popover py-1 shadow-md"
+                style={{ left: ctxMenu.x, top: ctxMenu.y }}
+              >
+                {ctxMenu.targetIds.length > 1 && (
+                  <p className="px-3 pb-1 pt-0.5 text-xs text-muted-foreground">
+                    {ctxMenu.kind === 'card' ? 'カード' : '接続線'}
+                    {ctxMenu.targetIds.length}件
+                  </p>
+                )}
+                <button type="button" onClick={() => applyLayer('front')} className="flex w-full items-center gap-2 px-3 py-1.5 text-left text-sm transition-colors hover:bg-muted">
+                  <ArrowUpToLine size={14} />
+                  最前面へ
+                </button>
+                {ctxMenu.targetIds.length === 1 && (
+                  <>
+                    <button type="button" onClick={() => applyLayer('forward')} className="flex w-full items-center gap-2 px-3 py-1.5 text-left text-sm transition-colors hover:bg-muted">
+                      <ArrowUp size={14} />
+                      前面へ
+                    </button>
+                    <button type="button" onClick={() => applyLayer('backward')} className="flex w-full items-center gap-2 px-3 py-1.5 text-left text-sm transition-colors hover:bg-muted">
+                      <ArrowDown size={14} />
+                      背面へ
+                    </button>
+                  </>
+                )}
+                <button type="button" onClick={() => applyLayer('back')} className="flex w-full items-center gap-2 px-3 py-1.5 text-left text-sm transition-colors hover:bg-muted">
+                  <ArrowDownToLine size={14} />
+                  最背面へ
+                </button>
+                <div className="my-1 border-t border-border" />
+                <button
+                  type="button"
+                  onClick={applyDelete}
+                  className="flex w-full items-center gap-2 px-3 py-1.5 text-left text-sm text-destructive transition-colors hover:bg-muted"
+                >
+                  <Trash2 size={14} />
+                  ボードから削除{ctxMenu.targetIds.length > 1 ? `（${ctxMenu.targetIds.length}件）` : ''}
+                </button>
+              </div>
+            </>
           )}
         </div>
       </div>
