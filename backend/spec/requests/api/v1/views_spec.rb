@@ -150,4 +150,55 @@ RSpec.describe "Api::V1::Views", type: :request do
       expect(deck_view.view_items.order(:position).pluck(:item_id)).to eq([ card_b.id, card_a.id ])
     end
   end
+
+  describe "freeboard のレイヤー並び替え" do
+    let(:board) { user.views.create!(name: "board") } # 既定は freeboard
+    let(:card_a) { create(:item, user:) }
+    let(:card_b) { create(:item, user:) }
+
+    it "reorders by ordered_item_ids into z_index (先頭=手前=最大)" do
+      board.view_items.create!(item: card_a, x: 0, y: 0, z_index: 0)
+      board.view_items.create!(item: card_b, x: 0, y: 0, z_index: 0)
+
+      patch "/api/v1/views/#{board.id}/reorder",
+        params: { ordered_item_ids: [ card_b.id, card_a.id ] }, headers:, as: :json
+
+      expect(response).to have_http_status(:no_content)
+      expect(board.view_items.find_by(item_id: card_b.id).z_index).to eq(2)
+      expect(board.view_items.find_by(item_id: card_a.id).z_index).to eq(1)
+    end
+  end
+
+  describe "ボード設定 (settings)" do
+    it "settings を保存し詳細で返す" do
+      view = user.views.create!(name: "board")
+
+      patch "/api/v1/views/#{view.id}",
+        params: { view: { settings: { bg_color: "#111111", bg_pattern: "grid", minimap: false, controls: true } } },
+        headers:, as: :json
+
+      expect(response).to have_http_status(:success)
+      view.reload
+      expect(view.settings["bg_pattern"]).to eq("grid")
+      expect(view.settings["minimap"]).to be(false)
+
+      get "/api/v1/views/#{view.id}", headers:, as: :json
+      expect(json_response["settings"]["bg_color"]).to eq("#111111")
+    end
+  end
+
+  describe "背景画像" do
+    let(:view) { user.views.create!(name: "board") }
+
+    it "ファイル未指定は 422" do
+      post "/api/v1/views/#{view.id}/background_image", headers:, as: :json
+      expect(response).to have_http_status(:unprocessable_content)
+    end
+
+    it "未添付でも DELETE は成功する（background_image は nil）" do
+      delete "/api/v1/views/#{view.id}/background_image", headers:, as: :json
+      expect(response).to have_http_status(:success)
+      expect(json_response["background_image"]).to be_nil
+    end
+  end
 end

@@ -11,73 +11,63 @@ import { Spinner } from '@/components/ui/spinner'
 import { ItemProperties } from '@/components/features/items/ItemProperties'
 import { RegeneratePanel } from '@/components/features/items/RegeneratePanel'
 import { GenerationInfo } from '@/components/features/items/GenerationInfo'
-import { getItem, getItemNavigationIds, deleteItem, updateItem } from '@/lib/api/items'
+import { getItemNavigationIds } from '@/lib/api/items'
 import { getViewDetail } from '@/lib/api/views'
-import { useItemsStore } from '@/stores/items'
-import type { Item } from '@/types/item'
 import { GeneratingOverlay } from '@/components/features/items/GeneratingOverlay'
 import { Skeleton } from '@/components/ui/skeleton'
-import { STATUS_LABEL, POLLING_STATUSES } from '@/lib/item-status'
+import { STATUS_LABEL } from '@/lib/item-status'
 import { StatusBadge } from '@/components/features/items/StatusBadge'
+import { useItemDetail } from '@/hooks/useItemDetail'
 
 export default function ItemDetailPage() {
   const { id } = useParams<{ id: string }>()
   const router = useRouter()
   const searchParams = useSearchParams()
-  // デッキ経由で開いた場合は viewId を保持し、前後ナビをそのデッキの並び順に切り替える。
+  // デッキ/ボード経由で開いた場合は元の view を保持し、前後ナビをその並び順（view 由来）に切り替える。
   const deckId = searchParams.get('deck')
-  const [deckName, setDeckName] = useState<string | null>(null)
-  const backHref = deckId ? `/views/${deckId}` : '/items'
-  const backLabel = deckId ? '← デッキへ戻る' : '← カードへ戻る'
-  // 前後移動でもデッキ文脈を維持するため、遷移先 URL に deck クエリを引き継ぐ。
+  const boardId = searchParams.get('board')
+  const fromViewId = deckId ?? boardId
+  const fromParam = deckId ? `deck=${deckId}` : boardId ? `board=${boardId}` : null
+  const fromLabel = deckId ? 'デッキ' : boardId ? 'ボード' : 'カード'
+  const [fromViewName, setFromViewName] = useState<string | null>(null)
+  const backHref = fromViewId ? `/views/${fromViewId}` : '/items'
+  const backLabel = fromViewId ? `← ${fromLabel}へ戻る` : '← カードへ戻る'
+  // 前後移動でも文脈を維持するため、遷移先 URL に元のクエリを引き継ぐ。
   const itemHref = (targetId: string) =>
-    deckId ? `/items/${targetId}?deck=${deckId}` : `/items/${targetId}`
-  const cachedItems = useItemsStore((s) => s.items)
-  const upsertItem = useItemsStore((s) => s.upsertItem)
-  const removeItem = useItemsStore((s) => s.removeItem)
-  const cachedItem = cachedItems.find((current) => current.id === id) ?? null
-  const [item, setItem] = useState<Item | null>(() => cachedItem)
+    fromParam ? `/items/${targetId}?${fromParam}` : `/items/${targetId}`
+
   const [allIds, setAllIds] = useState<string[]>([])
-  const [error, setError] = useState<string | null>(null)
-  const [imgError, setImgError] = useState(false)
-  const [deleting, setDeleting] = useState(false)
-  const [confirmDelete, setConfirmDelete] = useState(false)
-  const [zoomed, setZoomed] = useState(false)
-  const [editing, setEditing] = useState(false)
-  const [titleDraft, setTitleDraft] = useState('')
-  const [saving, setSaving] = useState(false)
-  const [editError, setEditError] = useState<string | null>(null)
 
-  useEffect(() => {
-    if (cachedItem) {
-      setItem(cachedItem)
-    }
-  }, [cachedItem])
+  // 詳細の状態・操作（取得・ポーリング・タイトル編集・削除・拡大）は共通フックに集約。
+  const {
+    item,
+    error,
+    imgError,
+    setImgError,
+    deleting,
+    confirmDelete,
+    setConfirmDelete,
+    zoomed,
+    setZoomed,
+    editing,
+    titleDraft,
+    setTitleDraft,
+    saving,
+    editError,
+    handleDelete,
+    startEdit,
+    cancelEdit,
+    handleSaveTitle,
+    applyUpdated,
+  } = useItemDetail(id, { onDeleted: () => router.push(backHref) })
 
+  // 前後ナビ用 ID 一覧。デッキ/ボード経由なら「その view の並び順」を、それ以外はライブラリ全体順を使う。
   useEffect(() => {
-    setImgError(false)
-  }, [item?.media?.url])
-
-  // Effect 1: カード本体の取得（id 変化時のみ）
-  useEffect(() => {
-    setImgError(false)
-    getItem(id)
-      .then((fetched) => {
-        setItem(fetched)
-        upsertItem(fetched)
-      })
-      .catch(() => setError('カードの取得に失敗しました'))
-  }, [id, upsertItem])
-
-  // Effect 2: 前後ナビ用 ID 一覧。
-  // デッキ経由なら「そのデッキの並び順（position 順）」を、それ以外はライブラリ全体順を使う。
-  // 一覧のページングキャッシュには依存しない。
-  useEffect(() => {
-    if (deckId) {
-      getViewDetail(deckId)
+    if (fromViewId) {
+      getViewDetail(fromViewId)
         .then((view) => {
           setAllIds((view.items ?? []).map((vi) => vi.item_id))
-          setDeckName(view.name)
+          setFromViewName(view.name)
         })
         .catch(() => {})
     } else {
@@ -85,109 +75,11 @@ export default function ItemDetailPage() {
         .then(setAllIds)
         .catch(() => {})
     }
-  }, [deckId])
-
-  // Effect 3: pending/processing 中はポーリング
-  const generationStatus = item?.generation_status
-  useEffect(() => {
-    if (!generationStatus) return
-    if (!POLLING_STATUSES.has(generationStatus)) return
-    let cancelled = false
-    let timer: ReturnType<typeof setTimeout> | null = null
-
-    const poll = async () => {
-      if (typeof document !== 'undefined' && document.hidden) {
-        timer = setTimeout(poll, 10000)
-        return
-      }
-
-      try {
-        const fetched = await getItem(id)
-        if (cancelled) return
-
-        setItem(fetched)
-        upsertItem(fetched)
-
-        if (POLLING_STATUSES.has(fetched.generation_status)) {
-          timer = setTimeout(poll, 2000)
-        }
-      } catch {
-        if (!cancelled) timer = setTimeout(poll, 5000)
-      }
-    }
-
-    timer = setTimeout(poll, 2000)
-    return () => {
-      cancelled = true
-      if (timer) clearTimeout(timer)
-    }
-  }, [id, generationStatus, upsertItem])
-
-  // Effect 4: モーダル表示中は ESC で閉じる
-  useEffect(() => {
-    if (!zoomed) return
-    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') setZoomed(false) }
-    window.addEventListener('keydown', onKey)
-    return () => window.removeEventListener('keydown', onKey)
-  }, [zoomed])
+  }, [fromViewId])
 
   const currentIndex = allIds.indexOf(id)
   const prevId = currentIndex > 0 ? allIds[currentIndex - 1] : null
   const nextId = currentIndex < allIds.length - 1 ? allIds[currentIndex + 1] : null
-
-  const handleDelete = async () => {
-    if (!confirmDelete) { setConfirmDelete(true); return }
-    setDeleting(true)
-    try {
-      await deleteItem(id)
-      removeItem(id)
-      router.push(backHref)
-    } catch {
-      setError('削除に失敗しました')
-      setDeleting(false)
-      setConfirmDelete(false)
-    }
-  }
-
-  const startEdit = () => {
-    setTitleDraft(item?.title ?? '')
-    setEditError(null)
-    setEditing(true)
-  }
-
-  const cancelEdit = () => {
-    setEditing(false)
-    setEditError(null)
-  }
-
-  const handleSaveTitle = async () => {
-    const trimmed = titleDraft.trim()
-    if (!trimmed) {
-      setEditError('タイトルを入力してください')
-      return
-    }
-    if (trimmed === item?.title) {
-      cancelEdit()
-      return
-    }
-    setSaving(true)
-    setEditError(null)
-    try {
-      const updated = await updateItem(id, { title: trimmed })
-      setItem(updated)
-      upsertItem(updated)
-      setEditing(false)
-    } catch (err: unknown) {
-      const axiosErr = err as { response?: { data?: { error?: string; errors?: string[] } } }
-      const msg =
-        axiosErr?.response?.data?.errors?.[0] ??
-        axiosErr?.response?.data?.error ??
-        '更新に失敗しました。もう一度試してください。'
-      setEditError(msg)
-    } finally {
-      setSaving(false)
-    }
-  }
 
   if (error) {
     return (
@@ -241,7 +133,7 @@ export default function ItemDetailPage() {
 
         {/* ヘッダー行 */}
         <div className="flex items-center justify-between">
-          <Breadcrumb className="mb-0" items={[{ href: backHref, label: deckId ? (deckName ?? 'デッキ') : 'カード' }, { label: item.title }]} />
+          <Breadcrumb className="mb-0" items={[{ href: backHref, label: fromViewId ? (fromViewName ?? fromLabel) : 'カード' }, { label: item.title }]} />
           <Button
             variant={confirmDelete ? 'destructive' : 'ghost'}
             size="sm"
@@ -356,23 +248,11 @@ export default function ItemDetailPage() {
 
         {/* 再生成パネル: failed・completed どちらからも指示付きで再生成できる */}
         {(item.generation_status === 'failed' || item.generation_status === 'completed') && (
-          <RegeneratePanel
-            item={item}
-            onUpdated={(updated) => {
-              setItem(updated)
-              upsertItem(updated)
-            }}
-          />
+          <RegeneratePanel item={item} onUpdated={applyUpdated} />
         )}
 
         {/* プロパティ（種別・意味） */}
-        <ItemProperties
-          item={item}
-          onUpdated={(updated) => {
-            setItem(updated)
-            upsertItem(updated)
-          }}
-        />
+        <ItemProperties item={item} onUpdated={applyUpdated} />
 
         <p className="text-sm text-muted-foreground">
           作成日: {new Date(item.created_at).toLocaleDateString('ja-JP')}

@@ -11,4 +11,6 @@ class ViewItem < ApplicationRecord
   validates :space_point_id, uniqueness: { scope: :view_id }, allow_nil: true
   validates :x, :y, presence: true, numericality: true
   validates :z_index, presence: true, numericality: { only_integer: true }
+  # freeboard カードのサイズ。未指定（NULL）はクライアント既定サイズを使う。
+  validates :width, :height, numericality: { greater_than: 0 }, allow_nil: true
 end

@@ -14,6 +14,9 @@ interface UiStore {
   // 図ごとの 2D/3D の個別指定（key=図の識別子）。未設定ならアカウントの環境設定に従う。
   diagramOverrides: Record<string, DiagramMode>
   setDiagramOverride: (key: string, mode: DiagramMode) => void
+  // 右パネルの幅（px）。ユーザーがドラッグで調整でき、記憶する。
+  rightPanelWidth: number
+  setRightPanelWidth: (width: number) => void
 }
 
 export const useUiStore = create<UiStore>()(
@@ -31,6 +34,8 @@ export const useUiStore = create<UiStore>()(
       diagramOverrides: {},
       setDiagramOverride: (key, mode) =>
         set((state) => ({ diagramOverrides: { ...state.diagramOverrides, [key]: mode } })),
+      rightPanelWidth: 360,
+      setRightPanelWidth: (width) => set({ rightPanelWidth: width }),
     }),
     { name: 'ip-ui' }
   )

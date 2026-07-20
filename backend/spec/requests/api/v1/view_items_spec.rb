@@ -48,6 +48,18 @@ RSpec.describe "Api::V1::Views items (freeboard)", type: :request do
       expect(vi.x).to eq(300)
       expect(vi.z_index).to eq(5)
     end
+
+    it "サイズ（width/height）を保存する" do
+      create(:view_item, view: view, item: item, x: 0, y: 0)
+
+      patch "/api/v1/views/#{view.id}/items/#{item.id}",
+        params: { x: 10, y: 20, width: 240, height: 300 }, headers: headers
+
+      expect(response).to have_http_status(:no_content)
+      vi = view.view_items.find_by(item_id: item.id)
+      expect(vi.width).to eq(240)
+      expect(vi.height).to eq(300)
+    end
   end
 
   describe "DELETE /api/v1/views/:id/items/:item_id" do
@@ -73,6 +85,16 @@ RSpec.describe "Api::V1::Views items (freeboard)", type: :request do
       expect(placement["item_id"]).to eq(item.id)
       expect(placement["x"]).to eq(10)
       expect(placement["item"]["title"]).to eq("cat")
+    end
+
+    it "配置一覧に width/height を含む" do
+      create(:view_item, view: view, item: item, width: 200, height: 250)
+
+      get "/api/v1/views/#{view.id}", headers: headers
+
+      placement = json_response["items"].first
+      expect(placement["width"]).to eq(200)
+      expect(placement["height"]).to eq(250)
     end
   end
 end

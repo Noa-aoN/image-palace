@@ -7,11 +7,15 @@ class View < ApplicationRecord
   has_many :box_entries, as: :entry, dependent: :destroy
   has_many :view_items, dependent: :destroy
   has_many :items, through: :view_items
+  # freeboard: カード間の接続線（フローチャート）
+  has_many :view_edges, dependent: :destroy
   # カバー（デッキ踏襲）。表紙はキャンバスに配置した Item を指定。
   belongs_to :cover_item, class_name: "Item", optional: true
   has_one_attached :cover_image
   # 一覧用サムネ（480px WebP）。CDN 直配信のためアップロード時に作成する。
   has_one_attached :cover_thumb
+  # freeboard: ボードの背景画像（任意）
+  has_one_attached :background_image
 
   NAME_MAX_LENGTH = 100
   # freeboard / space_map / deck を実装。他は種別を仮置き（詳細画面は「準備中」表示）。
@@ -35,6 +39,10 @@ class View < ApplicationRecord
 
   def deck?
     view_type == "deck"
+  end
+
+  def freeboard?
+    view_type == "freeboard"
   end
 
   # カバー候補カード（キャンバスに配置したカードを追加順で）

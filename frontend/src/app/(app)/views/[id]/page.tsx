@@ -10,6 +10,7 @@ import { Breadcrumb } from '@/components/ui/breadcrumb'
 import { Input } from '@/components/ui/input'
 import { getViewDetail, updateView, deleteView, uploadViewCover, removeViewCover } from '@/lib/api/views'
 import { viewTypeLabel } from '@/lib/view-types'
+import { useBoardSettingsStore } from '@/stores/boardSettings'
 import type { ViewDetail } from '@/types/view'
 import type { CoverType } from '@/types/cover'
 
@@ -48,7 +49,11 @@ export default function ViewEditorPage() {
     let cancelled = false
     getViewDetail(id)
       .then((data) => {
-        if (!cancelled) setView(data)
+        if (cancelled) return
+        setView(data)
+        if (data.view_type === 'freeboard') {
+          useBoardSettingsStore.getState().init(data.id, data.settings, data.background_image?.url ?? null)
+        }
       })
       .catch(() => {
         if (!cancelled) setError('キャンバスの取得に失敗しました')
@@ -147,7 +152,11 @@ export default function ViewEditorPage() {
   }
 
   return (
-    <div className="flex flex-col min-h-full px-6 py-12 max-w-7xl mx-auto w-full">
+    <div
+      className={`flex flex-col min-h-full w-full px-6 py-12 ${
+        view.view_type === 'freeboard' ? '' : 'max-w-7xl mx-auto'
+      }`}
+    >
       <Breadcrumb className="self-start" items={[{ href: '/views', label: 'キャンバス' }, { label: view.name }]} />
 
       <div className="flex items-center justify-between gap-3 mb-6">
@@ -213,7 +222,7 @@ export default function ViewEditorPage() {
 
       {/* キャンバスタイプごとの描画（freeboard / space_map を実装済み） */}
       {view.view_type === 'freeboard' ? (
-        <FreeboardCanvas viewId={view.id} initialItems={view.items ?? []} />
+        <FreeboardCanvas viewId={view.id} initialItems={view.items ?? []} initialEdges={view.edges ?? []} />
       ) : view.view_type === 'deck' ? (
         <DeckBoard viewId={view.id} initialItems={view.items ?? []} />
       ) : view.view_type === 'space_map' ? (

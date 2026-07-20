@@ -6,7 +6,7 @@ module Api
 
       before_action :set_view, only: [
         :show, :update, :destroy, :add_item, :update_item, :remove_item, :reorder, :place_on_point, :clear_point,
-        :upload_cover, :remove_cover
+        :upload_cover, :remove_cover, :upload_background, :remove_background
       ]
 
       def index
@@ -74,7 +74,9 @@ module Api
         ids = Array(params[:ordered_item_ids])
         ViewItem.transaction do
           ids.each_with_index do |item_id, index|
-            @view.view_items.where(item_id: item_id).update_all(position: index + 1, updated_at: Time.current)
+            # デッキは position（先頭=1）。フリーボード等はレイヤー＝z_index（先頭=手前=最大）。
+            attrs = @view.deck? ? { position: index + 1 } : { z_index: ids.size - index }
+            @view.view_items.where(item_id: item_id).update_all(**attrs, updated_at: Time.current)
           end
         end
         head :no_content
@@ -83,6 +85,8 @@ module Api
       # カードを外す
       def remove_item
         @view.view_items.find_by(item_id: params[:item_id])&.destroy!
+        # そのカードを端点に持つ接続線も掃除する（孤児 edge を残さない）
+        @view.view_edges.where("source_node_id = :id OR target_node_id = :id", id: params[:item_id]).delete_all
         head :no_content
       end
 
@@ -122,6 +126,23 @@ module Api
         render json: serialize_view(@view)
       end
 
+      # POST /api/v1/views/:id/background_image （multipart: background_image）
+      def upload_background
+        file = params[:background_image]
+        return render(json: { errors: [ "画像が指定されていません" ] }, status: :unprocessable_entity) if file.blank?
+
+        attach_optimized_image!(@view.background_image, file)
+        render json: serialize_view(@view)
+      rescue CoverImageUpload::InvalidCover => e
+        render json: { errors: [ e.message ] }, status: :unprocessable_entity
+      end
+
+      # DELETE /api/v1/views/:id/background_image
+      def remove_background
+        @view.background_image.purge if @view.background_image.attached?
+        render json: serialize_view(@view)
+      end
+
       # space_map: ポイントからカードを外す
       def clear_point
         @view.view_items.find_by(space_point_id: params[:space_point_id])&.destroy!
@@ -149,7 +170,10 @@ module Api
       end
 
       def view_update_params
-        params.require(:view).permit(:name, :cover_item_id, :cover_type)
+        params.require(:view).permit(
+          :name, :cover_item_id, :cover_type,
+          settings: [ :bg_color, :bg_pattern, :pattern_color, :card_font_size, :minimap, :controls ]
+        )
       end
 
       # 表紙はキャンバスに配置したカードのみ指定可能
@@ -162,7 +186,7 @@ module Api
       end
 
       def placement_params
-        params.permit(:x, :y, :z_index)
+        params.permit(:x, :y, :z_index, :width, :height)
       end
 
       # deck の末尾 position（最大 + 1）
@@ -181,6 +205,8 @@ module Api
           cover: serialize_media(view.cover&.primary_media),
           cover_images: view.cover_cards.map { |item| serialize_media(item.primary_media) }.compact,
           cover_image: serialize_attached_cover(view),
+          settings: view.settings,
+          background_image: serialize_attached_background(view),
           created_at: view.created_at
         }
       end
@@ -193,7 +219,10 @@ module Api
         placements = view.view_items
                          .includes(item: [ :item_type, { medias: { file_attachment: :blob } } ])
                          .order(order)
-        serialize_view(view).merge(items: placements.map { |vi| serialize_placement(vi) })
+        base = serialize_view(view).merge(items: placements.map { |vi| serialize_placement(vi) })
+        # freeboard のみ接続線を返す（deck は順序のみ）。重なり順（z_index）昇順で返す。
+        base = base.merge(edges: view.view_edges.order(:z_index, :created_at).map { |edge| serialize_edge(edge) }) if view.freeboard?
+        base
       end
 
       # space_map: スペースのポイント一覧（序数＋名前＋ポイント画像）と、各ポイントへの配置カードを返す
@@ -232,8 +261,32 @@ module Api
           x: view_item.x,
           y: view_item.y,
           z_index: view_item.z_index,
+          width: view_item.width,
+          height: view_item.height,
           position: view_item.position,
           item: serialize_item(view_item.item)
+        }
+      end
+
+      def serialize_attached_background(view)
+        attachment = view.background_image
+        return nil unless attachment.attached?
+        return nil unless blob_available?(attachment.blob)
+
+        { url: media_url(attachment.blob) }
+      end
+
+      def serialize_edge(edge)
+        {
+          id: edge.id,
+          source: edge.source_node_id,
+          target: edge.target_node_id,
+          source_handle: edge.source_handle,
+          target_handle: edge.target_handle,
+          label: edge.label,
+          style: edge.style,
+          points: edge.points,
+          z_index: edge.z_index
         }
       end
     end
