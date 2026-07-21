@@ -68,7 +68,10 @@ export default function TrophyPage() {
   return (
     <div className="max-w-2xl mx-auto px-6 py-12 space-y-8">
       <div>
-        <h1 className="text-xl font-semibold">トロフィー</h1>
+        <h1 className="flex items-center gap-2 text-xl font-semibold">
+          <Trophy size={22} style={{ color: 'var(--palace)' }} />
+          トロフィー
+        </h1>
         <p className="mt-1 text-sm text-muted-foreground">
           学習の積み重ねを実績・バッジ・称号として可視化します。
         </p>

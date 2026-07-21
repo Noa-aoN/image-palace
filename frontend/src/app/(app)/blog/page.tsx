@@ -1,6 +1,6 @@
 import type { Metadata } from 'next'
 import Link from 'next/link'
-import { Clock } from 'lucide-react'
+import { Clock, Newspaper } from 'lucide-react'
 import { ARTICLES } from '@/lib/blog/articles'
 
 export const metadata: Metadata = { title: 'コラム' }
@@ -11,7 +11,10 @@ export default function BlogPage() {
   return (
     <div className="mx-auto max-w-2xl px-6 py-12">
       <header>
-        <h1 className="text-2xl font-semibold">コラム</h1>
+        <h1 className="flex items-center gap-2.5 text-2xl font-semibold">
+          <Newspaper size={26} style={{ color: 'var(--palace)' }} />
+          コラム
+        </h1>
         <p className="mt-2 text-muted-foreground">記憶・学習・認知科学にまつわる話題をお届けします。</p>
       </header>
 

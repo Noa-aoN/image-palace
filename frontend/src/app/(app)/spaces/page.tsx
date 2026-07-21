@@ -3,7 +3,7 @@
 import { Suspense, useEffect, useState } from 'react'
 import Link from 'next/link'
 import { useSearchParams } from 'next/navigation'
-import { Plus, Route, DoorOpen } from 'lucide-react'
+import { Plus, Route, DoorOpen, Frame } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { CardGridSkeleton } from '@/components/ui/skeleton'
 import { getSpaces } from '@/lib/api/spaces'
@@ -54,13 +54,16 @@ function SpacesPageInner() {
   }, [])
 
   const visibleSpaces = typeFilter ? spaces.filter((s) => s.space_type === typeFilter) : spaces
-  const heading = typeFilter ? spaceTypeLabel(typeFilter) : 'スペース'
+  const heading = typeFilter ? `${spaceTypeLabel(typeFilter)}一覧` : 'スペース一覧'
 
   return (
     <div className="max-w-7xl mx-auto px-6 py-12">
       <div className="flex items-center justify-between mb-2">
         <div className="flex items-baseline gap-3">
-          <h1 className="text-xl font-semibold">{heading}</h1>
+          <h1 className="flex items-center gap-2 text-xl font-semibold">
+            <Frame size={22} style={{ color: 'var(--palace)' }} />
+            {heading}
+          </h1>
           {typeFilter && (
             <Link href="/spaces" className="text-sm hover:underline" style={{ color: 'var(--palace)' }}>
               すべてのスペース

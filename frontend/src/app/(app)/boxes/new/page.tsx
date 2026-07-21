@@ -1,4 +1,5 @@
 import type { Metadata } from 'next'
+import { Box } from 'lucide-react'
 import { Breadcrumb } from '@/components/ui/breadcrumb'
 import { CreateBoxForm } from '@/components/features/boxes/CreateBoxForm'
 
@@ -9,7 +10,10 @@ export default function NewBoxPage() {
     <div className="max-w-2xl mx-auto px-6 py-12">
       <div className="mb-8">
         <Breadcrumb items={[{ href: '/boxes', label: 'ボックス' }, { label: '作成' }]} />
-        <h1 className="text-2xl font-semibold">ボックスを作成</h1>
+        <h1 className="flex items-center gap-2.5 text-2xl font-semibold">
+          <Box size={26} style={{ color: 'var(--palace)' }} />
+          ボックスを作成
+        </h1>
         <p className="text-sm text-muted-foreground mt-1">
           カードをテーマごとにまとめるボックスを作成します。
         </p>

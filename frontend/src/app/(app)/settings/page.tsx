@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { Download, Sparkles, Loader2, Share2, Plug, SlidersHorizontal, Bell, Database, Image as ImageIcon, Boxes, Zap } from 'lucide-react'
+import { Download, Sparkles, Loader2, Share2, Plug, SlidersHorizontal, Bell, Database, Image as ImageIcon, Boxes, Zap, Settings } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { CategorySections, type CategorySection } from '@/components/features/myroom/CategorySections'
 import { ComingSoon } from '@/components/features/myroom/ComingSoon'
@@ -445,7 +445,10 @@ export default function SettingsPage() {
   return (
     <div className="max-w-2xl mx-auto px-6 py-12 space-y-8">
       <div>
-        <h1 className="text-xl font-semibold">環境設定</h1>
+        <h1 className="flex items-center gap-2 text-xl font-semibold">
+          <Settings size={22} style={{ color: 'var(--palace)' }} />
+          環境設定
+        </h1>
         <p className="mt-1 text-sm text-muted-foreground">
           生成・共有・連携・通知・データ管理など、利用環境を整えます。
         </p>

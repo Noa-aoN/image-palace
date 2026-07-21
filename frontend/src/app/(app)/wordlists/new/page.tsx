@@ -2,7 +2,7 @@
 
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { Sparkles, Plus, ShieldCheck } from 'lucide-react'
+import { Sparkles, Plus, ShieldCheck, ListChecks } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Breadcrumb } from '@/components/ui/breadcrumb'
 import { Input } from '@/components/ui/input'
@@ -110,7 +110,10 @@ export default function NewWordlistPage() {
     <div className="max-w-2xl mx-auto px-6 py-12">
       <div className="mb-8">
         <Breadcrumb items={[{ href: '/wordlists', label: 'ワードリスト' }, { label: '作成' }]} />
-        <h1 className="text-2xl font-semibold">ワードリストを作成</h1>
+        <h1 className="flex items-center gap-2.5 text-2xl font-semibold">
+          <ListChecks size={26} style={{ color: 'var(--palace)' }} />
+          ワードリストを作成
+        </h1>
         <p className="text-sm text-muted-foreground mt-1">
           テーマを入れるとAIが単語を生成します。単語数はおまかせ（テーマに応じてAIが決める）が既定です。
           並び替え・編集して、AIチェックで内容を確かめてから保存できます。

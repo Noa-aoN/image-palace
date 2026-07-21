@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import Link from 'next/link'
-import { ChevronRight, AlertTriangle, Check, X, Loader2 } from 'lucide-react'
+import { ChevronRight, AlertTriangle, Check, X, Loader2, HelpCircle } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Breadcrumb } from '@/components/ui/breadcrumb'
 import { TargetPicker, ComingSoonTargets } from '@/components/features/study/TargetPicker'
@@ -120,7 +120,10 @@ export default function QuizPage() {
       <div className="max-w-2xl mx-auto px-6 py-12 space-y-6">
         <div>
           <Breadcrumb items={[{ href: '/study', label: 'スタディ' }, { label: 'クイズ' }]} />
-          <h1 className="text-2xl font-semibold">クイズ</h1>
+          <h1 className="flex items-center gap-2.5 text-2xl font-semibold">
+            <HelpCircle size={26} style={{ color: 'var(--palace)' }} />
+            クイズ
+          </h1>
           <p className="mt-2 text-muted-foreground">選んだカードやボックスから問題を作って確認します。</p>
         </div>
 

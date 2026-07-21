@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import Link from 'next/link'
-import { Plus } from 'lucide-react'
+import { Plus, Box as BoxIcon } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { CardGridSkeleton } from '@/components/ui/skeleton'
 import { getBoxes } from '@/lib/api/boxes'
@@ -36,8 +36,11 @@ export default function BoxesPage() {
 
   return (
     <div className="max-w-7xl mx-auto px-6 py-12">
-      <div className="flex items-center justify-between mb-6">
-        <h1 className="text-xl font-semibold">ボックス</h1>
+      <div className="flex items-center justify-between mb-2">
+        <h1 className="flex items-center gap-2 text-xl font-semibold">
+          <BoxIcon size={22} style={{ color: 'var(--palace)' }} />
+          ボックス一覧
+        </h1>
         {!creating && (
           <Button size="sm" onClick={() => setCreating(true)} className="flex items-center gap-1.5">
             <Plus size={16} />
@@ -45,6 +48,9 @@ export default function BoxesPage() {
           </Button>
         )}
       </div>
+      <p className="text-sm text-muted-foreground mb-6">
+        カードをテーマごとにまとめる入れ物。関連するカードを整理して保存できます。
+      </p>
 
       {creating && (
         <div className="mb-8">

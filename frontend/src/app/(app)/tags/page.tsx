@@ -259,7 +259,10 @@ export default function TagsPage() {
 
   return (
     <div className="max-w-2xl mx-auto px-6 py-12">
-      <h1 className="text-xl font-semibold mb-2">タグ</h1>
+      <h1 className="flex items-center gap-2 text-xl font-semibold mb-2">
+        <TagIcon size={22} style={{ color: 'var(--palace)' }} />
+        タグ
+      </h1>
       <p className="text-sm text-muted-foreground mb-6">
         タグの新規作成・名前の変更・削除ができます。カードへの付与はカード詳細画面から行えます。
       </p>

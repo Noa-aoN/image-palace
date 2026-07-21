@@ -1,7 +1,7 @@
 import type { Metadata } from 'next'
 import type { ReactNode } from 'react'
 import Link from 'next/link'
-import { ChevronRight, Layers, HelpCircle, Gamepad2, BarChart3 } from 'lucide-react'
+import { ChevronRight, Layers, HelpCircle, Gamepad2, BarChart3, GraduationCap } from 'lucide-react'
 import { Card, CardContent } from '@/components/ui/card'
 
 export const metadata: Metadata = { title: 'スタディ' }
@@ -44,7 +44,10 @@ const STUDY_MODES: StudyMode[] = [
 export default function StudyPage() {
   return (
     <div className="max-w-2xl mx-auto px-6 py-12">
-      <h1 className="text-2xl font-semibold">スタディ</h1>
+      <h1 className="flex items-center gap-2.5 text-2xl font-semibold">
+        <GraduationCap size={26} style={{ color: 'var(--palace)' }} />
+        スタディ
+      </h1>
       <p className="mt-2 text-muted-foreground">
         保存したカードやボックスを使って、記憶を定着させます。
       </p>

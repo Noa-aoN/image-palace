@@ -2,7 +2,7 @@
 
 import { useMemo, useState } from 'react'
 import Link from 'next/link'
-import { Layers, HelpCircle, Gamepad2, Flame } from 'lucide-react'
+import { Layers, HelpCircle, Gamepad2, Flame, BarChart3 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Breadcrumb } from '@/components/ui/breadcrumb'
 import { Badge } from '@/components/ui/badge'
@@ -75,7 +75,10 @@ export default function RecordPage() {
   return (
     <div className="max-w-2xl mx-auto px-6 py-12">
       <Breadcrumb items={[{ href: '/study', label: 'スタディ' }, { label: 'レコード' }]} />
-      <h1 className="text-2xl font-semibold">レコード</h1>
+      <h1 className="flex items-center gap-2.5 text-2xl font-semibold">
+        <BarChart3 size={26} style={{ color: 'var(--palace)' }} />
+        レコード
+      </h1>
       <p className="mt-2 text-muted-foreground">プラクティス・クイズ・プレイの学習履歴と統計を確認します。</p>
 
       {records.length === 0 ? (

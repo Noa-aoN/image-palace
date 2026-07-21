@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from 'react'
 import Link from 'next/link'
-import { PenLine, Sparkles, GalleryVerticalEnd, Loader2, ChevronRight, Coins, CreditCard, CheckCircle2 } from 'lucide-react'
+import { PenLine, Sparkles, GalleryVerticalEnd, Loader2, ChevronRight, Coins, CreditCard, CheckCircle2, DoorOpen } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
 import { MemoryAssetsCard } from '@/components/features/dashboard/MemoryAssetsCard'
@@ -174,7 +174,10 @@ export function DashboardContent() {
 
   return (
     <div className="max-w-2xl mx-auto px-6 py-12 space-y-8">
-      <h1 className="text-xl font-semibold">エントランス</h1>
+      <h1 className="flex items-center gap-2 text-xl font-semibold">
+        <DoorOpen size={22} style={{ color: 'var(--palace)' }} />
+        エントランス
+      </h1>
 
       {/* クレジット（残高・生成可能枚数・プラン。カード全体で /billing へ） */}
       <section className="space-y-3">

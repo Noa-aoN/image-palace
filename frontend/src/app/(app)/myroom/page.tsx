@@ -3,7 +3,7 @@
 import { useEffect } from 'react'
 import type { ReactNode } from 'react'
 import Link from 'next/link'
-import { ChevronRight, CreditCard, UserCog, Settings, Trophy, Coins } from 'lucide-react'
+import { ChevronRight, CreditCard, UserCog, Settings, Trophy, Coins, House } from 'lucide-react'
 import { Card, CardContent } from '@/components/ui/card'
 import { useAuthStore } from '@/stores/auth'
 import { useBillingStore } from '@/stores/billing'
@@ -27,7 +27,10 @@ export default function MyRoomPage() {
 
   return (
     <div className="max-w-2xl mx-auto px-6 py-12">
-      <h1 className="text-2xl font-semibold">マイルーム</h1>
+      <h1 className="flex items-center gap-2.5 text-2xl font-semibold">
+        <House size={26} style={{ color: 'var(--palace)' }} />
+        マイルーム
+      </h1>
       <p className="mt-2 text-muted-foreground">
         {user?.name ? `${user.name} さんの個人スペースです。` : 'あなたの個人スペースです。'}
       </p>

@@ -1,7 +1,7 @@
 'use client'
 
 import { useState } from 'react'
-import { Shuffle, ArrowRight, ImageIcon, Type, Loader2, AlertTriangle } from 'lucide-react'
+import { Shuffle, ArrowRight, ImageIcon, Type, Loader2, AlertTriangle, Layers } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Breadcrumb } from '@/components/ui/breadcrumb'
 import { TargetPicker, ComingSoonTargets } from '@/components/features/study/TargetPicker'
@@ -80,7 +80,10 @@ export default function PracticePage() {
       <div className="max-w-2xl mx-auto px-6 py-12 space-y-6">
         <div>
           <Breadcrumb items={[{ href: '/study', label: 'スタディ' }, { label: 'プラクティス' }]} />
-          <h1 className="text-2xl font-semibold">プラクティス</h1>
+          <h1 className="flex items-center gap-2.5 text-2xl font-semibold">
+            <Layers size={26} style={{ color: 'var(--palace)' }} />
+            プラクティス
+          </h1>
           <p className="mt-2 text-muted-foreground">カードを見返しながら、低負担で練習します。</p>
         </div>
 

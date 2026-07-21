@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import Link from 'next/link'
-import { GalleryHorizontal, Box as BoxIcon, Layers, LayoutGrid, Frame, MapPin, ChevronRight, Plus, Search, X, Route, DoorOpen, ListChecks, Boxes, Images, CheckSquare, Square, Trash2 } from 'lucide-react'
+import { GalleryHorizontal, Box as BoxIcon, Layers, LayoutGrid, Frame, MapPin, ChevronRight, Plus, Search, X, Route, DoorOpen, ListChecks, Boxes, Images, CheckSquare, Square, Trash2, LibraryBig } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/skeleton'
 import { getItemsPage, getItemsSummary, bulkDeleteItems } from '@/lib/api/items'
@@ -684,7 +684,10 @@ export default function LibraryPage() {
     <div className="max-w-7xl mx-auto px-6 py-12 space-y-12">
       <div className="flex items-start justify-between gap-3">
         <div>
-          <h1 className="text-xl font-semibold">ライブラリ</h1>
+          <h1 className="flex items-center gap-2 text-xl font-semibold">
+            <LibraryBig size={22} style={{ color: 'var(--palace)' }} />
+            ライブラリ
+          </h1>
           <p className="mt-1 text-sm text-muted-foreground">
             カード・ボックスなど、形式ごとに知識を棚で見渡せます。
           </p>

@@ -1,7 +1,7 @@
 import type { Metadata } from 'next'
 import type { ReactNode } from 'react'
 import Link from 'next/link'
-import { ChevronRight, ListChecks, Images } from 'lucide-react'
+import { ChevronRight, ListChecks, Images, Boxes } from 'lucide-react'
 import { Card, CardContent } from '@/components/ui/card'
 import { CreateIcon } from '@/components/features/layout/CreateIcon'
 
@@ -33,7 +33,10 @@ const MATERIAL_ACTIONS: MaterialAction[] = [
 export default function NewMaterialPage() {
   return (
     <div className="max-w-2xl mx-auto px-6 py-12">
-      <h1 className="text-2xl font-semibold">マテリアルを作成</h1>
+      <h1 className="flex items-center gap-2.5 text-2xl font-semibold">
+        <Boxes size={26} style={{ color: 'var(--palace)' }} />
+        マテリアルを作成
+      </h1>
       <p className="mt-2 text-muted-foreground">
         マテリアルは、カード化・制作の前段になる素材です。作りたい素材を選んでください。
       </p>
