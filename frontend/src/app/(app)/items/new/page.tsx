@@ -9,7 +9,7 @@ export const metadata: Metadata = { title: 'カードを作成' }
 export default function NewItemPage() {
   return (
     <div className="max-w-7xl mx-auto px-6 py-12">
-      <div className="max-w-2xl">
+      <div className="max-w-3xl mx-auto">
         <div className="mb-8">
           <Breadcrumb items={[{ href: '/items', label: 'カード' }, { label: '作成' }]} />
           <h1 className="flex items-center gap-2.5 text-2xl font-semibold">
