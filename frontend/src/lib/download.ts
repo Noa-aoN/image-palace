@@ -3,7 +3,7 @@
 // CORS 等で fetch できない場合は新規タブで開いてそこから保存してもらう。
 
 /** ファイル名に使えない文字を落とす（拡張子は付けない）。 */
-function safeFileName(name: string): string {
+export function safeFileName(name: string): string {
   const cleaned = name.replace(/[\\/:*?"<>|\s]+/g, '_').replace(/^_+|_+$/g, '')
   return cleaned.slice(0, 80) || 'image'
 }
