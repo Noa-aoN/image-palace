@@ -222,7 +222,7 @@ export default function ViewEditorPage() {
 
       {/* キャンバスタイプごとの描画（freeboard / space_map を実装済み） */}
       {view.view_type === 'freeboard' ? (
-        <FreeboardCanvas viewId={view.id} initialItems={view.items ?? []} initialEdges={view.edges ?? []} />
+        <FreeboardCanvas viewId={view.id} viewName={view.name} initialItems={view.items ?? []} initialEdges={view.edges ?? []} />
       ) : view.view_type === 'deck' ? (
         <DeckBoard viewId={view.id} initialItems={view.items ?? []} />
       ) : view.view_type === 'space_map' ? (

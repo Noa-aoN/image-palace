@@ -66,7 +66,7 @@ export function DraggableMiniMap({ boardRef }: { boardRef: RefObject<HTMLDivElem
   return (
     <div
       ref={containerRef}
-      className="nodrag nopan absolute overflow-hidden rounded-lg border border-border shadow-sm"
+      className="board-noexport nodrag nopan absolute overflow-hidden rounded-lg border border-border shadow-sm"
       style={{
         ...(pos ? { left: pos.left, top: pos.top } : { right: 12, bottom: 12 }),
         width: size.w,

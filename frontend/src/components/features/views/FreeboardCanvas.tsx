@@ -23,8 +23,11 @@ import {
   type Edge,
 } from '@xyflow/react'
 import '@xyflow/react/dist/style.css'
-import { Plus, List, Spline, Settings, ArrowUpToLine, ArrowDownToLine, ArrowUp, ArrowDown, Trash2 } from 'lucide-react'
+import { Plus, List, Spline, Settings, ArrowUpToLine, ArrowDownToLine, ArrowUp, ArrowDown, Trash2, Download } from 'lucide-react'
+import { toPng } from 'html-to-image'
 import { Button } from '@/components/ui/button'
+import { proxiedDataUrl, nextFrame } from '@/lib/boardExport'
+import { safeFileName } from '@/lib/download'
 import {
   addViewItem,
   removeViewItem,
@@ -148,15 +151,17 @@ function computeLayerOrder<T extends { id: string }>(
 
 type FreeboardCanvasProps = {
   viewId: string
+  viewName?: string
   initialItems: ViewItemPlacement[]
   initialEdges: ViewEdge[]
 }
 
-function Canvas({ viewId, initialItems, initialEdges }: FreeboardCanvasProps) {
+function Canvas({ viewId, viewName, initialItems, initialEdges }: FreeboardCanvasProps) {
   const boardRef = useRef<HTMLDivElement>(null)
   const [nodes, setNodes, onNodesChange] = useNodesState<CardNodeType>(initialItems.map(toNode))
   const [edges, setEdges, onEdgesChange] = useEdgesState<Edge>(initialEdges.map(viewToEdge))
-  const { screenToFlowPosition, setCenter, getZoom, getNodes, getEdges } = useReactFlow()
+  const { screenToFlowPosition, setCenter, getZoom, getNodes, getEdges, fitView, getViewport, setViewport } =
+    useReactFlow()
 
   const openCard = useRightPanelStore((s) => s.openCard)
   const closePanel = useRightPanelStore((s) => s.close)
@@ -567,6 +572,78 @@ function Canvas({ viewId, initialItems, initialEdges }: FreeboardCanvasProps) {
     [viewId]
   )
 
+  // ボード面（背景・パターン・配置カード・接続線）を1枚の PNG に書き出してダウンロードする。
+  // 手順: 全カードが収まるよう fitView → カード/背景画像を同一オリジンプロキシ経由で
+  // dataURL 化して差し替え（CORS 回避）→ ボード面を撮影（操作系 UI は filter で除外）→ 復元。
+  const [exporting, setExporting] = useState(false)
+  const handleDownloadImage = useCallback(async () => {
+    const board = boardRef.current
+    if (!board || getNodes().length === 0 || exporting) return
+
+    // 撮影から除外する操作系 UI（コントロール/ミニマップ/パネル/帰属表示）
+    const EXCLUDE = ['react-flow__controls', 'react-flow__minimap', 'react-flow__attribution', 'react-flow__panel', 'board-noexport']
+
+    const prevViewport = getViewport()
+    const prevBoardBg = board.style.backgroundImage
+    const restoreSrc = new Map<HTMLImageElement, string | null>()
+
+    setExporting(true)
+    try {
+      // 1) 全カードが収まるようフィット（背景パターンもこのビューでレンダリングされる）
+      fitView({ padding: 0.15, duration: 0 })
+      await nextFrame()
+      await nextFrame()
+
+      // 2) クロスオリジンのカード画像をプロキシ経由の dataURL に差し替える
+      const imgEls = Array.from(board.querySelectorAll('img'))
+      await Promise.all(
+        imgEls.map(async (img) => {
+          const src = img.currentSrc || img.src
+          if (!src || src.startsWith('data:')) return
+          restoreSrc.set(img, img.getAttribute('src'))
+          try {
+            img.src = await proxiedDataUrl(src)
+            await img.decode().catch(() => {})
+          } catch {
+            /* 取得失敗時は元画像のまま（枠のみ写る） */
+          }
+        })
+      )
+      // 背景画像も同様に差し替える
+      if (backgroundImageUrl) {
+        try {
+          const bg = await proxiedDataUrl(backgroundImageUrl)
+          board.style.backgroundImage = `url("${bg}")`
+        } catch {
+          /* 背景画像の取得失敗は無視（背景色で塗られる） */
+        }
+      }
+
+      // 3) ボード面を撮影
+      const dataUrl = await toPng(board, {
+        pixelRatio: 2,
+        skipFonts: true,
+        backgroundColor: getComputedStyle(board).backgroundColor || '#ffffff',
+        filter: (node) => !(node instanceof Element) || !EXCLUDE.some((c) => node.classList.contains(c)),
+      })
+      const a = document.createElement('a')
+      a.download = `${safeFileName(viewName || 'board')}.png`
+      a.href = dataUrl
+      a.click()
+    } catch (err) {
+      console.error('ボード画像の書き出しに失敗しました', err)
+    } finally {
+      // 復元（画像 src・背景画像・ビューポート）
+      restoreSrc.forEach((src, img) => {
+        if (src == null) img.removeAttribute('src')
+        else img.setAttribute('src', src)
+      })
+      board.style.backgroundImage = prevBoardBg
+      setViewport(prevViewport, { duration: 0 })
+      setExporting(false)
+    }
+  }, [getNodes, exporting, getViewport, fitView, setViewport, backgroundImageUrl, viewName])
+
   const boardActions = useMemo(
     () => ({ onRemove: handleRemove, onResizeEnd: handleResizeEnd }),
     [handleRemove, handleResizeEnd]
@@ -594,6 +671,16 @@ function Canvas({ viewId, initialItems, initialEdges }: FreeboardCanvasProps) {
           <Button size="sm" variant="outline" onClick={() => openBoardSettings(viewId)} className="flex items-center gap-1">
             <Settings size={15} />
             ボード設定
+          </Button>
+          <Button
+            size="sm"
+            onClick={handleDownloadImage}
+            disabled={nodes.length === 0 || exporting}
+            className="flex items-center gap-1 border-transparent bg-[var(--palace)] text-white hover:bg-[var(--palace)]/85"
+            title="ボード全体を画像（PNG）で保存"
+          >
+            <Download size={15} />
+            {exporting ? '書き出し中…' : '画像を保存'}
           </Button>
           <span className="ml-auto text-xs text-muted-foreground">Shift＋クリックで追加選択 / Shift＋ドラッグで範囲選択</span>
         </div>
