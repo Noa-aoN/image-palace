@@ -77,7 +77,7 @@ export default function PracticePage() {
   // ---- 選択（3エリア） ----
   if (step === 'select') {
     return (
-      <div className="max-w-2xl mx-auto px-6 py-12 space-y-6">
+      <div className="max-w-3xl mx-auto px-6 py-12 space-y-6">
         <div>
           <Breadcrumb items={[{ href: '/study', label: 'スタディ' }, { label: 'プラクティス' }]} />
           <h1 className="flex items-center gap-2.5 text-2xl font-semibold">

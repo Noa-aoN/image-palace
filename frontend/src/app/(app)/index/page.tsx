@@ -113,15 +113,12 @@ export default function IndexPage() {
   }
 
   return (
-    <div className="mx-auto max-w-3xl px-6 py-8">
-      <div className="flex items-center gap-2">
-        <List size={24} style={{ color: 'var(--palace)' }} />
-        <h1 className="flex items-center gap-2.5 text-2xl font-semibold">
-          <List size={26} style={{ color: 'var(--palace)' }} />
-          インデックス
-        </h1>
-      </div>
-      <p className="mt-2 text-sm text-muted-foreground">
+    <div className="mx-auto max-w-7xl px-6 py-12">
+      <h1 className="flex items-center gap-2.5 text-2xl font-semibold">
+        <List size={26} style={{ color: 'var(--palace)' }} />
+        インデックス
+      </h1>
+      <p className="mt-2 text-muted-foreground">
         画像を表示しないカードの一覧です。検索・選択して、画像を見ずにまとめて削除できます（全 {totalCount} 件）。
       </p>
 

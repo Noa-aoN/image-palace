@@ -73,7 +73,7 @@ export default function RecordPage() {
   }, [records])
 
   return (
-    <div className="max-w-2xl mx-auto px-6 py-12">
+    <div className="max-w-4xl mx-auto px-6 py-12">
       <Breadcrumb items={[{ href: '/study', label: 'スタディ' }, { label: 'レコード' }]} />
       <h1 className="flex items-center gap-2.5 text-2xl font-semibold">
         <BarChart3 size={26} style={{ color: 'var(--palace)' }} />

@@ -65,7 +65,7 @@ export default function SearchPage() {
     : 0
 
   return (
-    <div className="max-w-2xl mx-auto px-6 py-12">
+    <div className="max-w-7xl mx-auto px-6 py-12">
       <h1 className="flex items-center gap-2.5 text-2xl font-semibold">
         <Search size={26} style={{ color: 'var(--palace)' }} />
         横断検索
@@ -74,7 +74,7 @@ export default function SearchPage() {
         カード・ボックス・キャンバス・スペースをまとめて検索します。
       </p>
 
-      <div className="relative mt-6">
+      <div className="relative mt-6 max-w-2xl">
         <Search size={18} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
         <input
           value={query}
@@ -86,13 +86,13 @@ export default function SearchPage() {
         />
       </div>
 
-      <div className="mt-8 space-y-6">
+      <div className="mt-8">
         {!query.trim() ? (
           <p className="text-sm text-muted-foreground">キーワードを入力すると結果が表示されます。</p>
         ) : results && total === 0 && !searching ? (
           <p className="text-sm text-muted-foreground">「{query.trim()}」に一致するものは見つかりませんでした。</p>
         ) : results ? (
-          <>
+          <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
             <ResultGroup
               title="カード"
               items={results.items.map((i) => ({ id: i.id, href: `/items/${i.id}`, label: i.title }))}
@@ -113,7 +113,7 @@ export default function SearchPage() {
               title="スペース"
               items={results.spaces.map((s) => ({ id: s.id, href: `/spaces/${s.id}`, label: s.name }))}
             />
-          </>
+          </div>
         ) : (
           <p className="text-sm text-muted-foreground">検索中…</p>
         )}

@@ -43,7 +43,7 @@ const STUDY_MODES: StudyMode[] = [
 
 export default function StudyPage() {
   return (
-    <div className="max-w-2xl mx-auto px-6 py-12">
+    <div className="max-w-7xl mx-auto px-6 py-12">
       <h1 className="flex items-center gap-2.5 text-2xl font-semibold">
         <GraduationCap size={26} style={{ color: 'var(--palace)' }} />
         スタディ
@@ -52,7 +52,7 @@ export default function StudyPage() {
         保存したカードやボックスを使って、記憶を定着させます。
       </p>
 
-      <div className="mt-8 grid gap-4 sm:grid-cols-2">
+      <div className="mt-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         {STUDY_MODES.map((mode) =>
           mode.comingSoon || !mode.href ? (
             <Card key={mode.label} className="h-full border-dashed bg-card/60" aria-disabled>

@@ -132,7 +132,7 @@ export default function BillingPage() {
           <section className="space-y-3 rounded-xl border border-border bg-card p-5">
             <div className="flex items-center gap-2">
               <Coins size={18} style={{ color: 'var(--palace)' }} />
-              <h2 className="text-base font-semibold">クレジット残高</h2>
+              <h2 className="text-lg font-semibold">クレジット残高</h2>
             </div>
             <p className="text-3xl font-bold">
               {summary?.available_credits ?? 0}
@@ -209,7 +209,7 @@ export default function BillingPage() {
           <section className="space-y-4">
             <div className="flex items-center gap-2">
               <Sparkles size={18} style={{ color: 'var(--palace)' }} />
-              <h2 className="text-base font-semibold">プラン</h2>
+              <h2 className="text-lg font-semibold">プラン</h2>
             </div>
             <div className="grid gap-3 sm:grid-cols-2">
               {subscriptionPlans.map((plan) => {
@@ -241,7 +241,7 @@ export default function BillingPage() {
 
           {summary?.subscription && (
             <section className="space-y-3 rounded-xl border border-border bg-card p-5">
-              <h2 className="text-base font-semibold">プラン変更・解約</h2>
+              <h2 className="text-lg font-semibold">プラン変更・解約</h2>
               <p className="text-sm text-muted-foreground">
                 プランの変更・解約、契約ステータスの確認は、お支払い管理ページ（Stripe）から行えます。
                 {summary.subscription.cancel_at_period_end && ' 現在、期末での解約が予定されています。'}
@@ -265,7 +265,7 @@ export default function BillingPage() {
             <section className="space-y-3 rounded-xl border border-border bg-card p-5">
               <div className="flex items-center gap-2">
                 <CreditCard size={18} style={{ color: 'var(--palace)' }} />
-                <h2 className="text-base font-semibold">クレジットを追加</h2>
+                <h2 className="text-lg font-semibold">クレジットを追加</h2>
               </div>
               <p className="text-sm text-muted-foreground">買い切りのクレジットは繰り越して使えます。</p>
               <div className="flex flex-wrap gap-3">
@@ -314,7 +314,7 @@ export default function BillingPage() {
           <section className="space-y-3 rounded-xl border border-border bg-card p-5">
             <div className="flex items-center gap-2">
               <Receipt size={18} style={{ color: 'var(--palace)' }} />
-              <h2 className="text-base font-semibold">お支払い管理</h2>
+              <h2 className="text-lg font-semibold">お支払い管理</h2>
             </div>
             <p className="text-sm text-muted-foreground">
               支払い方法の変更・請求履歴・領収書は、Stripe のお支払い管理ページから確認できます。
@@ -343,13 +343,14 @@ export default function BillingPage() {
   ]
 
   return (
-    <div className="max-w-3xl mx-auto px-6 py-12 space-y-8">
+    <div className="max-w-7xl mx-auto px-6 py-12">
+      <div className="space-y-8">
       <div>
-        <h1 className="flex items-center gap-2 text-xl font-semibold">
-          <CreditCard size={22} style={{ color: 'var(--palace)' }} />
+        <h1 className="flex items-center gap-2.5 text-2xl font-semibold">
+          <CreditCard size={26} style={{ color: 'var(--palace)' }} />
           プラン・支払い
         </h1>
-        <p className="mt-1 text-sm text-muted-foreground">
+        <p className="mt-2 text-muted-foreground">
           クレジット残高の確認、プランのアップグレード、クレジットの追加ができます。
         </p>
       </div>
@@ -368,6 +369,7 @@ export default function BillingPage() {
       {error && <p className="text-sm text-destructive">{error}</p>}
 
       <CategorySections sections={sections} ariaLabel="プラン・支払いカテゴリ" />
+      </div>
     </div>
   )
 }

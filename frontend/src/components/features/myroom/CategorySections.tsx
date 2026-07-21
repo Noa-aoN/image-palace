@@ -66,10 +66,15 @@ export function CategorySections<K extends string>({ sections, ariaLabel }: Prop
   }
 
   return (
-    <>
-      {/* 上部 sticky アンカーナビ（モバイルは横スクロール） */}
-      <div className="sticky top-0 z-10 rounded-xl border border-border bg-[var(--ivory-dark)]/95 px-2 py-1.5 backdrop-blur">
-        <div role="tablist" aria-label={ariaLabel} className="flex gap-1 overflow-x-auto whitespace-nowrap">
+    // 全幅活用: lg 以上は「左=縦タブ(sticky) / 右=内容」の2カラム。モバイルは上部の横スクロールタブ＋縦積み。
+    <div className="lg:grid lg:grid-cols-[200px_minmax(0,1fr)] lg:gap-10">
+      {/* アンカーナビ（モバイル=上部 sticky 横スクロール / lg+=左の縦並び sticky） */}
+      <div className="sticky top-0 z-10 mb-6 rounded-xl border border-border bg-[var(--ivory-dark)]/95 px-2 py-1.5 backdrop-blur lg:mb-0 lg:self-start lg:top-4">
+        <div
+          role="tablist"
+          aria-label={ariaLabel}
+          className="flex gap-1 overflow-x-auto whitespace-nowrap lg:flex-col lg:overflow-visible"
+        >
           {sections.map((s) => {
             const isActive = s.key === active
             return (
@@ -80,7 +85,7 @@ export function CategorySections<K extends string>({ sections, ariaLabel }: Prop
                 aria-selected={isActive}
                 aria-controls={s.key}
                 onClick={() => handleJump(s.key)}
-                className={`flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-sm font-medium transition-colors ${
+                className={`flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-sm font-medium transition-colors lg:w-full lg:justify-start ${
                   isActive ? 'bg-white text-[var(--palace)] shadow-sm' : 'text-muted-foreground hover:bg-black/5'
                 }`}
               >
@@ -93,13 +98,13 @@ export function CategorySections<K extends string>({ sections, ariaLabel }: Prop
       </div>
 
       {/* 全セクションを縦に一覧表示（セクション間は区切り線で分ける） */}
-      <div className="divide-y divide-border">
+      <div className="min-w-0 divide-y divide-border">
         {sections.map((s) => (
           <section
             key={s.key}
             id={s.key}
             aria-label={s.label}
-            className="scroll-mt-20 py-8 first:pt-0"
+            className="scroll-mt-20 py-8 first:pt-0 lg:first:pt-0"
           >
             {/* タブに沿ったセクション見出し */}
             <div className="mb-4 flex items-center gap-2">
@@ -110,6 +115,6 @@ export function CategorySections<K extends string>({ sections, ariaLabel }: Prop
           </section>
         ))}
       </div>
-    </>
+    </div>
   )
 }

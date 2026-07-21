@@ -543,7 +543,7 @@ export function ItemList({ initialTag = null }: { initialTag?: string | null }) 
   ) : null
 
   const searchBox = (
-    <div className="relative">
+    <div className="relative min-w-[200px] flex-1">
       <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
       <input
         value={query}
@@ -624,9 +624,12 @@ export function ItemList({ initialTag = null }: { initialTag?: string | null }) 
 
   const filterBar = (
     <div className="space-y-3">
-      {searchBox}
+      {/* 検索バー（伸縮）＋ソート/絞り込みプルダウンを1行に収める。狭い幅では折り返す。 */}
+      <div className="flex flex-wrap items-center gap-2">
+        {searchBox}
+        {sortFilterControls}
+      </div>
       {tagFilter}
-      {sortFilterControls}
     </div>
   )
 

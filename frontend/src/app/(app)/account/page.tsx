@@ -110,7 +110,7 @@ export default function AccountPage() {
         <section className="space-y-3 rounded-xl border border-destructive/40 bg-destructive/5 p-5">
           <div className="flex items-center gap-2">
             <Trash2 size={18} className="text-destructive" />
-            <h2 className="text-base font-semibold text-destructive">退会（アカウントの削除）</h2>
+            <h2 className="text-lg font-semibold text-destructive">退会（アカウントの削除）</h2>
           </div>
           <p className="text-sm text-muted-foreground">
             アカウントを削除すると、すべてのカード・画像・デッキ・ボックスなどが完全に削除されます。
@@ -145,18 +145,20 @@ export default function AccountPage() {
   ]
 
   return (
-    <div className="max-w-2xl mx-auto px-6 py-12 space-y-8">
-      <div>
-        <h1 className="flex items-center gap-2 text-xl font-semibold">
-          <UserCog size={22} style={{ color: 'var(--palace)' }} />
-          アカウント設定
-        </h1>
-        <p className="mt-1 text-sm text-muted-foreground">
-          プロフィール・ログイン情報・退会など、アカウント本体に関する設定です。
-        </p>
-      </div>
+    <div className="max-w-7xl mx-auto px-6 py-12">
+      <div className="space-y-8">
+        <div>
+          <h1 className="flex items-center gap-2.5 text-2xl font-semibold">
+            <UserCog size={26} style={{ color: 'var(--palace)' }} />
+            アカウント設定
+          </h1>
+          <p className="mt-2 text-muted-foreground">
+            プロフィール・ログイン情報・退会など、アカウント本体に関する設定です。
+          </p>
+        </div>
 
-      <CategorySections sections={sections} ariaLabel="アカウント設定カテゴリ" />
+        <CategorySections sections={sections} ariaLabel="アカウント設定カテゴリ" />
+      </div>
     </div>
   )
 }

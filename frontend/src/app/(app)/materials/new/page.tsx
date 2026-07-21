@@ -32,7 +32,8 @@ const MATERIAL_ACTIONS: MaterialAction[] = [
 
 export default function NewMaterialPage() {
   return (
-    <div className="max-w-2xl mx-auto px-6 py-12">
+    <div className="max-w-7xl mx-auto px-6 py-12">
+      <div className="max-w-3xl mx-auto">
       <h1 className="flex items-center gap-2.5 text-2xl font-semibold">
         <Boxes size={26} style={{ color: 'var(--palace)' }} />
         マテリアルを作成
@@ -86,6 +87,7 @@ export default function NewMaterialPage() {
             </Link>
           )
         )}
+      </div>
       </div>
     </div>
   )

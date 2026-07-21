@@ -117,7 +117,7 @@ export default function QuizPage() {
   // ---- 選択（3エリア） ----
   if (step === 'select') {
     return (
-      <div className="max-w-2xl mx-auto px-6 py-12 space-y-6">
+      <div className="max-w-3xl mx-auto px-6 py-12 space-y-6">
         <div>
           <Breadcrumb items={[{ href: '/study', label: 'スタディ' }, { label: 'クイズ' }]} />
           <h1 className="flex items-center gap-2.5 text-2xl font-semibold">
@@ -203,7 +203,7 @@ export default function QuizPage() {
     const total = questions.length
     const rate = total > 0 ? Math.round((correctCount / total) * 100) : 0
     return (
-      <div className="max-w-2xl mx-auto px-6 py-12">
+      <div className="max-w-3xl mx-auto px-6 py-12">
         <h1 className="text-2xl font-semibold">結果</h1>
         <div className="mt-6 rounded-2xl border border-border bg-card p-6 text-center">
           <p className="text-4xl font-bold tabular-nums">
@@ -250,7 +250,7 @@ export default function QuizPage() {
   }
 
   return (
-    <div className="max-w-2xl mx-auto px-6 py-12">
+    <div className="max-w-3xl mx-auto px-6 py-12">
       <div className="flex items-center justify-between">
         <h1 className="text-lg font-semibold truncate">{label}</h1>
         <span className="shrink-0 text-sm text-muted-foreground tabular-nums">

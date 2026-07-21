@@ -173,9 +173,9 @@ export function DashboardContent() {
   const renewal = formatRenewal(billing?.subscription?.current_period_end ?? billing?.next_credit_reset)
 
   return (
-    <div className="max-w-2xl mx-auto px-6 py-12 space-y-8">
-      <h1 className="flex items-center gap-2 text-xl font-semibold">
-        <DoorOpen size={22} style={{ color: 'var(--palace)' }} />
+    <div className="max-w-7xl mx-auto px-6 py-12 space-y-8">
+      <h1 className="flex items-center gap-2.5 text-2xl font-semibold">
+        <DoorOpen size={26} style={{ color: 'var(--palace)' }} />
         エントランス
       </h1>
 
@@ -315,17 +315,20 @@ export function DashboardContent() {
         </section>
       )}
 
-      {/* 記憶資産（種類ごとの積み上げ。各列クリックで一覧へ） */}
-      <section className="space-y-3">
-        <h2 className="text-sm font-semibold text-muted-foreground">宮殿の記憶資産</h2>
-        <MemoryAssetsCard summary={summary} />
-      </section>
+      {/* 記憶資産・間取り図（横並びで全幅を使う） */}
+      <div className="grid gap-6 lg:grid-cols-2">
+        {/* 記憶資産（種類ごとの積み上げ。各列クリックで一覧へ） */}
+        <section className="space-y-3">
+          <h2 className="text-sm font-semibold text-muted-foreground">宮殿の記憶資産</h2>
+          <MemoryAssetsCard summary={summary} />
+        </section>
 
-      {/* 宮殿の間取り（主要な場所への地図的な導線） */}
-      <section className="space-y-3">
-        <h2 className="text-sm font-semibold text-muted-foreground">宮殿の間取り図</h2>
-        <PalaceFloorplan />
-      </section>
+        {/* 宮殿の間取り（主要な場所への地図的な導線） */}
+        <section className="space-y-3">
+          <h2 className="text-sm font-semibold text-muted-foreground">宮殿の間取り図</h2>
+          <PalaceFloorplan />
+        </section>
+      </div>
 
       {/* クイック操作 */}
       <section className="space-y-3">

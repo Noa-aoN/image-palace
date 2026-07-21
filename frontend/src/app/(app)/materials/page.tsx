@@ -31,7 +31,7 @@ const MATERIAL_KINDS: MaterialKind[] = [
 
 export default function MaterialsPage() {
   return (
-    <div className="max-w-2xl mx-auto px-6 py-12">
+    <div className="max-w-7xl mx-auto px-6 py-12">
       <h1 className="flex items-center gap-2.5 text-2xl font-semibold">
         <Boxes size={26} style={{ color: 'var(--palace)' }} />
         マテリアル一覧
@@ -40,7 +40,7 @@ export default function MaterialsPage() {
         マテリアルは、カード化・制作の前段になる素材です。種類ごとに管理できます。
       </p>
 
-      <div className="mt-8 grid gap-4 sm:grid-cols-2">
+      <div className="mt-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
         {MATERIAL_KINDS.map((kind) =>
           kind.comingSoon || !kind.href ? (
             <Card key={kind.label} className="h-full border-dashed bg-card/60" aria-disabled>

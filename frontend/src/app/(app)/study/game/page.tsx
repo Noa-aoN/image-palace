@@ -194,7 +194,7 @@ export default function GamePage() {
   // ---- プレイ中：選択したゲーム本体を表示 ----
   if (started && target) {
     return (
-      <div className="max-w-2xl mx-auto px-6 py-12">
+      <div className="max-w-3xl mx-auto px-6 py-12">
         {selectedGame === 'memory' ? (
           <MemoryGame target={target} pairType={memoryPairType} pairCount={memoryCount} onExit={() => setStarted(false)} />
         ) : selectedGame === 'karuta' ? (
@@ -210,7 +210,7 @@ export default function GamePage() {
 
   // ---- 選択（3エリア） ----
   return (
-    <div className="max-w-2xl mx-auto px-6 py-12 space-y-6">
+    <div className="max-w-3xl mx-auto px-6 py-12 space-y-6">
       <div>
         <Breadcrumb items={[{ href: '/study', label: 'スタディ' }, { label: 'プレイ' }]} />
         <h1 className="flex items-center gap-2.5 text-2xl font-semibold">
