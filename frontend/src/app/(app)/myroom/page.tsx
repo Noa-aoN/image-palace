@@ -26,7 +26,7 @@ export default function MyRoomPage() {
   }, [fetchBilling])
 
   return (
-    <div className="max-w-2xl mx-auto px-6 py-12">
+    <div className="max-w-7xl mx-auto px-6 py-12">
       <h1 className="flex items-center gap-2.5 text-2xl font-semibold">
         <House size={26} style={{ color: 'var(--palace)' }} />
         マイルーム
@@ -65,7 +65,7 @@ export default function MyRoomPage() {
       </Link>
 
       {/* 個人設定への導線 */}
-      <div className="mt-4 grid gap-4 sm:grid-cols-2">
+      <div className="mt-4 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         {LINKS.map((link) => (
           <Link
             key={link.href}

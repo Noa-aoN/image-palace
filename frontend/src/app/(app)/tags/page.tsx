@@ -193,7 +193,7 @@ function CollapsibleSection({
         <span className="text-sm font-semibold">{title}</span>
         <span className="text-xs text-muted-foreground">{count}</span>
       </button>
-      {open && <div className="space-y-2 px-1 pb-1 pt-1">{children}</div>}
+      {open && <div className="grid gap-2 px-1 pb-1 pt-1 sm:grid-cols-2 lg:grid-cols-3">{children}</div>}
     </div>
   )
 }
@@ -258,16 +258,16 @@ export default function TagsPage() {
   const userTags = tags.filter((t) => !t.is_default)
 
   return (
-    <div className="max-w-2xl mx-auto px-6 py-12">
-      <h1 className="flex items-center gap-2 text-xl font-semibold mb-2">
-        <TagIcon size={22} style={{ color: 'var(--palace)' }} />
+    <div className="max-w-7xl mx-auto px-6 py-12">
+      <h1 className="flex items-center gap-2.5 text-2xl font-semibold mb-2">
+        <TagIcon size={26} style={{ color: 'var(--palace)' }} />
         タグ
       </h1>
-      <p className="text-sm text-muted-foreground mb-6">
+      <p className="mb-6 text-muted-foreground">
         タグの新規作成・名前の変更・削除ができます。カードへの付与はカード詳細画面から行えます。
       </p>
 
-      <form onSubmit={handleCreate} className="mb-8 flex flex-col gap-2 sm:flex-row sm:items-start">
+      <form onSubmit={handleCreate} className="mb-8 flex max-w-2xl flex-col gap-2 sm:flex-row sm:items-start">
         <div className="flex-1">
           <Input
             value={newName}
@@ -316,7 +316,7 @@ export default function TagsPage() {
                 <span className="text-sm font-semibold">マイタグ</span>
                 <span className="text-xs text-muted-foreground">{userTags.length}</span>
               </div>
-              <div className="space-y-2">
+              <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
                 {userTags.map((tag) => (
                   <TagRow key={tag.id} tag={tag} onChanged={(next) => handleTagChanged(tag.id, next)} />
                 ))}

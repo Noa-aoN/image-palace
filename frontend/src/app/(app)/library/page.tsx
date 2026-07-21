@@ -148,7 +148,7 @@ function Section({
     <section className="space-y-6">
       <div className="flex items-center gap-2">
         <span style={{ color: 'var(--palace)' }}>{icon}</span>
-        <h2 className="text-lg font-bold">{title}</h2>
+        <h2 className="text-lg font-semibold">{title}</h2>
         {description && <span className="text-sm text-muted-foreground">{description}</span>}
       </div>
       <div className="space-y-8 border-l border-border/60 pl-4">{children}</div>
@@ -684,8 +684,8 @@ export default function LibraryPage() {
     <div className="max-w-7xl mx-auto px-6 py-12 space-y-12">
       <div className="flex items-start justify-between gap-3">
         <div>
-          <h1 className="flex items-center gap-2 text-xl font-semibold">
-            <LibraryBig size={22} style={{ color: 'var(--palace)' }} />
+          <h1 className="flex items-center gap-2.5 text-2xl font-semibold">
+            <LibraryBig size={26} style={{ color: 'var(--palace)' }} />
             ライブラリ
           </h1>
           <p className="mt-1 text-sm text-muted-foreground">

@@ -9,7 +9,7 @@ export default function BlogPage() {
   const articles = [...ARTICLES].sort((a, b) => (a.date < b.date ? 1 : -1))
 
   return (
-    <div className="mx-auto max-w-2xl px-6 py-12">
+    <div className="mx-auto max-w-7xl px-6 py-12">
       <header>
         <h1 className="flex items-center gap-2.5 text-2xl font-semibold">
           <Newspaper size={26} style={{ color: 'var(--palace)' }} />
@@ -18,12 +18,12 @@ export default function BlogPage() {
         <p className="mt-2 text-muted-foreground">記憶・学習・認知科学にまつわる話題をお届けします。</p>
       </header>
 
-      <ul className="mt-8 space-y-4">
+      <ul className="mt-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
         {articles.map((a) => (
           <li key={a.slug}>
             <Link
               href={`/blog/${a.slug}`}
-              className="block rounded-xl border border-border bg-card p-5 transition-colors hover:bg-muted"
+              className="flex h-full flex-col rounded-xl border border-border bg-card p-5 transition-colors hover:bg-muted"
             >
               <div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
                 <time dateTime={a.date}>{new Date(a.date).toLocaleDateString('ja-JP')}</time>

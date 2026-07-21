@@ -129,9 +129,10 @@ export default function AcropolisPage() {
   }
 
   return (
-    <div className="max-w-2xl mx-auto px-6 py-12">
-      <h1 className="flex items-center gap-2 text-2xl font-semibold">
-        <Wand2 size={24} style={{ color: 'var(--palace)' }} />
+    <div className="max-w-7xl mx-auto px-6 py-12">
+      <div className="max-w-2xl">
+      <h1 className="flex items-center gap-2.5 text-2xl font-semibold">
+        <Wand2 size={26} style={{ color: 'var(--palace)' }} />
         アクロポリス
       </h1>
       <p className="mt-2 text-muted-foreground">
@@ -273,6 +274,7 @@ export default function AcropolisPage() {
           </ul>
         </section>
       )}
+      </div>
     </div>
   )
 }

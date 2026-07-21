@@ -195,7 +195,9 @@ export default async function GuideSectionPage({ params }: { params: Promise<{ s
   const Content = CONTENT[section.slug]
 
   return (
-    <div className="mx-auto max-w-2xl px-6 py-12">
+    <div className="mx-auto max-w-7xl px-6 py-12">
+      {/* 外枠は全幅、本文は読みやすい幅に制限 */}
+      <div className="mx-auto max-w-2xl">
       <Link
         href="/guide"
         className="inline-flex items-center gap-1 text-sm text-muted-foreground transition-colors hover:text-foreground"
@@ -220,6 +222,7 @@ export default async function GuideSectionPage({ params }: { params: Promise<{ s
         <Link href="/guide">
           <Button variant="outline">使い方一覧へ戻る</Button>
         </Link>
+      </div>
       </div>
     </div>
   )

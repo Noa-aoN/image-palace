@@ -204,7 +204,7 @@ export default function SettingsPage() {
           <section className="space-y-3 rounded-xl border border-border bg-card p-5">
             <div className="flex items-center gap-2">
               <Sparkles size={18} style={{ color: 'var(--palace)' }} />
-              <h2 className="text-base font-semibold">生成オプション</h2>
+              <h2 className="text-lg font-semibold">生成オプション</h2>
             </div>
             <div className="flex items-start justify-between gap-4">
               <div>
@@ -261,7 +261,7 @@ export default function SettingsPage() {
           <section className="space-y-3 rounded-xl border border-border bg-card p-5">
             <div className="flex items-center gap-2">
               <ImageIcon size={18} style={{ color: 'var(--palace)' }} />
-              <h2 className="text-base font-semibold">デフォルト画像スタイル</h2>
+              <h2 className="text-lg font-semibold">デフォルト画像スタイル</h2>
             </div>
             <p className="text-sm text-muted-foreground">
               新しくカードを作るときの画像スタイルの初期値です。各カードの作成時に個別で変更できます。
@@ -302,7 +302,7 @@ export default function SettingsPage() {
           <section className="space-y-3 rounded-xl border border-border bg-card p-5">
             <div className="flex items-center gap-2">
               <SlidersHorizontal size={18} style={{ color: 'var(--palace)' }} />
-              <h2 className="text-base font-semibold">カードの表示</h2>
+              <h2 className="text-lg font-semibold">カードの表示</h2>
             </div>
             <div className="flex items-start justify-between gap-4">
               <div>
@@ -324,7 +324,7 @@ export default function SettingsPage() {
           <section className="space-y-3 rounded-xl border border-border bg-card p-5">
             <div className="flex items-center gap-2">
               <Boxes size={18} style={{ color: 'var(--palace)' }} />
-              <h2 className="text-base font-semibold">図の表示</h2>
+              <h2 className="text-lg font-semibold">図の表示</h2>
             </div>
             <p className="text-sm text-muted-foreground">
               宮殿の間取り図・記憶資産などの図を、平面（2D）と立体（3D）のどちらで描くかを選びます。
@@ -348,7 +348,7 @@ export default function SettingsPage() {
           <section className="space-y-3 rounded-xl border border-border bg-card p-5">
             <div className="flex items-center gap-2">
               <Zap size={18} style={{ color: 'var(--palace)' }} />
-              <h2 className="text-base font-semibold">アニメーション</h2>
+              <h2 className="text-lg font-semibold">アニメーション</h2>
             </div>
             <p className="text-sm text-muted-foreground">
               画面の動き（トップページの演出、図の切り替えなど）を動かすかどうかを選びます。
@@ -419,7 +419,7 @@ export default function SettingsPage() {
           <section className="space-y-3 rounded-xl border border-border bg-card p-5">
             <div className="flex items-center gap-2">
               <Download size={18} style={{ color: 'var(--palace)' }} />
-              <h2 className="text-base font-semibold">データのエクスポート</h2>
+              <h2 className="text-lg font-semibold">データのエクスポート</h2>
             </div>
             <p className="text-sm text-muted-foreground">
               あなたのカード・デッキ・ボックスなどのデータを JSON 形式でダウンロードします。
@@ -443,18 +443,20 @@ export default function SettingsPage() {
   ]
 
   return (
-    <div className="max-w-2xl mx-auto px-6 py-12 space-y-8">
-      <div>
-        <h1 className="flex items-center gap-2 text-xl font-semibold">
-          <Settings size={22} style={{ color: 'var(--palace)' }} />
-          環境設定
-        </h1>
-        <p className="mt-1 text-sm text-muted-foreground">
-          生成・共有・連携・通知・データ管理など、利用環境を整えます。
-        </p>
-      </div>
+    <div className="max-w-7xl mx-auto px-6 py-12">
+      <div className="max-w-3xl space-y-8">
+        <div>
+          <h1 className="flex items-center gap-2.5 text-2xl font-semibold">
+            <Settings size={26} style={{ color: 'var(--palace)' }} />
+            環境設定
+          </h1>
+          <p className="mt-2 text-muted-foreground">
+            生成・共有・連携・通知・データ管理など、利用環境を整えます。
+          </p>
+        </div>
 
-      <CategorySections sections={sections} ariaLabel="環境設定カテゴリ" />
+        <CategorySections sections={sections} ariaLabel="環境設定カテゴリ" />
+      </div>
     </div>
   )
 }

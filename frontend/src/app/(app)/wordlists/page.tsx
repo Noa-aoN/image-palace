@@ -21,10 +21,10 @@ export default function WordlistsPage() {
   }, [])
 
   return (
-    <div className="max-w-2xl mx-auto px-6 py-12">
+    <div className="max-w-7xl mx-auto px-6 py-12">
       <div className="mb-6 flex items-center justify-between">
-        <h1 className="flex items-center gap-2 text-xl font-semibold">
-          <ListChecks size={22} style={{ color: 'var(--palace)' }} />
+        <h1 className="flex items-center gap-2.5 text-2xl font-semibold">
+          <ListChecks size={26} style={{ color: 'var(--palace)' }} />
           ワードリスト
         </h1>
         <Link href="/wordlists/new">
@@ -51,15 +51,18 @@ export default function WordlistsPage() {
           </Link>
         </div>
       ) : (
-        <ul className="divide-y overflow-hidden rounded-xl border border-border bg-card">
+        <ul className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
           {wordlists.map((wl) => (
             <li key={wl.id}>
-              <Link href={`/wordlists/${wl.id}`} className="flex items-center justify-between px-4 py-3 hover:bg-black/5">
-                <span className="flex items-center gap-2 font-medium">
-                  <ListChecks size={18} style={{ color: 'var(--palace)' }} />
-                  {wl.name}
+              <Link
+                href={`/wordlists/${wl.id}`}
+                className="flex items-center justify-between gap-2 rounded-xl border border-border bg-card px-4 py-3 transition-colors hover:bg-muted"
+              >
+                <span className="flex min-w-0 items-center gap-2 font-medium">
+                  <ListChecks size={18} className="shrink-0" style={{ color: 'var(--palace)' }} />
+                  <span className="truncate">{wl.name}</span>
                 </span>
-                <span className="text-xs text-muted-foreground">{wl.word_count} 語</span>
+                <span className="shrink-0 text-xs text-muted-foreground">{wl.word_count} 語</span>
               </Link>
             </li>
           ))}

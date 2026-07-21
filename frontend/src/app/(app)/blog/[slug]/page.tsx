@@ -47,7 +47,9 @@ export default async function ArticlePage({ params }: { params: Promise<{ slug: 
   if (!article) notFound()
 
   return (
-    <article className="mx-auto max-w-2xl px-6 py-12">
+    <article className="mx-auto max-w-7xl px-6 py-12">
+      {/* 外枠は全幅、本文は読みやすい幅に制限 */}
+      <div className="mx-auto max-w-2xl">
       <Link href="/blog" className="inline-flex items-center gap-1 text-sm text-muted-foreground transition-colors hover:text-foreground">
         <ArrowLeft size={14} />
         コラム一覧へ
@@ -85,6 +87,7 @@ export default async function ArticlePage({ params }: { params: Promise<{ slug: 
           </ul>
         </section>
       )}
+      </div>
     </article>
   )
 }

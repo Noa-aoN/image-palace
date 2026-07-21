@@ -8,7 +8,7 @@ export const metadata: Metadata = { title: '使い方' }
 
 export default function GuidePage() {
   return (
-    <div className="mx-auto max-w-2xl px-6 py-12">
+    <div className="mx-auto max-w-7xl px-6 py-12">
       <header>
         <h1 className="flex items-center gap-2.5 text-2xl font-semibold">
           <BookOpen size={26} style={{ color: 'var(--palace)' }} />
@@ -19,20 +19,20 @@ export default function GuidePage() {
         </p>
       </header>
 
-      <ul className="mt-8 space-y-4">
+      <ul className="mt-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
         {GUIDE_SECTIONS.map((s) => {
           const Icon = s.icon
           return (
             <li key={s.slug}>
               <Link
                 href={`/guide/${s.slug}`}
-                className="flex items-center gap-4 rounded-xl border border-border bg-card p-5 transition-colors hover:bg-muted"
+                className="flex h-full items-center gap-4 rounded-xl border border-border bg-card p-5 transition-colors hover:bg-muted"
               >
                 <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-muted">
                   <Icon size={20} style={{ color: 'var(--palace)' }} />
                 </span>
                 <div className="min-w-0 flex-1">
-                  <h2 className="font-semibold leading-snug">{s.title}</h2>
+                  <h2 className="text-lg font-semibold leading-snug">{s.title}</h2>
                   <p className="mt-1 text-sm leading-relaxed text-muted-foreground">{s.excerpt}</p>
                 </div>
                 <ChevronRight size={18} className="shrink-0 text-muted-foreground" aria-hidden="true" />
