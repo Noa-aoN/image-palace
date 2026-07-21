@@ -344,7 +344,7 @@ export default function BillingPage() {
 
   return (
     <div className="max-w-7xl mx-auto px-6 py-12">
-      <div className="max-w-3xl mx-auto space-y-8">
+      <div className="space-y-8">
       <div>
         <h1 className="flex items-center gap-2.5 text-2xl font-semibold">
           <CreditCard size={26} style={{ color: 'var(--palace)' }} />
