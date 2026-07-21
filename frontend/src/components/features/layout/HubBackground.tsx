@@ -6,15 +6,40 @@ import { useUiStore } from '@/stores/ui'
 // ハブページのメインエリアに敷く全面背景（LP 的な演出）。
 // 非スクロールの外側コンテナに絶対配置（-z-10）で置くため、内容がスクロールしても全面に残る。
 // サイドバー幅ぶん左を空け、メインエリアの矩形を基準に cover/center させる（フレーミングをずらさない）。
-// 濃い装飾画像なので、ページ背景色に金味（--palace）を少し混ぜた半透明オーバーレイを重ねて薄くし、
-// 下方向へフェード。さらに下部だけ弱い blur を重ねて霞ませ、本文の可読性を保つ。
-const BACKDROPS: { prefix: string; src: string }[] = [
-  { prefix: '/entrance', src: '/backgrounds/entrance.jpg' },
-  { prefix: '/atelier', src: '/backgrounds/atelier.jpg' },
-  { prefix: '/library', src: '/backgrounds/library.jpg' },
-  { prefix: '/study', src: '/backgrounds/study.jpg' },
-  { prefix: '/myroom', src: '/backgrounds/myroom.jpg' },
+// 濃い装飾画像なので、ページ背景色に金味（--palace）を混ぜた半透明オーバーレイで薄くし、下方向へフェード、
+// 上下端に弱い blur を重ねて霞ませ、本文の可読性を保つ。
+
+// route プレフィックス → 背景画像ファイル名（/backgrounds/<file>.jpg）。
+// 配下ページ（/guide/[slug] 等）も startsWith で同じ背景を引き継ぐ。
+const BACKDROPS: { prefix: string; file: string }[] = [
+  { prefix: '/entrance', file: 'entrance' },
+  { prefix: '/atelier', file: 'atelier' },
+  { prefix: '/library', file: 'library' },
+  { prefix: '/study', file: 'study' },
+  { prefix: '/myroom', file: 'myroom' },
+  // 宮殿外・運営
+  { prefix: '/acropolis', file: 'acropolis' },
+  { prefix: '/delphi', file: 'acropolis' },
+  { prefix: '/agora', file: 'agora' },
+  { prefix: '/stadion', file: 'stadion' },
+  { prefix: '/guide', file: 'guide' },
+  { prefix: '/blog', file: 'blog' },
 ]
+
+// オーバーレイ・マスク・レイヤー基底は静的なので一度だけ算出する。
+// ページ背景色に金味を混ぜ、上端は白をほんの少し足して明るく（白み）、上下でアルファを変える。
+const WARM = 'color-mix(in srgb, var(--background) 92%, var(--palace))'
+const WARM_TOP = `color-mix(in srgb, ${WARM} 90%, white)`
+const OVERLAY =
+  `linear-gradient(to bottom, color-mix(in srgb, ${WARM_TOP} 82%, transparent), ` +
+  `color-mix(in srgb, ${WARM} 91%, transparent))`
+// 上下の端を blur で霞ませる（中央はシャープ）。下部をやや広めに効かせる。
+const EDGE_MASK = 'linear-gradient(to bottom, black 0%, transparent 28%, transparent 62%, black 100%)'
+const LAYER_BASE: React.CSSProperties = {
+  backgroundSize: 'cover',
+  backgroundPosition: 'center',
+  backgroundRepeat: 'no-repeat',
+}
 
 export function HubBackground() {
   const pathname = usePathname()
@@ -22,25 +47,12 @@ export function HubBackground() {
   const match = BACKDROPS.find((b) => pathname === b.prefix || pathname.startsWith(`${b.prefix}/`))
   if (!match) return null
 
-  // サイドバー幅（md 未満は非表示なので left-0）。この幅ぶん右へ寄せて main の矩形に合わせる。
-  const sidebarWidth = sidebarExpanded ? '240px' : '72px'
-
-  // ページ背景色に金味を少しだけ混ぜた色を、上下でアルファを変えてオーバーレイにする
-  const warm = 'color-mix(in srgb, var(--background) 92%, var(--palace))'
-  // 上端は白をほんの少し混ぜて明るく（白み）
-  const warmTop = `color-mix(in srgb, ${warm} 90%, white)`
-  const overlay =
-    'linear-gradient(to bottom, ' +
-    `color-mix(in srgb, ${warmTop} 82%, transparent), ` +
-    `color-mix(in srgb, ${warm} 91%, transparent))`
   const layer: React.CSSProperties = {
-    backgroundImage: `${overlay}, url("${match.src}")`,
-    backgroundSize: 'cover',
-    backgroundPosition: 'center',
-    backgroundRepeat: 'no-repeat',
+    ...LAYER_BASE,
+    backgroundImage: `${OVERLAY}, url("/backgrounds/${match.file}.jpg")`,
   }
-  // 上下の端を blur で霞ませる（中央はシャープ）。下部をやや広めに効かせる。
-  const edgeMask = 'linear-gradient(to bottom, black 0%, transparent 28%, transparent 62%, black 100%)'
+  // md 未満はサイドバー非表示なので left-0。展開状態に応じて右へ寄せる。
+  const sidebarWidth = sidebarExpanded ? '240px' : '72px'
 
   return (
     <div
@@ -49,12 +61,9 @@ export function HubBackground() {
       style={{ '--sb': sidebarWidth } as React.CSSProperties}
     >
       {/* メインエリア全面（シャープ） */}
-      <div className="absolute inset-0 bg-cover bg-center" style={layer} />
-      {/* 上下の端に弱い blur を重ねて霞ませる（中央はシャープ） */}
-      <div
-        className="absolute inset-0 blur-[3px]"
-        style={{ ...layer, maskImage: edgeMask, WebkitMaskImage: edgeMask }}
-      />
+      <div className="absolute inset-0" style={layer} />
+      {/* 上下の端に弱い blur を重ねて霞ませる */}
+      <div className="absolute inset-0 blur-[3px]" style={{ ...layer, maskImage: EDGE_MASK, WebkitMaskImage: EDGE_MASK }} />
     </div>
   )
 }
