@@ -1,6 +1,7 @@
 CLAUDE.local.md
 CLAUDE.md
 .claude/
+.agents/
 AGENTS.md
 CLAUDE.local.md.example
 scripts/

@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react'
 import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
-import { CircleUser, Castle, Coins, ScrollText, ArrowLeft, X } from 'lucide-react'
+import { CircleUser, Castle, Coins, ScrollText, X } from 'lucide-react'
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -84,22 +84,9 @@ export function AppHeader() {
         borderBottom: '1px solid var(--palace)',
       }}
     >
-      {/* 左: モバイルのハンバーガー（認証時のみ）＋ LP導線 ＋ ロゴ */}
+      {/* 左: ロゴ（常に左端）＋ モバイルのハンバーガー（認証時のみ）。
+          LP へ戻る導線はアカウントメニュー内「最初のページに戻る」へ移設した。 */}
       <div className="flex items-center gap-1">
-        {showUserMenu && <MobileNav />}
-        {/* LP（トップページ）へ戻れる小さめアイコン。ロゴは認証時 /entrance へ行くため導線を分ける。
-            LP 自身では行き先が現在地なので出さない。
-            左端寄りに置きたいので負のマージンで px を少し打ち消す。 */}
-        {!isLandingPage && (
-          <Link
-            href="/"
-            className="-ml-2 rounded-full p-1.5 hover:bg-black/5 transition-colors"
-            title="トップページへ"
-            aria-label="トップページ（LP）へ"
-          >
-            <ArrowLeft size={18} style={{ color: 'var(--foreground)' }} />
-          </Link>
-        )}
         <Link href={isAuthenticated ? '/entrance' : '/'} className="flex items-center gap-1.5" aria-label="ImagePalace ホーム">
           {/* ロゴは仮置き（宮殿アイコン）。正式ロゴ確定までのプレースホルダ */}
           <Castle size={32} style={{ color: 'var(--palace)' }} />
@@ -111,6 +98,7 @@ export function AppHeader() {
             α版
           </span>
         </Link>
+        {showUserMenu && <MobileNav />}
       </div>
 
       <div className="flex items-center gap-1.5">
@@ -190,6 +178,9 @@ export function AppHeader() {
                 トロフィー
               </DropdownMenuItem>
               <DropdownMenuSeparator />
+              <DropdownMenuItem onClick={() => router.push('/')} className="cursor-pointer">
+                最初のページに戻る
+              </DropdownMenuItem>
               <DropdownMenuItem onClick={handleLogout} className="cursor-pointer">
                 ログアウト
               </DropdownMenuItem>

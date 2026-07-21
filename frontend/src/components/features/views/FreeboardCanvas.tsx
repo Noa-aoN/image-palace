@@ -5,7 +5,6 @@ import {
   Background,
   BackgroundVariant,
   Controls,
-  MiniMap,
   ReactFlow,
   ReactFlowProvider,
   addEdge,
@@ -37,12 +36,12 @@ import {
   reorderViewEdges,
 } from '@/lib/api/views'
 import { useRightPanelStore } from '@/stores/rightPanel'
-import { useUiStore } from '@/stores/ui'
 import { useBoardSettingsStore } from '@/stores/boardSettings'
 import type { ViewItemPlacement, ViewEdge, ViewEdgeStyle, EdgePoint } from '@/types/view'
 import type { Item } from '@/types/item'
 import { BoardActionsContext, CardNode, CARD_DEFAULT_W, CARD_DEFAULT_H, type CardNodeType } from './CardNode'
 import { EditableEdge, EdgeActionsContext } from './EditableEdge'
+import { DraggableMiniMap } from './DraggableMiniMap'
 
 const nodeTypes = { card: CardNode }
 const edgeTypes = { editable: EditableEdge }
@@ -157,11 +156,10 @@ function Canvas({ viewId, initialItems, initialEdges }: FreeboardCanvasProps) {
   const boardRef = useRef<HTMLDivElement>(null)
   const [nodes, setNodes, onNodesChange] = useNodesState<CardNodeType>(initialItems.map(toNode))
   const [edges, setEdges, onEdgesChange] = useEdgesState<Edge>(initialEdges.map(viewToEdge))
-  const { screenToFlowPosition, setCenter, getZoom } = useReactFlow()
+  const { screenToFlowPosition, setCenter, getZoom, getNodes, getEdges } = useReactFlow()
 
-  const panelMode = useRightPanelStore((s) => s.mode)
-  const panelWidth = useUiStore((s) => s.rightPanelWidth)
   const openCard = useRightPanelStore((s) => s.openCard)
+  const closePanel = useRightPanelStore((s) => s.close)
   const openBoardCards = useRightPanelStore((s) => s.openBoardCards)
   const openAddCards = useRightPanelStore((s) => s.openAddCards)
   const openBoardObjects = useRightPanelStore((s) => s.openBoardObjects)
@@ -236,22 +234,55 @@ function Canvas({ viewId, initialItems, initialEdges }: FreeboardCanvasProps) {
     [viewId, setNodes]
   )
 
-  // 選択変更を右パネルに一本化する（単一→カード/接続線、複数→一括）。
-  // onNodeClick/onEdgeClick を使うと複数選択時に単一パネルへ戻ってしまうため選択で駆動する。
+  // 複数選択（Shift＋範囲ドラッグ等、クリックを伴わない選択）だけをここで一括パネルにする。
+  // 単一の選択は onNodeClick/onEdgeClick 側で開く（掴んで動かすだけの pointerdown 選択では
+  // 開かず、実クリック時のみ開くようにするため）。count===0 は onPaneClick で閉じ判定する。
   const handleSelectionChange: OnSelectionChangeFunc = useCallback(
     ({ nodes: selNodes, edges: selEdges }) => {
-      const count = selNodes.length + selEdges.length
-      if (count > 1) {
+      if (selNodes.length + selEdges.length > 1) {
         openBulk(viewId, selNodes.map((n) => n.id), selEdges.map((e) => e.id))
-      } else if (selNodes.length === 1) {
-        openCard(selNodes[0].id, viewId)
-      } else if (selEdges.length === 1) {
-        openEdge(viewId, edgeToView(selEdges[0]))
       }
-      // count === 0 は何もしない（明示的な操作までパネルを維持する）
     },
-    [viewId, openBulk, openCard, openEdge]
+    [viewId, openBulk]
   )
+
+  // カード/接続線の「実クリック」でパネルを開く（ドラッグ移動では発火しない）。
+  // 複数選択された状態でのクリックは一括、単一はそれぞれのパネルにする。
+  // 現在の選択集合はライブ参照（getNodes/getEdges）で判定し、状態の取りこぼしを避ける。
+  const handleNodeClick: NodeMouseHandler<CardNodeType> = useCallback(
+    (_event, node) => {
+      const selNodes = getNodes().filter((n) => n.selected)
+      const selEdges = getEdges().filter((e) => e.selected)
+      if (selNodes.length + selEdges.length > 1) {
+        openBulk(viewId, selNodes.map((n) => n.id), selEdges.map((e) => e.id))
+      } else {
+        openCard(node.id, viewId)
+      }
+    },
+    [viewId, getNodes, getEdges, openBulk, openCard]
+  )
+
+  const handleEdgeClick: EdgeMouseHandler = useCallback(
+    (_event, edge) => {
+      const selNodes = getNodes().filter((n) => n.selected)
+      const selEdges = getEdges().filter((e) => e.selected)
+      if (selNodes.length + selEdges.length > 1) {
+        openBulk(viewId, selNodes.map((n) => n.id), selEdges.map((e) => e.id))
+      } else {
+        openEdge(viewId, edgeToView(edge))
+      }
+    },
+    [viewId, getNodes, getEdges, openBulk, openEdge]
+  )
+
+  // 空白（カード/オブジェクト以外）クリックで、選択駆動のパネル（カード/接続線/一括）だけ閉じる。
+  // ツールバーで開いた一覧・追加・ボード設定パネルは維持する。
+  const handlePaneClick = useCallback(() => {
+    const mode = useRightPanelStore.getState().mode
+    if (mode === 'card' || mode === 'edge' || mode === 'bulk') {
+      closePanel()
+    }
+  }, [closePanel])
 
   // 右クリックのコンテキストメニュー（レイヤー操作＋ボードから削除）。位置はボード左上からの相対座標。
   const [ctxMenu, setCtxMenu] = useState<{ x: number; y: number; kind: 'card' | 'edge'; targetIds: string[] } | null>(null)
@@ -583,6 +614,9 @@ function Canvas({ viewId, initialItems, initialEdges }: FreeboardCanvasProps) {
             onNodesChange={onNodesChange}
             onEdgesChange={onEdgesChange}
             onNodeDragStop={handleDragStop}
+            onNodeClick={handleNodeClick}
+            onEdgeClick={handleEdgeClick}
+            onPaneClick={handlePaneClick}
             onNodeDoubleClick={handleNodeDoubleClick}
             onNodeContextMenu={handleNodeContextMenu}
             onEdgeContextMenu={handleEdgeContextMenu}
@@ -613,10 +647,8 @@ function Canvas({ viewId, initialItems, initialEdges }: FreeboardCanvasProps) {
               />
             )}
             {boardSettings.controls !== false && <Controls showInteractive={false} />}
-            {/* 右パネルを開いている間はミニマップをパネル幅ぶん左へ寄せて隠れないようにする */}
-            {boardSettings.minimap !== false && (
-              <MiniMap pannable zoomable style={panelMode === 'closed' ? undefined : { right: panelWidth + 12 }} />
-            )}
+            {/* ミニマップはドラッグ移動・リサイズ可能。位置は固定（右パネル連動なし） */}
+            {boardSettings.minimap !== false && <DraggableMiniMap boardRef={boardRef} />}
           </ReactFlow>
 
           {nodes.length === 0 && (

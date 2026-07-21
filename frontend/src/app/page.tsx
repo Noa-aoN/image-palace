@@ -97,13 +97,18 @@ export default function TopPage() {
       <Section id="concept" cueTo="features" bg="var(--ivory)" roadFadeTop roadIntro className="-mt-[10svh]">
         <p className="mb-4 text-sm font-medium tracking-widest" style={{ color: 'var(--palace)' }}>CONCEPT</p>
         <h2 className="mb-6 text-3xl font-bold tracking-tight md:text-4xl" style={{ color: '#111111' }}>
-          記憶を、設計する。
+          イメージで記憶する。
         </h2>
         <p className="mx-auto max-w-xl text-base leading-relaxed md:text-lg" style={{ color: '#4A4A4A' }}>
           テキスト中心の学習に違和感を持つ人へ。単語や概念をAIでイメージに変換し、
           視覚的に保持・想起できる「自分だけの記憶の宮殿」を育てます。
         </p>
-        <p className="mt-6 text-xs text-muted-foreground">※ 内容は仮。ここにコンセプトの演出を追加予定。</p>
+        {/* 定量的な裏づけ（絵優位性・視覚記憶の容量） */}
+        <p className="mx-auto mt-8 max-w-xl text-sm leading-relaxed" style={{ color: '#4A4A4A' }}>
+          人は約<span className="font-bold" style={{ color: 'var(--palace)' }}>1万枚</span>もの画像を見分けられる——
+          記憶はもともと、文字よりイメージに強い。
+          <span className="mt-1 block text-xs text-muted-foreground">出典: Standing (1973), Learning 10,000 pictures</span>
+        </p>
       </Section>
 
       {/* 2. 機能（仮） */}
@@ -126,18 +131,27 @@ export default function TopPage() {
       {/* 3. 作例（仮） */}
       <Section id="gallery" cueTo="cta" bg="#ffffff" topDividerFrom="var(--ivory-dark)">
         <p className="mb-4 text-sm font-medium tracking-widest" style={{ color: 'var(--palace)' }}>GALLERY</p>
-        <h2 className="mb-6 text-3xl font-bold tracking-tight md:text-4xl" style={{ color: '#111111' }}>作例</h2>
+        <h2 className="mb-6 text-3xl font-bold tracking-tight md:text-4xl" style={{ color: '#111111' }}>画面イメージ</h2>
         <p className="mx-auto mb-10 max-w-xl text-base leading-relaxed md:text-lg" style={{ color: '#4A4A4A' }}>
-          生成したカードの作例をここに並べます。（準備中）
+          実際の画面例をここに並べます。（スクリーンショットは準備中）
         </p>
-        <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
-          {Array.from({ length: 4 }).map((_, i) => (
-            <div key={i} className="flex aspect-square items-center justify-center rounded-xl border border-border bg-muted/40">
-              <GalleryVerticalEnd size={28} className="text-muted-foreground/40" />
-            </div>
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+          {['カード生成', 'フリーボード', '接続線・レイヤー', 'スペース（記憶の宮殿）'].map((label) => (
+            <figure key={label} className="overflow-hidden rounded-xl border border-border bg-card text-left shadow-sm">
+              {/* スクショ枠のフェイクタイトルバー */}
+              <div className="flex items-center gap-1.5 border-b border-border bg-muted/50 px-3 py-2">
+                <span className="h-2.5 w-2.5 rounded-full bg-muted-foreground/25" />
+                <span className="h-2.5 w-2.5 rounded-full bg-muted-foreground/25" />
+                <span className="h-2.5 w-2.5 rounded-full bg-muted-foreground/25" />
+              </div>
+              <div className="flex aspect-video flex-col items-center justify-center gap-2 bg-muted/30">
+                <GalleryVerticalEnd size={28} className="text-muted-foreground/40" />
+                <figcaption className="text-sm font-medium text-muted-foreground">{label}</figcaption>
+                <span className="text-xs text-muted-foreground/70">スクリーンショット準備中</span>
+              </div>
+            </figure>
           ))}
         </div>
-        <p className="mt-6 text-xs text-muted-foreground">※ 内容は仮。作例の演出を追加予定。</p>
       </Section>
 
       {/* 4. 再度の入り口（仮） */}

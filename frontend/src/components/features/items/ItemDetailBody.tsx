@@ -1,7 +1,8 @@
 'use client'
 
-import { Trash2, Pencil, Check, X } from 'lucide-react'
+import { Trash2, Pencil, Check, X, Download } from 'lucide-react'
 import { Button } from '@/components/ui/button'
+import { downloadImage } from '@/lib/download'
 import { Input } from '@/components/ui/input'
 import { Spinner } from '@/components/ui/spinner'
 import { Skeleton } from '@/components/ui/skeleton'
@@ -100,7 +101,7 @@ export function ItemDetailBody({ itemId, onDeleted }: { itemId: string; onDelete
       {/* 画像 */}
       {item.media?.url && !imgError ? (
         <div
-          className="w-full overflow-hidden rounded-xl bg-muted"
+          className="group relative w-full overflow-hidden rounded-xl bg-muted"
           style={
             item.media.blur
               ? { backgroundImage: `url("${item.media.blur}")`, backgroundSize: 'cover', backgroundPosition: 'center' }
@@ -116,6 +117,19 @@ export function ItemDetailBody({ itemId, onDeleted }: { itemId: string; onDelete
             onClick={() => setZoomed(true)}
             onError={() => setImgError(true)}
           />
+          {/* ダウンロード（ホバーで表示） */}
+          <button
+            type="button"
+            onClick={(e) => {
+              e.stopPropagation()
+              downloadImage(item.media!.url!, item.title)
+            }}
+            aria-label="画像をダウンロード"
+            title="画像をダウンロード"
+            className="absolute right-2 top-2 rounded-lg bg-black/55 p-1.5 text-white opacity-0 transition-opacity hover:bg-black/70 focus-visible:opacity-100 group-hover:opacity-100"
+          >
+            <Download size={16} />
+          </button>
         </div>
       ) : (
         <GeneratingOverlay
@@ -165,6 +179,19 @@ export function ItemDetailBody({ itemId, onDeleted }: { itemId: string; onDelete
           className="fixed inset-0 z-50 flex cursor-zoom-out items-center justify-center bg-black/80 p-4"
           onClick={() => setZoomed(false)}
         >
+          <button
+            type="button"
+            onClick={(e) => {
+              e.stopPropagation()
+              downloadImage(item.media!.url!, item.title)
+            }}
+            aria-label="画像をダウンロード"
+            title="画像をダウンロード"
+            className="absolute right-4 top-4 flex items-center gap-1.5 rounded-lg bg-white/15 px-3 py-2 text-sm text-white transition-colors hover:bg-white/25"
+          >
+            <Download size={16} />
+            ダウンロード
+          </button>
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img src={item.media.url} alt={item.title} className="max-h-full max-w-full rounded-xl object-contain" />
         </div>
