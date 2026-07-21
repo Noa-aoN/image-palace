@@ -2,7 +2,7 @@
 
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { User, Globe, Trash2, AlertTriangle, IdCard } from 'lucide-react'
+import { User, Globe, Trash2, AlertTriangle, IdCard, UserCog } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { CategorySections, type CategorySection } from '@/components/features/myroom/CategorySections'
 import { ComingSoon } from '@/components/features/myroom/ComingSoon'
@@ -147,7 +147,10 @@ export default function AccountPage() {
   return (
     <div className="max-w-2xl mx-auto px-6 py-12 space-y-8">
       <div>
-        <h1 className="text-xl font-semibold">アカウント設定</h1>
+        <h1 className="flex items-center gap-2 text-xl font-semibold">
+          <UserCog size={22} style={{ color: 'var(--palace)' }} />
+          アカウント設定
+        </h1>
         <p className="mt-1 text-sm text-muted-foreground">
           プロフィール・ログイン情報・退会など、アカウント本体に関する設定です。
         </p>

@@ -3,7 +3,7 @@
 import { useMemo, useState } from 'react'
 import type { ReactNode } from 'react'
 import Link from 'next/link'
-import { Flame, BarChart3, Check, Volume2, Copy, Compass, Crosshair, Swords, ChevronDown, SlidersHorizontal } from 'lucide-react'
+import { Flame, BarChart3, Check, Volume2, Copy, Compass, Crosshair, Swords, ChevronDown, SlidersHorizontal, Gamepad2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Breadcrumb } from '@/components/ui/breadcrumb'
 import { TargetPicker, ComingSoonTargets } from '@/components/features/study/TargetPicker'
@@ -213,7 +213,10 @@ export default function GamePage() {
     <div className="max-w-2xl mx-auto px-6 py-12 space-y-6">
       <div>
         <Breadcrumb items={[{ href: '/study', label: 'スタディ' }, { label: 'プレイ' }]} />
-        <h1 className="text-2xl font-semibold">プレイ</h1>
+        <h1 className="flex items-center gap-2.5 text-2xl font-semibold">
+          <Gamepad2 size={26} style={{ color: 'var(--palace)' }} />
+          プレイ
+        </h1>
         <p className="mt-2 text-muted-foreground">楽しみながら反復できる学習モードです。対象とゲームを選んで始めましょう。</p>
       </div>
 

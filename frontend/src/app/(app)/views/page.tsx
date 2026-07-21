@@ -3,7 +3,7 @@
 import { Suspense, useEffect, useState } from 'react'
 import Link from 'next/link'
 import { useSearchParams } from 'next/navigation'
-import { Plus } from 'lucide-react'
+import { Plus, LayoutGrid } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { CardGridSkeleton } from '@/components/ui/skeleton'
 import { getViews } from '@/lib/api/views'
@@ -41,13 +41,16 @@ function ViewsPageInner() {
   }, [])
 
   const visibleViews = typeFilter ? views.filter((v) => v.view_type === typeFilter) : views
-  const heading = typeFilter ? viewTypeLabel(typeFilter) : 'キャンバス'
+  const heading = typeFilter ? `${viewTypeLabel(typeFilter)}一覧` : 'キャンバス一覧'
 
   return (
     <div className="max-w-7xl mx-auto px-6 py-12">
       <div className="flex items-center justify-between mb-2">
         <div className="flex items-baseline gap-3">
-          <h1 className="text-xl font-semibold">{heading}</h1>
+          <h1 className="flex items-center gap-2 text-xl font-semibold">
+            <LayoutGrid size={22} style={{ color: 'var(--palace)' }} />
+            {heading}
+          </h1>
           {typeFilter && (
             <Link href="/views" className="text-sm hover:underline" style={{ color: 'var(--palace)' }}>
               すべてのキャンバス

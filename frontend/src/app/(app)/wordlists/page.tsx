@@ -23,7 +23,10 @@ export default function WordlistsPage() {
   return (
     <div className="max-w-2xl mx-auto px-6 py-12">
       <div className="mb-6 flex items-center justify-between">
-        <h1 className="text-xl font-semibold">ワードリスト</h1>
+        <h1 className="flex items-center gap-2 text-xl font-semibold">
+          <ListChecks size={22} style={{ color: 'var(--palace)' }} />
+          ワードリスト
+        </h1>
         <Link href="/wordlists/new">
           <Button size="sm" className="flex items-center gap-1.5">
             <Plus size={16} />
