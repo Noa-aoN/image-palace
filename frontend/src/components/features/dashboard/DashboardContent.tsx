@@ -316,15 +316,15 @@ export function DashboardContent() {
       )}
 
       {/* 記憶資産・間取り図（横並びで全幅を使う） */}
-      <div className="grid gap-6 lg:grid-cols-2">
-        {/* 記憶資産（種類ごとの積み上げ。各列クリックで一覧へ） */}
-        <section className="space-y-3">
+      <div className="grid gap-6 lg:grid-cols-2 lg:items-stretch">
+        {/* 記憶資産（種類ごとの積み上げ。各列クリックで一覧へ）。カード高さは間取り図に合わせる */}
+        <section className="flex flex-col gap-3">
           <h2 className="text-sm font-semibold text-muted-foreground">宮殿の記憶資産</h2>
-          <MemoryAssetsCard summary={summary} />
+          <MemoryAssetsCard summary={summary} className="flex-1" />
         </section>
 
         {/* 宮殿の間取り（主要な場所への地図的な導線） */}
-        <section className="space-y-3">
+        <section className="flex flex-col gap-3">
           <h2 className="text-sm font-semibold text-muted-foreground">宮殿の間取り図</h2>
           <PalaceFloorplan />
         </section>

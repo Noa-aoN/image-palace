@@ -36,12 +36,14 @@ type P = { x: number; y: number }
 type Rect = { x: number; y: number; w: number; h: number }
 
 // 玄関（ポルチコ前 y=150）の先へ続く道。宮殿と同じ平面座標で置く。
-const ROAD: Rect = { x: 142, y: 150, w: 76, h: 56 }
+// 長さは控えめ（元の約2/3）にして、白っぽく薄めに敷く。
+const ROAD: Rect = { x: 142, y: 150, w: 76, h: 37 }
 
 // 回転の軸（宮殿の中心を貫く縦軸）。この点を中心に、平面ごと回してから投影する。
 const PIVOT = { x: 180, y: 72 }
 // 回っても枠に収まるよう、わずかに余白を残す。
-const FIT = 1
+// 2D（平面図）と縦の高さを揃えるため全体を少し縮める（はみ出しは許容）。
+const FIT = 0.86
 
 // 平面座標を「縦軸まわりに yaw だけ回してから」アイソメへ投影する。
 // CSS で絵を回すのと違い、比率も接地も崩れない（記憶資産カードと同じ手法）。
@@ -133,14 +135,15 @@ function WallBox({ box, h = WALL_H, yaw = 0 }: { box: Rect; h?: number; yaw?: nu
  * 列柱。LP と同じ柱画像（road-pillar.png）の下側だけを使い、
  * 壁より高い部分はマスクで透明へ溶かす。
  */
-function Column({ cx, cy, r, h = COLUMN_H, yaw = 0 }: { cx: number; cy: number; r: number; h?: number; yaw?: number }) {
+// road=true（宮殿下・玄関側の柱）は白っぽく薄めに描く。
+function Column({ cx, cy, r, h = COLUMN_H, yaw = 0, road = false }: { cx: number; cy: number; r: number; h?: number; yaw?: number; road?: boolean }) {
   const base = project(cx, cy, 0, yaw)
   const w = r * 3.6
   const top = base.y - h
 
   return (
-    <g>
-      <ellipse cx={base.x} cy={base.y} rx={w * 0.55} ry={w * 0.55 * KY} fill="var(--palace)" fillOpacity={0.25} />
+    <g style={road ? { filter: 'saturate(0.2) brightness(1.7)' } : undefined}>
+      <ellipse cx={base.x} cy={base.y} rx={w * 0.55} ry={w * 0.55 * KY} fill={road ? 'white' : 'var(--palace)'} fillOpacity={road ? 0.18 : 0.25} />
       <image
         href="/road-pillar.png"
         x={base.x - w / 2}
@@ -149,7 +152,7 @@ function Column({ cx, cy, r, h = COLUMN_H, yaw = 0 }: { cx: number; cy: number; 
         height={h}
         preserveAspectRatio="xMidYMax slice"
         mask="url(#fp3d-pillar-fade)"
-        opacity={0.8}
+        opacity={road ? 0.5 : 0.8}
       />
     </g>
   )
@@ -328,8 +331,10 @@ export function PalaceFloorplan3D({
             fillOpacity={0.04}
           />
 
-          {/* 現在地（エントランス）の下から手前へ続く道。宮殿と同じ角度・回転で敷く */}
-          <PlanImage rect={ROAD} href="/road.png" yaw={yaw} opacity={0.35} mask="url(#fp3d-road-fade)" />
+          {/* 現在地（エントランス）の下から手前へ続く道。白っぽく薄めに敷く（彩度を落とし明るく） */}
+          <g style={{ filter: 'saturate(0.2) brightness(1.6)' }}>
+            <PlanImage rect={ROAD} href="/road.png" yaw={yaw} opacity={0.24} mask="url(#fp3d-road-fade)" />
+          </g>
 
           {/* 基壇 → 建物の床（石畳）→ 中庭 → 玄関（現在地） */}
           <polygon points={quad(STYLOBATE, 0, yaw)} fill="var(--palace)" fillOpacity={0.08} stroke="var(--palace)" strokeOpacity={0.3} strokeWidth={0.8} />
@@ -357,7 +362,8 @@ export function PalaceFloorplan3D({
           {[...COLUMNS]
             .sort((a, b) => project(a[0], a[1], 0, yaw).y - project(b[0], b[1], 0, yaw).y)
             .map(([cx, cy, r], i) => (
-              <Column key={`col-${i}`} cx={cx} cy={cy} r={r} yaw={yaw} />
+              // 玄関側（cy≧140）の列柱は宮殿下の柱として白く薄める
+              <Column key={`col-${i}`} cx={cx} cy={cy} r={r} yaw={yaw} road={cy >= 140} />
             ))}
 
           {/* 部屋のクリック領域（床の上に重ねる） */}
