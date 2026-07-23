@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react'
 import Link from 'next/link'
 import { useParams, useRouter, useSearchParams } from 'next/navigation'
-import { Trash2, ChevronLeft, ChevronRight, Pencil, Check, X } from 'lucide-react'
+import { Trash2, ChevronLeft, ChevronRight, Pencil, Check, X, ExternalLink } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Breadcrumb } from '@/components/ui/breadcrumb'
 import { Input } from '@/components/ui/input'
@@ -183,6 +183,24 @@ export default function ItemDetailPage() {
               >
                 <Pencil size={16} />
               </button>
+              {/* この単語をブラウザ（Google）で別タブ検索する。ホバーで「ブラウザで検索」を表示 */}
+              <span className="group relative shrink-0">
+                <a
+                  href={`https://www.google.com/search?q=${encodeURIComponent(item.title)}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="block text-muted-foreground hover:text-foreground transition-colors"
+                  aria-label="ブラウザで検索（別タブ）"
+                >
+                  <ExternalLink size={16} />
+                </a>
+                <span
+                  role="tooltip"
+                  className="pointer-events-none absolute left-1/2 top-full z-20 mt-1.5 -translate-x-1/2 whitespace-nowrap rounded-md bg-foreground px-2 py-1 text-xs text-background opacity-0 shadow-md transition-opacity group-hover:opacity-100"
+                >
+                  ブラウザで検索
+                </span>
+              </span>
             </div>
             <StatusBadge status={item.generation_status} size="lg" />
           </div>
