@@ -22,9 +22,9 @@ const INNER_WALLS = segmentsToPath(INNER_WALL_SEGMENTS)
 const PORCH = segmentsToPath(PORCH_SEGMENTS)
 const PARTITION = segmentsToPath(PARTITION_SEGMENTS)
 
-// 壁の線色：記憶資産（金系）の色合いに寄せる。黒（--foreground）の混合を減らして金（--palace）寄りにし、
-// パキッとした金の線にする。
-const WALL_STROKE = 'color-mix(in srgb, var(--foreground) 32%, var(--palace))'
+// 壁の線色：記憶資産の明るい天面トーン（サンド金）に寄せる。黒は混ぜず、金（--palace=#C6A75E）に
+// 白を少し混ぜて明るいサンド色にする。パキッと感は不透明度側で担保する。
+const WALL_STROKE = 'color-mix(in srgb, var(--palace) 88%, white)'
 
 // 基壇（スタイロベート）の縁取り。上辺は裏口の開口ぶんを開ける。
 const STYLOBATE_PATH = 'M24,6 L160,6 M200,6 L336,6 M24,6 L24,132 M336,6 L336,132'
@@ -56,20 +56,20 @@ export function PalaceFloorplan2D({
         宮殿外へ
       </span>
 
-      {/* 間取り図の線・床は全体を少し薄くして馴染ませる（部屋ラベルは SVG 外なので鮮明なまま） */}
-      <svg viewBox={`0 0 ${w} ${h}`} preserveAspectRatio="none" className="absolute inset-0 h-full w-full" style={{ pointerEvents: 'none' }} opacity={0.8} aria-hidden>
+      {/* 床は薄めのままだが、壁・区切り線をはっきり出すため全体の不透明度は上げる（部屋ラベルは SVG 外なので鮮明なまま） */}
+      <svg viewBox={`0 0 ${w} ${h}`} preserveAspectRatio="none" className="absolute inset-0 h-full w-full" style={{ pointerEvents: 'none' }} opacity={0.92} aria-hidden>
         {/* 建物の床（ごく薄く）・現在地（エントランス）のハイライト。中庭は塗らない。 */}
         <rect x={BUILDING_FLOOR.x} y={BUILDING_FLOOR.y} width={BUILDING_FLOOR.w} height={BUILDING_FLOOR.h} fill="rgba(198,167,94,0.035)" />
         <rect x={PORCH_FLOOR.x} y={PORCH_FLOOR.y} width={PORCH_FLOOR.w} height={PORCH_FLOOR.h} fill="rgba(198,167,94,0.12)" />
         {/* 基壇 */}
         <path d={STYLOBATE_PATH} fill="none" stroke="var(--palace)" strokeOpacity={0.3} strokeWidth={1.2} />
         {/* 外周壁・玄関（上辺中央は外へ抜ける開口）。区切り線に近いくらいまで薄め、サンド色寄りで馴染ませる */}
-        <path d={OUTER_WALLS} fill="none" stroke={WALL_STROKE} strokeOpacity={0.42} strokeWidth={4} strokeLinecap="square" />
-        <path d={PORCH} fill="none" stroke={WALL_STROKE} strokeOpacity={0.42} strokeWidth={4} strokeLinecap="square" />
+        <path d={OUTER_WALLS} fill="none" stroke={WALL_STROKE} strokeOpacity={0.82} strokeWidth={4} strokeLinecap="square" />
+        <path d={PORCH} fill="none" stroke={WALL_STROKE} strokeOpacity={0.82} strokeWidth={4} strokeLinecap="square" />
         {/* 部屋の区切り線（内側の間仕切り）。金系ではっきり見せる */}
-        <path d={INNER_WALLS} fill="none" stroke={WALL_STROKE} strokeOpacity={0.38} strokeWidth={2.6} strokeLinecap="round" />
+        <path d={INNER_WALLS} fill="none" stroke={WALL_STROKE} strokeOpacity={0.66} strokeWidth={2.6} strokeLinecap="round" />
         {/* エントランスと中庭の軽い仕切り */}
-        <path d={PARTITION} fill="none" stroke={WALL_STROKE} strokeOpacity={0.42} strokeWidth={1.6} strokeLinecap="round" />
+        <path d={PARTITION} fill="none" stroke={WALL_STROKE} strokeOpacity={0.72} strokeWidth={1.6} strokeLinecap="round" />
         {/* 中庭の中央（炉／泉のような装飾） */}
         <circle cx={HEARTH.x} cy={HEARTH.y} r={8} fill="none" stroke="var(--palace)" strokeOpacity={0.55} strokeWidth={1.4} />
         <circle cx={HEARTH.x} cy={HEARTH.y} r={3.2} fill="var(--palace)" fillOpacity={0.4} />
