@@ -387,8 +387,9 @@ function useYaw(active: boolean): number {
 
 // 描画領域（viewBox）と、積み上げの基準点。
 // 縦を長めに取り、積みを下寄せで長く見せる（カード高さいっぱいに使う）。
-const VB = { w: 92, h: 140, pad: 3 }
-const BASE = { cx: 46, y: 118 }
+// h と y を同じだけ引き上げると、SVG（横幅基準）が縦長になり積みをより高く描ける（下マージンは維持）。
+const VB = { w: 92, h: 172, pad: 3 }
+const BASE = { cx: 46, y: 150 }
 
 // 2D（平面）の積み上げ。アイソメをやめ、種類ごとの形・色のタイルを正面から積む。
 // 位ごとの列の間隔（画面上）。
@@ -463,9 +464,10 @@ function AssetStack2D({ count, pal, shape }: { count: number; pal: Palette; shap
     maxStackH = Math.max(maxStackH, baseY - y)
   })
 
-  // 枠に収まるよう一律に縮小する（束と単品の比率＝実数の比率はそのまま保たれる）。
+  // 枠の高さ／幅いっぱいまで積みを収める（縮小も拡大もする＝上限までスタックする）。
+  // 束と単品の比率＝実数の比率はそのまま保たれる。
   const halfWidth = ((places.length || 1) * (tw + COL_GAP)) / 2
-  const k = Math.min(1, (baseY - VB.pad) / Math.max(maxStackH, 1), (VB.w / 2 - VB.pad) / Math.max(halfWidth, 1))
+  const k = Math.min((baseY - VB.pad) / Math.max(maxStackH, 1), (VB.w / 2 - VB.pad) / Math.max(halfWidth, 1))
 
   return (
     <svg viewBox={`0 0 ${VB.w} ${VB.h}`} className="w-full" role="img" aria-hidden>
@@ -571,9 +573,9 @@ function AssetStack({
   const halfW2 = spread + itemWidth(shape) / 2
   const up = baseY - maxTop + itemWidth(shape) / 4
   const down = itemWidth(shape) / 4 + spread / 2
-  // 枠に収まるよう一律に縮小する（束と単品の比率＝実数の比率はそのまま保たれる）。
+  // 枠の高さ／幅いっぱいまで積みを収める（縮小も拡大もする＝上限までスタックする）。
+  // 束と単品の比率＝実数の比率はそのまま保たれる。
   const k = Math.min(
-    1,
     (baseY - VB.pad) / Math.max(up, 1),
     (VB.h - VB.pad - baseY) / Math.max(down, 1),
     (VB.w / 2 - VB.pad) / Math.max(halfW2, 1)

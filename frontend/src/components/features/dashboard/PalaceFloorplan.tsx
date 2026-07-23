@@ -22,6 +22,10 @@ const ROOM_ICONS: Record<string, ReactNode> = {
 // 玄関から手前へ伸びる道（2D）。中ほどまでは濃さを保ち、最下部だけ透明へ落として余白に溶かす。
 const ROAD_FADE = 'linear-gradient(to bottom, black 30%, rgba(0,0,0,0.5) 72%, transparent 100%)'
 
+// 3D の連続回転で宮殿の上端がはみ出す分を、上端でグラデーションに馴染ませるマスク（3D 専用）。
+// 下端は文言（吹き出し）を鮮明に出したいのでフェードしない。
+const FIGURE_FADE_3D = 'linear-gradient(to bottom, transparent 0%, black 11%, black 100%)'
+
 // 2D の道の両脇に立つ列柱（道のコンテナ 160×85 に対する座標。道は元の約2/3の長さ）。
 const ROAD_COLUMNS_2D: [number, number][] = [
   [48, 18], [112, 18],
@@ -40,48 +44,56 @@ export function PalaceFloorplan() {
 
   // 未ホバー時は、このページ（エントランス）の説明を既定で表示する。
   const current = ROOMS.find((r) => r.current)
-  const defaultHint = current ? `${current.label} — ${current.desc}` : ''
+  const defaultHint = current ? `「${current.label}」${current.desc}` : ''
 
-  // 説明の吹き出しと操作ヒント（2D は道の上に、3D は道の途中に重ねる）。
+  // 説明の吹き出し。「部屋名」説明文。の形式で表示する（移動は部屋ホバーの足跡アイコンで示す）。
   const overlay = (
-    <>
-      <div className="relative rounded-lg border border-border bg-background/80 px-3 py-1 text-center text-xs text-muted-foreground backdrop-blur-sm">
-        <span className="absolute -top-1 left-1/2 h-2 w-2 -translate-x-1/2 rotate-45 border-l border-t border-border bg-background/80" />
-        {hint ?? defaultHint}
-      </div>
-      <p className="mt-2 text-center text-[11px] text-muted-foreground/70">
-        各部屋にカーソルを合わせると説明、クリックでその場所へ
-      </p>
-    </>
+    <div className="relative rounded-lg border border-border bg-background/80 px-3 py-1 text-center text-xs text-muted-foreground backdrop-blur-sm">
+      <span className="absolute -top-1 left-1/2 h-2 w-2 -translate-x-1/2 rotate-45 border-l border-t border-border bg-background/80" />
+      {hint ?? defaultHint}。
+    </div>
   )
 
   return (
-    <Card>
-      <CardContent>
-        {/* トグルは図より前面に置く（3D が上へはみ出しても、図が切れずに背後を通る） */}
-        <div className="relative z-10 mb-1 flex justify-end">
-          <DiagramModeToggle mode={mode} onChange={setMode} label="宮殿の間取り図" />
-        </div>
+    <Card className="flex-1">
+      {/* 2D・3D とも、図をカードの上下中央に置く */}
+      <CardContent className="flex h-full flex-col justify-center">
+        <div className="relative">
+          {/* トグルは絶対配置で高さを取らない（2D/3D で図＝カードの高さが変わらないようにする） */}
+          <div className="absolute right-0 top-0 z-10">
+            <DiagramModeToggle mode={mode} onChange={setMode} label="宮殿の間取り図" />
+          </div>
 
-        {/* 2D/3D で図の高さを揃える（共通の縦横比で領域を固定。3D のはみ出しは許容） */}
-        <div className="relative w-full" style={{ aspectRatio: '360 / 218' }}>
-        {mode === '3d' ? (
+          {/* 2D/3D で図の高さを揃える（共通の縦横比で固定）。
+              3D のときだけ上下端をグラデーションで馴染ませて回転中の途切れを目立たなくする。2D は素の固定枠。
+              2D の道は下側が色褪せて透明になるので、枠からはみ出す色褪せ部分はクリップされる（可視部だけ残る）。 */}
+          <div
+            className="relative w-full overflow-hidden"
+            style={
+              mode === '3d'
+                ? { aspectRatio: '360 / 196', maskImage: FIGURE_FADE_3D, WebkitMaskImage: FIGURE_FADE_3D }
+                : { aspectRatio: '360 / 196' }
+            }
+          >
+          {mode === '3d' ? (
           // 3D では道も同じ投影で描くので、下の 2D 用の道は出さない。
           // アニメーション ON のときは、図（建物＋道）が縦軸まわりに回る（投影ごと回すので比率は崩れない）。
           // 吹き出し・操作ヒントは回転の外に置くので回らない。
-          <div className="absolute inset-0">
+          <div className="absolute inset-0 flex flex-col justify-center">
             <PalaceFloorplan3D onHint={setHint} icons={ROOM_ICONS} />
-            <div className="pointer-events-none absolute inset-x-0 bottom-8 flex flex-col items-center px-2">
+            <div className="pointer-events-none absolute inset-x-0 bottom-1 flex flex-col items-center px-2">
               {overlay}
             </div>
           </div>
         ) : (
-          <div className="absolute inset-0 flex flex-col">
+          <div className="absolute inset-0 flex flex-col justify-center">
+            {/* 下の道と対称の上スペーサー。図（＋道）の中で図そのものを上下中央に置く。 */}
+            <div className="h-[48px] w-full" aria-hidden />
             <PalaceFloorplan2D onHint={setHint} icons={ROOM_ICONS} />
 
-            {/* エントランスのドアの下：玄関から手前へ続く道を、間取り図と同じ石畳の平面図で描く。
-                左右に列柱を立て、その上に説明の吹き出しと操作ヒントを重ねる。 */}
-            <div className="relative -mt-1 h-[85px] w-full">
+            {/* エントランスのドアの下：玄関から手前へ続く道。図と文言の間の余白を兼ねる。
+                この高さを詰めると図が下（カード中央寄り）へ下がる。 */}
+            <div className="relative -mt-1 h-[48px] w-full">
               <div className="absolute left-1/2 top-0 h-full w-40 -translate-x-1/2" aria-hidden>
                 <svg
                   viewBox="0 0 160 85"
@@ -125,10 +137,15 @@ export function PalaceFloorplan() {
                 </svg>
               </div>
 
-              <div className="absolute inset-x-0 top-1/2 flex -translate-y-1/2 flex-col items-center px-2">{overlay}</div>
+            </div>
+
+            {/* 文言は下配置（3D と同じく図の枠の下端へ絶対配置。中央寄せの流れには入れない） */}
+            <div className="pointer-events-none absolute inset-x-0 bottom-1 flex flex-col items-center px-2">
+              {overlay}
             </div>
           </div>
         )}
+          </div>
         </div>
       </CardContent>
     </Card>
