@@ -59,12 +59,9 @@ export function PalaceFloorplan2D({
         <path d={PORCH} fill="none" stroke="var(--foreground)" strokeOpacity={0.6} strokeWidth={4} strokeLinecap="square" />
         {/* エントランスと中庭の軽い仕切り */}
         <path d={PARTITION} fill="none" stroke="var(--foreground)" strokeOpacity={0.35} strokeWidth={1.6} strokeLinecap="round" />
-        {/* 中庭の中央（炉／泉のような装飾）＋ラベル */}
+        {/* 中庭の中央（炉／泉のような装飾） */}
         <circle cx={HEARTH.x} cy={HEARTH.y} r={8} fill="none" stroke="var(--palace)" strokeOpacity={0.55} strokeWidth={1.4} />
         <circle cx={HEARTH.x} cy={HEARTH.y} r={3.2} fill="var(--palace)" fillOpacity={0.4} />
-        <text x={HEARTH.x} y={HEARTH.y + 24} textAnchor="middle" fontSize={9} fill="var(--foreground)" fillOpacity={0.45}>
-          中庭
-        </text>
         {/* 列柱 */}
         {COLUMNS.map(([cx, cy, r], i) => (
           <circle key={i} cx={cx} cy={cy} r={r} fill="rgba(198,167,94,0.5)" stroke="var(--palace)" strokeWidth={1} />

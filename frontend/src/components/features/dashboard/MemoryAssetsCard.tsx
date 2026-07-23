@@ -59,7 +59,7 @@ const ASSET_TYPES: AssetType[] = [
     href: '/boxes',
     icon: <Box size={15} />,
     count: (s) => s.boxes_count,
-    pal: { top: '#C79A63', left: '#AE7C41', right: '#8A5E2B' },
+    pal: { top: '#D9BC7E', left: '#C09A50', right: '#96742F' },
     shape: { w: 22, d: 22, depth: 12 },
     lidSeam: true,
   },
@@ -69,7 +69,7 @@ const ASSET_TYPES: AssetType[] = [
     href: '/views',
     icon: <LayoutGrid size={15} />,
     count: (s) => s.views_count,
-    pal: { top: '#8FB0AC', left: '#6E8F8B', right: '#4F6D6A' },
+    pal: { top: '#E3D19C', left: '#CFB06C', right: '#AA8A46' },
     shape: { w: 30, d: 30, depth: 3 },
     relief: true,
   },
@@ -79,7 +79,7 @@ const ASSET_TYPES: AssetType[] = [
     href: '/spaces',
     icon: <Frame size={15} />,
     count: (s) => s.spaces_count,
-    pal: { top: '#C9C3B4', left: '#A8A08C', right: '#837C6A' },
+    pal: { top: '#CDB176', left: '#B4924C', right: '#8C6C2E' },
     shape: { w: 36, d: 36, depth: 7 },
     roadMark: true,
   },
@@ -386,8 +386,9 @@ function useYaw(active: boolean): number {
 }
 
 // 描画領域（viewBox）と、積み上げの基準点。
-const VB = { w: 92, h: 100, pad: 3 }
-const BASE = { cx: 46, y: 80 }
+// 縦を長めに取り、積みを下寄せで長く見せる（カード高さいっぱいに使う）。
+const VB = { w: 92, h: 140, pad: 3 }
+const BASE = { cx: 46, y: 118 }
 
 // 2D（平面）の積み上げ。アイソメをやめ、種類ごとの形・色のタイルを正面から積む。
 // 位ごとの列の間隔（画面上）。
@@ -601,18 +602,19 @@ function AssetStack({
  * 種類ごとに異なる形・色のアイソメ積み上げで表す（個数が多いほど高く積み上がる）。
  * 各列はクリックで該当の一覧ページへ遷移する。
  */
-export function MemoryAssetsCard({ summary }: { summary: ItemsSummary }) {
+export function MemoryAssetsCard({ summary, className }: { summary: ItemsSummary; className?: string }) {
   const [mode, setMode] = useDiagramMode('memory-assets')
 
   return (
-    <Card>
-      <CardContent>
+    <Card className={className}>
+      <CardContent className="flex h-full flex-col">
         <div className="mb-2 flex justify-end">
           <DiagramModeToggle mode={mode} onChange={setMode} label="宮殿の記憶資産" />
         </div>
 
-        {/* 種類が増えても自動で折り返す（4種のときは今まで通り 2列→4列）。 */}
-        <div className="grid gap-2" style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(110px, 1fr))' }}>
+        {/* 種類が増えても自動で折り返す（4種のときは今まで通り 2列→4列）。
+            flex-1＋行を 1fr にして、各アイテムの選択範囲をカード高さいっぱいに伸ばす。 */}
+        <div className="grid flex-1 gap-2" style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(110px, 1fr))', gridTemplateRows: 'minmax(0, 1fr)' }}>
           {ASSET_TYPES.map((t) => {
             const c = t.count(summary)
             return (
@@ -620,7 +622,7 @@ export function MemoryAssetsCard({ summary }: { summary: ItemsSummary }) {
                 key={t.key}
                 href={t.href}
                 aria-label={`${t.label}（${c}）を見る`}
-                className="group flex flex-col items-center rounded-xl border border-transparent px-1 py-2 transition hover:border-[var(--palace)] hover:bg-[rgba(198,167,94,0.06)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--palace)]"
+                className="group flex h-full flex-col items-center justify-end rounded-xl border border-transparent px-1 py-2 transition hover:border-[var(--palace)] hover:bg-[rgba(198,167,94,0.06)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--palace)]"
               >
                 {mode === '3d' ? (
                   // アニメーション ON のときは、縦軸（アイテムの中心を貫く軸）まわりに回る（ホバー中は停止）。

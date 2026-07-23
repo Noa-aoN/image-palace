@@ -22,12 +22,11 @@ const ROOM_ICONS: Record<string, ReactNode> = {
 // 玄関から手前へ伸びる道（2D）。中ほどまでは濃さを保ち、最下部だけ透明へ落として余白に溶かす。
 const ROAD_FADE = 'linear-gradient(to bottom, black 30%, rgba(0,0,0,0.5) 72%, transparent 100%)'
 
-// 2D の道の両脇に立つ列柱（道のコンテナ 160×128 に対する座標）。
+// 2D の道の両脇に立つ列柱（道のコンテナ 160×85 に対する座標。道は元の約2/3の長さ）。
 const ROAD_COLUMNS_2D: [number, number][] = [
-  [48, 30], [112, 30],
-  [48, 60], [112, 60],
-  [48, 90], [112, 90],
-  [48, 120], [112, 120],
+  [48, 18], [112, 18],
+  [48, 46], [112, 46],
+  [48, 74], [112, 74],
 ]
 
 /**
@@ -64,33 +63,35 @@ export function PalaceFloorplan() {
           <DiagramModeToggle mode={mode} onChange={setMode} label="宮殿の間取り図" />
         </div>
 
+        {/* 2D/3D で図の高さを揃える（共通の縦横比で領域を固定。3D のはみ出しは許容） */}
+        <div className="relative w-full" style={{ aspectRatio: '360 / 218' }}>
         {mode === '3d' ? (
           // 3D では道も同じ投影で描くので、下の 2D 用の道は出さない。
           // アニメーション ON のときは、図（建物＋道）が縦軸まわりに回る（投影ごと回すので比率は崩れない）。
           // 吹き出し・操作ヒントは回転の外に置くので回らない。
-          <div className="relative">
+          <div className="absolute inset-0">
             <PalaceFloorplan3D onHint={setHint} icons={ROOM_ICONS} />
             <div className="pointer-events-none absolute inset-x-0 bottom-8 flex flex-col items-center px-2">
               {overlay}
             </div>
           </div>
         ) : (
-          <>
+          <div className="absolute inset-0 flex flex-col">
             <PalaceFloorplan2D onHint={setHint} icons={ROOM_ICONS} />
 
             {/* エントランスのドアの下：玄関から手前へ続く道を、間取り図と同じ石畳の平面図で描く。
                 左右に列柱を立て、その上に説明の吹き出しと操作ヒントを重ねる。 */}
-            <div className="relative -mt-1 h-32 w-full">
+            <div className="relative -mt-1 h-[85px] w-full">
               <div className="absolute left-1/2 top-0 h-full w-40 -translate-x-1/2" aria-hidden>
                 <svg
-                  viewBox="0 0 160 128"
+                  viewBox="0 0 160 85"
                   className="absolute inset-0 h-full w-full"
                   style={{ WebkitMaskImage: ROAD_FADE, maskImage: ROAD_FADE }}
                 >
-                  {/* 道の路面（柱（x=48 / 112・r=6.5）に接しないよう、内側に細く通す） */}
-                  <rect x={62} y={0} width={36} height={128} fill="var(--palace)" fillOpacity={0.08} />
+                  {/* 道の路面（白っぽく薄め。柱（x=48 / 112・r=6.5）に接しないよう内側に細く通す） */}
+                  <rect x={62} y={0} width={36} height={85} fill="white" fillOpacity={0.06} />
                   {/* 石畳（細かめ。段ごとに半個ずらして敷く） */}
-                  {Array.from({ length: 16 }).map((_, row) => {
+                  {Array.from({ length: 11 }).map((_, row) => {
                     const y = row * 8
                     const offset = row % 2 === 0 ? 0 : -6
                     return Array.from({ length: 4 }).map((__, col) => {
@@ -106,28 +107,29 @@ export function PalaceFloorplan() {
                           width={width}
                           height={6.5}
                           rx={0.8}
-                          fill="var(--palace)"
-                          fillOpacity={(row + col) % 2 === 0 ? 0.12 : 0.06}
-                          stroke="var(--palace)"
-                          strokeOpacity={0.28}
+                          fill="white"
+                          fillOpacity={(row + col) % 2 === 0 ? 0.14 : 0.07}
+                          stroke="white"
+                          strokeOpacity={0.3}
                           strokeWidth={0.4}
                         />
                       )
                     })
                   })}
                   {/* 道の両縁 */}
-                  <path d="M62,0 V128 M98,0 V128" stroke="var(--palace)" strokeOpacity={0.4} strokeWidth={0.8} />
-                  {/* 両脇の列柱 */}
+                  <path d="M62,0 V85 M98,0 V85" stroke="white" strokeOpacity={0.4} strokeWidth={0.8} />
+                  {/* 両脇の列柱（白く薄め） */}
                   {ROAD_COLUMNS_2D.map(([cx, cy], i) => (
-                    <circle key={i} cx={cx} cy={cy} r={6.5} fill="rgba(198,167,94,0.5)" stroke="var(--palace)" strokeWidth={1.6} />
+                    <circle key={i} cx={cx} cy={cy} r={6.5} fill="rgba(255,255,255,0.45)" stroke="white" strokeOpacity={0.7} strokeWidth={1.6} />
                   ))}
                 </svg>
               </div>
 
               <div className="absolute inset-x-0 top-1/2 flex -translate-y-1/2 flex-col items-center px-2">{overlay}</div>
             </div>
-          </>
+          </div>
         )}
+        </div>
       </CardContent>
     </Card>
   )
