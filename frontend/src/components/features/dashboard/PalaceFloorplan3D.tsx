@@ -2,6 +2,7 @@
 
 import { useRouter } from 'next/navigation'
 import { useEffect, useRef, useState, type ReactNode } from 'react'
+import { Footprints, ArrowUpRight } from 'lucide-react'
 import {
   ROOMS,
   WALL_SEGMENTS,
@@ -37,7 +38,7 @@ type Rect = { x: number; y: number; w: number; h: number }
 
 // 玄関（ポルチコ前 y=150）の先へ続く道。宮殿と同じ平面座標で置く。
 // 長さは控えめ（元の約2/3）にして、白っぽく薄めに敷く。
-const ROAD: Rect = { x: 142, y: 150, w: 76, h: 37 }
+const ROAD: Rect = { x: 142, y: 156, w: 76, h: 37 }
 
 // 回転の軸（宮殿の中心を貫く縦軸）。この点を中心に、平面ごと回してから投影する。
 const PIVOT = { x: 180, y: 72 }
@@ -143,7 +144,7 @@ function Column({ cx, cy, r, h = COLUMN_H, yaw = 0, road = false }: { cx: number
 
   return (
     <g style={road ? { filter: 'saturate(0.2) brightness(1.7)' } : undefined}>
-      <ellipse cx={base.x} cy={base.y} rx={w * 0.55} ry={w * 0.55 * KY} fill={road ? 'white' : 'var(--palace)'} fillOpacity={road ? 0.18 : 0.25} />
+      <ellipse cx={base.x} cy={base.y} rx={w * 0.55} ry={w * 0.55 * KY} fill={road ? 'white' : 'var(--palace)'} fillOpacity={road ? 0.2 : 0.35} />
       <image
         href="/road-pillar.png"
         x={base.x - w / 2}
@@ -152,7 +153,7 @@ function Column({ cx, cy, r, h = COLUMN_H, yaw = 0, road = false }: { cx: number
         height={h}
         preserveAspectRatio="xMidYMax slice"
         mask="url(#fp3d-pillar-fade)"
-        opacity={road ? 0.5 : 0.8}
+        opacity={road ? 0.55 : 0.95}
       />
     </g>
   )
@@ -160,9 +161,9 @@ function Column({ cx, cy, r, h = COLUMN_H, yaw = 0, road = false }: { cx: number
 
 // 縦軸まわりの回転（アニメーション ON のときだけ）。CSS で絵を回すと比率が崩れるため、
 // 記憶資産カードと同じく「平面で回してから投影する」方式にする。
-// 基本は正面向き（yaw = 0）で、そこを中心にゆっくり首を振る。
-const SWAY_PERIOD_MS = 24000
-const SWAY_MAX = (14 * Math.PI) / 180 // 片側 14°
+// 首振り（反転）ではなく、一周をゆっくり繰り返す連続回転にする（回転中に宮殿の端が
+// カード枠からはみ出して切れるのは許容する）。
+const SPIN_PERIOD_MS = 54000 // 一周にかける時間（速度を 2/3 に＝周期は 1.5 倍でさらにゆっくり）
 
 // enabled: アニメーション設定が ON か。paused: ホバー中か（その角度のまま止める）。
 function useYaw(enabled: boolean, paused: boolean): number {
@@ -177,7 +178,8 @@ function useYaw(enabled: boolean, paused: boolean): number {
     const tick = (now: number) => {
       if (last !== null) {
         tRef.current += now - last
-        setYaw(Math.sin((tRef.current / SWAY_PERIOD_MS) * Math.PI * 2) * SWAY_MAX)
+        // 連続回転：時間に比例して 0→2π を繰り返す。
+        setYaw(((tRef.current / SPIN_PERIOD_MS) * Math.PI * 2) % (Math.PI * 2))
       }
       last = now
       raf = requestAnimationFrame(tick)
@@ -245,6 +247,8 @@ export function PalaceFloorplan3D({
   const router = useRouter()
   const go = (room: Room) => router.push(room.href)
   const [hovered, setHovered] = useState(false)
+  // ホバー中の部屋（その右上に足跡アイコンを出す）。ホバー中は回転も止まるので位置は動かない。
+  const [hoveredRoom, setHoveredRoom] = useState<string | null>(null)
   const animations = useMotion()
   const yaw = useYaw(animations, hovered)
 
@@ -269,18 +273,18 @@ export function PalaceFloorplan3D({
             {/* 壁は「日に焼けた石灰岩」の色。面の向きで明るさを変える（天面＝陽が当たる、
                 前面＝中間、側面＝影）。暗い foreground ではなく、宮殿の石の色（--palace 系）で組む。 */}
             <linearGradient id="fp3d-wall-front" x1="0" y1="1" x2="0" y2="0">
-              <stop offset="0" stopColor="#D9C79B" stopOpacity={0.95} />
-              <stop offset="0.55" stopColor="#E3D5B2" stopOpacity={0.75} />
-              <stop offset="1" stopColor="#EFE6CE" stopOpacity={0.12} />
+              <stop offset="0" stopColor="#D2B776" stopOpacity={1} />
+              <stop offset="0.6" stopColor="#DECB94" stopOpacity={0.98} />
+              <stop offset="1" stopColor="#EADEB8" stopOpacity={0.62} />
             </linearGradient>
             <linearGradient id="fp3d-wall-side" x1="0" y1="1" x2="0" y2="0">
-              <stop offset="0" stopColor="#BFA779" stopOpacity={0.95} />
-              <stop offset="0.55" stopColor="#CDB88E" stopOpacity={0.7} />
-              <stop offset="1" stopColor="#DCCEAE" stopOpacity={0.1} />
+              <stop offset="0" stopColor="#AD9053" stopOpacity={1} />
+              <stop offset="0.6" stopColor="#BFA772" stopOpacity={0.98} />
+              <stop offset="1" stopColor="#D2C296" stopOpacity={0.56} />
             </linearGradient>
             <linearGradient id="fp3d-wall-top" x1="0" y1="0" x2="0" y2="1">
-              <stop offset="0" stopColor="#F3EAD3" stopOpacity={0.95} />
-              <stop offset="1" stopColor="#E2D3AE" stopOpacity={0.9} />
+              <stop offset="0" stopColor="#F5ECD3" stopOpacity={1} />
+              <stop offset="1" stopColor="#DDCA96" stopOpacity={1} />
             </linearGradient>
             {/* 壁の石積み（目地。段ごとに半個ずらす） */}
             <pattern id="fp3d-wall-stone" width="10" height="5" patternUnits="userSpaceOnUse">
@@ -306,7 +310,7 @@ export function PalaceFloorplan3D({
             </mask>
             {/* 壁の上部をぼかす */}
             <filter id="fp3d-wall-blur" x="-10%" y="-20%" width="120%" height="140%">
-              <feGaussianBlur stdDeviation="0.8" />
+              <feGaussianBlur stdDeviation="0.35" />
             </filter>
             {/* 道は手前へ向かって溶ける（画像の切り口を隠す） */}
             <linearGradient id="fp3d-road-grad" x1="0" y1="0" x2="0" y2="1">
@@ -337,10 +341,10 @@ export function PalaceFloorplan3D({
           </g>
 
           {/* 基壇 → 建物の床（石畳）→ 中庭 → 玄関（現在地） */}
-          <polygon points={quad(STYLOBATE, 0, yaw)} fill="var(--palace)" fillOpacity={0.08} stroke="var(--palace)" strokeOpacity={0.3} strokeWidth={0.8} />
-          <polygon points={quad(BUILDING_FLOOR, 0, yaw)} fill="var(--palace)" fillOpacity={0.05} />
-          <polygon points={quad(COURTYARD, 0, yaw)} fill="var(--palace)" fillOpacity={0.04} stroke="var(--palace)" strokeOpacity={0.2} strokeWidth={0.6} />
-          <polygon points={quad(PORCH_FLOOR, 0, yaw)} fill="var(--palace)" fillOpacity={0.16} />
+          <polygon points={quad(STYLOBATE, 0, yaw)} fill="var(--palace)" fillOpacity={0.13} stroke="var(--palace)" strokeOpacity={0.45} strokeWidth={0.8} />
+          <polygon points={quad(BUILDING_FLOOR, 0, yaw)} fill="var(--palace)" fillOpacity={0.09} />
+          <polygon points={quad(COURTYARD, 0, yaw)} fill="var(--palace)" fillOpacity={0.07} stroke="var(--palace)" strokeOpacity={0.32} strokeWidth={0.6} />
+          <polygon points={quad(PORCH_FLOOR, 0, yaw)} fill="var(--palace)" fillOpacity={0.24} />
 
           {/* 中庭の炉（泉） */}
           <ellipse cx={project(HEARTH.x, HEARTH.y, 0, yaw).x} cy={project(HEARTH.x, HEARTH.y, 0, yaw).y} rx={9 * FIT} ry={9 * KY * FIT} fill="none" stroke="var(--palace)" strokeOpacity={0.5} strokeWidth={1} />
@@ -379,10 +383,22 @@ export function PalaceFloorplan3D({
               onKeyDown={(e) => {
                 if (e.key === 'Enter' || e.key === ' ') go(room)
               }}
-              onMouseEnter={() => onHint(`${room.label} — ${room.desc}`)}
-              onMouseLeave={() => onHint(null)}
-              onFocus={() => onHint(`${room.label} — ${room.desc}`)}
-              onBlur={() => onHint(null)}
+              onMouseEnter={() => {
+                onHint(`「${room.label}」${room.desc}`)
+                setHoveredRoom(room.key)
+              }}
+              onMouseLeave={() => {
+                onHint(null)
+                setHoveredRoom(null)
+              }}
+              onFocus={() => {
+                onHint(`「${room.label}」${room.desc}`)
+                setHoveredRoom(room.key)
+              }}
+              onBlur={() => {
+                onHint(null)
+                setHoveredRoom(null)
+              }}
               // 塗りは CSS で当てる（SVG の presentation 属性より CSS が優先されるので、ホバーで効く）
               className="cursor-pointer fill-transparent outline-none transition-colors hover:fill-[rgba(198,167,94,0.18)] focus-visible:fill-[rgba(198,167,94,0.18)]"
             />
@@ -394,18 +410,35 @@ export function PalaceFloorplan3D({
           <Label key={room.key} at={project(room.rect.x + room.rect.w / 2, room.rect.y + room.rect.h / 2, 0, yaw)}>
             <span style={{ color: 'var(--palace)' }}>{icons[room.key]}</span>
             <span className="text-[13px] font-medium leading-tight">{room.label}</span>
-            {room.current && <span className="text-[10px] font-medium text-muted-foreground">現在地</span>}
+            {room.current && (
+              <span className="flex items-center gap-1 text-[10px] font-medium text-muted-foreground">
+                <span className="relative flex h-2 w-2" aria-hidden>
+                  <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-red-500 opacity-75" />
+                  <span className="relative inline-flex h-2 w-2 rounded-full bg-red-500" />
+                </span>
+                現在地
+              </span>
+            )}
           </Label>
         ))}
+
+        {/* ホバー中の部屋の右上に足跡（＝この部屋へ移動できる合図） */}
+        {ROOMS.map((room) =>
+          hoveredRoom === room.key ? (
+            <Label key={`fs-${room.key}`} at={project(room.rect.x + room.rect.w, room.rect.y, 0, yaw)}>
+              <span className="flex items-center gap-0.5" style={{ color: 'var(--palace)' }}>
+                <ArrowUpRight size={12} />
+                <Footprints size={13} />
+              </span>
+            </Label>
+          ) : null,
+        )}
 
         {/* 裏口の行き先 */}
         <Label at={{ ...project(BACK_EXIT.x, BACK_EXIT.y, 0, yaw), y: project(BACK_EXIT.x, BACK_EXIT.y, WALL_H + 8, yaw).y }}>
           <span className="whitespace-nowrap text-[10px] font-medium text-muted-foreground">宮殿外へ</span>
         </Label>
       </div>
-
-      {/* 吹き出し・操作ヒント用の余白（2D の道の帯と同じ高さにして、カードの高さを揃える） */}
-      <div className="h-32 w-full" aria-hidden />
     </>
   )
 }
