@@ -119,7 +119,7 @@ export default function IndexPage() {
         インデックス
       </h1>
       <p className="mt-2 text-muted-foreground">
-        画像を表示しないカードの一覧です。検索・選択して、画像を見ずにまとめて削除できます（全 {totalCount} 件）。
+        画像を表示しないカードの一覧です。検索・選択して、カードにジャンプしたり、画像を見ずにまとめて削除できます（全 {totalCount} 件）。
       </p>
 
       {/* 検索 */}

@@ -61,11 +61,11 @@ export const NAV_SECTIONS: NavSection[] = [
         icon: <Palette size={22} />,
         label: 'アトリエ',
         children: [
-          { href: '/materials/new', icon: <CreateIcon><Boxes size={20} /></CreateIcon>, label: 'マテリアルを作成' },
           { href: '/items/new', icon: <CreateIcon><GalleryHorizontal size={20} /></CreateIcon>, label: 'カードを作成' },
-          { href: '/boxes/new', icon: <CreateIcon><Box size={20} /></CreateIcon>, label: 'ボックスを作成' },
           { href: '/views/new', icon: <CreateIcon><LayoutGrid size={20} /></CreateIcon>, label: 'キャンバスを作成' },
           { href: '/spaces/new', icon: <CreateIcon><Frame size={20} /></CreateIcon>, label: 'スペースを作成' },
+          { href: '/boxes/new', icon: <CreateIcon><Box size={20} /></CreateIcon>, label: 'ボックスを作成' },
+          { href: '/materials/new', icon: <CreateIcon><Boxes size={20} /></CreateIcon>, label: 'マテリアルを作成' },
         ],
       },
       {
@@ -73,11 +73,11 @@ export const NAV_SECTIONS: NavSection[] = [
         icon: <LibraryBig size={22} />,
         label: 'ライブラリ',
         children: [
-          { href: '/materials', icon: <Boxes size={20} />, label: 'マテリアル一覧' },
           { href: '/items', icon: <GalleryHorizontal size={20} />, label: 'カード一覧' },
-          { href: '/boxes', icon: <Box size={20} />, label: 'ボックス一覧' },
           { href: '/views', icon: <LayoutGrid size={20} />, label: 'キャンバス一覧' },
           { href: '/spaces', icon: <Frame size={20} />, label: 'スペース一覧' },
+          { href: '/boxes', icon: <Box size={20} />, label: 'ボックス一覧' },
+          { href: '/materials', icon: <Boxes size={20} />, label: 'マテリアル一覧' },
         ],
       },
       {

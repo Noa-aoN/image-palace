@@ -587,33 +587,6 @@ export default function LibraryPage() {
         )}
       </Shelf>
 
-      {/* ボックス */}
-      <Shelf
-        icon={<BoxIcon size={20} />}
-        title="ボックス"
-        count={boxes.length}
-        href={selectionMode ? undefined : '/boxes'}
-      >
-        {boxes.length === 0 ? (
-          <EmptyRail
-            message="まだボックスがありません。"
-            cta={<Link href="/boxes"><Button size="sm">ボックスを作成</Button></Link>}
-          />
-        ) : (
-          <Rail>
-            {boxes.slice(0, PREVIEW_LIMIT).map((box) => (
-              <BoxTile
-                key={box.id}
-                box={box}
-                selectionMode={selectionMode}
-                selected={isSelected('box', box.id)}
-                onToggle={() => toggleSelect('box', box.id)}
-              />
-            ))}
-          </Rail>
-        )}
-      </Shelf>
-
       {/* キャンバス（表示・学習形式：デッキ / フリーボード等） */}
       <Section icon={<LayoutGrid size={22} />} title="キャンバス" description="カードの表示・学習形式">
         <Shelf icon={<Layers size={18} />} title="デッキ" count={deckViews.length} href={selectionMode ? undefined : '/views?type=deck'}>
@@ -724,6 +697,33 @@ export default function LibraryPage() {
           </>
         )}
       </Section>
+
+      {/* ボックス */}
+      <Shelf
+        icon={<BoxIcon size={20} />}
+        title="ボックス"
+        count={boxes.length}
+        href={selectionMode ? undefined : '/boxes'}
+      >
+        {boxes.length === 0 ? (
+          <EmptyRail
+            message="まだボックスがありません。"
+            cta={<Link href="/boxes"><Button size="sm">ボックスを作成</Button></Link>}
+          />
+        ) : (
+          <Rail>
+            {boxes.slice(0, PREVIEW_LIMIT).map((box) => (
+              <BoxTile
+                key={box.id}
+                box={box}
+                selectionMode={selectionMode}
+                selected={isSelected('box', box.id)}
+                onToggle={() => toggleSelect('box', box.id)}
+              />
+            ))}
+          </Rail>
+        )}
+      </Shelf>
 
       {/* マテリアル（カード化の前の素材） */}
       <Section icon={<Boxes size={22} />} title="マテリアル" description="カード化の前の素材">
