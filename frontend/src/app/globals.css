@@ -2772,3 +2772,25 @@
 .react-flow__edgeupdater:active {
   cursor: grabbing;
 }
+
+/* アクロポリス（神託）: 神託を待つ間、ボタンに金色のオーラを脈動させる */
+@keyframes oracle-aura {
+  0%,
+  100% {
+    box-shadow: 0 0 0 0 color-mix(in srgb, var(--palace) 45%, transparent);
+  }
+  50% {
+    box-shadow: 0 0 18px 3px color-mix(in srgb, var(--palace) 40%, transparent);
+  }
+}
+.animate-oracle-aura {
+  animation: oracle-aura 1.6s ease-in-out infinite;
+}
+@media (prefers-reduced-motion: reduce) {
+  .animate-oracle-aura {
+    animation: none;
+  }
+}
+:root[data-motion='off'] .animate-oracle-aura {
+  animation: none;
+}
