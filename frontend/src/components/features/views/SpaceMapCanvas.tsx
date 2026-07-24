@@ -1,12 +1,14 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { Search, X, Loader2 } from 'lucide-react'
+import { Search, X, Loader2, Play } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { getItemsPage } from '@/lib/api/items'
 import { placeCardOnPoint, clearPointPlacement } from '@/lib/api/views'
 import type { SpaceMapPoint } from '@/types/view'
 import type { Item } from '@/types/item'
+import { SpaceWalkthrough } from '@/components/features/spaces/walkthrough/SpaceWalkthrough'
+import { stopsFromSpaceMapPoints } from '@/components/features/spaces/walkthrough/constants'
 
 const POLLING_STATUSES = new Set(['pending', 'processing'])
 
@@ -149,6 +151,7 @@ export function SpaceMapCanvas({
   const [points, setPoints] = useState<SpaceMapPoint[]>(initialPoints)
   const [pickerPointId, setPickerPointId] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
+  const [playerOpen, setPlayerOpen] = useState(false)
 
   if (!space) {
     return (
@@ -193,9 +196,21 @@ export function SpaceMapCanvas({
 
   return (
     <div className="flex-1">
-      <p className="mb-3 text-sm text-muted-foreground">
-        スペース「{space.name}」のポイントにカードを配置します。各ポイントの loci 画像を手掛かりに記憶を結び付けましょう。同じカードは複数のポイントに置けます。
-      </p>
+      <div className="mb-3 flex items-start justify-between gap-3">
+        <p className="text-sm text-muted-foreground">
+          スペース「{space.name}」のポイントにカードを配置します。各ポイントの loci 画像を手掛かりに記憶を結び付けましょう。同じカードは複数のポイントに置けます。
+        </p>
+        <Button
+          size="sm"
+          onClick={() => setPlayerOpen(true)}
+          disabled={points.length === 0}
+          className="flex shrink-0 items-center gap-1.5"
+          aria-label="ウォークスルーを再生"
+        >
+          <Play size={14} />
+          ウォークスルー
+        </Button>
+      </div>
       {error && <p className="mb-3 text-sm text-destructive">{error}</p>}
 
       {points.length === 0 ? (
@@ -242,6 +257,14 @@ export function SpaceMapCanvas({
       )}
 
       {pickerPointId && <CardPicker onSelect={handlePlace} onClose={() => setPickerPointId(null)} />}
+      {playerOpen && (
+        <SpaceWalkthrough
+          stops={stopsFromSpaceMapPoints(points)}
+          title={space.name}
+          spaceType={space.space_type}
+          onClose={() => setPlayerOpen(false)}
+        />
+      )}
     </div>
   )
 }

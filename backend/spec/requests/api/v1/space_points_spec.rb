@@ -82,6 +82,39 @@ RSpec.describe "Api::V1::SpacePoints", type: :request do
       }.to have_enqueued_job(GeneratePointImageJob)
     end
 
+    it "generate: false のときは改名しても生成せず名前だけ保存する（カード配置時に使う）" do
+      point = create(:space_point, space: space, name: "玄関", generation_status: "completed")
+
+      expect {
+        patch "/api/v1/spaces/#{space.id}/points/#{point.id}",
+          params: { name: "犬", generate: false }, headers: headers, as: :json
+      }.not_to have_enqueued_job(GeneratePointImageJob)
+
+      expect(response).to have_http_status(:ok)
+      expect(point.reload.name).to eq("犬")
+      expect(point.generation_status).to eq("completed")
+    end
+
+    it "generate: false の改名ではクレジットを消費しない" do
+      point = create(:space_point, space: space, name: "玄関", generation_status: "completed")
+      user.ensure_current_period_credits!
+      before = user.available_credit_points
+
+      patch "/api/v1/spaces/#{space.id}/points/#{point.id}",
+        params: { name: "犬", generate: false }, headers: headers, as: :json
+
+      expect(user.reload.available_credit_points).to eq(before)
+    end
+
+    it "generate: true のときは同じ名前でも生成する" do
+      point = create(:space_point, space: space, name: "玄関", generation_status: "completed")
+
+      expect {
+        patch "/api/v1/spaces/#{space.id}/points/#{point.id}",
+          params: { name: "玄関", generate: true }, headers: headers, as: :json
+      }.to have_enqueued_job(GeneratePointImageJob)
+    end
+
     it "間取り座標（x/y）を更新できる" do
       point = create(:space_point, space: space, position: 1)
 

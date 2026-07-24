@@ -48,6 +48,19 @@ RSpec.describe "Api::V1::Views space mapping", type: :request do
       expect(json_response["points"].first["name"]).to eq("玄関")
       expect(json_response["points"].first["placed_item"]).to be_nil
     end
+
+    it "点にカードが設定されていれば、ビュー未配置でも placed_item として返す（一体化）" do
+      card = create(:item, user: user, item_type: item_type, title: "りんご")
+      point.update!(item: card)
+      view = create(:view, user: user, view_type: "space_map", space: space)
+
+      get "/api/v1/views/#{view.id}", headers: headers, as: :json
+
+      placed = json_response["points"].first["placed_item"]
+      expect(placed).not_to be_nil
+      expect(placed["id"]).to eq(card.id)
+      expect(placed["title"]).to eq("りんご")
+    end
   end
 
   describe "POST /api/v1/views/:id/points/:space_point_id（配置）" do

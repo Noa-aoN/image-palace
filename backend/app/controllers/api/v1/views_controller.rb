@@ -231,7 +231,8 @@ module Api
         space = view.space
         return base.merge(space: nil, points: []) unless space
 
-        points = space.space_points.ordered.includes(image_attachment: :blob)
+        points = space.space_points.ordered
+                      .includes(image_attachment: :blob, item: { medias: { file_attachment: :blob } })
         placed = view.view_items
                      .where.not(space_point_id: nil)
                      .includes(item: [ :item_type, { medias: { file_attachment: :blob } } ])
@@ -245,14 +246,23 @@ module Api
 
       # ポイントの loci 情報 + そのポイントに配置されたカード
       def serialize_point_placement(point, view_item)
+        # 一体化: ビューの配置カードが無くても、点に設定したカード（point.item）を配置カードとして返す
+        # （スペース詳細でカードを設定した点が space_map で「未配置」に見えないようにする）。
+        placed = view_item&.item || point.item
         {
           space_point_id: point.id,
           position: point.position,
           name: point.name,
           generation_status: point.generation_status,
-          image: serialize_point_image(point),
-          placed_item: view_item&.item ? serialize_item(view_item.item) : nil
+          image: point_loci_image(point),
+          placed_item: placed ? serialize_item(placed) : nil
         }
+      end
+
+      # ロキ背景画像: 生成画像が無ければ、点に設定されたカードの画像を使う。
+      def point_loci_image(point)
+        serialize_point_image(point) ||
+          (point.item ? serialize_media(point.item.primary_media)&.slice(:url, :thumb_url, :blur) : nil)
       end
 
       def serialize_placement(view_item)
