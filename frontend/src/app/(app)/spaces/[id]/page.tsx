@@ -31,6 +31,7 @@ const RoomCanvas = dynamic(
 import { EntityCover } from '@/components/features/shared/EntityCover'
 import { SpaceWalkthrough } from '@/components/features/spaces/walkthrough/SpaceWalkthrough'
 import { stopsFromSpacePoints } from '@/components/features/spaces/walkthrough/constants'
+import { PointDetailModal } from '@/components/features/spaces/walkthrough/PointDetailModal'
 import { CoverSettings } from '@/components/features/shared/CoverSettings'
 import type { SpaceDetail, SpacePoint } from '@/types/space'
 import type { CoverType } from '@/types/cover'
@@ -107,11 +108,10 @@ function CardPicker({ onSelect, onClose }: { onSelect: (item: Item) => void; onC
   )
 }
 
-// ポイントの画像（配置カードの画像を優先、無ければ名前から生成したロキ画像）。クリックで拡大。
-function PointImageCell({ point, onZoom }: { point: SpacePoint; onZoom: (url: string, alt: string) => void }) {
+// ポイントの画像（配置カードの画像を優先、無ければ名前から生成したロキ画像）。クリックで詳細モーダル。
+function PointImageCell({ point, onOpen }: { point: SpacePoint; onOpen: () => void }) {
   const media = point.item?.media ?? point.image
   const imageUrl = media?.thumb_url ?? media?.url ?? null
-  const fullUrl = media?.url ?? media?.thumb_url ?? null
   // 有効画像が無く（生成前・カード未配置）、名前があり、生成中ステータスのときだけスピナー。
   const generating = !media && !!point.name && POLLING_STATUSES.has(point.generation_status)
   const alt = point.name ?? 'ポイント画像'
@@ -119,7 +119,7 @@ function PointImageCell({ point, onZoom }: { point: SpacePoint; onZoom: (url: st
   return (
     <div className="flex h-16 w-16 shrink-0 items-center justify-center overflow-hidden rounded-md bg-muted">
       {imageUrl ? (
-        <button type="button" onClick={() => fullUrl && onZoom(fullUrl, alt)} aria-label="画像を拡大" className="h-full w-full">
+        <button type="button" onClick={onOpen} aria-label="詳細を見る" className="h-full w-full">
           <CardImage src={imageUrl} blur={(media as { blur?: string } | null)?.blur} alt={alt} className="h-full w-full" />
         </button>
       ) : generating ? (
@@ -141,7 +141,7 @@ function PointRow({
   onPlaceCardClick,
   onClearCard,
   onSaveName,
-  onZoom,
+  onOpenDetail,
 }: {
   point: SpacePoint
   index: number
@@ -152,7 +152,7 @@ function PointRow({
   onPlaceCardClick: (pointId: string) => void
   onClearCard: (pointId: string) => void
   onSaveName: (pointId: string, name: string) => void
-  onZoom: (url: string, alt: string) => void
+  onOpenDetail: (index: number) => void
 }) {
   // ドラフトは名前で初期化。key に point.name を含めるので、配置/生成で名前が変わると再初期化される。
   const [draft, setDraft] = useState(point.name ?? '')
@@ -196,7 +196,7 @@ function PointRow({
       </div>
 
       <div className="mt-2.5 flex items-start gap-3 pl-10">
-        <PointImageCell point={point} onZoom={onZoom} />
+        <PointImageCell point={point} onOpen={() => onOpenDetail(index)} />
         <div className="min-w-0 flex-1 space-y-2">
           {failed && (
             <p className="text-xs text-destructive">{point.generation_error ?? '生成に失敗しました。もう一度「生成」を押してください。'}</p>
@@ -240,7 +240,7 @@ export default function SpaceDetailPage() {
 
   // ポイント
   const [playerOpen, setPlayerOpen] = useState(false)
-  const [imageZoom, setImageZoom] = useState<{ url: string; alt: string } | null>(null)
+  const [detailIndex, setDetailIndex] = useState<number | null>(null)
   const [pickerPointId, setPickerPointId] = useState<string | null>(null)
   const [busyPoint, setBusyPoint] = useState(false)
   const [coverBusy, setCoverBusy] = useState(false)
@@ -561,7 +561,7 @@ export default function SpaceDetailPage() {
                 onPlaceCardClick={setPickerPointId}
                 onClearCard={handleClearCard}
                 onSaveName={handleSaveName}
-                onZoom={(url, alt) => setImageZoom({ url, alt })}
+                onOpenDetail={setDetailIndex}
               />
             ))}
           </ol>
@@ -582,25 +582,13 @@ export default function SpaceDetailPage() {
           onClose={() => setPlayerOpen(false)}
         />
       )}
-      {imageZoom && (
-        <div
-          className="fixed inset-0 z-50 flex items-center justify-center bg-black/85 p-6"
-          onClick={() => setImageZoom(null)}
-          role="dialog"
-          aria-modal="true"
-          aria-label="画像を拡大"
-        >
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src={imageZoom.url} alt={imageZoom.alt} className="max-h-full max-w-full rounded-lg object-contain shadow-2xl" />
-          <button
-            type="button"
-            onClick={() => setImageZoom(null)}
-            aria-label="閉じる"
-            className="absolute right-4 top-4 rounded-full bg-white/15 p-2 text-white transition-colors hover:bg-white/25"
-          >
-            <X size={20} />
-          </button>
-        </div>
+      {detailIndex !== null && (
+        <PointDetailModal
+          stops={stopsFromSpacePoints(space.points ?? [])}
+          index={detailIndex}
+          onIndex={setDetailIndex}
+          onClose={() => setDetailIndex(null)}
+        />
       )}
     </div>
   )

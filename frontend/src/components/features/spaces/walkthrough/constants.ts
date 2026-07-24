@@ -26,6 +26,9 @@ export type WalkthroughStop = {
   generating: boolean
   loci: { url: string; blur?: string } | null
   card: { id: string; title: string; url: string | null; blur?: string } | null
+  // ルーム型の間取り座標（room ウォークスルーで点を配置する）。road では未使用。
+  x?: number
+  y?: number
 }
 
 const isGenerating = (s: string) => s === 'pending' || s === 'processing'
@@ -40,6 +43,8 @@ export function stopsFromSpacePoints(
     position: number
     name: string | null
     generation_status: string
+    x: number
+    y: number
     image: { url: string; thumb_url?: string; blur?: string } | null
     item: { id: string; title: string; media: { url: string; thumb_url?: string; blur?: string } | null } | null
   }[]
@@ -55,6 +60,8 @@ export function stopsFromSpacePoints(
         generating: isGenerating(p.generation_status),
         loci: media ? { url: media.thumb_url ?? media.url, blur: withBlur(media) } : null,
         card: null,
+        x: p.x,
+        y: p.y,
       }
     })
 }

@@ -1,14 +1,15 @@
 'use client'
 
 import Link from 'next/link'
-import { GalleryHorizontal } from 'lucide-react'
+import { GalleryHorizontal, Route } from 'lucide-react'
 import { CardImage } from '@/components/ui/card-image'
 import type { WalkthroughStop } from './constants'
 
 /**
- * 到着時に手前へ来る「結合カード」の HUD。
- * ロキ画像は道の点（背景）で見せるので重複させず、ここでは配置/割当カードを手前に大きく出す。
- * カードが無ければポイント名だけ（ロキは道側にある）。
+ * 到着時の HUD。
+ * - space_map（ロキ＋配置カードの両方あり）: 背景（ロキ）とカードを「＋」で並べて同時に表示する。
+ * - スペースのロード（1画像のみ・card=null）: ロキは道側で見せるので、ここは名前だけ。
+ * key={index}（呼び出し側）で点が変わるたび再マウントし、フェード/スライドインを再生する。
  */
 export function WalkthroughPanel({
   stop,
@@ -25,38 +26,61 @@ export function WalkthroughPanel({
 }) {
   if (!stop) return null
   const name = stop.name?.trim() || `ポイント ${index + 1}`
+  const loci = stop.loci
   const card = stop.card
+  const pair = !!(loci && card)
   const anim = motion ? 'animate-in fade-in-0 slide-in-from-bottom-4 duration-500' : ''
 
   return (
     <div className={`pointer-events-none absolute inset-x-0 bottom-0 z-10 flex justify-center px-4 pb-28 ${anim}`}>
-      <div className="pointer-events-auto flex w-full max-w-xs flex-col items-center gap-2 rounded-2xl border border-border bg-card/85 p-4 text-center shadow-xl backdrop-blur-md">
+      <div className={`pointer-events-auto flex flex-col items-center gap-2 rounded-2xl border border-border bg-card/85 p-4 text-center shadow-xl backdrop-blur-md ${pair ? 'w-full max-w-md' : 'w-full max-w-xs'}`}>
         <span className="text-[11px] font-medium tabular-nums text-muted-foreground">
           {index + 1} / {total}
         </span>
-        {card ? (
-          <div className="flex flex-col items-center gap-2">
-            <button
-              type="button"
-              onClick={() => card.url && onZoom(card.url, card.title)}
-              aria-label="画像を拡大"
-              className="rounded-xl transition-transform hover:scale-[1.02]"
-            >
+
+        {pair ? (
+          // 背景（ロキ）＋カードを同時表示
+          <div className="flex items-center justify-center gap-2">
+            <button type="button" onClick={() => loci!.url && onZoom(loci!.url, `${name}（場所）`)} aria-label="場所を拡大" className="rounded-xl transition-transform hover:scale-[1.02]">
               <CardImage
-                src={card.url}
-                blur={card.blur}
-                alt={card.title}
-                className="aspect-square w-44 rounded-xl border border-border"
+                src={loci!.url}
+                blur={loci!.blur}
+                alt={`${name}（場所）`}
+                className="aspect-square w-32 rounded-xl border border-border"
+                fallback={<Route size={22} className="text-muted-foreground/60" />}
+              />
+            </button>
+            <span className="select-none text-2xl font-light text-muted-foreground">＋</span>
+            <button type="button" onClick={() => card!.url && onZoom(card!.url, card!.title)} aria-label="カードを拡大" className="rounded-xl transition-transform hover:scale-[1.02]">
+              <CardImage
+                src={card!.url}
+                blur={card!.blur}
+                alt={card!.title}
+                className="aspect-square w-32 rounded-xl border border-border"
                 fallback={<GalleryHorizontal size={22} className="text-muted-foreground/60" />}
               />
             </button>
-            <Link href={`/items/${card.id}`} className="max-w-[11rem] truncate text-sm font-semibold hover:underline">
+          </div>
+        ) : card ? (
+          <button type="button" onClick={() => card.url && onZoom(card.url, card.title)} aria-label="画像を拡大" className="rounded-xl transition-transform hover:scale-[1.02]">
+            <CardImage
+              src={card.url}
+              blur={card.blur}
+              alt={card.title}
+              className="aspect-square w-44 rounded-xl border border-border"
+              fallback={<GalleryHorizontal size={22} className="text-muted-foreground/60" />}
+            />
+          </button>
+        ) : null}
+
+        <div>
+          <span className={pair || card ? 'text-xs text-muted-foreground' : 'text-base font-semibold'}>{name}</span>
+          {card && (
+            <Link href={`/items/${card.id}`} className="ml-1 text-xs text-[var(--palace)] underline">
               {card.title}
             </Link>
-          </div>
-        ) : null}
-        {/* ロキ（場所）の名前。カードがあるときは補足、無いときは主役 */}
-        <span className={card ? 'text-xs text-muted-foreground' : 'text-base font-semibold'}>{name}</span>
+          )}
+        </div>
       </div>
     </div>
   )
