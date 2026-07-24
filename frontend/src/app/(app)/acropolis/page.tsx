@@ -11,6 +11,7 @@ import { createItem } from '@/lib/api/items'
 import { STYLE_OPTIONS } from '@/lib/item-styles'
 import { useBillingStore } from '@/stores/billing'
 import { useAcropolisStore } from '@/stores/acropolis'
+import { useMotion } from '@/hooks/useMotion'
 
 const MAX_PULL = 5
 
@@ -38,6 +39,8 @@ export default function AcropolisPage() {
   const history = useAcropolisStore((s) => s.history)
   const addRecord = useAcropolisStore((s) => s.addRecord)
   const clearHistory = useAcropolisStore((s) => s.clearHistory)
+  // アニメーション可否（設定 off / reduced-motion で false）。false のときは素の表示にする。
+  const anim = useMotion()
 
   // 受け取り済み＝二度と出さない（除外）。キャンセル済み＝出る確率を大きく下げる（回避）。
   const excludeWords = useMemo(
@@ -130,7 +133,7 @@ export default function AcropolisPage() {
 
   return (
     <div className="max-w-7xl mx-auto px-6 py-12">
-      <div>
+      <div className={anim ? 'animate-in fade-in slide-in-from-top-2 duration-500' : undefined}>
       <h1 className="flex items-center gap-2.5 text-2xl font-semibold">
         <Wand2 size={26} style={{ color: 'var(--palace)' }} />
         アクロポリス
@@ -181,7 +184,7 @@ export default function AcropolisPage() {
             ))}
           </select>
         </div>
-        <Button onClick={handleConsult} disabled={busy} className="flex items-center justify-center gap-2 sm:w-44">
+        <Button onClick={handleConsult} disabled={busy} className={`flex items-center justify-center gap-2 sm:w-44 ${forging && anim ? 'animate-oracle-aura' : ''}`}>
           {forging ? <Spinner size={15} /> : <Wand2 size={16} />}
           {forging ? '神託を待っています...' : '神託を受ける'}
         </Button>
@@ -195,7 +198,7 @@ export default function AcropolisPage() {
 
       {/* 提示された神託（受け取り/キャンセルの意思表示） */}
       {pending && (
-        <div className="mt-6 rounded-xl border border-border bg-card px-6 py-5">
+        <div className={`mt-6 rounded-xl border border-border bg-card px-6 py-5 ${anim ? 'animate-in fade-in zoom-in-95 duration-300' : ''}`}>
           <div className="flex items-center justify-between">
             <p className="text-sm font-semibold text-muted-foreground">神託の結果</p>
             <button
@@ -208,9 +211,13 @@ export default function AcropolisPage() {
               <X size={18} />
             </button>
           </div>
-          <ul className="mt-3 flex flex-wrap gap-2">
+          <ul className={`mt-3 flex flex-wrap gap-2 ${accepting && anim ? 'animate-pulse' : ''}`}>
             {pending.map((word, i) => (
-              <li key={`${word}-${i}`} className="rounded-full border border-border bg-background px-3 py-1 text-sm font-medium">
+              <li
+                key={`${word}-${i}`}
+                className={`rounded-full border border-border bg-background px-3 py-1 text-sm font-medium ${anim ? 'animate-in fade-in slide-in-from-bottom-2 fill-mode-both' : ''}`}
+                style={anim ? { animationDelay: `${i * 90}ms` } : undefined}
+              >
                 {word}
               </li>
             ))}
