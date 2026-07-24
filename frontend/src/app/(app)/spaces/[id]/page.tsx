@@ -4,7 +4,7 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import dynamic from 'next/dynamic'
 import Link from 'next/link'
 import { useParams, useRouter } from 'next/navigation'
-import { Trash2, Pencil, Check, X, Plus, ChevronUp, ChevronDown, Search, Loader2, Route, DoorOpen } from 'lucide-react'
+import { Trash2, Pencil, Check, X, Plus, ChevronUp, ChevronDown, Loader2, Route, DoorOpen, Play, Search, Images } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Breadcrumb } from '@/components/ui/breadcrumb'
 import { Input } from '@/components/ui/input'
@@ -21,6 +21,7 @@ import {
   removeSpaceCover,
 } from '@/lib/api/spaces'
 import { getItemsPage } from '@/lib/api/items'
+import type { Item } from '@/types/item'
 import { spaceTypeLabel } from '@/lib/space-types'
 // キャンバスはクライアント専用（React Flow 等の重い依存）。サーバ Worker から外すため ssr:false で遅延読込。
 const RoomCanvas = dynamic(
@@ -28,9 +29,10 @@ const RoomCanvas = dynamic(
   { ssr: false, loading: () => <div className="h-[60vh] animate-pulse rounded-xl bg-muted" /> }
 )
 import { EntityCover } from '@/components/features/shared/EntityCover'
+import { SpaceWalkthrough } from '@/components/features/spaces/walkthrough/SpaceWalkthrough'
+import { stopsFromSpacePoints } from '@/components/features/spaces/walkthrough/constants'
 import { CoverSettings } from '@/components/features/shared/CoverSettings'
 import type { SpaceDetail, SpacePoint } from '@/types/space'
-import type { Item } from '@/types/item'
 import type { CoverType } from '@/types/cover'
 
 // カバー画像が無いスペースのフォールバック（ルーム=部屋 / ロード=道）
@@ -49,8 +51,9 @@ function SpaceCoverFallback({ spaceType }: { spaceType: string }) {
 // 生成中とみなすステータス（ポーリング継続条件）
 const POLLING_STATUSES = new Set(['pending', 'processing'])
 
-// road / room 種別: カード割当の検索ピッカー（モーダル）
-function AssignCardModal({ onSelect, onClose }: { onSelect: (item: Item) => void; onClose: () => void }) {
+
+// 既存カードを配置する検索ピッカー（モーダル）。カードの画像を点の背景画像に使う。
+function CardPicker({ onSelect, onClose }: { onSelect: (item: Item) => void; onClose: () => void }) {
   const [items, setItems] = useState<Item[]>([])
   const [query, setQuery] = useState('')
   const [appliedQuery, setAppliedQuery] = useState('')
@@ -64,43 +67,23 @@ function AssignCardModal({ onSelect, onClose }: { onSelect: (item: Item) => void
   useEffect(() => {
     let cancelled = false
     getItemsPage(1, 50, { query: appliedQuery || undefined })
-      .then((res) => {
-        if (!cancelled) setItems(res.items)
-      })
-      .catch(() => {
-        if (!cancelled) setItems([])
-      })
-      .finally(() => {
-        if (!cancelled) setLoading(false)
-      })
-    return () => {
-      cancelled = true
-    }
+      .then((res) => { if (!cancelled) setItems(res.items) })
+      .catch(() => { if (!cancelled) setItems([]) })
+      .finally(() => { if (!cancelled) setLoading(false) })
+    return () => { cancelled = true }
   }, [appliedQuery])
 
   return (
-    <div className="fixed inset-0 z-40 flex items-center justify-center bg-black/40 p-4" onClick={onClose}>
-      <div
-        className="flex max-h-[80vh] w-full max-w-lg flex-col overflow-hidden rounded-xl border border-border bg-card"
-        onClick={(e) => e.stopPropagation()}
-      >
+    <div className="fixed inset-0 z-[55] flex items-center justify-center bg-black/40 p-4" onClick={onClose}>
+      <div className="flex max-h-[80vh] w-full max-w-lg flex-col overflow-hidden rounded-xl border border-border bg-card" onClick={(e) => e.stopPropagation()}>
         <div className="flex items-center justify-between border-b border-border px-4 py-3">
-          <span className="text-sm font-medium">カードを割り当て</span>
-          <button type="button" onClick={onClose} aria-label="閉じる" className="text-muted-foreground hover:text-foreground">
-            <X size={18} />
-          </button>
+          <span className="text-sm font-medium">既存カードを配置</span>
+          <button type="button" onClick={onClose} aria-label="閉じる" className="text-muted-foreground hover:text-foreground"><X size={18} /></button>
         </div>
         <div className="border-b border-border p-3">
           <div className="relative">
             <Search size={15} className="pointer-events-none absolute left-2.5 top-1/2 -translate-y-1/2 text-muted-foreground" />
-            <input
-              value={query}
-              onChange={(e) => setQuery(e.target.value)}
-              placeholder="カードを検索"
-              autoFocus
-              aria-label="カード検索"
-              className="w-full rounded-lg border border-input bg-background py-1.5 pl-8 pr-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-            />
+            <input value={query} onChange={(e) => setQuery(e.target.value)} placeholder="カードを検索" autoFocus aria-label="カード検索" className="w-full rounded-lg border border-input bg-background py-1.5 pl-8 pr-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring" />
           </div>
         </div>
         <div className="flex-1 overflow-y-auto p-3">
@@ -111,19 +94,8 @@ function AssignCardModal({ onSelect, onClose }: { onSelect: (item: Item) => void
           ) : (
             <div className="grid grid-cols-3 gap-2">
               {items.map((item) => (
-                <button
-                  key={item.id}
-                  type="button"
-                  onClick={() => onSelect(item)}
-                  className="flex flex-col overflow-hidden rounded-lg border border-border bg-background text-left transition-shadow hover:shadow-md"
-                >
-                  <CardImage
-                    src={item.media?.thumb_url ?? item.media?.url ?? null}
-                    blur={item.media?.blur}
-                    alt={item.title}
-                    className="aspect-square w-full"
-                    fallback={<span className="px-1 text-center text-[10px] text-muted-foreground">{item.title}</span>}
-                  />
+                <button key={item.id} type="button" onClick={() => onSelect(item)} className="flex flex-col overflow-hidden rounded-lg border border-border bg-background text-left transition-shadow hover:shadow-md">
+                  <CardImage src={item.media?.thumb_url ?? item.media?.url ?? null} blur={item.media?.blur} alt={item.title} className="aspect-square w-full" fallback={<span className="px-1 text-center text-[10px] text-muted-foreground">{item.title}</span>} />
                   <span className="truncate px-1.5 py-1 text-[11px] font-medium">{item.title}</span>
                 </button>
               ))}
@@ -135,46 +107,26 @@ function AssignCardModal({ onSelect, onClose }: { onSelect: (item: Item) => void
   )
 }
 
-// ポイント名から生成した画像（生成中はスピナー、失敗はメッセージ）
-function PointImageCell({ point }: { point: SpacePoint }) {
-  const generating = !!point.name && POLLING_STATUSES.has(point.generation_status)
-  const imageUrl = point.image?.thumb_url ?? point.image?.url ?? null
+// ポイントの画像（配置カードの画像を優先、無ければ名前から生成したロキ画像）。クリックで拡大。
+function PointImageCell({ point, onZoom }: { point: SpacePoint; onZoom: (url: string, alt: string) => void }) {
+  const media = point.item?.media ?? point.image
+  const imageUrl = media?.thumb_url ?? media?.url ?? null
+  const fullUrl = media?.url ?? media?.thumb_url ?? null
+  // 有効画像が無く（生成前・カード未配置）、名前があり、生成中ステータスのときだけスピナー。
+  const generating = !media && !!point.name && POLLING_STATUSES.has(point.generation_status)
+  const alt = point.name ?? 'ポイント画像'
 
   return (
     <div className="flex h-16 w-16 shrink-0 items-center justify-center overflow-hidden rounded-md bg-muted">
       {imageUrl ? (
-        <CardImage
-          src={imageUrl}
-          blur={point.image?.blur}
-          alt={point.name ?? 'ポイント画像'}
-          className="h-full w-full"
-        />
+        <button type="button" onClick={() => fullUrl && onZoom(fullUrl, alt)} aria-label="画像を拡大" className="h-full w-full">
+          <CardImage src={imageUrl} blur={(media as { blur?: string } | null)?.blur} alt={alt} className="h-full w-full" />
+        </button>
       ) : generating ? (
         <Loader2 size={18} className="animate-spin text-muted-foreground" />
       ) : (
-        <span className="px-1 text-center text-[9px] text-muted-foreground">
-          {point.name ? '画像なし' : '名前で生成'}
-        </span>
+        <span className="px-1 text-center text-[9px] text-muted-foreground">画像なし</span>
       )}
-    </div>
-  )
-}
-
-// 割り当てカードの表示
-function AssignedCard({ item }: { item: SpacePoint['item'] }) {
-  if (!item) return <span className="text-xs text-muted-foreground">カード未割当</span>
-  const imageUrl = item.media?.thumb_url ?? item.media?.url ?? null
-  return (
-    <div className="flex min-w-0 items-center gap-2">
-      <div className="flex h-9 w-9 shrink-0 items-center justify-center overflow-hidden rounded bg-muted">
-        {imageUrl ? (
-          // eslint-disable-next-line @next/next/no-img-element
-          <img src={imageUrl} alt={item.title} className="h-full w-full object-cover" loading="lazy" />
-        ) : (
-          <span className="px-0.5 text-center text-[8px] text-muted-foreground">{item.title}</span>
-        )}
-      </div>
-      <span className="truncate text-xs font-medium">{item.title}</span>
     </div>
   )
 }
@@ -186,8 +138,10 @@ function PointRow({
   onGenerate,
   onMove,
   onRemove,
-  onAssignClick,
+  onPlaceCardClick,
   onClearCard,
+  onSaveName,
+  onZoom,
 }: {
   point: SpacePoint
   index: number
@@ -195,22 +149,27 @@ function PointRow({
   onGenerate: (pointId: string, name: string) => void
   onMove: (index: number, dir: -1 | 1) => void
   onRemove: (pointId: string) => void
-  onAssignClick: (pointId: string) => void
+  onPlaceCardClick: (pointId: string) => void
   onClearCard: (pointId: string) => void
+  onSaveName: (pointId: string, name: string) => void
+  onZoom: (url: string, alt: string) => void
 }) {
-  // ドラフトは初期表示時の名前で初期化（key=point.id で安定）。
-  // 生成は「生成」ボタンを押したときだけ実行する（入力やフォーカス外しでは走らせない）。
+  // ドラフトは名前で初期化。key に point.name を含めるので、配置/生成で名前が変わると再初期化される。
   const [draft, setDraft] = useState(point.name ?? '')
-
   const trimmed = draft.trim()
-  const generating = !!point.name && POLLING_STATUSES.has(point.generation_status)
-  const failed = !!point.name && point.generation_status === 'failed'
-  // 名前があり、生成中でなく、「同じ名前で既に生成済み」でないときに生成可能
-  // （＝新規・名前変更・失敗からの再試行）
+  const hasImage = !!point.image || !!point.item
+  const generating = !point.image && !point.item && !!point.name && POLLING_STATUSES.has(point.generation_status)
+  const failed = !point.item && !!point.name && point.generation_status === 'failed'
+  // 生成可能: 名前があり、生成中でなく、「カード無しで同じ名前が生成済み」でないとき。
   const canGenerate =
     trimmed.length > 0 &&
     !generating &&
-    !(trimmed === (point.name ?? '') && point.generation_status === 'completed')
+    !(trimmed === (point.name ?? '') && point.generation_status === 'completed' && !point.item)
+
+  // 名前だけ保存（生成しない）。既に画像/カードがある点でのみ実行（未生成点の“生成中”誤表示を避ける）。
+  const handleNameBlur = () => {
+    if (trimmed && trimmed !== (point.name ?? '') && hasImage) onSaveName(point.id, trimmed)
+  }
 
   return (
     <li className="rounded-xl border border-border bg-card px-3 py-2.5">
@@ -224,13 +183,11 @@ function PointRow({
         <input
           value={draft}
           onChange={(e) => setDraft(e.target.value)}
+          onBlur={handleNameBlur}
           placeholder="ポイント名（例: 玄関）"
           aria-label={`ポイント${index + 1}の名前`}
           className="min-w-0 flex-1 rounded-lg border border-input bg-background px-2.5 py-1.5 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
         />
-        <Button size="sm" onClick={() => onGenerate(point.id, trimmed)} disabled={!canGenerate} className="shrink-0">
-          {generating ? '生成中…' : '生成'}
-        </Button>
         <div className="flex shrink-0 items-center gap-1">
           <button onClick={() => onMove(index, -1)} disabled={index === 0} aria-label="上へ" className="rounded p-1 text-muted-foreground hover:bg-muted disabled:opacity-30"><ChevronUp size={16} /></button>
           <button onClick={() => onMove(index, 1)} disabled={index === total - 1} aria-label="下へ" className="rounded p-1 text-muted-foreground hover:bg-muted disabled:opacity-30"><ChevronDown size={16} /></button>
@@ -238,22 +195,29 @@ function PointRow({
         </div>
       </div>
 
-      <div className="mt-2.5 flex items-center gap-3 pl-10">
-        <PointImageCell point={point} />
-        <div className="min-w-0 flex-1 space-y-1">
-          {generating && <p className="text-xs text-muted-foreground">画像を生成中…</p>}
+      <div className="mt-2.5 flex items-start gap-3 pl-10">
+        <PointImageCell point={point} onZoom={onZoom} />
+        <div className="min-w-0 flex-1 space-y-2">
           {failed && (
             <p className="text-xs text-destructive">{point.generation_error ?? '生成に失敗しました。もう一度「生成」を押してください。'}</p>
           )}
-          <div className="flex items-center justify-between gap-2">
-            <AssignedCard item={point.item} />
-            <div className="flex shrink-0 items-center gap-1">
-              <Button variant="outline" size="sm" onClick={() => onAssignClick(point.id)}>
-                {point.item ? '変更' : 'カードを割当'}
-              </Button>
-              {point.item && <Button variant="ghost" size="sm" onClick={() => onClearCard(point.id)}>クリア</Button>}
-            </div>
+          <div className="flex flex-wrap items-center gap-1.5">
+            <Button size="sm" onClick={() => onGenerate(point.id, trimmed)} disabled={!canGenerate}>
+              {generating ? '生成中…' : point.image && !point.item ? '再生成' : '生成'}
+            </Button>
+            <Button variant="outline" size="sm" onClick={() => onPlaceCardClick(point.id)} className="flex items-center gap-1">
+              <Images size={13} />
+              {point.item ? 'カードを変更' : '既存カードを配置'}
+            </Button>
+            {point.item && (
+              <Button variant="ghost" size="sm" onClick={() => onClearCard(point.id)}>カードを外す</Button>
+            )}
           </div>
+          <p className="text-[11px] leading-snug text-muted-foreground">
+            {point.item
+              ? `カードの画像を使用中：${point.item.title}`
+              : '「生成」は名前から画像を作成し、1クレジット消費します。「既存カードを配置」はカードの画像を使い、消費しません。'}
+          </p>
         </div>
       </div>
     </li>
@@ -275,6 +239,8 @@ export default function SpaceDetailPage() {
   const [deleting, setDeleting] = useState(false)
 
   // ポイント
+  const [playerOpen, setPlayerOpen] = useState(false)
+  const [imageZoom, setImageZoom] = useState<{ url: string; alt: string } | null>(null)
   const [pickerPointId, setPickerPointId] = useState<string | null>(null)
   const [busyPoint, setBusyPoint] = useState(false)
   const [coverBusy, setCoverBusy] = useState(false)
@@ -406,39 +372,48 @@ export default function SpaceDetailPage() {
       setBusyPoint(false)
     }
   }
-  // 「生成」ボタン押下時のみ呼ばれる。名前を送ると同時に画像生成が始まる。
+  // 「生成」ボタン: カードを外して名前から画像を生成する（1クレジット消費）。
   const handleGeneratePoint = async (pointId: string, name: string) => {
     try {
-      const updated = await updateSpacePoint(id, pointId, { name })
+      const updated = await updateSpacePoint(id, pointId, { name, item_id: null, generate: true })
       setPoints((ps) => ps.map((p) => (p.id === pointId ? updated : p)))
     } catch {
       setError('画像生成の開始に失敗しました')
     }
   }
-  const handleAssign = async (item: Item) => {
+  // 既存カードを配置: カードの画像を点の背景に使い、カード名を点名に入れる（生成しない・無料）。
+  const handlePlaceCard = async (item: Item) => {
     const pointId = pickerPointId
     if (!pointId) return
     setPickerPointId(null)
     try {
-      const updated = await updateSpacePoint(id, pointId, { item_id: item.id })
+      const updated = await updateSpacePoint(id, pointId, { item_id: item.id, name: item.title, generate: false })
       setPoints((ps) => ps.map((p) => (p.id === pointId ? updated : p)))
     } catch {
-      setError('カードの割り当てに失敗しました')
+      setError('カードの配置に失敗しました')
+    }
+  }
+  const handleClearCard = async (pointId: string) => {
+    try {
+      const updated = await updateSpacePoint(id, pointId, { item_id: null })
+      setPoints((ps) => ps.map((p) => (p.id === pointId ? updated : p)))
+    } catch {
+      setError('カードの解除に失敗しました')
+    }
+  }
+  // 名前だけ保存（生成しない）。カード配置済み/生成済みの点のフォーカスアウト時に呼ぶ。
+  const handleSaveName = async (pointId: string, name: string) => {
+    try {
+      const updated = await updateSpacePoint(id, pointId, { name, generate: false })
+      setPoints((ps) => ps.map((p) => (p.id === pointId ? updated : p)))
+    } catch {
+      setError('ポイント名の保存に失敗しました')
     }
   }
   // room キャンバスでのドラッグ確定時に座標を state へ反映（保存は RoomCanvas が行う）
   const handleMovePointXY = useCallback((pointId: string, x: number, y: number) => {
     setPoints((ps) => ps.map((p) => (p.id === pointId ? { ...p, x, y } : p)))
   }, [setPoints])
-
-  const handleClearCard = async (pointId: string) => {
-    try {
-      const updated = await updateSpacePoint(id, pointId, { item_id: null })
-      setPoints((ps) => ps.map((p) => (p.id === pointId ? updated : p)))
-    } catch {
-      setError('カードのクリアに失敗しました')
-    }
-  }
   const handleRemovePoint = async (pointId: string) => {
     setPoints((ps) => ps.filter((p) => p.id !== pointId))
     try {
@@ -482,8 +457,8 @@ export default function SpaceDetailPage() {
   const points = space.points ?? []
   const isRoad = space.space_type === 'road'
   const intro = isRoad
-    ? '序数のあるポイントを並べ、各点に「名前から画像を生成」または「カードを割り当て」できます（連結法/ジャーニー法）。'
-    : '部屋のポイントをドラッグで間取りに配置できます。各ポイントの名前・生成・カード割り当ては下のリストで設定します。'
+    ? '序数のあるポイントを並べ、各点に画像を1つ設定します。名前から「生成」（1クレジット）するか、「既存カードを配置」（無料・カード画像を使用）できます。連結法/ジャーニー法の道になります。'
+    : '部屋のポイントをドラッグで間取りに配置できます。各点の画像は「生成」または「既存カードを配置」で1つ設定します。'
 
   return (
     <div className="max-w-3xl mx-auto px-6 py-12">
@@ -520,17 +495,30 @@ export default function SpaceDetailPage() {
               <p className="mt-2 text-sm leading-relaxed whitespace-pre-wrap text-muted-foreground">{space.description}</p>
             )}
           </div>
-          <Button
-            variant={confirmDelete ? 'destructive' : 'ghost'}
-            size="sm"
-            onClick={handleDelete}
-            disabled={deleting}
-            onBlur={() => setConfirmDelete(false)}
-            className="flex items-center gap-1.5 shrink-0"
-          >
-            <Trash2 size={14} />
-            {deleting ? '削除中...' : confirmDelete ? '本当に削除' : '削除'}
-          </Button>
+          <div className="flex items-center gap-2 shrink-0">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setPlayerOpen(true)}
+              disabled={points.length === 0}
+              className="flex items-center gap-1.5"
+              aria-label="ウォークスルーを再生"
+            >
+              <Play size={14} />
+              ウォークスルー
+            </Button>
+            <Button
+              variant={confirmDelete ? 'destructive' : 'ghost'}
+              size="sm"
+              onClick={handleDelete}
+              disabled={deleting}
+              onBlur={() => setConfirmDelete(false)}
+              className="flex items-center gap-1.5"
+            >
+              <Trash2 size={14} />
+              {deleting ? '削除中...' : confirmDelete ? '本当に削除' : '削除'}
+            </Button>
+          </div>
         </div>
       )}
 
@@ -563,15 +551,17 @@ export default function SpaceDetailPage() {
           <ol className="space-y-2">
             {points.map((point, index) => (
               <PointRow
-                key={point.id}
+                key={`${point.id}:${point.name ?? ''}`}
                 point={point}
                 index={index}
                 total={points.length}
                 onGenerate={handleGeneratePoint}
                 onMove={movePoint}
                 onRemove={handleRemovePoint}
-                onAssignClick={setPickerPointId}
+                onPlaceCardClick={setPickerPointId}
                 onClearCard={handleClearCard}
+                onSaveName={handleSaveName}
+                onZoom={(url, alt) => setImageZoom({ url, alt })}
               />
             ))}
           </ol>
@@ -583,7 +573,35 @@ export default function SpaceDetailPage() {
         </div>
       </section>
 
-      {pickerPointId && <AssignCardModal onSelect={handleAssign} onClose={() => setPickerPointId(null)} />}
+      {pickerPointId && <CardPicker onSelect={handlePlaceCard} onClose={() => setPickerPointId(null)} />}
+      {playerOpen && (
+        <SpaceWalkthrough
+          stops={stopsFromSpacePoints(space.points ?? [])}
+          title={space.name}
+          spaceType={space.space_type}
+          onClose={() => setPlayerOpen(false)}
+        />
+      )}
+      {imageZoom && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/85 p-6"
+          onClick={() => setImageZoom(null)}
+          role="dialog"
+          aria-modal="true"
+          aria-label="画像を拡大"
+        >
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img src={imageZoom.url} alt={imageZoom.alt} className="max-h-full max-w-full rounded-lg object-contain shadow-2xl" />
+          <button
+            type="button"
+            onClick={() => setImageZoom(null)}
+            aria-label="閉じる"
+            className="absolute right-4 top-4 rounded-full bg-white/15 p-2 text-white transition-colors hover:bg-white/25"
+          >
+            <X size={20} />
+          </button>
+        </div>
+      )}
     </div>
   )
 }

@@ -2794,3 +2794,160 @@
 :root[data-motion='off'] .animate-oracle-aura {
   animation: none;
 }
+
+/* ===== スペース・ウォークスルー（一人称の道）。LP の .road-bg の 3D 遠近数式を
+   複製して .sw-* 名前空間に隔離し、スクロールではなく JS が書く --sw-shift(px) で駆動する。
+   .sw-point は LP に無い「道の上のポイント」で、mod せず有限に並べる（progress==index で ARRIVAL）。 */
+.sw-scene {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  perspective: 620px;
+  perspective-origin: 50% 32%;
+}
+.sw-plane {
+  position: absolute;
+  left: 50%;
+  top: 26%; /* 地平線 */
+  width: 720px;
+  height: 2160px;
+  margin-left: -360px;
+  transform-origin: 50% 0;
+  transform: rotateX(72deg);
+  transform-style: preserve-3d; /* opacity/filter を載せない（3D が潰れる） */
+}
+.sw-road {
+  position: absolute;
+  inset: 0;
+  opacity: 0.6;
+  background-image: url('/road.png');
+  background-repeat: repeat-y;
+  background-size: 720px 1080px;
+  background-position: center calc(var(--sw-shift, 0) * 1px);
+  will-change: background-position;
+  /* 遠端（地平線）と手前をフェードして霞に溶かす */
+  -webkit-mask-image: linear-gradient(to bottom, transparent 0, #000 300px, #000 620px, transparent 720px);
+  mask-image: linear-gradient(to bottom, transparent 0, #000 300px, #000 620px, transparent 720px);
+}
+/* 両脇の柱（宮殿の参道）。LP と同じく mod 2160 で無限に折り返す。 */
+.sw-pillar {
+  position: absolute;
+  width: 140px;
+  height: 210px;
+  top: -210px;
+  transform-origin: 50% 100%;
+  transform: translateY(calc(mod(var(--sw-pillar-base, 0) + var(--sw-shift, 0), 2160) * 1px)) rotateX(-72deg);
+  opacity: calc(min(mod(var(--sw-pillar-base, 0) + var(--sw-shift, 0), 2160) / 720, 1) * 0.6);
+  will-change: transform, opacity;
+}
+.sw-pillar-img {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  -webkit-mask-image: linear-gradient(to bottom, transparent 6%, #000 34%, #000 78%, transparent 98%);
+  mask-image: linear-gradient(to bottom, transparent 6%, #000 34%, #000 78%, transparent 98%);
+}
+.sw-pillar--l {
+  left: 145px;
+}
+.sw-pillar--r {
+  left: 440px;
+}
+/* 道の上のポイント（ロキ画像/カードのビルボード）。平面Yは
+   ARRIVAL - index*SPACING + shift（mod なし）。progress==index で ARRIVAL（正面・最大）。
+   遠近だけで近づくほど拡大。地平から浮かび、通過後にフェードアウト。 */
+.sw-point {
+  position: absolute;
+  left: 50%;
+  width: 204px;
+  height: 204px;
+  margin-left: -102px;
+  top: -204px;
+  transform-origin: 50% 100%;
+  --sw-pos: calc(var(--sw-arrival, 420) - var(--sw-index, 0) * var(--sw-spacing, 340) + var(--sw-shift, 0));
+  transform: translateY(calc(var(--sw-pos) * 1px)) rotateX(-72deg);
+  opacity: calc(clamp(0, var(--sw-pos) / 150, 1) * clamp(0, (690 - var(--sw-pos)) / 120, 1));
+  transition: filter 0.3s ease;
+  will-change: transform, opacity;
+}
+.sw-point__frame {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  border-radius: 14px;
+  border: 2px solid color-mix(in srgb, var(--palace) 70%, white);
+  background: var(--card);
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.28);
+}
+.sw-point[data-active='true'] .sw-point__frame {
+  border-color: var(--palace);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--palace) 45%, transparent), 0 14px 36px rgba(0, 0, 0, 0.34);
+}
+.sw-point__num {
+  position: absolute;
+  top: 6px;
+  left: 6px;
+  z-index: 2;
+  display: inline-flex;
+  height: 22px;
+  min-width: 22px;
+  align-items: center;
+  justify-content: center;
+  border-radius: 9999px;
+  padding: 0 6px;
+  background: var(--palace);
+  color: #fff;
+  font-size: 12px;
+  font-weight: 600;
+}
+/* 遠くの淡い光（道の先）。静止（明滅は付けない）。 */
+.sw-glow {
+  position: absolute;
+  left: 50%;
+  top: 15%;
+  width: 160px;
+  height: 108px;
+  margin: -54px 0 0 -80px;
+  filter: blur(6px);
+  opacity: 0.35;
+  background: radial-gradient(closest-side, rgba(255, 253, 246, 0.95), rgba(247, 228, 185, 0.4) 42%, rgba(247, 228, 185, 0) 72%);
+  pointer-events: none;
+}
+/* 空気遠近: 上端（遠方）を強く、下端（手前）を軽くぼかす */
+.sw-haze {
+  position: absolute;
+  inset-inline: 0;
+  top: 0;
+  height: 42%;
+  z-index: 1;
+  pointer-events: none;
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  -webkit-mask-image: linear-gradient(to bottom, #000 0%, rgba(0, 0, 0, 0.5) 55%, transparent 100%);
+  mask-image: linear-gradient(to bottom, #000 0%, rgba(0, 0, 0, 0.5) 55%, transparent 100%);
+}
+.sw-haze--bottom {
+  top: auto;
+  bottom: 0;
+  height: 18%;
+  backdrop-filter: blur(3px);
+  -webkit-backdrop-filter: blur(3px);
+  -webkit-mask-image: linear-gradient(to top, #000 0%, transparent 100%);
+  mask-image: linear-gradient(to top, #000 0%, transparent 100%);
+}
+/* モーション OFF / reduced-motion: 道の流れを静止させる（ステップ送りは JS が即時化） */
+@media (prefers-reduced-motion: reduce) {
+  .sw-road {
+    background-position: center 0;
+  }
+  .sw-point {
+    transition: none;
+  }
+}
+:root[data-motion='off'] .sw-road {
+  background-position: center 0;
+}
+:root[data-motion='off'] .sw-point {
+  transition: none;
+}

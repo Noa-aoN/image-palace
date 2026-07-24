@@ -65,7 +65,8 @@ export async function addSpacePoint(spaceId: string): Promise<SpacePoint> {
 export async function updateSpacePoint(
   spaceId: string,
   pointId: string,
-  payload: { item_id?: string | null; position?: number; name?: string; x?: number; y?: number }
+  // generate:false=名前だけ保存（生成しない）、true=必ず生成。省略時は名前変更で生成。
+  payload: { item_id?: string | null; position?: number; name?: string; x?: number; y?: number; generate?: boolean }
 ): Promise<SpacePoint> {
   const res = await apiClient.patch<SpacePoint>(`/api/v1/spaces/${spaceId}/points/${pointId}`, payload)
   return res.data

@@ -81,11 +81,17 @@ module Api
         params[:name].to_s.strip if params.key?(:name)
       end
 
-      # 「生成」ボタン押下時に画像生成を走らせるか。
-      # 名前があり、かつ「名前が変わった」または「前回失敗からの再試行」のとき生成する。
-      # 同じ名前で生成済み（completed）の場合は再生成しない（同一プロンプトはキャッシュで同結果）。
+      # 画像生成を走らせるか。
+      # generate を明示した場合はそれに従う（true=名前があれば必ず生成／false=生成せず名前だけ保存）。
+      # 未指定なら従来どおり「名前が変わった／前回失敗からの再試行」のとき生成する
+      # （同じ名前で生成済みは再生成しない＝同一プロンプトはキャッシュで同結果）。
       def name_will_generate?
         return false unless params.key?(:name)
+
+        if params.key?(:generate)
+          return false unless ActiveModel::Type::Boolean.new.cast(params[:generate])
+          return stripped_name.present?
+        end
 
         name = stripped_name
         return false if name.blank?
