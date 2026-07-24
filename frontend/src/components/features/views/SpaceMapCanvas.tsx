@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { Search, X, Loader2, Play } from 'lucide-react'
+import { Search, X, Loader2, Play, Route } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { getItemsPage } from '@/lib/api/items'
 import { placeCardOnPoint, clearPointPlacement } from '@/lib/api/views'
@@ -9,6 +9,7 @@ import type { SpaceMapPoint } from '@/types/view'
 import type { Item } from '@/types/item'
 import { SpaceWalkthrough } from '@/components/features/spaces/walkthrough/SpaceWalkthrough'
 import { stopsFromSpaceMapPoints } from '@/components/features/spaces/walkthrough/constants'
+import { PointDetailModal } from '@/components/features/spaces/walkthrough/PointDetailModal'
 
 const POLLING_STATUSES = new Set(['pending', 'processing'])
 
@@ -102,39 +103,30 @@ function CardPicker({ onSelect, onClose }: { onSelect: (item: Item) => void; onC
   )
 }
 
-// ポイント自身の loci 画像（生成中はスピナー）
-function LociImage({ point }: { point: SpaceMapPoint }) {
-  const generating = !!point.name && POLLING_STATUSES.has(point.generation_status)
-  const imageUrl = point.image?.thumb_url ?? point.image?.url ?? null
+// ロキ画像 / 配置カードを対等に並べる正方形タイル（56px）。
+function MapTile({
+  imageUrl,
+  alt,
+  generating,
+  kind,
+}: {
+  imageUrl: string | null
+  alt: string
+  generating?: boolean
+  kind: 'loci' | 'card'
+}) {
   return (
-    <div className="flex h-14 w-14 shrink-0 items-center justify-center overflow-hidden rounded-md bg-muted">
+    <div className="flex h-14 w-14 shrink-0 items-center justify-center overflow-hidden rounded-md border border-border bg-muted">
       {imageUrl ? (
         // eslint-disable-next-line @next/next/no-img-element
-        <img src={imageUrl} alt={point.name ?? 'ポイント画像'} className="h-full w-full object-cover" loading="lazy" />
+        <img src={imageUrl} alt={alt} className="h-full w-full object-cover" loading="lazy" />
       ) : generating ? (
         <Loader2 size={16} className="animate-spin text-muted-foreground" />
+      ) : kind === 'loci' ? (
+        <Route size={18} className="text-muted-foreground/60" />
       ) : (
-        <span className="px-1 text-center text-[9px] text-muted-foreground">loci</span>
+        <span className="px-1 text-center text-[8px] text-muted-foreground">未配置</span>
       )}
-    </div>
-  )
-}
-
-// 配置されたカード
-function PlacedCard({ item }: { item: SpaceMapPoint['placed_item'] }) {
-  if (!item) return <span className="text-xs text-muted-foreground">カード未配置</span>
-  const imageUrl = item.media?.thumb_url ?? item.media?.url ?? null
-  return (
-    <div className="flex min-w-0 items-center gap-2">
-      <div className="flex h-9 w-9 shrink-0 items-center justify-center overflow-hidden rounded bg-muted">
-        {imageUrl ? (
-          // eslint-disable-next-line @next/next/no-img-element
-          <img src={imageUrl} alt={item.title} className="h-full w-full object-cover" loading="lazy" />
-        ) : (
-          <span className="px-0.5 text-center text-[8px] text-muted-foreground">{item.title}</span>
-        )}
-      </div>
-      <span className="truncate text-sm font-medium">{item.title}</span>
     </div>
   )
 }
@@ -152,6 +144,7 @@ export function SpaceMapCanvas({
   const [pickerPointId, setPickerPointId] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [playerOpen, setPlayerOpen] = useState(false)
+  const [detailIndex, setDetailIndex] = useState<number | null>(null)
 
   if (!space) {
     return (
@@ -227,11 +220,32 @@ export function SpaceMapCanvas({
               >
                 {index + 1}
               </span>
-              <LociImage point={point} />
+              {/* ロキ ＋ カード（対等に並べる・クリックで詳細） */}
+              <button
+                type="button"
+                onClick={() => setDetailIndex(index)}
+                aria-label={`${point.name || 'ポイント'} の詳細`}
+                className="flex shrink-0 items-center gap-2 rounded-lg p-0.5 transition-colors hover:bg-muted/50"
+              >
+                <MapTile
+                  imageUrl={point.image?.thumb_url ?? point.image?.url ?? null}
+                  alt={point.name ?? 'ロキ画像'}
+                  generating={!point.image && !!point.name && POLLING_STATUSES.has(point.generation_status)}
+                  kind="loci"
+                />
+                <span className="select-none text-lg font-light text-muted-foreground">＋</span>
+                <MapTile
+                  imageUrl={point.placed_item?.media?.thumb_url ?? point.placed_item?.media?.url ?? null}
+                  alt={point.placed_item?.title ?? 'カード'}
+                  kind="card"
+                />
+              </button>
               <div className="min-w-0 flex-1">
                 <p className="truncate text-sm font-medium">{point.name || '（名前なし）'}</p>
-                <div className="mt-1 flex items-center gap-2">
-                  <PlacedCard item={point.placed_item} />
+                <div className="mt-0.5 flex items-center gap-2">
+                  <span className="truncate text-xs text-muted-foreground">
+                    {point.placed_item ? point.placed_item.title : 'カード未配置'}
+                  </span>
                   {(occurrence.get(point.space_point_id) ?? 0) >= 2 && (
                     <span
                       className="shrink-0 rounded-full border px-2 py-0.5 text-[10px] font-medium"
@@ -263,6 +277,14 @@ export function SpaceMapCanvas({
           title={space.name}
           spaceType={space.space_type}
           onClose={() => setPlayerOpen(false)}
+        />
+      )}
+      {detailIndex !== null && (
+        <PointDetailModal
+          stops={stopsFromSpaceMapPoints(points)}
+          index={detailIndex}
+          onIndex={setDetailIndex}
+          onClose={() => setDetailIndex(null)}
         />
       )}
     </div>

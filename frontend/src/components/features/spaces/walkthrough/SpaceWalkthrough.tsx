@@ -115,7 +115,7 @@ export function SpaceWalkthrough({
           {isRoad ? (
             <WalkthroughRoad stops={stops} stageRef={stageRef} activeIndex={driver.activeIndex} />
           ) : (
-            <WalkthroughRoom />
+            <WalkthroughRoom stops={stops} activeIndex={driver.activeIndex} />
           )}
           {/* key でポイントごとに再マウントし、到着の演出を再生 */}
           <WalkthroughPanel
