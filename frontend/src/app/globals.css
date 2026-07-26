@@ -2795,6 +2795,32 @@
   animation: none;
 }
 
+/* 宮殿の記憶資産: アイテム（.group）にホバーすると、そのスタックの最上段ユニットがぽんと跳ねる */
+@keyframes asset-hop {
+  0%,
+  60%,
+  100% {
+    transform: translateY(0);
+  }
+  25% {
+    transform: translateY(-3px);
+  }
+  40% {
+    transform: translateY(0);
+  }
+}
+.group:hover .asset-hop-target {
+  animation: asset-hop 1.1s ease-in-out infinite;
+}
+@media (prefers-reduced-motion: reduce) {
+  .group:hover .asset-hop-target {
+    animation: none;
+  }
+}
+:root[data-motion='off'] .group:hover .asset-hop-target {
+  animation: none;
+}
+
 /* ===== スペース・ウォークスルー（一人称の道）。LP の .road-bg の 3D 遠近数式を
    複製して .sw-* 名前空間に隔離し、スクロールではなく JS が書く --sw-shift(px) で駆動する。
    .sw-point は LP に無い「道の上のポイント」で、mod せず有限に並べる（progress==index で ARRIVAL）。 */

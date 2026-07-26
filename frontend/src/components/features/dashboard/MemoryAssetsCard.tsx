@@ -448,7 +448,19 @@ function AssetStack2D({ count, pal, shape }: { count: number; pal: Palette; shap
     for (let i = 0; i < place.count; i++) {
       y -= h
       nodes.push(
-        <rect key={`p${j}i${i}`} x={x} y={y} width={tw} height={h} rx={1.2} fill={pal.top} stroke={pal.right} strokeWidth={0.6} />
+        <rect
+          key={`p${j}i${i}`}
+          x={x}
+          y={y}
+          width={tw}
+          height={h}
+          rx={1.2}
+          fill={pal.top}
+          stroke={pal.right}
+          strokeWidth={0.6}
+          // 最小の位（最後の列）の一番上：ホバーでぽんと跳ねる
+          className={j === places.length - 1 && i === place.count - 1 ? 'asset-hop-target' : undefined}
+        />
       )
       // 束は「重なっている」ことがわかるよう、内側に筋を入れる。
       if (place.unit > 1) {
@@ -546,25 +558,32 @@ function AssetStack({
   columns.forEach(({ place, j, b }) => {
     const depth = unitDepth(shape, place.unit)
     const unitShape = { ...shape, depth }
+    const isLast = j === places.length - 1 // 最小の位（最後の列）
     let y = b.y
+    // 最後の列の最上段ユニットだけ、天面装飾ごとまとめてホバーで跳ねさせる。
+    const topPolys: ReactNode[] = []
     for (let i = 0; i < place.count; i++) {
-      nodes.push(...unitPolys(b.x, y, unitShape, pal, `p${j}u${i}`, yaw, place.unit > 1))
+      const polys = unitPolys(b.x, y, unitShape, pal, `p${j}u${i}`, yaw, place.unit > 1)
+      if (isLast && i === place.count - 1) topPolys.push(...polys)
+      else nodes.push(...polys)
       y -= depth
     }
     maxTop = Math.min(maxTop, y)
-    // 最上段の天面にだけレリーフを彫る（長方形＝カードは奥半分に寄せる）。
-    if (relief && place.count > 0) {
+    // 最上段の天面の装飾（レリーフ＝カード/キャンバス・破線＝スペース・合わせ目＝ボックス）。
+    const deco: ReactNode[] = []
+    if (relief && place.count > 0) deco.push(<g key={`p${j}relief`}>{reliefPolys(b.x, y, unitShape, pal, shape.w !== shape.d, yaw)}</g>)
+    if (roadMark && place.count > 0) deco.push(<g key={`p${j}road`}>{roadMarkPolys(b.x, y, unitShape, yaw)}</g>)
+    if (lidSeam && place.count > 0) deco.push(<g key={`p${j}lid`}>{lidSeamPolys(b.x, y, unitShape, yaw)}</g>)
+    if (isLast) {
+      // 最小の位の一番上：ユニット＋天面装飾をまとめ、ホバーでぽんと跳ねる対象にする。
       nodes.push(
-        <g key={`p${j}relief`}>{reliefPolys(b.x, y, unitShape, pal, shape.w !== shape.d, yaw)}</g>
+        <g key={`hop-${j}`} className="asset-hop-target">
+          {topPolys}
+          {deco}
+        </g>
       )
-    }
-    // スペースは最上段の天面に、道路の区画線のような破線の枠を引く。
-    if (roadMark && place.count > 0) {
-      nodes.push(<g key={`p${j}road`}>{roadMarkPolys(b.x, y, unitShape, yaw)}</g>)
-    }
-    // ボックスは最上段の天面に、ダンボールのフタの合わせ目を1本引く。
-    if (lidSeam && place.count > 0) {
-      nodes.push(<g key={`p${j}lid`}>{lidSeamPolys(b.x, y, unitShape, yaw)}</g>)
+    } else {
+      nodes.push(...deco)
     }
   })
 
