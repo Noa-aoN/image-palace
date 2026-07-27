@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
 import { MemoryAssetsCard } from '@/components/features/dashboard/MemoryAssetsCard'
 import { PalaceFloorplan } from '@/components/features/dashboard/PalaceFloorplan'
+import { QuickCreateCard } from '@/components/features/dashboard/QuickCreateCard'
 import { getItemsSummary, type ItemsSummary } from '@/lib/api/items'
 import { useBillingStore } from '@/stores/billing'
 import { tierLabel, CREDIT_UNIT, CREDIT_UNIT_SHORT } from '@/lib/billing'
@@ -330,20 +331,10 @@ export function DashboardContent() {
         </section>
       </div>
 
-      {/* クイック操作 */}
+      {/* クイック作成: エントランスでそのまま単語を入れて即生成する */}
       <section className="space-y-3">
-        <h2 className="text-sm font-semibold text-muted-foreground">クイック操作</h2>
-        <div className="flex flex-wrap gap-3">
-          <Link href="/items/new">
-            <Button>+ カードを作成</Button>
-          </Link>
-          <Link href="/items">
-            <Button variant="outline">カードを見る</Button>
-          </Link>
-          <Link href="/library">
-            <Button variant="outline">ライブラリを見る</Button>
-          </Link>
-        </div>
+        <h2 className="text-sm font-semibold text-muted-foreground">クイック作成</h2>
+        <QuickCreateCard />
       </section>
     </div>
   )
