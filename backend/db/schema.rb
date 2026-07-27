@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_07_27_000001) do
+ActiveRecord::Schema[8.1].define(version: 2026_07_28_000001) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
   enable_extension "pgcrypto"
@@ -380,7 +380,10 @@ ActiveRecord::Schema[8.1].define(version: 2026_07_27_000001) do
     t.string "name"
     t.integer "position", default: 0, null: false
     t.uuid "space_id", null: false
+    t.string "surface", default: "floor", null: false
+    t.float "u", default: 0.5, null: false
     t.datetime "updated_at", null: false
+    t.float "v", default: 0.5, null: false
     t.float "x", default: 0.0, null: false
     t.float "y", default: 0.0, null: false
     t.index ["space_id", "position"], name: "index_space_points_on_space_id_and_position"

@@ -22,6 +22,9 @@ module ItemSerialization
       generation_error: point.generation_error,
       x: point.x,
       y: point.y,
+      surface: point.surface,
+      u: point.u,
+      v: point.v,
       image: serialize_point_image(point),
       item: point.item ? serialize_item(point.item) : nil
     }

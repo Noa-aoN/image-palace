@@ -39,14 +39,20 @@ export interface SpacePointImage {
   blur?: string
 }
 
+// 多面ルームの面（床・天井・4壁）
+export type RoomSurface = 'floor' | 'ceiling' | 'wall_north' | 'wall_east' | 'wall_south' | 'wall_west'
+
 export interface SpacePoint {
   id: string
   position: number
   name: string | null
   generation_status: GenerationStatus
   generation_error?: string | null
-  x: number // room 種別の間取り配置座標
+  x: number // room 種別の旧・間取り配置座標（surface/u/v へ移行中。当面併存）
   y: number
+  surface: RoomSurface // 点が属する面
+  u: number // 面内の正規化座標 (0..1)
+  v: number
   image: SpacePointImage | null // ポイント名から生成した画像
   item: SpacePointCard | null // 割り当てたカード（任意）
 }

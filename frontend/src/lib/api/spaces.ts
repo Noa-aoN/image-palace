@@ -1,5 +1,5 @@
 import { apiClient } from './client'
-import type { Space, SpaceDetail, SpacePoint } from '@/types/space'
+import type { Space, SpaceDetail, SpacePoint, RoomSurface } from '@/types/space'
 import type { CoverType } from '@/types/cover'
 
 export async function getSpaces(): Promise<Space[]> {
@@ -66,7 +66,18 @@ export async function updateSpacePoint(
   spaceId: string,
   pointId: string,
   // generate:false=名前だけ保存（生成しない）、true=必ず生成。省略時は名前変更で生成。
-  payload: { item_id?: string | null; position?: number; name?: string; x?: number; y?: number; generate?: boolean }
+  // surface/u/v = 多面ルームの面と面内正規化座標（0..1）。x/y は旧・間取り座標（当面併存）。
+  payload: {
+    item_id?: string | null
+    position?: number
+    name?: string
+    x?: number
+    y?: number
+    surface?: RoomSurface
+    u?: number
+    v?: number
+    generate?: boolean
+  }
 ): Promise<SpacePoint> {
   const res = await apiClient.patch<SpacePoint>(`/api/v1/spaces/${spaceId}/points/${pointId}`, payload)
   return res.data

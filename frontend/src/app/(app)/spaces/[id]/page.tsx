@@ -4,7 +4,7 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import dynamic from 'next/dynamic'
 import Link from 'next/link'
 import { useParams, useRouter } from 'next/navigation'
-import { Trash2, Pencil, Check, X, Plus, ChevronUp, ChevronDown, Loader2, Route, DoorOpen, Play, Search, Images } from 'lucide-react'
+import { Trash2, Pencil, Check, X, Plus, ChevronUp, ChevronDown, ChevronLeft, ChevronRight, Loader2, Route, DoorOpen, Play, Search, Images } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Breadcrumb } from '@/components/ui/breadcrumb'
 import { Input } from '@/components/ui/input'
@@ -23,17 +23,23 @@ import {
 import { getItemsPage } from '@/lib/api/items'
 import type { Item } from '@/types/item'
 import { spaceTypeLabel } from '@/lib/space-types'
-// キャンバスはクライアント専用（React Flow 等の重い依存）。サーバ Worker から外すため ssr:false で遅延読込。
+// 面キャンバスはブラウザ API（pointer/getBoundingClientRect）を使うクライアント専用。ssr:false で遅延読込。
 const RoomCanvas = dynamic(
   () => import('@/components/features/views/RoomCanvas').then((m) => m.RoomCanvas),
-  { ssr: false, loading: () => <div className="h-[60vh] animate-pulse rounded-xl bg-muted" /> }
+  { ssr: false, loading: () => <div className="mx-auto aspect-square w-full max-w-2xl animate-pulse rounded-xl bg-muted" /> }
+)
+// 3D 部屋ビュー（react-three-fiber）。重い依存なのでこのページでのみ ssr:false 遅延読込。
+const Room3D = dynamic(
+  () => import('@/components/features/views/Room3D').then((m) => m.Room3D),
+  { ssr: false, loading: () => <div className="h-[60vh] w-full animate-pulse rounded-xl bg-muted" /> }
 )
 import { EntityCover } from '@/components/features/shared/EntityCover'
 import { SpaceWalkthrough } from '@/components/features/spaces/walkthrough/SpaceWalkthrough'
 import { stopsFromSpacePoints } from '@/components/features/spaces/walkthrough/constants'
 import { PointDetailModal } from '@/components/features/spaces/walkthrough/PointDetailModal'
 import { CoverSettings } from '@/components/features/shared/CoverSettings'
-import type { SpaceDetail, SpacePoint } from '@/types/space'
+import type { SpaceDetail, SpacePoint, RoomSurface } from '@/types/space'
+import { PLACEABLE_SURFACES, SURFACE_NAV, roomSurfaceShort } from '@/lib/room-surfaces'
 import type { CoverType } from '@/types/cover'
 
 // カバー画像が無いスペースのフォールバック（ルーム=部屋 / ロード=道）
@@ -131,6 +137,60 @@ function PointImageCell({ point, onOpen }: { point: SpacePoint; onOpen: () => vo
   )
 }
 
+// タブ用の面ピクトグラム（俯瞰＝箱を上から / 各壁＝該当辺を強調）
+function FaceGlyph({ surface }: { surface: RoomSurface }) {
+  const edge =
+    surface === 'wall_north'
+      ? 'top'
+      : surface === 'wall_south'
+        ? 'bottom'
+        : surface === 'wall_east'
+          ? 'right'
+          : surface === 'wall_west'
+            ? 'left'
+            : null
+  return (
+    <svg width="13" height="13" viewBox="0 0 14 14" className="shrink-0" aria-hidden>
+      <rect x="1.5" y="1.5" width="11" height="11" rx="1.5" fill="none" stroke="currentColor" strokeWidth="1" opacity="0.45" />
+      {surface === 'floor' && <rect x="4.5" y="4.5" width="5" height="5" rx="1" fill="none" stroke="currentColor" strokeWidth="1.3" />}
+      {edge === 'top' && <line x1="1.5" y1="1.7" x2="12.5" y2="1.7" stroke="currentColor" strokeWidth="2.4" />}
+      {edge === 'bottom' && <line x1="1.5" y1="12.3" x2="12.5" y2="12.3" stroke="currentColor" strokeWidth="2.4" />}
+      {edge === 'left' && <line x1="1.7" y1="1.5" x2="1.7" y2="12.5" stroke="currentColor" strokeWidth="2.4" />}
+      {edge === 'right' && <line x1="12.3" y1="1.5" x2="12.3" y2="12.5" stroke="currentColor" strokeWidth="2.4" />}
+    </svg>
+  )
+}
+
+// 2D の上下左右インジケータ（隣の面へ視点移動）
+function FaceNavArrow({
+  dir,
+  label,
+  onClick,
+}: {
+  dir: 'up' | 'down' | 'left' | 'right'
+  label: string
+  onClick: () => void
+}) {
+  const posClass = {
+    up: 'left-1/2 top-1.5 -translate-x-1/2 flex-col',
+    down: 'bottom-1.5 left-1/2 -translate-x-1/2 flex-col-reverse',
+    left: 'left-1.5 top-1/2 -translate-y-1/2 flex-row',
+    right: 'right-1.5 top-1/2 -translate-y-1/2 flex-row-reverse',
+  }[dir]
+  const Icon = { up: ChevronUp, down: ChevronDown, left: ChevronLeft, right: ChevronRight }[dir]
+  return (
+    <button
+      onClick={onClick}
+      className={`absolute z-20 flex items-center gap-0.5 rounded-full border border-border bg-background/85 px-1.5 py-1 text-[10px] font-medium text-muted-foreground shadow-sm backdrop-blur transition-colors hover:bg-muted hover:text-foreground ${posClass}`}
+      aria-label={`${label}へ移動`}
+      title={`${label}へ`}
+    >
+      <Icon size={14} />
+      <span>{label}</span>
+    </button>
+  )
+}
+
 function PointRow({
   point,
   index,
@@ -142,6 +202,8 @@ function PointRow({
   onClearCard,
   onSaveName,
   onOpenDetail,
+  showSurface = false,
+  onSetSurface,
 }: {
   point: SpacePoint
   index: number
@@ -153,6 +215,8 @@ function PointRow({
   onClearCard: (pointId: string) => void
   onSaveName: (pointId: string, name: string) => void
   onOpenDetail: (index: number) => void
+  showSurface?: boolean
+  onSetSurface?: (pointId: string, surface: RoomSurface) => void
 }) {
   // ドラフトは名前で初期化。key に point.name を含めるので、配置/生成で名前が変わると再初期化される。
   const [draft, setDraft] = useState(point.name ?? '')
@@ -188,6 +252,21 @@ function PointRow({
           aria-label={`ポイント${index + 1}の名前`}
           className="min-w-0 flex-1 rounded-lg border border-input bg-background px-2.5 py-1.5 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
         />
+        {showSurface && onSetSurface && (
+          <select
+            value={point.surface ?? 'floor'}
+            onChange={(e) => onSetSurface(point.id, e.target.value as RoomSurface)}
+            aria-label={`ポイント${index + 1}の面`}
+            title="この点を置く面"
+            className="shrink-0 rounded-lg border border-input bg-background px-1.5 py-1 text-xs focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+          >
+            {PLACEABLE_SURFACES.map((s) => (
+              <option key={s.key} value={s.key}>
+                {s.short}
+              </option>
+            ))}
+          </select>
+        )}
         <div className="flex shrink-0 items-center gap-1">
           <button onClick={() => onMove(index, -1)} disabled={index === 0} aria-label="上へ" className="rounded p-1 text-muted-foreground hover:bg-muted disabled:opacity-30"><ChevronUp size={16} /></button>
           <button onClick={() => onMove(index, 1)} disabled={index === total - 1} aria-label="下へ" className="rounded p-1 text-muted-foreground hover:bg-muted disabled:opacity-30"><ChevronDown size={16} /></button>
@@ -244,6 +323,8 @@ export default function SpaceDetailPage() {
   const [pickerPointId, setPickerPointId] = useState<string | null>(null)
   const [busyPoint, setBusyPoint] = useState(false)
   const [coverBusy, setCoverBusy] = useState(false)
+  const [activeSurface, setActiveSurface] = useState<RoomSurface>('floor')
+  const [viewMode, setViewMode] = useState<'2d' | '3d'>('3d')
   const pollRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   useEffect(() => {
@@ -410,9 +491,21 @@ export default function SpaceDetailPage() {
       setError('ポイント名の保存に失敗しました')
     }
   }
-  // room キャンバスでのドラッグ確定時に座標を state へ反映（保存は RoomCanvas が行う）
-  const handleMovePointXY = useCallback((pointId: string, x: number, y: number) => {
-    setPoints((ps) => ps.map((p) => (p.id === pointId ? { ...p, x, y } : p)))
+  // room 面キャンバスのドラッグ時に面内座標 (u,v) を state へ反映（保存は RoomCanvas が行う）
+  const handleMoveUV = useCallback((pointId: string, u: number, v: number) => {
+    setPoints((ps) => ps.map((p) => (p.id === pointId ? { ...p, u, v } : p)))
+  }, [setPoints])
+
+  // 点を別の面へ移す（面内中央にリセットして保存）。移した面へ表示も切り替えて着地を見せる。
+  const handleSetSurface = useCallback((pointId: string, surface: RoomSurface) => {
+    setPoints((ps) => ps.map((p) => (p.id === pointId ? { ...p, surface, u: 0.5, v: 0.5 } : p)))
+    setActiveSurface(surface)
+    updateSpacePoint(id, pointId, { surface, u: 0.5, v: 0.5 }).catch(() => {})
+  }, [id, setPoints])
+
+  // 3D 部屋でのドラッグ時に面と面内座標を state へ反映（保存は Room3D が行う）
+  const handleMove3D = useCallback((pointId: string, surface: RoomSurface, u: number, v: number) => {
+    setPoints((ps) => ps.map((p) => (p.id === pointId ? { ...p, surface, u, v } : p)))
   }, [setPoints])
   const handleRemovePoint = async (pointId: string) => {
     setPoints((ps) => ps.filter((p) => p.id !== pointId))
@@ -544,7 +637,66 @@ export default function SpaceDetailPage() {
 
       <section className="space-y-3">
         <p className="text-sm text-muted-foreground">{intro}</p>
-        {!isRoad && <RoomCanvas spaceId={id} points={points} onMoved={handleMovePointXY} />}
+        {!isRoad && (
+          <div className="space-y-2">
+            {/* 2D/3D 切替（主体）。3D=部屋を回して床・壁へドラッグ配置 / 2D=面ごとの平面配置 */}
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <div className="inline-flex overflow-hidden rounded-lg border border-border">
+                {(['3d', '2d'] as const).map((mode) => (
+                  <button
+                    key={mode}
+                    onClick={() => setViewMode(mode)}
+                    aria-pressed={viewMode === mode}
+                    className={`px-3 py-1 text-xs font-semibold transition-colors ${
+                      viewMode === mode ? 'bg-[var(--palace)] text-white' : 'text-muted-foreground hover:bg-muted'
+                    }`}
+                  >
+                    {mode.toUpperCase()}
+                  </button>
+                ))}
+              </div>
+              {/* 2D のときだけ面セレクタ（3D は回して全面を見る）。天井は除外 */}
+              {viewMode === '2d' && (
+                <div className="flex flex-wrap gap-1.5">
+                  {PLACEABLE_SURFACES.map((s) => {
+                    const count = points.filter((p) => (p.surface ?? 'floor') === s.key).length
+                    const active = activeSurface === s.key
+                    return (
+                      <button
+                        key={s.key}
+                        onClick={() => setActiveSurface(s.key)}
+                        aria-pressed={active}
+                        className={`flex items-center gap-1 rounded-lg border px-2 py-1 text-xs font-medium transition-colors ${
+                          active
+                            ? 'border-[var(--palace)] bg-[var(--palace)]/10 text-foreground'
+                            : 'border-border text-muted-foreground hover:bg-muted'
+                        }`}
+                      >
+                        <FaceGlyph surface={s.key} />
+                        {s.key.startsWith('wall_') ? `${s.short}面` : s.short}
+                        <span className="text-[10px] opacity-70">{count}</span>
+                      </button>
+                    )
+                  })}
+                </div>
+              )}
+            </div>
+            {viewMode === '3d' ? (
+              <Room3D spaceId={id} points={points} onMoved={handleMove3D} />
+            ) : (
+              <div className="relative mx-auto w-full max-w-2xl">
+                <RoomCanvas spaceId={id} points={points} surface={activeSurface} onMoved={handleMoveUV} />
+                {/* 上下左右で隣の面へ（視点移動） */}
+                {(['up', 'down', 'left', 'right'] as const).map((dir) => {
+                  const target = SURFACE_NAV[activeSurface][dir]
+                  return target ? (
+                    <FaceNavArrow key={dir} dir={dir} label={roomSurfaceShort(target)} onClick={() => setActiveSurface(target)} />
+                  ) : null
+                })}
+              </div>
+            )}
+          </div>
+        )}
         {points.length === 0 ? (
           <p className="text-sm text-muted-foreground py-4">まだポイントがありません。「ポイントを追加」で点を作りましょう。</p>
         ) : (
@@ -562,6 +714,8 @@ export default function SpaceDetailPage() {
                 onClearCard={handleClearCard}
                 onSaveName={handleSaveName}
                 onOpenDetail={setDetailIndex}
+                showSurface={!isRoad}
+                onSetSurface={handleSetSurface}
               />
             ))}
           </ol>

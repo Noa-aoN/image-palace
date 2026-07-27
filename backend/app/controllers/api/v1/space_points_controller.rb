@@ -30,6 +30,9 @@ module Api
         @point.position = params[:position] if params.key?(:position)
         @point.x = params[:x] if params.key?(:x)
         @point.y = params[:y] if params.key?(:y)
+        @point.surface = params[:surface] if params.key?(:surface)
+        @point.u = params[:u] if params.key?(:u)
+        @point.v = params[:v] if params.key?(:v)
 
         will_generate = name_will_generate?
         return render_insufficient_credits if will_generate && insufficient_credits?
