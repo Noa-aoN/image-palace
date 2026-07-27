@@ -5,5 +5,15 @@ export interface Tag {
   pinned: boolean
   is_default?: boolean
   position?: number | null
-  default_groups?: string[]
+}
+
+// タグのグループ（タイトルのあるタグの集まり）。多対多のため tag_ids で所属を表す。
+export interface TagGroup {
+  id: string
+  name: string
+  pinned: boolean
+  is_default: boolean
+  default_key: string | null
+  position: number | null
+  tag_ids: string[]
 }

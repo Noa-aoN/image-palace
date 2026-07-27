@@ -47,7 +47,7 @@ module Api
         count = tag.has_attribute?(:item_count) ? tag.item_count : tag.item_tags.size
         {
           id: tag.id, name: tag.name, item_count: count, pinned: tag.pinned,
-          is_default: tag.is_default, default_groups: (tag.is_default ? Tag.default_groups(tag.name) : [])
+          is_default: tag.is_default
         }
       end
     end

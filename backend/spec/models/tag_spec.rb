@@ -28,12 +28,39 @@ RSpec.describe Tag, type: :model do
     end
   end
 
-  describe ".default_groups" do
-    it "returns the groups a name belongs to (shared names belong to both)" do
-      expect(Tag.default_groups("形式科学")).to eq(%w[main])
-      expect(Tag.default_groups("自然科学")).to eq(%w[main ndc])
-      expect(Tag.default_groups("総記")).to eq(%w[ndc])
-      expect(Tag.default_groups("ユーザー作成タグ")).to eq([])
+  describe ".assign_defaults_to（デフォルトグループの seed）" do
+    it "科学分類/NDC のプリセットグループを作成する" do
+      Tag.assign_defaults_to(user)
+
+      keys = user.tag_groups.where(is_default: true).pluck(:default_key)
+      expect(keys).to contain_exactly("science", "ndc")
+    end
+
+    it "共有タグ（自然科学）を両グループのメンバーにする" do
+      Tag.assign_defaults_to(user)
+
+      science = user.tag_groups.find_by(default_key: "science")
+      ndc = user.tag_groups.find_by(default_key: "ndc")
+      expect(science.tags.pluck(:name)).to include("自然科学")
+      expect(ndc.tags.pluck(:name)).to include("自然科学")
+    end
+
+    it "再実行してもグループ・メンバーを重複させない（冪等）" do
+      Tag.assign_defaults_to(user)
+      member_count = -> { TagGroupItem.joins(:tag_group).where(tag_groups: { user_id: user.id }).count }
+
+      expect { Tag.assign_defaults_to(user) }.to change { user.tag_groups.count }.by(0)
+      expect { Tag.assign_defaults_to(user) }.to change(&member_count).by(0)
+    end
+
+    it "ユーザーが改名した既定グループ名を再実行で上書きしない" do
+      Tag.assign_defaults_to(user)
+      group = user.tag_groups.find_by(default_key: "science")
+      group.update!(name: "わたしの分類")
+
+      Tag.assign_defaults_to(user)
+
+      expect(group.reload.name).to eq("わたしの分類")
     end
   end
 

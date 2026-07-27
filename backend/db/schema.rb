@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_07_21_000003) do
+ActiveRecord::Schema[8.1].define(version: 2026_07_27_000001) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
   enable_extension "pgcrypto"
@@ -420,6 +420,31 @@ ActiveRecord::Schema[8.1].define(version: 2026_07_21_000003) do
     t.index ["user_id"], name: "index_subscriptions_on_user_id"
   end
 
+  create_table "tag_group_items", id: :uuid, default: -> { "gen_random_uuid()" }, force: :cascade do |t|
+    t.datetime "created_at", null: false
+    t.integer "position"
+    t.uuid "tag_group_id", null: false
+    t.uuid "tag_id", null: false
+    t.datetime "updated_at", null: false
+    t.index ["tag_group_id", "tag_id"], name: "index_tag_group_items_on_tag_group_id_and_tag_id", unique: true
+    t.index ["tag_group_id"], name: "index_tag_group_items_on_tag_group_id"
+    t.index ["tag_id"], name: "index_tag_group_items_on_tag_id"
+  end
+
+  create_table "tag_groups", id: :uuid, default: -> { "gen_random_uuid()" }, force: :cascade do |t|
+    t.datetime "created_at", null: false
+    t.string "default_key"
+    t.boolean "is_default", default: false, null: false
+    t.string "name", null: false
+    t.boolean "pinned", default: false, null: false
+    t.integer "position"
+    t.datetime "updated_at", null: false
+    t.uuid "user_id", null: false
+    t.index ["user_id", "default_key"], name: "index_tag_groups_on_user_id_and_default_key", unique: true, where: "(default_key IS NOT NULL)"
+    t.index ["user_id", "name"], name: "index_tag_groups_on_user_id_and_name", unique: true
+    t.index ["user_id"], name: "index_tag_groups_on_user_id"
+  end
+
   create_table "tags", id: :uuid, default: -> { "gen_random_uuid()" }, force: :cascade do |t|
     t.datetime "created_at", null: false
     t.boolean "is_default", default: false, null: false
@@ -556,6 +581,9 @@ ActiveRecord::Schema[8.1].define(version: 2026_07_21_000003) do
   add_foreign_key "spaces", "users", on_delete: :cascade
   add_foreign_key "subscriptions", "plans", on_delete: :restrict
   add_foreign_key "subscriptions", "users", on_delete: :cascade
+  add_foreign_key "tag_group_items", "tag_groups"
+  add_foreign_key "tag_group_items", "tags"
+  add_foreign_key "tag_groups", "users"
   add_foreign_key "tags", "users", on_delete: :cascade
   add_foreign_key "view_edges", "views"
   add_foreign_key "view_items", "items", on_delete: :cascade
