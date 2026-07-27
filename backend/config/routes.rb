@@ -58,6 +58,16 @@ Rails.application.routes.draw do
       end
       resources :item_types, only: [ :index ]
       resources :tags, only: [ :index, :create, :update, :destroy ]
+      resources :tag_groups, only: [ :index, :create, :update, :destroy ] do
+        collection do
+          patch :reorder
+        end
+        member do
+          post "items", action: :add_item
+          delete "items/:tag_id", action: :remove_item
+          patch "items/reorder", action: :reorder_items
+        end
+      end
       resources :wordlists, only: [ :index, :create, :show, :update, :destroy ]
       # URL は /api/v1/boxes（表示名「ボックス」）。コントローラ・モデルは Box のまま。
       resources :boxes, only: [ :index, :create, :show, :update, :destroy ] do
