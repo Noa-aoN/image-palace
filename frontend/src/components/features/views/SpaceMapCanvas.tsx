@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useMemo } from 'react'
 import { Search, X, Loader2, Play, Route } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { getItemsPage } from '@/lib/api/items'
@@ -10,6 +10,8 @@ import type { Item } from '@/types/item'
 import { SpaceWalkthrough } from '@/components/features/spaces/walkthrough/SpaceWalkthrough'
 import { stopsFromSpaceMapPoints } from '@/components/features/spaces/walkthrough/constants'
 import { PointDetailModal } from '@/components/features/spaces/walkthrough/PointDetailModal'
+import { resolveRoomStyle } from '@/lib/room-style'
+import type { RoomStyleOverrides } from '@/types/space'
 
 const POLLING_STATUSES = new Set(['pending', 'processing'])
 
@@ -137,10 +139,16 @@ export function SpaceMapCanvas({
   initialPoints,
 }: {
   viewId: string
-  space: { id: string; name: string; space_type: string } | null | undefined
+  space: { id: string; name: string; space_type: string; room_style?: string; style_overrides?: RoomStyleOverrides } | null | undefined
   initialPoints: SpaceMapPoint[]
 }) {
   const [points, setPoints] = useState<SpaceMapPoint[]>(initialPoints)
+  // 毎レンダリングで作り直さない（ウォークスルー側のテクスチャ再生成を防ぐ）
+  const mapRoomStyle = useMemo(
+    () => resolveRoomStyle(space),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [space?.room_style, space?.style_overrides]
+  )
   const [pickerPointId, setPickerPointId] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [playerOpen, setPlayerOpen] = useState(false)
@@ -276,6 +284,8 @@ export function SpaceMapCanvas({
           stops={stopsFromSpaceMapPoints(points)}
           title={space.name}
           spaceType={space.space_type}
+          style={mapRoomStyle}
+          dims={{ width: 4, height: 2.6, depth: 4 }}
           onClose={() => setPlayerOpen(false)}
         />
       )}

@@ -160,4 +160,28 @@ RSpec.describe "Api::V1::SpacePoints", type: :request do
       expect(json_response["monthly_count"]).to eq(1)
     end
   end
+
+  describe "画像の回転" do
+    let(:space) { create(:space, user: user) }
+    let!(:point) { create(:space_point, space: space, position: 1) }
+
+    it "3軸の回転を更新して返す" do
+      patch "/api/v1/spaces/#{space.id}/points/#{point.id}",
+        params: { rotation_x: 30, rotation_y: -45, rotation_z: 90 }, headers: headers, as: :json
+
+      expect(response).to have_http_status(:success)
+      expect(point.reload.rotation_x).to eq(30.0)
+      expect(point.rotation_y).to eq(-45.0)
+      expect(point.rotation_z).to eq(90.0)
+      expect(json_response).to include("rotation_x" => 30.0, "rotation_y" => -45.0, "rotation_z" => 90.0)
+    end
+
+    it "一周を超える角度は畳んで保存する" do
+      patch "/api/v1/spaces/#{space.id}/points/#{point.id}",
+        params: { rotation_z: 450 }, headers: headers, as: :json
+
+      expect(response).to have_http_status(:success)
+      expect(point.reload.rotation_z).to eq(90.0)
+    end
+  end
 end

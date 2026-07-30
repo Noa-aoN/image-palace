@@ -21,12 +21,24 @@ class Space < ApplicationRecord
   HEIGHT_MIN = 2.0
   HEIGHT_MAX = 8.0
 
+  # 部屋の見た目のプリセット。実際の配色はフロント（lib/room-style.ts）が持ち、
+  # ここではキーの妥当性だけを担保する（2D/3D の描画で同じ定義を使うため）。
+  ROOM_STYLES = %w[ivory concrete wood dark].freeze
+  # プリセットを個別に上書きできる項目
+  STYLE_COLOR_KEYS = %w[floor_color wall_color ceiling_color edge_color background_color grid_color].freeze
+  STYLE_OVERRIDE_KEYS = (STYLE_COLOR_KEYS + %w[grid_opacity grid_visible]).freeze
+  HEX_COLOR = /\A#(?:[0-9a-fA-F]{3}|[0-9a-fA-F]{6})\z/
+
   validates :name, presence: true, length: { maximum: NAME_MAX_LENGTH }
   validates :space_type, inclusion: { in: SPACE_TYPES }
   validates :cover_type, inclusion: { in: COVER_TYPES }
   validates :width, :depth, numericality: { greater_than_or_equal_to: DIMENSION_MIN, less_than_or_equal_to: DIMENSION_MAX }
   validates :height, numericality: { greater_than_or_equal_to: HEIGHT_MIN, less_than_or_equal_to: HEIGHT_MAX }
   validates :point_scale, numericality: { greater_than_or_equal_to: 0.3, less_than_or_equal_to: 3.0 }
+  validates :room_style, inclusion: { in: ROOM_STYLES }
+  validate :style_overrides_are_valid
+
+  before_validation :normalize_style_overrides
 
   scope :recent, -> { order(created_at: :desc) }
 
@@ -46,5 +58,40 @@ class Space < ApplicationRecord
       ordered = [ chosen, *ordered.reject { |p| p.id == cover_space_point_id } ]
     end
     ordered.first(limit)
+  end
+
+  private
+
+  # 空文字・nil の上書きは「未設定」として捨てる（フロントが項目を消したときに残さない）。
+  def normalize_style_overrides
+    self.style_overrides = {} if style_overrides.blank?
+    return unless style_overrides.is_a?(Hash)
+
+    self.style_overrides = style_overrides.reject { |_, v| v.nil? || v.to_s.strip.empty? }
+  end
+
+  def style_overrides_are_valid
+    unless style_overrides.is_a?(Hash)
+      errors.add(:style_overrides, "の形式が不正です")
+      return
+    end
+
+    unknown = style_overrides.keys.map(&:to_s) - STYLE_OVERRIDE_KEYS
+    errors.add(:style_overrides, "に不明な項目があります: #{unknown.join(', ')}") if unknown.any?
+
+    STYLE_COLOR_KEYS.each do |key|
+      value = style_overrides[key]
+      next if value.nil?
+
+      errors.add(:style_overrides, "の #{key} が色指定ではありません") unless value.to_s.match?(HEX_COLOR)
+    end
+
+    opacity = style_overrides["grid_opacity"]
+    unless opacity.nil? || (opacity.is_a?(Numeric) && opacity.between?(0, 1))
+      errors.add(:style_overrides, "の grid_opacity は 0〜1 で指定してください")
+    end
+
+    visible = style_overrides["grid_visible"]
+    errors.add(:style_overrides, "の grid_visible は true/false で指定してください") unless visible.nil? || [ true, false ].include?(visible)
   end
 end

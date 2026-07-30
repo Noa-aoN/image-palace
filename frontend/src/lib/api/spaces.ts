@@ -1,5 +1,5 @@
 import { apiClient } from './client'
-import type { Space, SpaceDetail, SpacePoint, RoomSurface } from '@/types/space'
+import type { Space, SpaceDetail, SpacePoint, RoomSurface, RoomStyleOverrides } from '@/types/space'
 import type { CoverType } from '@/types/cover'
 
 export async function getSpaces(): Promise<Space[]> {
@@ -34,6 +34,8 @@ export async function updateSpace(
     depth?: number
     height?: number
     point_scale?: number
+    room_style?: string
+    style_overrides?: RoomStyleOverrides
   }
 ): Promise<Space> {
   const res = await apiClient.patch<Space>(`/api/v1/spaces/${id}`, { space: payload })
@@ -86,6 +88,9 @@ export async function updateSpacePoint(
     u?: number
     v?: number
     scale?: number
+    rotation_x?: number
+    rotation_y?: number
+    rotation_z?: number
     generate?: boolean
   }
 ): Promise<SpacePoint> {

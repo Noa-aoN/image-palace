@@ -1,6 +1,6 @@
 'use client'
 
-import { SkipBack, SkipForward, X, RotateCcw } from 'lucide-react'
+import { SkipBack, SkipForward, X, RotateCcw, Play, Pause, Eye, EyeOff } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 
 export function WalkthroughControls({
@@ -10,10 +10,13 @@ export function WalkthroughControls({
   motion,
   onPrev,
   onNext,
-  onPlay,
-  onPause,
+  onTogglePlay,
   onSeek,
   onClose,
+  cardVisible,
+  onToggleCard,
+  dwellMs,
+  onCycleDwell,
 }: {
   index: number
   total: number
@@ -21,12 +24,17 @@ export function WalkthroughControls({
   motion: boolean
   onPrev: () => void
   onNext: () => void
-  onPlay: () => void
-  onPause: () => void
+  onTogglePlay: () => void
   onSeek: (i: number) => void
   onClose: () => void
+  /** 単語カードのパネルを出しているか */
+  cardVisible: boolean
+  onToggleCard: () => void
+  /** 次の点へ進むまでの待ち時間(ms) */
+  dwellMs: number
+  onCycleDwell: () => void
 }) {
-  // 自動/手動の切替（モーション ON かつ 2点以上のときのみ）
+  // 再生/一時停止（モーション ON かつ 2点以上のときのみ）
   const showMode = motion && total > 1
   const frac = total > 1 ? index / (total - 1) : 0
 
@@ -41,10 +49,11 @@ export function WalkthroughControls({
       <button
         type="button"
         onClick={onClose}
-        aria-label="閉じる"
-        className="absolute right-4 top-4 z-20 rounded-full bg-card/80 p-2 text-muted-foreground shadow-md backdrop-blur transition-colors hover:text-foreground"
+        aria-label="ウォークスルーを閉じる"
+        className="absolute right-4 top-4 z-20 flex items-center gap-1.5 rounded-full bg-card/85 px-3 py-2 text-xs font-medium text-muted-foreground shadow-md backdrop-blur transition-colors hover:text-foreground"
       >
-        <X size={20} />
+        <X size={16} />
+        閉じる
       </button>
 
       <div className="absolute inset-x-0 bottom-0 z-20 flex flex-col items-center gap-2.5 pb-5">
@@ -57,26 +66,15 @@ export function WalkthroughControls({
           </Button>
 
           {showMode && (
-            <div className="mx-0.5 flex items-center overflow-hidden rounded-full border border-border text-xs">
-              <button
-                type="button"
-                onClick={onPlay}
-                aria-pressed={playing}
-                className={`px-2.5 py-1 font-medium transition-colors ${playing ? 'text-white' : 'text-muted-foreground hover:text-foreground'}`}
-                style={playing ? { background: 'var(--palace)' } : undefined}
-              >
-                自動
-              </button>
-              <button
-                type="button"
-                onClick={onPause}
-                aria-pressed={!playing}
-                className={`px-2.5 py-1 font-medium transition-colors ${!playing ? 'text-white' : 'text-muted-foreground hover:text-foreground'}`}
-                style={!playing ? { background: 'var(--palace)' } : undefined}
-              >
-                手動
-              </button>
-            </div>
+            <button
+              type="button"
+              onClick={onTogglePlay}
+              aria-label={playing ? '一時停止' : '再生'}
+              className="mx-0.5 flex h-9 w-9 items-center justify-center rounded-full text-white shadow-sm transition-transform hover:scale-105"
+              style={{ background: 'var(--palace)' }}
+            >
+              {playing ? <Pause size={17} /> : <Play size={17} className="ml-0.5" />}
+            </button>
           )}
 
           <Button size="icon" variant="ghost" onClick={onNext} disabled={index >= total - 1} aria-label="次へ">
@@ -85,6 +83,27 @@ export function WalkthroughControls({
           <span className="px-1.5 text-xs tabular-nums text-muted-foreground">
             {index + 1} / {total}
           </span>
+          {showMode && (
+            <button
+              type="button"
+              onClick={onCycleDwell}
+              title="切り替え速度"
+              aria-label={`切り替え速度 ${(dwellMs / 1000).toFixed(1)}秒。押すと変更`}
+              className="rounded-full border border-border px-2 py-1 text-xs tabular-nums text-muted-foreground transition-colors hover:text-foreground"
+            >
+              {(dwellMs / 1000).toFixed(1)}s
+            </button>
+          )}
+          <Button
+            size="icon"
+            variant="ghost"
+            onClick={onToggleCard}
+            aria-label={cardVisible ? '単語カードを隠す' : '単語カードを表示'}
+            aria-pressed={cardVisible}
+            title={cardVisible ? '単語カードを隠す' : '単語カードを表示'}
+          >
+            {cardVisible ? <Eye size={17} /> : <EyeOff size={17} />}
+          </Button>
         </div>
 
         {/* スクラブ可能なプログレスバー（クリック/ドラッグで任意の地点へ戻れる） */}

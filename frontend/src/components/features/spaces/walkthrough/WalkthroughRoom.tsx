@@ -1,11 +1,14 @@
 'use client'
 
-import { useEffect, useState, type CSSProperties } from 'react'
+import { type CSSProperties } from 'react'
 import { CardImage } from '@/components/ui/card-image'
 import { DoorOpen } from 'lucide-react'
 import type { WalkthroughStop } from './constants'
 import type { RoomSurface } from '@/types/space'
-import { ROOM_SURFACES, PLACEABLE_SURFACES } from '@/lib/room-surfaces'
+import { ROOM_SURFACES } from '@/lib/room-surfaces'
+import { type RoomStyle } from '@/lib/room-style'
+import type { SpacePoint } from '@/types/space'
+import { RoomCanvas } from '@/components/features/views/RoomCanvas'
 
 // ルーム型ウォークスルー（多面）: 記憶の部屋を「床（俯瞰）・天井・4壁」の面ごとに切り替えて巡る。
 // 各点は面内の正規化座標 (u,v)∈[0,1] に配置される（stop.x=u, stop.y=v で受け取る）。
@@ -14,9 +17,29 @@ const WALL = 4
 const DOOR = { x: 50, w: 16 } // 床の下辺中央の入口開口
 const PAD = 10 // 点を面内に収める余白(%)（マーカーが枠で切れないように）
 
-type ViewKey = RoomSurface | 'unfolded'
-
 const surfaceOf = (s: WalkthroughStop): RoomSurface => s.surface ?? 'floor'
+
+/**
+ * 2D ウォークスルーで映す面。基本は東西南北の壁のいずれか。
+ *
+ * 壁ビューは床の手前半分も一緒に映るため、床の点は「いちばん近い壁」から見れば収まる。
+ * 俯瞰（床）や天井へ切り替わると部屋を歩いている感じが途切れるので、壁に寄せる。
+ */
+function wallViewFor(stop: WalkthroughStop): RoomSurface {
+  const surface = surfaceOf(stop)
+  if (surface.startsWith('wall_')) return surface
+
+  const u = clamp01(stop.x ?? 0.5)
+  const v = clamp01(stop.y ?? 0.5)
+  // 各壁からの距離（RoomCanvas の floorHD と同じ対応）
+  const byDistance: [RoomSurface, number][] = [
+    ['wall_north', v],
+    ['wall_south', 1 - v],
+    ['wall_west', u],
+    ['wall_east', 1 - u],
+  ]
+  return byDistance.sort((a, b) => a[1] - b[1])[0][0]
+}
 const clamp01 = (n: number) => Math.min(1, Math.max(0, n))
 const uOf = (s: WalkthroughStop) => clamp01(s.x ?? 0.5)
 const vOf = (s: WalkthroughStop) => clamp01(s.y ?? 0.5)
@@ -30,13 +53,17 @@ function FaceBoard({
   stops,
   activeIndex,
   variant,
+  style,
 }: {
   surface: RoomSurface
   stops: WalkthroughStop[]
   activeIndex: number
   variant: 'lg' | 'sm'
+  style: RoomStyle
 }) {
   const isFloor = surface === 'floor'
+  // 面の色は 2D/3D と同じ部屋スタイルから引く
+  const faceFill = isFloor ? style.floor : surface === 'ceiling' ? style.ceiling : style.wall
   const big = variant === 'lg'
   const faceStops = stops.map((s, i) => ({ s, i })).filter(({ s }) => surfaceOf(s) === surface)
 
@@ -49,8 +76,8 @@ function FaceBoard({
     <div
       className="relative aspect-square w-full overflow-hidden rounded-xl border-2"
       style={{
-        borderColor: 'color-mix(in srgb, var(--palace) 40%, transparent)',
-        background: 'linear-gradient(color-mix(in srgb, var(--palace) 6%, var(--background)), var(--background))',
+        borderColor: `color-mix(in srgb, ${style.edge} 40%, transparent)`,
+        background: `linear-gradient(color-mix(in srgb, ${style.edge} 6%, var(--background)), var(--background))`,
       }}
     >
       <svg className="absolute inset-0 h-full w-full" viewBox="0 0 100 100" preserveAspectRatio="none">
@@ -61,12 +88,12 @@ function FaceBoard({
               y={WALL}
               width={100 - 2 * WALL}
               height={100 - 2 * WALL}
-              fill="color-mix(in srgb, var(--palace) 7%, var(--background))"
+              fill={faceFill}
             />
             <path
               d={`M${WALL},${100 - WALL} L${WALL},${WALL} L${100 - WALL},${WALL} L${100 - WALL},${100 - WALL} M${WALL},${100 - WALL} L${DOOR.x - DOOR.w / 2},${100 - WALL} M${DOOR.x + DOOR.w / 2},${100 - WALL} L${100 - WALL},${100 - WALL}`}
               fill="none"
-              stroke="color-mix(in srgb, var(--palace) 80%, white)"
+              stroke={style.edge}
               strokeWidth={1.4}
               strokeLinecap="square"
               vectorEffect="non-scaling-stroke"
@@ -78,8 +105,8 @@ function FaceBoard({
             y={WALL}
             width={100 - 2 * WALL}
             height={100 - 2 * WALL}
-            fill="none"
-            stroke="color-mix(in srgb, var(--palace) 55%, white)"
+            fill={faceFill}
+            stroke={style.edge}
             strokeWidth={1.2}
             vectorEffect="non-scaling-stroke"
           />
@@ -88,8 +115,8 @@ function FaceBoard({
           <polyline
             points={route}
             fill="none"
-            stroke="var(--palace)"
-            strokeOpacity={0.45}
+            stroke={style.edge}
+            strokeOpacity={0.55}
             strokeWidth={0.6}
             strokeDasharray="2 2"
             vectorEffect="non-scaling-stroke"
@@ -153,87 +180,50 @@ function FaceBoard({
 }
 
 // 展開図（キューブのネット）: 全6面を平面に並べて一望する。現在地の点はどの面でもハイライトされる。
-const NET_LAYOUT: (RoomSurface | null)[] = [
-  null, 'wall_north', null,
-  'wall_west', 'floor', 'wall_east',
-  null, 'wall_south', null,
-  null, 'ceiling', null,
-]
-
-function UnfoldedNet({ stops, activeIndex }: { stops: WalkthroughStop[]; activeIndex: number }) {
-  return (
-    <div className="grid w-full max-w-[440px] grid-cols-3 gap-1.5">
-      {NET_LAYOUT.map((surface, idx) =>
-        surface ? (
-          <FaceBoard key={idx} surface={surface} stops={stops} activeIndex={activeIndex} variant="sm" />
-        ) : (
-          <div key={idx} />
-        )
-      )}
-    </div>
-  )
-}
-
-export function WalkthroughRoom({ stops, activeIndex }: { stops: WalkthroughStop[]; activeIndex: number }) {
+export function WalkthroughRoom({
+  stops,
+  activeIndex,
+  style,
+  spaceId,
+  points,
+  dims,
+}: {
+  stops: WalkthroughStop[]
+  activeIndex: number
+  style: RoomStyle
+  // 実ポイントが渡されたら、配置ビューと同じ描画（RoomCanvas）をそのまま閲覧用に使う。
+  // 渡されない経路（スペースマップのウォークスルー）は従来の簡易面パネルにフォールバックする。
+  spaceId?: string
+  points?: SpacePoint[]
+  dims?: { width: number; height: number; depth: number }
+}) {
   const active = stops[activeIndex]
-  const activeSurface: RoomSurface = active ? surfaceOf(active) : 'floor'
-  const [view, setView] = useState<ViewKey>(activeSurface)
-
-  // 現在地の面が変わったらその面へ自動追従（手動で選んだ面は面が変わるまで保持）。
-  useEffect(() => {
-    setView(activeSurface)
-  }, [activeSurface])
-
-  const facesWithPoints = new Set(stops.map(surfaceOf))
+  const activeSurface: RoomSurface = active ? wallViewFor(active) : 'wall_north'
+  // ウォークスルーは順路に従うだけ。面の手動切替や展開図は配置ビュー側の役割
+  const view = activeSurface
 
   return (
-    <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 p-6">
-      {/* 面切替トグル（俯瞰/4壁/天井/展開図）。現在地の面には印を付ける */}
-      <div className="flex flex-wrap justify-center gap-1.5">
-        {PLACEABLE_SURFACES.map((s) => {
-          const selected = view === s.key
-          const hasPoints = facesWithPoints.has(s.key)
-          return (
-            <button
-              key={s.key}
-              type="button"
-              onClick={() => setView(s.key)}
-              aria-pressed={selected}
-              className={`relative rounded-lg border px-2.5 py-1 text-xs font-medium transition-colors ${
-                selected
-                  ? 'border-[var(--palace)] bg-[var(--palace)]/15 text-foreground'
-                  : hasPoints
-                    ? 'border-border text-muted-foreground hover:bg-muted'
-                    : 'border-border/50 text-muted-foreground/50'
-              }`}
-            >
-              {s.short}
-              {s.key === activeSurface && (
-                <span className="absolute -right-0.5 -top-0.5 h-2 w-2 rounded-full" style={{ backgroundColor: 'var(--palace)' }} />
-              )}
-            </button>
-          )
-        })}
-        <button
-          type="button"
-          onClick={() => setView('unfolded')}
-          aria-pressed={view === 'unfolded'}
-          className={`rounded-lg border px-2.5 py-1 text-xs font-medium transition-colors ${
-            view === 'unfolded'
-              ? 'border-[var(--palace)] bg-[var(--palace)]/15 text-foreground'
-              : 'border-border text-muted-foreground hover:bg-muted'
-          }`}
-        >
-          展開図
-        </button>
-      </div>
-
-      <div className="flex w-full flex-1 items-center justify-center" aria-hidden>
-        {view === 'unfolded' ? (
-          <UnfoldedNet stops={stops} activeIndex={activeIndex} />
+    <div className="absolute inset-0">
+      <div className="h-full w-full" aria-hidden>
+        {points && spaceId && dims ? (
+          <div className="h-full w-full">
+            <RoomCanvas
+              spaceId={spaceId}
+              points={points}
+              surface={view}
+              width={dims.width}
+              depth={dims.depth}
+              height={dims.height}
+              pointScale={1}
+              style={style}
+              readOnly
+              fullBleed
+              activePointId={stops[activeIndex]?.id ?? null}
+            />
+          </div>
         ) : (
-          <div className="w-full max-w-[520px]">
-            <FaceBoard surface={view} stops={stops} activeIndex={activeIndex} variant="lg" />
+          <div className="mx-auto flex h-full w-full max-w-[520px] items-center justify-center p-6">
+            <FaceBoard surface={view} stops={stops} activeIndex={activeIndex} variant="lg" style={style} />
           </div>
         )}
       </div>

@@ -88,4 +88,29 @@ RSpec.describe SpacePoint, type: :model do
       expect(point.generation_error).to be_nil
     end
   end
+
+  describe "画像の回転" do
+    let(:space) { create(:space) }
+
+    it "既定は 0 度" do
+      point = create(:space_point, space: space, position: 1)
+
+      expect([ point.rotation_x, point.rotation_y, point.rotation_z ]).to eq([ 0.0, 0.0, 0.0 ])
+    end
+
+    # 370 度と 10 度が別の値として保存されると、比較や UI 表示が破綻する
+    it "一周を超える角度は -180..180 に畳む" do
+      point = create(:space_point, space: space, position: 1, rotation_z: 370, rotation_x: -190, rotation_y: 540)
+
+      expect(point.rotation_z).to eq(10.0)
+      expect(point.rotation_x).to eq(170.0)
+      expect(point.rotation_y).to eq(-180.0)
+    end
+
+    it "境界（180度）は -180 に畳む" do
+      point = create(:space_point, space: space, position: 1, rotation_z: 180)
+
+      expect(point.rotation_z).to eq(-180.0)
+    end
+  end
 end

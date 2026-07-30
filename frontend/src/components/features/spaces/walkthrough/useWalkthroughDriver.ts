@@ -6,6 +6,8 @@ import { SPACING, TRAVEL_MS, DWELL_MS, easeInOutCubic } from './constants'
 type Args = {
   count: number
   motion: boolean
+  /** 次の点へ進むまでの停留時間(ms)。未指定は既定値 */
+  dwellMs?: number
   // 道ステージ（ここに --sw-shift を書き込む）。room 型では null でも可（no-op）。
   stageRef: RefObject<HTMLDivElement | null>
 }
@@ -26,7 +28,12 @@ export type WalkthroughDriver = {
  * 進行度 progress（0→count-1）を rAF で滑らかに動かし、道ステージへ --sw-shift(px) を書き込む。
  * 到着で activeIndex を更新、自動再生時は停留後に次点へ。モーション OFF は即時（rAF なし）。
  */
-export function useWalkthroughDriver({ count, motion, stageRef }: Args): WalkthroughDriver {
+export function useWalkthroughDriver({ count, motion, stageRef, dwellMs = DWELL_MS }: Args): WalkthroughDriver {
+  // 再生中に変更しても次の停留から効くよう ref で持つ
+  const dwellRefMs = useRef(dwellMs)
+  useEffect(() => {
+    dwellRefMs.current = dwellMs
+  }, [dwellMs])
   const [activeIndex, setActiveIndex] = useState(0)
   const [phase, setPhase] = useState<'travel' | 'arrived'>('arrived')
   const [playing, setPlayingState] = useState(false)
@@ -75,7 +82,7 @@ export function useWalkthroughDriver({ count, motion, stageRef }: Args): Walkthr
         if (!playingRef.current) return
         if (from < countRef.current - 1) goToRef.current(from + 1)
         else setPlaying(false)
-      }, DWELL_MS)
+      }, dwellRefMs.current)
     },
     [clearDwell, setPlaying]
   )
@@ -164,17 +171,13 @@ export function useWalkthroughDriver({ count, motion, stageRef }: Args): Walkthr
     else play()
   }, [pause, play])
 
-  // マウント時: 先頭に立つ。モーション ON かつ 2点以上なら自動再生。
+  // マウント時: 先頭に立つだけ。再生は利用者が再生ボタンを押してから始める。
   useEffect(() => {
     write(0)
     progressRef.current = 0
     activeRef.current = 0
     setActiveIndex(0)
     setPhase('arrived')
-    if (motionRef.current && countRef.current > 1) {
-      setPlaying(true)
-      scheduleDwell(0)
-    }
     return () => {
       clearRaf()
       clearDwell()
