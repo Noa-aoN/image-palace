@@ -71,6 +71,22 @@ RSpec.describe "Api::V1 entity covers", type: :request do
     ensure
       txt&.close!
     end
+
+    # libvips は Content-Type ではなく中身でローダを選ぶため、
+    # 画像を騙る SVG が保存も decode もされないことを保証する（CVE-2026-66066 対策）
+    it "Content-Type を image/webp と詐称した SVG は 422 で弾き、保存しない" do
+      svg = Tempfile.new([ "evil", ".webp" ], binmode: true)
+      svg.write(%(<svg xmlns="http://www.w3.org/2000/svg"><text>x</text></svg>))
+      svg.rewind
+
+      post "/api/v1/boxes/#{box.id}/cover_image",
+        params: { cover_image: Rack::Test::UploadedFile.new(svg.path, "image/webp") }, headers: headers
+
+      expect(response).to have_http_status(:unprocessable_entity)
+      expect(box.reload.cover_image).not_to be_attached
+    ensure
+      svg&.close!
+    end
   end
 
   describe "ビュー" do

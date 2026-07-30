@@ -1,13 +1,13 @@
 require "rails_helper"
 
 RSpec.describe OptimizeImageService do
-  before { skip "libvips 未インストール環境のためスキップ" unless vips_available? }
-
   def png_bytes(width, height)
     Vips::Image.black(width, height).pngsave_buffer
   end
 
   describe ".call" do
+    before { skip "libvips 未インストール環境のためスキップ" unless vips_available? }
+
     it "長辺が 800px を超える画像を 800px 以内の WebP に変換する" do
       result = described_class.call(image_data: png_bytes(1600, 1200), content_type: "image/png")
 
@@ -58,6 +58,26 @@ RSpec.describe OptimizeImageService do
       expect(result.lqip).to start_with("data:image/webp;base64,")
       # 極小なので本体よりはるかに小さい
       expect(result.lqip.bytesize).to be < result.data.bytesize
+    end
+  end
+
+  # libvips は中身を見てローダを選ぶため、allowlist 外は decode 自体させない
+  # （SVG/PDF などの危険なローダに到達させない: CVE-2026-66066 対策）
+  describe "形式 allowlist" do
+    {
+      "SVG" => %(<svg xmlns="http://www.w3.org/2000/svg"><text>x</text></svg>),
+      "PDF" => "%PDF-1.7\n%\xE2\xE3\xCF\xD3\n1 0 obj\n",
+      "非画像" => "not an image"
+    }.each do |label, payload|
+      it "#{label} は libvips に渡さずフォールバックする" do
+        expect(Vips::Image).not_to receive(:new_from_buffer) if vips_available?
+
+        result = described_class.call(image_data: payload, content_type: "image/webp")
+
+        expect(result.data).to eq(payload)
+        expect(result.thumb_data).to be_nil
+        expect(result.lqip).to be_nil
+      end
     end
   end
 end

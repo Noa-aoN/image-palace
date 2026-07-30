@@ -18,6 +18,8 @@ primary_region = 'nrt'
   RAILS_LOG_LEVEL = 'info'
   JOB_THREADS = '1'
   JOB_CONCURRENCY = '1'
+  # libvips の信頼できないローダ（SVG/PDF 等）を無効化する。CVE-2026-66066 緩和策
+  VIPS_BLOCK_UNTRUSTED = '1'
 
 [processes]
   app = 'bundle exec rails server -b 0.0.0.0 -p 8080'
