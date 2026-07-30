@@ -1,0 +1,32 @@
+# 依存の更新 PR を自動作成する。
+#
+# CI の bundle-audit / npm audit / brakeman は「今ある脆弱性を落とす」ためのもので、
+# こちらは「気づいて上げる」ための層。ノイズを避けるため件数を絞り、minor/patch はまとめる。
+#
+# 注意: Dependabot の *alerts*（脆弱性通知）はこのファイルでは有効化できない。
+# リポジトリの Settings → Advanced Security から別途オンにする必要がある。
+version: 2
+updates:
+  - package-ecosystem: bundler
+    directory: /backend
+    schedule:
+      interval: weekly
+    open-pull-requests-limit: 3
+    groups:
+      backend-minor-patch:
+        update-types: [ minor, patch ]
+
+  - package-ecosystem: npm
+    directory: /frontend
+    schedule:
+      interval: weekly
+    open-pull-requests-limit: 3
+    groups:
+      frontend-minor-patch:
+        update-types: [ minor, patch ]
+
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: monthly
+    open-pull-requests-limit: 2
