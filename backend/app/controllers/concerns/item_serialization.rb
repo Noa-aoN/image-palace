@@ -25,6 +25,7 @@ module ItemSerialization
       surface: point.surface,
       u: point.u,
       v: point.v,
+      scale: point.scale,
       image: serialize_point_image(point),
       item: point.item ? serialize_item(point.item) : nil
     }

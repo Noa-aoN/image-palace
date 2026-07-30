@@ -25,7 +25,16 @@ export async function createSpace(
 
 export async function updateSpace(
   id: string,
-  payload: { name?: string; description?: string; cover_space_point_id?: string | null; cover_type?: CoverType }
+  payload: {
+    name?: string
+    description?: string
+    cover_space_point_id?: string | null
+    cover_type?: CoverType
+    width?: number
+    depth?: number
+    height?: number
+    point_scale?: number
+  }
 ): Promise<Space> {
   const res = await apiClient.patch<Space>(`/api/v1/spaces/${id}`, { space: payload })
   return res.data
@@ -76,6 +85,7 @@ export async function updateSpacePoint(
     surface?: RoomSurface
     u?: number
     v?: number
+    scale?: number
     generate?: boolean
   }
 ): Promise<SpacePoint> {

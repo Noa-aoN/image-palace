@@ -23,6 +23,7 @@ class SpacePoint < ApplicationRecord
   validates :generation_status, inclusion: { in: GENERATION_STATUSES }
   validates :surface, inclusion: { in: SURFACES }
   validates :u, :v, numericality: { greater_than_or_equal_to: 0, less_than_or_equal_to: 1 }
+  validates :scale, numericality: { greater_than_or_equal_to: 0.3, less_than_or_equal_to: 3.0 }
 
   scope :ordered, -> { order(:position, :created_at) }
   # 名前が付いた（＝画像生成を伴う）ポイント。月間生成上限のカウント対象。
@@ -40,10 +41,11 @@ class SpacePoint < ApplicationRecord
     (metadata || {}).except(*GENERATION_ERROR_KEYS)
   end
 
-  # 面内座標は 0..1 に収める（無制限にしない＝間取り境界内に固定）。
+  # 面内座標は 0..1 に、表示倍率は 0.3..3.0 に収める。
   def clamp_uv
     self.u = u.clamp(0.0, 1.0) unless u.nil?
     self.v = v.clamp(0.0, 1.0) unless v.nil?
+    self.scale = scale.clamp(0.3, 3.0) unless scale.nil?
   end
 
   def update_generation_status!(status)

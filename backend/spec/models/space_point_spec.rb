@@ -47,6 +47,12 @@ RSpec.describe SpacePoint, type: :model do
       expect(point.u).to eq(0.25)
       expect(point.v).to eq(0.75)
     end
+
+    it "表示倍率 scale を 0.3..3.0 にクランプする" do
+      expect(create(:space_point, scale: 5.0).scale).to eq(3.0)
+      expect(create(:space_point, scale: 0.1).scale).to eq(0.3)
+      expect(create(:space_point, scale: 1.5).scale).to eq(1.5)
+    end
   end
 
   describe "scopes" do

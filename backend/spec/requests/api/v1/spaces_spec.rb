@@ -99,6 +99,35 @@ RSpec.describe "Api::V1::Spaces", type: :request do
       expect(response).to have_http_status(:success)
       expect(space.reload.name).to eq("新名")
     end
+
+    it "部屋の寸法（幅/奥行き/高さ）を更新し、レスポンスに含める" do
+      space = user.spaces.create!(name: "部屋")
+
+      patch "/api/v1/spaces/#{space.id}", params: { space: { width: 6.5, depth: 3.0, height: 3.2 } }, headers: headers, as: :json
+
+      expect(response).to have_http_status(:success)
+      expect(space.reload.width).to eq(6.5)
+      expect(space.depth).to eq(3.0)
+      expect(space.height).to eq(3.2)
+      expect(json_response).to include("width" => 6.5, "depth" => 3.0, "height" => 3.2)
+    end
+
+    it "範囲外の寸法はバリデーションエラー" do
+      space = user.spaces.create!(name: "部屋")
+
+      patch "/api/v1/spaces/#{space.id}", params: { space: { width: 999 } }, headers: headers, as: :json
+
+      expect(response).to have_http_status(:unprocessable_content)
+      expect(json_response["errors"]).to be_present
+    end
+
+    it "デフォルトの寸法を返す（未設定時）" do
+      space = user.spaces.create!(name: "部屋")
+
+      get "/api/v1/spaces/#{space.id}", headers: headers, as: :json
+
+      expect(json_response).to include("width" => 4.0, "depth" => 4.0, "height" => 2.6)
+    end
   end
 
   describe "DELETE /api/v1/spaces/:id" do

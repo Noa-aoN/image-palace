@@ -15,10 +15,18 @@ class Space < ApplicationRecord
   SPACE_TYPES = %w[room road].freeze
   COVER_TYPES = %w[first_card collage custom].freeze
   COVER_CARDS_LIMIT = 8
+  # 部屋の寸法（メートル相当）の許容範囲
+  DIMENSION_MIN = 1.5
+  DIMENSION_MAX = 20.0
+  HEIGHT_MIN = 2.0
+  HEIGHT_MAX = 8.0
 
   validates :name, presence: true, length: { maximum: NAME_MAX_LENGTH }
   validates :space_type, inclusion: { in: SPACE_TYPES }
   validates :cover_type, inclusion: { in: COVER_TYPES }
+  validates :width, :depth, numericality: { greater_than_or_equal_to: DIMENSION_MIN, less_than_or_equal_to: DIMENSION_MAX }
+  validates :height, numericality: { greater_than_or_equal_to: HEIGHT_MIN, less_than_or_equal_to: HEIGHT_MAX }
+  validates :point_scale, numericality: { greater_than_or_equal_to: 0.3, less_than_or_equal_to: 3.0 }
 
   scope :recent, -> { order(created_at: :desc) }
 

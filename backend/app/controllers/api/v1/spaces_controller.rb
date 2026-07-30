@@ -91,7 +91,7 @@ module Api
       end
 
       def space_update_params
-        params.require(:space).permit(:name, :description, :cover_space_point_id, :cover_type)
+        params.require(:space).permit(:name, :description, :cover_space_point_id, :cover_type, :width, :depth, :height, :point_scale)
       end
 
       # 表紙はこのスペースのポイントのみ指定可能
@@ -110,6 +110,10 @@ module Api
           name: space.name,
           description: space.description,
           space_type: space.space_type,
+          width: space.width,
+          depth: space.depth,
+          height: space.height,
+          point_scale: space.point_scale,
           cover_type: space.cover_type,
           cover_space_point_id: space.cover_space_point_id,
           cover: cover_point ? serialize_point_image(cover_point) : nil,

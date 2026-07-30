@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_07_28_000001) do
+ActiveRecord::Schema[8.1].define(version: 2026_07_28_000003) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
   enable_extension "pgcrypto"
@@ -379,6 +379,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_07_28_000001) do
     t.jsonb "metadata", default: {}, null: false
     t.string "name"
     t.integer "position", default: 0, null: false
+    t.float "scale", default: 1.0, null: false
     t.uuid "space_id", null: false
     t.string "surface", default: "floor", null: false
     t.float "u", default: 0.5, null: false
@@ -394,11 +395,15 @@ ActiveRecord::Schema[8.1].define(version: 2026_07_28_000001) do
     t.uuid "cover_space_point_id"
     t.string "cover_type", default: "first_card", null: false
     t.datetime "created_at", null: false
+    t.float "depth", default: 4.0, null: false
     t.text "description"
+    t.float "height", default: 2.6, null: false
     t.string "name", null: false
+    t.float "point_scale", default: 1.0, null: false
     t.string "space_type", default: "room", null: false
     t.datetime "updated_at", null: false
     t.uuid "user_id", null: false
+    t.float "width", default: 4.0, null: false
     t.index ["cover_space_point_id"], name: "index_spaces_on_cover_space_point_id"
     t.index ["user_id", "created_at"], name: "index_spaces_on_user_id_and_created_at"
     t.index ["user_id"], name: "index_spaces_on_user_id"

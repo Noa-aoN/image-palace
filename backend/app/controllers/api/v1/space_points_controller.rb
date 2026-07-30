@@ -33,6 +33,7 @@ module Api
         @point.surface = params[:surface] if params.key?(:surface)
         @point.u = params[:u] if params.key?(:u)
         @point.v = params[:v] if params.key?(:v)
+        @point.scale = params[:scale] if params.key?(:scale)
 
         will_generate = name_will_generate?
         return render_insufficient_credits if will_generate && insufficient_credits?

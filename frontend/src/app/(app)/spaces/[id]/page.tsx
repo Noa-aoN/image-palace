@@ -137,6 +137,13 @@ function PointImageCell({ point, onOpen }: { point: SpacePoint; onOpen: () => vo
   )
 }
 
+// 部屋の寸法（グリッド単位＝整数。1マス=1m の床グリッドと一致）
+const ROOM_DIMS: { key: 'width' | 'depth' | 'height'; label: string; min: number; max: number }[] = [
+  { key: 'width', label: '幅', min: 2, max: 10 },
+  { key: 'depth', label: '奥行き', min: 2, max: 10 },
+  { key: 'height', label: '高さ', min: 2, max: 5 },
+]
+
 // タブ用の面ピクトグラム（俯瞰＝箱を上から / 各壁＝該当辺を強調）
 function FaceGlyph({ surface }: { surface: RoomSurface }) {
   const edge =
@@ -325,6 +332,9 @@ export default function SpaceDetailPage() {
   const [coverBusy, setCoverBusy] = useState(false)
   const [activeSurface, setActiveSurface] = useState<RoomSurface>('floor')
   const [viewMode, setViewMode] = useState<'2d' | '3d'>('3d')
+  // 部屋サイズ変更にポイントサイズを追従させるか（localStorage 永続・スペース単位）
+  const [autoScale, setAutoScale] = useState(false)
+  const autoScaleRef = useRef(false)
   const pollRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   useEffect(() => {
@@ -344,6 +354,18 @@ export default function SpaceDetailPage() {
   const setPoints = useCallback((updater: (ps: SpacePoint[]) => SpacePoint[]) => {
     setSpace((prev) => (prev ? { ...prev, points: updater(prev.points ?? []) } : prev))
   }, [])
+
+  // 自動追従フラグの読み書き（localStorage・スペース単位）
+  useEffect(() => {
+    autoScaleRef.current = autoScale
+  }, [autoScale])
+  useEffect(() => {
+    const stored = window.localStorage.getItem(`room-auto-scale-${id}`)
+    if (stored !== null) setAutoScale(stored === '1')
+  }, [id])
+  useEffect(() => {
+    window.localStorage.setItem(`room-auto-scale-${id}`, autoScale ? '1' : '0')
+  }, [autoScale, id])
 
   // ポイント画像生成のポーリング: 生成中のポイントがある間、3秒ごとにスペースを再取得する
   useEffect(() => {
@@ -491,11 +513,6 @@ export default function SpaceDetailPage() {
       setError('ポイント名の保存に失敗しました')
     }
   }
-  // room 面キャンバスのドラッグ時に面内座標 (u,v) を state へ反映（保存は RoomCanvas が行う）
-  const handleMoveUV = useCallback((pointId: string, u: number, v: number) => {
-    setPoints((ps) => ps.map((p) => (p.id === pointId ? { ...p, u, v } : p)))
-  }, [setPoints])
-
   // 点を別の面へ移す（面内中央にリセットして保存）。移した面へ表示も切り替えて着地を見せる。
   const handleSetSurface = useCallback((pointId: string, surface: RoomSurface) => {
     setPoints((ps) => ps.map((p) => (p.id === pointId ? { ...p, surface, u: 0.5, v: 0.5 } : p)))
@@ -503,9 +520,39 @@ export default function SpaceDetailPage() {
     updateSpacePoint(id, pointId, { surface, u: 0.5, v: 0.5 }).catch(() => {})
   }, [id, setPoints])
 
-  // 3D 部屋でのドラッグ時に面と面内座標を state へ反映（保存は Room3D が行う）
-  const handleMove3D = useCallback((pointId: string, surface: RoomSurface, u: number, v: number) => {
+  // 2D/3D いずれのドラッグでも、面と面内座標を state へ反映（保存はキャンバス側が行う）
+  const handleMovePoint = useCallback((pointId: string, surface: RoomSurface, u: number, v: number) => {
     setPoints((ps) => ps.map((p) => (p.id === pointId ? { ...p, surface, u, v } : p)))
+  }, [setPoints])
+
+  // 部屋の設定変更（寸法・共通ポイントサイズ）: 即ローカル反映＋デバウンス保存
+  const dimSaveTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const handleSpaceSetting = useCallback(
+    (patch: Partial<Pick<SpaceDetail, 'width' | 'depth' | 'height' | 'point_scale'>>) => {
+      setSpace((prev) => {
+        if (!prev) return prev
+        const next = { ...prev, ...patch }
+        // 自動追従 ON かつ寸法変更なら、ポイントサイズも控えめに追従させる
+        const dimKeys = (['width', 'depth', 'height'] as const).filter((k) => k in patch)
+        if (autoScaleRef.current && dimKeys.length > 0) {
+          let ratio = 1
+          for (const k of dimKeys) ratio *= next[k] / prev[k]
+          ratio = Math.pow(ratio, 0.4 / dimKeys.length)
+          next.point_scale = Math.min(2, Math.max(0.5, prev.point_scale * ratio))
+        }
+        if (dimSaveTimer.current) clearTimeout(dimSaveTimer.current)
+        dimSaveTimer.current = setTimeout(() => {
+          updateSpace(id, { width: next.width, depth: next.depth, height: next.height, point_scale: next.point_scale }).catch(() => {})
+        }, 350)
+        return next
+      })
+    },
+    [id]
+  )
+
+  // 個別ポイントサイズ変更（2D のハンドルドラッグ）を state に反映（保存は RoomCanvas）
+  const handleScalePoint = useCallback((pointId: string, scale: number) => {
+    setPoints((ps) => ps.map((p) => (p.id === pointId ? { ...p, scale } : p)))
   }, [setPoints])
   const handleRemovePoint = async (pointId: string) => {
     setPoints((ps) => ps.filter((p) => p.id !== pointId))
@@ -639,6 +686,77 @@ export default function SpaceDetailPage() {
         <p className="text-sm text-muted-foreground">{intro}</p>
         {!isRoad && (
           <div className="space-y-2">
+            {/* 部屋の設定（サイズ）。3D/2D の表示に即反映 */}
+            <details className="rounded-lg border border-border bg-muted/20 px-3 py-2">
+              <summary className="cursor-pointer select-none text-sm font-medium">部屋の設定（サイズ）</summary>
+              <div className="mt-2 space-y-2">
+                {ROOM_DIMS.map((d) => {
+                  const val = Math.round(space[d.key])
+                  const setDim = (raw: number) => {
+                    if (Number.isNaN(raw)) return
+                    handleSpaceSetting({ [d.key]: Math.round(Math.min(d.max, Math.max(d.min, raw))) })
+                  }
+                  return (
+                    <label key={d.key} className="flex items-center gap-3 text-xs">
+                      <span className="w-12 shrink-0 text-muted-foreground">{d.label}</span>
+                      <input
+                        type="range"
+                        min={d.min}
+                        max={d.max}
+                        step={1}
+                        value={val}
+                        onChange={(e) => setDim(Number(e.target.value))}
+                        className="flex-1 accent-[var(--palace)]"
+                        aria-label={`部屋の${d.label}（スライダー）`}
+                      />
+                      <input
+                        type="number"
+                        min={d.min}
+                        max={d.max}
+                        step={1}
+                        value={val}
+                        onChange={(e) => setDim(Number(e.target.value))}
+                        className="w-14 shrink-0 rounded border border-input bg-background px-1.5 py-1 text-right tabular-nums focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                        aria-label={`部屋の${d.label}（数値）`}
+                      />
+                      <span className="shrink-0 text-muted-foreground">マス</span>
+                    </label>
+                  )
+                })}
+              </div>
+            </details>
+
+            {/* ポイントの設定（部屋の設定のスタイルを踏襲） */}
+            <details className="rounded-lg border border-border bg-muted/20 px-3 py-2">
+              <summary className="cursor-pointer select-none text-sm font-medium">ポイントの設定</summary>
+              <div className="mt-2 space-y-2">
+                <label className="flex items-center gap-3 text-xs">
+                  <span className="w-24 shrink-0 text-muted-foreground">ポイント表示サイズ</span>
+                  <input
+                    type="range"
+                    min={0.5}
+                    max={2}
+                    step={0.1}
+                    value={space.point_scale}
+                    onChange={(e) => handleSpaceSetting({ point_scale: Number(e.target.value) })}
+                    className="flex-1 accent-[var(--palace)]"
+                    aria-label="ポイント表示サイズ"
+                  />
+                  <span className="w-16 shrink-0 text-right tabular-nums">×{space.point_scale.toFixed(1)}</span>
+                </label>
+                <label className="flex items-center justify-end gap-2 text-xs">
+                  <span className="text-muted-foreground">部屋サイズ自動追従</span>
+                  <input
+                    type="checkbox"
+                    checked={autoScale}
+                    onChange={(e) => setAutoScale(e.target.checked)}
+                    className="h-3.5 w-3.5 accent-[var(--palace)]"
+                    aria-label="部屋サイズ自動追従"
+                  />
+                </label>
+              </div>
+            </details>
+
             {/* 2D/3D 切替（主体）。3D=部屋を回して床・壁へドラッグ配置 / 2D=面ごとの平面配置 */}
             <div className="flex flex-wrap items-center justify-between gap-2">
               <div className="inline-flex overflow-hidden rounded-lg border border-border">
@@ -682,10 +800,20 @@ export default function SpaceDetailPage() {
               )}
             </div>
             {viewMode === '3d' ? (
-              <Room3D spaceId={id} points={points} onMoved={handleMove3D} />
+              <Room3D spaceId={id} points={points} width={space.width} depth={space.depth} height={space.height} pointScale={space.point_scale} onMoved={handleMovePoint} />
             ) : (
               <div className="relative mx-auto w-full max-w-2xl">
-                <RoomCanvas spaceId={id} points={points} surface={activeSurface} onMoved={handleMoveUV} />
+                <RoomCanvas
+                  spaceId={id}
+                  points={points}
+                  surface={activeSurface}
+                  width={space.width}
+                  depth={space.depth}
+                  height={space.height}
+                  pointScale={space.point_scale}
+                  onMoved={handleMovePoint}
+                  onScaled={handleScalePoint}
+                />
                 {/* 上下左右で隣の面へ（視点移動） */}
                 {(['up', 'down', 'left', 'right'] as const).map((dir) => {
                   const target = SURFACE_NAV[activeSurface][dir]
