@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_07_28_000003) do
+ActiveRecord::Schema[8.1].define(version: 2026_07_31_000001) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
   enable_extension "pgcrypto"
@@ -379,6 +379,9 @@ ActiveRecord::Schema[8.1].define(version: 2026_07_28_000003) do
     t.jsonb "metadata", default: {}, null: false
     t.string "name"
     t.integer "position", default: 0, null: false
+    t.float "rotation_x", default: 0.0, null: false
+    t.float "rotation_y", default: 0.0, null: false
+    t.float "rotation_z", default: 0.0, null: false
     t.float "scale", default: 1.0, null: false
     t.uuid "space_id", null: false
     t.string "surface", default: "floor", null: false
@@ -400,7 +403,9 @@ ActiveRecord::Schema[8.1].define(version: 2026_07_28_000003) do
     t.float "height", default: 2.6, null: false
     t.string "name", null: false
     t.float "point_scale", default: 1.0, null: false
+    t.string "room_style", default: "ivory", null: false
     t.string "space_type", default: "room", null: false
+    t.jsonb "style_overrides", default: {}, null: false
     t.datetime "updated_at", null: false
     t.uuid "user_id", null: false
     t.float "width", default: 4.0, null: false

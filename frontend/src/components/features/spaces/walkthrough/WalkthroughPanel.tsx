@@ -33,7 +33,8 @@ export function WalkthroughPanel({
 
   return (
     <div className={`pointer-events-none absolute inset-x-0 bottom-0 z-10 flex justify-center px-4 pb-28 ${anim}`}>
-      <div className={`pointer-events-auto flex flex-col items-center gap-2 rounded-2xl border border-border bg-card/85 p-4 text-center shadow-xl backdrop-blur-md ${pair ? 'w-full max-w-md' : 'w-full max-w-xs'}`}>
+      {/* 部屋の景色を隠しすぎないよう、小さめ＋透け感を持たせる */}
+      <div className={`pointer-events-auto flex flex-col items-center gap-1.5 rounded-2xl border border-border/70 bg-card/65 p-3 text-center shadow-lg backdrop-blur-md ${pair ? 'w-full max-w-sm' : 'w-full max-w-[15rem]'}`}>
         <span className="text-[11px] font-medium tabular-nums text-muted-foreground">
           {index + 1} / {total}
         </span>
@@ -46,7 +47,7 @@ export function WalkthroughPanel({
                 src={loci!.url}
                 blur={loci!.blur}
                 alt={`${name}（場所）`}
-                className="aspect-square w-32 rounded-xl border border-border"
+                className="aspect-square w-24 rounded-xl border border-border"
                 fallback={<Route size={22} className="text-muted-foreground/60" />}
               />
             </button>
@@ -56,7 +57,7 @@ export function WalkthroughPanel({
                 src={card!.url}
                 blur={card!.blur}
                 alt={card!.title}
-                className="aspect-square w-32 rounded-xl border border-border"
+                className="aspect-square w-24 rounded-xl border border-border"
                 fallback={<GalleryHorizontal size={22} className="text-muted-foreground/60" />}
               />
             </button>

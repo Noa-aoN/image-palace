@@ -1,6 +1,6 @@
 'use client'
 
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import dynamic from 'next/dynamic'
 import Link from 'next/link'
 import { useParams, useRouter } from 'next/navigation'
@@ -40,6 +40,9 @@ import { PointDetailModal } from '@/components/features/spaces/walkthrough/Point
 import { CoverSettings } from '@/components/features/shared/CoverSettings'
 import type { SpaceDetail, SpacePoint, RoomSurface } from '@/types/space'
 import { PLACEABLE_SURFACES, SURFACE_NAV, roomSurfaceShort } from '@/lib/room-surfaces'
+import { resolveRoomStyle } from '@/lib/room-style'
+import { RoomStyleSettings } from '@/components/features/views/RoomStyleSettings'
+import { RoomNet } from '@/components/features/views/RoomNet'
 import type { CoverType } from '@/types/cover'
 
 // カバー画像が無いスペースのフォールバック（ルーム=部屋 / ロード=道）
@@ -331,6 +334,15 @@ export default function SpaceDetailPage() {
   const [busyPoint, setBusyPoint] = useState(false)
   const [coverBusy, setCoverBusy] = useState(false)
   const [activeSurface, setActiveSurface] = useState<RoomSurface>('floor')
+  // 2D は 1面ずつ見るのが基本。展開図は全面を見渡す補助ビュー
+  const [showNet, setShowNet] = useState(false)
+  // 2D/3D で同じ配色を使う（プリセット＋個別上書きを解決したもの）。
+  // 毎レンダリングで作り直すと床テクスチャとマテリアルが作り直されて重くなるため memo する。
+  const roomStyle = useMemo(
+    () => resolveRoomStyle(space),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [space?.room_style, space?.style_overrides]
+  )
   const [viewMode, setViewMode] = useState<'2d' | '3d'>('3d')
   // 部屋サイズ変更にポイントサイズを追従させるか（localStorage 永続・スペース単位）
   const [autoScale, setAutoScale] = useState(false)
@@ -528,7 +540,7 @@ export default function SpaceDetailPage() {
   // 部屋の設定変更（寸法・共通ポイントサイズ）: 即ローカル反映＋デバウンス保存
   const dimSaveTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
   const handleSpaceSetting = useCallback(
-    (patch: Partial<Pick<SpaceDetail, 'width' | 'depth' | 'height' | 'point_scale'>>) => {
+    (patch: Partial<Pick<SpaceDetail, 'width' | 'depth' | 'height' | 'point_scale' | 'room_style' | 'style_overrides'>>) => {
       setSpace((prev) => {
         if (!prev) return prev
         const next = { ...prev, ...patch }
@@ -542,7 +554,14 @@ export default function SpaceDetailPage() {
         }
         if (dimSaveTimer.current) clearTimeout(dimSaveTimer.current)
         dimSaveTimer.current = setTimeout(() => {
-          updateSpace(id, { width: next.width, depth: next.depth, height: next.height, point_scale: next.point_scale }).catch(() => {})
+          updateSpace(id, {
+            width: next.width,
+            depth: next.depth,
+            height: next.height,
+            point_scale: next.point_scale,
+            room_style: next.room_style,
+            style_overrides: next.style_overrides,
+          }).catch(() => {})
         }, 350)
         return next
       })
@@ -553,6 +572,13 @@ export default function SpaceDetailPage() {
   // 個別ポイントサイズ変更（2D のハンドルドラッグ）を state に反映（保存は RoomCanvas）
   const handleScalePoint = useCallback((pointId: string, scale: number) => {
     setPoints((ps) => ps.map((p) => (p.id === pointId ? { ...p, scale } : p)))
+  }, [setPoints])
+  // 回転を state に反映（保存は操作した側で行う）
+  const handleRotatePointZ = useCallback((pointId: string, rotationZ: number) => {
+    setPoints((ps) => ps.map((p) => (p.id === pointId ? { ...p, rotation_z: rotationZ } : p)))
+  }, [setPoints])
+  const handleRotatePointAxis = useCallback((pointId: string, axis: 'x' | 'y' | 'z', deg: number) => {
+    setPoints((ps) => ps.map((p) => (p.id === pointId ? { ...p, [`rotation_${axis}`]: deg } : p)))
   }, [setPoints])
   const handleRemovePoint = async (pointId: string) => {
     setPoints((ps) => ps.filter((p) => p.id !== pointId))
@@ -726,6 +752,16 @@ export default function SpaceDetailPage() {
               </div>
             </details>
 
+            {/* 部屋の設定（スタイル）。2D/3D 共通の配色 */}
+            <details className="rounded-lg border border-border bg-muted/20 px-3 py-2">
+              <summary className="cursor-pointer select-none text-sm font-medium">部屋の設定（スタイル）</summary>
+              <RoomStyleSettings
+                roomStyle={space.room_style}
+                overrides={space.style_overrides}
+                onChange={handleSpaceSetting}
+              />
+            </details>
+
             {/* ポイントの設定（部屋の設定のスタイルを踏襲） */}
             <details className="rounded-lg border border-border bg-muted/20 px-3 py-2">
               <summary className="cursor-pointer select-none text-sm font-medium">ポイントの設定</summary>
@@ -782,10 +818,13 @@ export default function SpaceDetailPage() {
                     return (
                       <button
                         key={s.key}
-                        onClick={() => setActiveSurface(s.key)}
-                        aria-pressed={active}
+                        onClick={() => {
+                          setActiveSurface(s.key)
+                          setShowNet(false)
+                        }}
+                        aria-pressed={active && !showNet}
                         className={`flex items-center gap-1 rounded-lg border px-2 py-1 text-xs font-medium transition-colors ${
-                          active
+                          active && !showNet
                             ? 'border-[var(--palace)] bg-[var(--palace)]/10 text-foreground'
                             : 'border-border text-muted-foreground hover:bg-muted'
                         }`}
@@ -796,11 +835,34 @@ export default function SpaceDetailPage() {
                       </button>
                     )
                   })}
+                  <button
+                    onClick={() => setShowNet(true)}
+                    aria-pressed={showNet}
+                    className={`flex items-center gap-1 rounded-lg border px-2 py-1 text-xs font-medium transition-colors ${
+                      showNet
+                        ? 'border-[var(--palace)] bg-[var(--palace)]/10 text-foreground'
+                        : 'border-border text-muted-foreground hover:bg-muted'
+                    }`}
+                  >
+                    展開図
+                  </button>
                 </div>
               )}
             </div>
             {viewMode === '3d' ? (
-              <Room3D spaceId={id} points={points} width={space.width} depth={space.depth} height={space.height} pointScale={space.point_scale} onMoved={handleMovePoint} />
+              <Room3D spaceId={id} points={points} width={space.width} depth={space.depth} height={space.height} pointScale={space.point_scale} style={roomStyle} onMoved={handleMovePoint} onRotated={handleRotatePointAxis} />
+            ) : showNet ? (
+              <RoomNet
+                points={points}
+                style={roomStyle}
+                width={space.width}
+                depth={space.depth}
+                activeSurface={activeSurface}
+                onSelect={(s) => {
+                  setActiveSurface(s)
+                  setShowNet(false)
+                }}
+              />
             ) : (
               <div className="relative mx-auto w-full max-w-2xl">
                 <RoomCanvas
@@ -811,8 +873,10 @@ export default function SpaceDetailPage() {
                   depth={space.depth}
                   height={space.height}
                   pointScale={space.point_scale}
+                  style={roomStyle}
                   onMoved={handleMovePoint}
                   onScaled={handleScalePoint}
+                  onRotated={handleRotatePointZ}
                 />
                 {/* 上下左右で隣の面へ（視点移動） */}
                 {(['up', 'down', 'left', 'right'] as const).map((dir) => {
@@ -861,6 +925,10 @@ export default function SpaceDetailPage() {
           stops={stopsFromSpacePoints(space.points ?? [])}
           title={space.name}
           spaceType={space.space_type}
+          style={roomStyle}
+          dims={{ width: space.width, height: space.height, depth: space.depth }}
+          spaceId={id}
+          points={points}
           onClose={() => setPlayerOpen(false)}
         />
       )}

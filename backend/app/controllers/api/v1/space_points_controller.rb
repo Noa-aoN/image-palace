@@ -34,6 +34,10 @@ module Api
         @point.u = params[:u] if params.key?(:u)
         @point.v = params[:v] if params.key?(:v)
         @point.scale = params[:scale] if params.key?(:scale)
+        # 画像の回転（度）。z は面内、x/y は 3D の傾き
+        @point.rotation_x = params[:rotation_x] if params.key?(:rotation_x)
+        @point.rotation_y = params[:rotation_y] if params.key?(:rotation_y)
+        @point.rotation_z = params[:rotation_z] if params.key?(:rotation_z)
 
         will_generate = name_will_generate?
         return render_insufficient_credits if will_generate && insufficient_credits?

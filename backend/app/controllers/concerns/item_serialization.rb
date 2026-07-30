@@ -26,6 +26,9 @@ module ItemSerialization
       u: point.u,
       v: point.v,
       scale: point.scale,
+      rotation_x: point.rotation_x,
+      rotation_y: point.rotation_y,
+      rotation_z: point.rotation_z,
       image: serialize_point_image(point),
       item: point.item ? serialize_item(point.item) : nil
     }

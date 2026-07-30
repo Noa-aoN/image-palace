@@ -128,6 +128,83 @@ RSpec.describe "Api::V1::Spaces", type: :request do
 
       expect(json_response).to include("width" => 4.0, "depth" => 4.0, "height" => 2.6)
     end
+
+    describe "部屋のスタイル" do
+      let(:space) { user.spaces.create!(name: "部屋") }
+
+      it "既定はアイボリー・上書きなし" do
+        get "/api/v1/spaces/#{space.id}", headers: headers, as: :json
+
+        expect(json_response).to include("room_style" => "ivory", "style_overrides" => {})
+      end
+
+      it "プリセットを変更できる" do
+        patch "/api/v1/spaces/#{space.id}", params: { space: { room_style: "dark" } }, headers: headers, as: :json
+
+        expect(response).to have_http_status(:success)
+        expect(space.reload.room_style).to eq("dark")
+        expect(json_response).to include("room_style" => "dark")
+      end
+
+      it "未知のプリセットは弾く" do
+        patch "/api/v1/spaces/#{space.id}", params: { space: { room_style: "neon" } }, headers: headers, as: :json
+
+        expect(response).to have_http_status(:unprocessable_content)
+      end
+
+      it "色とグリッドを個別に上書きできる" do
+        patch "/api/v1/spaces/#{space.id}",
+          params: { space: { style_overrides: { floor_color: "#112233", grid_opacity: 0.4, grid_visible: false } } },
+          headers: headers, as: :json
+
+        expect(response).to have_http_status(:success)
+        expect(space.reload.style_overrides).to eq(
+          "floor_color" => "#112233", "grid_opacity" => 0.4, "grid_visible" => false
+        )
+      end
+
+      it "色でない上書きは弾く" do
+        patch "/api/v1/spaces/#{space.id}",
+          params: { space: { style_overrides: { floor_color: "red" } } }, headers: headers, as: :json
+
+        expect(response).to have_http_status(:unprocessable_content)
+        expect(json_response["errors"].join).to include("floor_color")
+      end
+
+      it "グリッドの色も上書きできる" do
+        patch "/api/v1/spaces/#{space.id}",
+          params: { space: { style_overrides: { grid_color: "#ffffff" } } }, headers: headers, as: :json
+
+        expect(response).to have_http_status(:success)
+        expect(space.reload.style_overrides).to eq("grid_color" => "#ffffff")
+      end
+
+      it "範囲外の grid_opacity は弾く" do
+        patch "/api/v1/spaces/#{space.id}",
+          params: { space: { style_overrides: { grid_opacity: 3 } } }, headers: headers, as: :json
+
+        expect(response).to have_http_status(:unprocessable_content)
+      end
+
+      # 許可キー以外は Strong Parameters が落とすため、保存内容に混入しない
+      it "未知のキーは保存されない" do
+        patch "/api/v1/spaces/#{space.id}",
+          params: { space: { style_overrides: { floor_color: "#111111", evil: "x" } } }, headers: headers, as: :json
+
+        expect(response).to have_http_status(:success)
+        expect(space.reload.style_overrides).to eq("floor_color" => "#111111")
+      end
+
+      it "空文字の上書きは未設定として捨てる" do
+        space.update!(style_overrides: { "floor_color" => "#111111" })
+
+        patch "/api/v1/spaces/#{space.id}",
+          params: { space: { style_overrides: { floor_color: "" } } }, headers: headers, as: :json
+
+        expect(response).to have_http_status(:success)
+        expect(space.reload.style_overrides).to eq({})
+      end
+    end
   end
 
   describe "DELETE /api/v1/spaces/:id" do

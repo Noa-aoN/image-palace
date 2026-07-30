@@ -91,7 +91,12 @@ module Api
       end
 
       def space_update_params
-        params.require(:space).permit(:name, :description, :cover_space_point_id, :cover_type, :width, :depth, :height, :point_scale)
+        params.require(:space).permit(
+          :name, :description, :cover_space_point_id, :cover_type,
+          :width, :depth, :height, :point_scale, :room_style,
+          # 上書きはキーを明示して許可する（値の妥当性は Space 側で検証する）
+          style_overrides: Space::STYLE_OVERRIDE_KEYS.map(&:to_sym)
+        )
       end
 
       # 表紙はこのスペースのポイントのみ指定可能
@@ -114,6 +119,8 @@ module Api
           depth: space.depth,
           height: space.height,
           point_scale: space.point_scale,
+          room_style: space.room_style,
+          style_overrides: space.style_overrides,
           cover_type: space.cover_type,
           cover_space_point_id: space.cover_space_point_id,
           cover: cover_point ? serialize_point_image(cover_point) : nil,

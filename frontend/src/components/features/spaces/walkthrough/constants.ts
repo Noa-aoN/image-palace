@@ -33,6 +33,8 @@ export type WalkthroughStop = {
   x?: number
   y?: number
   surface?: RoomSurface
+  // 画像の回転（度）。3D は3軸、2D は z のみ使う
+  rotation?: { x: number; y: number; z: number }
 }
 
 const isGenerating = (s: string) => s === 'pending' || s === 'processing'
@@ -52,6 +54,9 @@ export function stopsFromSpacePoints(
     v: number
     image: { url: string; thumb_url?: string; blur?: string } | null
     item: { id: string; title: string; media: { url: string; thumb_url?: string; blur?: string } | null } | null
+    rotation_x?: number
+    rotation_y?: number
+    rotation_z?: number
   }[]
 ): WalkthroughStop[] {
   return [...points]
@@ -69,6 +74,7 @@ export function stopsFromSpacePoints(
         x: p.u,
         y: p.v,
         surface: p.surface,
+        rotation: { x: p.rotation_x ?? 0, y: p.rotation_y ?? 0, z: p.rotation_z ?? 0 },
       }
     })
 }

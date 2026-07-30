@@ -17,4 +17,12 @@ Rails.application.config.middleware.insert_before 0, Rack::Cors do
       methods: [ :get, :post, :put, :patch, :delete, :options ],
       expose: [ "access-token", "uid", "client", "token-type", "expiry" ]
   end
+
+  # 画像そのものの配信。3D ビューは WebGL テクスチャとして読み込むため CORS が必須で、
+  # ヘッダーが無いとテクスチャの生成に失敗する（2D の <img> は CORS 不要なので気付きにくい）。
+  # 読み取り専用なので GET のみ許可し、認証ヘッダーは expose しない。
+  allow do
+    origins(*cors_origins)
+    resource "/rails/active_storage/*", headers: :any, methods: [ :get, :options ]
+  end
 end
