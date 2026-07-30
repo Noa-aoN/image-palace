@@ -37,6 +37,34 @@ RSpec.describe Moderation::PromptModerator, type: :service do
     end
   end
 
+  # 2段目（OpenAI Moderation API）との連携。API 自体の判定ロジックは openai_moderator_spec 側で検証する
+  describe "OpenAI Moderation との2段構成" do
+    it "ブロックリストに当たった時点で OpenAI を呼ばない" do
+      allow(Moderation::OpenaiModerator).to receive(:call)
+
+      expect(described_class.call("a cute loli character")).to be_blocked
+      expect(Moderation::OpenaiModerator).not_to have_received(:call)
+    end
+
+    it "ブロックリストを通ったら OpenAI に問い合わせる" do
+      allow(Moderation::OpenaiModerator).to receive(:call)
+        .and_return(Moderation::OpenaiModerator::Result.new(allowed: true))
+
+      expect(described_class.call("photosynthesis")).to be_allowed
+      expect(Moderation::OpenaiModerator).to have_received(:call).with("photosynthesis")
+    end
+
+    it "OpenAI がブロックしたら category にプレフィックスを付けて返す" do
+      allow(Moderation::OpenaiModerator).to receive(:call)
+        .and_return(Moderation::OpenaiModerator::Result.new(allowed: false, category: "sexual/minors", score: 0.9))
+
+      result = described_class.call("見た目は無害な言い換え")
+
+      expect(result).to be_blocked
+      expect(result.category).to eq("openai:sexual/minors")
+    end
+  end
+
   describe ".blocklist" do
     it "ファイルが無い場合は空リストにフォールバックする" do
       described_class.reset_blocklist!

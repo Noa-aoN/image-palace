@@ -5,6 +5,11 @@ module Moderation
   #   result = Moderation::PromptModerator.call("photosynthesis")
   #   result.allowed?  # => true
   #   result.category  # => nil（許可時）/ "latin" や "cjk"（ブロック時）
+  #
+  # 2段構成:
+  #   1. ローカルのブロックリスト（オフライン・即時・確実）
+  #   2. OpenAI Moderation API（OpenaiModerator）。1 を通ったものだけ問い合わせる。
+  #      ブロック時の category は "openai:sexual/minors" のようにプレフィックス付きで返す
   class PromptModerator
     BLOCKLIST_PATH = Rails.root.join("config", "moderation_blocklist.yml")
 
@@ -58,7 +63,11 @@ module Moderation
       term = blocklist[:cjk].find { |t| normalized.include?(t) }
       return Result.new(allowed: false, category: "cjk", term: term) if term
 
-      Result.new(allowed: true)
+      # ブロックリストを通ったものだけ外部 API へ（無駄な呼び出しとレイテンシを避ける）
+      openai = OpenaiModerator.call(text)
+      return Result.new(allowed: true) if openai.allowed?
+
+      Result.new(allowed: false, category: "openai:#{openai.category}", term: nil)
     end
 
     private
