@@ -9,7 +9,13 @@ require "base64"
 # - LQIP: 極小 WebP を data URL 化したプレースホルダ（即時ぼかし表示用）
 #
 # 変換に失敗した場合は元データをそのまま返す（thumb/lqip は nil。生成フローを止めない）。
+# ただし libvips へ渡すのは PNG/JPEG/WebP と判定できたデータのみ（ImageFormat）。
+# 未対応形式は libvips に触れさせずフォールバックするため、呼び出し側で
+# 「本当に WebP 化されたか」を検証してから保存すること（アップロード経路は必須）。
 class OptimizeImageService
+  # allowlist 外の形式（libvips に渡さず弾いた）
+  class UnsupportedFormat < StandardError; end
+
   MAX_DIMENSION = 800
   THUMB_DIMENSION = 480
   LQIP_DIMENSION = 24
@@ -29,6 +35,10 @@ class OptimizeImageService
   end
 
   def call
+    # libvips は中身を見てローダを選ぶため、渡す前にマジックバイトで allowlist する。
+    # （SVG/PDF など外部ライブラリ委譲を伴うローダへ到達させない）
+    raise UnsupportedFormat, "対応していない画像形式です" unless ImageFormat.allowed?(@image_data)
+
     # libvips はネイティブライブラリ依存のため遅延 require する。
     # 未インストール環境でもアプリ起動を妨げないよう、ここで読み込む。
     require "vips"

@@ -10,6 +10,8 @@ services:
       - ./backend/.env
     environment:
       SOLID_QUEUE_IN_PUMA: "1"
+      # libvips の信頼できないローダ（SVG/PDF 等）を無効化する。CVE-2026-66066 緩和策
+      VIPS_BLOCK_UNTRUSTED: "1"
     depends_on:
       db:
         condition: service_healthy

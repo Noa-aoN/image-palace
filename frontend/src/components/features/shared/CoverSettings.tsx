@@ -58,7 +58,8 @@ export function CoverSettings({
           <input
             ref={fileRef}
             type="file"
-            accept="image/*"
+            // サーバー側は PNG/JPEG/WebP のみ受け付ける（libvips に渡す形式を限定するため）
+            accept="image/png,image/jpeg,image/webp"
             className="hidden"
             onChange={(e) => {
               const f = e.target.files?.[0]
