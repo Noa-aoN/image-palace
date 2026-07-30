@@ -57,4 +57,28 @@ RSpec.describe "Rack::Attack throttling for high-cost endpoints", type: :request
       expect(response).to have_http_status(:too_many_requests)
     end
   end
+
+  # 1件最大 10MB を libvips でデコードするため、転送量と CPU の両方が高コスト
+  describe "画像アップロードのスロットル" do
+    let(:box) { user.boxes.create!(name: "英単語") }
+
+    it "20 回を超えると 429 を返す" do
+      freeze_time { 21.times { post "/api/v1/boxes/#{box.id}/cover_image", headers: headers } }
+      expect(response).to have_http_status(:too_many_requests)
+    end
+
+    it "上限内はスロットルしない" do
+      freeze_time { 20.times { post "/api/v1/boxes/#{box.id}/cover_image", headers: headers } }
+      expect(response).not_to have_http_status(:too_many_requests)
+    end
+
+    it "スペースの背景画像も同じ上限で数える" do
+      space = create(:space, user: user)
+      freeze_time do
+        10.times { post "/api/v1/boxes/#{box.id}/cover_image", headers: headers }
+        11.times { post "/api/v1/spaces/#{space.id}/cover_image", headers: headers }
+      end
+      expect(response).to have_http_status(:too_many_requests)
+    end
+  end
 end

@@ -54,6 +54,13 @@ jobs:
       - name: Test (rspec)
         run: bundle exec rspec
 
+      # ローカルの Docker からは advisory DB を取得できないため、gem の脆弱性検査は CI を正とする
+      - name: Audit gems (bundler-audit)
+        run: bundle exec bundle-audit check --update
+
+      - name: Static analysis (brakeman)
+        run: bundle exec brakeman -q --no-pager
+
   frontend:
     name: Frontend (eslint + tsc + test)
     runs-on: ubuntu-latest
@@ -86,3 +93,7 @@ jobs:
 
       - name: Unit test (vitest)
         run: npm run test
+
+      # 本番に載る依存のみ検査する（devDependencies のノイズを避ける）
+      - name: Audit dependencies (npm audit)
+        run: npm audit --omit=dev --audit-level=high

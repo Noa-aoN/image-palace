@@ -37,10 +37,18 @@ plans_data.each do |data|
   )
 end
 
-# テストユーザー（SEED_TEST_USER=1 が設定されている環境のみ作成）
+# 開発用テストユーザー（SEED_TEST_USER=true の環境のみ作成）。
+#
+# 本番では ENV の指定に関係なく絶対に作らない。認証情報がリポジトリに書かれている以上、
+# 本番に存在させてはいけないため、フラグの設定ミスでも作られないようここで二重に止める。
+# （本番デプロイは release_command で db:seed を毎回実行するため、フラグ頼みでは危険）
 if ENV["SEED_TEST_USER"] == "true"
-  User.find_or_create_by!(email: "test@example.com") do |u|
-    u.password = "password"
-    u.password_confirmation = "password"
+  if Rails.env.production?
+    Rails.logger.warn("[seeds] SEED_TEST_USER が本番で指定されましたが、テストユーザーは作成しません")
+  else
+    User.find_or_create_by!(email: "test@example.com") do |u|
+      u.password = "password"
+      u.password_confirmation = "password"
+    end
   end
 end
