@@ -3,7 +3,7 @@
 import type { SpacePoint, RoomSurface } from '@/types/space'
 import { roomSurfaceShort } from '@/lib/room-surfaces'
 import { gridStroke, shadeSurface, type RoomStyle } from '@/lib/room-style'
-import { pointImageUrl } from '@/lib/space-points'
+import { pointImageUrl, pointCssTransform } from '@/lib/space-points'
 
 // 部屋を開いた形（展開図）。床を中心に、4壁と天井を配置する。
 const NET: (RoomSurface | null)[] = [
@@ -77,7 +77,7 @@ export function RoomNet({ points, style, width, depth, onSelect, activeSurface }
                     top: `${clamp01(p.v ?? 0.5) * 100}%`,
                     width: '22%',
                     height: '22%',
-                    transform: `translate(-50%, -50%) rotate(${p.rotation_z ?? 0}deg)`,
+                    transform: `translate(-50%, -50%) ${pointCssTransform(p)}`,
                   }}
                 >
                   {url ? (

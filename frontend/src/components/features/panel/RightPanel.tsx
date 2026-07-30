@@ -14,6 +14,7 @@ import { EdgePropertiesBody } from './EdgePropertiesBody'
 import { BoardSettingsBody } from './BoardSettingsBody'
 import { BulkEditBody } from './BulkEditBody'
 import { PanelShell } from './PanelShell'
+import { setPanelSlot } from './PanelSlot'
 
 const MIN_W = 300
 const MAX_W = 560
@@ -27,6 +28,7 @@ export function RightPanel() {
   const edge = useRightPanelStore((s) => s.edge)
   const bulkItemIds = useRightPanelStore((s) => s.bulkItemIds)
   const bulkEdgeIds = useRightPanelStore((s) => s.bulkEdgeIds)
+  const section = useRightPanelStore((s) => s.section)
   const close = useRightPanelStore((s) => s.close)
   const openBoardCards = useRightPanelStore((s) => s.openBoardCards)
   const openBoardObjects = useRightPanelStore((s) => s.openBoardObjects)
@@ -77,7 +79,9 @@ export function RightPanel() {
                 ]
                   .filter(Boolean)
                   .join('・')}）`
-              : undefined
+              : mode === 'section'
+                ? section?.title
+                : undefined
 
   // 一覧 > 詳細 の親子関係。詳細/編集からは対応する一覧へ戻す。
   const onBack =
@@ -129,6 +133,8 @@ export function RightPanel() {
         {mode === 'board-settings' && viewId && <BoardSettingsBody />}
         {mode === 'bulk' && viewId && <BulkEditBody />}
         {mode === 'edge' && viewId && edge && <EdgePropertiesBody key={edge.id} viewId={viewId} />}
+        {/* 汎用スロット。中身はページ側が PanelSlotContent で差し込む */}
+        {mode === 'section' && <div ref={setPanelSlot} />}
       </PanelShell>
     </aside>
   )

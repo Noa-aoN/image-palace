@@ -5,6 +5,9 @@ import type { ViewEdge, ViewEdgeStyle } from '@/types/view'
 // 右パネル（統一インスペクタ）の表示モード。
 // closed=非表示 / card=カード詳細 / board-cards=配置カード一覧 / add-cards=カード追加
 // board-objects=オブジェクト（接続線・図形）一覧 / edge=接続線編集 / board-settings=ボード設定 / bulk=複数選択の一括
+//
+// section= 汎用スロット。ページ側が自分の UI をパネルへ差し込む（ボード以外のページはこれを使う）。
+// ボード固有のモードは、いずれ section へ寄せて畳む想定。
 export type RightPanelMode =
   | 'closed'
   | 'card'
@@ -14,6 +17,10 @@ export type RightPanelMode =
   | 'edge'
   | 'board-settings'
   | 'bulk'
+  | 'section'
+
+/** 汎用スロットで開いている内容。key はページ側が中身を出し分けるための識別子 */
+export type PanelSection = { key: string; title?: string }
 
 interface RightPanelState {
   mode: RightPanelMode
@@ -23,6 +30,7 @@ interface RightPanelState {
   // bulk モードの選択集合
   bulkItemIds: string[]
   bulkEdgeIds: string[]
+  section: PanelSection | null
   // ボード↔パネルの疎結合シグナル（ボード側が検知して消費する）
   focusItemId: string | null // カード一覧クリック → ボードが該当カードへパン
   focusEdgeId: string | null // オブジェクト一覧クリック → ボードが該当接続線へパン
@@ -41,6 +49,8 @@ interface RightPanelState {
   openBoardSettings: (viewId: string) => void
   openEdge: (viewId: string, edge: ViewEdge) => void
   openBulk: (viewId: string, itemIds: string[], edgeIds: string[]) => void
+  /** 汎用スロットを開く。中身はページ側が差し込む */
+  openSection: (section: PanelSection) => void
   close: () => void
   requestFocus: (itemId: string) => void
   consumeFocus: () => void
@@ -69,6 +79,7 @@ export const useRightPanelStore = create<RightPanelState>()((set) => ({
   edge: null,
   bulkItemIds: [],
   bulkEdgeIds: [],
+  section: null,
   focusItemId: null,
   focusEdgeId: null,
   pendingAddItem: null,
@@ -87,6 +98,7 @@ export const useRightPanelStore = create<RightPanelState>()((set) => ({
   openBoardSettings: (viewId) => set({ mode: 'board-settings', viewId }),
   openEdge: (viewId, edge) => set({ mode: 'edge', viewId, edge }),
   openBulk: (viewId, itemIds, edgeIds) => set({ mode: 'bulk', viewId, bulkItemIds: itemIds, bulkEdgeIds: edgeIds }),
+  openSection: (section) => set({ mode: 'section', section }),
   close: () =>
     set({
       mode: 'closed',
@@ -94,6 +106,7 @@ export const useRightPanelStore = create<RightPanelState>()((set) => ({
       edge: null,
       bulkItemIds: [],
       bulkEdgeIds: [],
+      section: null,
       focusItemId: null,
       focusEdgeId: null,
       pendingAddItem: null,

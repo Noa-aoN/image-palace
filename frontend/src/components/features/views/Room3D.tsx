@@ -29,6 +29,11 @@ const roomReach = (W: number, H: number, D: number) => Math.sqrt(W * W + H * H +
 // 点マーカーのアクセント。2D（var(--palace)）と同じ色にして、切り替えても点の見え方を揃える
 const ACCENT = '#c6a75e'
 const clamp01 = (n: number) => Math.min(1, Math.max(0, n))
+// 角度は一周で畳む（保存側の正規化と揃える）
+const wrapDeg = (deg: number) => {
+  const r = deg % 360
+  return r >= 180 ? r - 360 : r < -180 ? r + 360 : r
+}
 
 // 点マーカー: 面に貼られた正方形（loci 画像 or アクセント色）。選択中は縁取り。
 function PointMarker({
@@ -41,6 +46,9 @@ function PointMarker({
   dragging,
   selected,
   onGrab,
+  onRotate,
+  onRotateCommit,
+  onInteracting,
 }: {
   point: SpacePoint
   index: number
@@ -51,7 +59,11 @@ function PointMarker({
   dragging: boolean
   selected: boolean
   onGrab: (id: string) => void
+  onRotate: (id: string, axis: 'x' | 'y' | 'z', deg: number) => void
+  onRotateCommit: (id: string, deg: number) => void
+  onInteracting: (value: boolean) => void
 }) {
+  const { camera, gl } = useThree()
   const url = pointImageUrl(point)
   const tex = useImageTexture(url)
 
@@ -62,9 +74,44 @@ function PointMarker({
   const grab = Math.max(m * 2, 0.9) // 掴みやすいよう当たり判定は大きめに
 
   const rad = (deg: number) => ((deg ?? 0) * Math.PI) / 180
+  const [hovered, setHovered] = useState(false)
+  const showHandle = hovered || selected
+
+  // 面内の回転（画面上の角度差をそのまま使う）。掴みと同じく、押した時点で登録する
+  const startRotate = (e: ThreeEvent<PointerEvent>) => {
+    e.stopPropagation()
+    onInteracting(true)
+    const rect = gl.domElement.getBoundingClientRect()
+    const center = new THREE.Vector3(...position).project(camera)
+    const cx = rect.left + ((center.x + 1) / 2) * rect.width
+    const cy = rect.top + ((1 - center.y) / 2) * rect.height
+    const angleOf = (x: number, y: number) => (Math.atan2(y - cy, x - cx) * 180) / Math.PI
+    const start = angleOf(e.clientX, e.clientY)
+    const base = point.rotation_z ?? 0
+    // 画面は時計回りが正、保存値は反時計回りが正なので符号を反転する
+    const next = (ev: PointerEvent) => wrapDeg(base - (angleOf(ev.clientX, ev.clientY) - start))
+    const onMove = (ev: PointerEvent) => onRotate(point.id, 'z', next(ev))
+    const onUp = (ev: PointerEvent) => {
+      window.removeEventListener('pointermove', onMove)
+      window.removeEventListener('pointerup', onUp)
+      const value = next(ev)
+      onRotate(point.id, 'z', value)
+      onRotateCommit(point.id, value)
+      setTimeout(() => onInteracting(false), 0)
+    }
+    window.addEventListener('pointermove', onMove)
+    window.addEventListener('pointerup', onUp)
+  }
 
   return (
     <group position={position} rotation={def.rotation}>
+      {/* 選択中は縁取りの板を後ろに敷いて、どれを選んでいるか一目で分かるようにする */}
+      {selected && (
+        <mesh position={[0, 0, -0.004]} raycast={noRaycast}>
+          <planeGeometry args={[m * 1.22, m * 1.22]} />
+          <meshBasicMaterial color={ACCENT} side={THREE.DoubleSide} toneMapped={false} />
+        </mesh>
+      )}
       {/* 面の向きの内側で画像だけを回す（x/y は傾き、z は面内の回転） */}
       <group rotation={[rad(point.rotation_x), rad(point.rotation_y), rad(point.rotation_z)]}>
       {/* 見た目（小さめ・当たり判定は掴み面に任せる） */}
@@ -85,6 +132,8 @@ function PointMarker({
       <mesh
         position={[0, 0, 0.002]}
         raycast={dragging ? noRaycast : undefined}
+        onPointerOver={() => setHovered(true)}
+        onPointerOut={() => setHovered(false)}
         onPointerDown={(e: ThreeEvent<PointerEvent>) => {
           e.stopPropagation()
           onGrab(point.id)
@@ -93,6 +142,13 @@ function PointMarker({
         <planeGeometry args={[grab, grab]} />
         <meshBasicMaterial transparent opacity={0} depthWrite={false} side={THREE.DoubleSide} />
       </mesh>
+      {/* 回転ハンドル（ホバー/選択中に出る）。ドラッグで面内の向きを変える */}
+      {showHandle && (
+        <mesh position={[m / 2 + 0.14, m / 2 + 0.14, 0.02]} raycast={dragging ? noRaycast : undefined} onPointerDown={startRotate}>
+          <circleGeometry args={[Math.max(0.09, m * 0.16), 16]} />
+          <meshBasicMaterial color={ACCENT} side={THREE.DoubleSide} toneMapped={false} />
+        </mesh>
+      )}
       <Html position={[-m / 2, m / 2, 0.06]} center distanceFactor={11} zIndexRange={[20, 0]} style={{ pointerEvents: 'none' }}>
         <span className="flex h-5 w-5 items-center justify-center rounded-full text-[11px] font-semibold text-white shadow" style={{ backgroundColor: ACCENT }}>
           {index + 1}
@@ -175,6 +231,8 @@ function Scene({
   dims,
   pointScale,
   style,
+  onInteracting,
+  onRotate,
 }: {
   spaceId: string
   points: SpacePoint[]
@@ -184,6 +242,8 @@ function Scene({
   dims: { W: number; H: number; D: number }
   pointScale: number
   style: RoomStyle
+  onInteracting: (value: boolean) => void
+  onRotate: (id: string, axis: 'x' | 'y' | 'z', deg: number) => void
 }) {
   const { W, H, D } = dims
   const reach = roomReach(W, H, D)
@@ -210,9 +270,18 @@ function Scene({
     else delete meshes.current[s]
   }, [])
 
-  // ドラッグ中は window の pointermove/up で処理（hover 非依存で安定）。
-  useEffect(() => {
-    if (!dragId) return
+  // ドラッグ処理。掴んだ時点で直接 window に登録する。
+  // effect で後追い登録にすると、素早いクリックでは pointerup を取り逃し、
+  // dragId が残って以後どの点も掴めなくなる（レイキャストを切っているため）。
+  const stopDrag = useRef<(() => void) | null>(null)
+  useEffect(() => () => stopDrag.current?.(), [])
+
+  const grab = (id: string) => {
+    onInteracting(true)
+    setDragId(id)
+    onSelect(id)
+    if (orbit.current) orbit.current.enabled = false
+
     const ndc = new THREE.Vector2()
     const onMove = (ev: PointerEvent) => {
       const rect = gl.domElement.getBoundingClientRect()
@@ -226,13 +295,16 @@ function Scene({
         const mat = obj.material as THREE.MeshStandardMaterial
         if (mat.transparent && mat.opacity < 0.15) continue // 手前の透明壁はスキップ
         const { u, v } = surfaces[s].uv(hit.point)
-        const next = { id: dragId, surface: s, u: clamp01(u), v: clamp01(v) }
+        const next = { id, surface: s, u: clamp01(u), v: clamp01(v) }
         last.current = next
         setPreview(next) // ローカルのみ（親は再描画しない）
         break
       }
     }
-    const onUp = () => {
+    const finish = () => {
+      window.removeEventListener('pointermove', onMove)
+      window.removeEventListener('pointerup', finish)
+      stopDrag.current = null
       const d = last.current
       if (d) {
         onMoved(d.id, d.surface, d.u, d.v)
@@ -242,19 +314,12 @@ function Scene({
       setPreview(null)
       setDragId(null)
       if (orbit.current) orbit.current.enabled = true
+      // onPointerMissed は同じ pointerup で先に走るため、解除は次のタスクまで遅らせる
+      setTimeout(() => onInteracting(false), 0)
     }
+    stopDrag.current = finish
     window.addEventListener('pointermove', onMove)
-    window.addEventListener('pointerup', onUp)
-    return () => {
-      window.removeEventListener('pointermove', onMove)
-      window.removeEventListener('pointerup', onUp)
-    }
-  }, [dragId, camera, gl, raycaster, spaceId, onMoved, surfaces])
-
-  const grab = (id: string) => {
-    setDragId(id)
-    onSelect(id)
-    if (orbit.current) orbit.current.enabled = false
+    window.addEventListener('pointerup', finish)
   }
 
   return (
@@ -293,6 +358,11 @@ function Scene({
             dragging={!!dragId}
             selected={point.id === selectedId}
             onGrab={grab}
+            onRotate={onRotate}
+            onRotateCommit={(id, deg) => {
+              updateSpacePoint(spaceId, id, { rotation_z: deg }).catch(() => {})
+            }}
+            onInteracting={onInteracting}
           />
         )
       })}
@@ -309,13 +379,42 @@ type Room3DProps = {
   pointScale: number
   style: RoomStyle
   onMoved: (id: string, surface: RoomSurface, u: number, v: number) => void
+  /** 選択の外部管理（向きの調整は右パネルで行うため、ページ側が選択を持つ） */
+  selectedPointId?: string | null
+  onSelectPoint?: (id: string | null) => void
   onRotated?: (id: string, axis: 'x' | 'y' | 'z', deg: number) => void
 }
 
 // 3D の部屋ビュー。寸法(width/depth/height)から箱のアスペクトを作り、点を床・壁へドラッグ配置。
-export function Room3D({ spaceId, points, width, depth, height, pointScale, style, onMoved, onRotated }: Room3DProps) {
-  const [selectedId, setSelectedId] = useState<string | null>(null)
-  const selectedPoint = points.find((p) => p.id === selectedId) ?? null
+export function Room3D({
+  spaceId,
+  points,
+  width,
+  depth,
+  height,
+  pointScale,
+  style,
+  onMoved,
+  selectedPointId,
+  onSelectPoint,
+  onRotated,
+}: Room3DProps) {
+  const [innerSelectedId, setInnerSelectedId] = useState<string | null>(null)
+  const selectedId = selectedPointId !== undefined ? selectedPointId : innerSelectedId
+  const applySelection = onSelectPoint ?? setInnerSelectedId
+
+  // 点を掴んでいる間はマーカーのレイキャストを切っているため、離した瞬間の判定は
+  // 必ず「何にも当たっていないクリック」になる。時間で見分けるとゆっくり押したときに
+  // 解除されてしまうので、掴み操作中だったかどうかで判断する。
+  const interacting = useRef(false)
+  const setInteracting = useCallback((value: boolean) => {
+    interacting.current = value
+  }, [])
+  const setSelectedId = applySelection
+  const clearSelectionOnMiss = useCallback(() => {
+    if (interacting.current) return
+    applySelection(null)
+  }, [applySelection])
   // 実寸（1m = 1unit）。各寸法が独立に反映され、幅を変えても高さは変わらない。
   const dims = { W: width, H: height, D: depth }
   // 部屋の大きさに合わせた俯瞰スタート位置（小さい部屋でも寄って見える）
@@ -337,57 +436,11 @@ export function Room3D({ spaceId, points, width, depth, height, pointScale, styl
         そのため、キャンバス専用のホストで包んでパネルと兄弟にしている。
       */}
       <div className="absolute inset-0">
-        <Canvas dpr={[1, 1.75]} shadows={false} camera={{ position: startCamera, fov: 45 }} onPointerMissed={() => setSelectedId(null)}>
+        <Canvas dpr={[1, 1.75]} shadows={false} camera={{ position: startCamera, fov: 45 }} onPointerMissed={clearSelectionOnMiss}>
           <color attach="background" args={[style.background]} />
-          <Scene spaceId={spaceId} points={points} onMoved={onMoved} selectedId={selectedId} onSelect={setSelectedId} dims={dims} pointScale={pointScale} style={style} />
+          <Scene spaceId={spaceId} points={points} onMoved={onMoved} selectedId={selectedId} onSelect={setSelectedId} dims={dims} pointScale={pointScale} style={style} onInteracting={setInteracting} onRotate={onRotated ?? (() => {})} />
         </Canvas>
       </div>
-      {/* 選択中の点の回転（3軸）。3D は面の向きがあるので、傾きもここで調整する */}
-      {selectedPoint && onRotated && (
-        <div className="absolute bottom-3 left-3 z-10 w-56 rounded-lg border border-border bg-card/85 p-2.5 shadow backdrop-blur">
-          <div className="mb-1.5 flex items-center justify-between">
-            <span className="truncate text-xs font-medium">{selectedPoint.name || '未命名'} の向き</span>
-            <button
-              type="button"
-              onClick={() => {
-                onRotated(selectedPoint.id, 'x', 0)
-                onRotated(selectedPoint.id, 'y', 0)
-                onRotated(selectedPoint.id, 'z', 0)
-                updateSpacePoint(spaceId, selectedPoint.id, { rotation_x: 0, rotation_y: 0, rotation_z: 0 }).catch(() => {})
-              }}
-              className="text-[11px] text-muted-foreground underline hover:text-foreground"
-            >
-              戻す
-            </button>
-          </div>
-          {(['x', 'y', 'z'] as const).map((axis) => {
-            const value =
-              axis === 'x' ? selectedPoint.rotation_x : axis === 'y' ? selectedPoint.rotation_y : selectedPoint.rotation_z
-            const label = axis === 'x' ? '縦の傾き' : axis === 'y' ? '横の傾き' : '面内の回転'
-            return (
-              <label key={axis} className="flex items-center gap-2 text-[11px] text-muted-foreground">
-                <span className="w-14 shrink-0">{label}</span>
-                <input
-                  type="range"
-                  min={-180}
-                  max={179}
-                  step={1}
-                  value={value ?? 0}
-                  onChange={(e) => onRotated(selectedPoint.id, axis, Number(e.target.value))}
-                  onPointerUp={(e) =>
-                    updateSpacePoint(spaceId, selectedPoint.id, {
-                      [`rotation_${axis}`]: Number((e.target as HTMLInputElement).value),
-                    }).catch(() => {})
-                  }
-                  className="flex-1 accent-[var(--palace)]"
-                  aria-label={`${label}（度）`}
-                />
-                <span className="w-9 shrink-0 text-right tabular-nums">{Math.round(value ?? 0)}°</span>
-              </label>
-            )
-          })}
-        </div>
-      )}
       {points.length === 0 && (
         <div className="pointer-events-none absolute inset-0 flex items-center justify-center px-6">
           <p className="text-center text-sm text-muted-foreground">下の「ポイントを追加」で点を作り、部屋の床や壁へドラッグで配置しましょう。</p>

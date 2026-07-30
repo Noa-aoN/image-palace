@@ -41,8 +41,11 @@ import { CoverSettings } from '@/components/features/shared/CoverSettings'
 import type { SpaceDetail, SpacePoint, RoomSurface } from '@/types/space'
 import { PLACEABLE_SURFACES, SURFACE_NAV, roomSurfaceShort } from '@/lib/room-surfaces'
 import { resolveRoomStyle } from '@/lib/room-style'
-import { RoomStyleSettings } from '@/components/features/views/RoomStyleSettings'
 import { RoomNet } from '@/components/features/views/RoomNet'
+import { RoomSettingsPanel, PointSettingsPanel } from '@/components/features/spaces/SpaceSettingsPanel'
+import { PanelSlotContent } from '@/components/features/panel/PanelSlot'
+import { useRightPanelStore } from '@/stores/rightPanel'
+import { Settings2 } from 'lucide-react'
 import type { CoverType } from '@/types/cover'
 
 // カバー画像が無いスペースのフォールバック（ルーム=部屋 / ロード=道）
@@ -140,12 +143,6 @@ function PointImageCell({ point, onOpen }: { point: SpacePoint; onOpen: () => vo
   )
 }
 
-// 部屋の寸法（グリッド単位＝整数。1マス=1m の床グリッドと一致）
-const ROOM_DIMS: { key: 'width' | 'depth' | 'height'; label: string; min: number; max: number }[] = [
-  { key: 'width', label: '幅', min: 2, max: 10 },
-  { key: 'depth', label: '奥行き', min: 2, max: 10 },
-  { key: 'height', label: '高さ', min: 2, max: 5 },
-]
 
 // タブ用の面ピクトグラム（俯瞰＝箱を上から / 各壁＝該当辺を強調）
 function FaceGlyph({ surface }: { surface: RoomSurface }) {
@@ -336,6 +333,18 @@ export default function SpaceDetailPage() {
   const [activeSurface, setActiveSurface] = useState<RoomSurface>('floor')
   // 2D は 1面ずつ見るのが基本。展開図は全面を見渡す補助ビュー
   const [showNet, setShowNet] = useState(false)
+  // 3D で選んでいるポイント（向きの調整は右パネルで行うのでページ側が持つ）
+  const [selectedPointId, setSelectedPointId] = useState<string | null>(null)
+  const openSection = useRightPanelStore((s) => s.openSection)
+  // 点を選んだら、その場で向きを調整できるようにポイント設定を開く
+  // （パネルが閉じていると「クリックしても何も出ない」ように見えるため）
+  const handleSelectPoint = useCallback(
+    (pointId: string | null) => {
+      setSelectedPointId(pointId)
+      if (pointId) openSection({ key: 'point-settings', title: 'ポイントの設定' })
+    },
+    [openSection]
+  )
   // 2D/3D で同じ配色を使う（プリセット＋個別上書きを解決したもの）。
   // 毎レンダリングで作り直すと床テクスチャとマテリアルが作り直されて重くなるため memo する。
   const roomStyle = useMemo(
@@ -708,90 +717,51 @@ export default function SpaceDetailPage() {
 
       {error && <p className="text-sm text-destructive mb-4">{error}</p>}
 
+      {/* 右パネルへ差し込む設定。ページの state と更新関数をそのまま使える */}
+      {!isRoad && (
+        <>
+          <PanelSlotContent sectionKey="room-settings">
+            <RoomSettingsPanel space={space} onSpaceSetting={handleSpaceSetting} />
+          </PanelSlotContent>
+          <PanelSlotContent sectionKey="point-settings">
+            <PointSettingsPanel
+              space={space}
+              selectedPoint={points.find((p) => p.id === selectedPointId) ?? null}
+              autoScale={autoScale}
+              onAutoScaleChange={setAutoScale}
+              onSpaceSetting={handleSpaceSetting}
+              onRotate={handleRotatePointAxis}
+              onRotateCommit={(pointId: string, patch: Record<string, number>) => {
+                updateSpacePoint(id, pointId, patch).catch(() => {})
+              }}
+            />
+          </PanelSlotContent>
+        </>
+      )}
+
       <section className="space-y-3">
         <p className="text-sm text-muted-foreground">{intro}</p>
         {!isRoad && (
           <div className="space-y-2">
-            {/* 部屋の設定（サイズ）。3D/2D の表示に即反映 */}
-            <details className="rounded-lg border border-border bg-muted/20 px-3 py-2">
-              <summary className="cursor-pointer select-none text-sm font-medium">部屋の設定（サイズ）</summary>
-              <div className="mt-2 space-y-2">
-                {ROOM_DIMS.map((d) => {
-                  const val = Math.round(space[d.key])
-                  const setDim = (raw: number) => {
-                    if (Number.isNaN(raw)) return
-                    handleSpaceSetting({ [d.key]: Math.round(Math.min(d.max, Math.max(d.min, raw))) })
-                  }
-                  return (
-                    <label key={d.key} className="flex items-center gap-3 text-xs">
-                      <span className="w-12 shrink-0 text-muted-foreground">{d.label}</span>
-                      <input
-                        type="range"
-                        min={d.min}
-                        max={d.max}
-                        step={1}
-                        value={val}
-                        onChange={(e) => setDim(Number(e.target.value))}
-                        className="flex-1 accent-[var(--palace)]"
-                        aria-label={`部屋の${d.label}（スライダー）`}
-                      />
-                      <input
-                        type="number"
-                        min={d.min}
-                        max={d.max}
-                        step={1}
-                        value={val}
-                        onChange={(e) => setDim(Number(e.target.value))}
-                        className="w-14 shrink-0 rounded border border-input bg-background px-1.5 py-1 text-right tabular-nums focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-                        aria-label={`部屋の${d.label}（数値）`}
-                      />
-                      <span className="shrink-0 text-muted-foreground">マス</span>
-                    </label>
-                  )
-                })}
-              </div>
-            </details>
-
-            {/* 部屋の設定（スタイル）。2D/3D 共通の配色 */}
-            <details className="rounded-lg border border-border bg-muted/20 px-3 py-2">
-              <summary className="cursor-pointer select-none text-sm font-medium">部屋の設定（スタイル）</summary>
-              <RoomStyleSettings
-                roomStyle={space.room_style}
-                overrides={space.style_overrides}
-                onChange={handleSpaceSetting}
-              />
-            </details>
-
-            {/* ポイントの設定（部屋の設定のスタイルを踏襲） */}
-            <details className="rounded-lg border border-border bg-muted/20 px-3 py-2">
-              <summary className="cursor-pointer select-none text-sm font-medium">ポイントの設定</summary>
-              <div className="mt-2 space-y-2">
-                <label className="flex items-center gap-3 text-xs">
-                  <span className="w-24 shrink-0 text-muted-foreground">ポイント表示サイズ</span>
-                  <input
-                    type="range"
-                    min={0.5}
-                    max={2}
-                    step={0.1}
-                    value={space.point_scale}
-                    onChange={(e) => handleSpaceSetting({ point_scale: Number(e.target.value) })}
-                    className="flex-1 accent-[var(--palace)]"
-                    aria-label="ポイント表示サイズ"
-                  />
-                  <span className="w-16 shrink-0 text-right tabular-nums">×{space.point_scale.toFixed(1)}</span>
-                </label>
-                <label className="flex items-center justify-end gap-2 text-xs">
-                  <span className="text-muted-foreground">部屋サイズ自動追従</span>
-                  <input
-                    type="checkbox"
-                    checked={autoScale}
-                    onChange={(e) => setAutoScale(e.target.checked)}
-                    className="h-3.5 w-3.5 accent-[var(--palace)]"
-                    aria-label="部屋サイズ自動追従"
-                  />
-                </label>
-              </div>
-            </details>
+            {/* 設定は右パネルへ集約（キャンバス上に重ねると 3D の操作と干渉するため） */}
+            <div className="flex flex-wrap gap-1.5">
+              <button
+                type="button"
+                onClick={() => openSection({ key: 'room-settings', title: '部屋の設定' })}
+                className="inline-flex items-center gap-1.5 rounded-lg border border-border px-2.5 py-1.5 text-xs font-medium text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+              >
+                <Settings2 size={14} />
+                部屋の設定
+              </button>
+              <button
+                type="button"
+                onClick={() => openSection({ key: 'point-settings', title: 'ポイントの設定' })}
+                className="inline-flex items-center gap-1.5 rounded-lg border border-border px-2.5 py-1.5 text-xs font-medium text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+              >
+                <Settings2 size={14} />
+                ポイントの設定
+              </button>
+            </div>
 
             {/* 2D/3D 切替（主体）。3D=部屋を回して床・壁へドラッグ配置 / 2D=面ごとの平面配置 */}
             <div className="flex flex-wrap items-center justify-between gap-2">
@@ -850,7 +820,7 @@ export default function SpaceDetailPage() {
               )}
             </div>
             {viewMode === '3d' ? (
-              <Room3D spaceId={id} points={points} width={space.width} depth={space.depth} height={space.height} pointScale={space.point_scale} style={roomStyle} onMoved={handleMovePoint} onRotated={handleRotatePointAxis} />
+              <Room3D spaceId={id} points={points} width={space.width} depth={space.depth} height={space.height} pointScale={space.point_scale} style={roomStyle} onMoved={handleMovePoint} selectedPointId={selectedPointId} onSelectPoint={handleSelectPoint} onRotated={handleRotatePointAxis} />
             ) : showNet ? (
               <RoomNet
                 points={points}
@@ -877,6 +847,8 @@ export default function SpaceDetailPage() {
                   onMoved={handleMovePoint}
                   onScaled={handleScalePoint}
                   onRotated={handleRotatePointZ}
+                  selectedPointId={selectedPointId}
+                  onSelectPoint={handleSelectPoint}
                 />
                 {/* 上下左右で隣の面へ（視点移動） */}
                 {(['up', 'down', 'left', 'right'] as const).map((dir) => {

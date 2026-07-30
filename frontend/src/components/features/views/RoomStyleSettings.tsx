@@ -63,8 +63,12 @@ export function RoomStyleSettings({ roomStyle, overrides, onChange }: Props) {
           const current = resolved[f.from]
           const isCustom = !ROOM_STYLE_KEYS.some((k) => sameColor(ROOM_STYLE_PRESETS[k].style[f.from], current))
           return (
-            <div key={f.key} className="flex items-center gap-2 text-xs">
-              <span className="w-16 shrink-0 text-muted-foreground">{f.label}</span>
+            <div key={f.key} className="space-y-1 text-xs">
+              <div className="flex items-baseline justify-between gap-2 text-[11px] text-muted-foreground">
+                <span>{f.label}</span>
+                <span className="tabular-nums">{current}</span>
+              </div>
+              <div className="flex flex-wrap items-center gap-1.5">
               {ROOM_STYLE_KEYS.map((k) => {
                 const color = ROOM_STYLE_PRESETS[k].style[f.from]
                 const active = sameColor(color, current)
@@ -104,13 +108,13 @@ export function RoomStyleSettings({ roomStyle, overrides, onChange }: Props) {
                   aria-label={`${f.label}の色を自由に指定`}
                 />
               </label>
-              <span className="ml-1 hidden tabular-nums text-muted-foreground sm:inline">{current}</span>
+              </div>
             </div>
           )
         })}
 
         {/* グリッドは色に加えて 表示/濃さ も持つ */}
-        <div className="flex items-center gap-2 pl-16 text-xs">
+        <div className="flex items-center gap-2 text-xs">
           <label className="flex items-center gap-1.5">
             <input
               type="checkbox"

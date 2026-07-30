@@ -6,7 +6,7 @@ import { updateSpacePoint } from '@/lib/api/spaces'
 import type { SpacePoint, RoomSurface } from '@/types/space'
 import { roomSurfaceLabel, wallViewFloorGrid } from '@/lib/room-surfaces'
 import { gridStroke, shadeSurface, type RoomStyle } from '@/lib/room-style'
-import { pointImageUrl } from '@/lib/space-points'
+import { pointImageUrl, pointCssTransform } from '@/lib/space-points'
 
 const clamp01 = (n: number) => Math.min(1, Math.max(0, n))
 const clampScale = (n: number) => Math.min(3, Math.max(0.3, n))
@@ -140,7 +140,7 @@ function PointMarker({ point, index }: { point: SpacePoint; index: number }) {
 function MiniMarker({ point, index, scale }: { point: SpacePoint; index: number; scale: number }) {
   const imageUrl = pointImageUrl(point)
   return (
-    <div className="w-8 overflow-hidden rounded border border-border bg-card opacity-90 shadow-sm" style={{ transform: `scale(${scale}) rotate(${point.rotation_z ?? 0}deg)` }}>
+    <div className="w-8 overflow-hidden rounded border border-border bg-card opacity-90 shadow-sm" style={{ transform: pointCssTransform(point, { scale }) }}>
       <div className="relative flex aspect-square w-full items-center justify-center overflow-hidden bg-muted">
         <span className="absolute left-0.5 top-0.5 z-10 flex h-3.5 w-3.5 items-center justify-center rounded-full text-[9px] font-semibold text-white" style={{ backgroundColor: 'var(--palace)' }}>
           {index + 1}
@@ -166,6 +166,9 @@ type RoomCanvasProps = {
   // 閲覧のみ（ウォークスルーの 2D）。ドラッグ配置とサイズ変更を止め、現在地を強調する
   readOnly?: boolean
   activePointId?: string | null
+  /** 編集時の選択。右パネルで向きを調整するためページ側が持つ */
+  selectedPointId?: string | null
+  onSelectPoint?: (id: string | null) => void
   /** 枠なしで親いっぱいに描く（ウォークスルー用） */
   fullBleed?: boolean
   onMoved?: (pointId: string, surface: RoomSurface, u: number, v: number) => void
@@ -186,7 +189,9 @@ export function RoomCanvas({
   style,
   readOnly = false,
   activePointId = null,
+  selectedPointId = null,
   fullBleed = false,
+  onSelectPoint,
   onMoved,
   onScaled,
   onRotated,
@@ -239,6 +244,7 @@ export function RoomCanvas({
     if (readOnly) return
     e.preventDefault()
     e.stopPropagation()
+    onSelectPoint?.(pointId)
     setDragId(pointId)
     const { sx, sy } = stagePct(e.clientX, e.clientY)
     setDragPos({ x: sx, y: sy })
@@ -299,7 +305,8 @@ export function RoomCanvas({
     const angleOf = (x: number, y: number) => (Math.atan2(y - cy, x - cx) * 180) / Math.PI
     const startAngle = angleOf(e.clientX, e.clientY)
     const startRotation = point.rotation_z ?? 0
-    const next = (ev: PointerEvent) => wrapDeg(startRotation + (angleOf(ev.clientX, ev.clientY) - startAngle))
+    // 画面座標の角度は時計回りが正。保存値は 3D と同じ反時計回り基準なので符号を反転する
+    const next = (ev: PointerEvent) => wrapDeg(startRotation - (angleOf(ev.clientX, ev.clientY) - startAngle))
     const onMove = (ev: PointerEvent) => onRotated?.(point.id, next(ev))
     const onUp = (ev: PointerEvent) => {
       window.removeEventListener('pointermove', onMove)
@@ -314,6 +321,7 @@ export function RoomCanvas({
 
   // 背景ドラッグでパン
   const startPan = (e: ReactPointerEvent) => {
+    if (!readOnly) onSelectPoint?.(null)
     const sx = e.clientX
     const sy = e.clientY
     const start = { ...pan }
@@ -350,24 +358,32 @@ export function RoomCanvas({
         role="button"
         tabIndex={0}
         aria-label={readOnly ? (point.name ?? '未命名') : `${point.name ?? '未命名'} を配置`}
-        className={`relative touch-none select-none ${
+        className={`group relative touch-none select-none ${
           readOnly ? 'cursor-default' : dragId === point.id ? 'cursor-grabbing' : 'cursor-grab'
         }`}
-        style={{ transform: `scale(${pointScale * (point.scale ?? 1)}) rotate(${point.rotation_z ?? 0}deg)` }}
+        style={{ transform: pointCssTransform(point, { scale: pointScale * (point.scale ?? 1) }) }}
       >
         {/* 現在地はリングで示す（ウォークスルーで今どこを見ているか分かるように） */}
-        {activePointId === point.id && (
+        {(activePointId === point.id || selectedPointId === point.id) && (
           <span
             aria-hidden
-            className="pointer-events-none absolute -inset-1 rounded-lg ring-2"
-            style={{ color: style.edge, boxShadow: `0 0 0 2px ${style.edge}` }}
+            className="pointer-events-none absolute -inset-1.5 rounded-lg"
+            style={{
+              // 選択は太く、ウォークスルーの現在地は細く。白の内側線で背景色に埋もれないようにする
+              boxShadow:
+                selectedPointId === point.id
+                  ? `0 0 0 2px #fff, 0 0 0 5px ${style.edge}`
+                  : `0 0 0 2px ${style.edge}`,
+            }}
           />
         )}
         <PointMarker point={point} index={points.indexOf(point)} />
         {!readOnly && (
           <div
             onPointerDown={startRotate(point)}
-            className="absolute -right-1 -top-1 h-3 w-3 cursor-grab rounded-full border-2 border-white shadow"
+            className={`absolute -right-1 -top-1 h-3 w-3 cursor-grab rounded-full border-2 border-white shadow transition-opacity group-hover:opacity-100 ${
+              selectedPointId === point.id ? 'opacity-100' : 'opacity-0'
+            }`}
             style={{ backgroundColor: style.edge }}
             title="ドラッグで回転"
             aria-label="回転"
@@ -376,7 +392,9 @@ export function RoomCanvas({
         {!readOnly && (
           <div
             onPointerDown={startResize(point)}
-            className="absolute -bottom-1 -right-1 h-3 w-3 cursor-nwse-resize rounded-full border-2 border-white shadow"
+            className={`absolute -bottom-1 -right-1 h-3 w-3 cursor-nwse-resize rounded-full border-2 border-white shadow transition-opacity group-hover:opacity-100 ${
+              selectedPointId === point.id ? 'opacity-100' : 'opacity-0'
+            }`}
             style={{ backgroundColor: 'var(--palace)' }}
             title="ドラッグでサイズ変更"
             aria-label="サイズ変更"
