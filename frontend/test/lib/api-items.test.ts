@@ -15,7 +15,9 @@ describe('items api', () => {
 
   it('getItems はページをまたいで全件取得する', async () => {
     mockedGet.mockImplementation(async (_url, config) => {
-      const page = Number(config?.params?.page ?? 1)
+      // axios 1.19 で params の型が unknown 相当に厳格化されたため、テスト側で形を明示する
+      const params = config?.params as { page?: number } | undefined
+      const page = Number(params?.page ?? 1)
       const items = page === 1
         ? Array.from({ length: 100 }, (_, i) => ({ id: `a${i}` }))
         : Array.from({ length: 20 }, (_, i) => ({ id: `b${i}` }))
