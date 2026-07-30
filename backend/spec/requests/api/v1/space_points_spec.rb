@@ -125,6 +125,30 @@ RSpec.describe "Api::V1::SpacePoints", type: :request do
       expect(point.reload.x).to eq(120.5)
       expect(point.y).to eq(80.0)
     end
+
+    it "面と面内座標（surface/u/v）を更新し、レスポンスに含める" do
+      point = create(:space_point, space: space, position: 1)
+
+      patch "/api/v1/spaces/#{space.id}/points/#{point.id}",
+        params: { surface: "wall_north", u: 0.3, v: 0.6 }, headers: headers, as: :json
+
+      expect(response).to have_http_status(:ok)
+      expect(point.reload.surface).to eq("wall_north")
+      expect(point.u).to eq(0.3)
+      expect(point.v).to eq(0.6)
+      expect(json_response).to include("surface" => "wall_north", "u" => 0.3, "v" => 0.6)
+    end
+
+    it "面内座標は 0..1 にクランプして保存する" do
+      point = create(:space_point, space: space, position: 1)
+
+      patch "/api/v1/spaces/#{space.id}/points/#{point.id}",
+        params: { u: 2.0, v: -1.0 }, headers: headers, as: :json
+
+      expect(response).to have_http_status(:ok)
+      expect(point.reload.u).to eq(1.0)
+      expect(point.v).to eq(0.0)
+    end
   end
 
   describe "月間生成数の合算" do

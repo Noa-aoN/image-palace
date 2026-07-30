@@ -1,3 +1,5 @@
+import type { RoomSurface } from '@/types/space'
+
 // スペース・ウォークスルー（一人称の道）の共有定数。
 // CSS 側（globals.css の .sw-*）は --sw-spacing / --sw-arrival をステージから受け取り、
 // ここと同じ値で描くため、SPACING/ARRIVAL は「平面座標(px)」で JS/CSS の単一ソースにする。
@@ -26,9 +28,11 @@ export type WalkthroughStop = {
   generating: boolean
   loci: { url: string; blur?: string } | null
   card: { id: string; title: string; url: string | null; blur?: string } | null
-  // ルーム型の間取り座標（room ウォークスルーで点を配置する）。road では未使用。
+  // ルーム型の面内配置。room ウォークスルーで点を配置する。road では未使用。
+  // x/y は現行 WalkthroughRoom 用（面内座標 u/v をそのまま渡す）。surface は P2 の面対応で使う。
   x?: number
   y?: number
+  surface?: RoomSurface
 }
 
 const isGenerating = (s: string) => s === 'pending' || s === 'processing'
@@ -43,8 +47,9 @@ export function stopsFromSpacePoints(
     position: number
     name: string | null
     generation_status: string
-    x: number
-    y: number
+    surface: RoomSurface
+    u: number
+    v: number
     image: { url: string; thumb_url?: string; blur?: string } | null
     item: { id: string; title: string; media: { url: string; thumb_url?: string; blur?: string } | null } | null
   }[]
@@ -60,8 +65,10 @@ export function stopsFromSpacePoints(
         generating: isGenerating(p.generation_status),
         loci: media ? { url: media.thumb_url ?? media.url, blur: withBlur(media) } : null,
         card: null,
-        x: p.x,
-        y: p.y,
+        // 面内座標 (u,v) をそのまま x/y として渡す（WalkthroughRoom は外接矩形で再正規化する）。
+        x: p.u,
+        y: p.v,
+        surface: p.surface,
       }
     })
 }

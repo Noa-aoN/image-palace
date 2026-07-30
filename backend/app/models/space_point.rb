@@ -11,11 +11,19 @@ class SpacePoint < ApplicationRecord
   GENERATION_ERROR_KEYS = %w[generation_error generation_error_code].freeze
   NAME_MAX_LENGTH = 100
 
+  # 多面ルームの面（床・天井・4壁）。room の点はどれか1面に属し、面内 (u,v)∈[0,1] に配置する。
+  SURFACES = %w[floor ceiling wall_north wall_east wall_south wall_west].freeze
+
   store_accessor :metadata, :generation_error, :generation_error_code, :revised_prompt
+
+  before_validation :clamp_uv
 
   validates :position, presence: true, numericality: { only_integer: true }
   validates :name, length: { maximum: NAME_MAX_LENGTH }, allow_blank: true
   validates :generation_status, inclusion: { in: GENERATION_STATUSES }
+  validates :surface, inclusion: { in: SURFACES }
+  validates :u, :v, numericality: { greater_than_or_equal_to: 0, less_than_or_equal_to: 1 }
+  validates :scale, numericality: { greater_than_or_equal_to: 0.3, less_than_or_equal_to: 3.0 }
 
   scope :ordered, -> { order(:position, :created_at) }
   # 名前が付いた（＝画像生成を伴う）ポイント。月間生成上限のカウント対象。
@@ -31,6 +39,13 @@ class SpacePoint < ApplicationRecord
 
   def metadata_without_generation_error
     (metadata || {}).except(*GENERATION_ERROR_KEYS)
+  end
+
+  # 面内座標は 0..1 に、表示倍率は 0.3..3.0 に収める。
+  def clamp_uv
+    self.u = u.clamp(0.0, 1.0) unless u.nil?
+    self.v = v.clamp(0.0, 1.0) unless v.nil?
+    self.scale = scale.clamp(0.3, 3.0) unless scale.nil?
   end
 
   def update_generation_status!(status)
