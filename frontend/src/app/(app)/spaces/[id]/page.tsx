@@ -583,9 +583,6 @@ export default function SpaceDetailPage() {
     setPoints((ps) => ps.map((p) => (p.id === pointId ? { ...p, scale } : p)))
   }, [setPoints])
   // 回転を state に反映（保存は操作した側で行う）
-  const handleRotatePointZ = useCallback((pointId: string, rotationZ: number) => {
-    setPoints((ps) => ps.map((p) => (p.id === pointId ? { ...p, rotation_z: rotationZ } : p)))
-  }, [setPoints])
   const handleRotatePointAxis = useCallback((pointId: string, axis: 'x' | 'y' | 'z', deg: number) => {
     setPoints((ps) => ps.map((p) => (p.id === pointId ? { ...p, [`rotation_${axis}`]: deg } : p)))
   }, [setPoints])
@@ -820,7 +817,7 @@ export default function SpaceDetailPage() {
               )}
             </div>
             {viewMode === '3d' ? (
-              <Room3D spaceId={id} points={points} width={space.width} depth={space.depth} height={space.height} pointScale={space.point_scale} style={roomStyle} onMoved={handleMovePoint} selectedPointId={selectedPointId} onSelectPoint={handleSelectPoint} onRotated={handleRotatePointAxis} />
+              <Room3D spaceId={id} points={points} width={space.width} depth={space.depth} height={space.height} pointScale={space.point_scale} style={roomStyle} onMoved={handleMovePoint} selectedPointId={selectedPointId} onSelectPoint={handleSelectPoint} onScaled={handleScalePoint} />
             ) : showNet ? (
               <RoomNet
                 points={points}
@@ -846,7 +843,6 @@ export default function SpaceDetailPage() {
                   style={roomStyle}
                   onMoved={handleMovePoint}
                   onScaled={handleScalePoint}
-                  onRotated={handleRotatePointZ}
                   selectedPointId={selectedPointId}
                   onSelectPoint={handleSelectPoint}
                 />
