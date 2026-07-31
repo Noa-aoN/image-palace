@@ -20,15 +20,29 @@ const ROTATION_AXES = [
  * パネルは幅 300〜560px と狭いので、ラベルは行の上に置き、操作は横幅いっぱいに使う。
  * 値は右肩に小さく出す（横並びにすると狭い幅で潰れるため）。
  */
-function Field({ label, value, children }: { label: string; value?: string; children: React.ReactNode }) {
+function Field({
+  label,
+  value,
+  action,
+  children,
+}: {
+  label: string
+  value?: string
+  /** 行ごとの操作（軸ごとのリセットなど） */
+  action?: React.ReactNode
+  children: React.ReactNode
+}) {
   return (
-    <label className="block space-y-1">
-      <span className="flex items-baseline justify-between gap-2 text-[11px] text-muted-foreground">
+    <div className="space-y-1">
+      <div className="flex items-baseline justify-between gap-2 text-[11px] text-muted-foreground">
         <span>{label}</span>
-        {value && <span className="tabular-nums">{value}</span>}
-      </span>
+        <span className="flex items-baseline gap-2">
+          {action}
+          {value && <span className="tabular-nums">{value}</span>}
+        </span>
+      </div>
       {children}
-    </label>
+    </div>
   )
 }
 
@@ -140,7 +154,7 @@ export function PointSettingsPanel({
                 }}
                 className="shrink-0 text-[11px] text-muted-foreground underline hover:text-foreground"
               >
-                戻す
+                すべて戻す
               </button>
             </div>
             {ROTATION_AXES.map(({ axis, label }) => {
@@ -150,8 +164,28 @@ export function PointSettingsPanel({
                   : axis === 'y'
                     ? selectedPoint.rotation_y
                     : selectedPoint.rotation_z
+              const changed = Math.round(value ?? 0) !== 0
               return (
-                <Field key={axis} label={label} value={`${Math.round(value ?? 0)}°`}>
+                <Field
+                  key={axis}
+                  label={label}
+                  value={`${Math.round(value ?? 0)}°`}
+                  action={
+                    changed ? (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          onRotate(selectedPoint.id, axis, 0)
+                          onRotateCommit(selectedPoint.id, { [`rotation_${axis}`]: 0 })
+                        }}
+                        className="underline hover:text-foreground"
+                        aria-label={`${label}をリセット`}
+                      >
+                        リセット
+                      </button>
+                    ) : undefined
+                  }
+                >
                   <input
                     type="range"
                     min={-180}
