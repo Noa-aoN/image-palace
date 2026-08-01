@@ -107,9 +107,9 @@ export function SurfaceBoard({ surface, children }: { surface: Surface; children
         borderImageSlice: '210 190 190 190 fill',
       }
     : {
-        borderWidth: '50px 143px 88px 143px',
+        borderWidth: '44px 105px 84px 105px',
         borderImageSource: "url('/shelf/horizontal.webp')",
-        borderImageSlice: '90 260 160 260 fill',
+        borderImageSlice: '80 190 153 190 fill',
       }
 
   return (
@@ -122,12 +122,11 @@ export function SurfaceBoard({ surface, children }: { surface: Surface; children
           borderStyle: 'solid',
           borderColor: 'transparent',
           borderImageRepeat: 'stretch',
-          // 送れる方向は柱の枠幅を 0 にして柱ごと落とす。マスクは切り口をぼかす仕上げ
+          // 送れる方向の端はマスクで透過させ、柱ごと途切れさせる。
+          // 枠幅を 0 にする方法も試したが、柱が常に消えたため使わない。
           ...(stacked
             ? null
             : {
-                borderLeftWidth: atStart ? undefined : 0,
-                borderRightWidth: atEnd ? undefined : 0,
                 maskImage: `linear-gradient(to right, ${cutStart}, ${cutEnd})`,
                 WebkitMaskImage: `linear-gradient(to right, ${cutStart}, ${cutEnd})`,
               }),
@@ -139,7 +138,7 @@ export function SurfaceBoard({ surface, children }: { surface: Surface; children
         */}
         <div
           className={`relative z-10 min-w-0 flex-1 [&>[data-rail]>*]:drop-shadow-[0_6px_5px_rgba(0,0,0,0.22)] ${
-            stacked ? '' : '-mb-11 pt-4'
+            stacked ? '' : '-mb-3 pt-4'
           }`}
         >
           {children}
