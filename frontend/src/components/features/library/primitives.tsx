@@ -16,7 +16,7 @@ export function Rail({ children }: { children: ReactNode }) {
       </div>
     )
   }
-  return <div data-rail className="flex gap-3 overflow-x-auto pb-3.5">{children}</div>
+  return <div data-rail className="flex gap-3.5 overflow-x-auto pb-3.5 pr-10">{children}</div>
 }
 
 export function EmptyRail({ message, cta }: { message: string; cta?: ReactNode }) {

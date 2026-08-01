@@ -128,8 +128,8 @@ export function SurfaceBoard({ surface, children }: { surface: Surface; children
     <div className="relative flex h-full min-h-0 flex-1 flex-col">
       <div
         ref={ref}
-        className={`relative flex min-h-[7rem] flex-1 rounded-t-xl pt-8 ${
-          stacked ? 'items-start px-4 pb-3' : 'items-end px-6 sm:px-8'
+        className={`relative flex min-h-[7rem] flex-1 rounded-t-xl ${
+          stacked ? 'items-start px-4 pb-3 pt-6' : 'items-end px-5 pt-7 sm:px-7'
         }`}
         style={{
           perspective: `${perspective}px`,
@@ -208,6 +208,21 @@ export function SurfaceBoard({ surface, children }: { surface: Surface; children
         <div className="relative z-10 min-w-0 flex-1 [&>[data-rail]>*]:drop-shadow-[0_7px_5px_rgba(0,0,0,0.3)]">
           {children}
         </div>
+
+        {/*
+          棚の終わり。横棚は右端、縦棚は下端をぼかして、
+          そこで並びが切れていることを分かるようにする。
+          開口の金縁（4px）に掛からないよう内側に 1px 逃がす。
+        */}
+        <span
+          aria-hidden
+          className={`pointer-events-none absolute z-20 ${
+            stacked ? 'inset-x-1 bottom-1 h-10' : 'inset-y-1 right-1 w-12'
+          }`}
+          style={{
+            background: `linear-gradient(to ${stacked ? 'bottom' : 'right'}, transparent 0%, color-mix(in srgb, ${MARBLE_SHADE} 70%, transparent) 55%, ${MARBLE_SHADE} 100%)`,
+          }}
+        />
       </div>
 
       {/* 棚板の小口。箱の下辺から前へ張り出させ、板の厚みを見せる */}
