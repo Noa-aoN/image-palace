@@ -726,7 +726,7 @@ export default function LibraryPage() {
       <Shelf
         icon={<BoxIcon size={20} />}
         title="ボックス"
-        description="何でも入れられる箱"
+        description="用途を問わない収納箱"
         count={boxes.length}
         href={selectionMode ? undefined : '/boxes'}
       >
