@@ -88,50 +88,43 @@ export function SurfaceBoard({ surface, children }: { surface: Surface; children
     ? 'linear-gradient(to bottom, #000 calc(100% - 1rem), transparent 100%)'
     : 'linear-gradient(to right, #000 calc(100% - 1.25rem), transparent 100%)'
 
-  // 縦棚は 1 枚の絵で完結する。中身は柱と繰形の内側へ押し込む
-  if (stacked) {
-    return (
-      <div className="relative flex h-full min-h-0 flex-1 flex-col">
-        <div
-          className="relative flex min-h-[18rem] flex-1 items-start bg-no-repeat px-[13%] pb-[8%] pt-[9%]"
-          style={{ backgroundImage: "url('/shelf/vertical.webp')", backgroundSize: '100% 100%' }}
-        >
-          <div
-            className="relative z-10 min-w-0 flex-1 [&>[data-rail]>*]:drop-shadow-[0_6px_5px_rgba(0,0,0,0.22)]"
-            style={{ maskImage: fade }}
-          >
-            {children}
-          </div>
-        </div>
-      </div>
-    )
-  }
-
   /*
-    横棚は幅が中身次第で変わるため、絵を 3 つに割って組む。
-    両端の柱は縦横比を保ったまま高さに追従させ（aspect-ratio）、
-    間は繰り返しで埋める。繰り返しは中身のスクロール枠に敷き、
-    background-attachment: local にすることで棚が中身と一緒に流れる。
+    棚は border-image で描く。背景画像として引き伸ばすと柱や繰形まで一緒に伸びて
+    絵が崩れるが、border-image なら四隅と四辺を切り出して固定し、中央だけを伸ばせる。
+    slice の値は画像の不透明度プロファイルから採った実測値。
+      横: 柱 x=90..260 / 1140..1310、上の繰形 y=..90、棚板と台座 y=250..
+      縦: 柱 x=90..190 / 630..730、上の繰形 y=..210、台座 y=1288..
+    border の内側がそのまま棚の内側になるので、アイテムが柱に載ることはない。
   */
+  const shelf = stacked
+    ? {
+        borderWidth: '52px 48px 48px 48px',
+        borderImageSource: "url('/shelf/vertical.webp')",
+        borderImageSlice: '210 190 190 190 fill',
+      }
+    : {
+        borderWidth: '31px 91px 56px 91px',
+        borderImageSource: "url('/shelf/horizontal.webp')",
+        borderImageSlice: '90 260 160 260 fill',
+      }
+
   return (
     <div className="relative flex h-full min-h-0 flex-1 flex-col">
-      <div className="relative flex min-h-[11rem] flex-1 items-stretch">
-        <span
-          aria-hidden
-          className="aspect-[203/411] shrink-0 bg-no-repeat"
-          style={{ backgroundImage: "url('/shelf/h-left.webp')", backgroundSize: '100% 100%' }}
-        />
+      <div
+        className={`relative flex flex-1 ${stacked ? 'items-start' : 'items-end'}`}
+        style={{
+          ...shelf,
+          borderStyle: 'solid',
+          borderColor: 'transparent',
+          borderImageRepeat: 'stretch',
+        }}
+      >
         <div
-          className="shelf-mid relative z-10 min-w-0 flex-1 [&>[data-rail]>*]:drop-shadow-[0_6px_5px_rgba(0,0,0,0.22)]"
+          className="relative z-10 min-w-0 flex-1 [&>[data-rail]>*]:drop-shadow-[0_6px_5px_rgba(0,0,0,0.22)]"
           style={{ maskImage: fade }}
         >
           {children}
         </div>
-        <span
-          aria-hidden
-          className="aspect-[203/411] shrink-0 bg-no-repeat"
-          style={{ backgroundImage: "url('/shelf/h-right.webp')", backgroundSize: '100% 100%' }}
-        />
       </div>
     </div>
   )
