@@ -122,8 +122,15 @@ export function SurfaceBoard({ surface, children }: { surface: Surface; children
           borderStyle: 'solid',
           borderColor: 'transparent',
           borderImageRepeat: 'stretch',
-          maskImage: stacked ? undefined : `linear-gradient(to right, ${cutStart}, ${cutEnd})`,
-          WebkitMaskImage: stacked ? undefined : `linear-gradient(to right, ${cutStart}, ${cutEnd})`,
+          // 送れる方向は柱の枠幅を 0 にして柱ごと落とす。マスクは切り口をぼかす仕上げ
+          ...(stacked
+            ? null
+            : {
+                borderLeftWidth: atStart ? undefined : 0,
+                borderRightWidth: atEnd ? undefined : 0,
+                maskImage: `linear-gradient(to right, ${cutStart}, ${cutEnd})`,
+                WebkitMaskImage: `linear-gradient(to right, ${cutStart}, ${cutEnd})`,
+              }),
         }}
       >
         {/*
@@ -132,7 +139,7 @@ export function SurfaceBoard({ surface, children }: { surface: Surface; children
         */}
         <div
           className={`relative z-10 min-w-0 flex-1 [&>[data-rail]>*]:drop-shadow-[0_6px_5px_rgba(0,0,0,0.22)] ${
-            stacked ? '' : '-mb-4 pt-3'
+            stacked ? '' : '-mb-9 pt-3'
           }`}
         >
           {children}
@@ -166,8 +173,11 @@ function useRailEdges(children: ReactNode) {
     }
     update()
     rail.addEventListener('scroll', update, { passive: true })
+    // 枠の大きさが変わらなくても中身の総幅は変わる（画像の読み込みなど）。
+    // Rail 自身に加えて、並んでいるアイテムも監視して取り直す。
     const ro = new ResizeObserver(update)
     ro.observe(rail)
+    for (const child of rail.children) ro.observe(child)
     return () => {
       rail.removeEventListener('scroll', update)
       ro.disconnect()
