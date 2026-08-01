@@ -11,6 +11,7 @@ import { useSettingsStore } from '@/stores/settings'
 import type { DiagramMode, MotionMode } from '@/types/settings'
 import { STYLE_OPTIONS } from '@/lib/item-styles'
 import { useUiStore } from '@/stores/ui'
+import { ASPECT_RATIOS, ASPECT_RATIO_KEYS } from '@/lib/aspect-ratio'
 
 type TabKey = 'generation' | 'display' | 'sharing' | 'notification' | 'integration' | 'data'
 
@@ -23,6 +24,9 @@ export default function SettingsPage() {
   // デフォルト画像スタイル（null = 読み込み中）
   const [defaultStyle, setDefaultStyle] = useState<string | null>(null)
   const [savingStyle, setSavingStyle] = useState(false)
+  // 新規カードの既定の縦横比
+  const [defaultAspect, setDefaultAspect] = useState<string | null>(null)
+  const [savingAspect, setSavingAspect] = useState(false)
   // 生成ステータスバッジの表示（クライアント保持の表示設定）
   const showStatusBadges = useUiStore((s) => s.showStatusBadges)
   const toggleStatusBadges = useUiStore((s) => s.toggleStatusBadges)
@@ -43,6 +47,7 @@ export default function SettingsPage() {
         setAutoTags(s.auto_generate_tags)
         setRegenWithMeaning(s.regenerate_with_meaning)
         setDefaultStyle(s.default_image_style)
+        setDefaultAspect(s.default_aspect_ratio)
       })
       .catch(() => {})
     return () => {
@@ -76,6 +81,21 @@ export default function SettingsPage() {
       // 失敗時はストア側で元に戻る
     } finally {
       setSavingMotion(false)
+    }
+  }
+
+  const changeDefaultAspect = async (value: string) => {
+    if (defaultAspect === null || savingAspect) return
+    const prev = defaultAspect
+    setSavingAspect(true)
+    setDefaultAspect(value)
+    try {
+      const s = await updateSettings({ default_aspect_ratio: value })
+      setDefaultAspect(s.default_aspect_ratio)
+    } catch {
+      setDefaultAspect(prev) // 失敗したら元に戻す
+    } finally {
+      setSavingAspect(false)
     }
   }
 
@@ -284,11 +304,50 @@ export default function SettingsPage() {
             </div>
           </section>
 
+          {/* 画像の形（縦横比）。カード作成時に個別で上書きできる */}
+          <section className="space-y-3 rounded-xl border border-border bg-card p-5">
+            <div className="flex items-center gap-2">
+              <ImageIcon size={18} style={{ color: 'var(--palace)' }} />
+              <h2 className="text-lg font-semibold">デフォルト画像の形</h2>
+            </div>
+            <p className="text-sm text-muted-foreground">
+              新しくカードを作るときの縦横比の初期値です。各カードの作成時に個別で変更できます。
+            </p>
+            <div className="flex flex-wrap items-center gap-2">
+              {ASPECT_RATIO_KEYS.map((key) => {
+                const opt = ASPECT_RATIOS[key]
+                const active = defaultAspect === key
+                return (
+                  <button
+                    key={key}
+                    type="button"
+                    onClick={() => changeDefaultAspect(key)}
+                    disabled={defaultAspect === null || savingAspect}
+                    aria-pressed={active}
+                    className={`flex items-center gap-2 rounded-full border px-3 py-1.5 text-sm transition-colors disabled:opacity-50 ${
+                      active ? 'border-transparent text-white' : 'border-border text-muted-foreground hover:bg-muted'
+                    }`}
+                    style={active ? { backgroundColor: 'var(--palace)' } : undefined}
+                  >
+                    <span
+                      aria-hidden
+                      className="w-3 shrink-0 rounded-[2px] border border-current opacity-70"
+                      style={{ aspectRatio: opt.css }}
+                    />
+                    {opt.label}
+                    {opt.note && <span className="text-[10px] opacity-70">（{opt.note}）</span>}
+                  </button>
+                )
+              })}
+              {savingAspect && <Loader2 size={14} className="animate-spin text-muted-foreground" />}
+            </div>
+          </section>
+
           <ComingSoon
             title="生成の詳細設定"
             icon={<Sparkles size={18} />}
             description="画像サイズ・品質、説明文の長さ、生成情報の保存などは順次対応予定です。"
-            items={['画像サイズ / 品質', '説明文の長さ', '生成情報を保存', '生成後の公開状態']}
+            items={['画像の品質', '説明文の長さ', '生成情報を保存', '生成後の公開状態']}
           />
         </>
       ),

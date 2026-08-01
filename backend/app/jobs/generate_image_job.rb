@@ -33,7 +33,7 @@ class GenerateImageJob < ApplicationJob
       effective_prompt = PromptBuilderService.effective_prompt(item, include_meaning: use_meaning)
       normalized = NormalizePromptService.call(effective_prompt)
       # provider/model が変わればキャッシュも分ける（既定 openai/gpt-image-1 は後方互換で素のキー）。
-      cache_key = GenerateImageService.namespaced_cache_key(normalized)
+      cache_key = GenerateImageService.namespaced_cache_key(normalized, aspect_ratio: item.aspect_ratio)
       # プロンプト全文はユーザー入力（個人情報・機密語句を含み得る）なのでログに残さない。
       # 相関用にハッシュの先頭と長さだけ記録する。
       prompt_key = Digest::SHA256.hexdigest(cache_key)[0, 8]
@@ -50,9 +50,12 @@ class GenerateImageJob < ApplicationJob
           Rails.logger.warn "[GenerateImageJob] CACHE STALE prompt_key=#{prompt_key}"
         end
         Rails.logger.info "[GenerateImageJob] CACHE MISS prompt_key=#{prompt_key}"
-        result = GenerateImageService.call(prompt: effective_prompt)
+        result = GenerateImageService.call(prompt: effective_prompt, aspect_ratio: item.aspect_ratio)
         shared_media = create_shared_media!(item, shared_media_key(cache_key, force_generate:), result)
-        attach_image_data(shared_media, result.image_data, result.content_type)
+        attach_image_data(
+          shared_media, result.image_data, result.content_type,
+          crop_ratio: AspectRatios.crop_ratio(item.aspect_ratio)
+        )
         attach_from_shared_media(item, shared_media)
       end
 
@@ -114,12 +117,17 @@ class GenerateImageJob < ApplicationJob
     media.thumb.attach(shared_media.thumb.blob) if shared_media.thumb.attached?
   end
 
-  def attach_image_data(shared_media, image_data, content_type)
+  # crop_ratio: 生成 API が直接出せない比（黄金比など）へ切り出すときに渡す
+  def attach_image_data(shared_media, image_data, content_type, crop_ratio: nil)
     require "stringio"
 
     # 保存前にリサイズ + WebP 変換でストレージ・配信コストを抑える。
     # あわせて一覧用サムネ(480px)と LQIP プレースホルダも生成する。
-    optimized = OptimizeImageService.call(image_data: image_data, content_type: content_type)
+    optimized = OptimizeImageService.call(
+      image_data: image_data,
+      content_type: content_type,
+      crop_ratio: crop_ratio
+    )
 
     shared_media.file.attach(
       io: StringIO.new(optimized.data),

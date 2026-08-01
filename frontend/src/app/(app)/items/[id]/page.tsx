@@ -18,6 +18,7 @@ import { Skeleton } from '@/components/ui/skeleton'
 import { STATUS_LABEL } from '@/lib/item-status'
 import { StatusBadge } from '@/components/features/items/StatusBadge'
 import { useItemDetail } from '@/hooks/useItemDetail'
+import { aspectRatioCss } from '@/lib/aspect-ratio'
 
 export default function ItemDetailPage() {
   const { id } = useParams<{ id: string }>()
@@ -243,7 +244,8 @@ export default function ItemDetailPage() {
               <GeneratingOverlay
                 status={item.generation_status}
                 label={imgError ? '画像を表示できません' : STATUS_LABEL[item.generation_status]}
-                className="w-full aspect-square rounded-xl text-muted-foreground"
+                className="w-full rounded-xl text-muted-foreground"
+                style={{ aspectRatio: aspectRatioCss(item?.aspect_ratio) }}
                 textClassName="text-sm"
               />
             )}

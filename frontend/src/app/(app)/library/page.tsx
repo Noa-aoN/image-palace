@@ -173,6 +173,7 @@ function CardThumb({
     <>
       <span className="px-2 py-1.5 text-xs font-medium truncate">{item.title}</span>
       <CardImage
+        framed
         src={item.media?.thumb_url ?? item.media?.url ?? null}
         blur={item.media?.blur}
         alt={item.title}

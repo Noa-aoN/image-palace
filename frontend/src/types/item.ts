@@ -31,6 +31,8 @@ export interface ItemTag {
 }
 
 export interface Item {
+  // カード画像の縦横比（square / portrait / golden）
+  aspect_ratio?: string
   id: string
   title: string
   generation_status: GenerationStatus

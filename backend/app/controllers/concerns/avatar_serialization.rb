@@ -8,6 +8,7 @@ module AvatarSerialization
     {
       name: user.name,
       email: user.email,
+      role: user.role,
       avatar_url: avatar_url(user),
       avatar_thumb_url: avatar_thumb_url(user),
       avatar_generation_status: user.avatar_generation_status,

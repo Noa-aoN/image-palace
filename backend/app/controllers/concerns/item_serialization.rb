@@ -6,6 +6,7 @@ module ItemSerialization
   def serialize_item(item)
     {
       id: item.id,
+      aspect_ratio: item.aspect_ratio,
       title: item.title,
       generation_status: item.generation_status,
       media: serialize_media(item.primary_media)

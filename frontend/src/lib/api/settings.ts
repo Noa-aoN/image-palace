@@ -13,6 +13,7 @@ export async function updateSettings(
       | 'auto_generate_meanings'
       | 'auto_generate_tags'
       | 'default_image_style'
+      | 'default_aspect_ratio'
       | 'regenerate_with_meaning'
       | 'diagram_mode'
       | 'motion_mode'

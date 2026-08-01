@@ -25,6 +25,7 @@ import { getTags } from '@/lib/api/tags'
 import { useItemsStore } from '@/stores/items'
 import type { Item } from '@/types/item'
 import type { Tag } from '@/types/tag'
+import { aspectRatioCss } from '@/lib/aspect-ratio'
 
 const PER_PAGE = 24
 
@@ -144,13 +145,18 @@ function ItemCard({ item, selectionMode, selected, onToggle }: ItemCardProps) {
         </span>
         <StatusBadge status={item.generation_status} />
       </div>
-      <div className="w-full aspect-square bg-muted flex items-center justify-center overflow-hidden">
+      {/* 画像の周りに細い余白（マット）を入れ、トレーディングカードの縁に見せる。
+          スキンやフレームを差し替えるときはこの枠を変える */}
+      <div
+        className="w-full bg-[color-mix(in_srgb,var(--card)_92%,var(--foreground))] p-[5%] flex items-center justify-center overflow-hidden"
+        style={{ aspectRatio: aspectRatioCss(item.aspect_ratio) }}
+      >
         {resolvedImageUrl && !hasImageError ? (
           // eslint-disable-next-line @next/next/no-img-element
           <img
             src={resolvedImageUrl}
             alt={item.title}
-            className="w-full h-full object-cover"
+            className="w-full h-full rounded-[2px] object-cover shadow-[0_1px_3px_rgba(0,0,0,0.25)] ring-1 ring-black/15"
             loading="lazy"
             decoding="async"
             sizes="(max-width: 768px) 50vw, (max-width: 1200px) 33vw, 25vw"

@@ -38,6 +38,7 @@ function SearchCardTile({ card }: { card: SearchCard }) {
     >
       <span className="px-2 py-1.5 text-xs font-medium truncate">{card.title}</span>
       <CardImage
+        framed
         src={card.media?.thumb_url ?? card.media?.url ?? null}
         blur={card.media?.blur}
         alt={card.title}
@@ -59,6 +60,7 @@ function SearchDeckTile({ deck }: { deck: SearchDeck }) {
         <span className="text-xs text-muted-foreground shrink-0">{deck.item_count}</span>
       </div>
       <CardImage
+        framed
         src={deck.cover?.thumb_url ?? deck.cover?.url ?? null}
         blur={deck.cover?.blur}
         alt={deck.name}

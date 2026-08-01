@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
 import { MemoryAssetsCard } from '@/components/features/dashboard/MemoryAssetsCard'
 import { PalaceFloorplan } from '@/components/features/dashboard/PalaceFloorplan'
+import { PalaceLordCard } from '@/components/features/dashboard/PalaceLordCard'
 import { QuickCreateCard } from '@/components/features/dashboard/QuickCreateCard'
 import { getItemsSummary, type ItemsSummary } from '@/lib/api/items'
 import { useBillingStore } from '@/stores/billing'
@@ -180,15 +181,16 @@ export function DashboardContent() {
         エントランス
       </h1>
 
-      {/* クレジット（残高・生成可能枚数・プラン。カード全体で /billing へ） */}
-      <section className="space-y-3">
-        <h2 className="text-sm font-semibold text-muted-foreground">クレジット</h2>
+      {/* 宮殿の生成資産（残高・生成可能枚数・プラン）と、宮殿の主人（本人のステータス）を左右に並べる */}
+      <div className="grid gap-6 lg:grid-cols-2 lg:items-stretch">
+      <section className="flex flex-col space-y-3">
+        <h2 className="text-sm font-semibold text-muted-foreground">宮殿の生成資産</h2>
         <Link
           href="/billing"
           aria-label="プランと利用状況を見る"
-          className="group block rounded-xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--palace)]"
+          className="group block flex-1 rounded-xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--palace)]"
         >
-          <Card className="cursor-pointer transition hover:border-[var(--palace)] hover:shadow-md">
+          <Card className="h-full cursor-pointer transition hover:border-[var(--palace)] hover:shadow-md">
             <CardContent className="space-y-4">
               <div>
                 <div className="flex items-center justify-between">
@@ -248,6 +250,9 @@ export function DashboardContent() {
           </Card>
         </Link>
       </section>
+
+      <PalaceLordCard tier={billing?.plan?.tier ?? null} />
+      </div>
 
       {/* 作業状況（生成中バッチの進捗、または失敗があるときだけ表示。3秒ポーリングで更新） */}
       {(progress || summary.failed_count > 0) && (

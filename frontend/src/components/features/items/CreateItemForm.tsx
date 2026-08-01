@@ -18,6 +18,7 @@ import { MEANING_LEVELS, meaningLevelLabel, DEFAULT_MEANING_LEVEL } from '@/lib/
 import { getWordlists } from '@/lib/api/wordlists'
 import type { View } from '@/types/view'
 import type { Wordlist } from '@/types/wordlist'
+import { ASPECT_RATIOS, ASPECT_RATIO_KEYS, type AspectRatioKey } from '@/lib/aspect-ratio'
 
 const MAX_TITLE_LENGTH = 100
 
@@ -38,6 +39,8 @@ export function CreateItemForm() {
   const [input, setInput] = useState('')
   const [tagsInput, setTagsInput] = useState('')
   const [style, setStyle] = useState('')
+  // 画像の縦横比。未選択なら保存側でユーザー既定が使われる
+  const [aspectRatio, setAspectRatio] = useState<AspectRatioKey | ''>('')
   const [customPrompt, setCustomPrompt] = useState('')
   const [forceGenerate, setForceGenerate] = useState(false)
   // タグ生成・説明生成は既定ON（ユーザー設定があればそれで上書き）
@@ -113,6 +116,7 @@ export function CreateItemForm() {
       for (let i = 0; i < titles.length; i++) {
         const item = await createItem(titles[i], forceGenerate, tagNames.length ? tagNames : undefined, {
           style: style || undefined,
+          aspectRatio: aspectRatio || undefined,
           customPrompt: customPrompt.trim() || undefined,
           generateMeaning,
           generateMeaningLevel: generateMeaning ? meaningLevel : undefined,
@@ -250,6 +254,42 @@ export function CreateItemForm() {
           })}
         </div>
         <p className="text-xs text-muted-foreground">作成するすべてのカードに同じスタイルが適用されます。</p>
+      </div>
+
+      {/* 画像の形（縦横比）。生成・保存・表示に共通で効く */}
+      <div className="space-y-2">
+        <Label>画像の形（任意）</Label>
+        <div className="flex flex-wrap gap-2">
+          {ASPECT_RATIO_KEYS.map((key) => {
+            const opt = ASPECT_RATIOS[key]
+            const active = aspectRatio === key
+            return (
+              <button
+                key={key}
+                type="button"
+                onClick={() => setAspectRatio(active ? '' : key)}
+                disabled={submitting}
+                aria-pressed={active}
+                className={`flex items-center gap-2 rounded-full border px-3 py-1 text-sm transition-colors disabled:opacity-50 ${
+                  active ? 'border-transparent text-white' : 'border-border text-muted-foreground hover:bg-muted'
+                }`}
+                style={active ? { backgroundColor: 'var(--palace)' } : undefined}
+              >
+                {/* 比そのものを小さな枠で見せる（言葉より形の方が早い） */}
+                <span
+                  aria-hidden
+                  className="w-3 shrink-0 rounded-[2px] border border-current opacity-70"
+                  style={{ aspectRatio: opt.css }}
+                />
+                {opt.label}
+                {opt.note && <span className="text-[10px] opacity-70">（{opt.note}）</span>}
+              </button>
+            )
+          })}
+        </div>
+        <p className="text-xs text-muted-foreground">
+          未選択なら設定の既定を使います。比率ごとに別の画像として生成されます。
+        </p>
       </div>
 
       <div className="space-y-2">

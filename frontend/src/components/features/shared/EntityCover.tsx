@@ -42,10 +42,15 @@ function FirstImage({ images, name, fallback }: { images: CoverImageLike[]; name
   }
 
   return (
-    <div className="group/cover relative h-full w-full">
+    <div className="group/cover relative h-full w-full bg-[color-mix(in_srgb,var(--card)_92%,var(--foreground))] p-[4%]">
       {url ? (
         // eslint-disable-next-line @next/next/no-img-element
-        <img src={url} alt={name} className="h-full w-full object-cover" loading="lazy" />
+        <img
+          src={url}
+          alt={name}
+          loading="lazy"
+          className="h-full w-full rounded-[2px] object-cover shadow-[0_1px_3px_rgba(0,0,0,0.25)] ring-1 ring-black/15"
+        />
       ) : (
         fallback
       )}
@@ -87,7 +92,7 @@ function Collage({ images, name }: { images: CoverImageLike[]; name: string }) {
 
   const cells = Array.from({ length: 4 }, (_, i) => images[i] ?? null)
   return (
-    <div className="grid h-full w-full grid-cols-2 grid-rows-2 gap-px bg-border">
+    <div className="grid h-full w-full grid-cols-2 grid-rows-2 gap-[3px] bg-[color-mix(in_srgb,var(--card)_92%,var(--foreground))] p-[3%]">
       {cells.map((m, i) => {
         const url = imgUrl(m)
         return url ? (

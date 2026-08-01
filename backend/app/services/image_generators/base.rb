@@ -29,7 +29,9 @@ module ImageGenerators
     ].freeze
 
     # テンプレートメソッド。共通の骨格を定義し、詳細はサブクラスのフックに委ねる。
-    def generate(prompt:)
+    # aspect_ratio は AspectRatios のキー。プロバイダごとに対応サイズへ読み替える。
+    def generate(prompt:, aspect_ratio: AspectRatios::DEFAULT)
+      @aspect_ratio = aspect_ratio
       raw = with_retry(prompt:) { perform_request(prompt:) }
       normalized = normalize_response(raw)
 
@@ -46,6 +48,9 @@ module ImageGenerators
     end
 
     private
+
+    # 生成に使う縦横比（サブクラスから参照する）
+    attr_reader :aspect_ratio
 
     # API 呼び出し本体。サブクラスで実装必須。
     def perform_request(prompt:)

@@ -13,6 +13,7 @@ import { GeneratingOverlay } from '@/components/features/items/GeneratingOverlay
 import { StatusBadge } from '@/components/features/items/StatusBadge'
 import { useItemDetail } from '@/hooks/useItemDetail'
 import { STATUS_LABEL } from '@/lib/item-status'
+import { aspectRatioCss } from '@/lib/aspect-ratio'
 
 // カード詳細の本体（画像・タイトル編集・再生成・プロパティ・生成情報）。
 // 詳細ページと右パネルの両方から使えるよう、前後ナビ・パンくずは含めない。
@@ -135,7 +136,8 @@ export function ItemDetailBody({ itemId, onDeleted }: { itemId: string; onDelete
         <GeneratingOverlay
           status={item.generation_status}
           label={imgError ? '画像を表示できません' : STATUS_LABEL[item.generation_status]}
-          className="aspect-square w-full rounded-xl text-muted-foreground"
+          className="w-full rounded-xl text-muted-foreground"
+          style={{ aspectRatio: aspectRatioCss(item?.aspect_ratio) }}
           textClassName="text-sm"
         />
       )}
