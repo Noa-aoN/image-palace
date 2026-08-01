@@ -1,7 +1,18 @@
 'use client'
 
-import type { ReactNode } from 'react'
+import { createContext, useContext, type ReactNode } from 'react'
 import { useDisplayStyle } from './ShelfBoard'
+
+/**
+ * 器の中にいるかどうか。器が縁取りを持つので、画像側のマット（内側の余白）は外す。
+ * 表示側（EntityCover）が自分で判断できるようにするための伝達路。
+ */
+const FramedContext = createContext(false)
+
+/** 器の中に描かれているか。true のとき画像はマット無しで縁いっぱいに出す */
+export function useInEntityFrame() {
+  return useContext(FramedContext)
+}
 
 /**
  * アイテム種別ごとの「器」。棚に並んだときに、形だけで種類が分かる状態を作る。
@@ -21,9 +32,12 @@ const STONE_SHADE = 'color-mix(in srgb, var(--ivory-dark) 85%, var(--foreground)
 const GOLD = 'color-mix(in srgb, var(--palace) 70%, transparent)'
 const GOLD_SOLID = 'var(--palace)'
 
-export function EntityFrame({ kind, children }: { kind: EntityKind; children: ReactNode }) {
+export function EntityFrame({ kind, children: raw }: { kind: EntityKind; children: ReactNode }) {
   const style = useDisplayStyle()
-  if (style === 'simple') return <>{children}</>
+  if (style === 'simple') return <>{raw}</>
+
+  // 器が縁を持つので、中の画像はマット無しで描かせる
+  const children = <FramedContext.Provider value>{raw}</FramedContext.Provider>
 
   switch (kind) {
     case 'space':

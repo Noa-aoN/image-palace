@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, type ReactNode } from 'react'
+import { useInEntityFrame } from '@/components/features/display/EntityFrame'
 import { Layers, ChevronLeft, ChevronRight } from 'lucide-react'
 
 // カバー画像の最小形（ItemMedia / ポイント画像どちらも url/thumb_url を持つ）
@@ -28,6 +29,8 @@ function DefaultPlaceholder() {
 
 // first_card: 先頭画像を表示し、ホバーで左右切替
 function FirstImage({ images, name, fallback }: { images: CoverImageLike[]; name: string; fallback: ReactNode }) {
+  // 器（窓・櫃など）の中では縁取りが器側にあるため、マットも影も付けない
+  const framed = useInEntityFrame()
   const [idx, setIdx] = useState(0)
   if (images.length === 0) return <>{fallback}</>
 
@@ -42,14 +45,22 @@ function FirstImage({ images, name, fallback }: { images: CoverImageLike[]; name
   }
 
   return (
-    <div className="group/cover relative h-full w-full bg-[color-mix(in_srgb,var(--card)_92%,var(--foreground))] p-[4%]">
+    <div
+      className={`group/cover relative h-full w-full ${
+        framed
+          ? ''
+          : 'bg-[color-mix(in_srgb,var(--card)_92%,var(--foreground))] p-[4%]'
+      }`}
+    >
       {url ? (
         // eslint-disable-next-line @next/next/no-img-element
         <img
           src={url}
           alt={name}
           loading="lazy"
-          className="h-full w-full rounded-[2px] object-cover shadow-[0_1px_3px_rgba(0,0,0,0.25)] ring-1 ring-black/15"
+          className={`h-full w-full object-cover ${
+            framed ? '' : 'rounded-[2px] shadow-[0_1px_3px_rgba(0,0,0,0.25)] ring-1 ring-black/15'
+          }`}
         />
       ) : (
         fallback
