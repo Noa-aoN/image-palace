@@ -2977,3 +2977,29 @@
 :root[data-motion='off'] .sw-point {
   transition: none;
 }
+
+/*
+  ライブラリの横棚の内側。棚の絵（border-image）は中央を引き伸ばして描くため、
+  送っても背景が動かず、視点が横へ移動している感じが出ない。
+  そこで内側に石の目地の面を重ね、スクロール枠自身の背景として敷く。
+  background-attachment: local により、この面は中身と一緒に流れる。
+  絵そのものではなく面の目地を動かすことで、棚の造作を壊さずに移動感だけを足す。
+*/
+.shelf-inner > [data-rail] {
+  background-image:
+    repeating-linear-gradient(
+      to right,
+      transparent 0 118px,
+      color-mix(in srgb, var(--ivory-dark) 62%, var(--foreground)) 118px 119px,
+      transparent 119px 120px
+    ),
+    repeating-linear-gradient(
+      to right,
+      transparent 0 39px,
+      color-mix(in srgb, var(--ivory-dark) 80%, var(--foreground)) 39px 40px
+    );
+  background-repeat: repeat-x, repeat-x;
+  background-size: auto 100%, auto 100%;
+  background-attachment: local, local;
+  background-position: left bottom, left bottom;
+}

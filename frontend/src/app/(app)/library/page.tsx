@@ -304,7 +304,7 @@ function SpaceTile({ space, selectionMode, selected, onToggle }: { space: Space 
         <span className="text-sm font-medium truncate">{space.name}</span>
         <span className="text-xs text-muted-foreground shrink-0">{spaceTypeLabel(space.space_type)}</span>
       </div>
-      <EntityFrame kind="space">
+      <EntityFrame kind={space.space_type === 'road' ? 'road' : 'space'}>
         <div className="w-full aspect-square bg-muted overflow-hidden">
           <EntityCover cover={space} fallback={<SpaceCoverFallback spaceType={space.space_type} />} />
         </div>
