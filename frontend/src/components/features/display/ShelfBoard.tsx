@@ -1,6 +1,6 @@
 'use client'
 
-import { createContext, useContext, useEffect, useRef, useState, type ReactNode } from 'react'
+import { createContext, useContext, type ReactNode } from 'react'
 import { useSettingsStore } from '@/stores/settings'
 import {
   DEFAULT_DISPLAY_STYLE,
@@ -74,13 +74,9 @@ export function ShelfGroup({ children, className = '' }: { children: ReactNode; 
  * 場が増えても設定は増やさない方針なので、何を出すかはここで場ごとに決める。
  * atelier（制作台）/ study（机）は今後この分岐に足す。
  */
-// 横棚の側枠（柱）の幅。マスクの切り口もここから逆算するので 1 か所で持つ
-const SIDE_BORDER = 105
-
 export function SurfaceBoard({ surface, children }: { surface: Surface; children: ReactNode }) {
   const style = useDisplayStyle()
   const orientation = useShelfOrientation()
-  const { hostRef, scrollable } = useRailEdges(children)
 
   if (style === 'simple' || surface !== 'library') return <>{children}</>
 
@@ -88,127 +84,65 @@ export function SurfaceBoard({ surface, children }: { surface: Surface; children
   const stacked = orientation === 'columns'
 
   /*
-    棚の切れ目。中身が送りきれない棚は、両端の柱の枠幅を 0 にする。
+    棚は border-image で描く。背景画像として引き伸ばすと柱や繰形まで一緒に伸びるが、
+    border-image なら四隅と四辺を切り出して固定し、中央だけを伸ばせる。
+    slice の値は、透明な余白を切り落とした画像の実測値。
+      - 横 1282x304: 繰形 y=..50 / 内部 50..235 / 棚板 235..304、柱 x=51..120・1200..1251
+      - 縦 655x1478: 繰形 y=..210 / 柱 x=93..150・500..543 / 台座 y=1288..
 
-    柱をマスクで透過させるだけだと、そこにあった幅が空白として残り、
-    棚が痩せたように見えてしまう。棚が続いていることを示したいので、
-    枠を落として *その幅を棚の内側に明け渡す*。中身もそのぶん広く使える。
-
-    開閉はスクロール位置ではなく「送れる棚か」で決める。位置で切り替えると
-    枠が戻る → 中身の幅が変わる → 判定が変わる、の往復が起きて表示が乱れるため。
-
-    枠幅は 4 辺とも longhand で指定する。shorthand と混ぜると、
-    値を戻したときに古い指定が残るかどうかがブラウザ任せになるため。
-    切り口は短いマスクで和らげるだけに留める（幅は奪わない）。
+    棚は 2 枚重ねる。
+      - 奥（塗りあり）: 背板・棚板を含む棚そのもの
+      - 手前（塗りなし）: 柱・繰形などの枠だけ
+    中身をその間に挟むことで、アイテムは柱の *下を潜って* 流れる。
+    柱を消す必要がなくなるので、送っている間も棚の幅は変わらない。
   */
-  const openEnd = scrollable
-  const openStart = scrollable
-  const softCut = 32
-
-  /*
-    棚は border-image で描く。背景画像として引き伸ばすと柱や繰形まで一緒に伸びて
-    絵が崩れるが、border-image なら四隅と四辺を切り出して固定し、中央だけを伸ばせる。
-    slice の値は画像の不透明度プロファイルから採った実測値。
-      横: 柱 x=90..260 / 1140..1310、上の繰形 y=..90、棚板と台座 y=250..
-      縦: 柱 x=90..190 / 630..730、上の繰形 y=..210、台座 y=1288..
-    border の内側がそのまま棚の内側になるので、アイテムが柱に載ることはない。
-  */
-  const shelf = stacked
+  const frame = stacked
     ? {
-        borderTopWidth: '116px',
-        borderBottomWidth: '105px',
-        borderLeftWidth: '82px',
-        borderRightWidth: '82px',
+        borderTopWidth: '137px',
+        borderBottomWidth: '124px',
+        borderLeftWidth: '104px',
+        borderRightWidth: '104px',
         borderImageSource: "url('/shelf/vertical.webp')",
-        borderImageSlice: '210 150 190 150 fill',
+        slice: '210 160 190 160',
       }
     : {
-        borderTopWidth: '34px',
-        borderBottomWidth: '51px',
-        borderLeftWidth: `${SIDE_BORDER}px`,
-        borderRightWidth: `${SIDE_BORDER}px`,
+        borderTopWidth: '45px',
+        borderBottomWidth: '62px',
+        borderLeftWidth: '135px',
+        borderRightWidth: '135px',
         borderImageSource: "url('/shelf/horizontal.webp')",
-        borderImageSlice: '62 190 92 190 fill',
+        slice: '50 150 69 150',
       }
+  const { slice, ...box } = frame
+  const layer = (fill: boolean) => ({
+    ...box,
+    borderStyle: 'solid' as const,
+    borderColor: 'transparent',
+    borderImageRepeat: 'stretch' as const,
+    borderImageSlice: fill ? `${slice} fill` : slice,
+  })
 
   return (
     <div className="relative flex h-full min-h-0 flex-1 flex-col">
-      <div
-        ref={hostRef}
-        className={`relative flex flex-1 ${stacked ? 'items-start' : 'items-end'}`}
-        style={{
-          ...shelf,
-          borderStyle: 'solid',
-          borderColor: 'transparent',
-          borderImageRepeat: 'stretch',
-          ...(stacked
-            ? null
-            : {
-                borderLeftWidth: openStart ? '0px' : `${SIDE_BORDER}px`,
-                borderRightWidth: openEnd ? '0px' : `${SIDE_BORDER}px`,
-                maskImage: `linear-gradient(to right, ${
-                  openStart ? `transparent 0, #000 ${softCut}px` : '#000 0%'
-                }, ${openEnd ? `#000 calc(100% - ${softCut}px), transparent 100%` : '#000 100%'})`,
-                WebkitMaskImage: `linear-gradient(to right, ${
-                  openStart ? `transparent 0, #000 ${softCut}px` : '#000 0%'
-                }, ${openEnd ? `#000 calc(100% - ${softCut}px), transparent 100%` : '#000 100%'})`,
-                maskSize: '100% 100%',
-                maskRepeat: 'no-repeat',
-                WebkitMaskSize: '100% 100%',
-                WebkitMaskRepeat: 'no-repeat',
-              }),
-        }}
-      >
-        {/*
-          中身。横棚では棚板に少し掛かるところまで下げる。
-          こうするとアイテムは板の上に載って見え、スクロールバーは板の小口に重なる。
-        */}
+      <div className={`relative flex flex-1 ${stacked ? 'items-start' : 'items-end'}`}>
+        {/* 奥。背板と棚板を含む棚そのもの */}
+        <span aria-hidden className="absolute inset-0" style={layer(true)} />
+
+        {/* 中身。柱の下も含めた全幅を使い、枠の内側に収まる位置まで余白で押し込む */}
         <div
-          className={`relative z-10 min-w-0 flex-1 [&>[data-rail]>*]:drop-shadow-[0_6px_5px_rgba(0,0,0,0.22)] ${
-            stacked ? '' : '-mb-3 px-3 pt-4'
-          }`}
+          className="relative z-[1] min-w-0 flex-1 [&>[data-rail]>*]:drop-shadow-[0_6px_5px_rgba(0,0,0,0.22)]"
+          style={
+            stacked
+              ? { paddingLeft: 104, paddingRight: 104, paddingTop: 145, paddingBottom: 124 }
+              : { paddingTop: 53, paddingBottom: 50 }
+          }
         >
           {children}
         </div>
+
+        {/* 手前。柱と繰形だけを中身の上に重ねる */}
+        <span aria-hidden className="pointer-events-none absolute inset-0 z-[2]" style={layer(false)} />
       </div>
     </div>
   )
-}
-
-/**
- * 中身が送れる方向を見張る。
- *
- * 棚の端を切って見せるかどうかは「まだ先があるか」で決まるため、
- * スクロール位置・中身の量・棚の幅のいずれが変わっても取り直す。
- * Rail は呼び出し側が描く要素なので、data-rail を目印に辿る。
- */
-function useRailEdges(children: ReactNode) {
-  const hostRef = useRef<HTMLDivElement>(null)
-  const [edges, setEdges] = useState({ scrollable: false })
-
-  useEffect(() => {
-    const rail = hostRef.current?.querySelector<HTMLElement>('[data-rail]')
-    if (!rail) return
-
-    const update = () => {
-      // 枠を出し入れすると中身の幅が変わり、その結果また判定が変わる。
-      // 位置で切り替えると往復して表示が乱れるため、「送れる棚か」だけで決める。
-      // 送れる棚では両端を開けたままにし、レイアウトを動かさない。
-      const scrollable = rail.scrollWidth - rail.clientWidth > 1
-      setEdges((prev) => (prev.scrollable === scrollable ? prev : { scrollable }))
-    }
-    update()
-    rail.addEventListener('scroll', update, { passive: true })
-    // 枠の大きさが変わらなくても中身の総幅は変わる（画像の読み込みなど）。
-    // Rail 自身に加えて、並んでいるアイテムも監視して取り直す。
-    const ro = new ResizeObserver(update)
-    ro.observe(rail)
-    for (const child of rail.children) ro.observe(child)
-    return () => {
-      rail.removeEventListener('scroll', update)
-      ro.disconnect()
-    }
-  }, [children])
-
-  return { hostRef, ...edges }
 }
