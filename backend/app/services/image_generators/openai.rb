@@ -3,6 +3,7 @@ module ImageGenerators
     # 現行モデルは gpt-image-1（dall-e-3 は廃止/利用不可になり 400 を返す）。
     # 環境変数で上書き可能にしておく（モデル/品質の入れ替えに備える）。
     DEFAULT_MODEL = "gpt-image-1"
+    # 既定サイズ。比率が指定されたら AspectRatios の provider_size を使う
     SIZE = "1024x1024"
     # gpt-image-1 の quality は low / medium / high / auto
     DEFAULT_QUALITY = "medium"
@@ -19,7 +20,7 @@ module ImageGenerators
         parameters: {
           model: model,
           prompt: prompt,
-          size: SIZE,
+          size: AspectRatios.provider_size(aspect_ratio),
           quality: quality,
           n: 1
         }
@@ -36,7 +37,7 @@ module ImageGenerators
         metadata: {
           provider: "openai",
           model: model,
-          size: SIZE,
+          size: AspectRatios.provider_size(aspect_ratio),
           quality: quality,
           revised_prompt: data["revised_prompt"]
         }

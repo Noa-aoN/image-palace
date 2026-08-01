@@ -37,6 +37,9 @@ module Items
           generation_status: "pending",
           # スタイル未指定（おまかせ）なら、ユーザーのデフォルト画像スタイルにフォールバックする
           style: @params[:style].presence || @user.setting&.default_image_style.presence,
+          aspect_ratio: (@params[:aspect_ratio].presence ||
+                        @user.setting&.default_aspect_ratio.presence ||
+                        AspectRatios::DEFAULT),
           custom_prompt: @params[:custom_prompt].presence
         )
         @user.consume_credits!(cost, item: item)

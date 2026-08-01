@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_07_31_000001) do
+ActiveRecord::Schema[8.1].define(version: 2026_08_01_000001) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
   enable_extension "pgcrypto"
@@ -127,6 +127,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_07_31_000001) do
   end
 
   create_table "items", id: :uuid, default: -> { "gen_random_uuid()" }, force: :cascade do |t|
+    t.string "aspect_ratio", default: "square", null: false
     t.text "content"
     t.datetime "created_at", null: false
     t.string "generation_status", default: "pending", null: false
@@ -222,10 +223,13 @@ ActiveRecord::Schema[8.1].define(version: 2026_07_31_000001) do
     t.boolean "auto_generate_meanings", default: true, null: false
     t.boolean "auto_generate_tags", default: true, null: false
     t.datetime "created_at", null: false
+    t.string "default_aspect_ratio", default: "square", null: false
     t.string "default_image_style", default: "", null: false
     t.string "diagram_mode", default: "3d", null: false
+    t.string "display_style", default: "palace", null: false
     t.string "locale", default: "ja", null: false
     t.string "motion_mode", default: "auto", null: false
+    t.datetime "onboarded_at"
     t.boolean "regenerate_with_meaning", default: false, null: false
     t.string "timezone", default: "Asia/Tokyo", null: false
     t.datetime "updated_at", null: false

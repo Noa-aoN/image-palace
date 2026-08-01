@@ -7,7 +7,10 @@ module Api
       end
 
       def update
-        current_setting.update!(settings_params)
+        attrs = settings_params.except(:onboarded)
+        # 初回確認を済ませた合図。日時で持ち、再表示しないようにする
+        attrs[:onboarded_at] = Time.current if ActiveModel::Type::Boolean.new.cast(params[:setting][:onboarded])
+        current_setting.update!(attrs)
         render json: serialize_setting(current_setting)
       rescue ActiveRecord::RecordInvalid => e
         render json: { errors: e.record.errors.full_messages }, status: :unprocessable_entity
@@ -21,7 +24,9 @@ module Api
 
       def settings_params
         params.require(:setting).permit(
-          :auto_generate_meanings, :auto_generate_tags, :default_image_style, :regenerate_with_meaning,
+          :auto_generate_meanings, :auto_generate_tags, :default_image_style, :default_aspect_ratio,
+          :display_style, :onboarded,
+          :regenerate_with_meaning,
           :diagram_mode, :motion_mode
         )
       end
@@ -31,6 +36,10 @@ module Api
           auto_generate_meanings: setting.auto_generate_meanings,
           auto_generate_tags: setting.auto_generate_tags,
           default_image_style: setting.default_image_style,
+          default_aspect_ratio: setting.default_aspect_ratio,
+          display_style: setting.display_style,
+          # 初回の表示スタイル確認を出すかどうかの判断に使う
+          onboarded: setting.onboarded_at.present?,
           regenerate_with_meaning: setting.regenerate_with_meaning,
           diagram_mode: setting.diagram_mode,
           motion_mode: setting.motion_mode,

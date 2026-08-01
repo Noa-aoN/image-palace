@@ -23,6 +23,8 @@ export interface CreateItemOptions {
   generateMeaningLevel?: string
   /** 各カードのタグを AI で自動生成するか（未指定ならユーザー設定に従う） */
   generateTags?: boolean
+  /** 画像の縦横比（未指定ならユーザー設定の既定を使う） */
+  aspectRatio?: string
 }
 
 export async function createItem(
@@ -41,6 +43,7 @@ export async function createItem(
       ...(options?.generateMeaning !== undefined ? { generate_meaning: options.generateMeaning } : {}),
       ...(options?.generateMeaningLevel ? { generate_meaning_level: options.generateMeaningLevel } : {}),
       ...(options?.generateTags !== undefined ? { generate_tags: options.generateTags } : {}),
+      ...(options?.aspectRatio ? { aspect_ratio: options.aspectRatio } : {}),
     },
   })
   return res.data

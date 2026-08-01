@@ -25,13 +25,16 @@ class OptimizeImageService
 
   Result = Struct.new(:data, :content_type, :extension, :thumb_data, :lqip, keyword_init: true)
 
-  def self.call(image_data:, content_type: nil)
-    new(image_data, content_type).call
+  def self.call(image_data:, content_type: nil, crop_ratio: nil)
+    new(image_data, content_type, crop_ratio).call
   end
 
-  def initialize(image_data, content_type)
+  # crop_ratio: 幅/高さ。指定されると中央基準でその比へ切り出す
+  # （画像生成 API が出せない比＝黄金比などのため）。
+  def initialize(image_data, content_type, crop_ratio = nil)
     @image_data = image_data
     @content_type = content_type
+    @crop_ratio = crop_ratio
   end
 
   def call
@@ -43,7 +46,7 @@ class OptimizeImageService
     # 未インストール環境でもアプリ起動を妨げないよう、ここで読み込む。
     require "vips"
 
-    src = Vips::Image.new_from_buffer(@image_data, "")
+    src = crop_to_ratio(Vips::Image.new_from_buffer(@image_data, ""))
 
     Result.new(
       data: webp_for(src, MAX_DIMENSION, WEBP_QUALITY),
@@ -65,6 +68,22 @@ class OptimizeImageService
   end
 
   private
+
+  # 指定の比へ中央基準で切り出す。比が近ければ何もしない（無駄な再エンコードを避ける）。
+  def crop_to_ratio(image)
+    return image if @crop_ratio.nil? || @crop_ratio <= 0
+
+    current = image.width.to_f / image.height
+    return image if (current - @crop_ratio).abs < 0.01
+
+    if current > @crop_ratio
+      width = (image.height * @crop_ratio).round
+      image.crop(((image.width - width) / 2.0).round, 0, width, image.height)
+    else
+      height = (image.width / @crop_ratio).round
+      image.crop(0, ((image.height - height) / 2.0).round, image.width, height)
+    end
+  end
 
   # 長辺が max_dim を超える場合のみ縮小して WebP バッファを返す（拡大はしない）。
   def webp_for(src, max_dim, quality)

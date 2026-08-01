@@ -16,8 +16,8 @@ class GenerateImageService
 
   Result = Struct.new(:image_data, :content_type, :metadata, keyword_init: true)
 
-  def self.call(prompt:)
-    new.call(prompt:)
+  def self.call(prompt:, aspect_ratio: AspectRatios::DEFAULT)
+    new.call(prompt:, aspect_ratio:)
   end
 
   # 現在有効な provider 名。
@@ -39,17 +39,21 @@ class GenerateImageService
   # キャッシュキーを provider/model で名前空間化する。
   # モデルが増えても「同一プロンプトで別モデル画像が先勝ち共有」されないようにする。
   # 既定(openai/gpt-image-1)は後方互換のため素の normalized をそのまま使う（既存キャッシュ維持）。
-  def self.namespaced_cache_key(normalized)
+  # 縦横比が違えば別画像なので、キーも分ける。
+  # 既定（square）は既存キャッシュを活かすため接頭辞を付けない。
+  def self.namespaced_cache_key(normalized, aspect_ratio: AspectRatios::DEFAULT)
     descriptor = self.descriptor
-    if descriptor[:provider] == LEGACY_PROVIDER && descriptor[:model] == LEGACY_MODEL
-      normalized
-    else
-      "#{descriptor[:provider]}:#{descriptor[:model]}:#{normalized}"
-    end
+    base =
+      if descriptor[:provider] == LEGACY_PROVIDER && descriptor[:model] == LEGACY_MODEL
+        normalized
+      else
+        "#{descriptor[:provider]}:#{descriptor[:model]}:#{normalized}"
+      end
+    aspect_ratio.to_s == AspectRatios::DEFAULT ? base : "#{aspect_ratio}:#{base}"
   end
 
-  def call(prompt:)
-    result = self.class.generator_class.new.generate(prompt:)
+  def call(prompt:, aspect_ratio: AspectRatios::DEFAULT)
+    result = self.class.generator_class.new.generate(prompt:, aspect_ratio:)
     Result.new(
       image_data: result[:image_data],
       content_type: result[:content_type],

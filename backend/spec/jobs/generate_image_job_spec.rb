@@ -145,7 +145,8 @@ RSpec.describe GenerateImageJob, type: :job do
       described_class.perform_now(item.id)
 
       item.reload
-      expect(GenerateImageService).to have_received(:call).with(prompt: PromptBuilderService.effective_prompt(item))
+      expect(GenerateImageService).to have_received(:call)
+        .with(prompt: PromptBuilderService.effective_prompt(item), aspect_ratio: item.aspect_ratio)
       expect(item.generation_status).to eq("completed")
       expect(item.primary_media.file).to be_attached
       expect(item.primary_media.metadata["model"]).to eq("gpt-image-1")
@@ -178,7 +179,7 @@ RSpec.describe GenerateImageJob, type: :job do
 
       described_class.perform_now(styled.id)
 
-      expect(GenerateImageService).to have_received(:call) do |prompt:|
+      expect(GenerateImageService).to have_received(:call) do |prompt:, **|
         expect(prompt).to include("cat")
         expect(prompt).to include("watercolor")
       end

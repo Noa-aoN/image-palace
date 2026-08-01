@@ -1,4 +1,10 @@
 class Setting < ApplicationRecord
+  # 一覧の見せ方（simple / palace）
+  DISPLAY_STYLES = %w[simple palace].freeze
+  validates :display_style, inclusion: { in: DISPLAY_STYLES }
+
+  # 新規カードの既定の縦横比（カード側で個別に上書きできる）
+  validates :default_aspect_ratio, inclusion: { in: AspectRatios::KEYS }
   # 図（間取り図・記憶資産など）の表現。
   DIAGRAM_MODES = %w[2d 3d].freeze
   # アニメーションの扱い。auto は端末（OS）の prefers-reduced-motion に従う。

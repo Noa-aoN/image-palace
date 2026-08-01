@@ -1,4 +1,6 @@
 class Item < ApplicationRecord
+  # カード画像の縦横比（定義は AspectRatios に集約）
+  validates :aspect_ratio, inclusion: { in: AspectRatios::KEYS }
   belongs_to :user
   belongs_to :item_type
   has_many :meanings, dependent: :destroy

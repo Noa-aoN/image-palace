@@ -4,6 +4,7 @@ export interface User {
   email: string
   name: string | null
   provider: string
+  role?: string | null
   avatar_url?: string | null
   avatar_thumb_url?: string | null
   avatar_generation_status?: string | null

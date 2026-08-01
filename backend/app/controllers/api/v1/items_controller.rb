@@ -236,7 +236,7 @@ module Api
 
       def item_params
         params.require(:item).permit(
-          :title, :item_type_id, :force_generate, :style, :custom_prompt,
+          :title, :item_type_id, :force_generate, :style, :custom_prompt, :aspect_ratio,
           :generate_meaning, :generate_meaning_level, :generate_tags
         )
       end
