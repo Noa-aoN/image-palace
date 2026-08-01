@@ -2977,3 +2977,20 @@
 :root[data-motion='off'] .sw-point {
   transition: none;
 }
+
+/*
+  ライブラリの横棚。柱の間は棚の絵を繰り返して埋める。
+  背景をスクロール枠自身に敷き、background-attachment: local にすることで
+  棚の絵が中身と一緒に流れる。Tailwind の arbitrary value では url() 内の
+  スラッシュが opacity 修飾子と解釈されるため、ここは実 CSS で書く。
+*/
+.shelf-mid > [data-rail] {
+  height: 100%;
+  align-items: flex-end;
+  padding-top: 1.5rem;
+  padding-bottom: 3rem;
+  background-image: url('/shelf/h-mid.webp');
+  background-repeat: repeat-x;
+  background-size: auto 100%;
+  background-attachment: local;
+}

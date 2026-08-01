@@ -92,7 +92,10 @@ export function SurfaceBoard({ surface, children }: { surface: Surface; children
   if (stacked) {
     return (
       <div className="relative flex h-full min-h-0 flex-1 flex-col">
-        <div className="relative flex min-h-[18rem] flex-1 items-start bg-[url(/shelf/vertical.webp)] bg-[length:100%_100%] bg-no-repeat px-[13%] pb-[8%] pt-[9%]">
+        <div
+          className="relative flex min-h-[18rem] flex-1 items-start bg-no-repeat px-[13%] pb-[8%] pt-[9%]"
+          style={{ backgroundImage: "url('/shelf/vertical.webp')", backgroundSize: '100% 100%' }}
+        >
           <div
             className="relative z-10 min-w-0 flex-1 [&>[data-rail]>*]:drop-shadow-[0_6px_5px_rgba(0,0,0,0.22)]"
             style={{ maskImage: fade }}
@@ -115,21 +118,19 @@ export function SurfaceBoard({ surface, children }: { surface: Surface; children
       <div className="relative flex min-h-[11rem] flex-1 items-stretch">
         <span
           aria-hidden
-          className="aspect-[203/411] shrink-0 bg-[url(/shelf/h-left.webp)] bg-[length:100%_100%] bg-no-repeat"
+          className="aspect-[203/411] shrink-0 bg-no-repeat"
+          style={{ backgroundImage: "url('/shelf/h-left.webp')", backgroundSize: '100% 100%' }}
         />
         <div
-          className="relative z-10 min-w-0 flex-1
-            [&>[data-rail]]:h-full [&>[data-rail]]:items-end [&>[data-rail]]:bg-[url(/shelf/h-mid.webp)]
-            [&>[data-rail]]:bg-[length:auto_100%] [&>[data-rail]]:bg-repeat-x
-            [&>[data-rail]]:[background-attachment:local] [&>[data-rail]]:pb-12 [&>[data-rail]]:pt-6
-            [&>[data-rail]>*]:drop-shadow-[0_6px_5px_rgba(0,0,0,0.22)]"
+          className="shelf-mid relative z-10 min-w-0 flex-1 [&>[data-rail]>*]:drop-shadow-[0_6px_5px_rgba(0,0,0,0.22)]"
           style={{ maskImage: fade }}
         >
           {children}
         </div>
         <span
           aria-hidden
-          className="aspect-[203/411] shrink-0 bg-[url(/shelf/h-right.webp)] bg-[length:100%_100%] bg-no-repeat"
+          className="aspect-[203/411] shrink-0 bg-no-repeat"
+          style={{ backgroundImage: "url('/shelf/h-right.webp')", backgroundSize: '100% 100%' }}
         />
       </div>
     </div>
