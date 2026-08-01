@@ -229,6 +229,8 @@ function SpaceCoverFallback({ spaceType }: { spaceType: string }) {
 
 // 名前付きタイル共通の枠クラス（枠色/hover は SelectableTile 側で付与）
 const NAMED_TILE_CLASS = 'shrink-0 w-40 flex flex-col rounded-xl border overflow-hidden bg-card transition-shadow'
+// デッキはカード（w-32）と他のキャンバス（w-40）の中間。束ねたカードであることを大きさでも示す
+const DECK_TILE_CLASS = 'shrink-0 w-36 flex flex-col rounded-xl border overflow-hidden bg-card transition-shadow'
 
 type TileSelectionProps = {
   selectionMode?: boolean
@@ -271,7 +273,7 @@ function WordlistTile({ wordlist, selectionMode, selected, onToggle }: { wordlis
         <span className="text-sm font-medium truncate">{wordlist.name}</span>
         <span className="text-xs text-muted-foreground shrink-0">{wordlist.word_count}</span>
       </div>
-      <EntityFrame kind="plate">
+      <EntityFrame kind="mineral">
         <div className="w-full aspect-square bg-muted flex items-center justify-center">
           <ListChecks size={28} className="text-muted-foreground/50" />
         </div>
@@ -303,10 +305,11 @@ function SpaceTile({ space, selectionMode, selected, onToggle }: { space: Space 
 }
 
 function ViewTile({ view, selectionMode, selected, onToggle }: { view: View } & TileSelectionProps) {
+  const isDeck = view.view_type === 'deck'
   return (
     <SelectableTile
       href={`/views/${view.id}`}
-      className={NAMED_TILE_CLASS}
+      className={isDeck ? DECK_TILE_CLASS : NAMED_TILE_CLASS}
       selectionMode={selectionMode}
       selected={selected}
       onToggle={onToggle}
@@ -315,7 +318,7 @@ function ViewTile({ view, selectionMode, selected, onToggle }: { view: View } & 
         <span className="text-sm font-medium truncate">{view.name}</span>
         <span className="text-xs text-muted-foreground shrink-0">{viewTypeLabel(view.view_type)}</span>
       </div>
-      <EntityFrame kind={view.view_type === 'deck' ? 'deck' : view.view_type === 'freeboard' ? 'board' : 'frame'}>
+      <EntityFrame kind={isDeck ? 'deck' : view.view_type === 'freeboard' ? 'board' : 'frame'}>
         <div className="w-full aspect-square bg-muted overflow-hidden">
           <EntityCover cover={view} />
         </div>

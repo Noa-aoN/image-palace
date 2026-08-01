@@ -12,7 +12,7 @@ import { useDisplayStyle } from './ShelfBoard'
  * 種別が増えたらここに 1 分岐足す。装飾は擬似要素ではなく span で組み、
  * 全て pointer-events-none にしてクリック（選択・遷移）を妨げない。
  */
-export type EntityKind = 'space' | 'box' | 'deck' | 'board' | 'plate' | 'frame'
+export type EntityKind = 'space' | 'box' | 'deck' | 'board' | 'mineral' | 'frame'
 
 // 大理石・金の色味は棚（ShelfBoard）と揃える
 const STONE_LIGHT = 'color-mix(in srgb, var(--ivory) 88%, white)'
@@ -34,8 +34,8 @@ export function EntityFrame({ kind, children }: { kind: EntityKind; children: Re
       return <DeckFrame>{children}</DeckFrame>
     case 'board':
       return <BoardFrame>{children}</BoardFrame>
-    case 'plate':
-      return <PlateFrame>{children}</PlateFrame>
+    case 'mineral':
+      return <MineralFrame>{children}</MineralFrame>
     default:
       return <PictureFrame>{children}</PictureFrame>
   }
@@ -91,44 +91,71 @@ function WindowFrame({ children }: { children: ReactNode }) {
 }
 
 /**
- * ボックス＝宝箱。上に蓋の帯、中央に金具（掛け金）、前面が中身の画像。
- * 蓋を閉じた箱を正面から見た状態にして、開けたら中身がある、という含みを持たせる。
+ * ボックス＝大理石の櫃（ひつ）。段になった蓋、角の付柱、正面のメダリオン、台座で組む。
+ *
+ * 中身の画像は「箱の正面に嵌められた飾り」として円形に嵌め込む。
+ * 箱そのものを石として描き、画像を額装された意匠として扱うことで、
+ * どんな画像が入っても宮殿の収蔵箱として成立する。
  */
 function ChestFrame({ children }: { children: ReactNode }) {
   return (
-    <div className="relative">
-      {/* 蓋。上端をわずかに丸めて、板ではなく蓋であることを示す */}
+    <div className="relative pt-1">
+      {/* 蓋。上へ行くほど狭い 2 段にして、被せた蓋の厚みを作る */}
       <div
         aria-hidden
-        className="relative h-5 rounded-t-md"
+        className="mx-auto h-1.5 w-[86%] rounded-t-[3px]"
+        style={{ background: `linear-gradient(to bottom, ${STONE_LIGHT}, ${STONE_BASE})`, boxShadow: `0 0 0 1px ${GOLD}` }}
+      />
+      <div
+        aria-hidden
+        className="mx-auto h-2 w-[94%]"
+        style={{ background: `linear-gradient(to bottom, ${STONE_LIGHT} 0 1px, ${STONE_BASE} 1px 65%, ${STONE_SHADE} 100%)` }}
+      />
+
+      {/* 本体。正面にメダリオン、左右角に付柱 */}
+      <div
+        className="relative flex aspect-[7/5] w-full items-center justify-center overflow-hidden"
         style={{
-          background: `linear-gradient(to bottom, ${STONE_LIGHT} 0 2px, ${STONE_BASE} 2px 65%, ${STONE_SHADE} 100%)`,
-          boxShadow: `inset 0 0 0 1px ${GOLD}`,
+          background: `linear-gradient(160deg, ${STONE_LIGHT} 0%, ${STONE_BASE} 55%, ${STONE_SHADE} 100%)`,
+          boxShadow: `inset 0 1px 0 ${STONE_LIGHT}, inset 0 -6px 10px -8px color-mix(in srgb, var(--foreground) 60%, transparent)`,
         }}
       >
-        {/* 帯金。蓋から前面へ跨がせる */}
+        {/* 角の付柱。柱頭・柱脚に金の帯を入れて、箱の稜線を締める */}
+        {(['left', 'right'] as const).map((side) => (
+          <span
+            key={side}
+            aria-hidden
+            className={`pointer-events-none absolute inset-y-0 w-2.5 ${side === 'left' ? 'left-0' : 'right-0'}`}
+            style={{
+              background: `linear-gradient(to right, ${STONE_SHADE} 0%, ${STONE_LIGHT} 45%, ${STONE_BASE} 100%)`,
+              boxShadow: `inset 0 3px 0 ${GOLD}, inset 0 -3px 0 ${GOLD}`,
+              transform: side === 'right' ? 'scaleX(-1)' : undefined,
+            }}
+          />
+        ))}
+
+        {/* メダリオン。二重の金環で縁取った円の中に中身を嵌める */}
         <span
-          className="absolute left-1/2 top-1 h-[3px] w-10 -translate-x-1/2 rounded-full"
-          style={{ background: GOLD_SOLID, opacity: 0.55 }}
-        />
-      </div>
-      <div className="relative overflow-hidden" style={{ boxShadow: `inset 0 0 0 3px ${STONE_BASE}` }}>
-        {children}
-        {/* 掛け金。蓋と前面の境目に置いて、閉じている状態を示す */}
-        <span
-          aria-hidden
-          className="pointer-events-none absolute left-1/2 top-0 h-4 w-5 -translate-x-1/2 rounded-b-sm"
+          className="relative block w-[58%] overflow-hidden rounded-full"
           style={{
-            background: `linear-gradient(to bottom, ${GOLD_SOLID}, color-mix(in srgb, ${GOLD_SOLID} 60%, black))`,
-            boxShadow: '0 1px 2px rgba(0,0,0,0.35)',
+            boxShadow: `0 0 0 2px ${GOLD_SOLID}, 0 0 0 4px ${STONE_BASE}, 0 0 0 5px ${GOLD}, 0 2px 6px -2px rgba(0,0,0,0.45)`,
           }}
-        />
-        <span
-          aria-hidden
-          className="pointer-events-none absolute left-1/2 top-3 size-1.5 -translate-x-1/2 rounded-full"
-          style={{ background: 'color-mix(in srgb, var(--foreground) 70%, transparent)' }}
-        />
+        >
+          {children}
+        </span>
       </div>
+
+      {/* 台座。本体より広い 2 段で受けて、床に据わった箱にする */}
+      <div
+        aria-hidden
+        className="mx-auto h-1.5 w-[98%]"
+        style={{ background: `linear-gradient(to bottom, ${STONE_LIGHT} 0 1px, ${STONE_BASE} 1px 100%)` }}
+      />
+      <div
+        aria-hidden
+        className="mx-auto h-2 w-[92%] rounded-b-[3px]"
+        style={{ background: `linear-gradient(to bottom, ${STONE_BASE}, ${STONE_SHADE})`, boxShadow: `0 0 0 1px ${GOLD}` }}
+      />
     </div>
   )
 }
@@ -178,17 +205,44 @@ function BoardFrame({ children }: { children: ReactNode }) {
   )
 }
 
-/** ワードリスト等＝銘板。石板に金線で縁を彫った、文字のための面 */
-function PlateFrame({ children }: { children: ReactNode }) {
+/**
+ * マテリアル＝鉱物。まだ加工されていない素材なので、原石の割れ面として描く。
+ * 角を落とした多角形に切り、面ごとに光の当たり方を変えて結晶らしい稜線を出す。
+ */
+function MineralFrame({ children }: { children: ReactNode }) {
+  const facet = 'polygon(22% 0, 78% 0, 100% 30%, 88% 100%, 12% 100%, 0 30%)'
   return (
-    <div
-      className="relative overflow-hidden"
-      style={{
-        background: `linear-gradient(to bottom, ${STONE_LIGHT}, ${STONE_BASE})`,
-        boxShadow: `inset 0 0 0 1px ${GOLD}, inset 0 0 0 5px ${STONE_BASE}, inset 0 0 0 6px ${GOLD}`,
-      }}
-    >
-      {children}
+    <div className="relative">
+      {/* 原石の外形。内側の中身も同じ形に切り抜く */}
+      <div
+        className="relative overflow-hidden"
+        style={{
+          clipPath: facet,
+          background: `linear-gradient(150deg, ${STONE_LIGHT} 0%, ${STONE_BASE} 45%, ${STONE_SHADE} 100%)`,
+        }}
+      >
+        {children}
+        {/* 割れ面。稜線を 2 本入れて、平面ではなく塊に見せる */}
+        <span
+          aria-hidden
+          className="pointer-events-none absolute inset-0"
+          style={{
+            background: `linear-gradient(112deg, rgba(255,255,255,0.34) 0 26%, transparent 26%), linear-gradient(248deg, ${STONE_SHADE} 0 22%, transparent 22%)`,
+            opacity: 0.85,
+          }}
+        />
+        <span
+          aria-hidden
+          className="pointer-events-none absolute inset-x-0 top-0 h-full"
+          style={{ background: `linear-gradient(to bottom right, transparent 46%, ${GOLD} 46%, ${GOLD} 47%, transparent 47%)`, opacity: 0.5 }}
+        />
+      </div>
+      {/* 影。塊が面に置かれている状態にする */}
+      <span
+        aria-hidden
+        className="pointer-events-none absolute inset-x-3 bottom-0 h-1.5 rounded-[50%] blur-[3px]"
+        style={{ background: 'color-mix(in srgb, var(--foreground) 30%, transparent)' }}
+      />
     </div>
   )
 }
