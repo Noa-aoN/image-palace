@@ -96,14 +96,15 @@ export function SurfaceBoard({ surface, children }: { surface: Surface; children
     中身をその間に挟むことで、アイテムは柱の *下を潜って* 流れる。
     柱を消す必要がなくなるので、送っている間も棚の幅は変わらない。
   */
-  const frame = stacked
+  // 枠の内側がそのまま棚の内側になるので、アイテムが柱に載ることはない
+  const shelf = stacked
     ? {
         borderTopWidth: '137px',
         borderBottomWidth: '124px',
         borderLeftWidth: '104px',
         borderRightWidth: '104px',
         borderImageSource: "url('/shelf/vertical.webp')",
-        slice: '210 160 190 160',
+        borderImageSlice: '210 160 190 160 fill',
       }
     : {
         borderTopWidth: '45px',
@@ -111,37 +112,22 @@ export function SurfaceBoard({ surface, children }: { surface: Surface; children
         borderLeftWidth: '135px',
         borderRightWidth: '135px',
         borderImageSource: "url('/shelf/horizontal.webp')",
-        slice: '50 150 69 150',
+        borderImageSlice: '50 150 69 150 fill',
       }
-  const { slice, ...box } = frame
-  const layer = (fill: boolean) => ({
-    ...box,
-    borderStyle: 'solid' as const,
-    borderColor: 'transparent',
-    borderImageRepeat: 'stretch' as const,
-    borderImageSlice: fill ? `${slice} fill` : slice,
-  })
 
   return (
     <div className="relative flex h-full min-h-0 flex-1 flex-col">
-      <div className={`relative flex flex-1 ${stacked ? 'items-start' : 'items-end'}`}>
-        {/* 奥。背板と棚板を含む棚そのもの */}
-        <span aria-hidden className="absolute inset-0" style={layer(true)} />
-
-        {/* 中身。柱の下も含めた全幅を使い、枠の内側に収まる位置まで余白で押し込む */}
+      <div
+        className={`relative flex flex-1 ${stacked ? 'items-start' : 'items-end'}`}
+        style={{ ...shelf, borderStyle: 'solid', borderColor: 'transparent', borderImageRepeat: 'stretch' }}
+      >
         <div
-          className="relative z-[1] min-w-0 flex-1 [&>[data-rail]>*]:drop-shadow-[0_6px_5px_rgba(0,0,0,0.22)]"
-          style={
-            stacked
-              ? { paddingLeft: 104, paddingRight: 104, paddingTop: 145, paddingBottom: 124 }
-              : { paddingTop: 53, paddingBottom: 50 }
-          }
+          className={`relative z-10 min-w-0 flex-1 [&>[data-rail]>*]:drop-shadow-[0_6px_5px_rgba(0,0,0,0.22)] ${
+            stacked ? '' : '-mb-3 px-3 pt-4'
+          }`}
         >
           {children}
         </div>
-
-        {/* 手前。柱と繰形だけを中身の上に重ねる */}
-        <span aria-hidden className="pointer-events-none absolute inset-0 z-[2]" style={layer(false)} />
       </div>
     </div>
   )
