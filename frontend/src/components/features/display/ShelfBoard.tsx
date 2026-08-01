@@ -80,7 +80,7 @@ const SIDE_BORDER = 105
 export function SurfaceBoard({ surface, children }: { surface: Surface; children: ReactNode }) {
   const style = useDisplayStyle()
   const orientation = useShelfOrientation()
-  const { hostRef, atStart, atEnd } = useRailEdges(children)
+  const { hostRef, scrollable } = useRailEdges(children)
 
   if (style === 'simple' || surface !== 'library') return <>{children}</>
 
@@ -88,18 +88,21 @@ export function SurfaceBoard({ surface, children }: { surface: Surface; children
   const stacked = orientation === 'columns'
 
   /*
-    棚の切れ目。中身がまだ送れる側は、柱の枠幅を 0 にする。
+    棚の切れ目。中身が送りきれない棚は、両端の柱の枠幅を 0 にする。
 
     柱をマスクで透過させるだけだと、そこにあった幅が空白として残り、
     棚が痩せたように見えてしまう。棚が続いていることを示したいので、
     枠を落として *その幅を棚の内側に明け渡す*。中身もそのぶん広く使える。
 
+    開閉はスクロール位置ではなく「送れる棚か」で決める。位置で切り替えると
+    枠が戻る → 中身の幅が変わる → 判定が変わる、の往復が起きて表示が乱れるため。
+
     枠幅は 4 辺とも longhand で指定する。shorthand と混ぜると、
     値を戻したときに古い指定が残るかどうかがブラウザ任せになるため。
     切り口は短いマスクで和らげるだけに留める（幅は奪わない）。
   */
-  const openEnd = !atEnd
-  const openStart = !atStart
+  const openEnd = scrollable
+  const openStart = scrollable
   const softCut = 32
 
   /*
@@ -114,18 +117,18 @@ export function SurfaceBoard({ surface, children }: { surface: Surface; children
     ? {
         borderTopWidth: '116px',
         borderBottomWidth: '105px',
-        borderLeftWidth: '105px',
-        borderRightWidth: '105px',
+        borderLeftWidth: '82px',
+        borderRightWidth: '82px',
         borderImageSource: "url('/shelf/vertical.webp')",
-        borderImageSlice: '210 190 190 190 fill',
+        borderImageSlice: '210 150 190 150 fill',
       }
     : {
-        borderTopWidth: '44px',
-        borderBottomWidth: '84px',
+        borderTopWidth: '34px',
+        borderBottomWidth: '51px',
         borderLeftWidth: `${SIDE_BORDER}px`,
         borderRightWidth: `${SIDE_BORDER}px`,
         borderImageSource: "url('/shelf/horizontal.webp')",
-        borderImageSlice: '80 190 153 190 fill',
+        borderImageSlice: '62 190 92 190 fill',
       }
 
   return (
@@ -161,7 +164,7 @@ export function SurfaceBoard({ surface, children }: { surface: Surface; children
           こうするとアイテムは板の上に載って見え、スクロールバーは板の小口に重なる。
         */}
         <div
-          className={`shelf-inner relative z-10 min-w-0 flex-1 [&>[data-rail]>*]:drop-shadow-[0_6px_5px_rgba(0,0,0,0.22)] ${
+          className={`relative z-10 min-w-0 flex-1 [&>[data-rail]>*]:drop-shadow-[0_6px_5px_rgba(0,0,0,0.22)] ${
             stacked ? '' : '-mb-3 px-3 pt-4'
           }`}
         >
@@ -181,18 +184,18 @@ export function SurfaceBoard({ surface, children }: { surface: Surface; children
  */
 function useRailEdges(children: ReactNode) {
   const hostRef = useRef<HTMLDivElement>(null)
-  const [edges, setEdges] = useState({ atStart: true, atEnd: true })
+  const [edges, setEdges] = useState({ scrollable: false })
 
   useEffect(() => {
     const rail = hostRef.current?.querySelector<HTMLElement>('[data-rail]')
     if (!rail) return
 
     const update = () => {
-      const max = rail.scrollWidth - rail.clientWidth
-      const next = { atStart: rail.scrollLeft <= 1, atEnd: max <= 1 || rail.scrollLeft >= max - 1 }
-      setEdges((prev) =>
-        prev.atStart === next.atStart && prev.atEnd === next.atEnd ? prev : next
-      )
+      // 枠を出し入れすると中身の幅が変わり、その結果また判定が変わる。
+      // 位置で切り替えると往復して表示が乱れるため、「送れる棚か」だけで決める。
+      // 送れる棚では両端を開けたままにし、レイアウトを動かさない。
+      const scrollable = rail.scrollWidth - rail.clientWidth > 1
+      setEdges((prev) => (prev.scrollable === scrollable ? prev : { scrollable }))
     }
     update()
     rail.addEventListener('scroll', update, { passive: true })
