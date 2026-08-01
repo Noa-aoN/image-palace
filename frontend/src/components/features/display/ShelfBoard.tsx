@@ -1,6 +1,6 @@
 'use client'
 
-import { createContext, useContext, useEffect, useRef, useState, type ReactNode } from 'react'
+import { createContext, useContext, type ReactNode } from 'react'
 import { useSettingsStore } from '@/stores/settings'
 import {
   DEFAULT_DISPLAY_STYLE,
@@ -60,55 +60,16 @@ export function ShelfGroup({ children, className = '' }: { children: ReactNode; 
   return <div className={`space-y-8 ${className}`}>{children}</div>
 }
 
-// 大理石の棚。木ではなく石として組み立てる。
-// 光は上から当たる前提で、天面は明るく・小口はやや暗く・繰形の陰は最も暗くする。
-const MARBLE_LIGHT = 'color-mix(in srgb, var(--ivory) 88%, white)'
-const MARBLE_BASE = 'var(--ivory)'
-const MARBLE_SHADE = 'color-mix(in srgb, var(--ivory-dark) 85%, var(--foreground))'
-const GOLD = 'color-mix(in srgb, var(--palace) 70%, transparent)'
-
-const MARBLE_DEEP = 'color-mix(in srgb, var(--ivory-dark) 72%, var(--foreground))'
-
-// 箱の奥行き（px）。CSS の 3D 変換で実際にこの距離だけ奥へ引く
-const DEPTH = 26
-
-/**
- * 箱の大きさに応じた視距離を測る。
- *
- * perspective を固定値にすると、横に長い棚では左右端が広角レンズのように破綻し、
- * 縦に高い棚では逆にパースがほとんど付かない。視距離は箱の寸法に比例させる必要がある。
- * CSS だけでは要素サイズを参照できないため、ResizeObserver で測って渡す。
- */
-function useBoxPerspective() {
-  const ref = useRef<HTMLDivElement>(null)
-  const [size, setSize] = useState(0)
-
-  useEffect(() => {
-    const el = ref.current
-    if (!el) return
-    const ro = new ResizeObserver(([entry]) => {
-      const { width, height } = entry.contentRect
-      setSize(Math.max(width, height))
-    })
-    ro.observe(el)
-    return () => ro.disconnect()
-  }, [])
-
-  // 測る前は破綻しにくい遠めの視点にしておく（初回描画のちらつきを避ける）
-  return { ref, perspective: size > 0 ? Math.max(size * 1.5, 420) : 1200 }
-}
-
 /**
  * 「場」に応じた器。宮殿スタイルのときだけ装飾を出し、シンプルのときは素通しする。
  *
- * ライブラリは、正面から覗いた大理石の箱（棚）にしている。
- * 台形を手で描くのではなく CSS の 3D 変換で実際に箱を組む。
- *   - 奥の壁を translateZ(-DEPTH) で押し込む（遠いので小さく写る）
- *   - 床・天井・左右の壁は、開口の各辺を軸に 90 度倒した面
- *   - 開口（手前）にアイテムを置き、床の手前端に接地させる
- * こうすると 5 面の消失方向が 1 点に揃うので、作図の破綻なくパースが付く。
- * perspective は親に置く必要があり、かつ overflow-hidden は 3D を平坦化するため、
- * 開口側では clip を掛けない。
+ * ライブラリの棚は画像（public/shelf/）を使う。CSS で石の造作を組むより、
+ * 陰影・面取り・溝彫りの情報量が桁違いに多く、宮殿の質感が出るため。
+ * 背景は透過済みなので、ページの地色にそのまま重なる。
+ *
+ * 画像は縦横それぞれ用意し、棚の向きで差し替える。引き伸ばしはするが、
+ * 元の縦横比に近い形でしか使わないので柱が痩せて見えることはない。
+ * 中身は棚の内側に収まるよう、余白で押し込む。
  *
  * 場が増えても設定は増やさない方針なので、何を出すかはここで場ごとに決める。
  * atelier（制作台）/ study（机）は今後この分岐に足す。
@@ -116,102 +77,28 @@ function useBoxPerspective() {
 export function SurfaceBoard({ surface, children }: { surface: Surface; children: ReactNode }) {
   const style = useDisplayStyle()
   const orientation = useShelfOrientation()
-  const { ref, perspective } = useBoxPerspective()
 
   if (style === 'simple' || surface !== 'library') return <>{children}</>
 
-  // 横棚は 1 段なので床に接地させる。縦棚は上から積むので上寄せにする
+  // 横棚は 1 段なので棚板に接地させる。縦棚は上から積むので上寄せにする
   const stacked = orientation === 'columns'
 
-  // 縦棚を横に並べるときは列いっぱいまで伸ばし、棚台の高さを揃える
   return (
     <div className="relative flex h-full min-h-0 flex-1 flex-col">
       <div
-        ref={ref}
-        className={`relative flex min-h-[7rem] flex-1 rounded-t-xl ${
-          stacked ? 'items-start px-4 pb-3 pt-6' : 'items-end px-5 pt-7 sm:px-7'
+        className={`relative flex flex-1 bg-[length:100%_100%] bg-no-repeat ${
+          stacked
+            ? 'min-h-[18rem] items-start bg-[url(/shelf/vertical.webp)] px-[9%] pb-[9%] pt-[7%]'
+            : 'min-h-[11rem] items-end bg-[url(/shelf/horizontal.webp)] px-[7%] pb-[13%] pt-[7%]'
         }`}
-        style={{
-          perspective: `${perspective}px`,
-          // 視点をやや上に置くと床（棚板）の天面がよく見える
-          perspectiveOrigin: '50% 34%',
-          background: MARBLE_DEEP,
-        }}
       >
-        {/* 箱の 5 面。開口の各辺から実際に奥へ倒して組む */}
-        <span
-          aria-hidden
-          className="pointer-events-none absolute inset-0 rounded-t-xl"
-          style={{ transformStyle: 'preserve-3d' }}
-        >
-          {/* 奥の壁。遠いぶん小さく写り、これが箱の内側であることの基準になる */}
-          <span
-            className="absolute inset-0"
-            style={{
-              transform: `translateZ(-${DEPTH}px)`,
-              background: `linear-gradient(to bottom, ${MARBLE_DEEP} 0%, ${MARBLE_SHADE} 60%, ${MARBLE_BASE} 100%)`,
-            }}
-          />
-          {/* 床＝棚板の天面。手前がいちばん明るく、奥へ向かって沈む */}
-          <span
-            className="absolute inset-x-0 bottom-0"
-            style={{
-              height: DEPTH,
-              transformOrigin: 'bottom center',
-              transform: 'rotateX(-90deg)',
-              background: `linear-gradient(to top, ${MARBLE_LIGHT} 0%, ${MARBLE_BASE} 45%, ${MARBLE_SHADE} 100%)`,
-            }}
-          />
-          {/* 天井。下から見上げる面なので最も暗い */}
-          <span
-            className="absolute inset-x-0 top-0"
-            style={{
-              height: DEPTH,
-              transformOrigin: 'top center',
-              transform: 'rotateX(90deg)',
-              background: `linear-gradient(to bottom, ${MARBLE_DEEP} 0%, ${MARBLE_SHADE} 100%)`,
-            }}
-          />
-          {/* 左右の壁。光源が左上なので左を明るく、右を暗くする */}
-          <span
-            className="absolute inset-y-0 left-0"
-            style={{
-              width: DEPTH,
-              transformOrigin: 'left center',
-              transform: 'rotateY(90deg)',
-              background: `linear-gradient(to left, ${MARBLE_SHADE} 0%, ${MARBLE_BASE} 100%)`,
-            }}
-          />
-          <span
-            className="absolute inset-y-0 right-0"
-            style={{
-              width: DEPTH,
-              transformOrigin: 'right center',
-              transform: 'rotateY(-90deg)',
-              background: `linear-gradient(to right, ${MARBLE_DEEP} 0%, ${MARBLE_SHADE} 100%)`,
-            }}
-          />
-        </span>
-
-        {/* 開口の額縁。箱の手前の縁として、金の細線で四辺を締める */}
-        <span
-          aria-hidden
-          className="pointer-events-none absolute inset-0 z-10 rounded-t-xl"
-          style={{ boxShadow: `inset 0 0 0 3px ${MARBLE_BASE}, inset 0 0 0 4px ${GOLD}` }}
-        />
-
-        {/*
-          中身。床の手前端に下揃えで接地させ、子（アイテム 1 つずつ）に落ち影を持たせる。
-          影を器側で一括して掛けるのは、アイテム側の実装に依存せず「載っている」状態を
-          保証するため。Rail / EmptyRail のどちらでも同じ深さの階層になる。
-        */}
         {/*
           中身。棚の終わり（横棚は右端・縦棚は下端）はマスクで透過させる。
           板を被せるとその形が見えてしまうので、中身そのものを薄れさせる。
           幅は切り口が和らぐ程度に留める。広く取ると端に何もない帯ができてしまう。
         */}
         <div
-          className="relative z-10 min-w-0 flex-1 [&>[data-rail]>*]:drop-shadow-[0_7px_5px_rgba(0,0,0,0.3)]"
+          className="relative z-10 min-w-0 flex-1 [&>[data-rail]>*]:drop-shadow-[0_6px_5px_rgba(0,0,0,0.22)]"
           style={{
             maskImage: stacked
               ? 'linear-gradient(to bottom, #000 calc(100% - 1rem), transparent 100%)'
@@ -220,18 +107,6 @@ export function SurfaceBoard({ surface, children }: { surface: Surface; children
         >
           {children}
         </div>
-
-      </div>
-
-      {/* 棚板の小口。箱の下辺から前へ張り出させ、板の厚みを見せる */}
-      <div aria-hidden className="relative -mx-2 sm:-mx-3">
-        <div
-          className="h-2.5 rounded-b-lg"
-          style={{
-            background: `linear-gradient(to bottom, ${MARBLE_LIGHT} 0 1px, ${GOLD} 1px 2px, ${MARBLE_BASE} 2px 55%, ${MARBLE_SHADE} 100%)`,
-            boxShadow: '0 9px 14px -9px color-mix(in srgb, var(--foreground) 60%, transparent)',
-          }}
-        />
       </div>
     </div>
   )
