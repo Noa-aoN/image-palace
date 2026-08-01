@@ -102,12 +102,12 @@ export function SurfaceBoard({ surface, children }: { surface: Surface; children
   */
   const shelf = stacked
     ? {
-        borderWidth: '52px 48px 48px 48px',
+        borderWidth: '116px 105px 105px 105px',
         borderImageSource: "url('/shelf/vertical.webp')",
         borderImageSlice: '210 190 190 190 fill',
       }
     : {
-        borderWidth: '31px 91px 56px 91px',
+        borderWidth: '50px 143px 88px 143px',
         borderImageSource: "url('/shelf/horizontal.webp')",
         borderImageSlice: '90 260 160 260 fill',
       }
@@ -139,7 +139,7 @@ export function SurfaceBoard({ surface, children }: { surface: Surface; children
         */}
         <div
           className={`relative z-10 min-w-0 flex-1 [&>[data-rail]>*]:drop-shadow-[0_6px_5px_rgba(0,0,0,0.22)] ${
-            stacked ? '' : '-mb-9 pt-3'
+            stacked ? '' : '-mb-11 pt-4'
           }`}
         >
           {children}
