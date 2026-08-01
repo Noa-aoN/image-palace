@@ -23,6 +23,8 @@ import type { SearchResults } from '@/types/search'
 import { CardImage } from '@/components/ui/card-image'
 import { Rail, EmptyRail } from '@/components/features/library/primitives'
 import { SearchResultsView } from '@/components/features/library/SearchResults'
+import { ShelfGroup, SurfaceBoard } from '@/components/features/display/ShelfBoard'
+import { EntityFrame } from '@/components/features/display/EntityFrame'
 
 const PREVIEW_LIMIT = 12
 
@@ -86,6 +88,7 @@ function SelectableTile({
 function Shelf({
   icon,
   title,
+  description,
   count,
   href,
   action,
@@ -93,6 +96,7 @@ function Shelf({
 }: {
   icon: React.ReactNode
   title: string
+  description?: string
   count?: number
   href?: string
   action?: React.ReactNode
@@ -114,22 +118,28 @@ function Shelf({
   )
 
   return (
-    <section className="space-y-3">
-      <div className="flex items-center justify-between gap-3">
-        {href ? (
-          <Link
-            href={href}
-            aria-label={`${title}の一覧を見る`}
-            className="group flex items-center gap-2 rounded-md transition-colors hover:text-[var(--palace)]"
-          >
-            {heading}
-          </Link>
-        ) : (
-          <div className="flex items-center gap-2">{heading}</div>
-        )}
-        {action && <div className="flex items-center gap-2">{action}</div>}
+    // 縦棚を横に並べたとき列の高さが揃うよう、棚そのものを縦の flex にして伸ばす
+    <section className="flex h-full flex-col gap-3">
+      {/* 見出しと説明は縦に積む。横に並べると見出しが読み取りにくくなるため */}
+      <div className="flex items-start justify-between gap-3">
+        <div className="min-w-0">
+          {href ? (
+            <Link
+              href={href}
+              aria-label={`${title}の一覧を見る`}
+              className="group flex items-center gap-2 rounded-md transition-colors hover:text-[var(--palace)]"
+            >
+              {heading}
+            </Link>
+          ) : (
+            <div className="flex items-center gap-2">{heading}</div>
+          )}
+          {description && <p className="mt-0.5 text-sm text-muted-foreground">{description}</p>}
+        </div>
+        {action && <div className="flex shrink-0 items-center gap-2">{action}</div>}
       </div>
-      {children}
+      {/* 宮殿スタイルでは 1 段を棚板の上に載せる（シンプルでは素通し） */}
+      <SurfaceBoard surface="library">{children}</SurfaceBoard>
     </section>
   )
 }
@@ -148,12 +158,14 @@ function Section({
 }) {
   return (
     <section className="space-y-6">
-      <div className="flex items-center gap-2">
-        <span style={{ color: 'var(--palace)' }}>{icon}</span>
-        <h2 className="text-lg font-semibold">{title}</h2>
-        {description && <span className="text-sm text-muted-foreground">{description}</span>}
+      <div>
+        <div className="flex items-center gap-2">
+          <span style={{ color: 'var(--palace)' }}>{icon}</span>
+          <h2 className="text-lg font-semibold">{title}</h2>
+        </div>
+        {description && <p className="mt-0.5 text-sm text-muted-foreground">{description}</p>}
       </div>
-      <div className="space-y-8 border-l border-border/60 pl-4">{children}</div>
+      <ShelfGroup className="border-l border-border/60 pl-4">{children}</ShelfGroup>
     </section>
   )
 }
@@ -226,6 +238,8 @@ function SpaceCoverFallback({ spaceType }: { spaceType: string }) {
 
 // 名前付きタイル共通の枠クラス（枠色/hover は SelectableTile 側で付与）
 const NAMED_TILE_CLASS = 'shrink-0 w-40 flex flex-col rounded-xl border overflow-hidden bg-card transition-shadow'
+// デッキはカード（w-32）と他のキャンバス（w-40）の中間。束ねたカードであることを大きさでも示す
+const DECK_TILE_CLASS = 'shrink-0 w-36 flex flex-col rounded-xl border overflow-hidden bg-card transition-shadow'
 
 type TileSelectionProps = {
   selectionMode?: boolean
@@ -246,9 +260,11 @@ function BoxTile({ box, selectionMode, selected, onToggle }: { box: Box } & Tile
         <span className="text-sm font-medium truncate">{box.name}</span>
         <span className="text-xs text-muted-foreground shrink-0">{box.entry_count}</span>
       </div>
-      <div className="w-full aspect-square bg-muted overflow-hidden">
-        <EntityCover cover={box} />
-      </div>
+      <EntityFrame kind="box">
+        <div className="w-full aspect-square bg-muted overflow-hidden">
+          <EntityCover cover={box} />
+        </div>
+      </EntityFrame>
     </SelectableTile>
   )
 }
@@ -266,9 +282,11 @@ function WordlistTile({ wordlist, selectionMode, selected, onToggle }: { wordlis
         <span className="text-sm font-medium truncate">{wordlist.name}</span>
         <span className="text-xs text-muted-foreground shrink-0">{wordlist.word_count}</span>
       </div>
-      <div className="w-full aspect-square bg-muted flex items-center justify-center">
-        <ListChecks size={28} className="text-muted-foreground/50" />
-      </div>
+      <EntityFrame kind="mineral">
+        <div className="w-full aspect-square bg-muted flex items-center justify-center">
+          <ListChecks size={28} className="text-muted-foreground/50" />
+        </div>
+      </EntityFrame>
     </SelectableTile>
   )
 }
@@ -286,18 +304,21 @@ function SpaceTile({ space, selectionMode, selected, onToggle }: { space: Space 
         <span className="text-sm font-medium truncate">{space.name}</span>
         <span className="text-xs text-muted-foreground shrink-0">{spaceTypeLabel(space.space_type)}</span>
       </div>
-      <div className="w-full aspect-square bg-muted overflow-hidden">
-        <EntityCover cover={space} fallback={<SpaceCoverFallback spaceType={space.space_type} />} />
-      </div>
+      <EntityFrame kind="space">
+        <div className="w-full aspect-square bg-muted overflow-hidden">
+          <EntityCover cover={space} fallback={<SpaceCoverFallback spaceType={space.space_type} />} />
+        </div>
+      </EntityFrame>
     </SelectableTile>
   )
 }
 
 function ViewTile({ view, selectionMode, selected, onToggle }: { view: View } & TileSelectionProps) {
+  const isDeck = view.view_type === 'deck'
   return (
     <SelectableTile
       href={`/views/${view.id}`}
-      className={NAMED_TILE_CLASS}
+      className={isDeck ? DECK_TILE_CLASS : NAMED_TILE_CLASS}
       selectionMode={selectionMode}
       selected={selected}
       onToggle={onToggle}
@@ -306,9 +327,11 @@ function ViewTile({ view, selectionMode, selected, onToggle }: { view: View } & 
         <span className="text-sm font-medium truncate">{view.name}</span>
         <span className="text-xs text-muted-foreground shrink-0">{viewTypeLabel(view.view_type)}</span>
       </div>
-      <div className="w-full aspect-square bg-muted overflow-hidden">
-        <EntityCover cover={view} />
-      </div>
+      <EntityFrame kind={isDeck ? 'deck' : view.view_type === 'freeboard' ? 'board' : 'frame'}>
+        <div className="w-full aspect-square bg-muted overflow-hidden">
+          <EntityCover cover={view} />
+        </div>
+      </EntityFrame>
     </SelectableTile>
   )
 }
@@ -550,7 +573,7 @@ export default function LibraryPage() {
       {hasQuery ? (
         <SearchResultsView results={results} searching={searching} />
       ) : (
-        <>
+        <ShelfGroup>
       {/* カード */}
       <Shelf
         icon={<GalleryHorizontal size={20} />}
@@ -703,6 +726,7 @@ export default function LibraryPage() {
       <Shelf
         icon={<BoxIcon size={20} />}
         title="ボックス"
+        description="用途を問わない収納箱"
         count={boxes.length}
         href={selectionMode ? undefined : '/boxes'}
       >
@@ -752,7 +776,7 @@ export default function LibraryPage() {
           <EmptyRail message="準備中です。画像素材をまとめられるようにする予定です。" />
         </Shelf>
       </Section>
-        </>
+        </ShelfGroup>
       )}
     </div>
   )

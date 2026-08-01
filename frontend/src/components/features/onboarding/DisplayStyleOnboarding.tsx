@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react'
 import { Button } from '@/components/ui/button'
 import { getSettings, updateSettings } from '@/lib/api/settings'
+import { useSettingsStore } from '@/stores/settings'
 import {
   DISPLAY_STYLES,
   DISPLAY_STYLE_KEYS,
@@ -44,6 +45,8 @@ export function DisplayStyleOnboarding() {
     setSaving(true)
     try {
       await updateSettings({ display_style: choice, onboarded: true })
+      // 共有ストアにも反映して、閉じた直後の画面から選んだ見せ方で描く
+      await useSettingsStore.getState().fetchSettings()
     } catch {
       // 保存に失敗しても閉じる。設定画面からいつでも変更できる
     } finally {

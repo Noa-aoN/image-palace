@@ -25,7 +25,7 @@ module Api
       def settings_params
         params.require(:setting).permit(
           :auto_generate_meanings, :auto_generate_tags, :default_image_style, :default_aspect_ratio,
-          :display_style, :onboarded,
+          :display_style, :shelf_orientation, :onboarded,
           :regenerate_with_meaning,
           :diagram_mode, :motion_mode
         )
@@ -38,6 +38,7 @@ module Api
           default_image_style: setting.default_image_style,
           default_aspect_ratio: setting.default_aspect_ratio,
           display_style: setting.display_style,
+          shelf_orientation: setting.shelf_orientation,
           # 初回の表示スタイル確認を出すかどうかの判断に使う
           onboarded: setting.onboarded_at.present?,
           regenerate_with_meaning: setting.regenerate_with_meaning,

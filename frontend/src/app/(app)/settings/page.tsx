@@ -12,7 +12,7 @@ import type { DiagramMode, MotionMode } from '@/types/settings'
 import { STYLE_OPTIONS } from '@/lib/item-styles'
 import { useUiStore } from '@/stores/ui'
 import { ASPECT_RATIOS, ASPECT_RATIO_KEYS } from '@/lib/aspect-ratio'
-import { DISPLAY_STYLES, DISPLAY_STYLE_KEYS } from '@/lib/display-style'
+import { DISPLAY_STYLES, DISPLAY_STYLE_KEYS, SHELF_ORIENTATIONS, SHELF_ORIENTATION_KEYS } from '@/lib/display-style'
 
 type TabKey = 'generation' | 'display' | 'sharing' | 'notification' | 'integration' | 'data'
 
@@ -31,12 +31,16 @@ export default function SettingsPage() {
   // 一覧の見せ方（シンプル / 宮殿スタイル）。図の 2D/3D 設定とは別物なので名前を分ける
   const [listStyle, setListStyle] = useState<string | null>(null)
   const [savingListStyle, setSavingListStyle] = useState(false)
+  const [shelfOrientation, setShelfOrientation] = useState<string | null>(null)
+  const [savingShelf, setSavingShelf] = useState(false)
   // 生成ステータスバッジの表示（クライアント保持の表示設定）
   const showStatusBadges = useUiStore((s) => s.showStatusBadges)
   const toggleStatusBadges = useUiStore((s) => s.toggleStatusBadges)
   // 図の 2D/3D とアニメーション（アカウントの設定。図のコンポーネントも同じストアを見る）
   const diagramMode = useSettingsStore((s) => s.settings?.diagram_mode ?? null)
   const motionMode = useSettingsStore((s) => s.settings?.motion_mode ?? null)
+  // 表示スタイル系も共有ストア経由で更新する。ライブラリ側が同じストアを見ているため、
+  // API を直接叩くと画面を再読み込みするまで反映されない
   const patchSettings = useSettingsStore((s) => s.patchSettings)
   const fetchSettings = useSettingsStore((s) => s.fetchSettings)
   const [savingDisplay, setSavingDisplay] = useState(false)
@@ -53,6 +57,7 @@ export default function SettingsPage() {
         setDefaultStyle(s.default_image_style)
         setDefaultAspect(s.default_aspect_ratio)
         setListStyle(s.display_style)
+        setShelfOrientation(s.shelf_orientation)
       })
       .catch(() => {})
     return () => {
@@ -95,12 +100,25 @@ export default function SettingsPage() {
     setSavingListStyle(true)
     setListStyle(value)
     try {
-      const s = await updateSettings({ display_style: value })
-      setListStyle(s.display_style)
+      await patchSettings({ display_style: value })
     } catch {
       setListStyle(prev) // 失敗したら元に戻す
     } finally {
       setSavingListStyle(false)
+    }
+  }
+
+  const changeShelfOrientation = async (value: string) => {
+    if (shelfOrientation === null || savingShelf) return
+    const prev = shelfOrientation
+    setSavingShelf(true)
+    setShelfOrientation(value)
+    try {
+      await patchSettings({ shelf_orientation: value })
+    } catch {
+      setShelfOrientation(prev) // 失敗したら元に戻す
+    } finally {
+      setSavingShelf(false)
     }
   }
 
@@ -409,6 +427,35 @@ export default function SettingsPage() {
               })}
               {savingListStyle && <Loader2 size={14} className="animate-spin text-muted-foreground" />}
             </div>
+
+            {/* 棚の並べ方。宮殿スタイルのときだけ意味を持つ従属設定なので、その中に入れ子で置く */}
+            {listStyle === 'palace' && (
+              <div className="space-y-2 rounded-lg border border-border/70 bg-muted/30 p-3">
+                <p className="text-sm font-medium">棚の並べ方</p>
+                <div className="grid gap-2 sm:grid-cols-2">
+                  {SHELF_ORIENTATION_KEYS.map((key) => {
+                    const opt = SHELF_ORIENTATIONS[key]
+                    const active = shelfOrientation === key
+                    return (
+                      <button
+                        key={key}
+                        type="button"
+                        onClick={() => changeShelfOrientation(key)}
+                        disabled={shelfOrientation === null || savingShelf}
+                        aria-pressed={active}
+                        className={`rounded-lg border p-3 text-left transition-colors disabled:opacity-50 ${
+                          active ? 'border-[var(--palace)] bg-[var(--palace)]/10' : 'border-border bg-card hover:bg-muted'
+                        }`}
+                      >
+                        <span className="text-sm font-medium">{opt.label}</span>
+                        <span className="mt-0.5 block text-xs text-muted-foreground">{opt.description}</span>
+                      </button>
+                    )
+                  })}
+                </div>
+                {savingShelf && <Loader2 size={14} className="animate-spin text-muted-foreground" />}
+              </div>
+            )}
           </section>
 
           <section className="space-y-3 rounded-xl border border-border bg-card p-5">

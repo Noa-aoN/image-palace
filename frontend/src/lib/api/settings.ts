@@ -15,6 +15,7 @@ export async function updateSettings(
       | 'default_image_style'
       | 'default_aspect_ratio'
       | 'display_style'
+      | 'shelf_orientation'
       | 'onboarded'
       | 'regenerate_with_meaning'
       | 'diagram_mode'

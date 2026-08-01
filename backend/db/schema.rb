@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_08_01_000001) do
+ActiveRecord::Schema[8.1].define(version: 2026_08_02_000001) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
   enable_extension "pgcrypto"
@@ -231,6 +231,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_08_01_000001) do
     t.string "motion_mode", default: "auto", null: false
     t.datetime "onboarded_at"
     t.boolean "regenerate_with_meaning", default: false, null: false
+    t.string "shelf_orientation", default: "rows", null: false
     t.string "timezone", default: "Asia/Tokyo", null: false
     t.datetime "updated_at", null: false
   end
