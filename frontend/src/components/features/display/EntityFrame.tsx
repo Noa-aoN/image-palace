@@ -137,11 +137,15 @@ function ChestFrame({ children }: { children: ReactNode }) {
         {/* メダリオン。二重の金環で縁取った円の中に中身を嵌める */}
         <span
           className="relative block w-[58%] overflow-hidden rounded-full"
-          style={{
-            boxShadow: `0 0 0 2px ${GOLD_SOLID}, 0 0 0 4px ${STONE_BASE}, 0 0 0 5px ${GOLD}, 0 2px 6px -2px rgba(0,0,0,0.45)`,
-          }}
+          style={{ boxShadow: `0 2px 6px -2px rgba(0,0,0,0.45)` }}
         >
           {children}
+          {/* 金環は画像の *上* に被せる。外側に置くと画像との間に隙間が見えるため */}
+          <span
+            aria-hidden
+            className="pointer-events-none absolute inset-0 rounded-full"
+            style={{ boxShadow: `inset 0 0 0 2px ${GOLD_SOLID}, inset 0 0 0 4px ${STONE_BASE}, inset 0 0 0 5px ${GOLD}` }}
+          />
         </span>
       </div>
 
@@ -210,38 +214,24 @@ function BoardFrame({ children }: { children: ReactNode }) {
  * 角を落とした多角形に切り、面ごとに光の当たり方を変えて結晶らしい稜線を出す。
  */
 function MineralFrame({ children }: { children: ReactNode }) {
-  const facet = 'polygon(22% 0, 78% 0, 100% 30%, 88% 100%, 12% 100%, 0 30%)'
+  // 正六角形。素材＝まだ組み合わされていない単位、という含みでハニカムにする
+  const hex = 'polygon(50% 0, 93% 25%, 93% 75%, 50% 100%, 7% 75%, 7% 25%)'
   return (
     <div className="relative">
-      {/* 原石の外形。内側の中身も同じ形に切り抜く */}
-      <div
-        className="relative overflow-hidden"
-        style={{
-          clipPath: facet,
-          background: `linear-gradient(150deg, ${STONE_LIGHT} 0%, ${STONE_BASE} 45%, ${STONE_SHADE} 100%)`,
-        }}
-      >
+      <div className="relative overflow-hidden" style={{ clipPath: hex, background: STONE_BASE }}>
         {children}
-        {/* 割れ面。稜線を 2 本入れて、平面ではなく塊に見せる */}
+        {/* 縁だけ石で締める。面の中は割らない */}
         <span
           aria-hidden
           className="pointer-events-none absolute inset-0"
-          style={{
-            background: `linear-gradient(112deg, rgba(255,255,255,0.34) 0 26%, transparent 26%), linear-gradient(248deg, ${STONE_SHADE} 0 22%, transparent 22%)`,
-            opacity: 0.85,
-          }}
-        />
-        <span
-          aria-hidden
-          className="pointer-events-none absolute inset-x-0 top-0 h-full"
-          style={{ background: `linear-gradient(to bottom right, transparent 46%, ${GOLD} 46%, ${GOLD} 47%, transparent 47%)`, opacity: 0.5 }}
+          style={{ clipPath: hex, boxShadow: `inset 0 0 0 3px ${STONE_BASE}, inset 0 0 0 4px ${GOLD}` }}
         />
       </div>
       {/* 影。塊が面に置かれている状態にする */}
       <span
         aria-hidden
-        className="pointer-events-none absolute inset-x-3 bottom-0 h-1.5 rounded-[50%] blur-[3px]"
-        style={{ background: 'color-mix(in srgb, var(--foreground) 30%, transparent)' }}
+        className="pointer-events-none absolute inset-x-6 bottom-0 h-1.5 rounded-[50%] blur-[3px]"
+        style={{ background: 'color-mix(in srgb, var(--foreground) 28%, transparent)' }}
       />
     </div>
   )
