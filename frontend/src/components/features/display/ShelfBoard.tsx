@@ -1,6 +1,6 @@
 'use client'
 
-import type { ReactNode } from 'react'
+import { createContext, useContext, useEffect, useRef, useState, type ReactNode } from 'react'
 import { useSettingsStore } from '@/stores/settings'
 import {
   DEFAULT_DISPLAY_STYLE,
@@ -27,17 +27,27 @@ export function useShelfOrientation() {
   return isShelfOrientation(value) ? value : DEFAULT_SHELF_ORIENTATION
 }
 
+/** 既に段組みの中にいるか。入れ子の段組みは列がさらに割れて破綻するため抑止する */
+const InShelfGridContext = createContext(false)
+
 /**
  * 棚を並べる枠。縦棚を横に並べる設定のときだけ段組みにする。
  * 棚の高さは中身で決まるので、列の高さを揃えるために items-stretch を効かせる。
+ *
+ * 段組みは最も外側の 1 段だけに掛ける。傘セクションの中でさらに段組みすると
+ * 1 列の幅が 1/3 の 1/3 になり、棚として読めなくなるため。
  */
 export function ShelfGroup({ children, className = '' }: { children: ReactNode; className?: string }) {
   const orientation = useShelfOrientation()
-  if (orientation === 'columns') {
+  const nested = useContext(InShelfGridContext)
+
+  if (orientation === 'columns' && !nested) {
     return (
-      <div className={`grid items-stretch gap-6 sm:grid-cols-2 xl:grid-cols-3 ${className}`}>
-        {children}
-      </div>
+      <InShelfGridContext.Provider value>
+        <div className={`grid items-stretch gap-6 sm:grid-cols-2 xl:grid-cols-3 ${className}`}>
+          {children}
+        </div>
+      </InShelfGridContext.Provider>
     )
   }
   return <div className={`space-y-8 ${className}`}>{children}</div>
@@ -56,6 +66,32 @@ const MARBLE_DEEP = 'color-mix(in srgb, var(--ivory-dark) 72%, var(--foreground)
 const DEPTH = 26
 
 /**
+ * 箱の大きさに応じた視距離を測る。
+ *
+ * perspective を固定値にすると、横に長い棚では左右端が広角レンズのように破綻し、
+ * 縦に高い棚では逆にパースがほとんど付かない。視距離は箱の寸法に比例させる必要がある。
+ * CSS だけでは要素サイズを参照できないため、ResizeObserver で測って渡す。
+ */
+function useBoxPerspective() {
+  const ref = useRef<HTMLDivElement>(null)
+  const [size, setSize] = useState(0)
+
+  useEffect(() => {
+    const el = ref.current
+    if (!el) return
+    const ro = new ResizeObserver(([entry]) => {
+      const { width, height } = entry.contentRect
+      setSize(Math.max(width, height))
+    })
+    ro.observe(el)
+    return () => ro.disconnect()
+  }, [])
+
+  // 測る前は破綻しにくい遠めの視点にしておく（初回描画のちらつきを避ける）
+  return { ref, perspective: size > 0 ? Math.max(size * 1.5, 420) : 1200 }
+}
+
+/**
  * 「場」に応じた器。宮殿スタイルのときだけ装飾を出し、シンプルのときは素通しする。
  *
  * ライブラリは、正面から覗いた大理石の箱（棚）にしている。
@@ -72,16 +108,18 @@ const DEPTH = 26
  */
 export function SurfaceBoard({ surface, children }: { surface: Surface; children: ReactNode }) {
   const style = useDisplayStyle()
+  const { ref, perspective } = useBoxPerspective()
 
   if (style === 'simple' || surface !== 'library') return <>{children}</>
 
   // 縦棚を横に並べるときは列いっぱいまで伸ばし、棚台の高さを揃える
   return (
-    <div className="relative flex h-full flex-col">
+    <div className="relative flex h-full min-h-0 flex-1 flex-col">
       <div
-        className="relative flex flex-1 items-end rounded-t-xl px-6 pt-8 sm:px-8"
+        ref={ref}
+        className="relative flex min-h-[7rem] flex-1 items-end rounded-t-xl px-6 pt-8 sm:px-8"
         style={{
-          perspective: `${DEPTH * 26}px`,
+          perspective: `${perspective}px`,
           // 視点をやや上に置くと床（棚板）の天面がよく見える
           perspectiveOrigin: '50% 34%',
           background: MARBLE_DEEP,
@@ -154,7 +192,7 @@ export function SurfaceBoard({ surface, children }: { surface: Surface; children
           影を器側で一括して掛けるのは、アイテム側の実装に依存せず「載っている」状態を
           保証するため。Rail / EmptyRail のどちらでも同じ深さの階層になる。
         */}
-        <div className="relative z-10 min-w-0 flex-1 [&>*>*]:drop-shadow-[0_7px_5px_rgba(0,0,0,0.3)]">
+        <div className="relative z-10 min-w-0 flex-1 [&>[data-rail]>*]:drop-shadow-[0_7px_5px_rgba(0,0,0,0.3)]">
           {children}
         </div>
       </div>

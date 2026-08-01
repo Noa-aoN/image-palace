@@ -116,7 +116,8 @@ function Shelf({
   )
 
   return (
-    <section className="space-y-3">
+    // 縦棚を横に並べたとき列の高さが揃うよう、棚そのものを縦の flex にして伸ばす
+    <section className="flex h-full flex-col gap-3">
       <div className="flex items-center justify-between gap-3">
         {href ? (
           <Link
