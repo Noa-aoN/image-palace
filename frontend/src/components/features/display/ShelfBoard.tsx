@@ -44,7 +44,14 @@ export function ShelfGroup({ children, className = '' }: { children: ReactNode; 
   if (orientation === 'columns' && !nested) {
     return (
       <InShelfGridContext.Provider value>
-        <div className={`grid items-stretch gap-6 sm:grid-cols-2 xl:grid-cols-3 ${className}`}>
+        {/*
+          列幅はアイテムの実寸から決める。タイル 10rem ＋ 箱の左右余白 3rem で 13rem あれば
+          1 列に 1 枚がちょうど収まる。列数を固定すると画面幅によって棚が痩せたり間延びするため、
+          auto-fill で入るだけ並べる。
+        */}
+        <div
+          className={`grid grid-cols-[repeat(auto-fill,minmax(13rem,1fr))] items-stretch gap-6 ${className}`}
+        >
           {children}
         </div>
       </InShelfGridContext.Provider>

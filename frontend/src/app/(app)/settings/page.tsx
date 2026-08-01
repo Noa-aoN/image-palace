@@ -39,6 +39,8 @@ export default function SettingsPage() {
   // 図の 2D/3D とアニメーション（アカウントの設定。図のコンポーネントも同じストアを見る）
   const diagramMode = useSettingsStore((s) => s.settings?.diagram_mode ?? null)
   const motionMode = useSettingsStore((s) => s.settings?.motion_mode ?? null)
+  // 表示スタイル系も共有ストア経由で更新する。ライブラリ側が同じストアを見ているため、
+  // API を直接叩くと画面を再読み込みするまで反映されない
   const patchSettings = useSettingsStore((s) => s.patchSettings)
   const fetchSettings = useSettingsStore((s) => s.fetchSettings)
   const [savingDisplay, setSavingDisplay] = useState(false)
@@ -98,8 +100,7 @@ export default function SettingsPage() {
     setSavingListStyle(true)
     setListStyle(value)
     try {
-      const s = await updateSettings({ display_style: value })
-      setListStyle(s.display_style)
+      await patchSettings({ display_style: value })
     } catch {
       setListStyle(prev) // 失敗したら元に戻す
     } finally {
@@ -113,8 +114,7 @@ export default function SettingsPage() {
     setSavingShelf(true)
     setShelfOrientation(value)
     try {
-      const s = await updateSettings({ shelf_orientation: value })
-      setShelfOrientation(s.shelf_orientation)
+      await patchSettings({ shelf_orientation: value })
     } catch {
       setShelfOrientation(prev) // 失敗したら元に戻す
     } finally {
