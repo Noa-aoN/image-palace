@@ -205,24 +205,22 @@ export function SurfaceBoard({ surface, children }: { surface: Surface; children
           影を器側で一括して掛けるのは、アイテム側の実装に依存せず「載っている」状態を
           保証するため。Rail / EmptyRail のどちらでも同じ深さの階層になる。
         */}
-        <div className="relative z-10 min-w-0 flex-1 [&>[data-rail]>*]:drop-shadow-[0_7px_5px_rgba(0,0,0,0.3)]">
+        {/*
+          中身。棚の終わり（横棚は右端・縦棚は下端）はマスクで透過させる。
+          板を被せるとその形が見えてしまうので、中身そのものを薄れさせる。
+          Rail 側に同じ幅の余白を持たせてあるので、最後まで送れば全体が現れる。
+        */}
+        <div
+          className="relative z-10 min-w-0 flex-1 [&>[data-rail]>*]:drop-shadow-[0_7px_5px_rgba(0,0,0,0.3)]"
+          style={{
+            maskImage: stacked
+              ? 'linear-gradient(to bottom, #000 calc(100% - 2.5rem), transparent 100%)'
+              : 'linear-gradient(to right, #000 calc(100% - 3rem), transparent 100%)',
+          }}
+        >
           {children}
         </div>
 
-        {/*
-          棚の終わり。横棚は右端、縦棚は下端をぼかして、
-          そこで並びが切れていることを分かるようにする。
-          開口の金縁（4px）に掛からないよう内側に 1px 逃がす。
-        */}
-        <span
-          aria-hidden
-          className={`pointer-events-none absolute z-20 ${
-            stacked ? 'inset-x-1 bottom-1 h-10' : 'inset-y-1 right-1 w-12'
-          }`}
-          style={{
-            background: `linear-gradient(to ${stacked ? 'bottom' : 'right'}, transparent 0%, color-mix(in srgb, ${MARBLE_SHADE} 70%, transparent) 55%, ${MARBLE_SHADE} 100%)`,
-          }}
-        />
       </div>
 
       {/* 棚板の小口。箱の下辺から前へ張り出させ、板の厚みを見せる */}

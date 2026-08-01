@@ -11,7 +11,7 @@ export function Rail({ children }: { children: ReactNode }) {
     // 縦棚ではスクロールを出さない。アイテムは固定幅ではなく列いっぱいに広げ、
     // 横にはみ出させない（タイル側の w-40 を上書きする）。高さも中身なりに伸ばす。
     return (
-      <div data-rail className="flex flex-col gap-3 pb-2 [&>*]:!w-full [&>*]:shrink">
+      <div data-rail className="flex flex-col gap-3 pb-10 [&>*]:!w-full [&>*]:shrink">
         {children}
       </div>
     )
