@@ -88,6 +88,7 @@ function SelectableTile({
 function Shelf({
   icon,
   title,
+  description,
   count,
   href,
   action,
@@ -95,6 +96,7 @@ function Shelf({
 }: {
   icon: React.ReactNode
   title: string
+  description?: string
   count?: number
   href?: string
   action?: React.ReactNode
@@ -118,19 +120,23 @@ function Shelf({
   return (
     // 縦棚を横に並べたとき列の高さが揃うよう、棚そのものを縦の flex にして伸ばす
     <section className="flex h-full flex-col gap-3">
-      <div className="flex items-center justify-between gap-3">
-        {href ? (
-          <Link
-            href={href}
-            aria-label={`${title}の一覧を見る`}
-            className="group flex items-center gap-2 rounded-md transition-colors hover:text-[var(--palace)]"
-          >
-            {heading}
-          </Link>
-        ) : (
-          <div className="flex items-center gap-2">{heading}</div>
-        )}
-        {action && <div className="flex items-center gap-2">{action}</div>}
+      {/* 見出しと説明は縦に積む。横に並べると見出しが読み取りにくくなるため */}
+      <div className="flex items-start justify-between gap-3">
+        <div className="min-w-0">
+          {href ? (
+            <Link
+              href={href}
+              aria-label={`${title}の一覧を見る`}
+              className="group flex items-center gap-2 rounded-md transition-colors hover:text-[var(--palace)]"
+            >
+              {heading}
+            </Link>
+          ) : (
+            <div className="flex items-center gap-2">{heading}</div>
+          )}
+          {description && <p className="mt-0.5 text-sm text-muted-foreground">{description}</p>}
+        </div>
+        {action && <div className="flex shrink-0 items-center gap-2">{action}</div>}
       </div>
       {/* 宮殿スタイルでは 1 段を棚板の上に載せる（シンプルでは素通し） */}
       <SurfaceBoard surface="library">{children}</SurfaceBoard>
@@ -152,10 +158,12 @@ function Section({
 }) {
   return (
     <section className="space-y-6">
-      <div className="flex items-center gap-2">
-        <span style={{ color: 'var(--palace)' }}>{icon}</span>
-        <h2 className="text-lg font-semibold">{title}</h2>
-        {description && <span className="text-sm text-muted-foreground">{description}</span>}
+      <div>
+        <div className="flex items-center gap-2">
+          <span style={{ color: 'var(--palace)' }}>{icon}</span>
+          <h2 className="text-lg font-semibold">{title}</h2>
+        </div>
+        {description && <p className="mt-0.5 text-sm text-muted-foreground">{description}</p>}
       </div>
       <ShelfGroup className="border-l border-border/60 pl-4">{children}</ShelfGroup>
     </section>
@@ -718,6 +726,7 @@ export default function LibraryPage() {
       <Shelf
         icon={<BoxIcon size={20} />}
         title="ボックス"
+        description="種類を問わず、何でもまとめて入れておける箱"
         count={boxes.length}
         href={selectionMode ? undefined : '/boxes'}
       >
