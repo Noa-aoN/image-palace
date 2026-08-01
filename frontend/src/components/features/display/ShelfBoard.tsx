@@ -74,6 +74,9 @@ export function ShelfGroup({ children, className = '' }: { children: ReactNode; 
  * 場が増えても設定は増やさない方針なので、何を出すかはここで場ごとに決める。
  * atelier（制作台）/ study（机）は今後この分岐に足す。
  */
+// 横棚の側枠（柱）の幅。マスクの切り口もここから逆算するので 1 か所で持つ
+const SIDE_BORDER = 105
+
 export function SurfaceBoard({ surface, children }: { surface: Surface; children: ReactNode }) {
   const style = useDisplayStyle()
   const orientation = useShelfOrientation()
@@ -85,12 +88,26 @@ export function SurfaceBoard({ surface, children }: { surface: Surface; children
   const stacked = orientation === 'columns'
 
   /*
-    棚の切れ目。中身が送れる方向の端は、柱ごと棚を透過させて途切れさせる。
-    マスクを border-image の要素に掛けるので、柱・繰形・棚板が同じ位置で一緒に消え、
-    「棚がそこで切れている」と読める。送りきった端では柱を出して棚を閉じる。
+    棚の切れ目。中身がまだ送れる側は、柱ごと棚を透過させて途切れさせる。
+
+    マスクは border-image を持つ要素に掛ける。こうすると柱・繰形・棚板が同じ位置で
+    一緒に消えるので、「棚がそこで切れている」と読める。
+
+    幅は枠幅から逆算する必要がある。線形のグラデーションを枠幅と同じだけ掛けても、
+    柱があるのは端から 0..SIDE_BORDER の範囲で、そこでのマスク値は 0 まで落ちきらず、
+    柱は薄くなるだけで残る。そこで
+      - 端から SIDE_BORDER までは完全に透過（柱の領域を確実に消す）
+      - そこからさらに内側 45px で不透明へ戻す（切り口をぼかす）
+    の 2 段で作る。
   */
-  const cutStart = atStart ? '#000 0%' : 'transparent 0%, #000 4rem'
-  const cutEnd = atEnd ? '#000 100%' : '#000 calc(100% - 4rem), transparent 100%'
+  const gone = SIDE_BORDER - 5
+  const soft = SIDE_BORDER + 45
+  const cutStart = atStart
+    ? '#000 0%'
+    : `transparent 0, transparent ${gone}px, #000 ${soft}px`
+  const cutEnd = atEnd
+    ? '#000 100%'
+    : `#000 calc(100% - ${soft}px), transparent calc(100% - ${gone}px), transparent 100%`
 
   /*
     棚は border-image で描く。背景画像として引き伸ばすと柱や繰形まで一緒に伸びて
@@ -107,7 +124,7 @@ export function SurfaceBoard({ surface, children }: { surface: Surface; children
         borderImageSlice: '210 190 190 190 fill',
       }
     : {
-        borderWidth: '44px 105px 84px 105px',
+        borderWidth: `44px ${SIDE_BORDER}px 84px ${SIDE_BORDER}px`,
         borderImageSource: "url('/shelf/horizontal.webp')",
         borderImageSlice: '80 190 153 190 fill',
       }
@@ -128,7 +145,11 @@ export function SurfaceBoard({ surface, children }: { surface: Surface; children
             ? null
             : {
                 maskImage: `linear-gradient(to right, ${cutStart}, ${cutEnd})`,
+                maskSize: '100% 100%',
+                maskRepeat: 'no-repeat',
                 WebkitMaskImage: `linear-gradient(to right, ${cutStart}, ${cutEnd})`,
+                WebkitMaskSize: '100% 100%',
+                WebkitMaskRepeat: 'no-repeat',
               }),
         }}
       >
@@ -138,7 +159,7 @@ export function SurfaceBoard({ surface, children }: { surface: Surface; children
         */}
         <div
           className={`relative z-10 min-w-0 flex-1 [&>[data-rail]>*]:drop-shadow-[0_6px_5px_rgba(0,0,0,0.22)] ${
-            stacked ? '' : '-mb-3 pt-4'
+            stacked ? '' : '-mb-3 pl-3 pt-4'
           }`}
         >
           {children}
