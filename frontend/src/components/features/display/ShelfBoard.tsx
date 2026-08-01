@@ -115,16 +115,22 @@ function useBoxPerspective() {
  */
 export function SurfaceBoard({ surface, children }: { surface: Surface; children: ReactNode }) {
   const style = useDisplayStyle()
+  const orientation = useShelfOrientation()
   const { ref, perspective } = useBoxPerspective()
 
   if (style === 'simple' || surface !== 'library') return <>{children}</>
+
+  // 横棚は 1 段なので床に接地させる。縦棚は上から積むので上寄せにする
+  const stacked = orientation === 'columns'
 
   // 縦棚を横に並べるときは列いっぱいまで伸ばし、棚台の高さを揃える
   return (
     <div className="relative flex h-full min-h-0 flex-1 flex-col">
       <div
         ref={ref}
-        className="relative flex min-h-[7rem] flex-1 items-end rounded-t-xl px-6 pt-8 sm:px-8"
+        className={`relative flex min-h-[7rem] flex-1 rounded-t-xl px-6 pt-8 sm:px-8 ${
+          stacked ? 'items-start pb-3' : 'items-end'
+        }`}
         style={{
           perspective: `${perspective}px`,
           // 視点をやや上に置くと床（棚板）の天面がよく見える
