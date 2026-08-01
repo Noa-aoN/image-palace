@@ -113,17 +113,45 @@ function WindowFrame({ children }: { children: ReactNode }) {
  */
 function ChestFrame({ children }: { children: ReactNode }) {
   return (
-    <div className="relative pt-1">
-      {/* 蓋。上へ行くほど狭い 2 段にして、被せた蓋の厚みを作る */}
-      <div
+    <div className="group/chest relative pt-1.5">
+      {/*
+        蓋。天面を台形で見せて「上から開く箱」と読めるようにする。
+        合わせ目の陰で本体と分かれていることを示し、ホバーで少し持ち上げて開くことを伝える。
+      */}
+      <span
         aria-hidden
-        className="mx-auto h-1.5 w-[86%] rounded-t-[3px]"
-        style={{ background: `linear-gradient(to bottom, ${STONE_LIGHT}, ${STONE_BASE})`, boxShadow: `0 0 0 1px ${GOLD}` }}
-      />
-      <div
+        className="relative z-10 block transition-transform duration-200 ease-out group-hover/chest:-translate-y-1"
+      >
+        {/* 天面。奥が狭く手前が広い台形＝上から見えている水平面 */}
+        <span
+          className="mx-auto block h-2.5 w-[92%]"
+          style={{
+            clipPath: 'polygon(7% 0, 93% 0, 100% 100%, 0 100%)',
+            background: `linear-gradient(to bottom, ${STONE_SHADE} 0%, ${STONE_LIGHT} 55%, ${STONE_LIGHT} 100%)`,
+          }}
+        />
+        {/* 蓋の小口。金の細線で天面と分ける */}
+        <span
+          className="mx-auto block h-2 w-[94%]"
+          style={{
+            background: `linear-gradient(to bottom, ${GOLD} 0 1px, ${STONE_BASE} 1px 60%, ${STONE_SHADE} 100%)`,
+          }}
+        />
+        {/* 掛け金。正面中央に置いて、ここが開くことを示す */}
+        <span
+          className="absolute bottom-0 left-1/2 h-3 w-4 -translate-x-1/2 translate-y-1/3 rounded-b-[2px]"
+          style={{
+            background: `linear-gradient(to bottom, ${GOLD_SOLID}, color-mix(in srgb, ${GOLD_SOLID} 55%, black))`,
+            boxShadow: '0 1px 2px rgba(0,0,0,0.4)',
+          }}
+        />
+      </span>
+
+      {/* 合わせ目。蓋と本体の境に陰を落とし、別の部材であることを示す */}
+      <span
         aria-hidden
-        className="mx-auto h-2 w-[94%]"
-        style={{ background: `linear-gradient(to bottom, ${STONE_LIGHT} 0 1px, ${STONE_BASE} 1px 65%, ${STONE_SHADE} 100%)` }}
+        className="mx-auto block h-[3px] w-[96%]"
+        style={{ background: `linear-gradient(to bottom, color-mix(in srgb, var(--foreground) 45%, transparent), transparent)` }}
       />
 
       {/* 本体。正面にメダリオン、左右角に付柱 */}
