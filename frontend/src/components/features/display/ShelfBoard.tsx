@@ -208,14 +208,14 @@ export function SurfaceBoard({ surface, children }: { surface: Surface; children
         {/*
           中身。棚の終わり（横棚は右端・縦棚は下端）はマスクで透過させる。
           板を被せるとその形が見えてしまうので、中身そのものを薄れさせる。
-          Rail 側に同じ幅の余白を持たせてあるので、最後まで送れば全体が現れる。
+          幅は切り口が和らぐ程度に留める。広く取ると端に何もない帯ができてしまう。
         */}
         <div
           className="relative z-10 min-w-0 flex-1 [&>[data-rail]>*]:drop-shadow-[0_7px_5px_rgba(0,0,0,0.3)]"
           style={{
             maskImage: stacked
-              ? 'linear-gradient(to bottom, #000 calc(100% - 2.5rem), transparent 100%)'
-              : 'linear-gradient(to right, #000 calc(100% - 3rem), transparent 100%)',
+              ? 'linear-gradient(to bottom, #000 calc(100% - 1rem), transparent 100%)'
+              : 'linear-gradient(to right, #000 calc(100% - 1.25rem), transparent 100%)',
           }}
         >
           {children}
