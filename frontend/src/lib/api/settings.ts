@@ -14,6 +14,8 @@ export async function updateSettings(
       | 'auto_generate_tags'
       | 'default_image_style'
       | 'default_aspect_ratio'
+      | 'display_style'
+      | 'onboarded'
       | 'regenerate_with_meaning'
       | 'diagram_mode'
       | 'motion_mode'

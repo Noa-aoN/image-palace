@@ -8,6 +8,10 @@ export interface UserSettings {
   default_image_style: string
   // 新規カードの既定の縦横比（square / portrait / golden）
   default_aspect_ratio: string
+  // 一覧の見せ方（simple / palace）
+  display_style: string
+  // 初回の表示スタイル確認を済ませたか
+  onboarded: boolean
   /** 再生成時に「意味・説明を参考にする」の既定値（既定 ON） */
   regenerate_with_meaning: boolean
   /** 図（間取り図・記憶資産など）の表現。既定 "3d" */

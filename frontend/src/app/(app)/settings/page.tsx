@@ -12,6 +12,7 @@ import type { DiagramMode, MotionMode } from '@/types/settings'
 import { STYLE_OPTIONS } from '@/lib/item-styles'
 import { useUiStore } from '@/stores/ui'
 import { ASPECT_RATIOS, ASPECT_RATIO_KEYS } from '@/lib/aspect-ratio'
+import { DISPLAY_STYLES, DISPLAY_STYLE_KEYS } from '@/lib/display-style'
 
 type TabKey = 'generation' | 'display' | 'sharing' | 'notification' | 'integration' | 'data'
 
@@ -27,6 +28,9 @@ export default function SettingsPage() {
   // 新規カードの既定の縦横比
   const [defaultAspect, setDefaultAspect] = useState<string | null>(null)
   const [savingAspect, setSavingAspect] = useState(false)
+  // 一覧の見せ方（シンプル / 宮殿スタイル）。図の 2D/3D 設定とは別物なので名前を分ける
+  const [listStyle, setListStyle] = useState<string | null>(null)
+  const [savingListStyle, setSavingListStyle] = useState(false)
   // 生成ステータスバッジの表示（クライアント保持の表示設定）
   const showStatusBadges = useUiStore((s) => s.showStatusBadges)
   const toggleStatusBadges = useUiStore((s) => s.toggleStatusBadges)
@@ -48,6 +52,7 @@ export default function SettingsPage() {
         setRegenWithMeaning(s.regenerate_with_meaning)
         setDefaultStyle(s.default_image_style)
         setDefaultAspect(s.default_aspect_ratio)
+        setListStyle(s.display_style)
       })
       .catch(() => {})
     return () => {
@@ -81,6 +86,21 @@ export default function SettingsPage() {
       // 失敗時はストア側で元に戻る
     } finally {
       setSavingMotion(false)
+    }
+  }
+
+  const changeListStyle = async (value: string) => {
+    if (listStyle === null || savingListStyle) return
+    const prev = listStyle
+    setSavingListStyle(true)
+    setListStyle(value)
+    try {
+      const s = await updateSettings({ display_style: value })
+      setListStyle(s.display_style)
+    } catch {
+      setListStyle(prev) // 失敗したら元に戻す
+    } finally {
+      setSavingListStyle(false)
     }
   }
 
@@ -358,6 +378,39 @@ export default function SettingsPage() {
       icon: <SlidersHorizontal size={16} />,
       content: (
         <>
+          {/* 一覧の見せ方。場（ライブラリ/アトリエ/スタディ）ごとの器を使うかどうか */}
+          <section className="space-y-3 rounded-xl border border-border bg-card p-5">
+            <div className="flex items-center gap-2">
+              <ImageIcon size={18} style={{ color: 'var(--palace)' }} />
+              <h2 className="text-lg font-semibold">一覧の見せ方</h2>
+            </div>
+            <p className="text-sm text-muted-foreground">
+              ライブラリやアトリエなど、一覧ページ全体の見せ方を切り替えます。
+            </p>
+            <div className="space-y-2">
+              {DISPLAY_STYLE_KEYS.map((key) => {
+                const opt = DISPLAY_STYLES[key]
+                const active = listStyle === key
+                return (
+                  <button
+                    key={key}
+                    type="button"
+                    onClick={() => changeListStyle(key)}
+                    disabled={listStyle === null || savingListStyle}
+                    aria-pressed={active}
+                    className={`w-full rounded-xl border p-3 text-left transition-colors disabled:opacity-50 ${
+                      active ? 'border-[var(--palace)] bg-[var(--palace)]/10' : 'border-border hover:bg-muted'
+                    }`}
+                  >
+                    <span className="text-sm font-medium">{opt.label}</span>
+                    <span className="mt-0.5 block text-xs text-muted-foreground">{opt.description}</span>
+                  </button>
+                )
+              })}
+              {savingListStyle && <Loader2 size={14} className="animate-spin text-muted-foreground" />}
+            </div>
+          </section>
+
           <section className="space-y-3 rounded-xl border border-border bg-card p-5">
             <div className="flex items-center gap-2">
               <SlidersHorizontal size={18} style={{ color: 'var(--palace)' }} />
