@@ -1,7 +1,15 @@
+'use client'
+
 import type { ReactNode } from 'react'
+import { useShelfOrientation } from '@/components/features/display/ShelfBoard'
 
 // ライブラリ画面で共有する表示プリミティブ（横スクロールの棚・空の棚）。
 export function Rail({ children }: { children: ReactNode }) {
+  // 縦棚（横並び）のときは列幅が狭いので、横スクロールではなく上から積む
+  const orientation = useShelfOrientation()
+  if (orientation === 'columns') {
+    return <div className="flex flex-col gap-3 pb-1">{children}</div>
+  }
   return <div className="flex gap-3 overflow-x-auto pb-2">{children}</div>
 }
 

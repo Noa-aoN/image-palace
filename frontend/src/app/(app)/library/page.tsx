@@ -23,6 +23,8 @@ import type { SearchResults } from '@/types/search'
 import { CardImage } from '@/components/ui/card-image'
 import { Rail, EmptyRail } from '@/components/features/library/primitives'
 import { SearchResultsView } from '@/components/features/library/SearchResults'
+import { ShelfGroup, SurfaceBoard } from '@/components/features/display/ShelfBoard'
+import { EntityFrame } from '@/components/features/display/EntityFrame'
 
 const PREVIEW_LIMIT = 12
 
@@ -129,7 +131,8 @@ function Shelf({
         )}
         {action && <div className="flex items-center gap-2">{action}</div>}
       </div>
-      {children}
+      {/* 宮殿スタイルでは 1 段を棚板の上に載せる（シンプルでは素通し） */}
+      <SurfaceBoard surface="library">{children}</SurfaceBoard>
     </section>
   )
 }
@@ -153,7 +156,7 @@ function Section({
         <h2 className="text-lg font-semibold">{title}</h2>
         {description && <span className="text-sm text-muted-foreground">{description}</span>}
       </div>
-      <div className="space-y-8 border-l border-border/60 pl-4">{children}</div>
+      <ShelfGroup className="border-l border-border/60 pl-4">{children}</ShelfGroup>
     </section>
   )
 }
@@ -246,9 +249,11 @@ function BoxTile({ box, selectionMode, selected, onToggle }: { box: Box } & Tile
         <span className="text-sm font-medium truncate">{box.name}</span>
         <span className="text-xs text-muted-foreground shrink-0">{box.entry_count}</span>
       </div>
-      <div className="w-full aspect-square bg-muted overflow-hidden">
-        <EntityCover cover={box} />
-      </div>
+      <EntityFrame kind="box">
+        <div className="w-full aspect-square bg-muted overflow-hidden">
+          <EntityCover cover={box} />
+        </div>
+      </EntityFrame>
     </SelectableTile>
   )
 }
@@ -266,9 +271,11 @@ function WordlistTile({ wordlist, selectionMode, selected, onToggle }: { wordlis
         <span className="text-sm font-medium truncate">{wordlist.name}</span>
         <span className="text-xs text-muted-foreground shrink-0">{wordlist.word_count}</span>
       </div>
-      <div className="w-full aspect-square bg-muted flex items-center justify-center">
-        <ListChecks size={28} className="text-muted-foreground/50" />
-      </div>
+      <EntityFrame kind="plate">
+        <div className="w-full aspect-square bg-muted flex items-center justify-center">
+          <ListChecks size={28} className="text-muted-foreground/50" />
+        </div>
+      </EntityFrame>
     </SelectableTile>
   )
 }
@@ -286,9 +293,11 @@ function SpaceTile({ space, selectionMode, selected, onToggle }: { space: Space 
         <span className="text-sm font-medium truncate">{space.name}</span>
         <span className="text-xs text-muted-foreground shrink-0">{spaceTypeLabel(space.space_type)}</span>
       </div>
-      <div className="w-full aspect-square bg-muted overflow-hidden">
-        <EntityCover cover={space} fallback={<SpaceCoverFallback spaceType={space.space_type} />} />
-      </div>
+      <EntityFrame kind="space">
+        <div className="w-full aspect-square bg-muted overflow-hidden">
+          <EntityCover cover={space} fallback={<SpaceCoverFallback spaceType={space.space_type} />} />
+        </div>
+      </EntityFrame>
     </SelectableTile>
   )
 }
@@ -306,9 +315,11 @@ function ViewTile({ view, selectionMode, selected, onToggle }: { view: View } & 
         <span className="text-sm font-medium truncate">{view.name}</span>
         <span className="text-xs text-muted-foreground shrink-0">{viewTypeLabel(view.view_type)}</span>
       </div>
-      <div className="w-full aspect-square bg-muted overflow-hidden">
-        <EntityCover cover={view} />
-      </div>
+      <EntityFrame kind={view.view_type === 'deck' ? 'deck' : view.view_type === 'freeboard' ? 'board' : 'frame'}>
+        <div className="w-full aspect-square bg-muted overflow-hidden">
+          <EntityCover cover={view} />
+        </div>
+      </EntityFrame>
     </SelectableTile>
   )
 }
@@ -550,7 +561,7 @@ export default function LibraryPage() {
       {hasQuery ? (
         <SearchResultsView results={results} searching={searching} />
       ) : (
-        <>
+        <ShelfGroup>
       {/* カード */}
       <Shelf
         icon={<GalleryHorizontal size={20} />}
@@ -752,7 +763,7 @@ export default function LibraryPage() {
           <EmptyRail message="準備中です。画像素材をまとめられるようにする予定です。" />
         </Shelf>
       </Section>
-        </>
+        </ShelfGroup>
       )}
     </div>
   )

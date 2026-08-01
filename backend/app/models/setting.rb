@@ -3,6 +3,10 @@ class Setting < ApplicationRecord
   DISPLAY_STYLES = %w[simple palace].freeze
   validates :display_style, inclusion: { in: DISPLAY_STYLES }
 
+  # 棚の並べ方（宮殿スタイルのときのみ効く）
+  SHELF_ORIENTATIONS = %w[rows columns].freeze
+  validates :shelf_orientation, inclusion: { in: SHELF_ORIENTATIONS }
+
   # 新規カードの既定の縦横比（カード側で個別に上書きできる）
   validates :default_aspect_ratio, inclusion: { in: AspectRatios::KEYS }
   # 図（間取り図・記憶資産など）の表現。
