@@ -1,6 +1,6 @@
 'use client'
 
-import { createContext, useContext, type ReactNode } from 'react'
+import { createContext, useContext, useEffect, useRef, useState, type ReactNode } from 'react'
 import { useSettingsStore } from '@/stores/settings'
 import {
   DEFAULT_DISPLAY_STYLE,
@@ -77,16 +77,20 @@ export function ShelfGroup({ children, className = '' }: { children: ReactNode; 
 export function SurfaceBoard({ surface, children }: { surface: Surface; children: ReactNode }) {
   const style = useDisplayStyle()
   const orientation = useShelfOrientation()
+  const { hostRef, atStart, atEnd } = useRailEdges(children)
 
   if (style === 'simple' || surface !== 'library') return <>{children}</>
 
   // 横棚は 1 段なので棚板に接地させる。縦棚は上から積むので上寄せにする
   const stacked = orientation === 'columns'
 
-  // 中身の終わりをぼかす。板を被せると形が見えるので、中身そのものを薄れさせる
-  const fade = stacked
-    ? 'linear-gradient(to bottom, #000 calc(100% - 1rem), transparent 100%)'
-    : 'linear-gradient(to right, #000 calc(100% - 1.25rem), transparent 100%)'
+  /*
+    棚の切れ目。中身が送れる方向の端は、柱ごと棚を透過させて途切れさせる。
+    マスクを border-image の要素に掛けるので、柱・繰形・棚板が同じ位置で一緒に消え、
+    「棚がそこで切れている」と読める。送りきった端では柱を出して棚を閉じる。
+  */
+  const cutStart = atStart ? '#000 0%' : 'transparent 0%, #000 4rem'
+  const cutEnd = atEnd ? '#000 100%' : '#000 calc(100% - 4rem), transparent 100%'
 
   /*
     棚は border-image で描く。背景画像として引き伸ばすと柱や繰形まで一緒に伸びて
@@ -111,21 +115,60 @@ export function SurfaceBoard({ surface, children }: { surface: Surface; children
   return (
     <div className="relative flex h-full min-h-0 flex-1 flex-col">
       <div
+        ref={hostRef}
         className={`relative flex flex-1 ${stacked ? 'items-start' : 'items-end'}`}
         style={{
           ...shelf,
           borderStyle: 'solid',
           borderColor: 'transparent',
           borderImageRepeat: 'stretch',
+          maskImage: stacked ? undefined : `linear-gradient(to right, ${cutStart}, ${cutEnd})`,
         }}
       >
+        {/*
+          中身。横棚では棚板に少し掛かるところまで下げる。
+          こうするとアイテムは板の上に載って見え、スクロールバーは板の小口に重なる。
+        */}
         <div
-          className="relative z-10 min-w-0 flex-1 [&>[data-rail]>*]:drop-shadow-[0_6px_5px_rgba(0,0,0,0.22)]"
-          style={{ maskImage: fade }}
+          className={`relative z-10 min-w-0 flex-1 [&>[data-rail]>*]:drop-shadow-[0_6px_5px_rgba(0,0,0,0.22)] ${
+            stacked ? '' : '-mb-4'
+          }`}
         >
           {children}
         </div>
       </div>
     </div>
   )
+}
+
+/**
+ * 中身が送れる方向を見張る。
+ *
+ * 棚の端を切って見せるかどうかは「まだ先があるか」で決まるため、
+ * スクロール位置・中身の量・棚の幅のいずれが変わっても取り直す。
+ * Rail は呼び出し側が描く要素なので、data-rail を目印に辿る。
+ */
+function useRailEdges(children: ReactNode) {
+  const hostRef = useRef<HTMLDivElement>(null)
+  const [edges, setEdges] = useState({ atStart: true, atEnd: true })
+
+  useEffect(() => {
+    const rail = hostRef.current?.querySelector<HTMLElement>('[data-rail]')
+    if (!rail) return
+
+    const update = () => {
+      const max = rail.scrollWidth - rail.clientWidth
+      setEdges({ atStart: rail.scrollLeft <= 1, atEnd: rail.scrollLeft >= max - 1 })
+    }
+    update()
+    rail.addEventListener('scroll', update, { passive: true })
+    const ro = new ResizeObserver(update)
+    ro.observe(rail)
+    return () => {
+      rail.removeEventListener('scroll', update)
+      ro.disconnect()
+    }
+  }, [children])
+
+  return { hostRef, ...edges }
 }
