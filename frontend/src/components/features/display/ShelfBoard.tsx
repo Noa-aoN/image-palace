@@ -45,12 +45,11 @@ export function ShelfGroup({ children, className = '' }: { children: ReactNode; 
     return (
       <InShelfGridContext.Provider value>
         {/*
-          列幅はアイテムの実寸から決める。タイル 10rem ＋ 箱の左右余白 3rem で 13rem あれば
-          1 列に 1 枚がちょうど収まる。列数を固定すると画面幅によって棚が痩せたり間延びするため、
-          auto-fill で入るだけ並べる。
+          列幅はアイテムが窮屈にならない下限で決める。アイテムは列いっぱいに広がるので、
+          列数を固定すると画面幅によって棚が痩せたり間延びする。auto-fill で入るだけ並べる。
         */}
         <div
-          className={`grid grid-cols-[repeat(auto-fill,minmax(13rem,1fr))] items-stretch gap-6 ${className}`}
+          className={`grid grid-cols-[repeat(auto-fill,minmax(15rem,1fr))] items-stretch gap-6 ${className}`}
         >
           {children}
         </div>
@@ -128,8 +127,8 @@ export function SurfaceBoard({ surface, children }: { surface: Surface; children
     <div className="relative flex h-full min-h-0 flex-1 flex-col">
       <div
         ref={ref}
-        className={`relative flex min-h-[7rem] flex-1 rounded-t-xl px-6 pt-8 sm:px-8 ${
-          stacked ? 'items-start pb-3' : 'items-end'
+        className={`relative flex min-h-[7rem] flex-1 rounded-t-xl pt-8 ${
+          stacked ? 'items-start px-4 pb-3' : 'items-end px-6 sm:px-8'
         }`}
         style={{
           perspective: `${perspective}px`,

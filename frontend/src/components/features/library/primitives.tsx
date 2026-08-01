@@ -8,13 +8,10 @@ export function Rail({ children }: { children: ReactNode }) {
   // 縦棚（横並び）のときは列幅が狭いので、横スクロールではなく上から積む
   const orientation = useShelfOrientation()
   if (orientation === 'columns') {
-    // 棚 1 本が伸び続けるとページ全体が間延びするため、適度な高さで区切って中をスクロールさせる。
-    // 高さを揃えることで、横に並べたときの棚の背丈も揃う。
+    // 縦棚ではスクロールを出さない。アイテムは固定幅ではなく列いっぱいに広げ、
+    // 横にはみ出させない（タイル側の w-40 を上書きする）。高さも中身なりに伸ばす。
     return (
-      <div
-        data-rail
-        className="flex max-h-[22rem] flex-col gap-3 overflow-y-auto pb-2 pr-1 sm:max-h-[26rem]"
-      >
+      <div data-rail className="flex flex-col gap-3 pb-2 [&>*]:!w-full [&>*]:shrink">
         {children}
       </div>
     )
