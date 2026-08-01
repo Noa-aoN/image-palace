@@ -23,7 +23,7 @@ export function useInEntityFrame() {
  * 種別が増えたらここに 1 分岐足す。装飾は擬似要素ではなく span で組み、
  * 全て pointer-events-none にしてクリック（選択・遷移）を妨げない。
  */
-export type EntityKind = 'space' | 'box' | 'deck' | 'board' | 'mineral' | 'frame'
+export type EntityKind = 'space' | 'road' | 'box' | 'deck' | 'board' | 'mineral' | 'frame'
 
 // 大理石・金の色味は棚（ShelfBoard）と揃える
 const STONE_LIGHT = 'color-mix(in srgb, var(--ivory) 88%, white)'
@@ -44,6 +44,8 @@ export function EntityFrame({ kind, children: raw }: { kind: EntityKind; childre
   switch (kind) {
     case 'space':
       return <WindowFrame>{children}</WindowFrame>
+    case 'road':
+      return <WindowFrame open>{children}</WindowFrame>
     case 'box':
       return <ChestFrame>{children}</ChestFrame>
     case 'deck':
@@ -61,14 +63,14 @@ export function EntityFrame({ kind, children: raw }: { kind: EntityKind; childre
  * スペース＝窓。上辺をアーチで抜き、方立（十字の桟）を渡し、下に石の窓台を置く。
  * 「向こう側に風景が広がっている」ことを、アーチ＋桟＋窓台の 3 点で示す。
  */
-function WindowFrame({ children }: { children: ReactNode }) {
+function WindowFrame({ children, open = false }: { children: ReactNode; open?: boolean }) {
   return (
     <div className="relative">
       <div
         className="relative overflow-hidden"
         style={{
           // 上辺のアーチ。角丸ではなく楕円で抜くことで窓に見せる
-          borderRadius: '46% 46% 4px 4px / 22% 22% 2px 2px',
+          borderRadius: open ? '50% 50% 3px 3px / 30% 30% 2px 2px' : '46% 46% 4px 4px / 22% 22% 2px 2px',
           boxShadow: `inset 0 0 0 3px ${STONE_BASE}, inset 0 0 0 4px ${GOLD}`,
         }}
       >
@@ -76,14 +78,17 @@ function WindowFrame({ children }: { children: ReactNode }) {
         {/* 方立（縦横の桟）。窓ガラスの割りを示す */}
         <span
           aria-hidden
-          className="pointer-events-none absolute inset-y-0 left-1/2 w-[3px] -translate-x-1/2"
-          style={{ background: `linear-gradient(to right, ${STONE_SHADE}, ${STONE_LIGHT}, ${STONE_SHADE})`, opacity: 0.9 }}
+          className={`pointer-events-none absolute inset-y-0 left-1/2 -translate-x-1/2 ${open ? 'w-[2px] opacity-60' : 'w-[3px]'}`}
+          style={{ background: `linear-gradient(to right, ${STONE_SHADE}, ${STONE_LIGHT}, ${STONE_SHADE})` }}
         />
-        <span
-          aria-hidden
-          className="pointer-events-none absolute inset-x-0 top-[46%] h-[3px]"
-          style={{ background: `linear-gradient(to bottom, ${STONE_LIGHT}, ${STONE_SHADE})`, opacity: 0.9 }}
-        />
+        {/* 横桟。ルームは窓として割るが、ロードは道が奥へ抜けるので入れない */}
+        {!open && (
+          <span
+            aria-hidden
+            className="pointer-events-none absolute inset-x-0 top-[46%] h-[3px]"
+            style={{ background: `linear-gradient(to bottom, ${STONE_LIGHT}, ${STONE_SHADE})`, opacity: 0.9 }}
+          />
+        )}
         {/* ガラスの映り込み。左上から斜めに一筋だけ入れる */}
         <span
           aria-hidden
@@ -214,7 +219,7 @@ function ChestFrame({ children }: { children: ReactNode }) {
  */
 function DeckFrame({ children }: { children: ReactNode }) {
   return (
-    <div className="relative pl-1.5 pt-1.5">
+    <div className="relative pb-1.5 pr-1.5">
       {/* 背後の札。奥ほど小さく暗く、わずかに傾けて手で重ねた束にする */}
       {[3, 2, 1].map((i) => (
         <span
@@ -223,7 +228,7 @@ function DeckFrame({ children }: { children: ReactNode }) {
           className="pointer-events-none absolute inset-0 rounded-[3px] border border-border/60"
           style={{
             background: `linear-gradient(to bottom, ${STONE_LIGHT}, ${STONE_BASE})`,
-            transform: `translate(${i * -2}px, ${i * -2}px) rotate(${i % 2 ? -0.6 : 0.5}deg)`,
+            transform: `translate(${i * 2}px, ${i * 2}px) rotate(${i % 2 ? 0.6 : -0.5}deg)`,
             opacity: 1 - i * 0.12,
             boxShadow: '0 1px 2px rgba(0,0,0,0.18)',
           }}

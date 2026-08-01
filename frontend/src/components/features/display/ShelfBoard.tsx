@@ -88,26 +88,19 @@ export function SurfaceBoard({ surface, children }: { surface: Surface; children
   const stacked = orientation === 'columns'
 
   /*
-    棚の切れ目。中身がまだ送れる側は、柱ごと棚を透過させて途切れさせる。
+    棚の切れ目。中身がまだ送れる側は、柱の枠幅を 0 にする。
 
-    マスクは border-image を持つ要素に掛ける。こうすると柱・繰形・棚板が同じ位置で
-    一緒に消えるので、「棚がそこで切れている」と読める。
+    柱をマスクで透過させるだけだと、そこにあった幅が空白として残り、
+    棚が痩せたように見えてしまう。棚が続いていることを示したいので、
+    枠を落として *その幅を棚の内側に明け渡す*。中身もそのぶん広く使える。
 
-    幅は枠幅から逆算する必要がある。線形のグラデーションを枠幅と同じだけ掛けても、
-    柱があるのは端から 0..SIDE_BORDER の範囲で、そこでのマスク値は 0 まで落ちきらず、
-    柱は薄くなるだけで残る。そこで
-      - 端から SIDE_BORDER までは完全に透過（柱の領域を確実に消す）
-      - そこからさらに内側 45px で不透明へ戻す（切り口をぼかす）
-    の 2 段で作る。
+    枠幅は 4 辺とも longhand で指定する。shorthand と混ぜると、
+    値を戻したときに古い指定が残るかどうかがブラウザ任せになるため。
+    切り口は短いマスクで和らげるだけに留める（幅は奪わない）。
   */
-  const gone = SIDE_BORDER - 5
-  const soft = SIDE_BORDER + 45
-  const cutStart = atStart
-    ? '#000 0%'
-    : `transparent 0, transparent ${gone}px, #000 ${soft}px`
-  const cutEnd = atEnd
-    ? '#000 100%'
-    : `#000 calc(100% - ${soft}px), transparent calc(100% - ${gone}px), transparent 100%`
+  const openEnd = !atEnd
+  const openStart = !atStart
+  const softCut = 32
 
   /*
     棚は border-image で描く。背景画像として引き伸ばすと柱や繰形まで一緒に伸びて
@@ -119,12 +112,18 @@ export function SurfaceBoard({ surface, children }: { surface: Surface; children
   */
   const shelf = stacked
     ? {
-        borderWidth: '116px 105px 105px 105px',
+        borderTopWidth: '116px',
+        borderBottomWidth: '105px',
+        borderLeftWidth: '105px',
+        borderRightWidth: '105px',
         borderImageSource: "url('/shelf/vertical.webp')",
         borderImageSlice: '210 190 190 190 fill',
       }
     : {
-        borderWidth: `44px ${SIDE_BORDER}px 84px ${SIDE_BORDER}px`,
+        borderTopWidth: '44px',
+        borderBottomWidth: '84px',
+        borderLeftWidth: `${SIDE_BORDER}px`,
+        borderRightWidth: `${SIDE_BORDER}px`,
         borderImageSource: "url('/shelf/horizontal.webp')",
         borderImageSlice: '80 190 153 190 fill',
       }
@@ -139,15 +138,19 @@ export function SurfaceBoard({ surface, children }: { surface: Surface; children
           borderStyle: 'solid',
           borderColor: 'transparent',
           borderImageRepeat: 'stretch',
-          // 送れる方向の端はマスクで透過させ、柱ごと途切れさせる。
-          // 枠幅を 0 にする方法も試したが、柱が常に消えたため使わない。
           ...(stacked
             ? null
             : {
-                maskImage: `linear-gradient(to right, ${cutStart}, ${cutEnd})`,
+                borderLeftWidth: openStart ? '0px' : `${SIDE_BORDER}px`,
+                borderRightWidth: openEnd ? '0px' : `${SIDE_BORDER}px`,
+                maskImage: `linear-gradient(to right, ${
+                  openStart ? `transparent 0, #000 ${softCut}px` : '#000 0%'
+                }, ${openEnd ? `#000 calc(100% - ${softCut}px), transparent 100%` : '#000 100%'})`,
+                WebkitMaskImage: `linear-gradient(to right, ${
+                  openStart ? `transparent 0, #000 ${softCut}px` : '#000 0%'
+                }, ${openEnd ? `#000 calc(100% - ${softCut}px), transparent 100%` : '#000 100%'})`,
                 maskSize: '100% 100%',
                 maskRepeat: 'no-repeat',
-                WebkitMaskImage: `linear-gradient(to right, ${cutStart}, ${cutEnd})`,
                 WebkitMaskSize: '100% 100%',
                 WebkitMaskRepeat: 'no-repeat',
               }),
@@ -158,8 +161,8 @@ export function SurfaceBoard({ surface, children }: { surface: Surface; children
           こうするとアイテムは板の上に載って見え、スクロールバーは板の小口に重なる。
         */}
         <div
-          className={`relative z-10 min-w-0 flex-1 [&>[data-rail]>*]:drop-shadow-[0_6px_5px_rgba(0,0,0,0.22)] ${
-            stacked ? '' : '-mb-3 pl-3 pt-4'
+          className={`shelf-inner relative z-10 min-w-0 flex-1 [&>[data-rail]>*]:drop-shadow-[0_6px_5px_rgba(0,0,0,0.22)] ${
+            stacked ? '' : '-mb-3 px-3 pt-4'
           }`}
         >
           {children}
