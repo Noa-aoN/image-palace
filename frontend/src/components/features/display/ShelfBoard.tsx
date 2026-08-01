@@ -83,30 +83,54 @@ export function SurfaceBoard({ surface, children }: { surface: Surface; children
   // 横棚は 1 段なので棚板に接地させる。縦棚は上から積むので上寄せにする
   const stacked = orientation === 'columns'
 
+  // 中身の終わりをぼかす。板を被せると形が見えるので、中身そのものを薄れさせる
+  const fade = stacked
+    ? 'linear-gradient(to bottom, #000 calc(100% - 1rem), transparent 100%)'
+    : 'linear-gradient(to right, #000 calc(100% - 1.25rem), transparent 100%)'
+
+  // 縦棚は 1 枚の絵で完結する。中身は柱と繰形の内側へ押し込む
+  if (stacked) {
+    return (
+      <div className="relative flex h-full min-h-0 flex-1 flex-col">
+        <div className="relative flex min-h-[18rem] flex-1 items-start bg-[url(/shelf/vertical.webp)] bg-[length:100%_100%] bg-no-repeat px-[13%] pb-[8%] pt-[9%]">
+          <div
+            className="relative z-10 min-w-0 flex-1 [&>[data-rail]>*]:drop-shadow-[0_6px_5px_rgba(0,0,0,0.22)]"
+            style={{ maskImage: fade }}
+          >
+            {children}
+          </div>
+        </div>
+      </div>
+    )
+  }
+
+  /*
+    横棚は幅が中身次第で変わるため、絵を 3 つに割って組む。
+    両端の柱は縦横比を保ったまま高さに追従させ（aspect-ratio）、
+    間は繰り返しで埋める。繰り返しは中身のスクロール枠に敷き、
+    background-attachment: local にすることで棚が中身と一緒に流れる。
+  */
   return (
     <div className="relative flex h-full min-h-0 flex-1 flex-col">
-      <div
-        className={`relative flex flex-1 bg-[length:100%_100%] bg-no-repeat ${
-          stacked
-            ? 'min-h-[18rem] items-start bg-[url(/shelf/vertical.webp)] px-[9%] pb-[9%] pt-[7%]'
-            : 'min-h-[11rem] items-end bg-[url(/shelf/horizontal.webp)] px-[7%] pb-[13%] pt-[7%]'
-        }`}
-      >
-        {/*
-          中身。棚の終わり（横棚は右端・縦棚は下端）はマスクで透過させる。
-          板を被せるとその形が見えてしまうので、中身そのものを薄れさせる。
-          幅は切り口が和らぐ程度に留める。広く取ると端に何もない帯ができてしまう。
-        */}
+      <div className="relative flex min-h-[11rem] flex-1 items-stretch">
+        <span
+          aria-hidden
+          className="aspect-[203/411] shrink-0 bg-[url(/shelf/h-left.webp)] bg-[length:100%_100%] bg-no-repeat"
+        />
         <div
-          className="relative z-10 min-w-0 flex-1 [&>[data-rail]>*]:drop-shadow-[0_6px_5px_rgba(0,0,0,0.22)]"
-          style={{
-            maskImage: stacked
-              ? 'linear-gradient(to bottom, #000 calc(100% - 1rem), transparent 100%)'
-              : 'linear-gradient(to right, #000 calc(100% - 1.25rem), transparent 100%)',
-          }}
+          className="relative z-10 min-w-0 flex-1
+            [&>[data-rail]]:h-full [&>[data-rail]]:items-end [&>[data-rail]]:bg-[url(/shelf/h-mid.webp)]
+            [&>[data-rail]]:bg-[length:auto_100%] [&>[data-rail]]:bg-repeat-x
+            [&>[data-rail]]:[background-attachment:local] [&>[data-rail]]:pb-12 [&>[data-rail]]:pt-6
+            [&>[data-rail]>*]:drop-shadow-[0_6px_5px_rgba(0,0,0,0.22)]"
+          style={{ maskImage: fade }}
         >
           {children}
         </div>
+        <span
+          aria-hidden
+          className="aspect-[203/411] shrink-0 bg-[url(/shelf/h-right.webp)] bg-[length:100%_100%] bg-no-repeat"
+        />
       </div>
     </div>
   )
