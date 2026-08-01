@@ -36,8 +36,10 @@ export function EntityFrame({ kind, children: raw }: { kind: EntityKind; childre
   const style = useDisplayStyle()
   if (style === 'simple') return <>{raw}</>
 
-  // 器が縁を持つので、中の画像はマット無しで描かせる
-  const children = <FramedContext.Provider value>{raw}</FramedContext.Provider>
+  // 器が縁を持つ種別は、中の画像をマット無しで描かせる。
+  // デッキはカードの束なので、カードと同じ画像マットを残す（束ねた 1 枚に見せるため）。
+  const children =
+    kind === 'deck' ? raw : <FramedContext.Provider value>{raw}</FramedContext.Provider>
 
   switch (kind) {
     case 'space':
@@ -206,23 +208,32 @@ function ChestFrame({ children }: { children: ReactNode }) {
   )
 }
 
-/** デッキ＝重なった束。背後に 2 枚ずらして置き、厚みのある一組に見せる */
+/**
+ * デッキ＝重なった札束。背後に数枚ずらして重ね、上端に小口を見せて厚みを出す。
+ * 中身はカードと同じマット付きで描くので、束のいちばん上の 1 枚として読める。
+ */
 function DeckFrame({ children }: { children: ReactNode }) {
   return (
-    <div className="relative">
-      {[2, 1].map((i) => (
+    <div className="relative pl-1.5 pt-1.5">
+      {/* 背後の札。奥ほど小さく暗く、わずかに傾けて手で重ねた束にする */}
+      {[3, 2, 1].map((i) => (
         <span
           key={i}
           aria-hidden
-          className="pointer-events-none absolute inset-0 rounded-sm border border-border/70"
+          className="pointer-events-none absolute inset-0 rounded-[3px] border border-border/60"
           style={{
-            background: STONE_BASE,
-            transform: `translate(${i * 3}px, ${i * -3}px)`,
-            opacity: 0.9 - i * 0.2,
+            background: `linear-gradient(to bottom, ${STONE_LIGHT}, ${STONE_BASE})`,
+            transform: `translate(${i * -2}px, ${i * -2}px) rotate(${i % 2 ? -0.6 : 0.5}deg)`,
+            opacity: 1 - i * 0.12,
+            boxShadow: '0 1px 2px rgba(0,0,0,0.18)',
           }}
         />
       ))}
-      <div className="relative overflow-hidden rounded-sm" style={{ boxShadow: `inset 0 0 0 2px ${STONE_BASE}, 0 1px 3px rgba(0,0,0,0.25)` }}>
+      {/* いちばん上の 1 枚 */}
+      <div
+        className="relative overflow-hidden rounded-[3px]"
+        style={{ boxShadow: `inset 0 0 0 1px ${GOLD}, 0 2px 5px -1px rgba(0,0,0,0.3)` }}
+      >
         {children}
       </div>
     </div>

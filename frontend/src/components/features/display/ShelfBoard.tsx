@@ -123,6 +123,7 @@ export function SurfaceBoard({ surface, children }: { surface: Surface; children
           borderColor: 'transparent',
           borderImageRepeat: 'stretch',
           maskImage: stacked ? undefined : `linear-gradient(to right, ${cutStart}, ${cutEnd})`,
+          WebkitMaskImage: stacked ? undefined : `linear-gradient(to right, ${cutStart}, ${cutEnd})`,
         }}
       >
         {/*
@@ -131,7 +132,7 @@ export function SurfaceBoard({ surface, children }: { surface: Surface; children
         */}
         <div
           className={`relative z-10 min-w-0 flex-1 [&>[data-rail]>*]:drop-shadow-[0_6px_5px_rgba(0,0,0,0.22)] ${
-            stacked ? '' : '-mb-4'
+            stacked ? '' : '-mb-4 pt-3'
           }`}
         >
           {children}
@@ -158,7 +159,10 @@ function useRailEdges(children: ReactNode) {
 
     const update = () => {
       const max = rail.scrollWidth - rail.clientWidth
-      setEdges({ atStart: rail.scrollLeft <= 1, atEnd: rail.scrollLeft >= max - 1 })
+      const next = { atStart: rail.scrollLeft <= 1, atEnd: max <= 1 || rail.scrollLeft >= max - 1 }
+      setEdges((prev) =>
+        prev.atStart === next.atStart && prev.atEnd === next.atEnd ? prev : next
+      )
     }
     update()
     rail.addEventListener('scroll', update, { passive: true })
