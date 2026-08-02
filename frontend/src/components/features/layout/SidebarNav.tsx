@@ -5,6 +5,7 @@ import { usePathname } from 'next/navigation'
 import { ChevronDown, ChevronUp } from 'lucide-react'
 import { useUiStore } from '@/stores/ui'
 import { NAV_SECTIONS, type NavNode } from './nav-items'
+import { useOpenCardCreate } from '@/components/features/items/CardCreatePanel'
 
 interface Props {
   // 折りたたみサイドバー（72px）ではアイコンのみ表示し、見出し・子・ラベルを隠す。
@@ -18,6 +19,7 @@ interface Props {
  * セクション見出し＋開閉グループ（ライブラリ=リンク＋開閉、アトリエ=開閉のみ）を描画する。
  */
 export function SidebarNav({ iconsOnly = false, onNavigate }: Props) {
+  const openCardCreate = useOpenCardCreate()
   const pathname = usePathname()
   const collapsedGroups = useUiStore((s) => s.collapsedGroups)
   const toggleGroup = useUiStore((s) => s.toggleGroup)
@@ -37,6 +39,25 @@ export function SidebarNav({ iconsOnly = false, onNavigate }: Props) {
   })
 
   const renderLink = (node: NavNode, nested = false) => {
+    // パネルで開くものは画面を移らない。見た目はリンクと揃える
+    if (node.panel === 'card-create') {
+      return (
+        <button
+          key={node.label}
+          type="button"
+          onClick={() => {
+            openCardCreate()
+            onNavigate?.()
+          }}
+          className={`${linkClass('#', nested)} w-full text-left`}
+          title={iconsOnly ? node.label : undefined}
+        >
+          <span className="shrink-0">{node.icon}</span>
+          {!iconsOnly && <span className="truncate">{node.label}</span>}
+        </button>
+      )
+    }
+
     const href = node.href ?? '#'
     return (
       <Link
