@@ -316,6 +316,7 @@ export function CreateItemForm({ inPanel = false }: { inPanel?: boolean } = {}) 
       {/* 追加の指示（自由入力） */}
       <div className="space-y-2">
         <Label htmlFor="custom-prompt">追加の指示</Label>
+        <p className="text-xs text-muted-foreground">絵の中身への注文。「夜明けの光で」「人物を入れずに」など。</p>
         <input
           id="custom-prompt"
           type="text"
@@ -331,6 +332,7 @@ export function CreateItemForm({ inPanel = false }: { inPanel?: boolean } = {}) 
       {/* スタイル（プリセット） */}
       <div className="space-y-2">
         <Label>スタイル</Label>
+        <p className="text-xs text-muted-foreground">絵のタッチ。油彩・線画など、全体の描き方を選びます。</p>
         <div className="flex flex-wrap gap-2">
           {STYLE_OPTIONS.map((opt) => {
             const active = style === opt.value
@@ -355,6 +357,7 @@ export function CreateItemForm({ inPanel = false }: { inPanel?: boolean } = {}) 
       {/* 画像の形（縦横比）。生成・保存・表示に共通で効く */}
       <div className="space-y-2">
         <Label>画像の形</Label>
+        <p className="text-xs text-muted-foreground">縦横比。あとから変えられないので、作る前に選びます。</p>
         <div className="flex flex-wrap gap-2">
           {ASPECT_RATIO_KEYS.map((key) => {
             const opt = ASPECT_RATIOS[key]
@@ -600,7 +603,15 @@ function OptionGroup({
           <ChevronRight size={16} className={`transition-transform ${open ? 'rotate-90' : ''}`} />
         </span>
       </button>
-      {open && <div className="space-y-5 border-t border-border/70 px-4 py-4">{children}</div>}
+      {open && (
+        <div
+          className="divide-y divide-border/60 border-t border-border/70 px-4
+            [&>*]:py-4 [&>*:first-child]:pt-3 [&>*:last-child]:pb-3
+            [&_[data-slot=label]]:text-xs [&_[data-slot=label]]:text-muted-foreground"
+        >
+          {children}
+        </div>
+      )}
     </div>
   )
 }
@@ -609,14 +620,21 @@ function OptionGroup({
 function WordlistPicker({
   wordlists,
   disabled,
+  columns = 1,
   onPick,
 }: {
   wordlists: Wordlist[]
   disabled?: boolean
+  /** 1 列で縦に並べるか。パネルのような狭い幅では 1 列にして名前を読めるようにする */
+  columns?: 1 | 2
   onPick: (wordlist: Wordlist) => void
 }) {
   return (
-    <div className="grid gap-1.5 rounded-xl border border-border/70 p-2 sm:grid-cols-2">
+    <div
+      className={`grid gap-1.5 rounded-xl border border-border/70 p-2 ${
+        columns === 2 ? 'sm:grid-cols-2' : ''
+      }`}
+    >
       {wordlists.map((wl) => (
         <button
           key={wl.id}
