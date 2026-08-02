@@ -5,6 +5,8 @@ import Link from 'next/link'
 import { useSearchParams } from 'next/navigation'
 import { Plus, Route, DoorOpen, Frame } from 'lucide-react'
 import { Button } from '@/components/ui/button'
+import { PanelSlotContent } from '@/components/features/panel/PanelSlot'
+import { usePanelForm } from '@/components/features/panel/usePanelForm'
 import { CardGridSkeleton } from '@/components/ui/skeleton'
 import { getSpaces } from '@/lib/api/spaces'
 import { spaceTypeLabel } from '@/lib/space-types'
@@ -34,7 +36,8 @@ function SpacesPageInner() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
-  const [creating, setCreating] = useState(false)
+  // 作成はその場に展開せず右パネルで行う
+  const createForm = usePanelForm('space-create', 'スペースを作成')
 
   useEffect(() => {
     let cancelled = false
@@ -70,29 +73,27 @@ function SpacesPageInner() {
             </Link>
           )}
         </div>
-        {!creating && (
-          <Button size="sm" onClick={() => setCreating(true)} className="flex items-center gap-1.5">
+                  <Button size="sm" onClick={() => createForm.open()} className="flex items-center gap-1.5">
             <Plus size={16} />
             新規作成
           </Button>
-        )}
       </div>
       <p className="text-sm text-muted-foreground mb-6">
         記憶の場所。種別を選んで作ります — ルーム（棚にボックスを並べる）/ ロード（順路にカードを置く連結法）。
       </p>
 
-      {creating && (
-        <div className="mb-8">
+      <PanelSlotContent sectionKey="space-create">
+        <div>
           <CreateSpaceForm
             defaultType={typeFilter ?? undefined}
             onCreated={(created) => {
               setSpaces((current) => [created, ...current])
-              setCreating(false)
+              createForm.close()
             }}
-            onCancel={() => setCreating(false)}
+            onCancel={() => createForm.close()}
           />
         </div>
-      )}
+      </PanelSlotContent>
 
       {loading ? (
         <CardGridSkeleton />
@@ -103,7 +104,7 @@ function SpacesPageInner() {
           <p className="text-muted-foreground">
             まだ{heading}がありません。学習テーマごとに空間を作ってみましょう。
           </p>
-          {!creating && <Button onClick={() => setCreating(true)}>{heading}を作成</Button>}
+          <Button onClick={() => createForm.open()}>{heading}を作成</Button>
         </div>
       ) : (
         <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">

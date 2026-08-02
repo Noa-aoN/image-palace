@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { createSpace } from '@/lib/api/spaces'
-import { SPACE_TYPES, spaceTypeLabel } from '@/lib/space-types'
+import { SPACE_TYPES, spaceTypeLabel, spaceTypeDescription } from '@/lib/space-types'
 import type { Space } from '@/types/space'
 
 interface Props {
@@ -52,41 +52,59 @@ export function CreateSpaceForm({ onCreated, redirectBase, onCancel, defaultType
   }
 
   return (
-    <form onSubmit={handleSubmit} className="flex flex-col gap-2 sm:flex-row sm:items-start">
-      <select
-        value={spaceType}
-        onChange={(e) => setSpaceType(e.target.value)}
-        disabled={submitting}
-        aria-label="スペースの種別"
-        className="h-9 rounded-lg border border-input bg-background px-3 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-      >
-        {SPACE_TYPES.map((t) => (
-          <option key={t} value={t}>
-            {spaceTypeLabel(t)}
-          </option>
-        ))}
-      </select>
-      <div className="flex-1">
+    <form onSubmit={handleSubmit} className="space-y-4">
+      <Field label="種別" hint={spaceTypeDescription(spaceType)}>
+        <select
+          value={spaceType}
+          onChange={(e) => setSpaceType(e.target.value)}
+          disabled={submitting}
+          aria-label="スペースの種別"
+          className="h-9 w-full rounded-lg border border-input bg-background px-3 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+        >
+          {SPACE_TYPES.map((t) => (
+            <option key={t} value={t}>
+              {spaceTypeLabel(t)}
+            </option>
+          ))}
+        </select>
+      </Field>
+
+      <Field label="名前">
         <Input
           value={name}
           onChange={(e) => setName(e.target.value)}
-          placeholder={spaceType === 'road' ? 'ロード名（例: 通勤路、家の中）' : 'ルーム名（例: 英単語、文法）'}
+          placeholder={spaceType === 'road' ? '例: 通勤路、家の中' : '例: 英単語、文法'}
           autoFocus
           disabled={submitting}
           aria-label="スペース名"
         />
-        {error && <p className="mt-1 text-sm text-destructive">{error}</p>}
-      </div>
-      <div className="flex gap-2">
-        <Button type="submit" size="sm" disabled={submitting}>
-          {submitting ? '作成中...' : '作成'}
-        </Button>
+      </Field>
+      {error && <p className="text-sm text-destructive">{error}</p>}
+
+      <div className="flex justify-end gap-2 pt-1">
         {onCancel && (
           <Button type="button" variant="ghost" size="sm" onClick={onCancel} disabled={submitting}>
             キャンセル
           </Button>
         )}
+        <Button type="submit" size="sm" disabled={submitting}>
+          {submitting ? '作成中...' : '作成'}
+        </Button>
       </div>
     </form>
+  )
+}
+
+/**
+ * 1 項目分の枠。ラベルを上、操作を下に置いて縦に積む。
+ * 横 1 行に詰めると右パネルのような狭い幅で潰れるため、幅に依存しない形にしている。
+ */
+function Field({ label, hint, children }: { label: string; hint?: string; children: React.ReactNode }) {
+  return (
+    <label className="block space-y-1.5">
+      <span className="text-sm font-medium">{label}</span>
+      {children}
+      {hint && <span className="block text-xs text-muted-foreground">{hint}</span>}
+    </label>
   )
 }

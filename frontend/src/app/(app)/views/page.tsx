@@ -5,6 +5,8 @@ import Link from 'next/link'
 import { useSearchParams } from 'next/navigation'
 import { Plus, LayoutGrid } from 'lucide-react'
 import { Button } from '@/components/ui/button'
+import { PanelSlotContent } from '@/components/features/panel/PanelSlot'
+import { usePanelForm } from '@/components/features/panel/usePanelForm'
 import { CardGridSkeleton } from '@/components/ui/skeleton'
 import { getViews } from '@/lib/api/views'
 import { viewTypeLabel } from '@/lib/view-types'
@@ -21,7 +23,8 @@ function ViewsPageInner() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
-  const [creating, setCreating] = useState(false)
+  // 作成はその場に展開せず右パネルで行う
+  const createForm = usePanelForm('view-create', 'キャンバスを作成')
 
   useEffect(() => {
     let cancelled = false
@@ -57,29 +60,27 @@ function ViewsPageInner() {
             </Link>
           )}
         </div>
-        {!creating && (
-          <Button size="sm" onClick={() => setCreating(true)} className="flex items-center gap-1.5">
+                  <Button size="sm" onClick={() => createForm.open()} className="flex items-center gap-1.5">
             <Plus size={16} />
             新規作成
           </Button>
-        )}
       </div>
       <p className="text-sm text-muted-foreground mb-6">
         カードを自由に配置するフリーボード。関係性を視覚的に整理できます。
       </p>
 
-      {creating && (
-        <div className="mb-8">
+      <PanelSlotContent sectionKey="view-create">
+        <div>
           <CreateViewForm
             defaultType={typeFilter ?? undefined}
             onCreated={(created) => {
               setViews((current) => [created, ...current])
-              setCreating(false)
+              createForm.close()
             }}
-            onCancel={() => setCreating(false)}
+            onCancel={() => createForm.close()}
           />
         </div>
-      )}
+      </PanelSlotContent>
 
       {loading ? (
         <CardGridSkeleton />
@@ -90,7 +91,7 @@ function ViewsPageInner() {
           <p className="text-muted-foreground">
             まだ{heading}がありません。作成してカードを配置してみましょう。
           </p>
-          {!creating && <Button onClick={() => setCreating(true)}>{heading}を作成</Button>}
+          <Button onClick={() => createForm.open()}>{heading}を作成</Button>
         </div>
       ) : (
         <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">

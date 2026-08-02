@@ -1,0 +1,292 @@
+'use client'
+
+import { useState } from 'react'
+import { useRouter } from 'next/navigation'
+import { Sparkles, Plus, ShieldCheck } from 'lucide-react'
+import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
+import { Spinner } from '@/components/ui/spinner'
+import { WordItems } from '@/components/features/wordlists/WordItems'
+import { generateWords, createWordlist, checkWords, type WordCheckIssue } from '@/lib/api/wordlists'
+import type { Wordlist } from '@/types/wordlist'
+
+/**
+ * ワードリスト作成の一連の流れ。
+ *
+ * 「テーマから生成 → AI チェック → 編集 → 保存」の多段階で、ページと右パネルの
+ * 両方から使う。見出しと外枠はページ側が持ち、ここは中身だけを描く。
+ * 幅は与えられた分に合わせるので、パネルの狭い幅でもそのまま収まる。
+ */
+export function CreateWordlistFlow({ onCreated }: { onCreated?: (created: Wordlist) => void }) {
+  const router = useRouter()
+  const [theme, setTheme] = useState('')
+  const [count, setCount] = useState(10)
+  // 単語数は既定で「おまかせ」。テーマに応じた自然な数（十二支なら12個など）をAIが決める。
+  const [auto, setAuto] = useState(true)
+  const [generating, setGenerating] = useState(false)
+  const [words, setWords] = useState<string[] | null>(null)
+  const [name, setName] = useState('')
+  const [newWord, setNewWord] = useState('')
+  const [saving, setSaving] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+  // AIチェックの結果。対応（置換・削除）するまで指摘は出したままにする。再生成したときだけ捨てる。
+  const [checking, setChecking] = useState(false)
+  const [issues, setIssues] = useState<Map<string, WordCheckIssue> | null>(null)
+  const [additions, setAdditions] = useState<string[]>([])
+
+  const clearCheck = () => {
+    setIssues(null)
+    setAdditions([])
+  }
+
+  // 単語を編集・並び替えしても指摘は出したままにする。
+  // リストから消えた単語（置換・削除で対応済み）の指摘だけを落とす。
+  const updateWords = (next: string[]) => {
+    setWords(next)
+    setIssues((current) =>
+      current ? new Map([...current].filter(([word]) => next.includes(word))) : current
+    )
+  }
+
+  const handleGenerate = async () => {
+    setGenerating(true)
+    setError(null)
+    clearCheck()
+    try {
+      const generated = await generateWords(theme.trim(), auto ? undefined : count)
+      setWords(generated)
+      if (!name.trim()) setName(theme.trim())
+    } catch {
+      setError('単語の生成に失敗しました。テーマを変えて再度お試しください。')
+    } finally {
+      setGenerating(false)
+    }
+  }
+
+  // テーマ（未入力ならリスト名）に沿っているかを点検する。適用は一件ずつユーザーが承認する。
+  const handleCheck = async () => {
+    if (!words || words.length === 0) return
+    setChecking(true)
+    setError(null)
+    try {
+      const result = await checkWords(theme.trim() || name.trim(), words)
+      setIssues(new Map(result.issues.map((issue) => [issue.word, issue])))
+      setAdditions(result.additions)
+    } catch {
+      setError('単語の点検に失敗しました。時間を置いて再度お試しください。')
+    } finally {
+      setChecking(false)
+    }
+  }
+
+  const addWord = (word: string) => {
+    const value = word.trim()
+    if (!value) return
+    setWords((current) => {
+      if (!current) return [value]
+      return current.includes(value) ? current : [...current, value]
+    })
+    setAdditions((current) => current.filter((w) => w !== value))
+  }
+
+  const handleSave = async () => {
+    if (!words || words.length === 0) {
+      setError('単語を1つ以上にしてください')
+      return
+    }
+    if (!name.trim()) {
+      setError('リスト名を入力してください')
+      return
+    }
+    setSaving(true)
+    setError(null)
+    try {
+      const created = await createWordlist(name.trim(), words)
+      // パネルからのときは元の画面を離れない
+      if (onCreated) onCreated(created)
+      else router.push('/wordlists')
+    } catch (err: unknown) {
+      const axiosErr = err as { response?: { data?: { errors?: string[] } } }
+      setError(axiosErr?.response?.data?.errors?.[0] ?? 'ワードリストの保存に失敗しました')
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  const checked = issues !== null
+
+  return (
+    <div className="space-y-6">
+      {/*
+        生成フォーム。横 1 行に詰めると狭い幅で潰れるため、縦に積む。
+        単語数はおまかせが既定なので、手で決めるとき以外は目に入らないようにしている。
+      */}
+      <div className="space-y-4">
+        <label className="block space-y-1.5">
+          <span className="text-sm font-medium">テーマ</span>
+          <Input
+            value={theme}
+            onChange={(e) => setTheme(e.target.value)}
+            placeholder="例: 英語の動物、Rails用語"
+            disabled={generating}
+          />
+          <span className="block text-xs text-muted-foreground">
+            空欄のままでもかまいません。その場合はおまかせで単語を集めます。
+          </span>
+        </label>
+
+        <div className="space-y-2">
+          <label className="flex items-center gap-2 text-sm">
+            <input
+              type="checkbox"
+              checked={auto}
+              onChange={(e) => setAuto(e.target.checked)}
+              disabled={generating}
+              className="h-4 w-4 rounded border-input"
+            />
+            単語数はおまかせにする
+          </label>
+          {!auto && (
+            <label className="block space-y-1.5">
+              <span className="text-sm font-medium">単語数</span>
+              <Input
+                type="number"
+                min={1}
+                max={50}
+                value={count}
+                onChange={(e) => setCount(Math.max(1, Math.min(50, Number(e.target.value) || 1)))}
+                disabled={generating}
+                className="w-28"
+              />
+            </label>
+          )}
+          {auto && (
+            <p className="text-xs text-muted-foreground">
+              テーマに応じた自然な数を選びます（十二支なら 12 個など）。
+            </p>
+          )}
+        </div>
+
+        <Button
+          onClick={handleGenerate}
+          disabled={generating}
+          className="flex w-full items-center justify-center gap-2"
+        >
+          {generating ? <Spinner size={15} /> : <Sparkles size={16} />}
+          {generating ? '生成中...' : '単語を生成'}
+        </Button>
+      </div>
+
+      {error && <p className="mt-4 text-sm text-destructive">{error}</p>}
+
+      {/* 生成結果（編集・並び替え可能） */}
+      {words && (
+        <div className="mt-8 space-y-5">
+          <div>
+            <label htmlFor="name" className="mb-1 block text-sm font-medium">リスト名</label>
+            <Input id="name" value={name} onChange={(e) => setName(e.target.value)} placeholder="リスト名" disabled={saving} />
+          </div>
+
+          <div>
+            <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
+              <p className="text-sm font-medium">単語（{words.length}）</p>
+              <Button
+                type="button"
+                variant="outline"
+                onClick={handleCheck}
+                disabled={checking || saving || words.length === 0}
+                className="flex items-center gap-1.5"
+              >
+                {checking ? <Spinner size={14} /> : <ShieldCheck size={15} />}
+                {checking ? 'チェック中...' : 'AIチェック'}
+              </Button>
+            </div>
+
+            <WordItems words={words} onChange={updateWords} issues={issues ?? undefined} disabled={saving} />
+
+            <p className="mt-2 text-xs text-muted-foreground">
+              ドラッグ、または ↑↓ で並び替えられます。
+            </p>
+
+            {/* AIチェックの結果 */}
+            {checked && (
+              <div className="mt-3 rounded-xl border border-border bg-muted/30 p-3">
+                <p className="text-sm font-medium">AIチェックの結果</p>
+                <p className="mt-1 text-xs text-muted-foreground">
+                  {issues.size === 0
+                    ? '未対応の指摘はありません。'
+                    : `${issues.size}件の指摘があります（未対応のあいだ表示し続けます）。上のリストで置き換え・削除できます。`}
+                </p>
+
+                {additions.length > 0 && (
+                  <div className="mt-3">
+                    <div className="flex items-center justify-between">
+                      <p className="text-xs font-medium">追加の提案（{additions.length}）</p>
+                      <button
+                        type="button"
+                        onClick={() => additions.forEach(addWord)}
+                        className="text-xs text-muted-foreground hover:text-foreground"
+                      >
+                        すべて追加
+                      </button>
+                    </div>
+                    <div className="mt-1.5 flex flex-wrap gap-1.5">
+                      {additions.map((word) => (
+                        <button
+                          key={word}
+                          type="button"
+                          onClick={() => addWord(word)}
+                          className="flex items-center gap-1 rounded-full border border-border bg-card px-2 py-1 text-xs transition-colors hover:bg-accent hover:text-accent-foreground"
+                        >
+                          <Plus size={12} />
+                          {word}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
+
+            <div className="mt-3 flex gap-2">
+              <Input
+                value={newWord}
+                onChange={(e) => setNewWord(e.target.value)}
+                onKeyDown={(e) => {
+                  // IME の変換確定の Enter では追加しない（日本語入力で1回目の Enter は確定のため）。
+                  if (e.key === 'Enter' && !e.nativeEvent.isComposing) {
+                    e.preventDefault()
+                    addWord(newWord)
+                    setNewWord('')
+                  }
+                }}
+                placeholder="単語を追加"
+                disabled={saving}
+              />
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => {
+                  addWord(newWord)
+                  setNewWord('')
+                }}
+                disabled={saving}
+                className="flex shrink-0 items-center gap-1"
+              >
+                <Plus size={16} />
+                追加
+              </Button>
+            </div>
+          </div>
+
+          <div className="flex flex-wrap justify-end gap-2 pt-1">
+            <Button variant="ghost" onClick={handleGenerate} disabled={generating || saving}>
+              再生成
+            </Button>
+            <Button onClick={handleSave} disabled={saving}>{saving ? '保存中...' : '保存する'}</Button>
+          </div>
+        </div>
+      )}
+    </div>
+  )
+}
