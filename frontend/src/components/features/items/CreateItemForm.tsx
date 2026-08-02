@@ -623,7 +623,12 @@ function OptionGroup({
   )
 }
 
-/** ワードリストの一覧。名前と語数を並べて出し、選ぶと呼び出し側へ渡す */
+/**
+ * ワードリストの一覧。名前と語数を並べて出し、選ぶと呼び出し側へ渡す。
+ *
+ * 件数は際限なく増えうる（API はページングしない）。全部並べると目で探せなくなるので、
+ * 数が増えたときだけ絞り込みを出し、高さも抑えてスクロールに収める。
+ */
 function WordlistPicker({
   wordlists,
   disabled,
@@ -636,24 +641,43 @@ function WordlistPicker({
   columns?: 1 | 2
   onPick: (wordlist: Wordlist) => void
 }) {
+  const [query, setQuery] = useState('')
+  // 数件なら探す手間がないので、絞り込みは増えてきたときだけ出す
+  const needsFilter = wordlists.length > 8
+  const q = query.trim().toLowerCase()
+  const shown = q ? wordlists.filter((wl) => wl.name.toLowerCase().includes(q)) : wordlists
+
   return (
-    <div
-      className={`grid gap-1.5 rounded-xl border border-border/70 p-2 ${
-        columns === 2 ? 'sm:grid-cols-2' : ''
-      }`}
-    >
-      {wordlists.map((wl) => (
-        <button
-          key={wl.id}
-          type="button"
-          onClick={() => onPick(wl)}
+    <div className="space-y-2 rounded-xl border border-border/70 p-2">
+      {needsFilter && (
+        <input
+          type="search"
+          value={query}
+          onChange={(e) => setQuery(e.target.value)}
+          placeholder={`名前で絞り込む（${wordlists.length}件）`}
           disabled={disabled}
-          className="flex items-center justify-between gap-2 rounded-lg px-3 py-2 text-left text-sm hover:bg-muted disabled:opacity-50"
-        >
-          <span className="truncate">{wl.name}</span>
-          <span className="shrink-0 text-xs text-muted-foreground">{wl.word_count}語</span>
-        </button>
-      ))}
+          aria-label="ワードリストを名前で絞り込む"
+          className="w-full rounded-lg border border-input bg-background px-3 py-1.5 text-sm placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+        />
+      )}
+      {shown.length === 0 ? (
+        <p className="px-3 py-2 text-sm text-muted-foreground">一致するワードリストがありません。</p>
+      ) : (
+        <div className={`grid max-h-72 gap-1.5 overflow-y-auto ${columns === 2 ? 'sm:grid-cols-2' : ''}`}>
+          {shown.map((wl) => (
+            <button
+              key={wl.id}
+              type="button"
+              onClick={() => onPick(wl)}
+              disabled={disabled}
+              className="flex items-center justify-between gap-2 rounded-lg px-3 py-2 text-left text-sm hover:bg-muted disabled:opacity-50"
+            >
+              <span className="truncate">{wl.name}</span>
+              <span className="shrink-0 text-xs text-muted-foreground">{wl.word_count}語</span>
+            </button>
+          ))}
+        </div>
+      )}
     </div>
   )
 }
