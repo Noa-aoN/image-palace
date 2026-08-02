@@ -117,43 +117,63 @@ export function CreateWordlistFlow({ onCreated }: { onCreated?: (created: Wordli
 
   return (
     <div className="space-y-6">
-      {/* 生成フォーム */}
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-end">
-        <div className="flex-1">
-          <label htmlFor="theme" className="mb-1 block text-sm font-medium">テーマ（空欄でランダム）</label>
+      {/*
+        生成フォーム。横 1 行に詰めると狭い幅で潰れるため、縦に積む。
+        単語数はおまかせが既定なので、手で決めるとき以外は目に入らないようにしている。
+      */}
+      <div className="space-y-4">
+        <label className="block space-y-1.5">
+          <span className="text-sm font-medium">テーマ</span>
           <Input
-            id="theme"
             value={theme}
             onChange={(e) => setTheme(e.target.value)}
             placeholder="例: 英語の動物、Rails用語"
             disabled={generating}
           />
-        </div>
-        <div className="w-28">
-          <label htmlFor="count" className="mb-1 block text-sm font-medium">単語数</label>
-          <Input
-            id="count"
-            type="number"
-            min={1}
-            max={50}
-            value={count}
-            onChange={(e) => setCount(Math.max(1, Math.min(50, Number(e.target.value) || 1)))}
-            disabled={generating || auto}
-          />
-          <label className="mt-1.5 flex items-center gap-1.5 text-xs text-muted-foreground">
+          <span className="block text-xs text-muted-foreground">
+            空欄のままでもかまいません。その場合はおまかせで単語を集めます。
+          </span>
+        </label>
+
+        <div className="space-y-2">
+          <label className="flex items-center gap-2 text-sm">
             <input
               type="checkbox"
               checked={auto}
               onChange={(e) => setAuto(e.target.checked)}
               disabled={generating}
-              className="h-3.5 w-3.5 rounded border-input"
+              className="h-4 w-4 rounded border-input"
             />
-            おまかせ
+            単語数はおまかせにする
           </label>
+          {!auto && (
+            <label className="block space-y-1.5">
+              <span className="text-sm font-medium">単語数</span>
+              <Input
+                type="number"
+                min={1}
+                max={50}
+                value={count}
+                onChange={(e) => setCount(Math.max(1, Math.min(50, Number(e.target.value) || 1)))}
+                disabled={generating}
+                className="w-28"
+              />
+            </label>
+          )}
+          {auto && (
+            <p className="text-xs text-muted-foreground">
+              テーマに応じた自然な数を選びます（十二支なら 12 個など）。
+            </p>
+          )}
         </div>
-        <Button onClick={handleGenerate} disabled={generating} className="flex items-center justify-center gap-2 sm:w-28">
+
+        <Button
+          onClick={handleGenerate}
+          disabled={generating}
+          className="flex w-full items-center justify-center gap-2"
+        >
           {generating ? <Spinner size={15} /> : <Sparkles size={16} />}
-          {generating ? '生成中...' : '生成'}
+          {generating ? '生成中...' : '単語を生成'}
         </Button>
       </div>
 
@@ -168,7 +188,7 @@ export function CreateWordlistFlow({ onCreated }: { onCreated?: (created: Wordli
           </div>
 
           <div>
-            <div className="mb-2 flex items-center justify-between">
+            <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
               <p className="text-sm font-medium">単語（{words.length}）</p>
               <Button
                 type="button"
@@ -251,7 +271,7 @@ export function CreateWordlistFlow({ onCreated }: { onCreated?: (created: Wordli
                   setNewWord('')
                 }}
                 disabled={saving}
-                className="flex items-center gap-1"
+                className="flex shrink-0 items-center gap-1"
               >
                 <Plus size={16} />
                 追加
@@ -259,9 +279,11 @@ export function CreateWordlistFlow({ onCreated }: { onCreated?: (created: Wordli
             </div>
           </div>
 
-          <div className="flex gap-2">
+          <div className="flex flex-wrap justify-end gap-2 pt-1">
+            <Button variant="ghost" onClick={handleGenerate} disabled={generating || saving}>
+              再生成
+            </Button>
             <Button onClick={handleSave} disabled={saving}>{saving ? '保存中...' : '保存する'}</Button>
-            <Button variant="ghost" onClick={handleGenerate} disabled={generating || saving}>再生成</Button>
           </div>
         </div>
       )}

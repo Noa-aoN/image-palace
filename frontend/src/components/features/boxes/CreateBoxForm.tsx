@@ -47,27 +47,32 @@ export function CreateBoxForm({ onCreated, redirectBase, onCancel }: Props) {
   }
 
   return (
-    <form onSubmit={handleSubmit} className="flex flex-col gap-2 sm:flex-row sm:items-start">
-      <div className="flex-1">
+    <form onSubmit={handleSubmit} className="space-y-4">
+      <label className="block space-y-1.5">
+        <span className="text-sm font-medium">名前</span>
         <Input
           value={name}
           onChange={(e) => setName(e.target.value)}
-          placeholder="ボックス名（例: 英単語、Rails用語）"
+          placeholder="例: 英単語、Rails用語"
           autoFocus
           disabled={submitting}
           aria-label="ボックス名"
         />
-        {error && <p className="mt-1 text-sm text-destructive">{error}</p>}
-      </div>
-      <div className="flex gap-2">
-        <Button type="submit" size="sm" disabled={submitting}>
-          {submitting ? '作成中...' : '作成'}
-        </Button>
+        <span className="block text-xs text-muted-foreground">
+          種類を問わず、カードもキャンバスもまとめて入れておけます。
+        </span>
+      </label>
+      {error && <p className="text-sm text-destructive">{error}</p>}
+
+      <div className="flex justify-end gap-2 pt-1">
         {onCancel && (
           <Button type="button" variant="ghost" size="sm" onClick={onCancel} disabled={submitting}>
             キャンセル
           </Button>
         )}
+        <Button type="submit" size="sm" disabled={submitting}>
+          {submitting ? '作成中...' : '作成'}
+        </Button>
       </div>
     </form>
   )
