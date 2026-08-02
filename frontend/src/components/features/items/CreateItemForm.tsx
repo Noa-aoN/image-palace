@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { ChevronRight } from 'lucide-react'
+import { ChevronRight, ListChecks } from 'lucide-react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import Link from 'next/link'
 import { Button } from '@/components/ui/button'
@@ -63,6 +63,7 @@ export function CreateItemForm({ inPanel = false }: { inPanel?: boolean } = {}) 
   // 生成オプションは既定で閉じる。作るだけなら触らずに済むため。
   // 開けるのは 1 グループずつ（同時に開くと縦に伸びて入力欄から遠くなる）
   const [openGroup, setOpenGroup] = useState<'image' | 'enrich' | 'place' | null>(null)
+  const [showWordlists, setShowWordlists] = useState(false)
   const [submitting, setSubmitting] = useState(false)
   const [progress, setProgress] = useState<{ done: number; total: number } | null>(null)
 
@@ -201,29 +202,52 @@ export function CreateItemForm({ inPanel = false }: { inPanel?: boolean } = {}) 
             例: <span className="font-medium text-foreground">富士山 / API / 光合成 / 細胞分裂</span> …
           </p>
         </div>
+        {/*
+          ワードリストからの挿入。選択肢が名前と語数の 2 情報を持つため、
+          ドロップダウンより一覧で見せた方が選びやすい。
+          右パネルへ出すことも考えたが、このフォーム自体がパネルに入るため、
+          別のセクションへ切り替えると入力途中の内容が失われる。よってその場で開く。
+        */}
         {wordlists.length > 0 && (
-          <div className="flex items-center gap-2">
-            <select
-              value=""
-              onChange={(e) => {
-                const wl = wordlists.find((w) => w.id === e.target.value)
-                if (wl) insertWordlist(wl)
-              }}
+          <div className="space-y-2">
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={() => setShowWordlists((v) => !v)}
+              aria-expanded={showWordlists}
               disabled={submitting}
-              aria-label="ワードリストから挿入"
-              className="h-8 rounded-lg border border-input bg-background px-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+              className="flex items-center gap-1.5"
             >
-              <option value="">ワードリストから挿入…</option>
-              {wordlists.map((wl) => (
-                <option key={wl.id} value={wl.id}>{wl.name}（{wl.word_count}語）</option>
-              ))}
-            </select>
+              <ListChecks size={15} />
+              ワードリストから挿入
+              <ChevronRight size={15} className={`transition-transform ${showWordlists ? 'rotate-90' : ''}`} />
+            </Button>
+            {showWordlists && (
+              <div className="grid gap-1.5 rounded-xl border border-border/70 p-2 sm:grid-cols-2">
+                {wordlists.map((wl) => (
+                  <button
+                    key={wl.id}
+                    type="button"
+                    onClick={() => {
+                      insertWordlist(wl)
+                      setShowWordlists(false)
+                    }}
+                    disabled={submitting}
+                    className="flex items-center justify-between gap-2 rounded-lg px-3 py-2 text-left text-sm hover:bg-muted disabled:opacity-50"
+                  >
+                    <span className="truncate">{wl.name}</span>
+                    <span className="shrink-0 text-xs text-muted-foreground">{wl.word_count}語</span>
+                  </button>
+                ))}
+              </div>
+            )}
           </div>
         )}
         <textarea
           id="titles"
           className="w-full min-h-[180px] rounded-lg border border-input bg-background px-3 py-2.5 text-sm placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring resize-y"
-          placeholder={'富士山\nAPI\n光合成'}
+          placeholder={'富士山\nAPI\n光合成\n…'}
           value={input}
           onChange={(e) => setInput(e.target.value)}
           disabled={submitting}
@@ -250,6 +274,7 @@ export function CreateItemForm({ inPanel = false }: { inPanel?: boolean } = {}) 
         既定は閉じておく。入力して作るだけなら触らずに済み、こだわるときだけ開けばよい。
       */}
       <div className="space-y-2">
+        <p className="text-base font-medium">オプション（任意）</p>
         <OptionGroup
           label="画像の作り方"
           summary={optionSummary.image}
@@ -428,7 +453,7 @@ export function CreateItemForm({ inPanel = false }: { inPanel?: boolean } = {}) 
       </label>
         </OptionGroup>
         <OptionGroup
-          label="しまう場所"
+          label="保存する場所"
           summary={optionSummary.place}
           open={openGroup === 'place'}
           onToggle={() => setOpenGroup((cur) => (cur === 'place' ? null : 'place'))}
