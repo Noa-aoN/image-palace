@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_08_02_000001) do
+ActiveRecord::Schema[8.1].define(version: 2026_08_03_000001) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
   enable_extension "pgcrypto"
@@ -50,8 +50,8 @@ ActiveRecord::Schema[8.1].define(version: 2026_08_02_000001) do
     t.string "entry_type", null: false
     t.integer "position"
     t.datetime "updated_at", null: false
+    t.index ["box_id", "created_at", "id"], name: "index_box_entries_on_box_and_recency", order: { created_at: :desc, id: :desc }
     t.index ["box_id", "entry_type", "entry_id"], name: "index_collection_entries_uniqueness", unique: true
-    t.index ["box_id"], name: "index_box_entries_on_box_id"
     t.index ["entry_type", "entry_id"], name: "index_box_entries_on_entry_type_and_entry_id"
   end
 
