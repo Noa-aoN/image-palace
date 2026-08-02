@@ -27,7 +27,8 @@ export function CreateViewForm({ onCreated, redirectBase, onCancel, defaultType 
   const router = useRouter()
   const [name, setName] = useState('')
   const [viewType, setViewType] = useState(
-    defaultType && (VIEW_TYPES as readonly string[]).includes(defaultType) ? defaultType : 'freeboard'
+    // 指定が無ければ先頭（＝いちばんよく使う種別）を選んでおく
+    defaultType && (VIEW_TYPES as readonly string[]).includes(defaultType) ? defaultType : VIEW_TYPES[0]
   )
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState<string | null>(null)

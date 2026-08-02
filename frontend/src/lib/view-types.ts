@@ -1,6 +1,7 @@
 // キャンバス種別。freeboard / space_map / deck が実装済み、他は仮置き（詳細は「準備中」表示）。
 // バックエンドの View::VIEW_TYPES と一致させること。
-export const VIEW_TYPES = ['freeboard', 'space_map', 'deck', 'page', 'map', 'timeline', 'binder', 'album'] as const
+// 並び順はそのまま選択肢の並びになる。よく使うものから並べる
+export const VIEW_TYPES = ['deck', 'freeboard', 'space_map', 'page', 'map', 'timeline', 'binder', 'album'] as const
 
 export type ViewType = (typeof VIEW_TYPES)[number]
 
