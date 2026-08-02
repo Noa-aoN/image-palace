@@ -22,8 +22,9 @@ class Box < ApplicationRecord
   # 自動カバー候補となるカード（画像）を追加順で集める。
   # Item エントリはそのカード、View エントリ（デッキ含む）はその表紙カードを使う
   # （コレクションがキャンバス等だけでもカバーに中身の画像が反映されるようにする）。
-  def cover_item_candidates
-    box_entries.sort_by(&:created_at).filter_map do |e|
+  # カバーに使うのは先頭の数枚だけ。中身の数に比例させない。
+  def cover_item_candidates(limit: COVER_CARDS_LIMIT)
+    box_entries.order(:created_at).limit(limit).filter_map do |e|
       case e.entry_type
       when "Item" then e.entry
       when "View" then e.entry&.cover
@@ -32,12 +33,13 @@ class Box < ApplicationRecord
   end
 
   def cover
-    cover_item || cover_item_candidates.first
+    cover_item || cover_item_candidates(limit: 1).first
   end
 
   # first_card（先頭切替）/ collage 用に並べたカード（cover_item を先頭に）
   def cover_cards(limit: COVER_CARDS_LIMIT)
-    ordered = cover_item_candidates
+    # cover_item を先頭へ寄せる分、1 枚多めに取っておく
+    ordered = cover_item_candidates(limit: limit + 1)
     if cover_item_id && (chosen = ordered.find { |i| i.id == cover_item_id })
       ordered = [ chosen, *ordered.reject { |i| i.id == cover_item_id } ]
     end

@@ -46,16 +46,23 @@ class View < ApplicationRecord
   end
 
   # カバー候補カード（キャンバスに配置したカードを追加順で）
-  def cover_item_candidates
-    view_items.sort_by(&:created_at).filter_map(&:item)
+  # カバーに使うのは先頭の数枚だけ。全件を読んで Ruby 側で並べ替えると
+  # 配置カードの数に比例して遅くなるため、DB 側で必要数だけ取る。
+  def cover_item_candidates(limit: COVER_CARDS_LIMIT)
+    view_items
+      .includes(item: { medias: { file_attachment: :blob } })
+      .order(:created_at)
+      .limit(limit)
+      .filter_map(&:item)
   end
 
   def cover
-    cover_item || cover_item_candidates.first
+    cover_item || cover_item_candidates(limit: 1).first
   end
 
   def cover_cards(limit: COVER_CARDS_LIMIT)
-    ordered = cover_item_candidates
+    # cover_item を先頭へ寄せる分、1 枚多めに取っておく
+    ordered = cover_item_candidates(limit: limit + 1)
     if cover_item_id && (chosen = ordered.find { |i| i.id == cover_item_id })
       ordered = [ chosen, *ordered.reject { |i| i.id == cover_item_id } ]
     end
