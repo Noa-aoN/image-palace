@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState, useRef, useCallback } from 'react'
+import { useEffect, useState, useCallback, useRef } from 'react'
 import Link from 'next/link'
 import { GalleryHorizontal, Box as BoxIcon, Layers, LayoutGrid, Frame, MapPin, ChevronRight, Search, X, Route, DoorOpen, ListChecks, Boxes, Images, CheckSquare, Square, Trash2, LibraryBig } from 'lucide-react'
 import { Button } from '@/components/ui/button'
@@ -376,7 +376,7 @@ type ShelfKind = 'views' | 'spaces' | 'boxes' | 'wordlists'
 export default function LibraryPage() {
   // 前回描いていた内容があれば、それを初期値にして即座に描く。
   // 取得は従来どおり裏で走り、終わり次第上書きする。
-  const cached = useRef(readPageCache<LibrarySnapshot>(CACHE_KEY)).current
+  const [cached] = useState(() => readPageCache<LibrarySnapshot>(CACHE_KEY))
 
   const [cards, setCards] = useState<Item[]>(cached?.cards ?? [])
   const [cardCount, setCardCount] = useState<number | undefined>(cached?.cardCount)

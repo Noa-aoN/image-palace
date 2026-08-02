@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react'
 import Link from 'next/link'
 import { Plus, Box as BoxIcon } from 'lucide-react'
 import { Button } from '@/components/ui/button'
+import { readPageCache, writePageCache } from '@/lib/page-cache'
 import { PanelSlotContent } from '@/components/features/panel/PanelSlot'
 import { usePanelForm } from '@/components/features/panel/usePanelForm'
 import { CardGridSkeleton } from '@/components/ui/skeleton'
@@ -12,10 +13,24 @@ import { CreateBoxForm } from '@/components/features/boxes/CreateBoxForm'
 import { EntityCover } from '@/components/features/shared/EntityCover'
 import type { Box } from '@/types/box'
 
+const CACHE_KEY = 'boxes-list'
+
 export default function BoxesPage() {
-  const [boxes, setBoxes] = useState<Box[]>([])
-  const [loading, setLoading] = useState(true)
+  // 前回描いていた内容があれば、それを初期値にして即座に描く。
+  // 取得は従来どおり裏で走り、終わり次第上書きする。
+  const [cached] = useState(() => readPageCache<Box[]>(CACHE_KEY))
+
+  const [boxes, setBoxes] = useState<Box[]>(cached ?? [])
+  // 描くものが既にあるなら、読み込み中の表示は出さない
+  const [loading, setLoading] = useState(!cached)
   const [error, setError] = useState<string | null>(null)
+
+  // 画面の内容をそのままキャッシュへ写す。作成・削除で state を触った結果も
+  // ここを通るので、キャッシュだけ古いという食い違いが起きない。
+  useEffect(() => {
+    if (loading) return
+    writePageCache(CACHE_KEY, boxes)
+  }, [loading, boxes])
 
   // 作成はその場に展開せず右パネルで行う
   const createForm = usePanelForm('box-create', `ボックスを作成`)
