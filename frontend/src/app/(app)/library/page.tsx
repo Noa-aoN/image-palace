@@ -26,7 +26,7 @@ import { SearchResultsView } from '@/components/features/library/SearchResults'
 import { ShelfGroup, SurfaceBoard } from '@/components/features/display/ShelfBoard'
 import { EntityFrame } from '@/components/features/display/EntityFrame'
 import { CardCreateButton, CardCreatePanelSlot } from '@/components/features/items/CardCreatePanel'
-import { LibraryCreateButton, LibraryCreatePanels } from '@/components/features/library/LibraryCreate'
+import { LibraryCreateButton, LibraryCreateLink, LibraryCreatePanels } from '@/components/features/library/LibraryCreate'
 
 const PREVIEW_LIMIT = 12
 
@@ -773,7 +773,13 @@ export default function LibraryPage() {
 
       {/* マテリアル（カード化の前の素材） */}
       <Section icon={<Boxes size={22} />} title="マテリアル" description="カード化の前の素材">
-        <Shelf icon={<ListChecks size={18} />} title="ワードリスト" count={wordlists.length} href={selectionMode ? undefined : '/wordlists'}>
+        <Shelf
+          icon={<ListChecks size={18} />}
+          title="ワードリスト"
+          count={wordlists.length}
+          href={selectionMode ? undefined : '/wordlists'}
+          action={selectionMode ? undefined : <LibraryCreateLink href="/wordlists/new" label="ワードリストを作成" />}
+        >
           {wordlists.length === 0 ? (
             <EmptyRail
               message="まだワードリストがありません。"

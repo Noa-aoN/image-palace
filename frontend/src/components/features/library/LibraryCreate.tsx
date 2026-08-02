@@ -1,5 +1,6 @@
 'use client'
 
+import Link from 'next/link'
 import { Plus } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { PanelSlotContent } from '@/components/features/panel/PanelSlot'
@@ -30,6 +31,24 @@ const TITLES: Record<LibraryCreateKind, string> = {
 }
 
 const sectionKey = (kind: LibraryCreateKind) => `library-create-${kind}`
+
+/**
+ * 専用ページへ送る作成ボタン。
+ *
+ * ワードリストの作成は「テーマから AI が単語を出す → 点検する → 編集して保存する」という
+ * 複数段階の流れで、単語の一覧を編集する幅も要る。パネルの幅では成立しないため、
+ * ここだけは専用ページへ送る。見た目は他の棚の作成ボタンと揃える。
+ */
+export function LibraryCreateLink({ href, label }: { href: string; label: string }) {
+  return (
+    <Link href={href}>
+      <Button variant="outline" size="sm" aria-label={label} className="flex items-center gap-1">
+        <Plus size={14} />
+        作成
+      </Button>
+    </Link>
+  )
+}
 
 /** 棚の見出し横に置く作成ボタン。カードの棚のものと見た目を揃える */
 export function LibraryCreateButton({ kind }: { kind: LibraryCreateKind }) {
