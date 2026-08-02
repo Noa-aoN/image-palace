@@ -1,10 +1,38 @@
 'use client'
 
 import type { ReactNode } from 'react'
+import { useEffect, useRef } from 'react'
 import { useShelfOrientation } from '@/components/features/display/ShelfBoard'
 
 // ライブラリ画面で共有する表示プリミティブ（横スクロールの棚・空の棚）。
-export function Rail({ children }: { children: ReactNode }) {
+/**
+ * 末尾の目印。視界に入ったら知らせる。
+ *
+ * 棚は先頭の数件しか取っていないので、そこまで送った人にだけ続きを取りに行く。
+ * 監視するのはこの目印だけで、アイテム自体は監視しない（数が増えても負荷が変わらない）。
+ */
+function EndSentinel({ onReach }: { onReach: () => void }) {
+  const ref = useRef<HTMLSpanElement>(null)
+
+  useEffect(() => {
+    const el = ref.current
+    if (!el) return
+
+    const io = new IntersectionObserver(
+      (entries) => {
+        if (entries.some((e) => e.isIntersecting)) onReach()
+      },
+      // 端に着く手前で取り始め、待ち時間を体感させない
+      { rootMargin: '200px' }
+    )
+    io.observe(el)
+    return () => io.disconnect()
+  }, [onReach])
+
+  return <span ref={ref} aria-hidden className="block w-px shrink-0" />
+}
+
+export function Rail({ children, onEndReached }: { children: ReactNode; onEndReached?: () => void }) {
   // 縦棚（横並び）のときは列幅が狭いので、横スクロールではなく上から積む
   const orientation = useShelfOrientation()
   if (orientation === 'columns') {
@@ -16,7 +44,12 @@ export function Rail({ children }: { children: ReactNode }) {
       </div>
     )
   }
-  return <div data-rail className="flex gap-3.5 overflow-x-auto pb-3.5">{children}</div>
+  return (
+    <div data-rail className="flex gap-3.5 overflow-x-auto pb-3.5">
+      {children}
+      {onEndReached && <EndSentinel onReach={onEndReached} />}
+    </div>
+  )
 }
 
 export function EmptyRail({ message, cta }: { message: string; cta?: ReactNode }) {

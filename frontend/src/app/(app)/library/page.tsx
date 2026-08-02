@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState, useRef } from 'react'
+import { useEffect, useState, useRef, useCallback } from 'react'
 import Link from 'next/link'
 import { GalleryHorizontal, Box as BoxIcon, Layers, LayoutGrid, Frame, MapPin, ChevronRight, Search, X, Route, DoorOpen, ListChecks, Boxes, Images, CheckSquare, Square, Trash2, LibraryBig } from 'lucide-react'
 import { Button } from '@/components/ui/button'
@@ -370,6 +370,9 @@ const CACHE_KEY = 'library'
 // 棚 1 本に並べる件数。1 画面に収まる程度より少し多め（横に送れる分の余裕）
 const SHELF_LIMIT = 24
 
+// 続きを取るときの取得元。棚ごとに増やす件数は同じ
+type ShelfKind = 'views' | 'spaces' | 'boxes' | 'wordlists'
+
 export default function LibraryPage() {
   // 前回描いていた内容があれば、それを初期値にして即座に描く。
   // 取得は従来どおり裏で走り、終わり次第上書きする。
@@ -391,6 +394,44 @@ export default function LibraryPage() {
   const [selectedKeys, setSelectedKeys] = useState<Set<string>>(new Set())
   const [confirmBulkDelete, setConfirmBulkDelete] = useState(false)
   const [deleting, setDeleting] = useState(false)
+
+  /*
+    棚の末尾まで送られたら続きを取る。
+
+    取り直す件数を増やして取り直す方式にしている。差分だけを継ぎ足す方が
+    転送量は小さいが、継ぎ足しの順序や重複を自前で管理することになり、
+    作成・削除の反映とぶつかったときに食い違いが出る。
+    棚は数十件で頭打ちなので、丸ごと置き換える方が安全で、
+    キャッシュ（画面の内容をそのまま写す）ともそのまま噛み合う。
+  */
+  const [shelfLimits, setShelfLimits] = useState<Record<ShelfKind, number>>({
+    views: SHELF_LIMIT,
+    spaces: SHELF_LIMIT,
+    boxes: SHELF_LIMIT,
+    wordlists: SHELF_LIMIT,
+  })
+  const loadingShelf = useRef<Set<ShelfKind>>(new Set())
+
+  const loadMoreShelf = useCallback(
+    async (kind: ShelfKind, current: number) => {
+      // 取得済みが上限に届いていなければ、まだ続きは無い
+      if (current < shelfLimits[kind] || loadingShelf.current.has(kind)) return
+      loadingShelf.current.add(kind)
+      const next = shelfLimits[kind] + SHELF_LIMIT
+      try {
+        if (kind === 'views') setViews(await getViews(next))
+        if (kind === 'spaces') setSpaces(await getSpaces(next))
+        if (kind === 'boxes') setBoxes(await getBoxes(next))
+        if (kind === 'wordlists') setWordlists(await getWordlists(next))
+        setShelfLimits((prev) => ({ ...prev, [kind]: next }))
+      } catch {
+        // 失敗しても取得済みの分は残す。もう一度末尾へ送れば再試行される
+      } finally {
+        loadingShelf.current.delete(kind)
+      }
+    },
+    [shelfLimits]
+  )
 
   // 画面の内容をそのままキャッシュに写す。作成・削除で state を触った結果も
   // ここを通るので、キャッシュだけ古いという食い違いが起きない。
@@ -678,7 +719,7 @@ export default function LibraryPage() {
               cta={<Link href="/views?type=deck"><Button size="sm">デッキを作成</Button></Link>}
             />
           ) : (
-            <Rail>
+            <Rail onEndReached={() => loadMoreShelf('views', views.length)}>
               {deckViews.slice(0, PREVIEW_LIMIT).map((view) => (
                 <ViewTile
                   key={view.id}
@@ -698,7 +739,7 @@ export default function LibraryPage() {
               cta={<Link href="/views?type=freeboard"><Button size="sm">作成</Button></Link>}
             />
           ) : (
-            <Rail>
+            <Rail onEndReached={() => loadMoreShelf('views', views.length)}>
               {freeboardViews.slice(0, PREVIEW_LIMIT).map((view) => (
                 <ViewTile
                   key={view.id}
@@ -718,7 +759,7 @@ export default function LibraryPage() {
               cta={<Link href="/views?type=space_map"><Button size="sm">作成</Button></Link>}
             />
           ) : (
-            <Rail>
+            <Rail onEndReached={() => loadMoreShelf('views', views.length)}>
               {spaceMapViews.slice(0, PREVIEW_LIMIT).map((view) => (
                 <ViewTile
                   key={view.id}
@@ -746,7 +787,7 @@ export default function LibraryPage() {
               {roadSpaces.length === 0 ? (
                 <EmptyRail message="ロードはまだありません。" cta={<Link href="/spaces?type=road"><Button size="sm">作成</Button></Link>} />
               ) : (
-                <Rail>
+                <Rail onEndReached={() => loadMoreShelf('spaces', spaces.length)}>
                   {roadSpaces.slice(0, PREVIEW_LIMIT).map((space) => (
                     <SpaceTile
                       key={space.id}
@@ -763,7 +804,7 @@ export default function LibraryPage() {
               {roomSpaces.length === 0 ? (
                 <EmptyRail message="ルームはまだありません。" cta={<Link href="/spaces?type=room"><Button size="sm">作成</Button></Link>} />
               ) : (
-                <Rail>
+                <Rail onEndReached={() => loadMoreShelf('spaces', spaces.length)}>
                   {roomSpaces.slice(0, PREVIEW_LIMIT).map((space) => (
                     <SpaceTile
                       key={space.id}
@@ -795,7 +836,7 @@ export default function LibraryPage() {
             cta={<Link href="/boxes"><Button size="sm">ボックスを作成</Button></Link>}
           />
         ) : (
-          <Rail>
+          <Rail onEndReached={() => loadMoreShelf('boxes', boxes.length)}>
             {boxes.slice(0, PREVIEW_LIMIT).map((box) => (
               <BoxTile
                 key={box.id}
@@ -824,7 +865,7 @@ export default function LibraryPage() {
               cta={<Link href="/wordlists/new"><Button size="sm">ワードリストを作成</Button></Link>}
             />
           ) : (
-            <Rail>
+            <Rail onEndReached={() => loadMoreShelf('wordlists', wordlists.length)}>
               {wordlists.slice(0, PREVIEW_LIMIT).map((wordlist) => (
                 <WordlistTile
                   key={wordlist.id}
