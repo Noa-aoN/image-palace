@@ -208,7 +208,14 @@ export function CreateItemForm({ inPanel = false }: { inPanel?: boolean } = {}) 
   return (
     <form onSubmit={handleSubmit} className="space-y-5">
       <div className="space-y-2">
-        <div className="flex items-center justify-between gap-2">
+        {/* パネルの幅では横に並べると窮屈なので、残枚数は次の行へ落とす */}
+        <div
+          className={
+            inPanel
+              ? 'flex flex-col items-start gap-1'
+              : 'flex items-center justify-between gap-2'
+          }
+        >
           <Label htmlFor="titles" required className="text-base">
             カードにする言葉
           </Label>
