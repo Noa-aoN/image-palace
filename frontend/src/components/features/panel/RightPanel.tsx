@@ -123,6 +123,14 @@ export function RightPanel() {
             >
               <ExternalLink size={15} />
             </Link>
+          ) : mode === 'section' && section?.href ? (
+            <Link
+              href={section.href}
+              aria-label={`${section.title ?? 'この操作'}のページへ移動`}
+              className="rounded-md p-1 transition-colors hover:bg-black/5 hover:text-foreground"
+            >
+              <ExternalLink size={15} />
+            </Link>
           ) : undefined
         }
       >

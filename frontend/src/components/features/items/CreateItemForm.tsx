@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { ChevronRight, ListChecks } from 'lucide-react'
+import { ChevronRight, Eraser, ListChecks } from 'lucide-react'
 import { PanelSlotContent } from '@/components/features/panel/PanelSlot'
 import { useRightPanelStore } from '@/stores/rightPanel'
 import { useRouter, useSearchParams } from 'next/navigation'
@@ -78,10 +78,12 @@ export function CreateItemForm({ inPanel = false }: { inPanel?: boolean } = {}) 
   // 開けるのは 1 グループずつ（同時に開くと縦に伸びて入力欄から遠くなる）
   const [openGroup, setOpenGroup] = useState<'image' | 'enrich' | 'place' | null>(null)
   const [showWordlists, setShowWordlists] = useState(false)
+  // クリアは押し間違いで入力が消えるため 2 段階にする
+  const [confirmClear, setConfirmClear] = useState(false)
   const openSection = useRightPanelStore((st) => st.openSection)
   const closePanel = useRightPanelStore((st) => st.close)
   const openWordlistPanel = () =>
-    openSection({ key: WORDLIST_SECTION, title: 'ワードリストから挿入' })
+    openSection({ key: WORDLIST_SECTION, title: 'ワードリストから挿入', href: '/wordlists' })
   // カンマ・読点での分割は既定オフ。言葉の中に現れる記号なので誤って分かれるため
   const [splitByPunctuation, setSplitByPunctuation] = useState(false)
   const [submitting, setSubmitting] = useState(false)
@@ -232,8 +234,8 @@ export function CreateItemForm({ inPanel = false }: { inPanel?: boolean } = {}) 
           フォーム自体がパネルに入っているときは、別セクションへ切り替えると
           入力途中の内容が失われるため、その場で開く。
         */}
-        {wordlists.length > 0 && (
-          <div className="space-y-2">
+        <div className="flex flex-wrap items-center gap-2">
+          {wordlists.length > 0 && (
             <Button
               type="button"
               variant="outline"
@@ -247,6 +249,34 @@ export function CreateItemForm({ inPanel = false }: { inPanel?: boolean } = {}) 
               ワードリストから挿入
               <ChevronRight size={15} className={`transition-transform ${showWordlists ? 'rotate-90' : ''}`} />
             </Button>
+          )}
+          {input.trim().length > 0 && (
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              onClick={() => {
+                if (!confirmClear) {
+                  setConfirmClear(true)
+                  return
+                }
+                setInput('')
+                setConfirmClear(false)
+              }}
+              onBlur={() => setConfirmClear(false)}
+              disabled={submitting}
+              aria-label={confirmClear ? '入力した言葉をすべて消す' : '入力した言葉を消す'}
+              title="入力した言葉を消す"
+              className="flex items-center gap-1.5 text-muted-foreground"
+            >
+              <Eraser size={15} />
+              {confirmClear && <span className="text-xs text-destructive">消しますか？</span>}
+            </Button>
+          )}
+        </div>
+
+        {wordlists.length > 0 && (
+          <div className="space-y-2">
             {inPanel && showWordlists && (
               <WordlistPicker
                 wordlists={wordlists}
@@ -642,15 +672,12 @@ function WordlistPicker({
   onPick: (wordlist: Wordlist) => void
 }) {
   const [query, setQuery] = useState('')
-  // 数件なら探す手間がないので、絞り込みは増えてきたときだけ出す
-  const needsFilter = wordlists.length > 8
   const q = query.trim().toLowerCase()
   const shown = q ? wordlists.filter((wl) => wl.name.toLowerCase().includes(q)) : wordlists
 
   return (
     <div className="space-y-2 rounded-xl border border-border/70 p-2">
-      {needsFilter && (
-        <input
+      <input
           type="search"
           value={query}
           onChange={(e) => setQuery(e.target.value)}
@@ -658,8 +685,7 @@ function WordlistPicker({
           disabled={disabled}
           aria-label="ワードリストを名前で絞り込む"
           className="w-full rounded-lg border border-input bg-background px-3 py-1.5 text-sm placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-        />
-      )}
+      />
       {shown.length === 0 ? (
         <p className="px-3 py-2 text-sm text-muted-foreground">一致するワードリストがありません。</p>
       ) : (

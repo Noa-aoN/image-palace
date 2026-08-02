@@ -34,6 +34,17 @@ const TITLES: Record<LibraryCreateKind, string> = {
 
 const sectionKey = (kind: LibraryCreateKind) => `library-create-${kind}`
 
+// 対応する一覧・作成ページ。パネルの見出し横からここへ移れる
+const HREFS: Record<LibraryCreateKind, string> = {
+  deck: '/views?type=deck',
+  freeboard: '/views?type=freeboard',
+  space_map: '/views?type=space_map',
+  road: '/spaces?type=road',
+  room: '/spaces?type=room',
+  box: '/boxes',
+  wordlist: '/wordlists/new',
+}
+
 /** 棚の見出し横に置く作成ボタン。カードの棚のものと見た目を揃える */
 export function LibraryCreateButton({ kind }: { kind: LibraryCreateKind }) {
   const openSection = useRightPanelStore((s) => s.openSection)
@@ -42,7 +53,7 @@ export function LibraryCreateButton({ kind }: { kind: LibraryCreateKind }) {
       variant="outline"
       size="sm"
       aria-label={TITLES[kind]}
-      onClick={() => openSection({ key: sectionKey(kind), title: TITLES[kind] })}
+      onClick={() => openSection({ key: sectionKey(kind), title: TITLES[kind], href: HREFS[kind] })}
       className="flex items-center gap-1"
     >
       <Plus size={14} />
