@@ -23,9 +23,20 @@ import { ASPECT_RATIOS, ASPECT_RATIO_KEYS, type AspectRatioKey } from '@/lib/asp
 
 const MAX_TITLE_LENGTH = 100
 
-function parseTitles(raw: string): string[] {
+/**
+ * 入力を 1 枚ずつの言葉に切り分ける。
+ *
+ * 基本は改行のみ。カンマや読点は言葉の中に現れるため、既定で区切りにすると
+ * 「Hello, world」「1,000」「彼は、走った」が意図せず分かれてしまう。
+ * タブは表計算から貼ったときの列区切りで、言葉の中には現れないので常に区切る。
+ *
+ * カンマ・読点で区切りたい場合は splitByPunctuation を立てる（フォーム側の任意設定）。
+ * 全角カンマも対象に含める（半角だけだと日本語入力で取りこぼす）。
+ */
+function parseTitles(raw: string, splitByPunctuation = false): string[] {
+  const pattern = splitByPunctuation ? /[\n\t,，、]/ : /[\n\t]/
   return raw
-    .split(/[\n,、]/)
+    .split(pattern)
     .map((s) => s.trim())
     .filter((s) => s.length > 0)
 }
@@ -64,6 +75,8 @@ export function CreateItemForm({ inPanel = false }: { inPanel?: boolean } = {}) 
   // 開けるのは 1 グループずつ（同時に開くと縦に伸びて入力欄から遠くなる）
   const [openGroup, setOpenGroup] = useState<'image' | 'enrich' | 'place' | null>(null)
   const [showWordlists, setShowWordlists] = useState(false)
+  // カンマ・読点での分割は既定オフ。言葉の中に現れる記号なので誤って分かれるため
+  const [splitByPunctuation, setSplitByPunctuation] = useState(false)
   const [submitting, setSubmitting] = useState(false)
   const [progress, setProgress] = useState<{ done: number; total: number } | null>(null)
 
@@ -95,7 +108,7 @@ export function CreateItemForm({ inPanel = false }: { inPanel?: boolean } = {}) 
     setSelectedDeckIds((prev) => (prev.includes(id) ? prev.filter((d) => d !== id) : [...prev, id]))
   }
 
-  const titles = parseTitles(input)
+  const titles = parseTitles(input, splitByPunctuation)
   const wordCount = titles.length
   const hasTooLongTitle = titles.some((t) => t.length > MAX_TITLE_LENGTH)
   const tagNames = tagsInput.split(/[\s,、]+/).map((s) => s.trim()).filter(Boolean)
@@ -247,15 +260,27 @@ export function CreateItemForm({ inPanel = false }: { inPanel?: boolean } = {}) 
         <textarea
           id="titles"
           className="w-full min-h-[180px] rounded-lg border border-input bg-background px-3 py-2.5 text-sm placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring resize-y"
-          placeholder={'富士山\nAPI\n光合成\n…'}
+          placeholder={'富士山\nAPI\n光合成\n︙'}
           value={input}
           onChange={(e) => setInput(e.target.value)}
           disabled={submitting}
         />
-        <p className="text-xs text-muted-foreground">
-          改行・カンマ・読点で区切ると、まとめて作成できます。
-          {wordCount > 0 && <span className="ml-1 font-medium text-foreground">{wordCount}件を認識</span>}
-        </p>
+        <div className="space-y-1.5">
+          <p className="text-xs text-muted-foreground">
+            1 行につき 1 枚。改行で区切ってまとめて作成できます。
+            {wordCount > 0 && <span className="ml-1 font-medium text-foreground">{wordCount}件を認識</span>}
+          </p>
+          <label className="flex items-center gap-2 text-xs text-muted-foreground">
+            <input
+              type="checkbox"
+              checked={splitByPunctuation}
+              onChange={(e) => setSplitByPunctuation(e.target.checked)}
+              disabled={submitting}
+              className="h-3.5 w-3.5 rounded border-input"
+            />
+            カンマ・読点でも区切る（「Hello, world」のように語の中に含む場合は外してください）
+          </label>
+        </div>
         {hasTooLongTitle && (
           <p className="text-xs text-destructive">
             1単語あたり{MAX_TITLE_LENGTH}文字を超えています。区切り直すか短くしてください。
