@@ -34,6 +34,11 @@ export interface NavNode {
   // 葉ノードはリンク先を持つ。children を持つノードは開閉可能。
   // children + href（ライブラリ）= リンク＋開閉、children のみ（アトリエ）= 開閉グループ見出し。
   href?: string
+  /**
+   * 押したときに右パネルで開く操作。href の代わりに使う。
+   * 画面を移らずにその場で始められるものは、こちらにする。
+   */
+  panel?: 'card-create'
   children?: NavNode[]
 }
 
@@ -61,7 +66,7 @@ export const NAV_SECTIONS: NavSection[] = [
         icon: <Palette size={22} />,
         label: 'アトリエ',
         children: [
-          { href: '/items/new', icon: <CreateIcon><GalleryHorizontal size={20} /></CreateIcon>, label: 'カードを作成' },
+          { panel: 'card-create', icon: <CreateIcon><GalleryHorizontal size={20} /></CreateIcon>, label: 'カードを作成' },
           { href: '/views/new', icon: <CreateIcon><LayoutGrid size={20} /></CreateIcon>, label: 'キャンバスを作成' },
           { href: '/spaces/new', icon: <CreateIcon><Frame size={20} /></CreateIcon>, label: 'スペースを作成' },
           { href: '/boxes/new', icon: <CreateIcon><Box size={20} /></CreateIcon>, label: 'ボックスを作成' },
