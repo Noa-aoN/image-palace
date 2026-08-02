@@ -1,6 +1,7 @@
 module Api
   module V1
     class SpacesController < BaseController
+      include ListPagination
       include ItemSerialization
       include CoverImageUpload
 
@@ -14,7 +15,9 @@ module Api
                              .includes(space_points: { image_attachment: :blob })
                              .with_attached_cover_image
                              .with_attached_cover_thumb
-        render json: { spaces: spaces.map { |s| serialize_space(s) } }
+        spaces, next_cursor = paginate_list(spaces)
+
+        render json: { spaces: spaces.map { |s| serialize_space(s) }, next_cursor: next_cursor }
       end
 
       def show

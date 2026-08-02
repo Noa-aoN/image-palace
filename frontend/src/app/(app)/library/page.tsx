@@ -367,6 +367,9 @@ type LibrarySnapshot = {
 
 const CACHE_KEY = 'library'
 
+// 棚 1 本に並べる件数。1 画面に収まる程度より少し多め（横に送れる分の余裕）
+const SHELF_LIMIT = 24
+
 export default function LibraryPage() {
   // 前回描いていた内容があれば、それを初期値にして即座に描く。
   // 取得は従来どおり裏で走り、終わり次第上書きする。
@@ -467,7 +470,16 @@ export default function LibraryPage() {
 
   useEffect(() => {
     let cancelled = false
-    Promise.allSettled([getItemsPage(1, PREVIEW_LIMIT), getItemsSummary(), getBoxes(), getSpaces(), getViews(), getWordlists()])
+    Promise.allSettled([
+      getItemsPage(1, PREVIEW_LIMIT),
+      getItemsSummary(),
+      // 棚は先頭の数件しか見せないので、その分だけ取る。
+      // 全件見たいときは棚の見出しから一覧ページへ移れる。
+      getBoxes(SHELF_LIMIT),
+      getSpaces(SHELF_LIMIT),
+      getViews(SHELF_LIMIT),
+      getWordlists(SHELF_LIMIT),
+    ])
       .then(([itemsRes, summaryRes, boxesRes, spacesRes, viewsRes, wordlistsRes]) => {
         if (cancelled) return
         if (itemsRes.status === 'fulfilled') setCards(itemsRes.value.items)

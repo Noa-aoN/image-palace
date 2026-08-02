@@ -1,6 +1,7 @@
 module Api
   module V1
     class BoxesController < BaseController
+      include ListPagination
       include ItemSerialization
       include CoverImageUpload
 
@@ -21,10 +22,10 @@ module Api
                                   .with_attached_cover_image
                                   .with_attached_cover_thumb
 
-        boxes = boxes.to_a
+        boxes, next_cursor = paginate_list(boxes)
         Box.preload_cover_entries(boxes)
 
-        render json: { boxes: boxes.map { |c| serialize_box(c) } }
+        render json: { boxes: boxes.map { |c| serialize_box(c) }, next_cursor: next_cursor }
       end
 
       # 中身は際限なく増えるため、全件は返さない。

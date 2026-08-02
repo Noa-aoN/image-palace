@@ -1,6 +1,7 @@
 module Api
   module V1
     class ViewsController < BaseController
+      include ListPagination
       include ItemSerialization
       include CoverImageUpload
 
@@ -16,9 +17,10 @@ module Api
         views = current_user.views.recent
                             .includes(cover_item: { medias: { file_attachment: :blob } })
                             .with_attached_cover_image.with_attached_cover_thumb
-                            .to_a
+
+        views, next_cursor = paginate_list(views)
         View.preload_cover_items(views)
-        render json: { views: views.map { |v| serialize_view(v) } }
+        render json: { views: views.map { |v| serialize_view(v) }, next_cursor: next_cursor }
       end
 
       def show
