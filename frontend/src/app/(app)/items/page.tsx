@@ -1,8 +1,7 @@
 import type { Metadata } from 'next'
-import Link from 'next/link'
 import { GalleryHorizontal } from 'lucide-react'
-import { Button } from '@/components/ui/button'
 import { ItemList } from '@/components/features/items/ItemList'
+import { CardCreateButton, CardCreatePanelSlot } from '@/components/features/items/CardCreatePanel'
 
 export const metadata: Metadata = { title: 'カード' }
 
@@ -19,10 +18,10 @@ export default async function ItemsPage({
           <GalleryHorizontal size={26} style={{ color: 'var(--palace)' }} />
           カード一覧
         </h1>
-        <Link href="/items/new">
-          <Button size="sm">+ カードを作成</Button>
-        </Link>
+        <CardCreateButton variant="default" label="カードを作成" />
       </div>
+      {/* 右パネルでのカード作成。開いている間だけパネルへ描かれる */}
+      <CardCreatePanelSlot />
       <ItemList initialTag={tag ?? null} />
     </div>
   )

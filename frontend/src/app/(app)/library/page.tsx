@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import Link from 'next/link'
-import { GalleryHorizontal, Box as BoxIcon, Layers, LayoutGrid, Frame, MapPin, ChevronRight, Plus, Search, X, Route, DoorOpen, ListChecks, Boxes, Images, CheckSquare, Square, Trash2, LibraryBig } from 'lucide-react'
+import { GalleryHorizontal, Box as BoxIcon, Layers, LayoutGrid, Frame, MapPin, ChevronRight, Search, X, Route, DoorOpen, ListChecks, Boxes, Images, CheckSquare, Square, Trash2, LibraryBig } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/skeleton'
 import { getItemsPage, getItemsSummary, bulkDeleteItems } from '@/lib/api/items'
@@ -25,6 +25,7 @@ import { Rail, EmptyRail } from '@/components/features/library/primitives'
 import { SearchResultsView } from '@/components/features/library/SearchResults'
 import { ShelfGroup, SurfaceBoard } from '@/components/features/display/ShelfBoard'
 import { EntityFrame } from '@/components/features/display/EntityFrame'
+import { CardCreateButton, CardCreatePanelSlot } from '@/components/features/items/CardCreatePanel'
 
 const PREVIEW_LIMIT = 12
 
@@ -501,6 +502,8 @@ export default function LibraryPage() {
 
   return (
     <div className="max-w-7xl mx-auto px-6 py-12 space-y-12">
+      {/* 右パネルでのカード作成。開いている間だけパネルへ描かれる */}
+      <CardCreatePanelSlot />
       <div className="flex items-start justify-between gap-3">
         <div>
           <h1 className="flex items-center gap-2.5 text-2xl font-semibold">
@@ -582,19 +585,14 @@ export default function LibraryPage() {
         href={selectionMode ? undefined : '/items'}
         action={
           selectionMode ? undefined : (
-            <Link href="/items/new">
-              <Button variant="outline" size="sm" className="flex items-center gap-1">
-                <Plus size={14} />
-                作成
-              </Button>
-            </Link>
+            <CardCreateButton />
           )
         }
       >
         {cards.length === 0 ? (
           <EmptyRail
             message="まだカードがありません。"
-            cta={<Link href="/items/new"><Button size="sm">カードを作成</Button></Link>}
+            cta={<CardCreateButton variant="default" label="カードを作成" />}
           />
         ) : (
           <Rail>

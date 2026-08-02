@@ -29,7 +29,13 @@ function parseTitles(raw: string): string[] {
     .filter((s) => s.length > 0)
 }
 
-export function CreateItemForm() {
+/**
+ * カード作成フォーム。
+ *
+ * inPanel: 右パネルに差し込んで使う場合。作成後に一覧へ遷移せず、
+ * 入力だけ空にして開いたままにする（続けて作れるようにするため）。
+ */
+export function CreateItemForm({ inPanel = false }: { inPanel?: boolean } = {}) {
   const router = useRouter()
   // ワードリスト詳細から「?wordlist=<id>」で来た場合、その単語を入力欄へ初期投入する
   const prefillWordlistId = useSearchParams().get('wordlist')
@@ -137,7 +143,12 @@ export function CreateItemForm() {
         with_tags: generateTags,
       })
       fetchBilling() // 消費後の残高を更新（ヘッダー等の表示に反映）
-      router.push('/items')
+      if (inPanel) {
+        // パネルでは元の画面を離れない。続けて作れるよう入力だけ空にする
+        setInput('')
+      } else {
+        router.push('/items')
+      }
     } catch (err: unknown) {
       const axiosErr = err as { response?: { data?: { error?: string; errors?: string[] } } }
       const msg =
