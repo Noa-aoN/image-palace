@@ -53,6 +53,8 @@ function metric(r: StudyRecord): string {
 
 export default function RecordPage() {
   const records = useStudyRecordStore((s) => s.records)
+  // 復元前は records が空なので、そのまま描くと記録があっても空の案内が出る
+  const hydrated = useStudyRecordStore((s) => s.hydrated)
   const clear = useStudyRecordStore((s) => s.clear)
   const [confirming, setConfirming] = useState(false)
 
@@ -81,7 +83,13 @@ export default function RecordPage() {
       </h1>
       <p className="mt-2 text-muted-foreground">プラクティス・クイズ・プレイの学習履歴と統計を確認します。</p>
 
-      {records.length === 0 ? (
+      {!hydrated ? (
+        <div className="mt-8 space-y-2">
+          {Array.from({ length: 3 }).map((_, i) => (
+            <div key={i} className="h-16 animate-pulse rounded-xl bg-muted" />
+          ))}
+        </div>
+      ) : records.length === 0 ? (
         <div className="mt-8 rounded-xl border border-dashed border-border bg-card/60 px-5 py-10 text-center text-sm text-muted-foreground">
           まだ記録がありません。プラクティス・クイズ・プレイに挑戦すると、ここに結果が残ります。
           <div className="mt-4 flex flex-wrap justify-center gap-3">

@@ -22,6 +22,13 @@ export type StudyRecord = {
 
 type State = {
   records: StudyRecord[]
+  /**
+   * localStorage からの復元が終わったか。
+   * 復元前は records が空配列なので、これを見ないと記録があっても
+   * 「まだ記録がありません」を一瞬出してしまう。
+   */
+  hydrated: boolean
+  setHydrated: () => void
   addRecord: (r: Omit<StudyRecord, 'id' | 'date'>) => void
   clear: () => void
 }
@@ -32,6 +39,8 @@ export const useStudyRecordStore = create<State>()(
   persist(
     (set) => ({
       records: [],
+      hydrated: false,
+      setHydrated: () => set({ hydrated: true }),
       addRecord: (r) =>
         set((s) => {
           const rec: StudyRecord = {
@@ -43,6 +52,11 @@ export const useStudyRecordStore = create<State>()(
         }),
       clear: () => set({ records: [] }),
     }),
-    { name: 'ip-study-records' }
+    {
+      name: 'ip-study-records',
+      // 保存するのは記録だけ。復元済みかどうかは毎回の起動で決まる
+      partialize: (s) => ({ records: s.records }),
+      onRehydrateStorage: () => (state) => state?.setHydrated(),
+    }
   )
 )
