@@ -26,7 +26,7 @@ import { Rail, EmptyRail } from '@/components/features/library/primitives'
 import { SearchResultsView } from '@/components/features/library/SearchResults'
 import { ShelfGroup, SurfaceBoard } from '@/components/features/display/ShelfBoard'
 import { EntityFrame } from '@/components/features/display/EntityFrame'
-import { CardCreateButton, CardCreatePanelSlot } from '@/components/features/items/CardCreatePanel'
+import { CardCreateButton } from '@/components/features/items/CardCreatePanel'
 import { LibraryCreateButton, LibraryCreatePanels } from '@/components/features/library/LibraryCreate'
 
 const PREVIEW_LIMIT = 12
@@ -598,7 +598,6 @@ export default function LibraryPage() {
   return (
     <div className="max-w-7xl mx-auto px-6 py-12 space-y-12">
       {/* 右パネルでの作成。開いているセクションの分だけがパネルへ描かれる */}
-      <CardCreatePanelSlot />
       <LibraryCreatePanels
         onViewCreated={(v) => setViews((prev) => [v, ...prev])}
         onSpaceCreated={(sp) => setSpaces((prev) => [sp, ...prev])}
