@@ -50,10 +50,15 @@ function parseTitles(raw: string, splitByPunctuation = false): string[] {
  * inPanel: 右パネルに差し込んで使う場合。作成後に一覧へ遷移せず、
  * 入力だけ空にして開いたままにする（続けて作れるようにするため）。
  */
-export function CreateItemForm({ inPanel = false }: { inPanel?: boolean } = {}) {
+export function CreateItemForm({
+  inPanel = false,
+  wordlistId,
+}: { inPanel?: boolean; wordlistId?: string } = {}) {
   const router = useRouter()
   // ワードリスト詳細から「?wordlist=<id>」で来た場合、その単語を入力欄へ初期投入する
-  const prefillWordlistId = useSearchParams().get('wordlist')
+  // ページでは URL のクエリ、パネルでは開くときに渡された値から受け取る
+  const queryWordlistId = useSearchParams().get('wordlist')
+  const prefillWordlistId = wordlistId ?? queryWordlistId
   const upsertItem = useItemsStore((state) => state.upsertItem)
   const billing = useBillingStore((s) => s.summary)
   const fetchBilling = useBillingStore((s) => s.fetchSummary)

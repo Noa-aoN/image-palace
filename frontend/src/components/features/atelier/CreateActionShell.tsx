@@ -28,7 +28,7 @@ export function CreateActionShell({
 
   if (panel === 'card-create') {
     return (
-      <button type="button" onClick={openCardCreate} aria-label={label} className={shell}>
+      <button type="button" onClick={() => openCardCreate()} aria-label={label} className={shell}>
         {children}
       </button>
     )

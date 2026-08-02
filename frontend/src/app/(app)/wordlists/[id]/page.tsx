@@ -2,8 +2,8 @@
 
 import { useEffect, useState } from 'react'
 import { useParams, useRouter } from 'next/navigation'
-import Link from 'next/link'
 import { Sparkles, Pencil, Plus, ShieldCheck } from 'lucide-react'
+import { useOpenCardCreate } from '@/components/features/items/CardCreatePanel'
 import { Button } from '@/components/ui/button'
 import { Breadcrumb } from '@/components/ui/breadcrumb'
 import { Input } from '@/components/ui/input'
@@ -19,6 +19,7 @@ import {
 import type { Wordlist } from '@/types/wordlist'
 
 export default function WordlistDetailPage() {
+  const openCardCreate = useOpenCardCreate()
   const params = useParams<{ id: string }>()
   const router = useRouter()
   const [wordlist, setWordlist] = useState<Wordlist | null>(null)
@@ -172,12 +173,15 @@ export default function WordlistDetailPage() {
       {error && <p className="mt-4 text-sm text-destructive">{error}</p>}
 
       {!editing && (
-        <Link href={`/items/new?wordlist=${wordlist.id}`} className="mt-5 block">
-          <Button className="w-full sm:w-auto flex items-center gap-1.5">
+        <div className="mt-5">
+          <Button
+            onClick={() => openCardCreate(wordlist.id)}
+            className="w-full sm:w-auto flex items-center gap-1.5"
+          >
             <Sparkles size={16} />
             このワードリストでカードを作成
           </Button>
-        </Link>
+        </div>
       )}
 
       {editing ? (

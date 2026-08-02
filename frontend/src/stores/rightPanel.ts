@@ -25,7 +25,16 @@ export type RightPanelMode =
  * href を渡すと、パネルの見出し横に対応するページへのリンクが出る
  * （パネルの中で完結しない作業へ移りたいときの逃げ道）。
  */
-export type PanelSection = { key: string; title?: string; href?: string }
+export type PanelSection = {
+  key: string
+  title?: string
+  href?: string
+  /**
+   * 開くときに渡す初期値。URL のクエリが使えないパネルで、
+   * 「このワードリストで作る」のような文脈を持ち込むために使う。
+   */
+  params?: Record<string, string>
+}
 
 interface RightPanelState {
   mode: RightPanelMode
