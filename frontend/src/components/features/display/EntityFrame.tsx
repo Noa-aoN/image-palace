@@ -43,7 +43,7 @@ export function EntityFrame({ kind, children: raw }: { kind: EntityKind; childre
 
   switch (kind) {
     case 'space':
-      return <WindowFrame>{children}</WindowFrame>
+      return <DoorFrame>{children}</DoorFrame>
     case 'road':
       return <WindowFrame open>{children}</WindowFrame>
     case 'box':
@@ -57,6 +57,58 @@ export function EntityFrame({ kind, children: raw }: { kind: EntityKind; childre
     default:
       return <PictureFrame>{children}</PictureFrame>
   }
+}
+
+/**
+ * ルーム＝扉。入って中を歩く場所なので、覗く窓ではなく通り抜ける開口として描く。
+ *
+ * 楣（まぐさ）・左右の方立・下の沓摺で枠を作り、内側を扉の面にする。
+ * 中身の画像は扉の向こうに見える部屋として扱い、把手を添えて開くものだと示す。
+ */
+function DoorFrame({ children }: { children: ReactNode }) {
+  return (
+    <div className="relative">
+      <div
+        className="relative overflow-hidden"
+        style={{
+          // 上辺だけをわずかに丸めた縦長の開口。窓のアーチより浅くする
+          borderRadius: '10% 10% 2px 2px / 6% 6% 2px 2px',
+          boxShadow: `inset 0 0 0 4px ${STONE_BASE}, inset 0 0 0 5px ${GOLD}`,
+        }}
+      >
+        {children}
+        {/* 楣。開口の上に一本渡して、扉の枠であることを示す */}
+        <span
+          aria-hidden
+          className="pointer-events-none absolute inset-x-0 top-0 h-[7%]"
+          style={{ background: `linear-gradient(to bottom, ${STONE_LIGHT}, ${STONE_SHADE})` }}
+        />
+        {/* 把手。開く側（右）の中ほどに置く */}
+        <span
+          aria-hidden
+          className="pointer-events-none absolute right-[8%] top-1/2 h-2 w-2 -translate-y-1/2 rounded-full"
+          style={{ background: GOLD_SOLID, boxShadow: '0 1px 2px rgba(0,0,0,0.45)' }}
+        />
+        {/* 内側の陰。開口の縁に沿って落とし、奥に空間があることを示す */}
+        <span
+          aria-hidden
+          className="pointer-events-none absolute inset-0"
+          style={{
+            boxShadow: `inset 0 14px 18px -14px rgba(0,0,0,0.55), inset 14px 0 18px -14px rgba(0,0,0,0.4)`,
+          }}
+        />
+      </div>
+      {/* 沓摺。またいで入る段差 */}
+      <span
+        aria-hidden
+        className="pointer-events-none absolute inset-x-0 bottom-0 h-1.5"
+        style={{
+          background: `linear-gradient(to bottom, ${STONE_LIGHT} 0 1px, ${STONE_BASE} 1px 60%, ${STONE_SHADE} 100%)`,
+          boxShadow: '0 2px 4px -2px rgba(0,0,0,0.5)',
+        }}
+      />
+    </div>
+  )
 }
 
 /**
