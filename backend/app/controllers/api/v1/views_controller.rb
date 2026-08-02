@@ -10,11 +10,12 @@ module Api
       ]
 
       def index
-        # serialize_view→cover/cover_cards が view_items/cover_item の画像を走査するため preload して N+1 を防ぐ
-        views = current_user.views.recent.includes(
-          view_items: { item: { medias: { file_attachment: :blob } } },
-          cover_item: { medias: { file_attachment: :blob } }
-        ).with_attached_cover_image.with_attached_cover_thumb
+        # cover/cover_cards は各ビューの先頭数枚しか使わない。
+        # view_items を全件 preload すると配置カードの数に比例して重くなるため、
+        # 必要数の取得はモデル側（cover_item_candidates）に任せる。
+        views = current_user.views.recent
+                            .includes(cover_item: { medias: { file_attachment: :blob } })
+                            .with_attached_cover_image.with_attached_cover_thumb
         render json: { views: views.map { |v| serialize_view(v) } }
       end
 

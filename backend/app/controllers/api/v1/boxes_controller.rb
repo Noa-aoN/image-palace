@@ -14,8 +14,10 @@ module Api
                                   .left_joins(:box_entries)
                                   .select("boxes.*, COUNT(box_entries.id) AS entry_count")
                                   .group("boxes.id")
-                                  # cover/cover_cards が box_entries→entry を走査するため preload して N+1 を防ぐ
-                                  .includes(:cover_item, box_entries: :entry)
+                                  # cover/cover_cards は先頭数件しか使わない。
+                                  # box_entries を全件 preload すると中身の数に比例して重くなるため、
+                                  # 必要数の取得はモデル側（cover_item_candidates）に任せる。
+                                  .includes(:cover_item)
                                   .with_attached_cover_image
                                   .with_attached_cover_thumb
 
