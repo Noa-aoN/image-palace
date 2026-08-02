@@ -6,7 +6,7 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { createView } from '@/lib/api/views'
 import { getSpaces } from '@/lib/api/spaces'
-import { VIEW_TYPES, viewTypeLabel, IMPLEMENTED_VIEW_TYPES } from '@/lib/view-types'
+import { VIEW_TYPES, viewTypeLabel, IMPLEMENTED_VIEW_TYPES, viewTypeDescription } from '@/lib/view-types'
 import { spaceTypeLabel } from '@/lib/space-types'
 import type { View } from '@/types/view'
 import type { Space } from '@/types/space'
@@ -75,56 +75,77 @@ export function CreateViewForm({ onCreated, redirectBase, onCancel, defaultType 
   }
 
   return (
-    <form onSubmit={handleSubmit} className="flex flex-col gap-2 sm:flex-row sm:items-start">
-      <div className="flex-1">
+    <form onSubmit={handleSubmit} className="space-y-4">
+      <Field label="種別" hint={viewTypeDescription(viewType)}>
+        <select
+          value={viewType}
+          onChange={(e) => setViewType(e.target.value)}
+          disabled={submitting}
+          aria-label="キャンバスの種別"
+          className="h-9 w-full rounded-lg border border-input bg-background px-3 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+        >
+          {VIEW_TYPES.map((t) => (
+            <option key={t} value={t}>
+              {viewTypeLabel(t)}
+              {IMPLEMENTED_VIEW_TYPES.has(t) ? '' : '（準備中）'}
+            </option>
+          ))}
+        </select>
+      </Field>
+
+      {viewType === 'space_map' && (
+        <Field label="配置先のスペース" hint="カードを置く場所です。あとから変更できます。">
+          <select
+            value={selectedSpaceId}
+            onChange={(e) => setSelectedSpaceId(e.target.value)}
+            disabled={submitting}
+            aria-label="配置先のスペース"
+            className="h-9 w-full rounded-lg border border-input bg-background px-3 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+          >
+            <option value="">スペースを選択…</option>
+            {spaces.map((s) => (
+              <option key={s.id} value={s.id}>{s.name}（{spaceTypeLabel(s.space_type)}）</option>
+            ))}
+          </select>
+        </Field>
+      )}
+
+      <Field label="名前">
         <Input
           value={name}
           onChange={(e) => setName(e.target.value)}
-          placeholder="キャンバス名（例: 関係図、学習マップ）"
+          placeholder="例: 関係図、学習マップ"
           autoFocus
           disabled={submitting}
           aria-label="キャンバス名"
         />
-        {error && <p className="mt-1 text-sm text-destructive">{error}</p>}
-      </div>
-      <select
-        value={viewType}
-        onChange={(e) => setViewType(e.target.value)}
-        disabled={submitting}
-        aria-label="キャンバスの種別"
-        className="h-9 rounded-lg border border-input bg-background px-3 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-      >
-        {VIEW_TYPES.map((t) => (
-          <option key={t} value={t}>
-            {viewTypeLabel(t)}
-            {IMPLEMENTED_VIEW_TYPES.has(t) ? '' : '（準備中）'}
-          </option>
-        ))}
-      </select>
-      {viewType === 'space_map' && (
-        <select
-          value={selectedSpaceId}
-          onChange={(e) => setSelectedSpaceId(e.target.value)}
-          disabled={submitting}
-          aria-label="配置先のスペース"
-          className="h-9 rounded-lg border border-input bg-background px-3 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-        >
-          <option value="">スペースを選択…</option>
-          {spaces.map((s) => (
-            <option key={s.id} value={s.id}>{s.name}（{spaceTypeLabel(s.space_type)}）</option>
-          ))}
-        </select>
-      )}
-      <div className="flex gap-2">
-        <Button type="submit" size="sm" disabled={submitting}>
-          {submitting ? '作成中...' : '作成'}
-        </Button>
+      </Field>
+      {error && <p className="text-sm text-destructive">{error}</p>}
+
+      <div className="flex justify-end gap-2 pt-1">
         {onCancel && (
           <Button type="button" variant="ghost" size="sm" onClick={onCancel} disabled={submitting}>
             キャンセル
           </Button>
         )}
+        <Button type="submit" size="sm" disabled={submitting}>
+          {submitting ? '作成中...' : '作成'}
+        </Button>
       </div>
     </form>
+  )
+}
+
+/**
+ * 1 項目分の枠。ラベルを上、操作を下に置いて縦に積む。
+ * 横 1 行に詰めると右パネルのような狭い幅で潰れるため、幅に依存しない形にしている。
+ */
+function Field({ label, hint, children }: { label: string; hint?: string; children: React.ReactNode }) {
+  return (
+    <label className="block space-y-1.5">
+      <span className="text-sm font-medium">{label}</span>
+      {children}
+      {hint && <span className="block text-xs text-muted-foreground">{hint}</span>}
+    </label>
   )
 }

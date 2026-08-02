@@ -12,3 +12,13 @@ export const SPACE_TYPE_LABELS: Record<string, string> = {
 export function spaceTypeLabel(type: string): string {
   return SPACE_TYPE_LABELS[type] ?? type
 }
+
+// 種別を選んだときに出す短い説明。どんな覚え方をする場所かを 1 行で伝える
+export const SPACE_TYPE_DESCRIPTIONS: Record<string, string> = {
+  room: '部屋の壁や床にカードを置きます。位置関係ごと思い出す覚え方です。',
+  road: '道沿いに順番でカードを置きます。順路をたどって思い出す覚え方です。',
+}
+
+export function spaceTypeDescription(type: string): string | undefined {
+  return SPACE_TYPE_DESCRIPTIONS[type]
+}
