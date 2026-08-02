@@ -27,6 +27,8 @@ export default function BillingPage() {
   const [busyPlan, setBusyPlan] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [checkoutNotice, setCheckoutNotice] = useState<'success' | 'cancel' | null>(null)
+  // 決済後の反映状況。confirming=確認中 / applied=反映済み / slow=時間がかかっている
+  const [applyState, setApplyState] = useState<'confirming' | 'applied' | 'slow' | null>(null)
 
   useEffect(() => {
     let cancelled = false
@@ -58,24 +60,37 @@ export default function BillingPage() {
     let tries = 0
     // subscription.created（プラン）と invoice.paid（クレジット）は別イベントで前後するため、
     // 早期終了せず数回ポーリングして両方の反映を取り込む。ヘッダー等の共有残高も更新する。
+    // 決済前のプランを控え、変化したかどうかで反映を判定する
+    let before: string | null | undefined
     const poll = async () => {
       tries += 1
       try {
         const s = await getBillingSummary()
         if (cancelled) return
+        if (before === undefined) before = s.plan?.name ?? null
         setSummary(s)
         useBillingStore.getState().fetchSummary()
+        if ((s.plan?.name ?? null) !== before) {
+          setApplyState('applied')
+          return // 反映を確認できたら止める
+        }
       } catch {
         /* 一時的な失敗は次のポーリングで吸収 */
       }
-      if (!cancelled && tries < 5) setTimeout(poll, 2000)
+      if (cancelled) return
+      if (tries < 5) setTimeout(poll, 2000)
+      // 打ち切り。反映済みかどうか判断できないので、確認手段を案内する
+      else setApplyState('slow')
     }
 
     // effect 本体での同期 setState を避けるため、表示・ポーリングは次タスクで開始する。
     const notice = setTimeout(() => {
       if (cancelled) return
       setCheckoutNotice(checkout)
-      if (checkout === 'success') setTimeout(poll, 1500)
+      if (checkout === 'success') {
+        setApplyState('confirming')
+        setTimeout(poll, 1500)
+      }
     }, 0)
 
     return () => {
@@ -357,7 +372,16 @@ export default function BillingPage() {
 
       {checkoutNotice === 'success' && (
         <p className="rounded-lg border border-[var(--palace)]/40 bg-[rgba(198,167,94,0.08)] px-4 py-3 text-sm">
-          決済が完了しました。プランの反映を確認しています…（数秒かかる場合があります）
+          {applyState === 'applied' ? (
+            <>決済が完了し、{summary?.plan?.name ?? '新しいプラン'}が有効になりました。</>
+          ) : applyState === 'slow' ? (
+            <>
+              決済は完了しています。プランの反映に時間がかかっているようです。
+              しばらくしてから画面を再読み込みしてください。
+            </>
+          ) : (
+            <>決済が完了しました。プランの反映を確認しています…（数秒かかる場合があります）</>
+          )}
         </p>
       )}
       {checkoutNotice === 'cancel' && (
