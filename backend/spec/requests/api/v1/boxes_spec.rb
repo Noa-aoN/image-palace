@@ -167,4 +167,42 @@ RSpec.describe "Api::V1::Boxes", type: :request do
       expect(response).to have_http_status(:no_content)
     end
   end
+
+  describe "GET /api/v1/boxes/:id ページング" do
+    let(:box) { user.boxes.create!(name: "ページング") }
+
+    before do
+      # 新しい順に返るので、作成順が分かるよう時刻をずらす
+      5.times do |i|
+        item = create(:item, user: user, title: "item-#{i}")
+        box.box_entries.create!(entry: item, created_at: Time.current + i.seconds)
+      end
+    end
+
+    it "件数を指定すると、その件数と続きの位置を返す" do
+      get "/api/v1/boxes/#{box.id}", params: { limit: 2 }, headers: headers
+
+      body = response.parsed_body
+      expect(body["entries"].size).to eq 2
+      expect(body["next_cursor"]).to be_present
+      expect(body["entry_count"]).to eq 5
+    end
+
+    it "続きの位置を渡すと、その先だけを返す" do
+      get "/api/v1/boxes/#{box.id}", params: { limit: 2 }, headers: headers
+      cursor = response.parsed_body["next_cursor"]
+
+      get "/api/v1/boxes/#{box.id}", params: { limit: 2, cursor: cursor }, headers: headers
+
+      body = response.parsed_body
+      expect(body["entries"].size).to eq 2
+      expect(body["entries"].first["title"]).to eq "item-2"
+    end
+
+    it "最後まで返しきったら続きの位置を返さない" do
+      get "/api/v1/boxes/#{box.id}", params: { limit: 100 }, headers: headers
+
+      expect(response.parsed_body["next_cursor"]).to be_nil
+    end
+  end
 end
