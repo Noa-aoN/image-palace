@@ -26,6 +26,7 @@ import { SearchResultsView } from '@/components/features/library/SearchResults'
 import { ShelfGroup, SurfaceBoard } from '@/components/features/display/ShelfBoard'
 import { EntityFrame } from '@/components/features/display/EntityFrame'
 import { CardCreateButton, CardCreatePanelSlot } from '@/components/features/items/CardCreatePanel'
+import { LibraryCreateButton, LibraryCreatePanels } from '@/components/features/library/LibraryCreate'
 
 const PREVIEW_LIMIT = 12
 
@@ -145,7 +146,10 @@ function Shelf({
   )
 }
 
-// 傘セクション（キャンバス / スペース）の見出し＋配下のサブ棚をまとめる枠
+// 傘セクション（キャンバス / スペース）の見出し＋配下のサブ棚をまとめる枠。
+// 棚が縦に長くなるため、見出しから畳めるようにしている。
+// 畳んだ状態は覚えない（ページを開き直したら全部開いている）。
+// 覚えるほど頻繁に切り替えるものではなく、隠れたまま気付かない方が困るため。
 function Section({
   icon,
   title,
@@ -157,16 +161,29 @@ function Section({
   description?: string
   children: React.ReactNode
 }) {
+  const [open, setOpen] = useState(true)
+
   return (
     <section className="space-y-6">
       <div>
-        <div className="flex items-center gap-2">
+        <button
+          type="button"
+          onClick={() => setOpen((v) => !v)}
+          aria-expanded={open}
+          className="group flex items-center gap-2 rounded-md transition-colors hover:text-[var(--palace)]"
+        >
           <span style={{ color: 'var(--palace)' }}>{icon}</span>
           <h2 className="text-lg font-semibold">{title}</h2>
-        </div>
+          <ChevronRight
+            size={18}
+            className={`text-muted-foreground transition-transform group-hover:text-[var(--palace)] ${
+              open ? 'rotate-90' : ''
+            }`}
+          />
+        </button>
         {description && <p className="mt-0.5 text-sm text-muted-foreground">{description}</p>}
       </div>
-      <ShelfGroup className="border-l border-border/60 pl-4">{children}</ShelfGroup>
+      {open && <ShelfGroup className="border-l border-border/60 pl-4">{children}</ShelfGroup>}
     </section>
   )
 }
@@ -502,8 +519,13 @@ export default function LibraryPage() {
 
   return (
     <div className="max-w-7xl mx-auto px-6 py-12 space-y-12">
-      {/* 右パネルでのカード作成。開いている間だけパネルへ描かれる */}
+      {/* 右パネルでの作成。開いているセクションの分だけがパネルへ描かれる */}
       <CardCreatePanelSlot />
+      <LibraryCreatePanels
+        onViewCreated={(v) => setViews((prev) => [v, ...prev])}
+        onSpaceCreated={(sp) => setSpaces((prev) => [sp, ...prev])}
+        onBoxCreated={(b) => setBoxes((prev) => [b, ...prev])}
+      />
       <div className="flex items-start justify-between gap-3">
         <div>
           <h1 className="flex items-center gap-2.5 text-2xl font-semibold">
@@ -611,7 +633,7 @@ export default function LibraryPage() {
 
       {/* キャンバス（表示・学習形式：デッキ / フリーボード等） */}
       <Section icon={<LayoutGrid size={22} />} title="キャンバス" description="カードの表示・学習形式">
-        <Shelf icon={<Layers size={18} />} title="デッキ" count={deckViews.length} href={selectionMode ? undefined : '/views?type=deck'}>
+        <Shelf icon={<Layers size={18} />} title="デッキ" count={deckViews.length} href={selectionMode ? undefined : '/views?type=deck'} action={selectionMode ? undefined : <LibraryCreateButton kind="deck" />}>
           {deckViews.length === 0 ? (
             <EmptyRail
               message="まだデッキがありません。"
@@ -631,7 +653,7 @@ export default function LibraryPage() {
             </Rail>
           )}
         </Shelf>
-        <Shelf icon={<LayoutGrid size={18} />} title="フリーボード" count={freeboardViews.length} href={selectionMode ? undefined : '/views?type=freeboard'}>
+        <Shelf icon={<LayoutGrid size={18} />} title="フリーボード" count={freeboardViews.length} href={selectionMode ? undefined : '/views?type=freeboard'} action={selectionMode ? undefined : <LibraryCreateButton kind="freeboard" />}>
           {freeboardViews.length === 0 ? (
             <EmptyRail
               message="まだフリーボードがありません。"
@@ -651,7 +673,7 @@ export default function LibraryPage() {
             </Rail>
           )}
         </Shelf>
-        <Shelf icon={<MapPin size={18} />} title="スペース配置" count={spaceMapViews.length} href={selectionMode ? undefined : '/views?type=space_map'}>
+        <Shelf icon={<MapPin size={18} />} title="スペース配置" count={spaceMapViews.length} href={selectionMode ? undefined : '/views?type=space_map'} action={selectionMode ? undefined : <LibraryCreateButton kind="space_map" />}>
           {spaceMapViews.length === 0 ? (
             <EmptyRail
               message="まだスペース配置がありません。"
@@ -682,7 +704,7 @@ export default function LibraryPage() {
           />
         ) : (
           <>
-            <Shelf icon={<Route size={18} />} title="ロード" count={roadSpaces.length} href={selectionMode ? undefined : '/spaces?type=road'}>
+            <Shelf icon={<Route size={18} />} title="ロード" count={roadSpaces.length} href={selectionMode ? undefined : '/spaces?type=road'} action={selectionMode ? undefined : <LibraryCreateButton kind="road" />}>
               {roadSpaces.length === 0 ? (
                 <EmptyRail message="ロードはまだありません。" cta={<Link href="/spaces?type=road"><Button size="sm">作成</Button></Link>} />
               ) : (
@@ -699,7 +721,7 @@ export default function LibraryPage() {
                 </Rail>
               )}
             </Shelf>
-            <Shelf icon={<DoorOpen size={18} />} title="ルーム" count={roomSpaces.length} href={selectionMode ? undefined : '/spaces?type=room'}>
+            <Shelf icon={<DoorOpen size={18} />} title="ルーム" count={roomSpaces.length} href={selectionMode ? undefined : '/spaces?type=room'} action={selectionMode ? undefined : <LibraryCreateButton kind="room" />}>
               {roomSpaces.length === 0 ? (
                 <EmptyRail message="ルームはまだありません。" cta={<Link href="/spaces?type=room"><Button size="sm">作成</Button></Link>} />
               ) : (
@@ -726,6 +748,7 @@ export default function LibraryPage() {
         title="ボックス"
         description="用途を問わない収納箱"
         count={boxes.length}
+        action={selectionMode ? undefined : <LibraryCreateButton kind="box" />}
         href={selectionMode ? undefined : '/boxes'}
       >
         {boxes.length === 0 ? (
