@@ -1,6 +1,5 @@
 'use client'
 
-import Link from 'next/link'
 import { Plus } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { PanelSlotContent } from '@/components/features/panel/PanelSlot'
@@ -8,9 +7,11 @@ import { useRightPanelStore } from '@/stores/rightPanel'
 import { CreateViewForm } from '@/components/features/views/CreateViewForm'
 import { CreateSpaceForm } from '@/components/features/spaces/CreateSpaceForm'
 import { CreateBoxForm } from '@/components/features/boxes/CreateBoxForm'
+import { CreateWordlistFlow } from '@/components/features/wordlists/CreateWordlistFlow'
 import type { View } from '@/types/view'
 import type { Space } from '@/types/space'
 import type { Box } from '@/types/box'
+import type { Wordlist } from '@/types/wordlist'
 
 /**
  * ライブラリの棚ごとの作成操作。
@@ -19,7 +20,7 @@ import type { Box } from '@/types/box'
  * 一覧ページまで移動してから作る、という往復をなくすのが狙い。
  * 中身は各一覧ページと同じフォームを使い回すため、作成後の挙動もページ側と揃う。
  */
-export type LibraryCreateKind = 'deck' | 'freeboard' | 'space_map' | 'road' | 'room' | 'box'
+export type LibraryCreateKind = 'deck' | 'freeboard' | 'space_map' | 'road' | 'room' | 'box' | 'wordlist'
 
 const TITLES: Record<LibraryCreateKind, string> = {
   deck: 'デッキを作成',
@@ -28,27 +29,10 @@ const TITLES: Record<LibraryCreateKind, string> = {
   road: 'ロードを作成',
   room: 'ルームを作成',
   box: 'ボックスを作成',
+  wordlist: 'ワードリストを作成',
 }
 
 const sectionKey = (kind: LibraryCreateKind) => `library-create-${kind}`
-
-/**
- * 専用ページへ送る作成ボタン。
- *
- * ワードリストの作成は「テーマから AI が単語を出す → 点検する → 編集して保存する」という
- * 複数段階の流れで、単語の一覧を編集する幅も要る。パネルの幅では成立しないため、
- * ここだけは専用ページへ送る。見た目は他の棚の作成ボタンと揃える。
- */
-export function LibraryCreateLink({ href, label }: { href: string; label: string }) {
-  return (
-    <Link href={href}>
-      <Button variant="outline" size="sm" aria-label={label} className="flex items-center gap-1">
-        <Plus size={14} />
-        作成
-      </Button>
-    </Link>
-  )
-}
 
 /** 棚の見出し横に置く作成ボタン。カードの棚のものと見た目を揃える */
 export function LibraryCreateButton({ kind }: { kind: LibraryCreateKind }) {
@@ -76,10 +60,12 @@ export function LibraryCreatePanels({
   onViewCreated,
   onSpaceCreated,
   onBoxCreated,
+  onWordlistCreated,
 }: {
   onViewCreated: (view: View) => void
   onSpaceCreated: (space: Space) => void
   onBoxCreated: (box: Box) => void
+  onWordlistCreated: (wordlist: Wordlist) => void
 }) {
   const close = useRightPanelStore((s) => s.close)
 
@@ -110,6 +96,15 @@ export function LibraryCreatePanels({
           />
         </PanelSlotContent>
       ))}
+
+      <PanelSlotContent sectionKey={sectionKey('wordlist')}>
+        <CreateWordlistFlow
+          onCreated={(created) => {
+            onWordlistCreated(created)
+            close()
+          }}
+        />
+      </PanelSlotContent>
 
       <PanelSlotContent sectionKey={sectionKey('box')}>
         <CreateBoxForm
