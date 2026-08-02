@@ -24,4 +24,6 @@ export type BoxEntry =
 
 export interface BoxDetail extends Box {
   entries: BoxEntry[]
+  /** 続きがあるときだけ入る。次の取得でそのまま cursor に渡す */
+  next_cursor?: string | null
 }

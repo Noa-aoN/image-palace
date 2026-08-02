@@ -97,9 +97,29 @@ export default function BoxDetailPage() {
   const [pickerLoading, setPickerLoading] = useState(false)
   const [busyKey, setBusyKey] = useState<string | null>(null)
 
+  const [loadingMore, setLoadingMore] = useState(false)
+
   const reload = async () => {
     const data = await getBox(id)
     setBox(data)
+  }
+
+  // 続きを読む。取得済みの分は残したまま後ろに足す
+  const loadMore = async () => {
+    if (!box?.next_cursor || loadingMore) return
+    setLoadingMore(true)
+    try {
+      const more = await getBox(id, box.next_cursor)
+      setBox((current) =>
+        current
+          ? { ...current, entries: [ ...current.entries, ...more.entries ], next_cursor: more.next_cursor }
+          : more
+      )
+    } catch {
+      // 失敗しても取得済みの分は残す。もう一度押せばやり直せる
+    } finally {
+      setLoadingMore(false)
+    }
   }
 
   useEffect(() => {
@@ -421,6 +441,15 @@ export default function BoxDetailPage() {
               </section>
             )
           })}
+
+          {/* 続き。全部を一度に読むと件数に比例して待たされるため、押した分だけ足す */}
+          {box.next_cursor && (
+            <div className="flex justify-center pt-2">
+              <Button variant="outline" onClick={loadMore} disabled={loadingMore}>
+                {loadingMore ? '読み込み中...' : `続きを読む（${box.entries.length} / ${box.entry_count}）`}
+              </Button>
+            </div>
+          )}
         </div>
       )}
     </div>

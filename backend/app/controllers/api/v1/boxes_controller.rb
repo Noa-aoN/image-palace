@@ -22,11 +22,25 @@ module Api
         render json: { boxes: boxes.map { |c| serialize_box(c) } }
       end
 
+      # 中身は際限なく増えるため、全件は返さない。
+      # 新しい順に一定件数ずつ返し、続きは最後の 1 件を cursor に渡してもらう。
+      # offset ではなく cursor にするのは、深い位置ほど offset が遅くなるため。
+      DEFAULT_ENTRY_LIMIT = 50
+      MAX_ENTRY_LIMIT = 100
+
       def show
-        entries = @box.box_entries.includes(:entry).order(created_at: :desc)
+        entries = @box.box_entries.includes(:entry).order(created_at: :desc, id: :desc)
+        entries = entries.where("box_entries.created_at < ?", cursor_time) if cursor_time
+        entries = entries.limit(entry_limit + 1)
+
+        rows = entries.to_a
+        has_more = rows.size > entry_limit
+        rows = rows.first(entry_limit)
 
         render json: serialize_box(@box).merge(
-          entries: entries.filter_map { |e| serialize_entry(e) }
+          entries: rows.filter_map { |e| serialize_entry(e) },
+          next_cursor: has_more ? rows.last&.created_at&.iso8601(6) : nil,
+          entry_count: @box.box_entries.count
         )
       end
 
@@ -96,6 +110,21 @@ module Api
       end
 
       private
+
+      def entry_limit
+        requested = params[:limit].to_i
+        return DEFAULT_ENTRY_LIMIT if requested <= 0
+
+        [ requested, MAX_ENTRY_LIMIT ].min
+      end
+
+      def cursor_time
+        return nil if params[:cursor].blank?
+
+        Time.iso8601(params[:cursor])
+      rescue ArgumentError
+        nil
+      end
 
       def set_box
         @box = current_user.boxes.find(params[:id])

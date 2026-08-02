@@ -7,8 +7,16 @@ export async function getBoxes(): Promise<Box[]> {
   return res.data.boxes
 }
 
-export async function getBox(id: string): Promise<BoxDetail> {
-  const res = await apiClient.get<BoxDetail>(`/api/v1/boxes/${id}`)
+/**
+ * ボックスの中身を取得する。
+ *
+ * 中身は際限なく増えるので全件は返らない。続きは next_cursor をそのまま渡す。
+ * 位置の指定に offset を使わないのは、深いページほど DB 側が遅くなるため。
+ */
+export async function getBox(id: string, cursor?: string | null): Promise<BoxDetail> {
+  const res = await apiClient.get<BoxDetail>(`/api/v1/boxes/${id}`, {
+    params: cursor ? { cursor } : undefined,
+  })
   return res.data
 }
 
