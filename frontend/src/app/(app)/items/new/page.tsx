@@ -16,7 +16,7 @@ export default function NewItemPage() {
             <GalleryHorizontal size={26} style={{ color: 'var(--palace)' }} />
             カードを作成
           </h1>
-          <p className="mt-2 text-muted-foreground">
+          <p className="mt-2 text-sm text-muted-foreground">
             単語や概念を入力すると、AIが画像を生成します
           </p>
         </div>

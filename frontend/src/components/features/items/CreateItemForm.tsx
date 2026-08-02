@@ -60,8 +60,9 @@ export function CreateItemForm({ inPanel = false }: { inPanel?: boolean } = {}) 
   const [newDeckName, setNewDeckName] = useState('')
   const [selectedDeckIds, setSelectedDeckIds] = useState<string[]>([])
   const [apiError, setApiError] = useState<string | null>(null)
-  // 生成オプションは既定で閉じる。作るだけなら触らずに済むため
-  const [showOptions, setShowOptions] = useState(false)
+  // 生成オプションは既定で閉じる。作るだけなら触らずに済むため。
+  // 開けるのは 1 グループずつ（同時に開くと縦に伸びて入力欄から遠くなる）
+  const [openGroup, setOpenGroup] = useState<'image' | 'enrich' | 'place' | null>(null)
   const [submitting, setSubmitting] = useState(false)
   const [progress, setProgress] = useState<{ done: number; total: number } | null>(null)
 
@@ -175,30 +176,30 @@ export function CreateItemForm({ inPanel = false }: { inPanel?: boolean } = {}) 
     })
   }
 
-  // 閉じていても何が効くのかが分かるよう、選んだものを一行で示す
-  const optionSummary = [
-    style && 'スタイル',
-    aspectRatio && '形',
-    customPrompt.trim() && '追加指示',
-    generateMeaning && '意味',
-    generateTags && 'タグ',
-    (createNewDeck || selectedDeckIds.length > 0) && 'デッキ',
-  ]
-    .filter(Boolean)
-    .join(' / ')
+  // 閉じていても何が効くのかが分かるよう、グループごとに選んだものを示す
+  const join = (parts: (string | false | '')[]) => parts.filter(Boolean).join(' / ')
+  const optionSummary = {
+    image: join([customPrompt.trim() && '追加指示', style && 'スタイル', aspectRatio && '形']),
+    enrich: join([generateMeaning && '意味', generateTags && 'タグ']),
+    place: join([(createNewDeck || selectedDeckIds.length > 0) && 'デッキ']),
+  }
 
   return (
     <form onSubmit={handleSubmit} className="space-y-5">
       <div className="space-y-2">
         <div className="flex items-center justify-between gap-2">
-          <Label htmlFor="titles" required>単語・概念を入力</Label>
+          <Label htmlFor="titles" required className="text-base">
+            カードにする言葉
+          </Label>
           {remainingCards !== null && (
             <span className="text-xs text-muted-foreground">あと約{remainingCards}枚作成できます</span>
           )}
         </div>
         <div className="rounded-xl border border-border/70 bg-muted/40 px-4 py-3 text-sm leading-6 text-muted-foreground">
-          <p>具体的な名詞や場面が思い浮かぶ言葉ほど、画像化に成功しやすいです。</p>
-          <p>例: <span className="font-medium text-foreground">富士山 / API / 光合成 / 細胞分裂</span></p>
+          <p>形や場面が思い浮かぶ言葉ほど、絵になりやすく記憶にも残ります。</p>
+          <p>
+            例: <span className="font-medium text-foreground">富士山 / API / 光合成 / 細胞分裂</span> …
+          </p>
         </div>
         {wordlists.length > 0 && (
           <div className="flex items-center gap-2">
@@ -222,12 +223,15 @@ export function CreateItemForm({ inPanel = false }: { inPanel?: boolean } = {}) 
         <textarea
           id="titles"
           className="w-full min-h-[180px] rounded-lg border border-input bg-background px-3 py-2.5 text-sm placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring resize-y"
-          placeholder={"photosynthesis\nAPI\nmitosis\n\n改行・カンマ区切りで複数入力できます"}
+          placeholder={'富士山\nAPI\n光合成'}
           value={input}
           onChange={(e) => setInput(e.target.value)}
           disabled={submitting}
         />
-        {wordCount > 0 && <p className="text-xs text-muted-foreground">{wordCount}件を認識</p>}
+        <p className="text-xs text-muted-foreground">
+          改行・カンマ・読点で区切ると、まとめて作成できます。
+          {wordCount > 0 && <span className="ml-1 font-medium text-foreground">{wordCount}件を認識</span>}
+        </p>
         {hasTooLongTitle && (
           <p className="text-xs text-destructive">
             1単語あたり{MAX_TITLE_LENGTH}文字を超えています。区切り直すか短くしてください。
@@ -242,27 +246,19 @@ export function CreateItemForm({ inPanel = false }: { inPanel?: boolean } = {}) 
       </div>
 
       {/*
-        生成オプション。既定は閉じておく。
-        入力して作るだけなら触らずに済み、こだわるときだけ開けばよい。
-        パネルのような狭い幅では、開いたままだと入力欄まで遠くなるため。
+        生成オプション。似たものだけをまとめ、グループごとに畳む。
+        既定は閉じておく。入力して作るだけなら触らずに済み、こだわるときだけ開けばよい。
       */}
-      <div className="rounded-xl border border-border/70">
-        <button
-          type="button"
-          onClick={() => setShowOptions((v) => !v)}
-          aria-expanded={showOptions}
-          className="flex w-full items-center justify-between gap-2 px-4 py-3 text-left"
+      <div className="space-y-2">
+        <OptionGroup
+          label="画像の作り方"
+          summary={optionSummary.image}
+          open={openGroup === 'image'}
+          onToggle={() => setOpenGroup((cur) => (cur === 'image' ? null : 'image'))}
         >
-          <span className="text-sm font-medium">生成オプション</span>
-          <span className="flex items-center gap-2 text-xs text-muted-foreground">
-            {optionSummary}
-            <ChevronRight size={16} className={showOptions ? 'rotate-90 transition-transform' : 'transition-transform'} />
-          </span>
-        </button>
-        {showOptions && <div className="space-y-5 border-t border-border/70 px-4 py-4">
       {/* 追加の指示（自由入力） */}
       <div className="space-y-2">
-        <Label htmlFor="custom-prompt">追加の指示（任意）</Label>
+        <Label htmlFor="custom-prompt">追加の指示</Label>
         <input
           id="custom-prompt"
           type="text"
@@ -275,10 +271,9 @@ export function CreateItemForm({ inPanel = false }: { inPanel?: boolean } = {}) 
         />
         <p className="text-xs text-muted-foreground">プロンプトに追記され、画像の雰囲気を調整できます。</p>
       </div>
-
       {/* スタイル（プリセット） */}
       <div className="space-y-2">
-        <Label>スタイル（任意）</Label>
+        <Label>スタイル</Label>
         <div className="flex flex-wrap gap-2">
           {STYLE_OPTIONS.map((opt) => {
             const active = style === opt.value
@@ -300,10 +295,9 @@ export function CreateItemForm({ inPanel = false }: { inPanel?: boolean } = {}) 
         </div>
         <p className="text-xs text-muted-foreground">作成するすべてのカードに同じスタイルが適用されます。</p>
       </div>
-
       {/* 画像の形（縦横比）。生成・保存・表示に共通で効く */}
       <div className="space-y-2">
-        <Label>画像の形（任意）</Label>
+        <Label>画像の形</Label>
         <div className="flex flex-wrap gap-2">
           {ASPECT_RATIO_KEYS.map((key) => {
             const opt = ASPECT_RATIOS[key]
@@ -338,7 +332,7 @@ export function CreateItemForm({ inPanel = false }: { inPanel?: boolean } = {}) 
       </div>
 
       <div className="space-y-2">
-        <Label htmlFor="tags">タグ（任意）</Label>
+        <Label htmlFor="tags">タグ</Label>
         <input
           id="tags"
           type="text"
@@ -370,7 +364,13 @@ export function CreateItemForm({ inPanel = false }: { inPanel?: boolean } = {}) 
           </span>
         </span>
       </label>
-
+        </OptionGroup>
+        <OptionGroup
+          label="自動で足す情報"
+          summary={optionSummary.enrich}
+          open={openGroup === 'enrich'}
+          onToggle={() => setOpenGroup((cur) => (cur === 'enrich' ? null : 'enrich'))}
+        >
       {/* 意味・説明の自動生成 */}
       <label className="flex items-start gap-3 rounded-xl border border-border/70 bg-background px-4 py-3">
         <input
@@ -410,7 +410,6 @@ export function CreateItemForm({ inPanel = false }: { inPanel?: boolean } = {}) 
           )}
         </span>
       </label>
-
       {/* タグの自動生成 */}
       <label className="flex items-start gap-3 rounded-xl border border-border/70 bg-background px-4 py-3">
         <input
@@ -427,10 +426,16 @@ export function CreateItemForm({ inPanel = false }: { inPanel?: boolean } = {}) 
           </span>
         </span>
       </label>
-
+        </OptionGroup>
+        <OptionGroup
+          label="しまう場所"
+          summary={optionSummary.place}
+          open={openGroup === 'place'}
+          onToggle={() => setOpenGroup((cur) => (cur === 'place' ? null : 'place'))}
+        >
       {/* デッキへの追加 */}
       <div className="space-y-3 rounded-xl border border-border/70 bg-background px-4 py-3">
-        <Label>デッキ（任意）</Label>
+        <Label>デッキ</Label>
 
         <label className="flex items-start gap-3">
           <input
@@ -480,7 +485,7 @@ export function CreateItemForm({ inPanel = false }: { inPanel?: boolean } = {}) 
           </div>
         )}
       </div>
-        </div>}
+        </OptionGroup>
       </div>
 
       {apiError && <p className="text-sm text-destructive">{apiError}</p>}
@@ -504,5 +509,41 @@ export function CreateItemForm({ inPanel = false }: { inPanel?: boolean } = {}) 
             : 'カードを作成'}
       </Button>
     </form>
+  )
+}
+
+/**
+ * 生成オプションの 1 グループ。似た設定だけをまとめて畳む。
+ * 閉じていても何が効いているか分かるよう、選んだ項目名を見出しの右に出す。
+ */
+function OptionGroup({
+  label,
+  summary,
+  open,
+  onToggle,
+  children,
+}: {
+  label: string
+  summary: string
+  open: boolean
+  onToggle: () => void
+  children: React.ReactNode
+}) {
+  return (
+    <div className="rounded-xl border border-border/70">
+      <button
+        type="button"
+        onClick={onToggle}
+        aria-expanded={open}
+        className="flex w-full items-center justify-between gap-2 px-4 py-2.5 text-left"
+      >
+        <span className="text-sm font-medium">{label}</span>
+        <span className="flex items-center gap-2 text-xs text-muted-foreground">
+          {summary}
+          <ChevronRight size={16} className={`transition-transform ${open ? 'rotate-90' : ''}`} />
+        </span>
+      </button>
+      {open && <div className="space-y-5 border-t border-border/70 px-4 py-4">{children}</div>}
+    </div>
   )
 }
