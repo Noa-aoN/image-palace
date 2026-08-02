@@ -5,6 +5,7 @@ import Link from 'next/link'
 import { useSearchParams } from 'next/navigation'
 import { Plus, Route, DoorOpen, Frame } from 'lucide-react'
 import { Button } from '@/components/ui/button'
+import { readPageCache, writePageCache } from '@/lib/page-cache'
 import { PanelSlotContent } from '@/components/features/panel/PanelSlot'
 import { usePanelForm } from '@/components/features/panel/usePanelForm'
 import { CardGridSkeleton } from '@/components/ui/skeleton'
@@ -32,9 +33,21 @@ function SpacesPageInner() {
   const searchParams = useSearchParams()
   const typeFilter = searchParams.get('type')
 
-  const [spaces, setSpaces] = useState<Space[]>([])
-  const [loading, setLoading] = useState(true)
+  // 前回描いていた内容があれば、それを初期値にして即座に描く。
+  // 取得は従来どおり裏で走り、終わり次第上書きする。
+  const [cached] = useState(() => readPageCache<Space[]>(CACHE_KEY))
+
+  const [spaces, setSpaces] = useState<Space[]>(cached ?? [])
+  // 描くものが既にあるなら、読み込み中の表示は出さない
+  const [loading, setLoading] = useState(!cached)
   const [error, setError] = useState<string | null>(null)
+
+  // 画面の内容をそのままキャッシュへ写す。作成・削除で state を触った結果も
+  // ここを通るので、キャッシュだけ古いという食い違いが起きない。
+  useEffect(() => {
+    if (loading) return
+    writePageCache(CACHE_KEY, spaces)
+  }, [loading, spaces])
 
   // 作成はその場に展開せず右パネルで行う
   const createForm = usePanelForm('space-create', 'スペースを作成')
@@ -128,6 +141,8 @@ function SpacesPageInner() {
     </div>
   )
 }
+
+const CACHE_KEY = 'spaces-list'
 
 export default function SpacesPage() {
   // useSearchParams は Suspense 境界が必要
