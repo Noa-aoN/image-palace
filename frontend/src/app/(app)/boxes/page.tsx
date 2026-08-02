@@ -4,6 +4,8 @@ import { useEffect, useState } from 'react'
 import Link from 'next/link'
 import { Plus, Box as BoxIcon } from 'lucide-react'
 import { Button } from '@/components/ui/button'
+import { PanelSlotContent } from '@/components/features/panel/PanelSlot'
+import { usePanelForm } from '@/components/features/panel/usePanelForm'
 import { CardGridSkeleton } from '@/components/ui/skeleton'
 import { getBoxes } from '@/lib/api/boxes'
 import { CreateBoxForm } from '@/components/features/boxes/CreateBoxForm'
@@ -15,7 +17,8 @@ export default function BoxesPage() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
-  const [creating, setCreating] = useState(false)
+  // 作成はその場に展開せず右パネルで行う
+  const createForm = usePanelForm('box-create', `ボックスを作成`)
 
   useEffect(() => {
     let cancelled = false
@@ -41,28 +44,26 @@ export default function BoxesPage() {
           <BoxIcon size={26} style={{ color: 'var(--palace)' }} />
           ボックス一覧
         </h1>
-        {!creating && (
-          <Button size="sm" onClick={() => setCreating(true)} className="flex items-center gap-1.5">
+                  <Button size="sm" onClick={() => createForm.open()} className="flex items-center gap-1.5">
             <Plus size={16} />
             新規作成
           </Button>
-        )}
       </div>
       <p className="text-sm text-muted-foreground mb-6">
         カードをテーマごとにまとめる入れ物。関連するカードを整理して保存できます。
       </p>
 
-      {creating && (
-        <div className="mb-8">
+      <PanelSlotContent sectionKey="box-create">
+        <div>
           <CreateBoxForm
             onCreated={(created) => {
               setBoxes((current) => [created, ...current])
-              setCreating(false)
+              createForm.close()
             }}
-            onCancel={() => setCreating(false)}
+            onCancel={() => createForm.close()}
           />
         </div>
-      )}
+      </PanelSlotContent>
 
       {loading ? (
         <CardGridSkeleton />
@@ -73,9 +74,7 @@ export default function BoxesPage() {
           <p className="text-muted-foreground">
             まだボックスがありません。カードをテーマごとにまとめてみましょう。
           </p>
-          {!creating && (
-            <Button onClick={() => setCreating(true)}>最初のボックスを作成</Button>
-          )}
+                      <Button onClick={() => createForm.open()}>最初のボックスを作成</Button>
         </div>
       ) : (
         <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
