@@ -20,7 +20,7 @@ const SECTION_KEY = 'card-create'
 /** パネルのカード作成を開く。入口が増えてもここを呼べばよい */
 export function useOpenCardCreate() {
   const openSection = useRightPanelStore((s) => s.openSection)
-  return () => openSection({ key: SECTION_KEY, title: 'カードを作成' })
+  return () => openSection({ key: SECTION_KEY, title: 'カードを作成', href: '/items/new' })
 }
 
 /** 作成の入口。見た目は呼び出し側で変えられるよう variant / size を通す */

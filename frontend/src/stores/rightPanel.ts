@@ -20,7 +20,12 @@ export type RightPanelMode =
   | 'section'
 
 /** 汎用スロットで開いている内容。key はページ側が中身を出し分けるための識別子 */
-export type PanelSection = { key: string; title?: string }
+/**
+ * 汎用スロットで開いている内容。
+ * href を渡すと、パネルの見出し横に対応するページへのリンクが出る
+ * （パネルの中で完結しない作業へ移りたいときの逃げ道）。
+ */
+export type PanelSection = { key: string; title?: string; href?: string }
 
 interface RightPanelState {
   mode: RightPanelMode

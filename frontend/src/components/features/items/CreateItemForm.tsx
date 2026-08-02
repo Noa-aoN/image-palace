@@ -1,6 +1,9 @@
 'use client'
 
 import { useEffect, useState } from 'react'
+import { ChevronRight, Eraser, ListChecks } from 'lucide-react'
+import { PanelSlotContent } from '@/components/features/panel/PanelSlot'
+import { useRightPanelStore } from '@/stores/rightPanel'
 import { useRouter, useSearchParams } from 'next/navigation'
 import Link from 'next/link'
 import { Button } from '@/components/ui/button'
@@ -21,10 +24,22 @@ import type { Wordlist } from '@/types/wordlist'
 import { ASPECT_RATIOS, ASPECT_RATIO_KEYS, type AspectRatioKey } from '@/lib/aspect-ratio'
 
 const MAX_TITLE_LENGTH = 100
+const WORDLIST_SECTION = 'card-create-wordlist'
 
-function parseTitles(raw: string): string[] {
+/**
+ * 入力を 1 枚ずつの言葉に切り分ける。
+ *
+ * 基本は改行のみ。カンマや読点は言葉の中に現れるため、既定で区切りにすると
+ * 「Hello, world」「1,000」「彼は、走った」が意図せず分かれてしまう。
+ * タブは表計算から貼ったときの列区切りで、言葉の中には現れないので常に区切る。
+ *
+ * カンマ・読点で区切りたい場合は splitByPunctuation を立てる（フォーム側の任意設定）。
+ * 全角カンマも対象に含める（半角だけだと日本語入力で取りこぼす）。
+ */
+function parseTitles(raw: string, splitByPunctuation = false): string[] {
+  const pattern = splitByPunctuation ? /[\n\t,，、]/ : /[\n\t]/
   return raw
-    .split(/[\n,、]/)
+    .split(pattern)
     .map((s) => s.trim())
     .filter((s) => s.length > 0)
 }
@@ -59,6 +74,18 @@ export function CreateItemForm({ inPanel = false }: { inPanel?: boolean } = {}) 
   const [newDeckName, setNewDeckName] = useState('')
   const [selectedDeckIds, setSelectedDeckIds] = useState<string[]>([])
   const [apiError, setApiError] = useState<string | null>(null)
+  // 生成オプションは既定で閉じる。作るだけなら触らずに済むため。
+  // 開けるのは 1 グループずつ（同時に開くと縦に伸びて入力欄から遠くなる）
+  const [openGroup, setOpenGroup] = useState<'image' | 'enrich' | 'place' | null>(null)
+  const [showWordlists, setShowWordlists] = useState(false)
+  // クリアは押し間違いで入力が消えるため 2 段階にする
+  const [confirmClear, setConfirmClear] = useState(false)
+  const openSection = useRightPanelStore((st) => st.openSection)
+  const closePanel = useRightPanelStore((st) => st.close)
+  const openWordlistPanel = () =>
+    openSection({ key: WORDLIST_SECTION, title: 'ワードリストから挿入', href: '/wordlists' })
+  // カンマ・読点での分割は既定オフ。言葉の中に現れる記号なので誤って分かれるため
+  const [splitByPunctuation, setSplitByPunctuation] = useState(false)
   const [submitting, setSubmitting] = useState(false)
   const [progress, setProgress] = useState<{ done: number; total: number } | null>(null)
 
@@ -90,7 +117,7 @@ export function CreateItemForm({ inPanel = false }: { inPanel?: boolean } = {}) 
     setSelectedDeckIds((prev) => (prev.includes(id) ? prev.filter((d) => d !== id) : [...prev, id]))
   }
 
-  const titles = parseTitles(input)
+  const titles = parseTitles(input, splitByPunctuation)
   const wordCount = titles.length
   const hasTooLongTitle = titles.some((t) => t.length > MAX_TITLE_LENGTH)
   const tagNames = tagsInput.split(/[\s,、]+/).map((s) => s.trim()).filter(Boolean)
@@ -172,47 +199,132 @@ export function CreateItemForm({ inPanel = false }: { inPanel?: boolean } = {}) 
     })
   }
 
+  // 閉じていても何が効くのかが分かるよう、グループごとに選んだものを示す
+  const join = (parts: (string | false | '')[]) => parts.filter(Boolean).join(' / ')
+  const optionSummary = {
+    image: join([customPrompt.trim() && '追加指示', style && 'スタイル', aspectRatio && '形']),
+    enrich: join([generateMeaning && '意味', generateTags && 'タグ']),
+    place: join([(createNewDeck || selectedDeckIds.length > 0) && 'デッキ']),
+  }
+
   return (
     <form onSubmit={handleSubmit} className="space-y-5">
       <div className="space-y-2">
-        <div className="flex items-center justify-between gap-2">
-          <Label htmlFor="titles" required>単語・概念を入力</Label>
+        {/* パネルの幅では横に並べると窮屈なので、残枚数は次の行へ落とす */}
+        <div
+          className={
+            inPanel
+              ? 'flex flex-col items-start gap-1'
+              : 'flex items-center justify-between gap-2'
+          }
+        >
+          <Label htmlFor="titles" required className="text-base">
+            カードにする言葉
+          </Label>
           {remainingCards !== null && (
             <span className="text-xs text-muted-foreground">あと約{remainingCards}枚作成できます</span>
           )}
         </div>
-        <div className="rounded-xl border border-border/70 bg-muted/40 px-4 py-3 text-sm leading-6 text-muted-foreground">
-          <p>具体的な名詞や場面が思い浮かぶ言葉ほど、画像化に成功しやすいです。</p>
-          <p>例: <span className="font-medium text-foreground">富士山 / API / 光合成 / 細胞分裂</span></p>
-        </div>
-        {wordlists.length > 0 && (
-          <div className="flex items-center gap-2">
-            <select
-              value=""
-              onChange={(e) => {
-                const wl = wordlists.find((w) => w.id === e.target.value)
-                if (wl) insertWordlist(wl)
-              }}
+        {/*
+          ワードリストからの挿入。選択肢が名前と語数の 2 情報を持つため、
+          ドロップダウンではなく一覧で見せる。
+
+          置き場所はフォームがどこにあるかで変える。
+          ページ上ならライトパネルへ出す（入力欄を狭めずに一覧を広く見せられる）。
+          フォーム自体がパネルに入っているときは、別セクションへ切り替えると
+          入力途中の内容が失われるため、その場で開く。
+        */}
+        <div className="flex flex-wrap items-center gap-2">
+          {wordlists.length > 0 && (
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={() => (inPanel ? setShowWordlists((v) => !v) : openWordlistPanel())}
+              aria-expanded={inPanel ? showWordlists : undefined}
               disabled={submitting}
-              aria-label="ワードリストから挿入"
-              className="h-8 rounded-lg border border-input bg-background px-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+              className="flex items-center gap-1.5"
             >
-              <option value="">ワードリストから挿入…</option>
-              {wordlists.map((wl) => (
-                <option key={wl.id} value={wl.id}>{wl.name}（{wl.word_count}語）</option>
-              ))}
-            </select>
+              <ListChecks size={15} />
+              ワードリストから挿入
+              <ChevronRight size={15} className={`transition-transform ${showWordlists ? 'rotate-90' : ''}`} />
+            </Button>
+          )}
+          {input.trim().length > 0 && (
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              onClick={() => {
+                if (!confirmClear) {
+                  setConfirmClear(true)
+                  return
+                }
+                setInput('')
+                setConfirmClear(false)
+              }}
+              onBlur={() => setConfirmClear(false)}
+              disabled={submitting}
+              aria-label={confirmClear ? '入力した言葉をすべて消す' : '入力した言葉を消す'}
+              title="入力した言葉を消す"
+              className="flex items-center gap-1.5 text-muted-foreground"
+            >
+              <Eraser size={15} />
+              {confirmClear && <span className="text-xs text-destructive">消しますか？</span>}
+            </Button>
+          )}
+        </div>
+
+        {wordlists.length > 0 && (
+          <div className="space-y-2">
+            {inPanel && showWordlists && (
+              <WordlistPicker
+                wordlists={wordlists}
+                disabled={submitting}
+                onPick={(wl) => {
+                  insertWordlist(wl)
+                  setShowWordlists(false)
+                }}
+              />
+            )}
+            {!inPanel && (
+              <PanelSlotContent sectionKey={WORDLIST_SECTION}>
+                <WordlistPicker
+                  wordlists={wordlists}
+                  disabled={submitting}
+                  onPick={(wl) => {
+                    insertWordlist(wl)
+                    closePanel()
+                  }}
+                />
+              </PanelSlotContent>
+            )}
           </div>
         )}
         <textarea
           id="titles"
           className="w-full min-h-[180px] rounded-lg border border-input bg-background px-3 py-2.5 text-sm placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring resize-y"
-          placeholder={"photosynthesis\nAPI\nmitosis\n\n改行・カンマ区切りで複数入力できます"}
+          placeholder={'例）パルテノン神殿\nAPI\n光合成\n︙'}
           value={input}
           onChange={(e) => setInput(e.target.value)}
           disabled={submitting}
         />
-        {wordCount > 0 && <p className="text-xs text-muted-foreground">{wordCount}件を認識</p>}
+        <div className="space-y-1.5">
+          <p className="text-xs text-muted-foreground">
+            1 行につき 1 枚。改行で区切ってまとめて作成できます。
+            {wordCount > 0 && <span className="ml-1 font-medium text-foreground">{wordCount}件を認識</span>}
+          </p>
+          <label className="flex items-center gap-2 text-xs text-muted-foreground">
+            <input
+              type="checkbox"
+              checked={splitByPunctuation}
+              onChange={(e) => setSplitByPunctuation(e.target.checked)}
+              disabled={submitting}
+              className="h-3.5 w-3.5 rounded border-input"
+            />
+            カンマ・読点でも区切る（「Hello, world」のように語の中に含む場合は外してください）
+          </label>
+        </div>
         {hasTooLongTitle && (
           <p className="text-xs text-destructive">
             1単語あたり{MAX_TITLE_LENGTH}文字を超えています。区切り直すか短くしてください。
@@ -226,9 +338,22 @@ export function CreateItemForm({ inPanel = false }: { inPanel?: boolean } = {}) 
         )}
       </div>
 
+      {/*
+        生成オプション。似たものだけをまとめ、グループごとに畳む。
+        既定は閉じておく。入力して作るだけなら触らずに済み、こだわるときだけ開けばよい。
+      */}
+      <div className="space-y-2">
+        <p className="text-base font-medium">オプション（任意）</p>
+        <OptionGroup
+          label="画像の作り方"
+          summary={optionSummary.image}
+          open={openGroup === 'image'}
+          onToggle={() => setOpenGroup((cur) => (cur === 'image' ? null : 'image'))}
+        >
       {/* 追加の指示（自由入力） */}
       <div className="space-y-2">
-        <Label htmlFor="custom-prompt">追加の指示（任意）</Label>
+        <Label htmlFor="custom-prompt">追加の指示</Label>
+        <p className="text-xs text-muted-foreground">絵の中身への注文。「夜明けの光で」「人物を入れずに」など。</p>
         <input
           id="custom-prompt"
           type="text"
@@ -241,10 +366,10 @@ export function CreateItemForm({ inPanel = false }: { inPanel?: boolean } = {}) 
         />
         <p className="text-xs text-muted-foreground">プロンプトに追記され、画像の雰囲気を調整できます。</p>
       </div>
-
       {/* スタイル（プリセット） */}
       <div className="space-y-2">
-        <Label>スタイル（任意）</Label>
+        <Label>スタイル</Label>
+        <p className="text-xs text-muted-foreground">絵のタッチ。油彩・線画など、全体の描き方を選びます。</p>
         <div className="flex flex-wrap gap-2">
           {STYLE_OPTIONS.map((opt) => {
             const active = style === opt.value
@@ -266,10 +391,10 @@ export function CreateItemForm({ inPanel = false }: { inPanel?: boolean } = {}) 
         </div>
         <p className="text-xs text-muted-foreground">作成するすべてのカードに同じスタイルが適用されます。</p>
       </div>
-
       {/* 画像の形（縦横比）。生成・保存・表示に共通で効く */}
       <div className="space-y-2">
-        <Label>画像の形（任意）</Label>
+        <Label>画像の形</Label>
+        <p className="text-xs text-muted-foreground">縦横比。あとから変えられないので、作る前に選びます。</p>
         <div className="flex flex-wrap gap-2">
           {ASPECT_RATIO_KEYS.map((key) => {
             const opt = ASPECT_RATIOS[key]
@@ -304,7 +429,7 @@ export function CreateItemForm({ inPanel = false }: { inPanel?: boolean } = {}) 
       </div>
 
       <div className="space-y-2">
-        <Label htmlFor="tags">タグ（任意）</Label>
+        <Label htmlFor="tags">タグ</Label>
         <input
           id="tags"
           type="text"
@@ -336,7 +461,13 @@ export function CreateItemForm({ inPanel = false }: { inPanel?: boolean } = {}) 
           </span>
         </span>
       </label>
-
+        </OptionGroup>
+        <OptionGroup
+          label="自動で足す情報"
+          summary={optionSummary.enrich}
+          open={openGroup === 'enrich'}
+          onToggle={() => setOpenGroup((cur) => (cur === 'enrich' ? null : 'enrich'))}
+        >
       {/* 意味・説明の自動生成 */}
       <label className="flex items-start gap-3 rounded-xl border border-border/70 bg-background px-4 py-3">
         <input
@@ -376,7 +507,6 @@ export function CreateItemForm({ inPanel = false }: { inPanel?: boolean } = {}) 
           )}
         </span>
       </label>
-
       {/* タグの自動生成 */}
       <label className="flex items-start gap-3 rounded-xl border border-border/70 bg-background px-4 py-3">
         <input
@@ -393,10 +523,16 @@ export function CreateItemForm({ inPanel = false }: { inPanel?: boolean } = {}) 
           </span>
         </span>
       </label>
-
+        </OptionGroup>
+        <OptionGroup
+          label="保存する場所"
+          summary={optionSummary.place}
+          open={openGroup === 'place'}
+          onToggle={() => setOpenGroup((cur) => (cur === 'place' ? null : 'place'))}
+        >
       {/* デッキへの追加 */}
       <div className="space-y-3 rounded-xl border border-border/70 bg-background px-4 py-3">
-        <Label>デッキ（任意）</Label>
+        <Label>デッキ</Label>
 
         <label className="flex items-start gap-3">
           <input
@@ -446,6 +582,8 @@ export function CreateItemForm({ inPanel = false }: { inPanel?: boolean } = {}) 
           </div>
         )}
       </div>
+        </OptionGroup>
+      </div>
 
       {apiError && <p className="text-sm text-destructive">{apiError}</p>}
 
@@ -468,5 +606,104 @@ export function CreateItemForm({ inPanel = false }: { inPanel?: boolean } = {}) 
             : 'カードを作成'}
       </Button>
     </form>
+  )
+}
+
+/**
+ * 生成オプションの 1 グループ。似た設定だけをまとめて畳む。
+ * 閉じていても何が効いているか分かるよう、選んだ項目名を見出しの右に出す。
+ */
+function OptionGroup({
+  label,
+  summary,
+  open,
+  onToggle,
+  children,
+}: {
+  label: string
+  summary: string
+  open: boolean
+  onToggle: () => void
+  children: React.ReactNode
+}) {
+  return (
+    <div className="rounded-xl border border-border/70">
+      <button
+        type="button"
+        onClick={onToggle}
+        aria-expanded={open}
+        className="flex w-full items-center justify-between gap-2 px-4 py-2.5 text-left"
+      >
+        <span className="text-sm font-medium">{label}</span>
+        <span className="flex items-center gap-2 text-xs text-muted-foreground">
+          {summary}
+          <ChevronRight size={16} className={`transition-transform ${open ? 'rotate-90' : ''}`} />
+        </span>
+      </button>
+      {open && (
+        <div
+          className="divide-y divide-border/60 border-t border-border/70 px-4
+            [&>*]:py-4 [&>*:first-child]:pt-3 [&>*:last-child]:pb-3
+            [&_[data-slot=label]]:text-xs [&_[data-slot=label]]:text-muted-foreground"
+        >
+          {children}
+        </div>
+      )}
+    </div>
+  )
+}
+
+/**
+ * ワードリストの一覧。名前と語数を並べて出し、選ぶと呼び出し側へ渡す。
+ *
+ * 件数は際限なく増えうる（API はページングしない）。全部並べると目で探せなくなるので、
+ * 数が増えたときだけ絞り込みを出し、高さも抑えてスクロールに収める。
+ */
+function WordlistPicker({
+  wordlists,
+  disabled,
+  columns = 1,
+  onPick,
+}: {
+  wordlists: Wordlist[]
+  disabled?: boolean
+  /** 1 列で縦に並べるか。パネルのような狭い幅では 1 列にして名前を読めるようにする */
+  columns?: 1 | 2
+  onPick: (wordlist: Wordlist) => void
+}) {
+  const [query, setQuery] = useState('')
+  const q = query.trim().toLowerCase()
+  const shown = q ? wordlists.filter((wl) => wl.name.toLowerCase().includes(q)) : wordlists
+
+  return (
+    <div className="space-y-2 rounded-xl border border-border/70 p-2">
+      <input
+          type="search"
+          value={query}
+          onChange={(e) => setQuery(e.target.value)}
+          placeholder={`名前で絞り込む（${wordlists.length}件）`}
+          disabled={disabled}
+          aria-label="ワードリストを名前で絞り込む"
+          className="w-full rounded-lg border border-input bg-background px-3 py-1.5 text-sm placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+      />
+      {shown.length === 0 ? (
+        <p className="px-3 py-2 text-sm text-muted-foreground">一致するワードリストがありません。</p>
+      ) : (
+        <div className={`grid max-h-72 gap-1.5 overflow-y-auto ${columns === 2 ? 'sm:grid-cols-2' : ''}`}>
+          {shown.map((wl) => (
+            <button
+              key={wl.id}
+              type="button"
+              onClick={() => onPick(wl)}
+              disabled={disabled}
+              className="flex items-center justify-between gap-2 rounded-lg px-3 py-2 text-left text-sm hover:bg-muted disabled:opacity-50"
+            >
+              <span className="truncate">{wl.name}</span>
+              <span className="shrink-0 text-xs text-muted-foreground">{wl.word_count}語</span>
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
   )
 }
