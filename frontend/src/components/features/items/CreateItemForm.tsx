@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useState } from 'react'
+import { ChevronRight } from 'lucide-react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import Link from 'next/link'
 import { Button } from '@/components/ui/button'
@@ -59,6 +60,8 @@ export function CreateItemForm({ inPanel = false }: { inPanel?: boolean } = {}) 
   const [newDeckName, setNewDeckName] = useState('')
   const [selectedDeckIds, setSelectedDeckIds] = useState<string[]>([])
   const [apiError, setApiError] = useState<string | null>(null)
+  // 生成オプションは既定で閉じる。作るだけなら触らずに済むため
+  const [showOptions, setShowOptions] = useState(false)
   const [submitting, setSubmitting] = useState(false)
   const [progress, setProgress] = useState<{ done: number; total: number } | null>(null)
 
@@ -172,6 +175,18 @@ export function CreateItemForm({ inPanel = false }: { inPanel?: boolean } = {}) 
     })
   }
 
+  // 閉じていても何が効くのかが分かるよう、選んだものを一行で示す
+  const optionSummary = [
+    style && 'スタイル',
+    aspectRatio && '形',
+    customPrompt.trim() && '追加指示',
+    generateMeaning && '意味',
+    generateTags && 'タグ',
+    (createNewDeck || selectedDeckIds.length > 0) && 'デッキ',
+  ]
+    .filter(Boolean)
+    .join(' / ')
+
   return (
     <form onSubmit={handleSubmit} className="space-y-5">
       <div className="space-y-2">
@@ -226,6 +241,25 @@ export function CreateItemForm({ inPanel = false }: { inPanel?: boolean } = {}) 
         )}
       </div>
 
+      {/*
+        生成オプション。既定は閉じておく。
+        入力して作るだけなら触らずに済み、こだわるときだけ開けばよい。
+        パネルのような狭い幅では、開いたままだと入力欄まで遠くなるため。
+      */}
+      <div className="rounded-xl border border-border/70">
+        <button
+          type="button"
+          onClick={() => setShowOptions((v) => !v)}
+          aria-expanded={showOptions}
+          className="flex w-full items-center justify-between gap-2 px-4 py-3 text-left"
+        >
+          <span className="text-sm font-medium">生成オプション</span>
+          <span className="flex items-center gap-2 text-xs text-muted-foreground">
+            {optionSummary}
+            <ChevronRight size={16} className={showOptions ? 'rotate-90 transition-transform' : 'transition-transform'} />
+          </span>
+        </button>
+        {showOptions && <div className="space-y-5 border-t border-border/70 px-4 py-4">
       {/* 追加の指示（自由入力） */}
       <div className="space-y-2">
         <Label htmlFor="custom-prompt">追加の指示（任意）</Label>
@@ -445,6 +479,8 @@ export function CreateItemForm({ inPanel = false }: { inPanel?: boolean } = {}) 
             </div>
           </div>
         )}
+      </div>
+        </div>}
       </div>
 
       {apiError && <p className="text-sm text-destructive">{apiError}</p>}
