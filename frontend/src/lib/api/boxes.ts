@@ -2,8 +2,10 @@ import { apiClient } from './client'
 import type { Box, BoxDetail, BoxEntryType } from '@/types/box'
 import type { CoverType } from '@/types/cover'
 
-export async function getBoxes(): Promise<Box[]> {
-  const res = await apiClient.get<{ boxes: Box[] }>('/api/v1/boxes')
+export async function getBoxes(limit?: number): Promise<Box[]> {
+  const res = await apiClient.get<{ boxes: Box[] }>('/api/v1/boxes', {
+    params: limit ? { limit } : undefined,
+  })
   return res.data.boxes
 }
 

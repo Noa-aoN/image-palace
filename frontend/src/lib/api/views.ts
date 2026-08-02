@@ -25,8 +25,10 @@ export type ViewEdgeInput = {
   points?: { x: number; y: number }[]
 }
 
-export async function getViews(): Promise<View[]> {
-  const res = await apiClient.get<{ views: View[] }>('/api/v1/views')
+export async function getViews(limit?: number): Promise<View[]> {
+  const res = await apiClient.get<{ views: View[] }>('/api/v1/views', {
+    params: limit ? { limit } : undefined,
+  })
   return res.data.views
 }
 

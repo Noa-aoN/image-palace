@@ -201,4 +201,36 @@ RSpec.describe "Api::V1::Views", type: :request do
       expect(json_response["background_image"]).to be_nil
     end
   end
+
+  describe "GET /api/v1/views 件数の指定" do
+    before do
+      3.times { |i| user.views.create!(name: "v-#{i}", view_type: "freeboard", created_at: Time.current + i.seconds) }
+    end
+
+    it "指定した件数だけ返し、続きの位置を添える" do
+      get "/api/v1/views", params: { limit: 2 }, headers: headers
+
+      body = response.parsed_body
+      expect(body["views"].size).to eq 2
+      expect(body["next_cursor"]).to be_present
+    end
+
+    it "続きの位置を渡すとその先だけを返す" do
+      get "/api/v1/views", params: { limit: 2 }, headers: headers
+      cursor = response.parsed_body["next_cursor"]
+
+      get "/api/v1/views", params: { limit: 2, cursor: cursor }, headers: headers
+
+      names = response.parsed_body["views"].map { |v| v["name"] }
+      expect(names).not_to include "v-2"
+    end
+
+    it "件数を指定しなければ従来どおり全件返す" do
+      get "/api/v1/views", headers: headers
+
+      body = response.parsed_body
+      expect(body["views"].size).to be >= 3
+      expect(body["next_cursor"]).to be_nil
+    end
+  end
 end

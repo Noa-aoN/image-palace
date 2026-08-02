@@ -44,8 +44,10 @@ export async function checkWords(theme: string, words: string[]): Promise<WordCh
   return res.data
 }
 
-export async function getWordlists(): Promise<Wordlist[]> {
-  const res = await apiClient.get<Wordlist[]>('/api/v1/wordlists')
+export async function getWordlists(limit?: number): Promise<Wordlist[]> {
+  const res = await apiClient.get<Wordlist[]>('/api/v1/wordlists', {
+    params: limit ? { limit } : undefined,
+  })
   return res.data
 }
 

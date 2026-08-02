@@ -2,8 +2,10 @@ import { apiClient } from './client'
 import type { Space, SpaceDetail, SpacePoint, RoomSurface, RoomStyleOverrides } from '@/types/space'
 import type { CoverType } from '@/types/cover'
 
-export async function getSpaces(): Promise<Space[]> {
-  const res = await apiClient.get<{ spaces: Space[] }>('/api/v1/spaces')
+export async function getSpaces(limit?: number): Promise<Space[]> {
+  const res = await apiClient.get<{ spaces: Space[] }>('/api/v1/spaces', {
+    params: limit ? { limit } : undefined,
+  })
   return res.data.spaces
 }
 

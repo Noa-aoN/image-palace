@@ -1,10 +1,13 @@
 module Api
   module V1
     class WordlistsController < BaseController
+      include ListPagination
       before_action :set_wordlist, only: [ :show, :update, :destroy ]
 
       def index
-        render json: current_user.wordlists.recent.map { |w| serialize_wordlist(w) }
+        wordlists, = paginate_list(current_user.wordlists.recent)
+
+        render json: wordlists.map { |w| serialize_wordlist(w) }
       end
 
       def show
