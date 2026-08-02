@@ -16,6 +16,8 @@ module Api
         views = current_user.views.recent
                             .includes(cover_item: { medias: { file_attachment: :blob } })
                             .with_attached_cover_image.with_attached_cover_thumb
+                            .to_a
+        View.preload_cover_items(views)
         render json: { views: views.map { |v| serialize_view(v) } }
       end
 

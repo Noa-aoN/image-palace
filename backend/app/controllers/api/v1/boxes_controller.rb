@@ -21,6 +21,9 @@ module Api
                                   .with_attached_cover_image
                                   .with_attached_cover_thumb
 
+        boxes = boxes.to_a
+        Box.preload_cover_entries(boxes)
+
         render json: { boxes: boxes.map { |c| serialize_box(c) } }
       end
 
