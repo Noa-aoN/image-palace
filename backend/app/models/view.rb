@@ -45,10 +45,33 @@ class View < ApplicationRecord
     view_type == "freeboard"
   end
 
+  # 一覧用に、ページ内の全キャンバスのカバー候補を 1 クエリでまとめて取る。
+  #
+  # 1 件ずつ cover_item_candidates を呼ぶと一覧の件数だけクエリが増える。
+  # ウィンドウ関数で「キャンバスごとの先頭 N 件」だけを抜けば、
+  # 一覧の件数にも配置カードの件数にも比例しない定数クエリで済む。
+  def self.preload_cover_items(views, limit: COVER_CARDS_LIMIT + 1)
+    return views if views.empty?
+
+    ranked = ViewItem.where(view_id: views.map(&:id))
+                     .select("view_items.*, ROW_NUMBER() OVER (PARTITION BY view_id ORDER BY created_at) AS rn")
+    rows = ViewItem.from("(#{ranked.to_sql}) AS view_items")
+                   .where("rn <= ?", limit)
+                   .includes(item: { medias: { file_attachment: :blob } })
+                   .to_a
+    grouped = rows.group_by(&:view_id)
+    views.each { |v| v.preloaded_cover_items = (grouped[v.id] || []).filter_map(&:item) }
+    views
+  end
+
+  attr_writer :preloaded_cover_items
+
   # カバー候補カード（キャンバスに配置したカードを追加順で）
   # カバーに使うのは先頭の数枚だけ。全件を読んで Ruby 側で並べ替えると
   # 配置カードの数に比例して遅くなるため、DB 側で必要数だけ取る。
   def cover_item_candidates(limit: COVER_CARDS_LIMIT)
+    return @preloaded_cover_items.first(limit) if @preloaded_cover_items
+
     view_items
       .includes(item: { medias: { file_attachment: :blob } })
       .order(:created_at)
