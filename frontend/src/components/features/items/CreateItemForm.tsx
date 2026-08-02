@@ -216,9 +216,6 @@ export function CreateItemForm({ inPanel = false }: { inPanel?: boolean } = {}) 
             <span className="text-xs text-muted-foreground">あと約{remainingCards}枚作成できます</span>
           )}
         </div>
-        <p className="text-sm text-muted-foreground">
-          例: <span className="font-medium text-foreground">パルテノン神殿 / API / 光合成 / 細胞分裂</span> …
-        </p>
         {/*
           ワードリストからの挿入。選択肢が名前と語数の 2 情報を持つため、
           ドロップダウンではなく一覧で見せる。
@@ -270,7 +267,7 @@ export function CreateItemForm({ inPanel = false }: { inPanel?: boolean } = {}) 
         <textarea
           id="titles"
           className="w-full min-h-[180px] rounded-lg border border-input bg-background px-3 py-2.5 text-sm placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring resize-y"
-          placeholder={'パルテノン神殿\nAPI\n光合成\n︙'}
+          placeholder={'例）パルテノン神殿\nAPI\n光合成\n︙'}
           value={input}
           onChange={(e) => setInput(e.target.value)}
           disabled={submitting}
