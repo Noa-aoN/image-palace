@@ -1,10 +1,11 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useRef } from 'react'
 import Link from 'next/link'
 import { GalleryHorizontal, Box as BoxIcon, Layers, LayoutGrid, Frame, MapPin, ChevronRight, Search, X, Route, DoorOpen, ListChecks, Boxes, Images, CheckSquare, Square, Trash2, LibraryBig } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/skeleton'
+import { readPageCache, writePageCache } from '@/lib/page-cache'
 import { getItemsPage, getItemsSummary, bulkDeleteItems } from '@/lib/api/items'
 import { getBoxes, deleteBox } from '@/lib/api/boxes'
 import { getSpaces, deleteSpace } from '@/lib/api/spaces'
@@ -354,14 +355,31 @@ function ViewTile({ view, selectionMode, selected, onToggle }: { view: View } & 
   )
 }
 
+// 再訪時にまず描く内容。取得が終われば上書きされる
+type LibrarySnapshot = {
+  cards: Item[]
+  cardCount?: number
+  boxes: Box[]
+  wordlists: Wordlist[]
+  spaces: Space[]
+  views: View[]
+}
+
+const CACHE_KEY = 'library'
+
 export default function LibraryPage() {
-  const [cards, setCards] = useState<Item[]>([])
-  const [cardCount, setCardCount] = useState<number | undefined>(undefined)
-  const [boxes, setBoxes] = useState<Box[]>([])
-  const [wordlists, setWordlists] = useState<Wordlist[]>([])
-  const [spaces, setSpaces] = useState<Space[]>([])
-  const [views, setViews] = useState<View[]>([])
-  const [loading, setLoading] = useState(true)
+  // 前回描いていた内容があれば、それを初期値にして即座に描く。
+  // 取得は従来どおり裏で走り、終わり次第上書きする。
+  const cached = useRef(readPageCache<LibrarySnapshot>(CACHE_KEY)).current
+
+  const [cards, setCards] = useState<Item[]>(cached?.cards ?? [])
+  const [cardCount, setCardCount] = useState<number | undefined>(cached?.cardCount)
+  const [boxes, setBoxes] = useState<Box[]>(cached?.boxes ?? [])
+  const [wordlists, setWordlists] = useState<Wordlist[]>(cached?.wordlists ?? [])
+  const [spaces, setSpaces] = useState<Space[]>(cached?.spaces ?? [])
+  const [views, setViews] = useState<View[]>(cached?.views ?? [])
+  // 描くものが既にあるなら、読み込み中の表示は出さない
+  const [loading, setLoading] = useState(!cached)
   const [query, setQuery] = useState('')
   const [results, setResults] = useState<SearchResults | null>(null)
   const [searching, setSearching] = useState(false)
@@ -370,6 +388,13 @@ export default function LibraryPage() {
   const [selectedKeys, setSelectedKeys] = useState<Set<string>>(new Set())
   const [confirmBulkDelete, setConfirmBulkDelete] = useState(false)
   const [deleting, setDeleting] = useState(false)
+
+  // 画面の内容をそのままキャッシュに写す。作成・削除で state を触った結果も
+  // ここを通るので、キャッシュだけ古いという食い違いが起きない。
+  useEffect(() => {
+    if (loading) return
+    writePageCache<LibrarySnapshot>(CACHE_KEY, { cards, cardCount, boxes, wordlists, spaces, views })
+  }, [loading, cards, cardCount, boxes, wordlists, spaces, views])
 
   const isSelected = (type: SelectableType, id: string) => selectedKeys.has(selKey(type, id))
 
