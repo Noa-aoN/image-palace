@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { ArrowDownToLine, ChevronRight, Eraser, ListChecks, Sparkles } from 'lucide-react'
+import { ChevronRight, Eraser, ListChecks, Sparkles } from 'lucide-react'
 import { PanelSlotContent } from '@/components/features/panel/PanelSlot'
 import { useRightPanelStore } from '@/stores/rightPanel'
 import { useRouter } from 'next/navigation'
@@ -279,11 +279,11 @@ export function CreateItemForm({
               onClick={() => (inPanel ? setShowWordlists((v) => !v) : openWordlistPanel())}
               aria-expanded={inPanel ? showWordlists : undefined}
               disabled={submitting}
+              title="保存したワードリストから単語をまとめて入れる"
               className="flex items-center gap-1.5"
             >
               <ListChecks size={15} />
               ワードリスト
-              <ArrowDownToLine size={15} className="text-muted-foreground" />
             </Button>
           )}
           <Button
@@ -297,7 +297,6 @@ export function CreateItemForm({
           >
             {consulting ? <Spinner size={15} /> : <Sparkles size={15} />}
             デルフォイ
-            <ArrowDownToLine size={15} className="text-muted-foreground" />
           </Button>
           {input.trim().length > 0 && (
             <Button
