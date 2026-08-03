@@ -18,10 +18,11 @@ class PromptBuilderService
   STYLES = STYLE_MODIFIERS.keys.freeze
   CUSTOM_PROMPT_MAX_LENGTH = 300
 
-  # gpt-image-1 本来の表現力（質感・リアルさ）を活かすため、構図や背景は指定せず
-  # タイトルをそのまま主役に置く。唯一、生成画像に紛れ込みがちな文字を避けるための
-  # 軽い指示だけを末尾に添える。この文面はキャッシュキー（normalized_prompt）の一部に
-  # なるため、変更すると既存キャッシュは自動で無効化される。
+  # 主役（subject）以外は足さない方針は変えていない。gpt-image-1 本来の表現力を殺さないため、
+  # 構図・背景・カメラ設定は指定しない。主役が単語そのものか、単語から起こした情景かの違いだけ。
+  # 末尾の軽い指示は、生成画像に紛れ込みがちな文字と見切れを避けるためのもの。
+  # この文面はキャッシュキー（normalized_prompt）の一部になるため、
+  # 変更すると既存キャッシュは自動で無効化される。
   NO_TEXT_HINT = "avoid any text, letters, or numbers"
   # 被写体が端で見切れるのを減らす軽い指示（構図は引き続き自由）。
   # NO_TEXT_HINT 同様キャッシュキーの一部になる。
@@ -30,8 +31,17 @@ class PromptBuilderService
   # include_meaning: true のとき、カードの意味・説明（primary_meaning.definition）を
   # 被写体の補足として追記する。再生成時のオプション（既定オフ）から渡される。
   # 追記すると normalized_prompt が変わるため、別画像として正しく扱われる。
+  # 情景プロンプト（Images::BriefService が起こしたもの）があればそれを主役に据える。
+  # 無ければ単語そのもの＝従来の文字列になるので、既存カードのキャッシュはそのまま効く。
+  def self.subject(item)
+    scene = item.scene_prompt.to_s.strip
+    return scene if scene.present?
+
+    item.title.to_s.strip
+  end
+
   def self.effective_prompt(item, include_meaning: false)
-    parts = [ item.title.to_s.strip ]
+    parts = [ subject(item) ]
 
     modifier = STYLE_MODIFIERS[item.style.presence]
     parts << modifier if modifier

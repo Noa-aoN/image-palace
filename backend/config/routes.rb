@@ -52,6 +52,7 @@ Rails.application.routes.draw do
         member do
           post :retry
           post :meaning
+          post :brief
           post :fact_check
           post "tags", action: :generate_tags
         end

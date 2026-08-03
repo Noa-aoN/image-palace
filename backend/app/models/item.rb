@@ -20,6 +20,10 @@ class Item < ApplicationRecord
   GENERATION_STATUSES = %w[pending processing completed failed].freeze
   GENERATION_ERROR_KEYS = %w[generation_error generation_error_code].freeze
   MAX_TITLE_LENGTH = 100
+  # 画像の下ごしらえ（説明文・情景プロンプト）の状態。none は未使用・無効時
+  BRIEF_STATUSES = %w[none pending processing completed failed].freeze
+  MAX_IMAGE_DESCRIPTION_LENGTH = 2000
+  MAX_SCENE_PROMPT_LENGTH = 1000
 
   store_accessor :metadata, :generation_error, :generation_error_code, :style, :custom_prompt
 
@@ -27,6 +31,9 @@ class Item < ApplicationRecord
   validates :generation_status, inclusion: { in: GENERATION_STATUSES }
   validates :style, inclusion: { in: PromptBuilderService::STYLES }, allow_blank: true
   validates :custom_prompt, length: { maximum: PromptBuilderService::CUSTOM_PROMPT_MAX_LENGTH }, allow_blank: true
+  validates :brief_status, inclusion: { in: BRIEF_STATUSES }
+  validates :image_description, length: { maximum: MAX_IMAGE_DESCRIPTION_LENGTH }, allow_blank: true
+  validates :scene_prompt, length: { maximum: MAX_SCENE_PROMPT_LENGTH }, allow_blank: true
 
   # 当月（月初〜）に作成されたアイテム。月間生成上限の判定・残量表示に使う
   scope :created_this_month, -> { where(created_at: Time.current.beginning_of_month..) }
@@ -53,6 +60,11 @@ class Item < ApplicationRecord
     else
       meanings.in_language("ja").first || meanings.first
     end
+  end
+
+  # ユーザーが説明文・情景プロンプトを手で直したか。直したものは自動生成で上書きしない
+  def brief_edited?
+    brief_edited_at.present?
   end
 
   def metadata_without_generation_error

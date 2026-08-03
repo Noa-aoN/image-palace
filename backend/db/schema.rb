@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_08_03_000001) do
+ActiveRecord::Schema[8.1].define(version: 2026_08_04_000002) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
   enable_extension "pgcrypto"
@@ -128,11 +128,15 @@ ActiveRecord::Schema[8.1].define(version: 2026_08_03_000001) do
 
   create_table "items", id: :uuid, default: -> { "gen_random_uuid()" }, force: :cascade do |t|
     t.string "aspect_ratio", default: "square", null: false
+    t.datetime "brief_edited_at"
+    t.string "brief_status", default: "none", null: false
     t.text "content"
     t.datetime "created_at", null: false
     t.string "generation_status", default: "pending", null: false
+    t.text "image_description"
     t.uuid "item_type_id", null: false
     t.jsonb "metadata", default: {}, null: false
+    t.text "scene_prompt"
     t.string "title", null: false
     t.datetime "updated_at", null: false
     t.uuid "user_id", null: false
@@ -234,6 +238,17 @@ ActiveRecord::Schema[8.1].define(version: 2026_08_03_000001) do
     t.string "shelf_orientation", default: "rows", null: false
     t.string "timezone", default: "Asia/Tokyo", null: false
     t.datetime "updated_at", null: false
+  end
+
+  create_table "shared_briefs", id: :uuid, default: -> { "gen_random_uuid()" }, force: :cascade do |t|
+    t.datetime "created_at", null: false
+    t.text "description", null: false
+    t.jsonb "metadata", default: {}, null: false
+    t.string "normalized_source", null: false
+    t.text "scene_prompt", null: false
+    t.string "subject_kind", default: "concrete", null: false
+    t.datetime "updated_at", null: false
+    t.index ["normalized_source"], name: "index_shared_briefs_on_normalized_source", unique: true
   end
 
   create_table "shared_medias", id: :uuid, default: -> { "gen_random_uuid()" }, force: :cascade do |t|

@@ -1,5 +1,8 @@
 export type GenerationStatus = 'pending' | 'processing' | 'completed' | 'failed'
 
+/** 画像の下ごしらえ（説明文・情景プロンプト）の状態。none は未作成・機能オフ */
+export type BriefStatus = 'none' | 'pending' | 'processing' | 'completed' | 'failed'
+
 export interface MediaGenerationInfo {
   provider?: string
   model?: string
@@ -51,6 +54,13 @@ export interface Item {
   fact_checked_at?: string | null
   style?: string | null
   custom_prompt?: string | null
+  /** ① 画像を作る前に単語を噛み砕いた説明文（日本語） */
+  image_description?: string | null
+  /** ② ①から起こした情景プロンプト（英語）。画像生成にそのまま渡る */
+  scene_prompt?: string | null
+  brief_status?: BriefStatus
+  /** ユーザーが①②を手で直したか。直したものは自動生成で上書きされない */
+  brief_edited?: boolean
   tags?: ItemTag[]
   media: ItemMedia | null
   created_at: string

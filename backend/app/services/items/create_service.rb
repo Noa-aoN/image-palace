@@ -35,6 +35,7 @@ module Items
           title: @params[:title],
           item_type_id: @params[:item_type_id] || default_item_type_id,
           generation_status: "pending",
+          brief_status: "pending",
           # スタイル未指定（おまかせ）なら、ユーザーのデフォルト画像スタイルにフォールバックする
           style: @params[:style].presence || @user.setting&.default_image_style.presence,
           aspect_ratio: (@params[:aspect_ratio].presence ||
@@ -45,7 +46,8 @@ module Items
         @user.consume_credits!(cost, item: item)
       end
 
-      GenerateImageJob.perform_later(item.id, force_generate: @params[:force_generate] == true)
+      # 画像の前に説明文・情景プロンプトを作る。終わり次第 GenerateImageJob へ引き継がれる
+      GenerateBriefJob.perform_later(item.id, force_generate: @params[:force_generate] == true)
       # 意味の自動生成: 作成時に generate_meaning が明示指定されればそれを優先し、
       # 指定がなければユーザー設定（auto_generate_meanings）にフォールバックする
       GenerateMeaningJob.perform_later(item.id, meaning_level) if generate_meaning?
