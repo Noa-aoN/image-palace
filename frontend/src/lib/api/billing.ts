@@ -1,5 +1,5 @@
 import { apiClient } from './client'
-import type { BillingPlan, BillingSummary } from '@/types/billing'
+import type { AiUsageSummary, BillingPlan, BillingSummary } from '@/types/billing'
 
 export async function getPlans(): Promise<BillingPlan[]> {
   const res = await apiClient.get<{ plans: BillingPlan[] }>('/api/v1/billing/plans')
@@ -8,6 +8,14 @@ export async function getPlans(): Promise<BillingPlan[]> {
 
 export async function getBillingSummary(): Promise<BillingSummary> {
   const res = await apiClient.get<BillingSummary>('/api/v1/billing/summary')
+  return res.data
+}
+
+// 画像以外の AI 利用の内訳（既定30日ぶん）
+export async function getAiUsage(days?: number): Promise<AiUsageSummary> {
+  const res = await apiClient.get<AiUsageSummary>('/api/v1/billing/ai_usage', {
+    params: days ? { days } : undefined,
+  })
   return res.data
 }
 

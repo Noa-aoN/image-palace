@@ -45,11 +45,12 @@ class CheckWordsService
 
   Result = Struct.new(:issues, :additions, keyword_init: true)
 
-  def self.call(theme:, words:)
-    new(theme:, words:).call
+  def self.call(theme:, words:, user: nil)
+    new(theme:, words:, user:).call
   end
 
-  def initialize(theme:, words:)
+  def initialize(theme:, words:, user: nil)
+    @user = user
     @theme = theme.to_s.strip
     @words = Array(words).map { |w| w.to_s.strip }.reject(&:blank?).uniq.first(MAX_WORDS)
   end
@@ -68,17 +69,16 @@ class CheckWordsService
   end
 
   def request
-    client = ::OpenAI::Client.new(access_token: ENV.fetch("OPENAI_API_KEY"))
-    response = client.chat(
-      parameters: {
-        model: model,
-        messages: [
-          { role: "system", content: SYSTEM_PROMPT },
-          { role: "user", content: user_prompt }
-        ],
-        temperature: 0.2,
-        response_format: { type: "json_object" }
-      }
+    response = Ai::Chat.call(
+      kind: "words_check",
+      user: @user,
+      model: model,
+      messages: [
+        { role: "system", content: SYSTEM_PROMPT },
+        { role: "user", content: user_prompt }
+      ],
+      temperature: 0.2,
+      response_format: { type: "json_object" }
     )
 
     content = response.dig("choices", 0, "message", "content").to_s

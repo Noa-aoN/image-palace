@@ -136,7 +136,7 @@ module Api
           return render json: { error: "この機能は現在無効になっています" }, status: :service_unavailable
         end
 
-        result = Images::BriefResolver.call(title: item.title)
+        result = Images::BriefResolver.call(title: item.title, user: current_user)
         return render json: { error: "情景を作成できませんでした" }, status: :unprocessable_entity if result.nil?
 
         item.update!(
@@ -146,6 +146,8 @@ module Api
           brief_edited_at: nil
         )
         render json: serialize_item(item.reload), status: :ok
+      rescue Ai::Chat::LimitExceeded => e
+        render json: { error: e.message }, status: :too_many_requests
       rescue Images::BriefService::GenerationError, KeyError, Faraday::Error => e
         Rails.logger.warn "[ItemsController#brief] failed item_id=#{item.id}: #{e.class}: #{e.message}"
         render json: { error: "情景の作成に失敗しました。時間を置いて再度お試しください。" }, status: :unprocessable_entity
@@ -204,6 +206,8 @@ module Api
 
         GenerateMeaningService.call(item: item, level: params[:level])
         render json: serialize_item(item.reload), status: :ok
+      rescue Ai::Chat::LimitExceeded => e
+        render json: { error: e.message }, status: :too_many_requests
       rescue GenerateMeaningService::GenerationError, KeyError, Faraday::Error => e
         Rails.logger.warn "[ItemsController#meaning] failed item_id=#{item.id}: #{e.class}: #{e.message}"
         render json: { error: "意味の生成に失敗しました。時間を置いて再度お試しください。" }, status: :unprocessable_entity
@@ -219,6 +223,8 @@ module Api
 
         GenerateTagsService.call(item: item, replace: truthy?(params[:replace]))
         render json: serialize_item(item.reload), status: :ok
+      rescue Ai::Chat::LimitExceeded => e
+        render json: { error: e.message }, status: :too_many_requests
       rescue GenerateTagsService::GenerationError, KeyError, Faraday::Error => e
         Rails.logger.warn "[ItemsController#generate_tags] failed item_id=#{item.id}: #{e.class}: #{e.message}"
         render json: { error: "タグの生成に失敗しました。時間を置いて再度お試しください。" }, status: :unprocessable_entity
@@ -231,6 +237,8 @@ module Api
         return render json: { status: "skipped", reason: "no_meaning" }, status: :ok if result.nil?
 
         render json: serialize_item(item.reload), status: :ok
+      rescue Ai::Chat::LimitExceeded => e
+        render json: { error: e.message }, status: :too_many_requests
       rescue GenerateFactCheckService::GenerationError, KeyError, Faraday::Error => e
         Rails.logger.warn "[ItemsController#fact_check] failed item_id=#{item.id}: #{e.class}: #{e.message}"
         render json: { error: "ファクトチェックに失敗しました。時間を置いて再度お試しください。" }, status: :unprocessable_entity

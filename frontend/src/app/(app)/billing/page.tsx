@@ -5,6 +5,7 @@ import { CreditCard, Coins, Sparkles, Loader2, ExternalLink, Gauge, History, Har
 import { Button } from '@/components/ui/button'
 import { CategorySections, type CategorySection } from '@/components/features/myroom/CategorySections'
 import { ComingSoon } from '@/components/features/myroom/ComingSoon'
+import { AiUsagePanel } from '@/components/features/billing/AiUsagePanel'
 import { getPlans, getBillingSummary, createCheckoutSession, createPortalSession } from '@/lib/api/billing'
 import { useBillingStore } from '@/stores/billing'
 import { tierLabel, formatYen, CREDIT_UNIT, CREDIT_UNIT_SHORT } from '@/lib/billing'
@@ -206,11 +207,13 @@ export default function BillingPage() {
             </dl>
           </section>
 
+          <AiUsagePanel />
+
           <ComingSoon
             title="使用量の推移"
             icon={<Gauge size={18} />}
-            description="今月の使用量や、消費の推移グラフは順次対応予定です。"
-            items={['今月の使用量', '消費の推移', '失効予定の通知']}
+            description="消費の推移グラフは順次対応予定です。"
+            items={['消費の推移', '失効予定の通知']}
           />
         </>
       ),

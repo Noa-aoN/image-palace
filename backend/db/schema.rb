@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_08_04_000003) do
+ActiveRecord::Schema[8.1].define(version: 2026_08_04_000004) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
   enable_extension "pgcrypto"
@@ -41,6 +41,18 @@ ActiveRecord::Schema[8.1].define(version: 2026_08_04_000003) do
     t.bigint "blob_id", null: false
     t.string "variation_digest", null: false
     t.index ["blob_id", "variation_digest"], name: "index_active_storage_variant_records_uniqueness", unique: true
+  end
+
+  create_table "ai_usages", id: :uuid, default: -> { "gen_random_uuid()" }, force: :cascade do |t|
+    t.integer "completion_tokens", default: 0, null: false
+    t.integer "cost_points", default: 0, null: false
+    t.datetime "created_at", null: false
+    t.string "kind", null: false
+    t.string "model", null: false
+    t.integer "prompt_tokens", default: 0, null: false
+    t.uuid "user_id"
+    t.index ["user_id", "created_at"], name: "index_ai_usages_on_user_id_and_created_at"
+    t.index ["user_id", "kind", "created_at"], name: "index_ai_usages_on_user_id_and_kind_and_created_at"
   end
 
   create_table "box_entries", id: :uuid, default: -> { "gen_random_uuid()" }, force: :cascade do |t|
@@ -583,6 +595,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_08_04_000003) do
 
   add_foreign_key "active_storage_attachments", "active_storage_blobs", column: "blob_id"
   add_foreign_key "active_storage_variant_records", "active_storage_blobs", column: "blob_id"
+  add_foreign_key "ai_usages", "users", on_delete: :cascade
   add_foreign_key "box_entries", "boxes", on_delete: :cascade
   add_foreign_key "box_items", "boxes", on_delete: :cascade
   add_foreign_key "box_items", "items", on_delete: :cascade

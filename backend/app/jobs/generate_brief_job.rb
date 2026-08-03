@@ -25,7 +25,7 @@ class GenerateBriefJob < ApplicationJob
     return if item.brief_edited?
 
     item.update!(brief_status: "processing")
-    brief = Images::BriefResolver.call(title: item.title)
+    brief = Images::BriefResolver.call(title: item.title, user: item.user)
 
     if brief.nil?
       # 機能が無効。従来どおり単語をそのまま使う

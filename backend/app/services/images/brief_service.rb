@@ -56,12 +56,13 @@ module Images
 
     Result = Struct.new(:description, :subject_kind, :scene_prompt, :model, keyword_init: true)
 
-    def self.call(title:)
-      new(title).call
+    def self.call(title:, user: nil)
+      new(title, user).call
     end
 
-    def initialize(title)
+    def initialize(title, user = nil)
       @title = title.to_s.strip
+      @user = user
     end
 
     def call
@@ -73,18 +74,17 @@ module Images
     private
 
     def request
-      client = ::OpenAI::Client.new(access_token: ENV.fetch("OPENAI_API_KEY"), request_timeout: 30)
-      response = client.chat(
-        parameters: {
-          model: model,
-          messages: [
-            { role: "system", content: SYSTEM_PROMPT },
-            { role: "user", content: @title }
-          ],
-          # 同じ単語なら誰が作っても同じ結果になってほしい（キャッシュを効かせるため）
-          temperature: 0,
-          response_format: { type: "json_object" }
-        }
+      response = Ai::Chat.call(
+        kind: "brief",
+        user: @user,
+        model: model,
+        messages: [
+          { role: "system", content: SYSTEM_PROMPT },
+          { role: "user", content: @title }
+        ],
+        # 同じ単語なら誰が作っても同じ結果になってほしい（キャッシュを効かせるため）
+        temperature: 0,
+        response_format: { type: "json_object" }
       )
 
       parse(response.dig("choices", 0, "message", "content").to_s)
