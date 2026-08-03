@@ -1,7 +1,7 @@
 'use client'
 
-import { useEffect, useState } from 'react'
-import { ChevronRight, Eraser, ListChecks } from 'lucide-react'
+import { useEffect, useState, useRef } from 'react'
+import { ChevronRight, Eraser, ListChecks, Sparkles } from 'lucide-react'
 import { PanelSlotContent } from '@/components/features/panel/PanelSlot'
 import { useRightPanelStore } from '@/stores/rightPanel'
 import { useRouter } from 'next/navigation'
@@ -18,7 +18,7 @@ import { useBillingStore } from '@/stores/billing'
 import { estimatedCards } from '@/lib/billing'
 import { STYLE_OPTIONS, CUSTOM_PROMPT_MAX_LENGTH } from '@/lib/item-styles'
 import { MEANING_LEVELS, meaningLevelLabel, DEFAULT_MEANING_LEVEL } from '@/lib/meaning-levels'
-import { getWordlists } from '@/lib/api/wordlists'
+import { getWordlists, generateWords } from '@/lib/api/wordlists'
 import type { View } from '@/types/view'
 import type { Wordlist } from '@/types/wordlist'
 import { ASPECT_RATIOS, ASPECT_RATIO_KEYS, type AspectRatioKey } from '@/lib/aspect-ratio'
@@ -82,12 +82,58 @@ export function CreateItemForm({
   // 開けるのは 1 グループずつ（同時に開くと縦に伸びて入力欄から遠くなる）
   const [openGroup, setOpenGroup] = useState<'image' | 'enrich' | 'place' | null>(null)
   const [showWordlists, setShowWordlists] = useState(false)
+  const wordlistBoxRef = useRef<HTMLDivElement>(null)
+  // 一覧を開いたまま他を触ったら畳む。開きっぱなしだと入力欄が押し下げられる
+  useEffect(() => {
+    if (!showWordlists) return
+
+    const onPointerDown = (e: PointerEvent) => {
+      const target = e.target as HTMLElement
+      if (target.closest('[data-wordlist-toggle]')) return
+      if (!wordlistBoxRef.current?.contains(target)) setShowWordlists(false)
+    }
+    document.addEventListener('pointerdown', onPointerDown)
+    return () => document.removeEventListener('pointerdown', onPointerDown)
+  }, [showWordlists])
+
   // クリアは押し間違いで入力が消えるため 2 段階にする
   const [confirmClear, setConfirmClear] = useState(false)
+  const [consulting, setConsulting] = useState(false)
+  const [oracleError, setOracleError] = useState<string | null>(null)
+
+  /*
+    デルフォイ挿入。神託から単語をひとつ受け取り、入力欄の末尾へ足す。
+    ここで作るのは単語だけで、クレジットは消費しない（消費はカードを作る段階）。
+
+    既に入力してある単語は exclude で除く。押すたびに同じ語が出ては使えない。
+    ジャンルや枚数は指定できるようにしない。細かく選びたいときは
+    アクロポリスへ行けばよく、ここは入力を一語足すだけの補助に留める。
+    アクロポリスの履歴にも残さない（あちらは神託を受けて受け取る一連の流れで、
+    こちらは入力補助。混ぜると両方の意味が濁る）。
+  */
+  const consultOracle = async () => {
+    if (consulting || submitting) return
+    setConsulting(true)
+    setOracleError(null)
+    try {
+      const existing = parseTitles(input, splitByPunctuation)
+      const words = await generateWords('', 1, { exclude: existing })
+      const word = words[0]?.trim()
+      if (!word) {
+        setOracleError('神託が得られませんでした。もう一度お試しください。')
+        return
+      }
+      setInput((current) => (current.trim() ? `${current.replace(/\s*$/, '')}\n${word}` : word))
+    } catch {
+      setOracleError('神託に失敗しました。もう一度お試しください。')
+    } finally {
+      setConsulting(false)
+    }
+  }
   const openSection = useRightPanelStore((st) => st.openSection)
   const closePanel = useRightPanelStore((st) => st.close)
   const openWordlistPanel = () =>
-    openSection({ key: WORDLIST_SECTION, title: 'ワードリストから挿入', href: '/wordlists' })
+    openSection({ key: WORDLIST_SECTION, title: 'ワードリスト', href: '/wordlists' })
   // カンマ・読点での分割は既定オフ。言葉の中に現れる記号なので誤って分かれるため
   const [splitByPunctuation, setSplitByPunctuation] = useState(false)
   const [submitting, setSubmitting] = useState(false)
@@ -244,43 +290,61 @@ export function CreateItemForm({
               type="button"
               variant="outline"
               size="sm"
+              data-wordlist-toggle
               onClick={() => (inPanel ? setShowWordlists((v) => !v) : openWordlistPanel())}
               aria-expanded={inPanel ? showWordlists : undefined}
               disabled={submitting}
+              title="保存したワードリストから単語をまとめて入れる"
               className="flex items-center gap-1.5"
             >
               <ListChecks size={15} />
-              ワードリストから挿入
-              <ChevronRight size={15} className={`transition-transform ${showWordlists ? 'rotate-90' : ''}`} />
+              ワードリスト
             </Button>
           )}
-          {input.trim().length > 0 && (
-            <Button
-              type="button"
-              variant="ghost"
-              size="sm"
-              onClick={() => {
-                if (!confirmClear) {
-                  setConfirmClear(true)
-                  return
-                }
-                setInput('')
-                setConfirmClear(false)
-              }}
-              onBlur={() => setConfirmClear(false)}
-              disabled={submitting}
-              aria-label={confirmClear ? '入力した言葉をすべて消す' : '入力した言葉を消す'}
-              title="入力した言葉を消す"
-              className="flex items-center gap-1.5 text-muted-foreground"
-            >
-              <Eraser size={15} />
-              {confirmClear && <span className="text-xs text-destructive">消しますか？</span>}
-            </Button>
-          )}
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            onClick={consultOracle}
+            disabled={submitting || consulting}
+            title="デルフォイの神託から単語をひとつ受け取る"
+            className="flex items-center gap-1.5"
+          >
+            {consulting ? <Spinner size={15} /> : <Sparkles size={15} />}
+            デルフォイ
+          </Button>
+          {/*
+            クリアは常に置く。入力の有無で現れたり消えたりすると、隣のボタンの位置が動く。
+            押し間違いで入力が消えないよう 2 段階にするが、確認中も文字は足さない
+            （足すと狭いパネルで折り返し、入力欄まで遠くなる）。色と説明で示す。
+
+            置き場所は右端へ離す。単語を入れる 2 つと等間隔で並ぶと、
+            消す操作が同じ性格のものに見えて押し間違えやすい。
+          */}
+          <Button
+            type="button"
+            variant="ghost"
+            size="sm"
+            onClick={() => {
+              if (!confirmClear) {
+                setConfirmClear(true)
+                return
+              }
+              setInput('')
+              setConfirmClear(false)
+            }}
+            onBlur={() => setConfirmClear(false)}
+            disabled={submitting || input.trim().length === 0}
+            aria-label={confirmClear ? 'もう一度押すと入力した言葉を消す' : '入力した言葉を消す'}
+            title={confirmClear ? 'もう一度押すと消えます' : '入力した言葉を消す'}
+            className={`ml-auto flex items-center ${confirmClear ? 'text-destructive' : 'text-muted-foreground'}`}
+          >
+            <Eraser size={15} />
+          </Button>
         </div>
 
         {wordlists.length > 0 && (
-          <div className="space-y-2">
+          <div ref={wordlistBoxRef} className="space-y-2">
             {inPanel && showWordlists && (
               <WordlistPicker
                 wordlists={wordlists}
@@ -313,6 +377,8 @@ export function CreateItemForm({
           onChange={(e) => setInput(e.target.value)}
           disabled={submitting}
         />
+        {oracleError && <p className="text-xs text-destructive">{oracleError}</p>}
+
         <div className="space-y-1.5">
           <p className="text-xs text-muted-foreground">
             1 行につき 1 枚。改行で区切ってまとめて作成できます。
