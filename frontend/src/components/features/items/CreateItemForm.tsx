@@ -317,6 +317,9 @@ export function CreateItemForm({
             クリアは常に置く。入力の有無で現れたり消えたりすると、隣のボタンの位置が動く。
             押し間違いで入力が消えないよう 2 段階にするが、確認中も文字は足さない
             （足すと狭いパネルで折り返し、入力欄まで遠くなる）。色と説明で示す。
+
+            置き場所は右端へ離す。単語を入れる 2 つと等間隔で並ぶと、
+            消す操作が同じ性格のものに見えて押し間違えやすい。
           */}
           <Button
             type="button"
@@ -334,7 +337,7 @@ export function CreateItemForm({
             disabled={submitting || input.trim().length === 0}
             aria-label={confirmClear ? 'もう一度押すと入力した言葉を消す' : '入力した言葉を消す'}
             title={confirmClear ? 'もう一度押すと消えます' : '入力した言葉を消す'}
-            className={`flex items-center ${confirmClear ? 'text-destructive' : 'text-muted-foreground'}`}
+            className={`ml-auto flex items-center ${confirmClear ? 'text-destructive' : 'text-muted-foreground'}`}
           >
             <Eraser size={15} />
           </Button>
