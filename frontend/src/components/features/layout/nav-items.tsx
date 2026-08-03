@@ -79,7 +79,13 @@ export const NAV_SECTIONS: NavSection[] = [
         label: 'ライブラリ',
         children: [
           { href: '/items', icon: <GalleryHorizontal size={20} />, label: 'カード一覧' },
-          { href: '/views', icon: <LayoutGrid size={20} />, label: 'キャンバス一覧' },
+          {
+            href: '/views',
+            icon: <LayoutGrid size={20} />,
+            label: 'キャンバス一覧',
+            // デッキはキャンバスの一種（view_type='deck'）。よく使うので下階層から直接開けるようにする
+            children: [{ href: '/views?type=deck', icon: <Layers size={18} />, label: 'デッキ一覧' }],
+          },
           { href: '/spaces', icon: <Frame size={20} />, label: 'スペース一覧' },
           { href: '/boxes', icon: <Box size={20} />, label: 'ボックス一覧' },
           { href: '/materials', icon: <Boxes size={20} />, label: 'マテリアル一覧' },
