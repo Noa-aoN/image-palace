@@ -30,4 +30,31 @@ RSpec.describe Setting, type: :model do
       expect(build(:setting, user: user, motion_mode: "bogus")).not_to be_valid
     end
   end
+
+  describe "ライブラリの棚の並び順" do
+    it "未設定なら既定の順になる" do
+      setting = create(:setting, user: user)
+      expect(setting.ordered_library_sections).to eq(Setting::LIBRARY_SECTIONS)
+    end
+
+    it "指定した順に並ぶ" do
+      setting = create(:setting, user: user, library_order: %w[spaces cards])
+      expect(setting.ordered_library_sections.first(2)).to eq(%w[spaces cards])
+    end
+
+    it "載っていない棚は末尾に回る（棚が画面から消えない）" do
+      setting = create(:setting, user: user, library_order: %w[materials])
+      expect(setting.ordered_library_sections).to eq(%w[materials cards canvas spaces boxes])
+    end
+
+    it "知らない名前は捨て、重複は畳む" do
+      setting = create(:setting, user: user, library_order: %w[cards bogus cards])
+      expect(setting.reload.library_order).to eq(Setting::LIBRARY_SECTIONS)
+    end
+
+    it "全て知らない名前なら既定の順に戻る" do
+      setting = create(:setting, user: user, library_order: %w[bogus])
+      expect(setting.ordered_library_sections).to eq(Setting::LIBRARY_SECTIONS)
+    end
+  end
 end

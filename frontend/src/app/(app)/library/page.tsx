@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState, useCallback, useRef } from 'react'
+import { Fragment, useEffect, useState, useCallback, useRef } from 'react'
 import Link from 'next/link'
 import { GalleryHorizontal, Box as BoxIcon, Layers, LayoutGrid, Frame, MapPin, ChevronRight, Search, X, Route, DoorOpen, ListChecks, Boxes, Images, CheckSquare, Square, Trash2, LibraryBig } from 'lucide-react'
 import { Button } from '@/components/ui/button'
@@ -15,6 +15,8 @@ import { getViews, deleteView } from '@/lib/api/views'
 import { getWordlists, deleteWordlist } from '@/lib/api/wordlists'
 import { searchLibrary } from '@/lib/api/search'
 import { EntityCover } from '@/components/features/shared/EntityCover'
+import { useSettingsStore } from '@/stores/settings'
+import { normalizeLibraryOrder, type LibrarySection } from '@/lib/library-sections'
 import type { Item } from '@/types/item'
 import type { Box } from '@/types/box'
 import type { Space } from '@/types/space'
@@ -380,6 +382,9 @@ export default function LibraryPage() {
   // 取得は従来どおり裏で走り、終わり次第上書きする。
   const [cached] = useState(() => readPageCache<LibrarySnapshot>(CACHE_KEY))
 
+  // 棚の並び順。設定が読めていないうちは既定の順で描く（後から入れ替わる）
+  const libraryOrder = normalizeLibraryOrder(useSettingsStore((s) => s.settings?.library_order))
+
   // カードは共有ストアから描く。パネルでの作成やカード一覧での削除が
   // そのまま棚にも効く（ストアはページを移っても保たれる）。
   const cards = useItemsStore((s) => s.recent)
@@ -620,6 +625,231 @@ export default function LibraryPage() {
     )
   }
 
+  // 棚（大項目）の中身。並び順は設定で入れ替えられるので、鍵付きで持ってから順に描く
+
+  const librarySections: Record<LibrarySection, React.ReactNode> = {
+    cards: (
+      <>
+        {/* カード */}
+        <Shelf
+          icon={<GalleryHorizontal size={20} />}
+          title="カード"
+          count={cardCount}
+          href={selectionMode ? undefined : '/items'}
+          action={
+            selectionMode ? undefined : (
+              <CardCreateButton />
+            )
+          }
+        >
+          {cards.length === 0 ? (
+            <EmptyRail
+              message="まだカードがありません。"
+              cta={<CardCreateButton variant="default" label="カードを作成" />}
+            />
+          ) : (
+            <Rail>
+              {cards.map((item) => (
+                <CardThumb
+                  key={item.id}
+                  item={item}
+                  selectionMode={selectionMode}
+                  selected={isSelected('card', item.id)}
+                  onToggle={() => toggleSelect('card', item.id)}
+                />
+              ))}
+            </Rail>
+          )}
+        </Shelf>
+      </>
+    ),
+    canvas: (
+      <>
+        {/* キャンバス（表示・学習形式：デッキ / フリーボード等） */}
+        <Section icon={<LayoutGrid size={22} />} title="キャンバス" description="カードの表示・学習形式">
+          <Shelf icon={<Layers size={18} />} title="デッキ" count={deckViews.length} href={selectionMode ? undefined : '/views?type=deck'} action={selectionMode ? undefined : <LibraryCreateButton kind="deck" />}>
+            {deckViews.length === 0 ? (
+              <EmptyRail
+                message="まだデッキがありません。"
+                cta={<Link href="/views?type=deck"><Button size="sm">デッキを作成</Button></Link>}
+              />
+            ) : (
+              <Rail onEndReached={() => loadMoreShelf('views', views.length)}>
+                {deckViews.slice(0, PREVIEW_LIMIT).map((view) => (
+                  <ViewTile
+                    key={view.id}
+                    view={view}
+                    selectionMode={selectionMode}
+                    selected={isSelected('view', view.id)}
+                    onToggle={() => toggleSelect('view', view.id)}
+                  />
+                ))}
+              </Rail>
+            )}
+          </Shelf>
+          <Shelf icon={<LayoutGrid size={18} />} title="フリーボード" count={freeboardViews.length} href={selectionMode ? undefined : '/views?type=freeboard'} action={selectionMode ? undefined : <LibraryCreateButton kind="freeboard" />}>
+            {freeboardViews.length === 0 ? (
+              <EmptyRail
+                message="まだフリーボードがありません。"
+                cta={<Link href="/views?type=freeboard"><Button size="sm">作成</Button></Link>}
+              />
+            ) : (
+              <Rail onEndReached={() => loadMoreShelf('views', views.length)}>
+                {freeboardViews.slice(0, PREVIEW_LIMIT).map((view) => (
+                  <ViewTile
+                    key={view.id}
+                    view={view}
+                    selectionMode={selectionMode}
+                    selected={isSelected('view', view.id)}
+                    onToggle={() => toggleSelect('view', view.id)}
+                  />
+                ))}
+              </Rail>
+            )}
+          </Shelf>
+          <Shelf icon={<MapPin size={18} />} title="スペース配置" count={spaceMapViews.length} href={selectionMode ? undefined : '/views?type=space_map'} action={selectionMode ? undefined : <LibraryCreateButton kind="space_map" />}>
+            {spaceMapViews.length === 0 ? (
+              <EmptyRail
+                message="まだスペース配置がありません。"
+                cta={<Link href="/views?type=space_map"><Button size="sm">作成</Button></Link>}
+              />
+            ) : (
+              <Rail onEndReached={() => loadMoreShelf('views', views.length)}>
+                {spaceMapViews.slice(0, PREVIEW_LIMIT).map((view) => (
+                  <ViewTile
+                    key={view.id}
+                    view={view}
+                    selectionMode={selectionMode}
+                    selected={isSelected('view', view.id)}
+                    onToggle={() => toggleSelect('view', view.id)}
+                  />
+                ))}
+              </Rail>
+            )}
+          </Shelf>
+        </Section>
+      </>
+    ),
+    spaces: (
+      <>
+        {/* スペース（記憶の空間：ロード / ルーム） */}
+        <Section icon={<Frame size={22} />} title="スペース" description="記憶の空間">
+          {spaces.length === 0 ? (
+            <EmptyRail
+              message="まだスペースがありません。"
+              cta={<Link href="/spaces"><Button size="sm">スペースを作成</Button></Link>}
+            />
+          ) : (
+            <>
+              <Shelf icon={<Route size={18} />} title="ロード" count={roadSpaces.length} href={selectionMode ? undefined : '/spaces?type=road'} action={selectionMode ? undefined : <LibraryCreateButton kind="road" />}>
+                {roadSpaces.length === 0 ? (
+                  <EmptyRail message="ロードはまだありません。" cta={<Link href="/spaces?type=road"><Button size="sm">作成</Button></Link>} />
+                ) : (
+                  <Rail onEndReached={() => loadMoreShelf('spaces', spaces.length)}>
+                    {roadSpaces.slice(0, PREVIEW_LIMIT).map((space) => (
+                      <SpaceTile
+                        key={space.id}
+                        space={space}
+                        selectionMode={selectionMode}
+                        selected={isSelected('space', space.id)}
+                        onToggle={() => toggleSelect('space', space.id)}
+                      />
+                    ))}
+                  </Rail>
+                )}
+              </Shelf>
+              <Shelf icon={<DoorOpen size={18} />} title="ルーム" count={roomSpaces.length} href={selectionMode ? undefined : '/spaces?type=room'} action={selectionMode ? undefined : <LibraryCreateButton kind="room" />}>
+                {roomSpaces.length === 0 ? (
+                  <EmptyRail message="ルームはまだありません。" cta={<Link href="/spaces?type=room"><Button size="sm">作成</Button></Link>} />
+                ) : (
+                  <Rail onEndReached={() => loadMoreShelf('spaces', spaces.length)}>
+                    {roomSpaces.slice(0, PREVIEW_LIMIT).map((space) => (
+                      <SpaceTile
+                        key={space.id}
+                        space={space}
+                        selectionMode={selectionMode}
+                        selected={isSelected('space', space.id)}
+                        onToggle={() => toggleSelect('space', space.id)}
+                      />
+                    ))}
+                  </Rail>
+                )}
+              </Shelf>
+            </>
+          )}
+        </Section>
+      </>
+    ),
+    boxes: (
+      <>
+        {/* ボックス */}
+        <Shelf
+          icon={<BoxIcon size={20} />}
+          title="ボックス"
+          description="用途を問わない収納箱"
+          count={boxes.length}
+          action={selectionMode ? undefined : <LibraryCreateButton kind="box" />}
+          href={selectionMode ? undefined : '/boxes'}
+        >
+          {boxes.length === 0 ? (
+            <EmptyRail
+              message="まだボックスがありません。"
+              cta={<Link href="/boxes"><Button size="sm">ボックスを作成</Button></Link>}
+            />
+          ) : (
+            <Rail onEndReached={() => loadMoreShelf('boxes', boxes.length)}>
+              {boxes.slice(0, PREVIEW_LIMIT).map((box) => (
+                <BoxTile
+                  key={box.id}
+                  box={box}
+                  selectionMode={selectionMode}
+                  selected={isSelected('box', box.id)}
+                  onToggle={() => toggleSelect('box', box.id)}
+                />
+              ))}
+            </Rail>
+          )}
+        </Shelf>
+      </>
+    ),
+    materials: (
+      <>
+        {/* マテリアル（カード化の前の素材） */}
+        <Section icon={<Boxes size={22} />} title="マテリアル" description="カード化の前の素材">
+          <Shelf
+            icon={<ListChecks size={18} />}
+            title="ワードリスト"
+            count={wordlists.length}
+            href={selectionMode ? undefined : '/wordlists'}
+            action={selectionMode ? undefined : <LibraryCreateButton kind="wordlist" />}
+          >
+            {wordlists.length === 0 ? (
+              <EmptyRail
+                message="まだワードリストがありません。"
+                cta={<Link href="/wordlists/new"><Button size="sm">ワードリストを作成</Button></Link>}
+              />
+            ) : (
+              <Rail onEndReached={() => loadMoreShelf('wordlists', wordlists.length)}>
+                {wordlists.slice(0, PREVIEW_LIMIT).map((wordlist) => (
+                  <WordlistTile
+                    key={wordlist.id}
+                    wordlist={wordlist}
+                    selectionMode={selectionMode}
+                    selected={isSelected('wordlist', wordlist.id)}
+                    onToggle={() => toggleSelect('wordlist', wordlist.id)}
+                  />
+                ))}
+              </Rail>
+            )}
+          </Shelf>
+          <Shelf icon={<Images size={18} />} title="ピクチャーリスト">
+            <EmptyRail message="準備中です。画像素材をまとめられるようにする予定です。" />
+          </Shelf>
+        </Section>
+      </>
+    ),
+  }
+
   return (
     <div className="max-w-7xl mx-auto px-6 py-12 space-y-12">
       {/* 右パネルでの作成。開いているセクションの分だけがパネルへ描かれる */}
@@ -702,210 +932,9 @@ export default function LibraryPage() {
         <SearchResultsView results={results} searching={searching} />
       ) : (
         <ShelfGroup>
-      {/* カード */}
-      <Shelf
-        icon={<GalleryHorizontal size={20} />}
-        title="カード"
-        count={cardCount}
-        href={selectionMode ? undefined : '/items'}
-        action={
-          selectionMode ? undefined : (
-            <CardCreateButton />
-          )
-        }
-      >
-        {cards.length === 0 ? (
-          <EmptyRail
-            message="まだカードがありません。"
-            cta={<CardCreateButton variant="default" label="カードを作成" />}
-          />
-        ) : (
-          <Rail>
-            {cards.map((item) => (
-              <CardThumb
-                key={item.id}
-                item={item}
-                selectionMode={selectionMode}
-                selected={isSelected('card', item.id)}
-                onToggle={() => toggleSelect('card', item.id)}
-              />
-            ))}
-          </Rail>
-        )}
-      </Shelf>
-
-      {/* キャンバス（表示・学習形式：デッキ / フリーボード等） */}
-      <Section icon={<LayoutGrid size={22} />} title="キャンバス" description="カードの表示・学習形式">
-        <Shelf icon={<Layers size={18} />} title="デッキ" count={deckViews.length} href={selectionMode ? undefined : '/views?type=deck'} action={selectionMode ? undefined : <LibraryCreateButton kind="deck" />}>
-          {deckViews.length === 0 ? (
-            <EmptyRail
-              message="まだデッキがありません。"
-              cta={<Link href="/views?type=deck"><Button size="sm">デッキを作成</Button></Link>}
-            />
-          ) : (
-            <Rail onEndReached={() => loadMoreShelf('views', views.length)}>
-              {deckViews.slice(0, PREVIEW_LIMIT).map((view) => (
-                <ViewTile
-                  key={view.id}
-                  view={view}
-                  selectionMode={selectionMode}
-                  selected={isSelected('view', view.id)}
-                  onToggle={() => toggleSelect('view', view.id)}
-                />
-              ))}
-            </Rail>
-          )}
-        </Shelf>
-        <Shelf icon={<LayoutGrid size={18} />} title="フリーボード" count={freeboardViews.length} href={selectionMode ? undefined : '/views?type=freeboard'} action={selectionMode ? undefined : <LibraryCreateButton kind="freeboard" />}>
-          {freeboardViews.length === 0 ? (
-            <EmptyRail
-              message="まだフリーボードがありません。"
-              cta={<Link href="/views?type=freeboard"><Button size="sm">作成</Button></Link>}
-            />
-          ) : (
-            <Rail onEndReached={() => loadMoreShelf('views', views.length)}>
-              {freeboardViews.slice(0, PREVIEW_LIMIT).map((view) => (
-                <ViewTile
-                  key={view.id}
-                  view={view}
-                  selectionMode={selectionMode}
-                  selected={isSelected('view', view.id)}
-                  onToggle={() => toggleSelect('view', view.id)}
-                />
-              ))}
-            </Rail>
-          )}
-        </Shelf>
-        <Shelf icon={<MapPin size={18} />} title="スペース配置" count={spaceMapViews.length} href={selectionMode ? undefined : '/views?type=space_map'} action={selectionMode ? undefined : <LibraryCreateButton kind="space_map" />}>
-          {spaceMapViews.length === 0 ? (
-            <EmptyRail
-              message="まだスペース配置がありません。"
-              cta={<Link href="/views?type=space_map"><Button size="sm">作成</Button></Link>}
-            />
-          ) : (
-            <Rail onEndReached={() => loadMoreShelf('views', views.length)}>
-              {spaceMapViews.slice(0, PREVIEW_LIMIT).map((view) => (
-                <ViewTile
-                  key={view.id}
-                  view={view}
-                  selectionMode={selectionMode}
-                  selected={isSelected('view', view.id)}
-                  onToggle={() => toggleSelect('view', view.id)}
-                />
-              ))}
-            </Rail>
-          )}
-        </Shelf>
-      </Section>
-
-      {/* スペース（記憶の空間：ロード / ルーム） */}
-      <Section icon={<Frame size={22} />} title="スペース" description="記憶の空間">
-        {spaces.length === 0 ? (
-          <EmptyRail
-            message="まだスペースがありません。"
-            cta={<Link href="/spaces"><Button size="sm">スペースを作成</Button></Link>}
-          />
-        ) : (
-          <>
-            <Shelf icon={<Route size={18} />} title="ロード" count={roadSpaces.length} href={selectionMode ? undefined : '/spaces?type=road'} action={selectionMode ? undefined : <LibraryCreateButton kind="road" />}>
-              {roadSpaces.length === 0 ? (
-                <EmptyRail message="ロードはまだありません。" cta={<Link href="/spaces?type=road"><Button size="sm">作成</Button></Link>} />
-              ) : (
-                <Rail onEndReached={() => loadMoreShelf('spaces', spaces.length)}>
-                  {roadSpaces.slice(0, PREVIEW_LIMIT).map((space) => (
-                    <SpaceTile
-                      key={space.id}
-                      space={space}
-                      selectionMode={selectionMode}
-                      selected={isSelected('space', space.id)}
-                      onToggle={() => toggleSelect('space', space.id)}
-                    />
-                  ))}
-                </Rail>
-              )}
-            </Shelf>
-            <Shelf icon={<DoorOpen size={18} />} title="ルーム" count={roomSpaces.length} href={selectionMode ? undefined : '/spaces?type=room'} action={selectionMode ? undefined : <LibraryCreateButton kind="room" />}>
-              {roomSpaces.length === 0 ? (
-                <EmptyRail message="ルームはまだありません。" cta={<Link href="/spaces?type=room"><Button size="sm">作成</Button></Link>} />
-              ) : (
-                <Rail onEndReached={() => loadMoreShelf('spaces', spaces.length)}>
-                  {roomSpaces.slice(0, PREVIEW_LIMIT).map((space) => (
-                    <SpaceTile
-                      key={space.id}
-                      space={space}
-                      selectionMode={selectionMode}
-                      selected={isSelected('space', space.id)}
-                      onToggle={() => toggleSelect('space', space.id)}
-                    />
-                  ))}
-                </Rail>
-              )}
-            </Shelf>
-          </>
-        )}
-      </Section>
-
-      {/* ボックス */}
-      <Shelf
-        icon={<BoxIcon size={20} />}
-        title="ボックス"
-        description="用途を問わない収納箱"
-        count={boxes.length}
-        action={selectionMode ? undefined : <LibraryCreateButton kind="box" />}
-        href={selectionMode ? undefined : '/boxes'}
-      >
-        {boxes.length === 0 ? (
-          <EmptyRail
-            message="まだボックスがありません。"
-            cta={<Link href="/boxes"><Button size="sm">ボックスを作成</Button></Link>}
-          />
-        ) : (
-          <Rail onEndReached={() => loadMoreShelf('boxes', boxes.length)}>
-            {boxes.slice(0, PREVIEW_LIMIT).map((box) => (
-              <BoxTile
-                key={box.id}
-                box={box}
-                selectionMode={selectionMode}
-                selected={isSelected('box', box.id)}
-                onToggle={() => toggleSelect('box', box.id)}
-              />
-            ))}
-          </Rail>
-        )}
-      </Shelf>
-
-      {/* マテリアル（カード化の前の素材） */}
-      <Section icon={<Boxes size={22} />} title="マテリアル" description="カード化の前の素材">
-        <Shelf
-          icon={<ListChecks size={18} />}
-          title="ワードリスト"
-          count={wordlists.length}
-          href={selectionMode ? undefined : '/wordlists'}
-          action={selectionMode ? undefined : <LibraryCreateButton kind="wordlist" />}
-        >
-          {wordlists.length === 0 ? (
-            <EmptyRail
-              message="まだワードリストがありません。"
-              cta={<Link href="/wordlists/new"><Button size="sm">ワードリストを作成</Button></Link>}
-            />
-          ) : (
-            <Rail onEndReached={() => loadMoreShelf('wordlists', wordlists.length)}>
-              {wordlists.slice(0, PREVIEW_LIMIT).map((wordlist) => (
-                <WordlistTile
-                  key={wordlist.id}
-                  wordlist={wordlist}
-                  selectionMode={selectionMode}
-                  selected={isSelected('wordlist', wordlist.id)}
-                  onToggle={() => toggleSelect('wordlist', wordlist.id)}
-                />
-              ))}
-            </Rail>
-          )}
-        </Shelf>
-        <Shelf icon={<Images size={18} />} title="ピクチャーリスト">
-          <EmptyRail message="準備中です。画像素材をまとめられるようにする予定です。" />
-        </Shelf>
-      </Section>
+          {libraryOrder.map((key) => (
+            <Fragment key={key}>{librarySections[key]}</Fragment>
+          ))}
         </ShelfGroup>
       )}
     </div>
