@@ -32,7 +32,8 @@ const InShelfGridContext = createContext(false)
 
 /**
  * 棚を並べる枠。縦棚を横に並べる設定のときだけ段組みにする。
- * 棚の高さは中身で決まるので、列の高さを揃えるために items-stretch を効かせる。
+ * 高さは揃えない。揃えると中身の少ない棚が最長の棚に引き伸ばされ、
+ * 使われない空きが棚の中に残るため。
  *
  * 段組みは最も外側の 1 段だけに掛ける。傘セクションの中でさらに段組みすると
  * 1 列の幅が 1/3 の 1/3 になり、棚として読めなくなるため。
@@ -48,9 +49,12 @@ export function ShelfGroup({ children, className = '' }: { children: ReactNode; 
           広い画面では 4 列を基本にする。auto-fill だと余白やサイドバーの有無で列数が
           3 になったり 5 になったりして棚の太さが安定しないため、段階を明示して決め打ちする。
           アイテムは列いっぱいに広がるので、列数が決まれば棚の太さも決まる。
+
+          高さは揃えない。揃えると中身の少ない棚が最長の棚に引き伸ばされ、
+          使われない空きが棚の中に残るため。
         */}
         <div
-          className={`grid grid-cols-1 items-stretch gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 ${className}`}
+          className={`grid grid-cols-1 items-start gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 ${className}`}
         >
           {children}
         </div>
@@ -88,7 +92,11 @@ export function SurfaceBoard({ surface, children }: { surface: Surface; children
     border-image なら四隅と四辺を切り出して固定し、中央だけを伸ばせる。
     slice の値は、透明な余白を切り落とした画像の実測値。
       - 横 1282x304: 繰形 y=..50 / 内部 50..235 / 棚板 235..304、柱 x=51..120・1200..1251
-      - 縦 655x1478: 繰形 y=..135 / 台座 y=1321.. / 柱は左右 140 以内
+      - 縦 655x400: 元画像は本棚 1 台ぶん（内部に棚板が 5 段）だった。
+        中央を引き伸ばすと内部の棚板まで伸びて隙間に見えるため、
+        繰形・棚板の無い背板・台座だけを取り出して 1 段分に組み直してある。
+        柱の内側の縁は x=142 / 530。左右の slice はそれより内側まで取り、
+        中身が柱に接しないようにしている。
 
     棚は 2 枚重ねる。
       - 奥（塗りあり）: 背板・棚板を含む棚そのもの
@@ -99,12 +107,12 @@ export function SurfaceBoard({ surface, children }: { surface: Surface; children
   // 枠の内側がそのまま棚の内側になるので、アイテムが柱に載ることはない
   const shelf = stacked
     ? {
-        borderTopWidth: '81px',
-        borderBottomWidth: '94px',
-        borderLeftWidth: '84px',
-        borderRightWidth: '84px',
+        borderTopWidth: '83px',
+        borderBottomWidth: '83px',
+        borderLeftWidth: '77px',
+        borderRightWidth: '77px',
         borderImageSource: "url('/shelf/vertical.webp')",
-        borderImageSlice: '135 140 157 140 fill',
+        borderImageSlice: '150 190 150 190 fill',
       }
     : {
         borderTopWidth: '45px',
