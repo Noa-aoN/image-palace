@@ -8,7 +8,7 @@ import { Trash2, Pencil, Check, X } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Breadcrumb } from '@/components/ui/breadcrumb'
 import { Input } from '@/components/ui/input'
-import { getViewDetail, updateView, deleteView, uploadViewCover, removeViewCover } from '@/lib/api/views'
+import { getViewDetail, updateView, deleteView, uploadViewCover, removeViewCover, generateViewCover } from '@/lib/api/views'
 import { viewTypeLabel } from '@/lib/view-types'
 import { useBoardSettingsStore } from '@/stores/boardSettings'
 import { usePendingRefresh } from '@/hooks/usePendingRefresh'
@@ -31,6 +31,7 @@ const DeckBoard = dynamic(
   { ssr: false, loading: canvasLoading }
 )
 import { EntityCover } from '@/components/features/shared/EntityCover'
+import { useCoverGeneration } from '@/hooks/useCoverGeneration'
 import { CoverSettings } from '@/components/features/shared/CoverSettings'
 
 export default function ViewEditorPage() {
@@ -149,6 +150,21 @@ export default function ViewEditorPage() {
       setCoverBusy(false)
     }
   }
+  // カバー画像を AI で作る（非同期・1クレジット）。出来上がるまで取り直す
+  const reloadCover = useCallback(async () => {
+    const data = await getViewDetail(id)
+    setView((prev) => (prev ? { ...prev, ...data } : data))
+  }, [id])
+  const cover = useCoverGeneration({
+    status: view?.cover_generation_status,
+    statusError: view?.cover_generation_error,
+    submit: async (prompt, style) => {
+      const updated = await generateViewCover(id, prompt, style)
+      setView((prev) => (prev ? { ...prev, ...updated } : prev))
+    },
+    reload: reloadCover,
+  })
+
   const handleRemoveCover = async () => {
     if (!view) return
     setCoverBusy(true)
@@ -243,6 +259,9 @@ export default function ViewEditorPage() {
             onSelectType={handleSetCoverType}
             onUpload={handleUploadCover}
             onRemove={handleRemoveCover}
+            onGenerate={cover.generate}
+            generating={cover.generating}
+            generateError={cover.error}
           />
         </div>
       </div>

@@ -4,9 +4,10 @@ module Api
       include ListPagination
       include ItemSerialization
       include CoverImageUpload
+      include CoverImageGeneration
 
       before_action :set_space, only: [
-        :show, :update, :destroy, :add_box, :remove_box, :upload_cover, :remove_cover
+        :show, :update, :destroy, :add_box, :remove_box, :upload_cover, :remove_cover, :generate_cover
       ]
 
       def index
@@ -74,6 +75,12 @@ module Api
         render json: { errors: e.record.errors.full_messages }, status: :unprocessable_entity
       end
 
+      # POST /api/v1/spaces/:id/cover_image/generate
+      # ことばからカバー画像を作る（非同期・1クレジット）。
+      def generate_cover
+        generate_cover_for(@space) { |record| render json: serialize_space(record), status: :accepted }
+      end
+
       # DELETE /api/v1/spaces/:id/cover_image
       def remove_cover
         @space.cover_image.purge if @space.cover_image.attached?
@@ -125,6 +132,8 @@ module Api
           room_style: space.room_style,
           style_overrides: space.style_overrides,
           cover_type: space.cover_type,
+          cover_generation_status: space.cover_generation_status,
+          cover_generation_error: space.cover_generation_error,
           cover_space_point_id: space.cover_space_point_id,
           cover: cover_point ? serialize_point_image(cover_point) : nil,
           # ポイントの生成画像（順序付き、最大 COVER_CARDS_LIMIT 枚）

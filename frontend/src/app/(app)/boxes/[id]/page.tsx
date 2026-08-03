@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import Link from 'next/link'
 import { useParams, useRouter } from 'next/navigation'
 import { Trash2, Pencil, Check, X, Plus, GalleryHorizontal, LayoutGrid, Frame } from 'lucide-react'
@@ -10,13 +10,13 @@ import { Input } from '@/components/ui/input'
 import {
   getBox, updateBox, deleteBox,
   addEntryToBox, removeEntryFromBox,
-  uploadBoxCover, removeBoxCover,
-} from '@/lib/api/boxes'
+  uploadBoxCover, removeBoxCover, generateBoxCover } from '@/lib/api/boxes'
 import { getItems } from '@/lib/api/items'
 import { getSpaces } from '@/lib/api/spaces'
 import { getViews } from '@/lib/api/views'
 import { viewTypeLabel } from '@/lib/view-types'
 import { EntityCover } from '@/components/features/shared/EntityCover'
+import { useCoverGeneration } from '@/hooks/useCoverGeneration'
 import { CoverSettings } from '@/components/features/shared/CoverSettings'
 import type { BoxDetail, BoxEntry, BoxEntryType } from '@/types/box'
 import type { CoverType } from '@/types/cover'
@@ -213,6 +213,21 @@ export default function BoxDetailPage() {
       setCoverBusy(false)
     }
   }
+  // カバー画像を AI で作る（非同期・1クレジット）。出来上がるまで取り直す
+  const reloadCover = useCallback(async () => {
+    const data = await getBox(id)
+    setBox((prev) => (prev ? { ...prev, ...data } : data))
+  }, [id])
+  const cover = useCoverGeneration({
+    status: box?.cover_generation_status,
+    statusError: box?.cover_generation_error,
+    submit: async (prompt, style) => {
+      const updated = await generateBoxCover(id, prompt, style)
+      setBox((prev) => (prev ? { ...prev, ...updated } : prev))
+    },
+    reload: reloadCover,
+  })
+
   const handleRemoveCover = async () => {
     if (!box) return
     setCoverBusy(true)
@@ -344,6 +359,9 @@ export default function BoxDetailPage() {
             onSelectType={handleSetCoverType}
             onUpload={handleUploadCover}
             onRemove={handleRemoveCover}
+            onGenerate={cover.generate}
+            generating={cover.generating}
+            generateError={cover.error}
           />
         </div>
       </div>

@@ -17,6 +17,9 @@ export interface View {
   view_type: string
   space_id?: string | null // space_map 種別の配置先スペース
   cover_type: CoverType
+  /** カバー画像のAI生成の状態（null は未生成） */
+  cover_generation_status?: 'pending' | 'processing' | 'completed' | 'failed' | null
+  cover_generation_error?: string | null
   cover_item_id: string | null
   cover: ItemMedia | null
   cover_images: ItemMedia[]

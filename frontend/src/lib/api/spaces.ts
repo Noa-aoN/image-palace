@@ -107,3 +107,11 @@ export async function removeSpacePoint(spaceId: string, pointId: string): Promis
 export async function reorderSpacePoints(spaceId: string, orderedIds: string[]): Promise<void> {
   await apiClient.patch(`/api/v1/spaces/${spaceId}/points/reorder`, { ordered_ids: orderedIds })
 }
+
+// カバー画像を AI で作る（非同期・1クレジット）。cover_generation_status を見て完了を待つ
+export async function generateSpaceCover(id: string, prompt: string, style?: string): Promise<Space> {
+  const res = await apiClient.post<Space>(`/api/v1/spaces/${id}/cover_image/generate`, {
+    cover: { prompt, ...(style ? { style } : {}) },
+  })
+  return res.data
+}
