@@ -15,6 +15,17 @@ class Meaning < ApplicationRecord
 
   scope :in_language, ->(lang) { where(language_code: lang) }
 
+  # ファクトチェック結果を構成する属性。説明や単語名が変わったら丸ごと無効化する
+  FACT_CHECK_ATTRIBUTES = %w[
+    fact_check_status fact_check_comment fact_check_suggestion
+    fact_check_title_suggestion fact_check_known fact_checked_at
+  ].freeze
+
+  # 以前の判定を消す（保存はしない）。項目が増えても消し忘れないよう1か所にまとめる
+  def clear_fact_check
+    assign_attributes(FACT_CHECK_ATTRIBUTES.index_with(nil).merge("fact_check_claims" => []))
+  end
+
   # 不正値は既定（simple）へ丸める
   def self.normalize_level(level)
     DETAIL_LEVELS.include?(level.to_s) ? level.to_s : DEFAULT_DETAIL_LEVEL

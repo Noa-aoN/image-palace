@@ -22,6 +22,70 @@ const FACT_CHECK_BADGE: Record<string, { label: string; className: string }> = {
   incorrect: { label: '✗ 誤り', className: 'bg-red-100 text-red-700' },
 }
 
+const CLAIM_VERDICT: Record<string, { mark: string; className: string }> = {
+  supported: { mark: '✓', className: 'text-green-700' },
+  unsupported: { mark: '?', className: 'text-yellow-800' },
+  contradicted: { mark: '✗', className: 'text-red-700' },
+}
+
+/**
+ * 判定の根拠（AIが独立に知っていたこと・主張ごとの検証結果）。
+ *
+ * 判定だけを出されても、当たっているのか外しているのか読み手には分からない。
+ * 何を照らし合わせてそう言っているのかを見せて、最後は人が判断できるようにする。
+ * 既定では畳んでおく（判定とコメントで足りる場面が多いため）。
+ */
+function FactCheckEvidence({ item }: { item: Item }) {
+  const [open, setOpen] = useState(false)
+  const claims = item.fact_check_claims ?? []
+  if (!item.fact_check_known && claims.length === 0) return null
+
+  return (
+    <div className="mt-2">
+      <button
+        type="button"
+        onClick={() => setOpen((v) => !v)}
+        aria-expanded={open}
+        className="text-xs text-muted-foreground underline-offset-2 hover:text-foreground hover:underline"
+      >
+        {open ? '判定の根拠を隠す' : '判定の根拠を見る'}
+      </button>
+
+      {open && (
+        <div className="mt-2 space-y-2 rounded border border-border bg-background px-2.5 py-2">
+          {item.fact_check_known && (
+            <div>
+              <p className="text-xs font-medium text-muted-foreground">この語について確認できたこと</p>
+              <p className="mt-0.5 text-xs leading-relaxed whitespace-pre-wrap">{item.fact_check_known}</p>
+            </div>
+          )}
+          {claims.length > 0 && (
+            <div>
+              <p className="text-xs font-medium text-muted-foreground">説明文の主張ごとの検証</p>
+              <ul className="mt-1 space-y-1">
+                {claims.map((claim, index) => {
+                  const verdict = CLAIM_VERDICT[claim.verdict] ?? CLAIM_VERDICT.unsupported
+                  return (
+                    <li key={index} className="flex gap-1.5 text-xs leading-relaxed">
+                      <span className={`shrink-0 font-medium ${verdict.className}`} aria-hidden>
+                        {verdict.mark}
+                      </span>
+                      <span>
+                        {claim.text}
+                        {claim.note && <span className="text-muted-foreground">（{claim.note}）</span>}
+                      </span>
+                    </li>
+                  )
+                })}
+              </ul>
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  )
+}
+
 // 説明のAIファクトチェック結果（判定バッジ＋コメント＋訂正案）。未チェックなら何も出さない。
 // 単語名・説明の訂正案がある場合は、確認のうえ実行するボタンを出す（自動上書きはしない）。
 function FactCheckResult({
@@ -51,6 +115,7 @@ function FactCheckResult({
       {item.fact_check_comment && (
         <p className="mt-1.5 text-xs leading-relaxed text-muted-foreground whitespace-pre-wrap">{item.fact_check_comment}</p>
       )}
+      <FactCheckEvidence item={item} />
       {titleSuggestion && onApplyTitle && (
         <div className="mt-2 rounded border border-border bg-background px-2.5 py-2">
           <p className="text-xs font-medium text-muted-foreground">単語名の訂正案</p>
