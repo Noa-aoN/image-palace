@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/skeleton'
 import { readPageCache, writePageCache } from '@/lib/page-cache'
 import { getItemsPage, getItemsSummary, bulkDeleteItems } from '@/lib/api/items'
+import { useItemsStore } from '@/stores/items'
 import { getBoxes, deleteBox } from '@/lib/api/boxes'
 import { getSpaces, deleteSpace } from '@/lib/api/spaces'
 import { getViews, deleteView } from '@/lib/api/views'
@@ -378,7 +379,11 @@ export default function LibraryPage() {
   // 取得は従来どおり裏で走り、終わり次第上書きする。
   const [cached] = useState(() => readPageCache<LibrarySnapshot>(CACHE_KEY))
 
-  const [cards, setCards] = useState<Item[]>(cached?.cards ?? [])
+  // カードは共有ストアから描く。パネルでの作成やカード一覧での削除が
+  // そのまま棚にも効く（ストアはページを移っても保たれる）。
+  const cards = useItemsStore((s) => s.recent)
+  const setCards = useItemsStore((s) => s.setRecent)
+  const removeCards = useItemsStore((s) => s.removeItems)
   const [cardCount, setCardCount] = useState<number | undefined>(cached?.cardCount)
   const [boxes, setBoxes] = useState<Box[]>(cached?.boxes ?? [])
   const [wordlists, setWordlists] = useState<Wordlist[]>(cached?.wordlists ?? [])
@@ -432,6 +437,12 @@ export default function LibraryPage() {
     },
     [shelfLimits]
   )
+
+  // 再読み込み直後はストアが空なので、前回描いていた内容から戻す。
+  // 既に何か入っていれば触らない（取得中の内容を古いもので上書きしないため）。
+  useEffect(() => {
+    if (cards.length === 0 && cached?.cards?.length) setCards(cached.cards)
+  }, [cached, cards.length, setCards])
 
   // 画面の内容をそのままキャッシュに写す。作成・削除で state を触った結果も
   // ここを通るので、キャッシュだけ古いという食い違いが起きない。
@@ -493,7 +504,7 @@ export default function LibraryPage() {
       ])
 
       if (deletedCards.size > 0) {
-        setCards((prev) => prev.filter((c) => !deletedCards.has(c.id)))
+        removeCards(deletedCards)
         setCardCount((prev) => (prev === undefined ? prev : Math.max(0, prev - deletedCards.size)))
       }
       if (delBoxes.size > 0) setBoxes((prev) => prev.filter((c) => !delBoxes.has(c.id)))
@@ -536,6 +547,8 @@ export default function LibraryPage() {
     return () => {
       cancelled = true
     }
+    // 取得は初回のみ。setCards はストアの関数で不変なので依存に含めない
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
   // 横断検索（デバウンス）
