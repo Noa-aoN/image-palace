@@ -22,6 +22,14 @@ export interface ItemMedia {
   generation_info?: MediaGenerationInfo | null
 }
 
+/** 説明文から取り出した主張ひとつと、その検証結果 */
+export interface FactCheckClaim {
+  text: string
+  /** supported=裏づけあり / unsupported=確証なし / contradicted=矛盾 */
+  verdict: 'supported' | 'unsupported' | 'contradicted'
+  note?: string
+}
+
 export interface ItemType {
   id: string
   name: string
@@ -51,6 +59,10 @@ export interface Item {
   fact_check_suggestion?: string | null
   /** 単語名自体の訂正案（取り違え・誤記など） */
   fact_check_title_suggestion?: string | null
+  /** 説明文を読む前に、AIがその語について独立に確認できたこと */
+  fact_check_known?: string | null
+  /** 説明文から取り出した主張ごとの検証結果 */
+  fact_check_claims?: FactCheckClaim[]
   fact_checked_at?: string | null
   style?: string | null
   custom_prompt?: string | null

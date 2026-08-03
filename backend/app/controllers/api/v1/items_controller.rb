@@ -350,13 +350,7 @@ module Api
           meaning.destroy! if meaning.persisted?
         else
           # 説明を書き換えたら、以前のファクトチェック結果は無効化する（古い判定が残らないように）
-          if meaning.definition != definition
-            meaning.fact_check_status = nil
-            meaning.fact_check_comment = nil
-            meaning.fact_check_suggestion = nil
-            meaning.fact_check_title_suggestion = nil
-            meaning.fact_checked_at = nil
-          end
+          meaning.clear_fact_check if meaning.definition != definition
           meaning.definition = definition
           meaning.save!
         end
@@ -366,13 +360,8 @@ module Api
       def clear_fact_check!(meaning)
         return unless meaning&.persisted?
 
-        meaning.update!(
-          fact_check_status: nil,
-          fact_check_comment: nil,
-          fact_check_suggestion: nil,
-          fact_check_title_suggestion: nil,
-          fact_checked_at: nil
-        )
+        meaning.clear_fact_check
+        meaning.save!
       end
 
       # item[tags] にタグ名配列が渡された場合のみ、その内容でタグを設定する（未指定なら変更しない）。
@@ -401,6 +390,8 @@ module Api
           fact_check_comment: item.primary_meaning&.fact_check_comment,
           fact_check_suggestion: item.primary_meaning&.fact_check_suggestion,
           fact_check_title_suggestion: item.primary_meaning&.fact_check_title_suggestion,
+          fact_check_known: item.primary_meaning&.fact_check_known,
+          fact_check_claims: item.primary_meaning&.fact_check_claims || [],
           fact_checked_at: item.primary_meaning&.fact_checked_at,
           style: item.style,
           custom_prompt: item.custom_prompt,
