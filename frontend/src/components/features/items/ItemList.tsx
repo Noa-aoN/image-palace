@@ -1,6 +1,6 @@
 'use client'
 
-import { startTransition, useEffect, useEffectEvent, useRef, useState } from 'react'
+import { startTransition, useEffect, useEffectEvent, useRef, useState, useCallback } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { ChevronLeft, ChevronRight, Search, X, Trash2, CheckSquare, Square, Tags, Tag as TagIcon, ShieldCheck, FileText } from 'lucide-react'
@@ -8,7 +8,8 @@ import { Button } from '@/components/ui/button'
 import { Spinner } from '@/components/ui/spinner'
 import { CardGridSkeleton } from '@/components/ui/skeleton'
 import { GeneratingOverlay } from '@/components/features/items/GeneratingOverlay'
-import { STATUS_LABEL, POLLING_STATUSES } from '@/lib/item-status'
+import { STATUS_LABEL } from '@/lib/item-status'
+import { usePendingRefresh } from '@/hooks/usePendingRefresh'
 import { StatusBadge } from '@/components/features/items/StatusBadge'
 import {
   getItemsPage,
@@ -228,7 +229,6 @@ export function ItemList({ initialTag = null }: { initialTag?: string | null }) 
   const [suggestFocused, setSuggestFocused] = useState(false)
   const [suggestOpen, setSuggestOpen] = useState(true)
   const [activeIndex, setActiveIndex] = useState(-1)
-  const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const requestInFlightRef = useRef(false)
 
   // 選択モード・一括削除
@@ -476,32 +476,13 @@ export function ItemList({ initialTag = null }: { initialTag?: string | null }) 
   useEffect(() => {
     let cancelled = false
 
-    const clearTimer = () => {
-      if (timerRef.current) {
-        clearTimeout(timerRef.current)
-        timerRef.current = null
-      }
-    }
-
-    // ページ切り替え時は前ページの生成中ポーリングを止める
-    clearTimer()
     setLoading(true)
 
+    // 取得は 1 回だけ。生成中を追いかけるのは usePendingRefresh に任せる。
+    // ここで自前に繰り返すと、取得時点で生成中が居なかった場合に起動せず、
+    // 後からパネルで作られたカードの完成を拾えない。
     const poll = async () => {
-      if (typeof document !== 'undefined' && document.hidden) {
-        timerRef.current = setTimeout(poll, 10000)
-        return
-      }
-
-      const fetched = await fetchPage(page)
-      if (cancelled) return
-
-      // 表示中ページに生成中カードがある間だけポーリングを継続する
-      const latestItems = fetched ?? useItemsStore.getState().items
-      const hasPending = latestItems.some((item) => POLLING_STATUSES.has(item.generation_status))
-      if (hasPending) {
-        timerRef.current = setTimeout(poll, 3000)
-      }
+      await fetchPage(page)
     }
 
     poll().finally(() => {
@@ -510,9 +491,18 @@ export function ItemList({ initialTag = null }: { initialTag?: string | null }) 
 
     return () => {
       cancelled = true
-      clearTimer()
     }
   }, [page, activeTag, appliedQuery, sortKey, statusFilter, refreshToken])
+
+  /*
+    生成中のカードがある間だけ取り直す。
+    パネルで作られたカードもストアへ入るので、ここが拾って完成を反映する。
+  */
+  // 取得そのものは効果の中で行う決まりなので、印を進めて効果を動かす
+  const refreshCurrentPage = useCallback(() => {
+    setRefreshToken((token) => token + 1)
+  }, [])
+  usePendingRefresh(items, refreshCurrentPage)
 
   const goToPage = (next: number) => {
     if (next < 1 || next > totalPages || next === page) return
