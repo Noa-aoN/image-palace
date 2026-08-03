@@ -25,6 +25,7 @@ import {
   House,
   BookOpen,
   Newspaper,
+  Megaphone,
   ShieldCheck,
 } from 'lucide-react'
 import { CreateIcon } from './CreateIcon'
@@ -131,6 +132,7 @@ export const NAV_SECTIONS: NavSection[] = [
   {
     title: '運営',
     items: [
+      { href: '/news', icon: <Megaphone size={22} />, label: 'お知らせ' },
       { href: '/guide', icon: <BookOpen size={22} />, label: '使い方' },
       { href: '/blog', icon: <Newspaper size={22} />, label: 'コラム' },
     ],

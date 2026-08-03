@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_08_04_000007) do
+ActiveRecord::Schema[8.1].define(version: 2026_08_04_000008) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
   enable_extension "pgcrypto"
@@ -235,6 +235,24 @@ ActiveRecord::Schema[8.1].define(version: 2026_08_04_000007) do
     t.datetime "updated_at", null: false
     t.index ["name"], name: "index_plans_on_name", unique: true
     t.index ["stripe_price_id"], name: "index_plans_on_stripe_price_id", unique: true, where: "(stripe_price_id IS NOT NULL)"
+  end
+
+  create_table "posts", id: :uuid, default: -> { "gen_random_uuid()" }, force: :cascade do |t|
+    t.uuid "author_id"
+    t.jsonb "body", default: [], null: false
+    t.string "category", default: "news", null: false
+    t.datetime "created_at", null: false
+    t.datetime "delivered_at"
+    t.text "excerpt"
+    t.boolean "pinned", default: false, null: false
+    t.datetime "published_at"
+    t.integer "reading_minutes"
+    t.string "slug", null: false
+    t.jsonb "tags", default: [], null: false
+    t.string "title", null: false
+    t.datetime "updated_at", null: false
+    t.index ["category", "published_at"], name: "index_posts_on_category_and_published_at"
+    t.index ["slug"], name: "index_posts_on_slug", unique: true
   end
 
   create_table "relations", id: :uuid, default: -> { "gen_random_uuid()" }, force: :cascade do |t|
@@ -630,6 +648,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_08_04_000007) do
   add_foreign_key "meanings", "items", on_delete: :cascade
   add_foreign_key "medias", "items", on_delete: :cascade
   add_foreign_key "notifications", "users", on_delete: :cascade
+  add_foreign_key "posts", "users", column: "author_id", on_delete: :nullify
   add_foreign_key "relations", "items", column: "from_item_id", on_delete: :cascade
   add_foreign_key "relations", "items", column: "to_item_id", on_delete: :cascade
   add_foreign_key "relations", "users", on_delete: :cascade

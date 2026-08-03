@@ -6,6 +6,7 @@ import { getAdminOverview, getAdminSession } from '@/lib/api/admin'
 import { TrendChart } from '@/components/features/admin/TrendChart'
 import { AdminUsersPanel } from '@/components/features/admin/AdminUsersPanel'
 import { AdminAuditPanel } from '@/components/features/admin/AdminAuditPanel'
+import { AdminPostsPanel } from '@/components/features/admin/AdminPostsPanel'
 import type { AdminOverview, AdminSession } from '@/types/admin'
 
 /**
@@ -148,6 +149,7 @@ export default function AdminPage() {
             )}
           </section>
 
+          <AdminPostsPanel />
           <AdminUsersPanel canChangeRole={session.owner} />
           <AdminAuditPanel />
         </>
