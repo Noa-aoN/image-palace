@@ -6,6 +6,7 @@ import Link from 'next/link'
 import { useParams, useRouter } from 'next/navigation'
 import { Trash2, Pencil, Check, X, Plus, ChevronUp, ChevronDown, ChevronLeft, ChevronRight, Loader2, Route, DoorOpen, Play, Search, Images } from 'lucide-react'
 import { Button } from '@/components/ui/button'
+import { POLLING_STATUSES } from '@/lib/item-status'
 import { Breadcrumb } from '@/components/ui/breadcrumb'
 import { Input } from '@/components/ui/input'
 import { CardImage } from '@/components/ui/card-image'
@@ -62,7 +63,6 @@ function SpaceCoverFallback({ spaceType }: { spaceType: string }) {
 }
 
 // 生成中とみなすステータス（ポーリング継続条件）
-const POLLING_STATUSES = new Set(['pending', 'processing'])
 
 
 // 既存カードを配置する検索ピッカー（モーダル）。カードの画像を点の背景画像に使う。
