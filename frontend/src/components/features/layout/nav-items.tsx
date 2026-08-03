@@ -25,6 +25,7 @@ import {
   House,
   BookOpen,
   Newspaper,
+  ShieldCheck,
 } from 'lucide-react'
 import { CreateIcon } from './CreateIcon'
 
@@ -135,3 +136,10 @@ export const NAV_SECTIONS: NavSection[] = [
     ],
   },
 ]
+
+// 運営メンバーにだけ出すセクション（サイドバーで条件付きに足す）。
+// ここに出す／出さないは見た目の話で、守りはサーバー側の権限判定が行う。
+export const ADMIN_SECTION: NavSection = {
+  title: '運営',
+  items: [{ href: '/admin', icon: <ShieldCheck size={22} />, label: '運営' }],
+}

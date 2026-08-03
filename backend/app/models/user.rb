@@ -7,6 +7,17 @@ class User < ApplicationRecord
   # == devise-token-auth設定 ================================================
   include DeviseTokenAuth::Concerns::User
 
+  # == 役割 ==================================================================
+  # user: 一般 / admin: 運営（閲覧・コンテンツ管理） / owner: 運営の管理者（権限の付け外し・譲渡）
+  #
+  # 権限の在り処は DB にする。将来チームが増えても、譲渡することになっても、
+  # 環境変数を触らずに人を足したり移したりできるようにするため。
+  #
+  # ENV の ADMIN_EMAILS は「最初のひとり」を作るための入口であり、
+  # 締め出されたときの逃げ道でもある。ここに書いたアドレスは常に owner として扱う。
+  ROLES = %w[user admin owner].freeze
+  validates :role, inclusion: { in: ROLES }
+
   # == バリデーション =========================================================
   validates :uid, uniqueness: { scope: :provider }
 
@@ -161,6 +172,32 @@ class User < ApplicationRecord
 
   # == クラスメソッド =========================================================
   # OAuthプロバイダーからユーザーを見出し作成
+  # == 役割の判定 =============================================================
+  # 環境変数の入口は「確認済みのアドレス」にだけ効かせる。
+  # 未確認のうちから権限を持てると、アドレスを騙るだけで入れてしまうため。
+  def bootstrap_owner?
+    return false if confirmed_at.blank? || email.blank?
+
+    self.class.bootstrap_owner_emails.include?(email.to_s.downcase)
+  end
+
+  def owner?
+    role == "owner" || bootstrap_owner?
+  end
+
+  def admin?
+    role == "admin" || owner?
+  end
+
+  # 表示・記録用の実効役割（環境変数由来の owner もそう見せる）
+  def effective_role
+    owner? ? "owner" : role
+  end
+
+  def self.bootstrap_owner_emails
+    ENV.fetch("ADMIN_EMAILS", "").split(",").map { |email| email.strip.downcase }.reject(&:blank?)
+  end
+
   def self.find_for_oauth(auth_hash)
     # provider + uid のみで既存ユーザーを検索
     user = find_by(provider: auth_hash["provider"], uid: auth_hash["uid"])

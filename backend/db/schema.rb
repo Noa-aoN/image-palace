@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_08_04_000006) do
+ActiveRecord::Schema[8.1].define(version: 2026_08_04_000007) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
   enable_extension "pgcrypto"
@@ -41,6 +41,18 @@ ActiveRecord::Schema[8.1].define(version: 2026_08_04_000006) do
     t.bigint "blob_id", null: false
     t.string "variation_digest", null: false
     t.index ["blob_id", "variation_digest"], name: "index_active_storage_variant_records_uniqueness", unique: true
+  end
+
+  create_table "admin_audit_logs", id: :uuid, default: -> { "gen_random_uuid()" }, force: :cascade do |t|
+    t.string "action", null: false
+    t.string "actor_email"
+    t.uuid "actor_id"
+    t.datetime "created_at", null: false
+    t.jsonb "details", default: {}, null: false
+    t.uuid "target_id"
+    t.string "target_type"
+    t.index ["actor_id", "created_at"], name: "index_admin_audit_logs_on_actor_id_and_created_at"
+    t.index ["created_at"], name: "index_admin_audit_logs_on_created_at"
   end
 
   create_table "ai_usages", id: :uuid, default: -> { "gen_random_uuid()" }, force: :cascade do |t|
@@ -602,6 +614,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_08_04_000006) do
 
   add_foreign_key "active_storage_attachments", "active_storage_blobs", column: "blob_id"
   add_foreign_key "active_storage_variant_records", "active_storage_blobs", column: "blob_id"
+  add_foreign_key "admin_audit_logs", "users", column: "actor_id", on_delete: :nullify
   add_foreign_key "ai_usages", "users", on_delete: :cascade
   add_foreign_key "box_entries", "boxes", on_delete: :cascade
   add_foreign_key "box_items", "boxes", on_delete: :cascade
