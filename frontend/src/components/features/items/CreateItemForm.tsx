@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { ChevronRight, Eraser, ListChecks, Sparkles } from 'lucide-react'
+import { ArrowDownToLine, ChevronRight, Eraser, ListChecks, Sparkles } from 'lucide-react'
 import { PanelSlotContent } from '@/components/features/panel/PanelSlot'
 import { useRightPanelStore } from '@/stores/rightPanel'
 import { useRouter } from 'next/navigation'
@@ -283,7 +283,7 @@ export function CreateItemForm({
             >
               <ListChecks size={15} />
               ワードリスト
-              <ChevronRight size={15} className={`transition-transform ${showWordlists ? 'rotate-90' : ''}`} />
+              <ArrowDownToLine size={15} className="text-muted-foreground" />
             </Button>
           )}
           <Button
@@ -297,6 +297,7 @@ export function CreateItemForm({
           >
             {consulting ? <Spinner size={15} /> : <Sparkles size={15} />}
             デルフォイ
+            <ArrowDownToLine size={15} className="text-muted-foreground" />
           </Button>
           {input.trim().length > 0 && (
             <Button
