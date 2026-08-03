@@ -166,7 +166,7 @@ export function AppHeader() {
               </DropdownMenuGroup>
               <DropdownMenuSeparator />
               <DropdownMenuItem onClick={() => router.push('/account')} className="cursor-pointer">
-                アカウント設定
+                アカウント管理
               </DropdownMenuItem>
               <DropdownMenuItem onClick={() => router.push('/billing')} className="cursor-pointer">
                 プラン・支払い

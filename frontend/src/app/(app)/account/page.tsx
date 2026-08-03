@@ -150,14 +150,14 @@ export default function AccountPage() {
         <div>
           <h1 className="flex items-center gap-2.5 text-2xl font-semibold">
             <UserCog size={26} style={{ color: 'var(--palace)' }} />
-            アカウント設定
+            アカウント管理
           </h1>
           <p className="mt-2 text-muted-foreground">
             プロフィール・ログイン情報・退会など、アカウント本体に関する設定です。
           </p>
         </div>
 
-        <CategorySections sections={sections} ariaLabel="アカウント設定カテゴリ" />
+        <CategorySections sections={sections} ariaLabel="アカウント管理カテゴリ" />
       </div>
     </div>
   )
