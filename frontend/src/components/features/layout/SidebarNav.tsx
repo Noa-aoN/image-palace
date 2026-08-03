@@ -1,9 +1,11 @@
 'use client'
 
+import { Suspense } from 'react'
 import Link from 'next/link'
-import { usePathname } from 'next/navigation'
+import { usePathname, useSearchParams } from 'next/navigation'
 import { ChevronDown, ChevronUp } from 'lucide-react'
 import { useUiStore } from '@/stores/ui'
+import { isNavItemActive } from '@/lib/nav-active'
 import { NAV_SECTIONS, type NavNode } from './nav-items'
 import { useOpenCardCreate } from '@/components/features/items/CardCreatePanel'
 
@@ -15,20 +17,47 @@ interface Props {
 }
 
 /**
- * サイドバー（デスクトップ）とモバイルドロワーで共有するナビ本体。
- * セクション見出し＋開閉グループ（ライブラリ=リンク＋開閉、アトリエ=開閉のみ）を描画する。
+ * サイドバー（デスクトップ）とモバイルドロワーで共有するナビ。
+ *
+ * 「/views」と「/views?type=deck」はパスが同じなので、選択中の判定には絞り込みも要る。
+ * 絞り込みを読む useSearchParams は静的プリレンダリングを外してしまうため、
+ * 読む側だけを Suspense の内側に閉じ込める。外側（フォールバック）は絞り込み無しで
+ * 同じ見た目を描くので、各ページの静的化は保たれ、ちらつきも起きない。
  */
-export function SidebarNav({ iconsOnly = false, onNavigate }: Props) {
+export function SidebarNav(props: Props) {
+  return (
+    <Suspense fallback={<NavTree {...props} currentQuery={null} />}>
+      <NavWithQuery {...props} />
+    </Suspense>
+  )
+}
+
+function NavWithQuery(props: Props) {
+  const searchParams = useSearchParams()
+  return <NavTree {...props} currentQuery={searchParams.toString()} />
+}
+
+// 階層の深さぶん字下げする（0=直下, 1=子, 2=孫）
+const INDENT = ['px-2', 'pl-9 pr-2', 'pl-14 pr-2']
+
+function NavTree({
+  iconsOnly = false,
+  onNavigate,
+  currentQuery,
+}: Props & {
+  /** 現在の絞り込み。null は「まだ読めていない」＝パスだけで判定する */
+  currentQuery: string | null
+}) {
   const openCardCreate = useOpenCardCreate()
   const pathname = usePathname()
   const collapsedGroups = useUiStore((s) => s.collapsedGroups)
   const toggleGroup = useUiStore((s) => s.toggleGroup)
 
-  const isActive = (href: string) => pathname === href || pathname.startsWith(href + '/')
+  const isActive = (href: string) => isNavItemActive(href, pathname, currentQuery)
 
-  const linkClass = (href: string, nested: boolean) =>
+  const linkClass = (depth: number) =>
     `flex rounded-lg py-2.5 text-sm font-medium transition-colors hover:bg-black/5 ${
-      iconsOnly ? 'items-center justify-center px-0' : `items-center gap-3 ${nested ? 'pl-9 pr-2' : 'px-2'}`
+      iconsOnly ? 'items-center justify-center px-0' : `items-center gap-3 ${INDENT[depth] ?? INDENT[2]}`
     }`
 
   const linkStyle = (href: string): React.CSSProperties => ({
@@ -38,7 +67,7 @@ export function SidebarNav({ iconsOnly = false, onNavigate }: Props) {
     overflow: 'hidden',
   })
 
-  const renderLink = (node: NavNode, nested = false) => {
+  const renderLink = (node: NavNode, depth = 0) => {
     // パネルで開くものは画面を移らない。見た目はリンクと揃える
     if (node.panel === 'card-create') {
       return (
@@ -49,7 +78,7 @@ export function SidebarNav({ iconsOnly = false, onNavigate }: Props) {
             openCardCreate()
             onNavigate?.()
           }}
-          className={`${linkClass('#', nested)} w-full text-left`}
+          className={`${linkClass(depth)} w-full text-left`}
           title={iconsOnly ? node.label : undefined}
         >
           <span className="shrink-0">{node.icon}</span>
@@ -64,7 +93,7 @@ export function SidebarNav({ iconsOnly = false, onNavigate }: Props) {
         key={node.label}
         href={href}
         onClick={onNavigate}
-        className={linkClass(href, nested)}
+        className={linkClass(depth)}
         style={linkStyle(href)}
         title={iconsOnly ? node.label : undefined}
       >
@@ -74,12 +103,12 @@ export function SidebarNav({ iconsOnly = false, onNavigate }: Props) {
     )
   }
 
-  const renderNode = (node: NavNode) => {
-    if (!node.children) return renderLink(node)
+  const renderNode = (node: NavNode, depth = 0) => {
+    if (!node.children) return renderLink(node, depth)
 
     // 折りたたみ時: 親アイコンのみ（リンクがあればリンク化）。子は隠す。
     if (iconsOnly) {
-      if (node.href) return renderLink(node)
+      if (node.href) return renderLink(node, depth)
       return (
         <div key={node.label} className="flex items-center justify-center py-2.5" title={node.label}>
           <span className="shrink-0">{node.icon}</span>
@@ -97,7 +126,7 @@ export function SidebarNav({ iconsOnly = false, onNavigate }: Props) {
         <Link
           href={node.href}
           onClick={onNavigate}
-          className="flex flex-1 items-center gap-3 rounded-lg px-2 py-2.5 text-sm font-medium transition-colors hover:bg-black/5"
+          className={`flex-1 ${linkClass(depth)}`}
           style={linkStyle(node.href)}
         >
           <span className="shrink-0">{node.icon}</span>
@@ -118,7 +147,7 @@ export function SidebarNav({ iconsOnly = false, onNavigate }: Props) {
       <button
         type="button"
         onClick={() => toggleGroup(node.label)}
-        className="flex w-full items-center gap-3 rounded-lg px-2 py-2.5 text-sm font-medium transition-colors hover:bg-black/5"
+        className={`w-full ${linkClass(depth)}`}
         aria-expanded={!collapsed}
       >
         <span className="shrink-0">{node.icon}</span>
@@ -130,7 +159,7 @@ export function SidebarNav({ iconsOnly = false, onNavigate }: Props) {
     return (
       <div key={node.label} className="flex flex-col gap-1">
         {header}
-        {!collapsed && node.children.map((child) => renderLink(child, true))}
+        {!collapsed && node.children.map((child) => renderNode(child, depth + 1))}
       </div>
     )
   }
@@ -144,7 +173,7 @@ export function SidebarNav({ iconsOnly = false, onNavigate }: Props) {
           ) : (
             <p className="px-2 pt-3 pb-1 text-xs font-semibold text-muted-foreground">{section.title}</p>
           )}
-          {section.items.map(renderNode)}
+          {section.items.map((node) => renderNode(node))}
         </div>
       ))}
     </div>
