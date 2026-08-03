@@ -32,7 +32,8 @@ const InShelfGridContext = createContext(false)
 
 /**
  * 棚を並べる枠。縦棚を横に並べる設定のときだけ段組みにする。
- * 棚の高さは中身で決まるので、列の高さを揃えるために items-stretch を効かせる。
+ * 高さは揃えない。揃えると中身の少ない棚が最長の棚に引き伸ばされ、
+ * 使われない空きが棚の中に残るため。
  *
  * 段組みは最も外側の 1 段だけに掛ける。傘セクションの中でさらに段組みすると
  * 1 列の幅が 1/3 の 1/3 になり、棚として読めなくなるため。
@@ -48,9 +49,12 @@ export function ShelfGroup({ children, className = '' }: { children: ReactNode; 
           広い画面では 4 列を基本にする。auto-fill だと余白やサイドバーの有無で列数が
           3 になったり 5 になったりして棚の太さが安定しないため、段階を明示して決め打ちする。
           アイテムは列いっぱいに広がるので、列数が決まれば棚の太さも決まる。
+
+          高さは揃えない。揃えると中身の少ない棚が最長の棚に引き伸ばされ、
+          使われない空きが棚の中に残るため。
         */}
         <div
-          className={`grid grid-cols-1 items-stretch gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 ${className}`}
+          className={`grid grid-cols-1 items-start gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 ${className}`}
         >
           {children}
         </div>
