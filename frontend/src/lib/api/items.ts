@@ -127,6 +127,10 @@ export interface ItemUpdatePayload {
   meaning?: string
   /** タグ名の配列で置き換える（未指定なら変更しない） */
   tags?: string[]
+  /** ① 画像を作る前の説明文。手で直すと以後の自動生成で上書きされない */
+  image_description?: string
+  /** ② 情景プロンプト。空文字を渡すと単語をそのまま使う状態に戻る */
+  scene_prompt?: string
 }
 
 export async function updateItem(id: string, payload: ItemUpdatePayload): Promise<Item> {
@@ -211,6 +215,13 @@ export async function generateTags(
   if (opts?.replace) body.replace = true
   if (opts?.onlyIfEmpty) body.only_if_empty = true
   const res = await apiClient.post<ItemOrSkip>(`/api/v1/items/${id}/tags`, body)
+  return res.data
+}
+
+// 画像の下ごしらえ（説明文・情景プロンプト）を作り直す（同期）。
+// 手で直した内容も、明示的に呼ばれたときだけ作り直す。
+export async function regenerateBrief(id: string): Promise<Item> {
+  const res = await apiClient.post<Item>(`/api/v1/items/${id}/brief`)
   return res.data
 }
 

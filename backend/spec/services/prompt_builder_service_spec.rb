@@ -57,5 +57,30 @@ RSpec.describe PromptBuilderService do
       result = described_class.effective_prompt(item)
       expect(result).not_to include("赤い果物")
     end
+
+    context "情景プロンプトがあるとき" do
+      it "単語ではなく情景を主役に置く" do
+        item = build(:item, user: user, title: "機会費用", scene_prompt: "a person at a fork in the road")
+        result = described_class.effective_prompt(item)
+        expect(result).to start_with("a person at a fork in the road,")
+        expect(result).not_to include("機会費用")
+      end
+
+      it "スタイル・カスタム指示は情景の後ろに従来どおり付く" do
+        item = build(:item, user: user, title: "機会費用",
+                     scene_prompt: "a person at a fork in the road",
+                     style: "watercolor", custom_prompt: "at sunrise")
+        result = described_class.effective_prompt(item)
+        expect(result).to include("watercolor")
+        expect(result).to include("at sunrise")
+        expect(result).to end_with(described_class::NO_TEXT_HINT)
+      end
+
+      it "情景が空なら従来と一字一句同じ（既存キャッシュを壊さない）" do
+        with_scene = build(:item, user: user, title: "cat", scene_prompt: "")
+        without = build(:item, user: user, title: "cat")
+        expect(described_class.effective_prompt(with_scene)).to eq(described_class.effective_prompt(without))
+      end
+    end
   end
 end

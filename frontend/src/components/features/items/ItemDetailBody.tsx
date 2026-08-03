@@ -9,6 +9,7 @@ import { Skeleton } from '@/components/ui/skeleton'
 import { ItemProperties } from '@/components/features/items/ItemProperties'
 import { RegeneratePanel } from '@/components/features/items/RegeneratePanel'
 import { GenerationInfo } from '@/components/features/items/GenerationInfo'
+import { ImageBriefPanel } from '@/components/features/items/ImageBriefPanel'
 import { GeneratingOverlay } from '@/components/features/items/GeneratingOverlay'
 import { StatusBadge } from '@/components/features/items/StatusBadge'
 import { useItemDetail } from '@/hooks/useItemDetail'
@@ -146,6 +147,9 @@ export function ItemDetailBody({ itemId, onDeleted }: { itemId: string; onDelete
       <div className="flex justify-end">
         <GenerationInfo item={item} />
       </div>
+
+      {/* 画像の作られ方（説明文 → 情景） */}
+      <ImageBriefPanel item={item} onUpdated={applyUpdated} />
 
       {/* 再生成 */}
       {(item.generation_status === 'failed' || item.generation_status === 'completed') && (

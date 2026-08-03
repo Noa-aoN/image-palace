@@ -42,10 +42,11 @@ RSpec.describe "Api::V1::Items", type: :request do
 
   describe "POST /api/v1/items" do
     it "enqueues image generation and returns pending item" do
+      # 画像の前に下ごしらえ（説明文・情景プロンプト）を挟み、そこから画像生成へ引き継ぐ
       expect {
         expect {
           post "/api/v1/items", params: { item: { title: "富士山" } }, headers: headers, as: :json
-        }.to have_enqueued_job(GenerateImageJob)
+        }.to have_enqueued_job(GenerateBriefJob)
       }.to change { user.items.count }.by(1)
 
       expect(response).to have_http_status(:accepted)
@@ -63,7 +64,7 @@ RSpec.describe "Api::V1::Items", type: :request do
         post "/api/v1/items",
           params: { item: { title: "あ" * (Item::MAX_TITLE_LENGTH + 1) } },
           headers: headers, as: :json
-      }.not_to have_enqueued_job(GenerateImageJob)
+      }.not_to have_enqueued_job
 
       expect(response).to have_http_status(:unprocessable_content)
       expect(json_response["errors"]).to be_present
@@ -85,7 +86,7 @@ RSpec.describe "Api::V1::Items", type: :request do
     it "不適切なプロンプトは 422 を返し、アイテムを作らずジョブも積まない" do
       expect {
         post "/api/v1/items", params: { item: { title: "a cute loli" } }, headers: headers, as: :json
-      }.not_to have_enqueued_job(GenerateImageJob)
+      }.not_to have_enqueued_job
 
       expect(response).to have_http_status(:unprocessable_content)
       expect(json_response["error"]).to be_present
@@ -516,7 +517,7 @@ RSpec.describe "Api::V1::Items", type: :request do
 
       expect {
         post "/api/v1/items/#{item.id}/retry", headers: headers, as: :json
-      }.to have_enqueued_job(GenerateImageJob).with(item.id, force_generate: false, use_meaning: false)
+      }.to have_enqueued_job(GenerateBriefJob).with(item.id, force_generate: false, use_meaning: false)
 
       expect(response).to have_http_status(:accepted)
       expect(item.reload.generation_status).to eq("pending")
@@ -530,10 +531,21 @@ RSpec.describe "Api::V1::Items", type: :request do
 
       expect {
         post "/api/v1/items/#{item.id}/retry", headers: headers, as: :json
-      }.to have_enqueued_job(GenerateImageJob).with(item.id, force_generate: true, use_meaning: false)
+      }.to have_enqueued_job(GenerateBriefJob).with(item.id, force_generate: true, use_meaning: false)
 
       expect(response).to have_http_status(:accepted)
       expect(item.reload.generation_status).to eq("pending")
+    end
+
+    it "情景プロンプトが既にあるカードは、下ごしらえを挟まず画像生成へ進む" do
+      item = user.items.create!(
+        title: "富士山", item_type: item_type, generation_status: "completed",
+        scene_prompt: "a snow-capped mountain", brief_status: "completed"
+      )
+
+      expect {
+        post "/api/v1/items/#{item.id}/retry", headers: headers, as: :json
+      }.to have_enqueued_job(GenerateImageJob).with(item.id, force_generate: true, use_meaning: false)
     end
 
     it "指示（custom_prompt / style）を渡すと item に反映して再生成する" do
@@ -543,7 +555,7 @@ RSpec.describe "Api::V1::Items", type: :request do
         post "/api/v1/items/#{item.id}/retry",
           params: { item: { custom_prompt: "断面を見せて", style: "watercolor" } },
           headers: headers, as: :json
-      }.to have_enqueued_job(GenerateImageJob).with(item.id, force_generate: true, use_meaning: false)
+      }.to have_enqueued_job(GenerateBriefJob).with(item.id, force_generate: true, use_meaning: false)
 
       expect(response).to have_http_status(:accepted)
       item.reload
@@ -559,7 +571,7 @@ RSpec.describe "Api::V1::Items", type: :request do
         post "/api/v1/items/#{item.id}/retry",
           params: { item: { use_meaning: true } },
           headers: headers, as: :json
-      }.to have_enqueued_job(GenerateImageJob).with(item.id, force_generate: true, use_meaning: true)
+      }.to have_enqueued_job(GenerateBriefJob).with(item.id, force_generate: true, use_meaning: true)
 
       expect(response).to have_http_status(:accepted)
     end
@@ -797,6 +809,128 @@ RSpec.describe "Api::V1::Items", type: :request do
 
         expect(json_response["status"]).to eq("skipped")
         expect(json_response["reason"]).to eq("already_has_meaning")
+      end
+    end
+  end
+
+  describe "画像の下ごしらえ（説明文・情景プロンプト）" do
+    let(:brief) do
+      SharedBrief.create!(
+        normalized_source: "機会費用\nv1",
+        description: "ある選択で諦めた他の選択肢の価値。",
+        subject_kind: "abstract",
+        scene_prompt: "a person standing at a fork in a country road"
+      )
+    end
+
+    it "作成時は画像より先に下ごしらえのジョブを積む" do
+      expect {
+        post "/api/v1/items", params: { item: { title: "機会費用" } }, headers: headers, as: :json
+      }.to have_enqueued_job(GenerateBriefJob)
+
+      expect(response).to have_http_status(:accepted)
+      expect(json_response["brief_status"]).to eq("pending")
+    end
+
+    it "詳細に説明文と情景プロンプトを含める" do
+      item = user.items.create!(
+        title: "機会費用", item_type: item_type, generation_status: "completed",
+        image_description: "説明", scene_prompt: "a fork in the road", brief_status: "completed"
+      )
+
+      get "/api/v1/items/#{item.id}", headers: headers
+
+      expect(json_response["image_description"]).to eq("説明")
+      expect(json_response["scene_prompt"]).to eq("a fork in the road")
+      expect(json_response["brief_status"]).to eq("completed")
+      expect(json_response["brief_edited"]).to be(false)
+    end
+
+    describe "PATCH で編集する" do
+      let(:item) do
+        user.items.create!(
+          title: "機会費用", item_type: item_type, generation_status: "completed",
+          image_description: "自動の説明", scene_prompt: "auto scene", brief_status: "completed"
+        )
+      end
+
+      it "手直しすると編集済みとして記録し、以後の自動生成で上書きしない" do
+        patch "/api/v1/items/#{item.id}",
+              params: { item: { scene_prompt: "my own scene" } }, headers: headers, as: :json
+
+        expect(response).to have_http_status(:success)
+        expect(item.reload.scene_prompt).to eq("my own scene")
+        expect(item.brief_edited?).to be(true)
+        expect(json_response["brief_edited"]).to be(true)
+      end
+
+      it "情景を空にすると「無し」に戻る（単語をそのまま使う）" do
+        patch "/api/v1/items/#{item.id}",
+              params: { item: { scene_prompt: "" } }, headers: headers, as: :json
+
+        expect(item.reload.brief_status).to eq("none")
+        expect(PromptBuilderService.subject(item)).to eq("機会費用")
+      end
+
+      it "編集しても画像は作り直さない（明示的な再生成のときだけ）" do
+        expect {
+          patch "/api/v1/items/#{item.id}",
+                params: { item: { scene_prompt: "my own scene" } }, headers: headers, as: :json
+        }.not_to have_enqueued_job(GenerateImageJob)
+      end
+
+      it "情景プロンプトも作成時と同じ基準で検査する" do
+        allow(Moderation::PromptModerator).to receive(:call)
+          .and_return(Moderation::PromptModerator::Result.new(allowed: false, category: "test", term: "ng"))
+
+        patch "/api/v1/items/#{item.id}",
+              params: { item: { scene_prompt: "something blocked" } }, headers: headers, as: :json
+
+        expect(response).to have_http_status(:unprocessable_entity)
+        expect(item.reload.scene_prompt).to eq("auto scene")
+      end
+    end
+
+    describe "POST /api/v1/items/:id/brief" do
+      it "作り直して保存する" do
+        item = user.items.create!(title: "機会費用", item_type: item_type, generation_status: "completed")
+        allow(Images::BriefResolver).to receive(:call).and_return(brief)
+
+        post "/api/v1/items/#{item.id}/brief", headers: headers, as: :json
+
+        expect(response).to have_http_status(:success)
+        expect(item.reload.scene_prompt).to eq("a person standing at a fork in a country road")
+        expect(json_response["brief_status"]).to eq("completed")
+      end
+
+      it "手直し済みでも、明示的に押されたら作り直して編集済みを解除する" do
+        item = user.items.create!(
+          title: "機会費用", item_type: item_type, generation_status: "completed",
+          scene_prompt: "my own scene", brief_edited_at: Time.current
+        )
+        allow(Images::BriefResolver).to receive(:call).and_return(brief)
+
+        post "/api/v1/items/#{item.id}/brief", headers: headers, as: :json
+
+        expect(item.reload.brief_edited?).to be(false)
+        expect(item.scene_prompt).not_to eq("my own scene")
+      end
+
+      it "他人のカードは作り直せない" do
+        other = create(:user, :confirmed)
+        item = other.items.create!(title: "他人", item_type: item_type, generation_status: "completed")
+
+        post "/api/v1/items/#{item.id}/brief", headers: headers, as: :json
+
+        expect(response).to have_http_status(:not_found)
+      end
+
+      it "未ログインでは作り直せない" do
+        item = user.items.create!(title: "機会費用", item_type: item_type, generation_status: "completed")
+
+        post "/api/v1/items/#{item.id}/brief", as: :json
+
+        expect(response).to have_http_status(:unauthorized)
       end
     end
   end

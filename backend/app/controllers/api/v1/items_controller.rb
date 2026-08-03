@@ -3,7 +3,8 @@ module Api
     class ItemsController < BaseController
       include ItemSerialization
 
-      before_action :set_item, only: [ :show, :update, :destroy, :retry, :meaning, :generate_tags, :fact_check ]
+      before_action :set_item,
+                    only: [ :show, :update, :destroy, :retry, :meaning, :brief, :generate_tags, :fact_check ]
 
       DEFAULT_PER_PAGE = 24
       MAX_PER_PAGE = 100
@@ -110,15 +111,44 @@ module Api
       def update
         # 単語名を変えたら、説明への以前のファクトチェック判定は無効化する
         title_changed = item_update_params.key?(:title) && item_update_params[:title].to_s != item.title
+        brief_edited = brief_edited_in_update?
+        # 情景プロンプトはそのまま画像生成 API に渡るユーザー入力なので、保存前に検査する
+        moderate_instruction!(item_update_params[:scene_prompt]) if brief_edited
+
         Item.transaction do
           item.update!(item_update_params)
+          mark_brief_edited! if brief_edited
           upsert_meaning!
           assign_tags!(item)
           clear_fact_check!(item.primary_meaning) if title_changed
         end
         render json: serialize_item(item.reload)
+      rescue Items::CreateService::ContentBlocked => e
+        render json: { error: e.message }, status: :unprocessable_entity
       rescue ActiveRecord::RecordInvalid => e
         render json: { errors: e.record.errors.full_messages }, status: :unprocessable_entity
+      end
+
+      # 説明文・情景プロンプトを作り直す（同期）。詳細画面の「作り直す」から呼ばれる。
+      # 手で直した内容も、明示的に押されたときだけ作り直す。
+      def brief
+        unless Images::BriefResolver.enabled?
+          return render json: { error: "この機能は現在無効になっています" }, status: :service_unavailable
+        end
+
+        result = Images::BriefResolver.call(title: item.title)
+        return render json: { error: "情景を作成できませんでした" }, status: :unprocessable_entity if result.nil?
+
+        item.update!(
+          image_description: result.description,
+          scene_prompt: result.scene_prompt,
+          brief_status: "completed",
+          brief_edited_at: nil
+        )
+        render json: serialize_item(item.reload), status: :ok
+      rescue Images::BriefService::GenerationError, KeyError, Faraday::Error => e
+        Rails.logger.warn "[ItemsController#brief] failed item_id=#{item.id}: #{e.class}: #{e.message}"
+        render json: { error: "情景の作成に失敗しました。時間を置いて再度お試しください。" }, status: :unprocessable_entity
       end
 
       def destroy
@@ -156,7 +186,7 @@ module Api
         # completed の再生成や指示の変更時はキャッシュを使わず新しい画像を生成する
         force = was_completed || instructions.present? || use_meaning
         current_item.update_generation_status!("pending")
-        GenerateImageJob.perform_later(current_item.id, force_generate: force, use_meaning: use_meaning)
+        enqueue_generation(current_item, force_generate: force, use_meaning: use_meaning)
         render json: serialize_item(current_item.reload), status: :accepted
       rescue Items::CreateService::ContentBlocked => e
         render json: { error: e.message }, status: :unprocessable_entity
@@ -262,6 +292,17 @@ module Api
         target.update!(instructions)
       end
 
+      # 情景プロンプトがまだ無いカードは、再生成のついでに下ごしらえから作り直す。
+      # 既にある（＝作成時に作られた／手で直した）ものは、そのまま画像生成へ進めて
+      # 無駄な問い合わせを増やさない。
+      def enqueue_generation(target, force_generate:, use_meaning:)
+        if target.scene_prompt.blank? && !target.brief_edited?
+          GenerateBriefJob.perform_later(target.id, force_generate: force_generate, use_meaning: use_meaning)
+        else
+          GenerateImageJob.perform_later(target.id, force_generate: force_generate, use_meaning: use_meaning)
+        end
+      end
+
       def moderate_instruction!(text)
         return if text.blank?
 
@@ -276,7 +317,24 @@ module Api
       end
 
       def item_update_params
-        params.require(:item).permit(:title, :item_type_id)
+        params.require(:item).permit(:title, :item_type_id, :image_description, :scene_prompt)
+      end
+
+      # 説明文・情景プロンプトを手で直したか。直したものは以後の自動生成で上書きしない
+      BRIEF_EDITABLE_KEYS = %w[image_description scene_prompt].freeze
+
+      def brief_edited_in_update?
+        BRIEF_EDITABLE_KEYS.any? do |key|
+          item_update_params.key?(key) && item_update_params[key].to_s != item.public_send(key).to_s
+        end
+      end
+
+      # 手直しの記録。情景を空にしたら「無し」＝単語をそのまま使う状態に戻す
+      def mark_brief_edited!
+        item.update!(
+          brief_edited_at: Time.current,
+          brief_status: item.scene_prompt.present? ? "completed" : "none"
+        )
       end
 
       # item[meaning] が渡された場合のみ日本語の意味を upsert する。
@@ -346,6 +404,10 @@ module Api
           fact_checked_at: item.primary_meaning&.fact_checked_at,
           style: item.style,
           custom_prompt: item.custom_prompt,
+          image_description: item.image_description,
+          scene_prompt: item.scene_prompt,
+          brief_status: item.brief_status,
+          brief_edited: item.brief_edited?,
           tags: item.tags.map { |t| { id: t.id, name: t.name } },
           media: serialize_media(item.primary_media),
           created_at: item.created_at

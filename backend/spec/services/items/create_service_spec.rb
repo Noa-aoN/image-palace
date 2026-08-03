@@ -8,15 +8,17 @@ RSpec.describe Items::CreateService, type: :service do
     it "creates a pending item with default item type and enqueues image generation" do
       result = nil
 
+      # 画像の前に下ごしらえ（説明文・情景プロンプト）を挟み、そこから画像生成へ引き継ぐ
       expect {
         expect {
           result = described_class.call(user: user, params: { title: "富士山" })
-        }.to have_enqueued_job(GenerateImageJob)
+        }.to have_enqueued_job(GenerateBriefJob)
       }.to change { user.items.count }.by(1)
 
       item = result.item
       expect(item.title).to eq("富士山")
       expect(item.generation_status).to eq("pending")
+      expect(item.brief_status).to eq("pending")
       expect(item.item_type_id).to eq(item_type.id)
       expect(item.generation_error).to be_nil
     end
