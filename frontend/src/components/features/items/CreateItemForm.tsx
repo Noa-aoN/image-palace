@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useRef } from 'react'
 import { ChevronRight, Eraser, ListChecks, Sparkles } from 'lucide-react'
 import { PanelSlotContent } from '@/components/features/panel/PanelSlot'
 import { useRightPanelStore } from '@/stores/rightPanel'
@@ -82,6 +82,20 @@ export function CreateItemForm({
   // 開けるのは 1 グループずつ（同時に開くと縦に伸びて入力欄から遠くなる）
   const [openGroup, setOpenGroup] = useState<'image' | 'enrich' | 'place' | null>(null)
   const [showWordlists, setShowWordlists] = useState(false)
+  const wordlistBoxRef = useRef<HTMLDivElement>(null)
+  // 一覧を開いたまま他を触ったら畳む。開きっぱなしだと入力欄が押し下げられる
+  useEffect(() => {
+    if (!showWordlists) return
+
+    const onPointerDown = (e: PointerEvent) => {
+      const target = e.target as HTMLElement
+      if (target.closest('[data-wordlist-toggle]')) return
+      if (!wordlistBoxRef.current?.contains(target)) setShowWordlists(false)
+    }
+    document.addEventListener('pointerdown', onPointerDown)
+    return () => document.removeEventListener('pointerdown', onPointerDown)
+  }, [showWordlists])
+
   // クリアは押し間違いで入力が消えるため 2 段階にする
   const [confirmClear, setConfirmClear] = useState(false)
   const [consulting, setConsulting] = useState(false)
@@ -276,6 +290,7 @@ export function CreateItemForm({
               type="button"
               variant="outline"
               size="sm"
+              data-wordlist-toggle
               onClick={() => (inPanel ? setShowWordlists((v) => !v) : openWordlistPanel())}
               aria-expanded={inPanel ? showWordlists : undefined}
               disabled={submitting}
@@ -298,33 +313,35 @@ export function CreateItemForm({
             {consulting ? <Spinner size={15} /> : <Sparkles size={15} />}
             デルフォイ
           </Button>
-          {input.trim().length > 0 && (
-            <Button
-              type="button"
-              variant="ghost"
-              size="sm"
-              onClick={() => {
-                if (!confirmClear) {
-                  setConfirmClear(true)
-                  return
-                }
-                setInput('')
-                setConfirmClear(false)
-              }}
-              onBlur={() => setConfirmClear(false)}
-              disabled={submitting}
-              aria-label={confirmClear ? '入力した言葉をすべて消す' : '入力した言葉を消す'}
-              title="入力した言葉を消す"
-              className="flex items-center gap-1.5 text-muted-foreground"
-            >
-              <Eraser size={15} />
-              {confirmClear && <span className="text-xs text-destructive">消しますか？</span>}
-            </Button>
-          )}
+          {/*
+            クリアは常に置く。入力の有無で現れたり消えたりすると、隣のボタンの位置が動く。
+            押し間違いで入力が消えないよう 2 段階にするが、確認中も文字は足さない
+            （足すと狭いパネルで折り返し、入力欄まで遠くなる）。色と説明で示す。
+          */}
+          <Button
+            type="button"
+            variant="ghost"
+            size="sm"
+            onClick={() => {
+              if (!confirmClear) {
+                setConfirmClear(true)
+                return
+              }
+              setInput('')
+              setConfirmClear(false)
+            }}
+            onBlur={() => setConfirmClear(false)}
+            disabled={submitting || input.trim().length === 0}
+            aria-label={confirmClear ? 'もう一度押すと入力した言葉を消す' : '入力した言葉を消す'}
+            title={confirmClear ? 'もう一度押すと消えます' : '入力した言葉を消す'}
+            className={`flex items-center ${confirmClear ? 'text-destructive' : 'text-muted-foreground'}`}
+          >
+            <Eraser size={15} />
+          </Button>
         </div>
 
         {wordlists.length > 0 && (
-          <div className="space-y-2">
+          <div ref={wordlistBoxRef} className="space-y-2">
             {inPanel && showWordlists && (
               <WordlistPicker
                 wordlists={wordlists}
