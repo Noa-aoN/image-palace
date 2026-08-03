@@ -119,7 +119,7 @@ export function CreateItemForm({
   const openSection = useRightPanelStore((st) => st.openSection)
   const closePanel = useRightPanelStore((st) => st.close)
   const openWordlistPanel = () =>
-    openSection({ key: WORDLIST_SECTION, title: 'ワードリスト挿入', href: '/wordlists' })
+    openSection({ key: WORDLIST_SECTION, title: 'ワードリスト', href: '/wordlists' })
   // カンマ・読点での分割は既定オフ。言葉の中に現れる記号なので誤って分かれるため
   const [splitByPunctuation, setSplitByPunctuation] = useState(false)
   const [submitting, setSubmitting] = useState(false)
@@ -282,7 +282,7 @@ export function CreateItemForm({
               className="flex items-center gap-1.5"
             >
               <ListChecks size={15} />
-              ワードリスト挿入
+              ワードリスト
               <ChevronRight size={15} className={`transition-transform ${showWordlists ? 'rotate-90' : ''}`} />
             </Button>
           )}
@@ -296,7 +296,7 @@ export function CreateItemForm({
             className="flex items-center gap-1.5"
           >
             {consulting ? <Spinner size={15} /> : <Sparkles size={15} />}
-            デルフォイ挿入
+            デルフォイ
           </Button>
           {input.trim().length > 0 && (
             <Button
