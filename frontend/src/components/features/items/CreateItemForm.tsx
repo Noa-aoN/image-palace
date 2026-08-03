@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { ChevronRight, Eraser, ListChecks } from 'lucide-react'
+import { ChevronRight, Eraser, ListChecks, Sparkles } from 'lucide-react'
 import { PanelSlotContent } from '@/components/features/panel/PanelSlot'
 import { useRightPanelStore } from '@/stores/rightPanel'
 import { useRouter } from 'next/navigation'
@@ -18,7 +18,7 @@ import { useBillingStore } from '@/stores/billing'
 import { estimatedCards } from '@/lib/billing'
 import { STYLE_OPTIONS, CUSTOM_PROMPT_MAX_LENGTH } from '@/lib/item-styles'
 import { MEANING_LEVELS, meaningLevelLabel, DEFAULT_MEANING_LEVEL } from '@/lib/meaning-levels'
-import { getWordlists } from '@/lib/api/wordlists'
+import { getWordlists, generateWords } from '@/lib/api/wordlists'
 import type { View } from '@/types/view'
 import type { Wordlist } from '@/types/wordlist'
 import { ASPECT_RATIOS, ASPECT_RATIO_KEYS, type AspectRatioKey } from '@/lib/aspect-ratio'
@@ -84,10 +84,42 @@ export function CreateItemForm({
   const [showWordlists, setShowWordlists] = useState(false)
   // クリアは押し間違いで入力が消えるため 2 段階にする
   const [confirmClear, setConfirmClear] = useState(false)
+  const [consulting, setConsulting] = useState(false)
+  const [oracleError, setOracleError] = useState<string | null>(null)
+
+  /*
+    デルフォイ挿入。神託から単語をひとつ受け取り、入力欄の末尾へ足す。
+    ここで作るのは単語だけで、クレジットは消費しない（消費はカードを作る段階）。
+
+    既に入力してある単語は exclude で除く。押すたびに同じ語が出ては使えない。
+    ジャンルや枚数は指定できるようにしない。細かく選びたいときは
+    アクロポリスへ行けばよく、ここは入力を一語足すだけの補助に留める。
+    アクロポリスの履歴にも残さない（あちらは神託を受けて受け取る一連の流れで、
+    こちらは入力補助。混ぜると両方の意味が濁る）。
+  */
+  const consultOracle = async () => {
+    if (consulting || submitting) return
+    setConsulting(true)
+    setOracleError(null)
+    try {
+      const existing = parseTitles(input, splitByPunctuation)
+      const words = await generateWords('', 1, { exclude: existing })
+      const word = words[0]?.trim()
+      if (!word) {
+        setOracleError('神託が得られませんでした。もう一度お試しください。')
+        return
+      }
+      setInput((current) => (current.trim() ? `${current.replace(/\s*$/, '')}\n${word}` : word))
+    } catch {
+      setOracleError('神託に失敗しました。もう一度お試しください。')
+    } finally {
+      setConsulting(false)
+    }
+  }
   const openSection = useRightPanelStore((st) => st.openSection)
   const closePanel = useRightPanelStore((st) => st.close)
   const openWordlistPanel = () =>
-    openSection({ key: WORDLIST_SECTION, title: 'ワードリストから挿入', href: '/wordlists' })
+    openSection({ key: WORDLIST_SECTION, title: 'ワードリスト挿入', href: '/wordlists' })
   // カンマ・読点での分割は既定オフ。言葉の中に現れる記号なので誤って分かれるため
   const [splitByPunctuation, setSplitByPunctuation] = useState(false)
   const [submitting, setSubmitting] = useState(false)
@@ -250,10 +282,22 @@ export function CreateItemForm({
               className="flex items-center gap-1.5"
             >
               <ListChecks size={15} />
-              ワードリストから挿入
+              ワードリスト挿入
               <ChevronRight size={15} className={`transition-transform ${showWordlists ? 'rotate-90' : ''}`} />
             </Button>
           )}
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            onClick={consultOracle}
+            disabled={submitting || consulting}
+            title="デルフォイの神託から単語をひとつ受け取る"
+            className="flex items-center gap-1.5"
+          >
+            {consulting ? <Spinner size={15} /> : <Sparkles size={15} />}
+            デルフォイ挿入
+          </Button>
           {input.trim().length > 0 && (
             <Button
               type="button"
@@ -313,6 +357,8 @@ export function CreateItemForm({
           onChange={(e) => setInput(e.target.value)}
           disabled={submitting}
         />
+        {oracleError && <p className="text-xs text-destructive">{oracleError}</p>}
+
         <div className="space-y-1.5">
           <p className="text-xs text-muted-foreground">
             1 行につき 1 枚。改行で区切ってまとめて作成できます。
