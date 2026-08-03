@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react'
 import { ChevronRight, Eraser, ListChecks } from 'lucide-react'
 import { PanelSlotContent } from '@/components/features/panel/PanelSlot'
 import { useRightPanelStore } from '@/stores/rightPanel'
-import { useRouter, useSearchParams } from 'next/navigation'
+import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { Button } from '@/components/ui/button'
 import { Label } from '@/components/ui/label'
@@ -56,9 +56,8 @@ export function CreateItemForm({
 }: { inPanel?: boolean; wordlistId?: string } = {}) {
   const router = useRouter()
   // ワードリスト詳細から「?wordlist=<id>」で来た場合、その単語を入力欄へ初期投入する
-  // ページでは URL のクエリ、パネルでは開くときに渡された値から受け取る
-  const queryWordlistId = useSearchParams().get('wordlist')
-  const prefillWordlistId = wordlistId ?? queryWordlistId
+  // ワードリストからの持ち込み。呼び出し側（ページ／パネル）が値を渡す
+  const prefillWordlistId = wordlistId
   const upsertItem = useItemsStore((state) => state.upsertItem)
   const billing = useBillingStore((s) => s.summary)
   const fetchBilling = useBillingStore((s) => s.fetchSummary)
