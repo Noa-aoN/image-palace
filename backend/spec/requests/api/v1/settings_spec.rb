@@ -84,4 +84,26 @@ RSpec.describe "Api::V1::Settings", type: :request do
       expect(response).to have_http_status(:unprocessable_entity)
     end
   end
+
+  describe "ライブラリの棚の並び順" do
+    it "未設定でも既定の順を返す" do
+      get "/api/v1/settings", headers: headers
+      expect(json_response["library_order"]).to eq(Setting::LIBRARY_SECTIONS)
+    end
+
+    it "並び順を保存でき、載っていない棚は末尾に回る" do
+      patch "/api/v1/settings", params: { setting: { library_order: %w[spaces cards] } }, headers: headers
+
+      expect(response).to have_http_status(:success)
+      expect(json_response["library_order"]).to eq(%w[spaces cards canvas boxes materials])
+      expect(user.reload.setting.library_order).to eq(%w[spaces cards canvas boxes materials])
+    end
+
+    it "知らない名前を混ぜても壊れない" do
+      patch "/api/v1/settings", params: { setting: { library_order: %w[bogus boxes] } }, headers: headers
+
+      expect(response).to have_http_status(:success)
+      expect(json_response["library_order"]).to eq(%w[boxes cards canvas spaces materials])
+    end
+  end
 end

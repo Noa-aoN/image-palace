@@ -8,6 +8,7 @@ import { ComingSoon } from '@/components/features/myroom/ComingSoon'
 import { exportAccountData } from '@/lib/api/account'
 import { getSettings, updateSettings } from '@/lib/api/settings'
 import { useSettingsStore } from '@/stores/settings'
+import { LibraryOrderSetting } from '@/components/features/settings/LibraryOrderSetting'
 import type { DiagramMode, MotionMode } from '@/types/settings'
 import { STYLE_OPTIONS } from '@/lib/item-styles'
 import { useUiStore } from '@/stores/ui'
@@ -456,6 +457,9 @@ export default function SettingsPage() {
                 {savingShelf && <Loader2 size={14} className="animate-spin text-muted-foreground" />}
               </div>
             )}
+
+            {/* 棚の並び順。宮殿・シンプルどちらの見せ方でも棚の順番は効く */}
+            <LibraryOrderSetting />
           </section>
 
           <section className="space-y-3 rounded-xl border border-border bg-card p-5">
