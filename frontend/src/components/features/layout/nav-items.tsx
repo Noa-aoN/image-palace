@@ -98,13 +98,13 @@ export const NAV_SECTIONS: NavSection[] = [
         ],
       },
       {
-        // 個人用ハブ。アカウント管理/環境設定/プラン・支払い/トロフィーを内包し、自身もマイルームのページへリンク。
+        // 個人用ハブ。アカウント管理/環境設定/利用と支払い/トロフィーを内包し、自身もマイルームのページへリンク。
         href: '/myroom',
         icon: <House size={22} />,
         label: 'マイルーム',
         children: [
           { href: '/account', icon: <UserCog size={20} />, label: 'アカウント管理' },
-          { href: '/billing', icon: <CreditCard size={20} />, label: 'プラン・支払い' },
+          { href: '/billing', icon: <CreditCard size={20} />, label: '利用と支払い' },
           { href: '/settings', icon: <Settings size={20} />, label: '環境設定' },
           { href: '/trophy', icon: <Trophy size={20} />, label: 'トロフィー' },
         ],

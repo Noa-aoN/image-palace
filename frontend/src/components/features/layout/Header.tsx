@@ -169,7 +169,7 @@ export function AppHeader() {
                 アカウント管理
               </DropdownMenuItem>
               <DropdownMenuItem onClick={() => router.push('/billing')} className="cursor-pointer">
-                プラン・支払い
+                利用と支払い
               </DropdownMenuItem>
               <DropdownMenuItem onClick={() => router.push('/settings')} className="cursor-pointer">
                 環境設定

@@ -363,7 +363,7 @@ export default function BillingPage() {
       <div>
         <h1 className="flex items-center gap-2.5 text-2xl font-semibold">
           <CreditCard size={26} style={{ color: 'var(--palace)' }} />
-          プラン・支払い
+          利用と支払い
         </h1>
         <p className="mt-2 text-muted-foreground">
           クレジット残高の確認、プランのアップグレード、クレジットの追加ができます。
@@ -392,7 +392,7 @@ export default function BillingPage() {
 
       {error && <p className="text-sm text-destructive">{error}</p>}
 
-      <CategorySections sections={sections} ariaLabel="プラン・支払いカテゴリ" />
+      <CategorySections sections={sections} ariaLabel="利用と支払いカテゴリ" />
       </div>
     </div>
   )
