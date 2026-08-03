@@ -76,6 +76,24 @@ class Rack::Attack
     req.ip if req.post? && UPLOAD_PATH.match?(req.path)
   end
 
+  # 運営（管理）エンドポイント。総当たりで権限の有無を探られないよう、個別に絞る。
+  # 正規の運営が普通に使う限り当たらない値にする。
+  throttle("admin/ip", limit: 60, period: 60.seconds) do |req|
+    req.ip if req.path.start_with?("/api/v1/admin/")
+  end
+
+  # キャンバスの AI 編集（1回の呼び出しが他より大きい）
+  AI_EDIT_PATH = %r{\A/api/v1/views/[^/]+/ai_edit\z}
+  throttle("canvas_ai_edit/ip", limit: 20, period: 60.seconds) do |req|
+    req.ip if req.post? && AI_EDIT_PATH.match?(req.path)
+  end
+
+  # カバー画像の生成（画像生成＝高コスト）
+  COVER_GENERATE_PATH = %r{\A/api/v1/(boxes|views|spaces)/[^/]+/cover_image/generate\z}
+  throttle("cover_generate/ip", limit: 10, period: 60.seconds) do |req|
+    req.ip if req.post? && COVER_GENERATE_PATH.match?(req.path)
+  end
+
   ### スロットル時のレスポンス ###
 
   # 429 を JSON で返す。フロントエンドが一貫してエラー表示できるようにする。

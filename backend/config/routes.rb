@@ -30,6 +30,16 @@ Rails.application.routes.draw do
       end
       post "stripe/webhook", to: "stripe_webhooks#create"
 
+      # 運営（管理）。権限の判定は Admin::BaseController で毎リクエスト行う。
+      # session だけは一般ユーザーも呼べる（画面の出し分けに使うため）。
+      namespace :admin do
+        get "session", to: "sessions#show"
+        get "overview", to: "overviews#show"
+        get "users", to: "users#index"
+        patch "users/:id/role", to: "users#update_role"
+        get "audit_logs", to: "audit_logs#index"
+      end
+
       resource :settings, only: [ :show, :update ]
 
       # お知らせ（生成結果・運営からの通知）

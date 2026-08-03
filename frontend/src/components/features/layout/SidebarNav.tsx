@@ -5,8 +5,9 @@ import Link from 'next/link'
 import { usePathname, useSearchParams } from 'next/navigation'
 import { ChevronDown, ChevronUp } from 'lucide-react'
 import { useUiStore } from '@/stores/ui'
+import { useAdminStore } from '@/stores/admin'
 import { isNavItemActive } from '@/lib/nav-active'
-import { NAV_SECTIONS, type NavNode } from './nav-items'
+import { ADMIN_SECTION, NAV_SECTIONS, type NavNode } from './nav-items'
 import { useOpenCardCreate } from '@/components/features/items/CardCreatePanel'
 
 interface Props {
@@ -51,6 +52,8 @@ function NavTree({
   const openCardCreate = useOpenCardCreate()
   const pathname = usePathname()
   const collapsedGroups = useUiStore((s) => s.collapsedGroups)
+  // 運営だけに「運営」を出す。見た目の出し分けであって守りではない
+  const isAdmin = useAdminStore((s) => s.session?.admin ?? false)
   const toggleGroup = useUiStore((s) => s.toggleGroup)
 
   const isActive = (href: string) => isNavItemActive(href, pathname, currentQuery)
@@ -166,7 +169,7 @@ function NavTree({
 
   return (
     <div className={`flex flex-col gap-1 ${iconsOnly ? 'px-1.5' : 'px-2'}`}>
-      {NAV_SECTIONS.map((section) => (
+      {(isAdmin ? [ ...NAV_SECTIONS, ADMIN_SECTION ] : NAV_SECTIONS).map((section) => (
         <div key={section.title} className="flex flex-col gap-1">
           {iconsOnly ? (
             <div className="mx-auto my-1 h-px w-6" style={{ backgroundColor: 'var(--palace)', opacity: 0.4 }} />
