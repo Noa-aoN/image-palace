@@ -8,7 +8,7 @@ module Api
 
       before_action :set_view, only: [
         :show, :update, :destroy, :add_item, :update_item, :remove_item, :reorder, :place_on_point, :clear_point,
-        :upload_cover, :remove_cover, :generate_cover, :upload_background, :remove_background
+        :upload_cover, :remove_cover, :generate_cover, :ai_edit, :upload_background, :remove_background
       ]
 
       def index
@@ -128,6 +128,33 @@ module Api
       # ことばからカバー画像を作る（非同期・1クレジット）。
       def generate_cover
         generate_cover_for(@view) { |record| render json: serialize_view(record), status: :accepted }
+      end
+
+      # POST /api/v1/views/:id/ai_edit
+      # ことばの指示でキャンバスを組み立て直す（デッキ / フリーボード）。
+      # mode=select は使うカードを選ぶところから、placed_only はいまあるカードだけで組み直す。
+      def ai_edit
+        result = Views::AiEditService.call(
+          view: @view,
+          instruction: params.dig(:edit, :instruction),
+          mode: params.dig(:edit, :mode)
+        )
+        render json: serialize_view_detail(@view.reload).merge(
+          ai_edit: {
+            summary: result.summary,
+            added: result.added,
+            removed: result.removed,
+            placed: result.placed,
+            connected: result.connected
+          }
+        )
+      rescue Ai::Chat::LimitExceeded => e
+        render json: { error: e.message }, status: :too_many_requests
+      rescue Views::AiEditService::EditError => e
+        render json: { error: e.message }, status: :unprocessable_entity
+      rescue KeyError, Faraday::Error => e
+        Rails.logger.warn "[ViewsController#ai_edit] failed view_id=#{@view.id}: #{e.class}: #{e.message}"
+        render json: { error: "AI編集に失敗しました。時間を置いて再度お試しください。" }, status: :unprocessable_entity
       end
 
       # DELETE /api/v1/views/:id/cover_image

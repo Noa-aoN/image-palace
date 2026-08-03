@@ -32,6 +32,7 @@ const DeckBoard = dynamic(
 )
 import { EntityCover } from '@/components/features/shared/EntityCover'
 import { useCoverGeneration } from '@/hooks/useCoverGeneration'
+import { AiEditPanel } from '@/components/features/views/AiEditPanel'
 import { CoverSettings } from '@/components/features/shared/CoverSettings'
 
 export default function ViewEditorPage() {
@@ -126,6 +127,8 @@ export default function ViewEditorPage() {
 
   // カバー設定（デッキ踏襲。候補は配置したカード）
   const [coverBusy, setCoverBusy] = useState(false)
+  // AI編集の結果を盤へ映すための作り直しの鍵
+  const [canvasKey, setCanvasKey] = useState(0)
   const handleSetCoverType = async (coverType: CoverType) => {
     if (!view || view.cover_type === coverType) return
     setCoverBusy(true)
@@ -268,11 +271,24 @@ export default function ViewEditorPage() {
 
       {error && <p className="text-sm text-destructive mb-4">{error}</p>}
 
+      {/* ことばの指示で組み立て直す（デッキ / フリーボード） */}
+      {(view.view_type === 'freeboard' || view.view_type === 'deck') && (
+        <AiEditPanel
+          viewId={view.id}
+          viewType={view.view_type}
+          onApplied={(updated) => {
+            setView(updated)
+            // 盤は初期値から自前の状態を作るので、作り直させて結果を映す
+            setCanvasKey((n) => n + 1)
+          }}
+        />
+      )}
+
       {/* キャンバスタイプごとの描画（freeboard / space_map を実装済み） */}
       {view.view_type === 'freeboard' ? (
-        <FreeboardCanvas viewId={view.id} viewName={view.name} initialItems={view.items ?? []} initialEdges={view.edges ?? []} />
+        <FreeboardCanvas key={canvasKey} viewId={view.id} viewName={view.name} initialItems={view.items ?? []} initialEdges={view.edges ?? []} />
       ) : view.view_type === 'deck' ? (
-        <DeckBoard viewId={view.id} initialItems={view.items ?? []} />
+        <DeckBoard key={canvasKey} viewId={view.id} initialItems={view.items ?? []} />
       ) : view.view_type === 'space_map' ? (
         <SpaceMapCanvas viewId={view.id} space={view.space} initialPoints={view.points ?? []} />
       ) : (

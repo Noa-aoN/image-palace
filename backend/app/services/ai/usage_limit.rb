@@ -26,7 +26,10 @@ module Ai
       "brief" => 0,
       "fact_check" => 0,
       "words_generate" => 0,
-      "words_check" => 0
+      "words_check" => 0,
+      # キャンバス編集は何度でも押せて、渡す中身も他より大きい。
+      # ここだけは既定で有料にする（1pt = 0.01cr）
+      "canvas_edit" => 1
     }.freeze
 
     def daily_call_cap

@@ -98,9 +98,23 @@ export interface ViewEdge {
   z_index?: number // 重なり順（大きいほど手前）
 }
 
+// AI編集のモード。placed_only=いまある札だけ / select=手持ちから探して足す
+export type AiEditMode = 'placed_only' | 'select'
+
+// AI編集で何が変わったか
+export interface AiEditSummary {
+  summary: string
+  added: number
+  removed: number
+  placed: number
+  connected: number
+}
+
 export interface ViewDetail extends View {
   items?: ViewItemPlacement[] // freeboard
   edges?: ViewEdge[] // freeboard
   space?: { id: string; name: string; space_type: string } | null // space_map
   points?: SpaceMapPoint[] // space_map
+  /** AI編集の直後だけ返る（何が変わったかの報告） */
+  ai_edit?: AiEditSummary
 }
