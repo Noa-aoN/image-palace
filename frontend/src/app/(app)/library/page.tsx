@@ -8,6 +8,7 @@ import { Skeleton } from '@/components/ui/skeleton'
 import { readPageCache, writePageCache } from '@/lib/page-cache'
 import { getItemsPage, getItemsSummary, bulkDeleteItems } from '@/lib/api/items'
 import { useItemsStore } from '@/stores/items'
+import { usePendingRefresh } from '@/hooks/usePendingRefresh'
 import { getBoxes, deleteBox } from '@/lib/api/boxes'
 import { getSpaces, deleteSpace } from '@/lib/api/spaces'
 import { getViews, deleteView } from '@/lib/api/views'
@@ -437,6 +438,17 @@ export default function LibraryPage() {
     },
     [shelfLimits]
   )
+
+  // 生成中のカードがある間は取り直す。画像は非同期に作られるため、
+  // これが無いと作った直後の棚が生成中のまま止まる。
+  const refreshCards = useCallback(() => {
+    getItemsPage(1, PREVIEW_LIMIT)
+      .then((res) => setCards(res.items))
+      .catch(() => {
+        // 一時的な失敗は次の回で拾う
+      })
+  }, [setCards])
+  usePendingRefresh(cards, refreshCards)
 
   // 再読み込み直後はストアが空なので、前回描いていた内容から戻す。
   // 既に何か入っていれば触らない（取得中の内容を古いもので上書きしないため）。
