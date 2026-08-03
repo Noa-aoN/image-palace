@@ -3,6 +3,7 @@
 import { useRef } from 'react'
 import { GalleryHorizontal, LayoutGrid, ImageUp, Loader2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
+import { CoverGenerator } from '@/components/features/shared/CoverGenerator'
 import type { CoverType } from '@/types/cover'
 
 const OPTIONS = [
@@ -23,6 +24,9 @@ export function CoverSettings({
   onSelectType,
   onUpload,
   onRemove,
+  onGenerate,
+  generating = false,
+  generateError,
 }: {
   coverType: CoverType
   busy: boolean
@@ -31,6 +35,10 @@ export function CoverSettings({
   onSelectType: (type: CoverType) => void
   onUpload: (file: File) => void
   onRemove: () => void
+  /** ことばからカバー画像を作る。渡さなければ「AIで作る」は出さない */
+  onGenerate?: (prompt: string, style: string) => void
+  generating?: boolean
+  generateError?: string | null
 }) {
   const fileRef = useRef<HTMLInputElement>(null)
 
@@ -77,6 +85,9 @@ export function CoverSettings({
             </Button>
           )}
         </div>
+      )}
+      {coverType === 'custom' && onGenerate && (
+        <CoverGenerator generating={generating} error={generateError} onGenerate={onGenerate} />
       )}
     </div>
   )

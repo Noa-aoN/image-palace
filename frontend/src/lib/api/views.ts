@@ -174,3 +174,11 @@ export async function removeViewCover(id: string): Promise<View> {
 export async function deleteView(id: string): Promise<void> {
   await apiClient.delete(`/api/v1/views/${id}`)
 }
+
+// カバー画像を AI で作る（非同期・1クレジット）。cover_generation_status を見て完了を待つ
+export async function generateViewCover(id: string, prompt: string, style?: string): Promise<View> {
+  const res = await apiClient.post<View>(`/api/v1/views/${id}/cover_image/generate`, {
+    cover: { prompt, ...(style ? { style } : {}) },
+  })
+  return res.data
+}

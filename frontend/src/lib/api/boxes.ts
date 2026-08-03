@@ -73,3 +73,11 @@ export async function removeEntryFromBox(
 ): Promise<void> {
   await apiClient.delete(`/api/v1/boxes/${boxId}/entries/${entryType}/${entryId}`)
 }
+
+// カバー画像を AI で作る（非同期・1クレジット）。cover_generation_status を見て完了を待つ
+export async function generateBoxCover(id: string, prompt: string, style?: string): Promise<Box> {
+  const res = await apiClient.post<Box>(`/api/v1/boxes/${id}/cover_image/generate`, {
+    cover: { prompt, ...(style ? { style } : {}) },
+  })
+  return res.data
+}

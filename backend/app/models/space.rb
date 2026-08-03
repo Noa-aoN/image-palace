@@ -1,4 +1,5 @@
 class Space < ApplicationRecord
+  include CoverGeneratable
   belongs_to :user
   has_many :space_boxes, dependent: :destroy
   has_many :boxes, through: :space_boxes

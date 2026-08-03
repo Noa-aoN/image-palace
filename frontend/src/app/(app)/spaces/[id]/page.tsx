@@ -19,8 +19,7 @@ import {
   removeSpacePoint,
   reorderSpacePoints,
   uploadSpaceCover,
-  removeSpaceCover,
-} from '@/lib/api/spaces'
+  removeSpaceCover, generateSpaceCover } from '@/lib/api/spaces'
 import { getItemsPage } from '@/lib/api/items'
 import type { Item } from '@/types/item'
 import { spaceTypeLabel } from '@/lib/space-types'
@@ -38,6 +37,7 @@ import { EntityCover } from '@/components/features/shared/EntityCover'
 import { SpaceWalkthrough } from '@/components/features/spaces/walkthrough/SpaceWalkthrough'
 import { stopsFromSpacePoints } from '@/components/features/spaces/walkthrough/constants'
 import { PointDetailModal } from '@/components/features/spaces/walkthrough/PointDetailModal'
+import { useCoverGeneration } from '@/hooks/useCoverGeneration'
 import { CoverSettings } from '@/components/features/shared/CoverSettings'
 import type { SpaceDetail, SpacePoint, RoomSurface } from '@/types/space'
 import { PLACEABLE_SURFACES, SURFACE_NAV, roomSurfaceShort } from '@/lib/room-surfaces'
@@ -472,6 +472,21 @@ export default function SpaceDetailPage() {
       setCoverBusy(false)
     }
   }
+  // カバー画像を AI で作る（非同期・1クレジット）。出来上がるまで取り直す
+  const reloadCover = useCallback(async () => {
+    const data = await getSpace(id)
+    setSpace((prev) => (prev ? { ...prev, ...data } : data))
+  }, [id])
+  const cover = useCoverGeneration({
+    status: space?.cover_generation_status,
+    statusError: space?.cover_generation_error,
+    submit: async (prompt, style) => {
+      const updated = await generateSpaceCover(id, prompt, style)
+      setSpace((prev) => (prev ? { ...prev, ...updated } : prev))
+    },
+    reload: reloadCover,
+  })
+
   const handleRemoveCover = async () => {
     if (!space) return
     setCoverBusy(true)
@@ -708,6 +723,9 @@ export default function SpaceDetailPage() {
             onSelectType={handleSetCoverType}
             onUpload={handleUploadCover}
             onRemove={handleRemoveCover}
+            onGenerate={cover.generate}
+            generating={cover.generating}
+            generateError={cover.error}
           />
         </div>
       </div>

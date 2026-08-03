@@ -1,4 +1,5 @@
 class View < ApplicationRecord
+  include CoverGeneratable
   self.table_name = "views"
 
   belongs_to :user

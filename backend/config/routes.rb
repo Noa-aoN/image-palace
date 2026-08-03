@@ -78,6 +78,7 @@ Rails.application.routes.draw do
           delete "entries/:entry_type/:entry_id", action: :remove_entry
           post "cover_image", action: :upload_cover
           delete "cover_image", action: :remove_cover
+          post "cover_image/generate", action: :generate_cover
         end
       end
       resources :spaces, only: [ :index, :create, :show, :update, :destroy ] do
@@ -86,6 +87,7 @@ Rails.application.routes.draw do
           delete "boxes/:box_id", action: :remove_box
           post "cover_image", action: :upload_cover
           delete "cover_image", action: :remove_cover
+          post "cover_image/generate", action: :generate_cover
         end
         resources :points, controller: "space_points", only: [ :create, :update, :destroy ] do
           collection do
@@ -107,6 +109,7 @@ Rails.application.routes.draw do
           patch "reorder", action: :reorder
           post "cover_image", action: :upload_cover
           delete "cover_image", action: :remove_cover
+          post "cover_image/generate", action: :generate_cover
           # freeboard: ボード背景画像
           post "background_image", action: :upload_background
           delete "background_image", action: :remove_background

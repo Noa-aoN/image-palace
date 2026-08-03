@@ -1,4 +1,5 @@
 class Box < ApplicationRecord
+  include CoverGeneratable
   belongs_to :user
   # コレクションはカード/スペース/キャンバスをまとめる汎用コンテナ（ポリモーフィック）
   has_many :box_entries, dependent: :destroy

@@ -28,6 +28,9 @@ export interface Space {
   style_overrides: RoomStyleOverrides
   // カバー（カバー候補はポイントの生成画像。表紙は SpacePoint を指定）
   cover_type: CoverType
+  /** カバー画像のAI生成の状態（null は未生成） */
+  cover_generation_status?: 'pending' | 'processing' | 'completed' | 'failed' | null
+  cover_generation_error?: string | null
   cover_space_point_id: string | null
   cover: CoverImage | null
   cover_images: CoverImage[]

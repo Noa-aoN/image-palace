@@ -4,9 +4,10 @@ module Api
       include ListPagination
       include ItemSerialization
       include CoverImageUpload
+      include CoverImageGeneration
 
       before_action :set_box, only: [
-        :show, :update, :destroy, :add_entry, :remove_entry, :upload_cover, :remove_cover
+        :show, :update, :destroy, :add_entry, :remove_entry, :upload_cover, :remove_cover, :generate_cover
       ]
 
       def index
@@ -107,6 +108,12 @@ module Api
         render json: { errors: e.record.errors.full_messages }, status: :unprocessable_entity
       end
 
+      # POST /api/v1/boxes/:id/cover_image/generate
+      # ことばからカバー画像を作る（非同期・1クレジット）。
+      def generate_cover
+        generate_cover_for(@box) { |record| render json: serialize_box(record), status: :accepted }
+      end
+
       # DELETE /api/v1/boxes/:id/cover_image
       def remove_cover
         @box.cover_image.purge if @box.cover_image.attached?
@@ -172,6 +179,8 @@ module Api
           description: box.description,
           entry_count: box_entry_count(box),
           cover_type: box.cover_type,
+          cover_generation_status: box.cover_generation_status,
+          cover_generation_error: box.cover_generation_error,
           cover_item_id: box.cover_item_id,
           cover: serialize_media(box.cover&.primary_media),
           cover_images: box.cover_cards.map { |item| serialize_media(item.primary_media) }.compact,
