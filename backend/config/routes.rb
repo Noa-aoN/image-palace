@@ -38,7 +38,15 @@ Rails.application.routes.draw do
         get "users", to: "users#index"
         patch "users/:id/role", to: "users#update_role"
         get "audit_logs", to: "audit_logs#index"
+        resources :posts, only: [ :index, :create, :update, :destroy ] do
+          member do
+            post :deliver
+          end
+        end
       end
+
+      # 運営からの読みもの（お知らせ・更新情報・コラム）。公開済みのみ返す
+      resources :posts, only: [ :index, :show ], param: :id
 
       resource :settings, only: [ :show, :update ]
 
