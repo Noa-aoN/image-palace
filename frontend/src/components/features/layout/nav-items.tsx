@@ -98,15 +98,17 @@ export const NAV_SECTIONS: NavSection[] = [
         ],
       },
       {
-        // 個人用ハブ。アカウント設定/環境設定/プラン・支払い/トロフィーを内包し、自身もマイルームのページへリンク。
+        // 個人用ハブ。自身もマイルームのページへリンクする。
+        // 子は触る頻度の高い順に並べる（見る → 調整する → 確認する → 管理する）。
+        // トロフィーは眺めて楽しむもの、アカウント管理はほとんど触らないもの。
         href: '/myroom',
         icon: <House size={22} />,
         label: 'マイルーム',
         children: [
-          { href: '/account', icon: <UserCog size={20} />, label: 'アカウント設定' },
-          { href: '/billing', icon: <CreditCard size={20} />, label: 'プラン・支払い' },
-          { href: '/settings', icon: <Settings size={20} />, label: '環境設定' },
           { href: '/trophy', icon: <Trophy size={20} />, label: 'トロフィー' },
+          { href: '/settings', icon: <Settings size={20} />, label: '環境設定' },
+          { href: '/billing', icon: <CreditCard size={20} />, label: '利用と支払い' },
+          { href: '/account', icon: <UserCog size={20} />, label: 'アカウント管理' },
         ],
       },
     ],
