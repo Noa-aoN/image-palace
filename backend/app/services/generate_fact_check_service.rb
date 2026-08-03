@@ -94,17 +94,16 @@ class GenerateFactCheckService
   end
 
   def request
-    client = ::OpenAI::Client.new(access_token: ENV.fetch("OPENAI_API_KEY"))
-    response = client.chat(
-      parameters: {
-        model: model,
-        messages: [
-          { role: "system", content: SYSTEM_PROMPT },
-          { role: "user", content: user_message }
-        ],
-        temperature: 0.2,
-        response_format: { type: "json_object" }
-      }
+    response = Ai::Chat.call(
+      kind: "fact_check",
+      user: @item.user,
+      model: model,
+      messages: [
+        { role: "system", content: SYSTEM_PROMPT },
+        { role: "user", content: user_message }
+      ],
+      temperature: 0.2,
+      response_format: { type: "json_object" }
     )
 
     parse(response.dig("choices", 0, "message", "content").to_s)

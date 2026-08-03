@@ -24,6 +24,7 @@ Rails.application.routes.draw do
       namespace :billing do
         get "plans", to: "plans#index"
         get "summary", to: "summaries#show"
+        get "ai_usage", to: "ai_usages#show"
         post "checkout", to: "checkouts#create"
         post "portal", to: "portals#create"
       end

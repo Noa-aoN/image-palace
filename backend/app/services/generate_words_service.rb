@@ -27,13 +27,14 @@ class GenerateWordsService
   PROMPT
 
   # exclude: 絶対に出さない語（既出＝受け取り済み）。avoid: 出す確率を大きく下げる語（キャンセル済み）。
-  def self.call(theme: nil, count: nil, exclude: [], avoid: [])
-    new(theme:, count:, exclude:, avoid:).call
+  def self.call(theme: nil, count: nil, exclude: [], avoid: [], user: nil)
+    new(theme:, count:, exclude:, avoid:, user:).call
   end
 
   # count が nil/空のときは「おまかせ（自動）」。AI がテーマに応じた自然な数を返す。
   # 数値指定時は 1〜MAX_COUNT にクランプ。いずれも MAX_COUNT を超えないよう必ず切り詰める。
-  def initialize(theme:, count:, exclude: [], avoid: [])
+  def initialize(theme:, count:, exclude: [], avoid: [], user: nil)
+    @user = user
     @theme = theme.to_s.strip
     @count = count.present? ? count.to_i.clamp(1, MAX_COUNT) : nil
     @exclude = clean_list(exclude)
@@ -76,17 +77,16 @@ class GenerateWordsService
   end
 
   def request
-    client = ::OpenAI::Client.new(access_token: ENV.fetch("OPENAI_API_KEY"))
-    response = client.chat(
-      parameters: {
-        model: model,
-        messages: [
-          { role: "system", content: SYSTEM_PROMPT },
-          { role: "user", content: user_prompt }
-        ],
-        temperature: 0.9,
-        response_format: { type: "json_object" }
-      }
+    response = Ai::Chat.call(
+      kind: "words_generate",
+      user: @user,
+      model: model,
+      messages: [
+        { role: "system", content: SYSTEM_PROMPT },
+        { role: "user", content: user_prompt }
+      ],
+      temperature: 0.9,
+      response_format: { type: "json_object" }
     )
 
     content = response.dig("choices", 0, "message", "content").to_s

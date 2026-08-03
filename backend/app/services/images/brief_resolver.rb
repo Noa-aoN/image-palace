@@ -14,12 +14,13 @@ module Images
       ENV.fetch("IMAGE_BRIEF_ENABLED", "true") != "false"
     end
 
-    def self.call(title:)
-      new(title).call
+    def self.call(title:, user: nil)
+      new(title, user).call
     end
 
-    def initialize(title)
+    def initialize(title, user = nil)
       @title = title.to_s.strip
+      @user = user
     end
 
     # SharedBrief を返す。無効化されている・単語が空なら nil
@@ -30,7 +31,7 @@ module Images
       cached = SharedBrief.for_source(source_key).first
       return cached if cached
 
-      result = BriefService.call(title: @title)
+      result = BriefService.call(title: @title, user: @user)
       create_shared_brief!(result)
     end
 

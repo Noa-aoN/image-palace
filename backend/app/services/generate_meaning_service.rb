@@ -49,17 +49,16 @@ class GenerateMeaningService
   end
 
   def request
-    client = ::OpenAI::Client.new(access_token: ENV.fetch("OPENAI_API_KEY"))
-    response = client.chat(
-      parameters: {
-        model: model,
-        messages: [
-          { role: "system", content: system_prompt },
-          { role: "user", content: @item.title }
-        ],
-        temperature: 0.4,
-        response_format: { type: "json_object" }
-      }
+    response = Ai::Chat.call(
+      kind: "meaning",
+      user: @item.user,
+      model: model,
+      messages: [
+        { role: "system", content: system_prompt },
+        { role: "user", content: @item.title }
+      ],
+      temperature: 0.4,
+      response_format: { type: "json_object" }
     )
 
     content = response.dig("choices", 0, "message", "content").to_s

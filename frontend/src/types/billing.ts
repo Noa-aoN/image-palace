@@ -28,3 +28,24 @@ export type BillingSummary = {
   // 次回のクレジット更新（回復）日。無料会員でも返る（翌月初）。
   next_credit_reset: string | null
 }
+
+// 画像以外の AI 利用（意味・タグ・ファクトチェック等）の内訳
+export type AiUsageRow = {
+  kind: string
+  label: string
+  count: number
+  tokens: number
+  credits: number
+}
+
+export type AiUsageSummary = {
+  days: number
+  since: string
+  total_count: number
+  total_tokens: number
+  total_credits: number
+  /** 1日の呼び出し上限。0 以下なら無効 */
+  daily_cap: number
+  used_today: number
+  breakdown: AiUsageRow[]
+}
