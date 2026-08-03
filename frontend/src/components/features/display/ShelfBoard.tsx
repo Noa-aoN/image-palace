@@ -88,7 +88,7 @@ export function SurfaceBoard({ surface, children }: { surface: Surface; children
     border-image なら四隅と四辺を切り出して固定し、中央だけを伸ばせる。
     slice の値は、透明な余白を切り落とした画像の実測値。
       - 横 1282x304: 繰形 y=..50 / 内部 50..235 / 棚板 235..304、柱 x=51..120・1200..1251
-      - 縦 655x1478: 繰形 y=..210 / 柱 x=93..150・500..543 / 台座 y=1288..
+      - 縦 655x1478: 繰形 y=..135 / 台座 y=1321.. / 柱は左右 140 以内
 
     棚は 2 枚重ねる。
       - 奥（塗りあり）: 背板・棚板を含む棚そのもの
@@ -99,12 +99,12 @@ export function SurfaceBoard({ surface, children }: { surface: Surface; children
   // 枠の内側がそのまま棚の内側になるので、アイテムが柱に載ることはない
   const shelf = stacked
     ? {
-        borderTopWidth: '137px',
-        borderBottomWidth: '124px',
-        borderLeftWidth: '104px',
-        borderRightWidth: '104px',
+        borderTopWidth: '81px',
+        borderBottomWidth: '94px',
+        borderLeftWidth: '84px',
+        borderRightWidth: '84px',
         borderImageSource: "url('/shelf/vertical.webp')",
-        borderImageSlice: '210 160 190 160 fill',
+        borderImageSlice: '135 140 157 140 fill',
       }
     : {
         borderTopWidth: '45px',
