@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import dynamic from 'next/dynamic'
 import Link from 'next/link'
 import { useParams, useRouter } from 'next/navigation'
@@ -11,6 +11,7 @@ import { Input } from '@/components/ui/input'
 import { getViewDetail, updateView, deleteView, uploadViewCover, removeViewCover } from '@/lib/api/views'
 import { viewTypeLabel } from '@/lib/view-types'
 import { useBoardSettingsStore } from '@/stores/boardSettings'
+import { usePendingRefresh } from '@/hooks/usePendingRefresh'
 import type { ViewDetail } from '@/types/view'
 import type { CoverType } from '@/types/cover'
 
@@ -44,6 +45,34 @@ export default function ViewEditorPage() {
   const [saving, setSaving] = useState(false)
   const [confirmDelete, setConfirmDelete] = useState(false)
   const [deleting, setDeleting] = useState(false)
+
+  /*
+    生成中のカードやポイントがある間だけ取り直す。
+    配置したカードは非同期に画像が作られるので、これが無いと開いたまま待っても
+    完成した絵が現れない。
+
+    種別で持ち方が違う（freeboard は items、space_map は points）ため、
+    生成状態を持つものだけを平坦に集める。
+    毎回新しい配列を作ると参照が変わってタイマーが張り直されるので、
+    view が変わったときだけ作り直す。
+  */
+  const generatables = useMemo(
+    () => [
+      ...(view?.items?.map((placement) => placement.item) ?? []),
+      ...(view?.points ?? []).flatMap((point) =>
+        point.placed_item ? [point, point.placed_item] : [point]
+      ),
+    ],
+    [view]
+  )
+  const refreshView = useCallback(() => {
+    getViewDetail(id)
+      .then(setView)
+      .catch(() => {
+        // 一時的な失敗は次の回で拾う
+      })
+  }, [id])
+  usePendingRefresh(generatables, refreshView)
 
   useEffect(() => {
     let cancelled = false
