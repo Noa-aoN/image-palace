@@ -95,6 +95,8 @@ export function SurfaceBoard({ surface, children }: { surface: Surface; children
       - 縦 655x400: 元画像は本棚 1 台ぶん（内部に棚板が 5 段）だった。
         中央を引き伸ばすと内部の棚板まで伸びて隙間に見えるため、
         繰形・棚板の無い背板・台座だけを取り出して 1 段分に組み直してある。
+        柱の内側の縁は x=142 / 530。左右の slice はそれより内側まで取り、
+        中身が柱に接しないようにしている。
 
     棚は 2 枚重ねる。
       - 奥（塗りあり）: 背板・棚板を含む棚そのもの
@@ -110,7 +112,7 @@ export function SurfaceBoard({ surface, children }: { surface: Surface; children
         borderLeftWidth: '77px',
         borderRightWidth: '77px',
         borderImageSource: "url('/shelf/vertical.webp')",
-        borderImageSlice: '150 140 150 140 fill',
+        borderImageSlice: '150 190 150 190 fill',
       }
     : {
         borderTopWidth: '45px',
