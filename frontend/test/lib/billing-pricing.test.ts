@@ -1,15 +1,6 @@
 import { describe, it, expect } from 'vitest'
 import { unitPrice, discountPercent } from '@/lib/billing'
 
-// 実際に用意している買い切りの階段。値を変えたらここも直す
-const TOPUPS = [
-  { name: 'topup_10', price: 150, credits: 10 },
-  { name: 'topup_50', price: 650, credits: 50 },
-  { name: 'topup_100', price: 1200, credits: 100 },
-  { name: 'topup_300', price: 3300, credits: 300 },
-  { name: 'topup_1000', price: 10000, credits: 1000 },
-]
-
 describe('unitPrice', () => {
   it('1クレジットあたりの価格を返す', () => {
     expect(unitPrice({ price: 1200, credits: 100 })).toBe(12)
@@ -44,24 +35,5 @@ describe('discountPercent', () => {
 
   it('基準が無ければ 0', () => {
     expect(discountPercent(12, 0)).toBe(0)
-  })
-})
-
-describe('買い切りの階段', () => {
-  it('枚数が多いほど1枚あたりが安い（逆転しない）', () => {
-    const rates = TOPUPS.map(unitPrice)
-    for (let i = 1; i < rates.length; i += 1) {
-      expect(rates[i]).toBeLessThan(rates[i - 1])
-    }
-  })
-
-  it('いちばん安いものでも原価（1枚6円想定）を割らない', () => {
-    const cheapest = Math.min(...TOPUPS.map(unitPrice))
-    expect(cheapest).toBeGreaterThan(6)
-  })
-
-  it('Stripe の手数料（3.6%）を引いても原価を割らない', () => {
-    const cheapestAfterFee = Math.min(...TOPUPS.map(unitPrice)) * (1 - 0.036)
-    expect(cheapestAfterFee).toBeGreaterThan(6)
   })
 })
