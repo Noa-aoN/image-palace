@@ -15,6 +15,9 @@ import type { CreditTransaction } from '@/types/billing'
  *
  * 件数は増え続けるので、続きは押したときだけ読む。
  */
+// 最初は少しだけ出す。全部並べると残高やプランの案内が下へ押し出される
+const PAGE_SIZE = 10
+
 export function CreditHistoryPanel() {
   const [rows, setRows] = useState<CreditTransaction[]>([])
   const [cursor, setCursor] = useState<string | null>(null)
@@ -24,7 +27,7 @@ export function CreditHistoryPanel() {
   const load = async (from?: string | null) => {
     setLoading(true)
     try {
-      const page = await getCreditTransactions(from)
+      const page = await getCreditTransactions(from, PAGE_SIZE)
       setRows((prev) => (from ? [...prev, ...page.transactions] : page.transactions))
       setCursor(page.next_cursor)
     } catch {

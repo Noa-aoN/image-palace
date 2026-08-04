@@ -119,7 +119,8 @@ module Admin
         # 直近30日で失効したぶん（使われずに消えた量）
         expired_last_30d: to_credits(-CreditTransaction.where(kind: %w[subscription_expire grant_expire])
                                                        .where(created_at: @since..).sum(:delta)),
-        # 買い切りで受け取った金額のうち、まだ使われていないぶんの目安（返金の当たり）
+        # 買い切りで受け取った金額のうち、まだ提供していないぶんの目安（円）。
+        # 終了を告知するとき、どれだけの未提供が残っているかの目安になる
         unused_topup_value: unused_topup_value,
         # 直近で期限が来るもの
         next_expiry_at: expiring.minimum(:expires_at)
@@ -127,14 +128,16 @@ module Admin
     end
 
     # 買い切りの平均単価 × 未使用の買い切りクレジット。
-    # 畳むときにいくら返すことになるかの目安（正確な返金額は購入単位で計算する）。
+    # 「受け取ったのにまだ提供していない額」の目安。終了を計画するときの判断材料になる。
     def unused_topup_value
       purchases = CreditTransaction.where(kind: "topup_purchase").where.not(amount_cents: nil)
       paid = purchases.sum(:amount_cents)
       points = purchases.sum(:delta)
       return 0 if points.zero?
 
-      (User.sum(:topup_credits) * paid.fdiv(points)).round
+      # 期限付きで積むようになったので、買い切りのグラント残量も数える
+      unused = User.sum(:topup_credits) + CreditGrant.where(kind: "topup").sum(:remaining_points)
+      (unused * paid.fdiv(points)).round
     end
 
     def to_credits(points)

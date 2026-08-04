@@ -154,7 +154,7 @@ export default function AdminPage() {
               <Stat
                 label="合計"
                 value={`${overview.credit_liability.total.toLocaleString()} cr`}
-                sub={`返金の目安 ¥${overview.credit_liability.unused_topup_value.toLocaleString()}`}
+                sub={`未提供の買い切り ¥${overview.credit_liability.unused_topup_value.toLocaleString()}`}
               />
               <Stat
                 label="30日で失効"

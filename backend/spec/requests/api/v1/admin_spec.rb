@@ -187,9 +187,24 @@ RSpec.describe "Api::V1::Admin", type: :request do
       expect(json_response["credit_liability"]["expired_last_30d"]).to eq(4.0)
     end
 
-    it "未使用の買い切りぶんを金額に換算する（畳むときの目安）" do
+    it "未使用の買い切りぶんを金額に換算する（未提供の額の目安）" do
       # 100枚を1,200円で購入し、半分だけ使った状態
       member.update!(topup_credits: 50 * Billing::POINTS_PER_CREDIT)
+      CreditTransaction.create!(
+        user: member, kind: "topup_purchase", delta: 100 * Billing::POINTS_PER_CREDIT,
+        amount_cents: 1200, currency: "jpy"
+      )
+
+      get "/api/v1/admin/overview", headers: admin_headers
+
+      expect(json_response["credit_liability"]["unused_topup_value"]).to eq(600)
+    end
+
+    it "期限付きで積まれた買い切りも金額換算に数える" do
+      member.credit_grants.create!(
+        kind: "topup", amount_points: 50 * Billing::POINTS_PER_CREDIT,
+        remaining_points: 50 * Billing::POINTS_PER_CREDIT, expires_at: 6.months.from_now
+      )
       CreditTransaction.create!(
         user: member, kind: "topup_purchase", delta: 100 * Billing::POINTS_PER_CREDIT,
         amount_cents: 1200, currency: "jpy"

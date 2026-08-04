@@ -47,9 +47,12 @@ export async function createPortalSession(): Promise<string> {
 }
 
 // クレジットの増減の明細。cursor で続きをたどる
-export async function getCreditTransactions(cursor?: string | null): Promise<CreditTransactionsPage> {
+export async function getCreditTransactions(
+  cursor?: string | null,
+  limit?: number
+): Promise<CreditTransactionsPage> {
   const res = await apiClient.get<CreditTransactionsPage>('/api/v1/billing/credit_transactions', {
-    params: cursor ? { cursor } : undefined,
+    params: { ...(cursor ? { cursor } : {}), ...(limit ? { limit } : {}) },
   })
   return res.data
 }
