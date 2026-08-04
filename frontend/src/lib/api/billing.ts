@@ -1,5 +1,5 @@
 import { apiClient } from './client'
-import type { AiUsageSummary, BillingPlan, BillingSummary } from '@/types/billing'
+import type { BillingPlan, BillingSummary, UsagePeriod, UsageSummary } from '@/types/billing'
 
 export async function getPlans(): Promise<BillingPlan[]> {
   const res = await apiClient.get<{ plans: BillingPlan[] }>('/api/v1/billing/plans')
@@ -11,10 +11,10 @@ export async function getBillingSummary(): Promise<BillingSummary> {
   return res.data
 }
 
-// 画像以外の AI 利用の内訳（既定30日ぶん）
-export async function getAiUsage(days?: number): Promise<AiUsageSummary> {
-  const res = await apiClient.get<AiUsageSummary>('/api/v1/billing/ai_usage', {
-    params: days ? { days } : undefined,
+// 使用量（AIの利用・クレジットの消費・カードの作成）。既定は今月ぶん
+export async function getAiUsage(period?: UsagePeriod): Promise<UsageSummary> {
+  const res = await apiClient.get<UsageSummary>('/api/v1/billing/ai_usage', {
+    params: period ? { period } : undefined,
   })
   return res.data
 }

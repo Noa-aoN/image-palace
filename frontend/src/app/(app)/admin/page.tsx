@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react'
 import { ShieldCheck, Loader2 } from 'lucide-react'
 import { getAdminOverview, getAdminSession } from '@/lib/api/admin'
-import { TrendChart } from '@/components/features/admin/TrendChart'
+import { TrendChart } from '@/components/features/shared/TrendChart'
 import { AdminUsersPanel } from '@/components/features/admin/AdminUsersPanel'
 import { AdminAuditPanel } from '@/components/features/admin/AdminAuditPanel'
 import { AdminPostsPanel } from '@/components/features/admin/AdminPostsPanel'
