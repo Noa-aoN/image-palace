@@ -26,6 +26,8 @@ Rails.application.routes.draw do
         get "summary", to: "summaries#show"
         get "ai_usage", to: "ai_usages#show"
         post "checkout", to: "checkouts#create"
+        # 決済から戻ったときの取り込み（webhook が届かない環境でも反映できるように）
+        post "checkout/sync", to: "checkout_syncs#create"
         post "portal", to: "portals#create"
       end
       post "stripe/webhook", to: "stripe_webhooks#create"

@@ -62,7 +62,7 @@ RSpec.describe Billing::WebhookHandler do
     topup = create(:plan, :topup).tap { |p| p.update!(stripe_price_id: "price_topup") }
 
     handle(id: "evt_co1", type: "checkout.session.completed", data: { object: {
-      mode: "payment", customer: "cus_1", client_reference_id: user.id,
+      id: "cs_test_co1", mode: "payment", customer: "cus_1", client_reference_id: user.id,
       metadata: { plan_name: topup.name }
     } })
 
@@ -74,17 +74,18 @@ RSpec.describe Billing::WebhookHandler do
 
     def topup_event(event_id)
       handle(id: event_id, type: "checkout.session.completed", data: { object: {
-        mode: "payment", customer: "cus_1", client_reference_id: user.id,
+        id: "cs_test_1", mode: "payment", customer: "cus_1", client_reference_id: user.id,
         metadata: { plan_name: topup.name }
       } })
     end
 
-    it "checkout.session.completed(Top-up) は同一 event_id で二重加算しない" do
+    it "checkout.session.completed(Top-up) は同じ決済なら二重加算しない（イベントidが違っても）" do
       user
       topup
       topup_event("evt_dup_topup")
-      expect { topup_event("evt_dup_topup") }.not_to(change { user.reload.topup_credits })
-      expect(CreditTransaction.where(stripe_event_id: "evt_dup_topup").count).to eq(1)
+      # 同じ決済（cs_test_1）なら、別のイベントとして再送されても増やさない
+      expect { topup_event("evt_dup_topup_2") }.not_to(change { user.reload.topup_credits })
+      expect(CreditTransaction.where(stripe_event_id: "cs_test_1").count).to eq(1)
     end
 
     it "customer.subscription.updated は重複してもクレジットを変えず破綻しない" do
@@ -255,7 +256,7 @@ RSpec.describe Billing::WebhookHandler do
     # 黙って通すと「払ったのにクレジットが増えない」が誰にも気づかれないまま残る。
     let(:orphan_topup) do
       { id: "evt_orphan1", type: "checkout.session.completed", data: { object: {
-        mode: "payment", customer: "cus_unknown", client_reference_id: SecureRandom.uuid,
+        id: "cs_test_1", mode: "payment", customer: "cus_unknown", client_reference_id: SecureRandom.uuid,
         metadata: { plan_name: "topup_100" }
       } } }
     end
@@ -279,7 +280,7 @@ RSpec.describe Billing::WebhookHandler do
       allow(Rails.logger).to receive(:error)
 
       handle(id: "evt_orphan2", type: "checkout.session.completed", data: { object: {
-        mode: "payment", customer: "cus_1", client_reference_id: user.id,
+        id: "cs_test_1", mode: "payment", customer: "cus_1", client_reference_id: user.id,
         metadata: { plan_name: "存在しないプラン" }
       } })
 
