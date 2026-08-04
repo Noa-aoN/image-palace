@@ -4,6 +4,7 @@ class Notification < ApplicationRecord
     item_generation_completed
     item_generation_failed
     announcement
+    credits_expiring
   ].freeze
 
   belongs_to :user

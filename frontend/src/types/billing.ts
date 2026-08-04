@@ -27,6 +27,16 @@ export type BillingSummary = {
   } | null
   // 次回のクレジット更新（回復）日。無料会員でも返る（翌月初）。
   next_credit_reset: string | null
+  /** 残高の内訳を「いつ消えるか」で並べたもの。期限が近い順＝使われる順 */
+  credit_buckets?: CreditBucket[]
+}
+
+export interface CreditBucket {
+  kind: string
+  label: string
+  credits: number
+  /** null は期限なし */
+  expires_at: string | null
 }
 
 // 使用量（AIの利用・クレジットの消費・カードの作成）。バックエンド /api/v1/billing/ai_usage に対応。

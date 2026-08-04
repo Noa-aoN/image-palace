@@ -27,7 +27,8 @@ RSpec.describe "Api::V1::Billing::CheckoutSyncs", type: :request do
     expect(response).to have_http_status(:success)
     expect(json_response["status"]).to eq("paid")
     expect(json_response["applied"]).to be(true)
-    expect(user.reload.topup_credits).to eq(topup.credits_per_period * Billing::POINTS_PER_CREDIT)
+    expect(user.reload.credit_grants.where(kind: "topup").sum(:remaining_points))
+      .to eq(topup.credits_per_period * Billing::POINTS_PER_CREDIT)
   end
 
   it "二度呼んでも増えない" do
@@ -36,7 +37,7 @@ RSpec.describe "Api::V1::Billing::CheckoutSyncs", type: :request do
 
     expect {
       post "/api/v1/billing/checkout/sync", params: { session_id: "cs_test_1" }, headers: headers, as: :json
-    }.not_to(change { user.reload.topup_credits })
+    }.not_to(change { user.reload.available_credit_points })
 
     expect(json_response["applied"]).to be(false)
   end
@@ -47,7 +48,7 @@ RSpec.describe "Api::V1::Billing::CheckoutSyncs", type: :request do
     post "/api/v1/billing/checkout/sync", params: { session_id: "cs_test_1" }, headers: headers, as: :json
 
     expect(response).to have_http_status(:forbidden)
-    expect(user.reload.topup_credits).to eq(0)
+    expect(user.reload.credit_grants.where(kind: "topup")).to be_empty
   end
 
   it "決済 id を渡さなくても、直近の支払いから拾って反映する" do
@@ -62,7 +63,8 @@ RSpec.describe "Api::V1::Billing::CheckoutSyncs", type: :request do
 
     expect(response).to have_http_status(:success)
     expect(json_response["applied"]).to be(true)
-    expect(user.reload.topup_credits).to eq(topup.credits_per_period * Billing::POINTS_PER_CREDIT)
+    expect(user.reload.credit_grants.where(kind: "topup").sum(:remaining_points))
+      .to eq(topup.credits_per_period * Billing::POINTS_PER_CREDIT)
   end
 
   it "Stripe が落ちていても壊れない" do
