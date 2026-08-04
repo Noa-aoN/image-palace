@@ -66,7 +66,10 @@ RSpec.describe Billing::WebhookHandler do
       metadata: { plan_name: topup.name }
     } })
 
-    expect(user.reload.topup_credits).to eq(100 * Billing::POINTS_PER_CREDIT)
+    # 買い切りは期限付きで積まれる
+    grant = user.reload.credit_grants.find_by(kind: "topup")
+    expect(grant.remaining_points).to eq(100 * Billing::POINTS_PER_CREDIT)
+    expect(grant.expires_at).to be_within(1.day).of(Billing::Catalog::CREDIT_LIFETIME.from_now)
   end
 
   describe "冪等性（Webhook 重複・順序）" do
@@ -84,7 +87,7 @@ RSpec.describe Billing::WebhookHandler do
       topup
       topup_event("evt_dup_topup")
       # 同じ決済（cs_test_1）なら、別のイベントとして再送されても増やさない
-      expect { topup_event("evt_dup_topup_2") }.not_to(change { user.reload.topup_credits })
+      expect { topup_event("evt_dup_topup_2") }.not_to(change { user.reload.available_credit_points })
       expect(CreditTransaction.where(stripe_event_id: "cs_test_1").count).to eq(1)
     end
 
@@ -271,7 +274,7 @@ RSpec.describe Billing::WebhookHandler do
 
     it "ユーザーが見つからなくてもクレジットは動かさない" do
       user
-      expect { handle(orphan_topup) }.not_to(change { user.reload.topup_credits })
+      expect { handle(orphan_topup) }.not_to(change { user.reload.available_credit_points })
       expect(CreditTransaction.where(stripe_event_id: "evt_orphan1")).to be_empty
     end
 

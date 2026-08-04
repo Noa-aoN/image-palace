@@ -32,6 +32,8 @@ module Api
               subscription: current_user.subscription_credits.fdiv(::Billing::POINTS_PER_CREDIT),
               topup: current_user.topup_credits.fdiv(::Billing::POINTS_PER_CREDIT)
             },
+            # 期限ごとの内訳。どれがいつ消えるのかが見えないと、使い切る判断ができない
+            credit_buckets: credit_buckets,
             plan: plan && { name: plan.name, tier: plan.tier, credits_per_period: plan.credits_per_period },
             subscription: sub && {
               status: sub.status,
@@ -40,6 +42,42 @@ module Api
             },
             next_credit_reset: next_credit_reset
           }
+        end
+
+        private
+
+        # 残高を「いつ消えるか」で並べて返す。期限が近い順＝使われる順。
+        def credit_buckets
+          buckets = current_user.credit_grants.active.map do |grant|
+            {
+              kind: grant.kind,
+              label: ::Billing::CreditLabels.for(grant.kind),
+              credits: to_credits(grant.remaining_points),
+              expires_at: grant.expires_at
+            }
+          end
+
+          if current_user.subscription_credits.positive?
+            buckets << {
+              kind: "subscription", label: ::Billing::CreditLabels.for("subscription"),
+              credits: to_credits(current_user.subscription_credits),
+              expires_at: current_user.subscription_expires_at
+            }
+          end
+
+          if current_user.topup_credits.positive?
+            # 期限を持たない古い買い切り分
+            buckets << {
+              kind: "topup_legacy", label: ::Billing::CreditLabels.for("topup_legacy"),
+              credits: to_credits(current_user.topup_credits), expires_at: nil
+            }
+          end
+
+          buckets.sort_by { |bucket| [ bucket[:expires_at] ? 0 : 1, bucket[:expires_at] || Time.current ] }
+        end
+
+        def to_credits(points)
+          points.fdiv(::Billing::POINTS_PER_CREDIT).round(2)
         end
       end
     end

@@ -42,8 +42,10 @@ RSpec.describe "Api::V1::Billing::Summaries", type: :request do
 
       get "/api/v1/billing/summary", headers: headers
 
-      expect(json_response["credit_breakdown"]["topup"]).to eq(topup.credits_per_period)
-      expect(user.reload.topup_credits).to eq(topup.credits_per_period * Billing::POINTS_PER_CREDIT)
+      expect(user.reload.credit_grants.where(kind: "topup").sum(:remaining_points))
+        .to eq(topup.credits_per_period * Billing::POINTS_PER_CREDIT)
+      # 期限付きで積まれるので、内訳では grant 側に出る
+      expect(json_response["credit_breakdown"]["grant"]).to be >= topup.credits_per_period
     end
 
     it "続けて見ても Stripe を叩き直さない（間隔を空ける）" do
@@ -89,7 +91,20 @@ RSpec.describe "Api::V1::Billing::Summaries", type: :request do
       user.update!(stripe_reconciled_at: nil)
       get "/api/v1/billing/summary", headers: headers
 
-      expect(user.reload.topup_credits).to eq(topup.credits_per_period * Billing::POINTS_PER_CREDIT)
+      expect(user.reload.credit_grants.where(kind: "topup").sum(:remaining_points))
+        .to eq(topup.credits_per_period * Billing::POINTS_PER_CREDIT)
+    end
+
+    it "残高を期限ごとに分けて返す（いつ消えるかが分かるように）" do
+      get "/api/v1/billing/summary", headers: headers
+
+      buckets = json_response["credit_buckets"]
+      expect(buckets).to be_present
+      expect(buckets.map { |b| b["kind"] }).to include("trial")
+      # 期限が近い順に並ぶ（＝使われる順）
+      expiries = buckets.filter_map { |b| b["expires_at"] }
+      expect(expiries).to eq(expiries.sort)
+      expect(buckets.first["label"]).to be_present
     end
   end
 end

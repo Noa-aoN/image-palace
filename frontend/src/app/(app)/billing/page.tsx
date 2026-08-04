@@ -203,40 +203,25 @@ export default function BillingPage() {
               {summary?.available_credits ?? 0}
               <span className="ml-1 text-sm font-normal text-muted-foreground">{CREDIT_UNIT}</span>
             </p>
-            {summary?.credit_breakdown && (
+            {/* 残高の内訳を「いつ消えるか」で並べる。期限が近い順＝使われる順 */}
+            {summary?.credit_buckets && summary.credit_buckets.length > 0 && (
               <dl className="grid gap-1.5 rounded-lg bg-muted/40 px-3 py-2.5 text-sm">
-                <div className="flex items-center justify-between gap-4">
-                  <dt className="text-muted-foreground">
-                    サブスク枠
-                    {renewal && <span className="ml-1 text-xs">（{renewal} 更新でリセット）</span>}
-                  </dt>
-                  <dd className="font-medium tabular-nums">
-                    {summary.credit_breakdown.subscription} {CREDIT_UNIT_SHORT}
-                  </dd>
-                </div>
-                {summary.credit_breakdown.grant > 0 && (
-                  <div className="flex items-center justify-between gap-4">
+                {summary.credit_buckets.map((bucket, index) => (
+                  <div key={`${bucket.kind}-${index}`} className="flex items-center justify-between gap-4">
                     <dt className="text-muted-foreground">
-                      特典クレジット（期限つき）
-                      {summary.credit_breakdown.grant_expires_at && (
-                        <span className="ml-1 text-xs">
-                          （{formatRenewal(summary.credit_breakdown.grant_expires_at)} まで）
-                        </span>
-                      )}
+                      {bucket.label}
+                      <span className="ml-1 text-xs">
+                        （{bucket.expires_at ? `${formatRenewal(bucket.expires_at)} まで` : '期限なし'}）
+                      </span>
                     </dt>
                     <dd className="font-medium tabular-nums">
-                      {summary.credit_breakdown.grant} {CREDIT_UNIT_SHORT}
+                      {bucket.credits} {CREDIT_UNIT_SHORT}
                     </dd>
                   </div>
-                )}
-                {summary.credit_breakdown.topup > 0 && (
-                  <div className="flex items-center justify-between gap-4">
-                    <dt className="text-muted-foreground">チャージ（買い切り）</dt>
-                    <dd className="font-medium tabular-nums">
-                      {summary.credit_breakdown.topup} {CREDIT_UNIT_SHORT}
-                    </dd>
-                  </div>
-                )}
+                ))}
+                <p className="pt-1 text-xs text-muted-foreground">
+                  期限が近いものから使われます。クレジットは受け取ってから6ヶ月間有効です。
+                </p>
               </dl>
             )}
             <div className="flex flex-wrap items-center gap-2 border-t border-border pt-3">

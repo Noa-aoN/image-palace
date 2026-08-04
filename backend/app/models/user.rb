@@ -175,9 +175,17 @@ class User < ApplicationRecord
   end
 
   # Top-up（買い切り）クレジットを加算する。
+  # 買い切りも期限付きで積む。
+  # 以前は無期限の入れ物（topup_credits）に入れていたため、期限が効かなかった。
+  # 既に入っているぶんはそのまま残し、消費順では最後に回る（＝先に期限付きが使われる）。
   def add_topup_credits!(amount, stripe_event_id: nil, amount_cents: nil, currency: nil)
     with_lock do
-      increment!(:topup_credits, amount)
+      credit_grants.create!(
+        kind: "topup",
+        amount_points: amount,
+        remaining_points: amount,
+        expires_at: Billing::Catalog::CREDIT_LIFETIME.from_now
+      )
       record_credit!(kind: "topup_purchase", delta: amount, stripe_event_id:, amount_cents:, currency:)
     end
   end
@@ -193,29 +201,65 @@ class User < ApplicationRecord
   end
 
   # 生成1件ぶんなどを消費する。期限付きグラント（期限が近い順）→ サブスク → Top-up の順に引く。
+  # 期限が近いものから使う。
+  #
+  # 以前は「グラント → 月額分 → 買い切り」の順だった。種類で決めていたため、
+  # 月末で消える月額分より先に、まだ数ヶ月ある期限付きグラントを使ってしまい、
+  # 結果として消えなくてよかったぶんを失っていた。
+  #
+  # 種類ではなく期限で並べる。期限が無いものは最後（いくらでも待てるため）。
   def consume_credits!(amount, item: nil, space_point_id: nil)
     with_lock do
       raise InsufficientCredits, "クレジットが不足しています" if available_credit_points < amount
 
       remaining = amount
-      # 1) 期限付きグラント（失効ロスを避けるため期限の近い順）
-      credit_grants.consume_order.each do |grant|
+      consumption_sources.each do |source|
         break if remaining <= 0
 
-        take = [ grant.remaining_points, remaining ].min
-        grant.update!(remaining_points: grant.remaining_points - take)
+        take = [ source[:points], remaining ].min
+        next if take <= 0
+
+        source[:consume].call(take)
         remaining -= take
       end
-      # 2) サブスク → 3) Top-up
-      from_subscription = [ subscription_credits, remaining ].min
-      remaining -= from_subscription
-      from_topup = remaining
-      update!(
-        subscription_credits: subscription_credits - from_subscription,
-        topup_credits: topup_credits - from_topup
-      )
       record_credit!(kind: "consumption", delta: -amount, item:, space_point_id:)
     end
+  end
+
+  # 使える残高を、期限が近い順に並べたもの。
+  # 期限が無いものは nil を最後に置く（無期限のまま置いておいても失われないため）。
+  def consumption_sources
+    sources = credit_grants.active.map do |grant|
+      {
+        expires_at: grant.expires_at,
+        points: grant.remaining_points,
+        consume: ->(take) { grant.update!(remaining_points: grant.remaining_points - take) }
+      }
+    end
+
+    if subscription_credits.positive?
+      sources << {
+        expires_at: subscription_expires_at,
+        points: subscription_credits,
+        consume: ->(take) { update!(subscription_credits: subscription_credits - take) }
+      }
+    end
+
+    if topup_credits.positive?
+      # 期限を持たない古い買い切り分。待てるので最後に回す
+      sources << {
+        expires_at: nil,
+        points: topup_credits,
+        consume: ->(take) { update!(topup_credits: topup_credits - take) }
+      }
+    end
+
+    sources.sort_by { |source| [ source[:expires_at] ? 0 : 1, source[:expires_at] || Time.current ] }
+  end
+
+  # 月額プランのぶんが消えるとき。契約が無ければ無料枠の周期末
+  def subscription_expires_at
+    active_subscription&.current_period_end || next_free_credit_reset_at
   end
 
   # == クラスメソッド =========================================================

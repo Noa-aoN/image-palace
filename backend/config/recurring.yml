@@ -16,6 +16,10 @@ production:
   expire_credit_grants:
     class: ExpireCreditGrantsJob
     schedule: at 4am every day
+  # 期限が近いクレジットのお知らせ。失効させる前に流す（順番を入れ替えないこと）
+  notify_expiring_credits:
+    class: NotifyExpiringCreditsJob
+    schedule: at 8am every day
   recover_stuck_generations:
     class: RecoverStuckGenerationsJob
     schedule: every 5 minutes

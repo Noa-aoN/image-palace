@@ -49,10 +49,22 @@ RSpec.describe "User credit ledger", type: :model do
   end
 
   describe "#add_topup_credits!" do
-    it "adds to the topup bucket and logs a purchase" do
+    it "期限付きで積み、購入として記録する" do
       user.add_topup_credits!(100)
-      expect(user.reload.topup_credits).to eq(100)
+
+      grant = user.reload.credit_grants.find_by(kind: "topup")
+      expect(grant.remaining_points).to eq(100)
+      expect(grant.expires_at).to be_within(1.day).of(Billing::Catalog::CREDIT_LIFETIME.from_now)
+      expect(user.available_credit_points).to eq(100)
       expect(user.credit_transactions.last.kind).to eq("topup_purchase")
+    end
+
+    it "買うたびに別の期限で積まれる（まとめて期限が延びない）" do
+      user.add_topup_credits!(100)
+      travel_to(1.month.from_now) { user.add_topup_credits!(100) }
+
+      expiries = user.reload.credit_grants.where(kind: "topup").pluck(:expires_at)
+      expect(expiries.uniq.size).to eq(2)
     end
   end
 
@@ -250,6 +262,95 @@ RSpec.describe "User credit ledger", type: :model do
     it "登録1件あたりの持ち出しに上限がある（回収の当てがない支出のため）" do
       cost = (Billing::Catalog::TRIAL_CREDITS * Billing::Catalog::COST_PER_CREDIT)
       expect(cost).to be <= 30
+    end
+  end
+
+  describe "消費の順番（期限が近いものから）" do
+    let(:one) { Billing::POINTS_PER_CREDIT }
+
+    it "月末で消える月額分を、まだ数ヶ月ある期限付きより先に使う" do
+      user.update!(subscription_credits: 5 * one)
+      grant = user.credit_grants.create!(
+        kind: "topup", amount_points: 5 * one, remaining_points: 5 * one,
+        expires_at: 6.months.from_now
+      )
+
+      user.consume_credits!(3 * one)
+
+      expect(user.reload.subscription_credits).to eq(2 * one)
+      expect(grant.reload.remaining_points).to eq(5 * one)
+    end
+
+    it "月額分より先に切れるグラントがあれば、そちらを先に使う" do
+      user.update!(subscription_credits: 5 * one)
+      soon = user.credit_grants.create!(
+        kind: "trial", amount_points: 3 * one, remaining_points: 3 * one, expires_at: 2.days.from_now
+      )
+
+      user.consume_credits!(2 * one)
+
+      expect(soon.reload.remaining_points).to eq(1 * one)
+      expect(user.reload.subscription_credits).to eq(5 * one)
+    end
+
+    it "期限付きが尽きたら次に近いものへ移る" do
+      soon = user.credit_grants.create!(
+        kind: "trial", amount_points: 2 * one, remaining_points: 2 * one, expires_at: 2.days.from_now
+      )
+      later = user.credit_grants.create!(
+        kind: "topup", amount_points: 5 * one, remaining_points: 5 * one, expires_at: 3.months.from_now
+      )
+
+      user.consume_credits!(4 * one)
+
+      expect(soon.reload.remaining_points).to eq(0)
+      expect(later.reload.remaining_points).to eq(3 * one)
+    end
+
+    it "期限の無いぶんは最後に使う（待てるため）" do
+      user.update!(topup_credits: 5 * one)
+      grant = user.credit_grants.create!(
+        kind: "topup", amount_points: 5 * one, remaining_points: 5 * one, expires_at: 1.month.from_now
+      )
+
+      user.consume_credits!(3 * one)
+
+      expect(grant.reload.remaining_points).to eq(2 * one)
+      expect(user.reload.topup_credits).to eq(5 * one)
+    end
+
+    it "期限切れのグラントからは使わない" do
+      expired = user.credit_grants.create!(
+        kind: "trial", amount_points: 5 * one, remaining_points: 5 * one, expires_at: 1.day.ago
+      )
+      user.update!(subscription_credits: 5 * one)
+
+      user.consume_credits!(3 * one)
+
+      expect(expired.reload.remaining_points).to eq(5 * one)
+      expect(user.reload.subscription_credits).to eq(2 * one)
+    end
+
+    it "複数にまたがっても、合計はちょうど引かれる" do
+      user.update!(subscription_credits: 2 * one, topup_credits: 2 * one)
+      user.credit_grants.create!(
+        kind: "trial", amount_points: 2 * one, remaining_points: 2 * one, expires_at: 1.day.from_now
+      )
+      before = user.available_credit_points
+
+      user.consume_credits!(5 * one)
+
+      expect(user.reload.available_credit_points).to eq(before - 5 * one)
+    end
+
+    it "足りなければ何も減らさない" do
+      user.update!(subscription_credits: 2 * one)
+      user.credit_grants.create!(
+        kind: "trial", amount_points: 1 * one, remaining_points: 1 * one, expires_at: 1.day.from_now
+      )
+
+      expect { user.consume_credits!(10 * one) }.to raise_error(User::InsufficientCredits)
+      expect(user.reload.available_credit_points).to eq(3 * one)
     end
   end
 end

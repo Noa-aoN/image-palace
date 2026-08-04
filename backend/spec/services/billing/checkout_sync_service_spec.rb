@@ -28,7 +28,7 @@ RSpec.describe Billing::CheckoutSyncService do
 
       expect(result.status).to eq("paid")
       expect(result.applied).to be(true)
-      expect(user.reload.topup_credits).to eq(topup.credits_per_period * Billing::POINTS_PER_CREDIT)
+      expect(user.reload.available_credit_points).to eq(topup.credits_per_period * Billing::POINTS_PER_CREDIT)
     end
 
     it "同じ決済を二度取り込んでも増えない" do
@@ -37,7 +37,7 @@ RSpec.describe Billing::CheckoutSyncService do
       described_class.call(user: user, session_id: "cs_test_1")
 
       expect { described_class.call(user: user, session_id: "cs_test_1") }
-        .not_to(change { user.reload.topup_credits })
+        .not_to(change { user.reload.available_credit_points })
     end
 
     it "webhook が先に入れていれば、取り込みでは増やさない" do
@@ -60,14 +60,14 @@ RSpec.describe Billing::CheckoutSyncService do
       result = described_class.call(user: user, session_id: "cs_test_1")
 
       expect(result.status).to eq("unpaid")
-      expect(user.reload.topup_credits).to eq(0)
+      expect(user.reload.available_credit_points).to eq(0)
     end
 
     it "知らないプランなら入れない" do
       stub_session(topup_session(metadata: { plan_name: "存在しないプラン" }))
 
       expect(described_class.call(user: user, session_id: "cs_test_1").applied).to be(false)
-      expect(user.reload.topup_credits).to eq(0)
+      expect(user.reload.available_credit_points).to eq(0)
     end
   end
 
@@ -146,7 +146,7 @@ RSpec.describe Billing::CheckoutSyncService do
       result = described_class.call(user: user, session_id: nil)
 
       expect(result.applied).to be(true)
-      expect(user.reload.topup_credits).to eq(2 * topup.credits_per_period * Billing::POINTS_PER_CREDIT)
+      expect(user.reload.available_credit_points).to eq(2 * topup.credits_per_period * Billing::POINTS_PER_CREDIT)
     end
 
     it "反映済みのものは素通りする" do
@@ -155,7 +155,7 @@ RSpec.describe Billing::CheckoutSyncService do
       described_class.call(user: user, session_id: nil)
 
       expect { described_class.call(user: user, session_id: nil) }
-        .not_to(change { user.reload.topup_credits })
+        .not_to(change { user.reload.available_credit_points })
     end
 
     it "まだ支払われていないものは反映しない" do
@@ -165,7 +165,7 @@ RSpec.describe Billing::CheckoutSyncService do
       result = described_class.call(user: user, session_id: nil)
 
       expect(result.status).to eq("nothing_to_apply")
-      expect(user.reload.topup_credits).to eq(0)
+      expect(user.reload.available_credit_points).to eq(0)
     end
 
     it "自分の顧客に紐づくものだけを見る（他人の決済を拾わない）" do
