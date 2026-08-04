@@ -76,6 +76,42 @@ RSpec.describe "Api::V1::Admin", type: :request do
 
       expect(unconfirmed.owner?).to be(false)
     end
+
+    it "Google でログインしたアカウントでも効く（確認済みとして作られるため）" do
+      google_user = User.find_for_oauth(
+        "provider" => "google_oauth2", "uid" => "1234567890",
+        "info" => { "email" => "owner@example.com", "name" => "運営" }
+      )
+      allow(ENV).to receive(:fetch).with("ADMIN_EMAILS", "").and_return("owner@example.com")
+
+      expect(google_user.provider).to eq("google_oauth2")
+      expect(google_user.confirmed_at).to be_present
+      expect(google_user.owner?).to be(true)
+    end
+
+    it "別のアドレスの Google アカウントには効かない" do
+      other = User.find_for_oauth(
+        "provider" => "google_oauth2", "uid" => "9999999999",
+        "info" => { "email" => "someone-else@example.com", "name" => "他人" }
+      )
+      allow(ENV).to receive(:fetch).with("ADMIN_EMAILS", "").and_return("owner@example.com")
+
+      expect(other.admin?).to be(false)
+    end
+
+    it "指定が空なら誰も運営にならない" do
+      allow(ENV).to receive(:fetch).with("ADMIN_EMAILS", "").and_return("")
+
+      expect(User.all.none?(&:admin?)).to be(true)
+    end
+
+    it "指定を外すと、その場で入れなくなる（役割は毎回読み直す）" do
+      allow(ENV).to receive(:fetch).with("ADMIN_EMAILS", "").and_return("")
+
+      get "/api/v1/admin/overview", headers: member_headers
+
+      expect(response).to have_http_status(:forbidden)
+    end
   end
 
   describe "GET /api/v1/admin/overview" do

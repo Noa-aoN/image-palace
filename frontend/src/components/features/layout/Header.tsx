@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react'
 import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
-import { CircleUser, Castle, Coins, ScrollText, X } from 'lucide-react'
+import { CircleUser, Castle, Coins, ScrollText, ShieldCheck, X } from 'lucide-react'
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -17,6 +17,7 @@ import { useAuthStore } from '@/stores/auth'
 import { useItemsStore } from '@/stores/items'
 import { useBillingStore } from '@/stores/billing'
 import { useNotificationsStore } from '@/stores/notifications'
+import { useAdminStore } from '@/stores/admin'
 import { signOut } from '@/lib/api/auth'
 import { CREDIT_UNIT_SHORT } from '@/lib/billing'
 import { MobileNav } from '@/components/features/layout/MobileNav'
@@ -36,6 +37,8 @@ export function AppHeader() {
   const billingSummary = useBillingStore((s) => s.summary)
   const fetchBillingSummary = useBillingStore((s) => s.fetchSummary)
   const unreadCount = useNotificationsStore((s) => s.unreadCount)
+  // 運営権限の有無。バッジを出すかどうかの判断にだけ使う（守りはサーバー側）
+  const adminSession = useAdminStore((s) => s.session)
   const fetchUnreadCount = useNotificationsStore((s) => s.fetchUnreadCount)
   const [notificationsOpen, setNotificationsOpen] = useState(false)
   const [menuOpen, setMenuOpen] = useState(false)
@@ -130,6 +133,19 @@ export function AppHeader() {
             )}
           </button>
         )}
+        {showUserMenu && adminSession?.admin && (
+          // 運営権限を持つアカウントであることを常に見えるようにする。
+          // 権限のある状態に気づかないまま操作するのを防ぐためのもので、守りではない
+          // （実際の判定はサーバー側で毎リクエスト行われる）。
+          <Link
+            href="/admin"
+            title={adminSession.owner ? '運営の管理者' : '運営'}
+            className="hidden rounded-full border border-[var(--palace)]/50 bg-[rgba(198,167,94,0.12)] px-2 py-0.5 text-xs font-medium text-[var(--palace)] transition-colors hover:bg-[rgba(198,167,94,0.22)] sm:inline-flex sm:items-center sm:gap-1"
+          >
+            <ShieldCheck size={12} />
+            管理者
+          </Link>
+        )}
         {showUserMenu ? (
           <DropdownMenu open={menuOpen} onOpenChange={setMenuOpen}>
             <DropdownMenuTrigger className="rounded-full p-1 hover:bg-black/5 transition-colors">
@@ -165,6 +181,11 @@ export function AppHeader() {
                 </DropdownMenuLabel>
               </DropdownMenuGroup>
               <DropdownMenuSeparator />
+              {adminSession?.admin && (
+                <DropdownMenuItem onClick={() => router.push('/admin')} className="cursor-pointer">
+                  管理（運営）
+                </DropdownMenuItem>
+              )}
               <DropdownMenuItem onClick={() => router.push('/account')} className="cursor-pointer">
                 アカウント管理
               </DropdownMenuItem>
