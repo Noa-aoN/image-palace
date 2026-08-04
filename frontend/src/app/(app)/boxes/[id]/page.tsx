@@ -15,9 +15,8 @@ import { getItems } from '@/lib/api/items'
 import { getSpaces } from '@/lib/api/spaces'
 import { getViews } from '@/lib/api/views'
 import { viewTypeLabel } from '@/lib/view-types'
-import { EntityCover } from '@/components/features/shared/EntityCover'
 import { useCoverGeneration } from '@/hooks/useCoverGeneration'
-import { CoverSettings } from '@/components/features/shared/CoverSettings'
+import { CoverLauncher } from '@/components/features/shared/CoverLauncher'
 import type { BoxDetail, BoxEntry, BoxEntryType } from '@/types/box'
 import type { CoverType } from '@/types/cover'
 
@@ -345,26 +344,20 @@ export default function BoxDetailPage() {
         カード・デッキ・スペース・キャンバスをまとめられます。
       </p>
 
-      {/* カバー（ヘッダー）設定 */}
-      <div className="mb-8 flex flex-col gap-4 sm:flex-row sm:items-start">
-        <div className="aspect-square w-40 shrink-0 overflow-hidden rounded-xl border border-border bg-muted">
-          <EntityCover cover={box} />
-        </div>
-        <div className="flex-1">
-          <CoverSettings
-            coverType={box.cover_type}
-            busy={coverBusy}
-            hasCustom={!!box.cover_image}
-            helpText="先頭: ボックス内カードの先頭 / コラージュ: 最大4枚 / カスタム: アップロード画像"
-            onSelectType={handleSetCoverType}
-            onUpload={handleUploadCover}
-            onRemove={handleRemoveCover}
-            onGenerate={cover.generate}
-            generating={cover.generating}
-            generateError={cover.error}
-          />
-        </div>
-      </div>
+      {/* カバー（ヘッダー）。設定一式は右パネルで開く */}
+      <CoverLauncher
+        cover={box}
+        coverType={box.cover_type}
+        busy={coverBusy}
+        hasCustom={!!box.cover_image}
+        helpText="先頭: ボックス内カードの先頭 / コラージュ: 最大4枚 / カスタム: アップロード画像"
+        onSelectType={handleSetCoverType}
+        onUpload={handleUploadCover}
+        onRemove={handleRemoveCover}
+        onGenerate={cover.generate}
+        generating={cover.generating}
+        generateError={cover.error}
+      />
 
       {error && <p className="text-sm text-destructive mb-4">{error}</p>}
 

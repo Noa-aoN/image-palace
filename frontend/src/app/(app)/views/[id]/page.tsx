@@ -30,10 +30,9 @@ const DeckBoard = dynamic(
   () => import('@/components/features/views/DeckBoard').then((m) => m.DeckBoard),
   { ssr: false, loading: canvasLoading }
 )
-import { EntityCover } from '@/components/features/shared/EntityCover'
 import { useCoverGeneration } from '@/hooks/useCoverGeneration'
 import { AiEditPanel } from '@/components/features/views/AiEditPanel'
-import { CoverSettings } from '@/components/features/shared/CoverSettings'
+import { CoverLauncher } from '@/components/features/shared/CoverLauncher'
 
 export default function ViewEditorPage() {
   const { id } = useParams<{ id: string }>()
@@ -248,26 +247,20 @@ export default function ViewEditorPage() {
         </Button>
       </div>
 
-      {/* カバー（ヘッダー）設定 */}
-      <div className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-start">
-        <div className="aspect-square w-40 shrink-0 overflow-hidden rounded-xl border border-border bg-muted">
-          <EntityCover cover={view} />
-        </div>
-        <div className="flex-1">
-          <CoverSettings
-            coverType={view.cover_type}
-            busy={coverBusy}
-            hasCustom={!!view.cover_image}
-            helpText="先頭/コラージュ: キャンバスに配置したカードを使用 / カスタム: アップロード画像"
-            onSelectType={handleSetCoverType}
-            onUpload={handleUploadCover}
-            onRemove={handleRemoveCover}
-            onGenerate={cover.generate}
-            generating={cover.generating}
-            generateError={cover.error}
-          />
-        </div>
-      </div>
+      {/* カバー（ヘッダー）。設定一式は右パネルで開く */}
+      <CoverLauncher
+        cover={view}
+        coverType={view.cover_type}
+        busy={coverBusy}
+        hasCustom={!!view.cover_image}
+        helpText="先頭/コラージュ: キャンバスに配置したカードを使用 / カスタム: アップロード画像"
+        onSelectType={handleSetCoverType}
+        onUpload={handleUploadCover}
+        onRemove={handleRemoveCover}
+        onGenerate={cover.generate}
+        generating={cover.generating}
+        generateError={cover.error}
+      />
 
       {error && <p className="text-sm text-destructive mb-4">{error}</p>}
 
@@ -276,6 +269,8 @@ export default function ViewEditorPage() {
         <AiEditPanel
           viewId={view.id}
           viewType={view.view_type}
+          canUndo={view.revision?.can_undo ?? false}
+          canRedo={view.revision?.can_redo ?? false}
           onApplied={(updated) => {
             setView(updated)
             // 盤は初期値から自前の状態を作るので、作り直させて結果を映す

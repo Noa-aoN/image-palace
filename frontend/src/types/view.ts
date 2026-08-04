@@ -104,6 +104,8 @@ export type AiEditMode = 'placed_only' | 'select'
 // AI編集で何が変わったか
 export interface AiEditSummary {
   summary: string
+  /** AIが気づいた点（誤りや不足の指摘）。無いこともある */
+  notes?: string | null
   added: number
   removed: number
   placed: number
@@ -117,4 +119,6 @@ export interface ViewDetail extends View {
   points?: SpaceMapPoint[] // space_map
   /** AI編集の直後だけ返る（何が変わったかの報告） */
   ai_edit?: AiEditSummary
+  /** 戻る／進むの可否 */
+  revision?: { cursor: number; can_undo: boolean; can_redo: boolean }
 }

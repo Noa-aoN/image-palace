@@ -249,4 +249,63 @@ RSpec.describe Billing::WebhookHandler do
       }.not_to(change { CreditTransaction.where(user:, kind: "subscription_expire").count })
     end
   end
+
+  describe "宛先が特定できない支払い" do
+    # 開発機で checkout し、webhook だけ本番へ届く構成だとこれが起きる。
+    # 黙って通すと「払ったのにクレジットが増えない」が誰にも気づかれないまま残る。
+    let(:orphan_topup) do
+      { id: "evt_orphan1", type: "checkout.session.completed", data: { object: {
+        mode: "payment", customer: "cus_unknown", client_reference_id: SecureRandom.uuid,
+        metadata: { plan_name: "topup_100" }
+      } } }
+    end
+
+    it "ユーザーが見つからないときは声を上げる" do
+      allow(Rails.logger).to receive(:error)
+
+      handle(orphan_topup)
+
+      expect(Rails.logger).to have_received(:error).with(/UNMATCHED user .*event=evt_orphan1/)
+    end
+
+    it "ユーザーが見つからなくてもクレジットは動かさない" do
+      user
+      expect { handle(orphan_topup) }.not_to(change { user.reload.topup_credits })
+      expect(CreditTransaction.where(stripe_event_id: "evt_orphan1")).to be_empty
+    end
+
+    it "プランが見つからないときも声を上げる" do
+      user
+      allow(Rails.logger).to receive(:error)
+
+      handle(id: "evt_orphan2", type: "checkout.session.completed", data: { object: {
+        mode: "payment", customer: "cus_1", client_reference_id: user.id,
+        metadata: { plan_name: "存在しないプラン" }
+      } })
+
+      expect(Rails.logger).to have_received(:error).with(/UNMATCHED plan .*event=evt_orphan2/)
+    end
+
+    it "サブスクの請求でも同じように声を上げる" do
+      plan
+      allow(Rails.logger).to receive(:error)
+
+      handle(id: "evt_orphan3", type: "invoice.paid", data: { object: {
+        customer: "cus_unknown", subscription: "sub_x",
+        lines: { data: [ { price: { id: "price_std" } } ] }
+      } })
+
+      expect(Rails.logger).to have_received(:error).with(/UNMATCHED user .*event=evt_orphan3/)
+    end
+
+    it "個人情報はログに載せない" do
+      user
+      messages = []
+      allow(Rails.logger).to receive(:error) { |msg| messages << msg }
+
+      handle(orphan_topup)
+
+      expect(messages.join).not_to include(user.email)
+    end
+  end
 end

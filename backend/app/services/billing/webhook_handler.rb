@@ -52,7 +52,13 @@ module Billing
 
       user = user_for(session.customer, session.client_reference_id)
       plan = Plan.find_by(name: session.metadata&.[]("plan_name"))
-      return unless user && plan
+      unless user && plan
+        return report_unmatched!(
+          event,
+          user: user, plan: plan,
+          customer: session.customer, client_reference_id: session.client_reference_id
+        )
+      end
       return if processed?(event)
 
       user.add_topup_credits!(plan.credits_per_period * Billing::POINTS_PER_CREDIT, stripe_event_id: event.id)
@@ -115,7 +121,9 @@ module Billing
 
       user = user_for(invoice.customer)
       plan = Plan.find_by(stripe_price_id: invoice_price_id(invoice))
-      return unless user && plan
+      unless user && plan
+        return report_unmatched!(event, user: user, plan: plan, customer: invoice.customer)
+      end
       return if processed?(event)
 
       # Free→Paid 初回切替時、失効させずに Free 残高を「期限付きグラント」として引き継ぐ。
@@ -170,6 +178,23 @@ module Billing
 
     def processed?(event)
       CreditTransaction.exists?(stripe_event_id: event.id)
+    end
+
+    # 支払いは済んでいるのに、宛先のユーザーかプランが特定できなかった。
+    #
+    # ここを黙って通すと「払ったのにクレジットが増えない」が誰にも気づかれないまま残る。
+    # 実際、開発機で checkout して webhook だけ本番に届く構成だとこれが起きる。
+    #
+    # 200 は返し続ける（Stripe に再送させても永久に一致しないため）が、
+    # 必ずログと Sentry に出して、後から手当てできるようにする。
+    # 個人情報は載せない（顧客IDとイベントIDだけで Stripe 側から辿れる）。
+    def report_unmatched!(event, user:, plan:, customer: nil, client_reference_id: nil)
+      reason = [ ("user" if user.nil?), ("plan" if plan.nil?) ].compact.join("+")
+      message = "[stripe webhook] UNMATCHED #{reason} type=#{event.type} event=#{event.id} " \
+                "customer=#{customer} client_reference_id=#{client_reference_id}"
+      Rails.logger.error(message)
+      Sentry.capture_message(message, level: :error) if defined?(Sentry)
+      nil
     end
 
     def time_at(unix)
