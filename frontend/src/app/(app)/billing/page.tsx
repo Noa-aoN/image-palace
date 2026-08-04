@@ -15,7 +15,14 @@ import {
   syncCheckout,
 } from '@/lib/api/billing'
 import { useBillingStore } from '@/stores/billing'
-import { tierLabel, formatYen, CREDIT_UNIT, CREDIT_UNIT_SHORT } from '@/lib/billing'
+import {
+  tierLabel,
+  formatYen,
+  unitPrice,
+  discountPercent,
+  CREDIT_UNIT,
+  CREDIT_UNIT_SHORT,
+} from '@/lib/billing'
 import type { BillingPlan, BillingSummary } from '@/types/billing'
 
 type TabKey = 'usage' | 'plan' | 'credit' | 'capacity' | 'payment'
@@ -165,7 +172,10 @@ export default function BillingPage() {
 
   const currentTier = summary?.plan?.tier ?? 'free'
   const subscriptionPlans = plans.filter((p) => p.kind === 'subscription' && p.tier !== 'free')
-  const topupPlans = plans.filter((p) => p.kind === 'one_time')
+  // 買い切りは枚数の少ない順に。まとめるほど安くなることが並びで分かるようにする
+  const topupPlans = plans.filter((p) => p.kind === 'one_time').sort((a, b) => a.credits - b.credits)
+  // いちばん割高なものを基準に、どれだけ得かを出す
+  const topupBaseRate = topupPlans.length > 0 ? Math.max(...topupPlans.map(unitPrice)) : 0
   const renewal = formatRenewal(summary?.subscription?.current_period_end ?? summary?.next_credit_reset)
   const renewalLabel = summary?.subscription ? '次回更新日' : '次回回復日'
 
@@ -331,20 +341,34 @@ export default function BillingPage() {
                 <CreditCard size={18} style={{ color: 'var(--palace)' }} />
                 <h2 className="text-lg font-semibold">クレジットを追加</h2>
               </div>
-              <p className="text-sm text-muted-foreground">買い切りのクレジットは繰り越して使えます。</p>
-              <div className="flex flex-wrap gap-3">
-                {topupPlans.map((plan) => (
-                  <Button
-                    key={plan.name}
-                    variant="outline"
-                    onClick={() => handleCheckout(plan.name)}
-                    disabled={busyPlan === plan.name}
-                    className="flex items-center gap-1"
-                  >
-                    <Coins size={15} />
-                    {plan.credits.toLocaleString('ja-JP')} クレジット（{formatYen(plan.price)}）
-                  </Button>
-                ))}
+              <p className="text-sm text-muted-foreground">
+                買い切りのクレジットは繰り越して使えます。まとめるほど1枚あたりが安くなります。
+              </p>
+              <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
+                {topupPlans.map((plan) => {
+                  const discount = discountPercent(unitPrice(plan), topupBaseRate)
+                  return (
+                    <button
+                      key={plan.name}
+                      type="button"
+                      onClick={() => handleCheckout(plan.name)}
+                      disabled={busyPlan === plan.name}
+                      className="flex items-center justify-between gap-3 rounded-xl border border-border p-3 text-left transition-colors hover:bg-muted disabled:opacity-50"
+                    >
+                      <span className="min-w-0">
+                        <span className="flex items-center gap-1.5 font-medium">
+                          <Coins size={15} style={{ color: 'var(--palace)' }} />
+                          {plan.credits.toLocaleString('ja-JP')} クレジット
+                        </span>
+                        <span className="mt-0.5 block text-xs text-muted-foreground">
+                          1枚あたり {formatYen(Math.round(unitPrice(plan) * 10) / 10)}
+                          {discount > 0 && <span className="ml-1 text-[var(--palace)]">{discount}% お得</span>}
+                        </span>
+                      </span>
+                      <span className="shrink-0 tabular-nums font-semibold">{formatYen(plan.price)}</span>
+                    </button>
+                  )
+                })}
               </div>
             </section>
           )}

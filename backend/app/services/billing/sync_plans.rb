@@ -52,9 +52,17 @@ module Billing
 
     def product_params(plan)
       {
-        name: "ImagePalace #{plan.tier.to_s.capitalize}",
+        name: product_name(plan),
         metadata: { plan_name: plan.name, tier: plan.tier }
       }
+    end
+
+    # 買い切りは同じ tier（topup）で複数あるため、枚数まで名前に入れる。
+    # Stripe の一覧で同名が並ぶと、どれがどれだか分からなくなるため。
+    def product_name(plan)
+      return "ImagePalace クレジット #{plan.credits_per_period}" if plan.one_time?
+
+      "ImagePalace #{plan.tier.to_s.capitalize}"
     end
 
     def price_params(plan)
