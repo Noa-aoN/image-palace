@@ -16,6 +16,7 @@ module Api
                              .includes(space_points: { image_attachment: :blob })
                              .with_attached_cover_image
                              .with_attached_cover_thumb
+        spaces = filter_by_name(spaces)
         spaces, next_cursor = paginate_list(spaces)
 
         render json: { spaces: spaces.map { |s| serialize_space(s) }, next_cursor: next_cursor }
@@ -90,6 +91,14 @@ module Api
       end
 
       private
+
+      # 名前での絞り込み。全件読み込まずに目当てのものへ辿り着けるようにする
+      def filter_by_name(scope)
+        query = params[:q].to_s.strip
+        return scope if query.blank?
+
+        scope.where("name ILIKE ?", "%#{ActiveRecord::Base.sanitize_sql_like(query)}%")
+      end
 
       def set_space
         # serialize_space→cover_point/cover_points が space_points の画像添付を走査するため preload する

@@ -218,4 +218,49 @@ RSpec.describe "Api::V1::Spaces", type: :request do
       expect(response).to have_http_status(:no_content)
     end
   end
+
+  describe "名前での絞り込み" do
+    it "q に当たるものだけ返す" do
+      user.spaces.create!(name: "図書館", space_type: "room")
+      user.spaces.create!(name: "森の道", space_type: "road")
+
+      get "/api/v1/spaces", params: { q: "図書" }, headers: headers
+
+      expect(json_response["spaces"].map { |s| s["name"] }).to eq([ "図書館" ])
+    end
+
+    it "部分一致で拾う" do
+      user.spaces.create!(name: "古い図書館", space_type: "room")
+
+      get "/api/v1/spaces", params: { q: "図書" }, headers: headers
+
+      expect(json_response["spaces"].size).to eq(1)
+    end
+
+    it "q が空なら絞り込まない" do
+      user.spaces.create!(name: "図書館", space_type: "room")
+      user.spaces.create!(name: "森の道", space_type: "road")
+
+      get "/api/v1/spaces", params: { q: "  " }, headers: headers
+
+      expect(json_response["spaces"].size).to eq(2)
+    end
+
+    it "検索の記号をそのまま渡しても全件にならない" do
+      user.spaces.create!(name: "図書館", space_type: "room")
+
+      get "/api/v1/spaces", params: { q: "%" }, headers: headers
+
+      expect(json_response["spaces"]).to be_empty
+    end
+
+    it "limit と合わせて使える（全件読み込まない）" do
+      3.times { |i| user.spaces.create!(name: "部屋#{i}", space_type: "room") }
+
+      get "/api/v1/spaces", params: { q: "部屋", limit: 2 }, headers: headers
+
+      expect(json_response["spaces"].size).to eq(2)
+      expect(json_response["next_cursor"]).to be_present
+    end
+  end
 end

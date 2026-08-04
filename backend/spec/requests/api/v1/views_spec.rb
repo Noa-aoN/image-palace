@@ -233,4 +233,40 @@ RSpec.describe "Api::V1::Views", type: :request do
       expect(body["next_cursor"]).to be_nil
     end
   end
+
+  describe "名前・種別での絞り込み" do
+    it "q に当たるものだけ返す" do
+      user.views.create!(name: "英単語デッキ", view_type: "deck")
+      user.views.create!(name: "関係図", view_type: "freeboard")
+
+      get "/api/v1/views", params: { q: "英単語" }, headers: headers
+
+      expect(json_response["views"].map { |v| v["name"] }).to eq([ "英単語デッキ" ])
+    end
+
+    it "種別で絞り込める" do
+      user.views.create!(name: "デッキ", view_type: "deck")
+      user.views.create!(name: "ボード", view_type: "freeboard")
+
+      get "/api/v1/views", params: { type: "deck" }, headers: headers
+
+      expect(json_response["views"].map { |v| v["view_type"] }).to eq([ "deck" ])
+    end
+
+    it "知らない種別は無視する（全件が消えない）" do
+      user.views.create!(name: "デッキ", view_type: "deck")
+
+      get "/api/v1/views", params: { type: "とくべつ" }, headers: headers
+
+      expect(json_response["views"].size).to eq(1)
+    end
+
+    it "検索の記号をそのまま渡しても全件にならない" do
+      user.views.create!(name: "デッキ", view_type: "deck")
+
+      get "/api/v1/views", params: { q: "%" }, headers: headers
+
+      expect(json_response["views"]).to be_empty
+    end
+  end
 end
