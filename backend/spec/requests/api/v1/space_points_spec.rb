@@ -30,6 +30,8 @@ RSpec.describe "Api::V1::SpacePoints", type: :request do
     it "クレジット残高が不足している場合は名前付きポイントを作れない" do
       user.ensure_current_period_credits!
       user.update!(subscription_credits: 0, topup_credits: 0)
+      user.credit_grants.destroy_all
+      user.mark_trial_granted!
 
       expect {
         post "/api/v1/spaces/#{space.id}/points",

@@ -24,6 +24,8 @@ RSpec.describe "Account avatar", type: :request do
     it "returns 422 and enqueues nothing when out of credits" do
       user.ensure_current_period_credits!
       user.update!(subscription_credits: 0, topup_credits: 0)
+      user.credit_grants.destroy_all
+      user.mark_trial_granted!
 
       expect {
         post "/api/v1/account/avatar", params: { avatar: { prompt: "robot" } }, headers: headers, as: :json

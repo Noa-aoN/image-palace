@@ -143,6 +143,8 @@ RSpec.describe Items::CreateService, type: :service do
       # 無料枠を使い切らせる（10cr=1000pt を 0 に）
       user.ensure_current_period_credits!
       user.update!(subscription_credits: 0, topup_credits: 0)
+      user.credit_grants.destroy_all
+      user.mark_trial_granted!
 
       expect {
         described_class.call(user: user, params: { title: "no-credit" })

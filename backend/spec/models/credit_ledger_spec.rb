@@ -154,50 +154,60 @@ RSpec.describe "User credit ledger", type: :model do
     end
   end
 
-  describe "#ensure_current_period_credits! (無料枠の lazy 月次付与)" do
-    it "grants the free plan allotment in points on a new period" do
-      expect {
-        user.ensure_current_period_credits!
-      }.to change { user.reload.subscription_credits }.from(0).to(10 * Billing::POINTS_PER_CREDIT)
-      expect(user.credits_period_start).to be_present
+  describe "#ensure_free_credits!（お試し枠は1回だけ）" do
+    it "はじめてなら期限付きで配る" do
+      expect { user.ensure_free_credits! }
+        .to change { user.reload.available_credit_points }
+        .from(0).to(Billing::Catalog::TRIAL_CREDITS * Billing::POINTS_PER_CREDIT)
+
+      grant = user.credit_grants.last
+      expect(grant.kind).to eq("trial")
+      expect(grant.expires_at).to be_within(1.day).of(Billing::Catalog::CREDIT_LIFETIME.from_now)
+      expect(user.trial_granted_at).to be_present
     end
 
-    it "does not re-grant within the same month" do
-      user.ensure_current_period_credits!
-      expect { user.ensure_current_period_credits! }.not_to(change { user.reload.subscription_credits })
+    it "二度目は配らない（毎月もらえない）" do
+      user.ensure_free_credits!
+
+      expect { user.ensure_free_credits! }.not_to(change { user.reload.available_credit_points })
+      expect(user.credit_grants.where(kind: "trial").count).to eq(1)
     end
 
-    it "skips the free grant for users with an active paid subscription" do
+    it "月が変わっても配らない" do
+      user.ensure_free_credits!
+
+      travel_to(2.months.from_now) do
+        expect { user.ensure_free_credits! }.not_to(change { user.reload.credit_grants.count })
+      end
+    end
+
+    it "使い切ってもまた配られることはない" do
+      user.ensure_free_credits!
+      user.consume_credits!(user.available_credit_points)
+
+      expect { user.ensure_free_credits! }.not_to(change { user.reload.available_credit_points })
+    end
+
+    it "有料契約があるなら配らない（プランのぶんが届くため）" do
       create(:subscription, user:, status: "active")
-      expect { user.ensure_current_period_credits! }.not_to(change { user.reload.subscription_credits })
+      expect { user.ensure_free_credits! }.not_to(change { user.reload.available_credit_points })
     end
 
-    it "skips the free grant for users on a trialing subscription" do
+    it "trial 中の契約でも配らない" do
       create(:subscription, user:, status: "trialing")
-      expect { user.ensure_current_period_credits! }.not_to(change { user.reload.subscription_credits })
+      expect { user.ensure_free_credits! }.not_to(change { user.reload.available_credit_points })
     end
 
-    it "re-grants at each anniversary period (登録日基準で月次)" do
-      user.update_column(:created_at, Time.zone.local(2026, 1, 15, 10))
+    it "配りすぎのブレーカーが働いたら配らないが、何度も試させない" do
+      allow(Billing::FreeGrantGuard).to receive(:allow?).and_return(false)
 
-      travel_to(Time.zone.local(2026, 2, 20, 12)) do
-        user.ensure_current_period_credits!
-        expect(user.reload.credits_period_start).to eq(Time.zone.local(2026, 2, 15, 10))
-      end
-      user.update_column(:subscription_credits, 0)
-
-      travel_to(Time.zone.local(2026, 3, 20, 12)) do
-        expect { user.ensure_current_period_credits! }
-          .to change { user.reload.subscription_credits }.from(0).to(10 * Billing::POINTS_PER_CREDIT)
-        expect(user.reload.credits_period_start).to eq(Time.zone.local(2026, 3, 15, 10))
-      end
+      expect { user.ensure_free_credits! }.not_to(change { user.reload.available_credit_points })
+      expect(user.trial_granted_at).to be_present
     end
 
-    it "next_free_credit_reset_at は現周期＋1ヶ月（登録日基準）" do
-      user.update_column(:created_at, Time.zone.local(2026, 1, 15, 10))
-      travel_to(Time.zone.local(2026, 6, 20, 12)) do
-        expect(user.next_free_credit_reset_at).to eq(Time.zone.local(2026, 7, 15, 10))
-      end
+    it "旧名でも同じように動く（呼び出し側を一度に直さないため）" do
+      expect { user.ensure_current_period_credits! }
+        .to change { user.reload.available_credit_points }.from(0)
     end
   end
 end
