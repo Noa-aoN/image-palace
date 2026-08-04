@@ -1,5 +1,11 @@
 import { apiClient } from './client'
-import type { BillingPlan, BillingSummary, UsagePeriod, UsageSummary } from '@/types/billing'
+import type {
+  BillingPlan,
+  BillingSummary,
+  CreditTransactionsPage,
+  UsagePeriod,
+  UsageSummary,
+} from '@/types/billing'
 
 export async function getPlans(): Promise<BillingPlan[]> {
   const res = await apiClient.get<{ plans: BillingPlan[] }>('/api/v1/billing/plans')
@@ -38,4 +44,12 @@ export async function syncCheckout(sessionId?: string): Promise<{ status: string
 export async function createPortalSession(): Promise<string> {
   const res = await apiClient.post<{ url: string }>('/api/v1/billing/portal')
   return res.data.url
+}
+
+// クレジットの増減の明細。cursor で続きをたどる
+export async function getCreditTransactions(cursor?: string | null): Promise<CreditTransactionsPage> {
+  const res = await apiClient.get<CreditTransactionsPage>('/api/v1/billing/credit_transactions', {
+    params: cursor ? { cursor } : undefined,
+  })
+  return res.data
 }

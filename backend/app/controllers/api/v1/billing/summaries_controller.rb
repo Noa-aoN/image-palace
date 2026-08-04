@@ -4,6 +4,16 @@ module Api
       # 現在のユーザーのクレジット残高・プラン・サブスク状態を返す（アカウント画面用）。
       class SummariesController < Api::V1::BaseController
         def show
+          # webhook の取りこぼしを、利用者が気づく前にここで拾う。
+          # 間隔を空けて確認するので、毎回 Stripe を叩くわけではない。
+          #
+          # 無料枠の付与より先に行う。契約したのに webhook がまだ来ていない状態で
+          # 先に無料枠を判定すると、有料なのに無料扱いになってしまうため。
+          if ::Billing::AutoReconciler.call(current_user)
+            # 突き合わせで契約が増えている可能性があるので、読み直してから判定する
+            current_user.reload
+          end
+
           # 表示残高が当月の無料枠を反映するよう、参照時に lazy 付与しておく。
           current_user.ensure_current_period_credits!
 
