@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { CreditCard, Coins, Sparkles, Loader2, ExternalLink, Gauge, History, HardDrive, Receipt } from 'lucide-react'
+import { CreditCard, Coins, Sparkles, Loader2, ExternalLink, Gauge, History, HardDrive, Receipt, RefreshCw } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { CategorySections, type CategorySection } from '@/components/features/myroom/CategorySections'
 import { ComingSoon } from '@/components/features/myroom/ComingSoon'
@@ -34,6 +34,8 @@ export default function BillingPage() {
   const [busyPlan, setBusyPlan] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [checkoutNotice, setCheckoutNotice] = useState<'success' | 'cancel' | null>(null)
+  const [reconciling, setReconciling] = useState(false)
+  const [reconcileNotice, setReconcileNotice] = useState<string | null>(null)
   // 決済後の反映状況。confirming=確認中 / applied=反映済み / slow=時間がかかっている
   const [applyState, setApplyState] = useState<'confirming' | 'applied' | 'slow' | null>(null)
 
@@ -106,8 +108,8 @@ export default function BillingPage() {
         const start = () => {
           if (!cancelled) poll()
         }
-        if (sessionId) syncCheckout(sessionId).then(start).catch(start)
-        else setTimeout(poll, 1500)
+        // id が載っていない戻り方をしても、直近の支払いから拾えるので必ず試す
+        syncCheckout(sessionId ?? undefined).then(start).catch(start)
       }
     }, 0)
 
@@ -116,6 +118,25 @@ export default function BillingPage() {
       clearTimeout(notice)
     }
   }, [])
+
+  // 決済したのに残高が変わらないときの受け皿。
+  // 直近の支払いを Stripe に問い合わせ、まだ入っていないものを反映する。
+  // 反映済みのものは素通りするので、何度押しても二重にはならない。
+  const handleReconcile = async () => {
+    setReconciling(true)
+    setReconcileNotice(null)
+    try {
+      const result = await syncCheckout()
+      const fresh = await getBillingSummary()
+      setSummary(fresh)
+      useBillingStore.getState().fetchSummary()
+      setReconcileNotice(result.applied ? '支払いを反映しました。' : '未反映の支払いはありませんでした。')
+    } catch {
+      setReconcileNotice('確認できませんでした。時間を置いてお試しください。')
+    } finally {
+      setReconciling(false)
+    }
+  }
 
   const handleCheckout = async (planName: string) => {
     setBusyPlan(planName)
@@ -207,6 +228,19 @@ export default function BillingPage() {
                 )}
               </dl>
             )}
+            <div className="flex flex-wrap items-center gap-2 border-t border-border pt-3">
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={handleReconcile}
+                disabled={reconciling}
+                className="flex items-center gap-1.5"
+              >
+                <RefreshCw size={14} className={reconciling ? 'animate-spin' : undefined} />
+                支払いを反映する
+              </Button>
+              {reconcileNotice && <span className="text-sm text-muted-foreground">{reconcileNotice}</span>}
+            </div>
             <dl className="grid gap-2 text-sm">
               <div className="flex items-center justify-between gap-4 border-t border-border pt-3">
                 <dt className="text-muted-foreground">現在のプラン</dt>

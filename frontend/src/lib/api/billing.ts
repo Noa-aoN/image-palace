@@ -25,11 +25,11 @@ export async function createCheckoutSession(plan: string): Promise<string> {
   return res.data.url
 }
 
-// 決済から戻ったときに、その決済を取り込む。
-// webhook が届かない環境でも反映でき、届いていれば二重にはならない。
-export async function syncCheckout(sessionId: string): Promise<{ status: string; applied: boolean }> {
+// 支払いを取り込む。webhook が届かない環境でも反映でき、届いていれば二重にはならない。
+// 決済 id を省くと、直近の支払いのうち未反映のものを拾って反映する。
+export async function syncCheckout(sessionId?: string): Promise<{ status: string; applied: boolean }> {
   const res = await apiClient.post<{ status: string; applied: boolean }>('/api/v1/billing/checkout/sync', {
-    session_id: sessionId,
+    ...(sessionId ? { session_id: sessionId } : {}),
   })
   return res.data
 }
