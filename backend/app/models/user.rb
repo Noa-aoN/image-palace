@@ -112,7 +112,7 @@ class User < ApplicationRecord
   end
 
   # サブスク分を毎月リセットする（旧残分は失効ログを残す）。invoice 支払い時などに呼ぶ。
-  def reset_subscription_credits!(amount, subscription: nil, stripe_event_id: nil)
+  def reset_subscription_credits!(amount, subscription: nil, stripe_event_id: nil, amount_cents: nil, currency: nil)
     with_lock do
       forfeited = subscription_credits
       if forfeited.positive?
@@ -121,16 +121,16 @@ class User < ApplicationRecord
       update!(subscription_credits: amount)
       # 解約時の失効（amount==0）では 0 デルタの付与ログを残さない。
       if amount.positive?
-        record_credit!(kind: "subscription_grant", delta: amount, subscription:, stripe_event_id:)
+        record_credit!(kind: "subscription_grant", delta: amount, subscription:, stripe_event_id:, amount_cents:, currency:)
       end
     end
   end
 
   # Top-up（買い切り）クレジットを加算する。
-  def add_topup_credits!(amount, stripe_event_id: nil)
+  def add_topup_credits!(amount, stripe_event_id: nil, amount_cents: nil, currency: nil)
     with_lock do
       increment!(:topup_credits, amount)
-      record_credit!(kind: "topup_purchase", delta: amount, stripe_event_id:)
+      record_credit!(kind: "topup_purchase", delta: amount, stripe_event_id:, amount_cents:, currency:)
     end
   end
 
@@ -221,7 +221,8 @@ class User < ApplicationRecord
   private
 
   # クレジット台帳へ1件追記する（残高更新後の値をスナップショットとして残す）。
-  def record_credit!(kind:, delta:, subscription: nil, item: nil, space_point_id: nil, stripe_event_id: nil)
+  def record_credit!(kind:, delta:, subscription: nil, item: nil, space_point_id: nil, stripe_event_id: nil,
+                     amount_cents: nil, currency: nil)
     credit_transactions.create!(
       kind:,
       delta:,
@@ -229,6 +230,9 @@ class User < ApplicationRecord
       item:,
       space_point_id:,
       stripe_event_id:,
+      # 実際に支払われた金額。返金・売上の計算に要る（付与は支払いを伴わないので nil）
+      amount_cents:,
+      currency:,
       subscription_credits_after: subscription_credits,
       topup_credits_after: topup_credits
     )

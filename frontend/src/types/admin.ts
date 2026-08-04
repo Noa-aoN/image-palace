@@ -39,6 +39,17 @@ export interface AdminOverview {
     cache_hit_rate: number
     shared_briefs: number
   }
+  /** 未使用クレジット（受け取ったのにまだ提供していないぶん） */
+  credit_liability: {
+    expiring: number
+    unlimited: number
+    total: number
+    breakdown: { subscription: number; topup: number; grant: number }
+    expired_last_30d: number
+    /** 未使用の買い切りぶんを金額に換算した目安（円） */
+    unused_topup_value: number
+    next_expiry_at: string | null
+  }
   billing: {
     active_subscriptions: number
     paid_rate: number

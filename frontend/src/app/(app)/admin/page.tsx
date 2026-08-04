@@ -132,6 +132,39 @@ export default function AdminPage() {
           </section>
 
           <section className="space-y-3">
+            <h2 className="text-lg font-semibold">未使用クレジット</h2>
+            <p className="text-sm text-muted-foreground">
+              受け取ったのに、まだ提供していないぶんです。これから原価がかかる約束にあたります。
+            </p>
+            <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+              <Stat
+                label="期限付き"
+                value={`${overview.credit_liability.expiring.toLocaleString()} cr`}
+                sub={
+                  overview.credit_liability.next_expiry_at
+                    ? `最短 ${new Date(overview.credit_liability.next_expiry_at).toLocaleDateString('ja-JP')}`
+                    : undefined
+                }
+              />
+              <Stat
+                label="無期限"
+                value={`${overview.credit_liability.unlimited.toLocaleString()} cr`}
+                sub={`買い切り ${overview.credit_liability.breakdown.topup.toLocaleString()} cr`}
+              />
+              <Stat
+                label="合計"
+                value={`${overview.credit_liability.total.toLocaleString()} cr`}
+                sub={`返金の目安 ¥${overview.credit_liability.unused_topup_value.toLocaleString()}`}
+              />
+              <Stat
+                label="30日で失効"
+                value={`${overview.credit_liability.expired_last_30d.toLocaleString()} cr`}
+                sub="使われずに消えたぶん"
+              />
+            </div>
+          </section>
+
+          <section className="space-y-3">
             <h2 className="text-lg font-semibold">中身</h2>
             <div className="grid gap-3 sm:grid-cols-3 lg:grid-cols-6">
               <Stat label="キャンバス" value={overview.content.views} />
