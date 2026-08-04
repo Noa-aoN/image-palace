@@ -20,7 +20,7 @@ RSpec.describe "Api::V1::Billing::Summaries", type: :request do
     get "/api/v1/billing/summary", headers: headers
 
     expect(response).to have_http_status(:success)
-    expect(json_response["available_credits"]).to eq(free.credits_per_period)
+    expect(json_response["available_credits"]).to eq((Billing::Catalog::TRIAL_CREDITS + Billing::Catalog::MONTHLY_FREE_CREDITS))
     expect(json_response["plan"]["name"]).to eq("free")
   end
 
@@ -77,7 +77,7 @@ RSpec.describe "Api::V1::Billing::Summaries", type: :request do
       get "/api/v1/billing/summary", headers: headers
 
       expect(response).to have_http_status(:success)
-      expect(json_response["available_credits"]).to eq(free.credits_per_period)
+      expect(json_response["available_credits"]).to eq((Billing::Catalog::TRIAL_CREDITS + Billing::Catalog::MONTHLY_FREE_CREDITS))
     end
 
     it "同じ支払いを二度反映しない" do
