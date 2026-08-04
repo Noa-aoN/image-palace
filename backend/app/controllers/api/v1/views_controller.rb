@@ -8,7 +8,7 @@ module Api
 
       before_action :set_view, only: [
         :show, :update, :destroy, :add_item, :update_item, :remove_item, :reorder, :place_on_point, :clear_point,
-        :upload_cover, :remove_cover, :generate_cover, :ai_edit, :upload_background, :remove_background
+        :upload_cover, :remove_cover, :generate_cover, :ai_edit, :undo, :redo, :upload_background, :remove_background
       ]
 
       def index
@@ -134,11 +134,14 @@ module Api
       # ことばの指示でキャンバスを組み立て直す（デッキ / フリーボード）。
       # mode=select は使うカードを選ぶところから、placed_only はいまあるカードだけで組み直す。
       def ai_edit
+        # 調整の前に控えを取る。思ったものと違ったときに戻せるようにする
+        Views::RevisionService.snapshot!(@view, label: "AI調整の前")
         result = Views::AiEditService.call(
           view: @view,
           instruction: params.dig(:edit, :instruction),
           mode: params.dig(:edit, :mode)
         )
+        Views::RevisionService.snapshot!(@view.reload, label: "AI調整の後")
         render json: serialize_view_detail(@view.reload).merge(
           ai_edit: {
             summary: result.summary,
@@ -155,6 +158,16 @@ module Api
       rescue KeyError, Faraday::Error => e
         Rails.logger.warn "[ViewsController#ai_edit] failed view_id=#{@view.id}: #{e.class}: #{e.message}"
         render json: { error: "AI編集に失敗しました。時間を置いて再度お試しください。" }, status: :unprocessable_entity
+      end
+
+      # POST /api/v1/views/:id/undo, /redo
+      # AI 調整などの前後を行き来する。
+      def undo
+        render json: serialize_view_detail_with_revision(Views::RevisionService.undo!(@view))
+      end
+
+      def redo
+        render json: serialize_view_detail_with_revision(Views::RevisionService.redo!(@view))
       end
 
       # DELETE /api/v1/views/:id/cover_image
@@ -252,6 +265,10 @@ module Api
         }
       end
 
+      def serialize_view_detail_with_revision(revision_status)
+        serialize_view_detail(@view.reload).merge(revision: revision_status)
+      end
+
       def serialize_view_detail(view)
         return serialize_space_map_detail(view) if view.space_map?
 
@@ -260,7 +277,9 @@ module Api
         placements = view.view_items
                          .includes(item: [ :item_type, { medias: { file_attachment: :blob } } ])
                          .order(order)
-        base = serialize_view(view).merge(items: placements.map { |vi| serialize_placement(vi) })
+        base = serialize_view(view)
+               .merge(items: placements.map { |vi| serialize_placement(vi) })
+               .merge(revision: Views::RevisionService.status(view))
         # freeboard のみ接続線を返す（deck は順序のみ）。重なり順（z_index）昇順で返す。
         base = base.merge(edges: view.view_edges.order(:z_index, :created_at).map { |edge| serialize_edge(edge) }) if view.freeboard?
         base

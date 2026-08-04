@@ -72,4 +72,52 @@ RSpec.describe "Api::V1::Views AI編集", type: :request do
     expect(response).to have_http_status(:unprocessable_entity)
     expect(view.reload.view_items.order(:position).pluck(:item_id)).to eq([ a.id, b.id ])
   end
+
+  describe "戻る／進む" do
+    it "AI調整の直後は戻れる" do
+      stub_plan("order" => [ b.id, a.id ])
+
+      post "/api/v1/views/#{view.id}/ai_edit",
+           params: { edit: { instruction: "逆順にして" } }, headers: headers, as: :json
+
+      expect(json_response["revision"]["can_undo"]).to be(true)
+      expect(json_response["revision"]["can_redo"]).to be(false)
+    end
+
+    it "戻すと調整前の並びに帰る" do
+      stub_plan("order" => [ b.id, a.id ])
+      post "/api/v1/views/#{view.id}/ai_edit",
+           params: { edit: { instruction: "逆順にして" } }, headers: headers, as: :json
+
+      post "/api/v1/views/#{view.id}/undo", headers: headers, as: :json
+
+      expect(response).to have_http_status(:success)
+      expect(json_response["items"].map { |i| i["item_id"] }).to eq([ a.id, b.id ])
+      expect(json_response["revision"]["can_redo"]).to be(true)
+    end
+
+    it "進むともう一度調整後へ行ける" do
+      stub_plan("order" => [ b.id, a.id ])
+      post "/api/v1/views/#{view.id}/ai_edit",
+           params: { edit: { instruction: "逆順にして" } }, headers: headers, as: :json
+      post "/api/v1/views/#{view.id}/undo", headers: headers, as: :json
+
+      post "/api/v1/views/#{view.id}/redo", headers: headers, as: :json
+
+      expect(json_response["items"].map { |i| i["item_id"] }).to eq([ b.id, a.id ])
+    end
+
+    it "他人のキャンバスは戻せない" do
+      theirs = create(:user, :confirmed).views.create!(name: "他人", view_type: "deck")
+
+      post "/api/v1/views/#{theirs.id}/undo", headers: headers, as: :json
+
+      expect(response).to have_http_status(:not_found)
+    end
+
+    it "未ログインでは戻せない" do
+      post "/api/v1/views/#{view.id}/undo", as: :json
+      expect(response).to have_http_status(:unauthorized)
+    end
+  end
 end

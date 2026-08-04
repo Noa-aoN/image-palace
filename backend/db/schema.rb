@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_08_04_000008) do
+ActiveRecord::Schema[8.1].define(version: 2026_08_04_000009) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
   enable_extension "pgcrypto"
@@ -602,6 +602,15 @@ ActiveRecord::Schema[8.1].define(version: 2026_08_04_000008) do
     t.index ["view_id"], name: "index_view_items_on_view_id"
   end
 
+  create_table "view_revisions", id: :uuid, default: -> { "gen_random_uuid()" }, force: :cascade do |t|
+    t.datetime "created_at", null: false
+    t.string "label"
+    t.integer "position", null: false
+    t.jsonb "state", default: {}, null: false
+    t.uuid "view_id", null: false
+    t.index ["view_id", "position"], name: "index_view_revisions_on_view_id_and_position", unique: true
+  end
+
   create_table "views", id: :uuid, default: -> { "gen_random_uuid()" }, force: :cascade do |t|
     t.text "cover_generation_error"
     t.string "cover_generation_status"
@@ -609,6 +618,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_08_04_000008) do
     t.string "cover_type", default: "first_card", null: false
     t.datetime "created_at", null: false
     t.string "name", null: false
+    t.integer "revision_cursor", default: 0, null: false
     t.jsonb "settings", default: {}, null: false
     t.uuid "space_id"
     t.datetime "updated_at", null: false
@@ -676,6 +686,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_08_04_000008) do
   add_foreign_key "view_items", "items", on_delete: :cascade
   add_foreign_key "view_items", "space_points", on_delete: :cascade
   add_foreign_key "view_items", "views", on_delete: :cascade
+  add_foreign_key "view_revisions", "views", on_delete: :cascade
   add_foreign_key "views", "items", column: "cover_item_id", on_delete: :nullify
   add_foreign_key "views", "spaces", on_delete: :nullify
   add_foreign_key "views", "users", on_delete: :cascade

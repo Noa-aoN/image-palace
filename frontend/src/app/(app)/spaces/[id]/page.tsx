@@ -33,12 +33,11 @@ const Room3D = dynamic(
   () => import('@/components/features/views/Room3D').then((m) => m.Room3D),
   { ssr: false, loading: () => <div className="h-[60vh] w-full animate-pulse rounded-xl bg-muted" /> }
 )
-import { EntityCover } from '@/components/features/shared/EntityCover'
 import { SpaceWalkthrough } from '@/components/features/spaces/walkthrough/SpaceWalkthrough'
 import { stopsFromSpacePoints } from '@/components/features/spaces/walkthrough/constants'
 import { PointDetailModal } from '@/components/features/spaces/walkthrough/PointDetailModal'
 import { useCoverGeneration } from '@/hooks/useCoverGeneration'
-import { CoverSettings } from '@/components/features/shared/CoverSettings'
+import { CoverLauncher } from '@/components/features/shared/CoverLauncher'
 import type { SpaceDetail, SpacePoint, RoomSurface } from '@/types/space'
 import { PLACEABLE_SURFACES, SURFACE_NAV, roomSurfaceShort } from '@/lib/room-surfaces'
 import { resolveRoomStyle } from '@/lib/room-style'
@@ -709,26 +708,21 @@ export default function SpaceDetailPage() {
         </div>
       )}
 
-      {/* カバー（ヘッダー）設定 */}
-      <div className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-start">
-        <div className="aspect-square w-40 shrink-0 overflow-hidden rounded-xl border border-border bg-muted">
-          <EntityCover cover={space} fallback={<SpaceCoverFallback spaceType={space.space_type} />} />
-        </div>
-        <div className="flex-1">
-          <CoverSettings
-            coverType={space.cover_type}
-            busy={coverBusy}
-            hasCustom={!!space.cover_image}
-            helpText="先頭/コラージュ: ポイントの生成画像を使用 / カスタム: アップロード画像"
-            onSelectType={handleSetCoverType}
-            onUpload={handleUploadCover}
-            onRemove={handleRemoveCover}
-            onGenerate={cover.generate}
-            generating={cover.generating}
-            generateError={cover.error}
-          />
-        </div>
-      </div>
+      {/* カバー（ヘッダー）。設定一式は右パネルで開く */}
+      <CoverLauncher
+        cover={space}
+        fallback={<SpaceCoverFallback spaceType={space.space_type} />}
+        coverType={space.cover_type}
+        busy={coverBusy}
+        hasCustom={!!space.cover_image}
+        helpText="先頭/コラージュ: ポイントの生成画像を使用 / カスタム: アップロード画像"
+        onSelectType={handleSetCoverType}
+        onUpload={handleUploadCover}
+        onRemove={handleRemoveCover}
+        onGenerate={cover.generate}
+        generating={cover.generating}
+        generateError={cover.error}
+      />
 
       {error && <p className="text-sm text-destructive mb-4">{error}</p>}
 

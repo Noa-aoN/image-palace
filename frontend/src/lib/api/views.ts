@@ -191,3 +191,14 @@ export async function aiEditView(id: string, instruction: string, mode: AiEditMo
   })
   return res.data
 }
+
+// AI調整などの前後を行き来する（戻る／進む）
+export async function undoView(id: string): Promise<ViewDetail> {
+  const res = await apiClient.post<ViewDetail>(`/api/v1/views/${id}/undo`)
+  return res.data
+}
+
+export async function redoView(id: string): Promise<ViewDetail> {
+  const res = await apiClient.post<ViewDetail>(`/api/v1/views/${id}/redo`)
+  return res.data
+}

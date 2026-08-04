@@ -10,6 +10,8 @@ class View < ApplicationRecord
   has_many :items, through: :view_items
   # freeboard: カード間の接続線（フローチャート）
   has_many :view_edges, dependent: :destroy
+  # AI 調整を戻すための状態の控え
+  has_many :view_revisions, dependent: :destroy
   # カバー（デッキ踏襲）。表紙はキャンバスに配置した Item を指定。
   belongs_to :cover_item, class_name: "Item", optional: true
   has_one_attached :cover_image
