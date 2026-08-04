@@ -25,6 +25,15 @@ export async function createCheckoutSession(plan: string): Promise<string> {
   return res.data.url
 }
 
+// 決済から戻ったときに、その決済を取り込む。
+// webhook が届かない環境でも反映でき、届いていれば二重にはならない。
+export async function syncCheckout(sessionId: string): Promise<{ status: string; applied: boolean }> {
+  const res = await apiClient.post<{ status: string; applied: boolean }>('/api/v1/billing/checkout/sync', {
+    session_id: sessionId,
+  })
+  return res.data
+}
+
 // Stripe Customer Portal のURLを返す（解約・支払い変更）
 export async function createPortalSession(): Promise<string> {
   const res = await apiClient.post<{ url: string }>('/api/v1/billing/portal')

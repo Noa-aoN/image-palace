@@ -1,0 +1,46 @@
+# frozen_string_literal: true
+
+module Billing
+  # Stripe のサブスクリプションを、こちらの Subscription へ写す。
+  #
+  # webhook（customer.subscription.created/updated）と、
+  # 決済から戻ったときの取り込み（CheckoutSyncService）の両方から呼ぶ。
+  # 片方だけを直して挙動がずれるのを避けるため、1か所にまとめる。
+  module SubscriptionSync
+    module_function
+
+    # stripe_subscription: Stripe::Subscription（webhook の data.object でも可）
+    def call(stripe_subscription, user:)
+      return nil if stripe_subscription.nil? || user.nil?
+
+      line = stripe_subscription.items.data.first
+      plan = Plan.find_by(stripe_price_id: line&.price&.id)
+
+      subscription = Subscription.find_or_initialize_by(stripe_subscription_id: stripe_subscription.id)
+      subscription.user = user
+      subscription.plan = plan if plan
+      subscription.stripe_customer_id = stripe_subscription.customer
+      subscription.status = stripe_subscription.status
+      # Stripe API 2025-03-31 以降は current_period_* が Subscription 直下から items 配下へ移動した。
+      # 旧/新どちらの形でも取得できるようフォールバックする。
+      # ※ Stripe オブジェクトは未知メソッドで NoMethodError を投げるため、必ず [] でアクセスする。
+      subscription.current_period_start = time_at(period_value(stripe_subscription, line, :current_period_start))
+      subscription.current_period_end = time_at(period_value(stripe_subscription, line, :current_period_end))
+      subscription.cancel_at_period_end = stripe_subscription.cancel_at_period_end
+      subscription.canceled_at = time_at(stripe_subscription.canceled_at)
+      subscription.started_at ||= Time.current
+      subscription.save!
+      subscription
+    end
+
+    # current_period_* は Subscription 直下（旧API）か items 配下（新API）のどちらか。
+    # Stripe オブジェクトは [] なら未設定キーで nil を返す（直メソッドは NoMethodError）。
+    def period_value(subscription, line, key)
+      subscription[key] || (line && line[key])
+    end
+
+    def time_at(unix)
+      unix && Time.at(unix)
+    end
+  end
+end

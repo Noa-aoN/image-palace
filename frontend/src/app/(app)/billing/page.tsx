@@ -6,7 +6,13 @@ import { Button } from '@/components/ui/button'
 import { CategorySections, type CategorySection } from '@/components/features/myroom/CategorySections'
 import { ComingSoon } from '@/components/features/myroom/ComingSoon'
 import { AiUsagePanel } from '@/components/features/billing/AiUsagePanel'
-import { getPlans, getBillingSummary, createCheckoutSession, createPortalSession } from '@/lib/api/billing'
+import {
+  getPlans,
+  getBillingSummary,
+  createCheckoutSession,
+  createPortalSession,
+  syncCheckout,
+} from '@/lib/api/billing'
 import { useBillingStore } from '@/stores/billing'
 import { tierLabel, formatYen, CREDIT_UNIT, CREDIT_UNIT_SHORT } from '@/lib/billing'
 import type { BillingPlan, BillingSummary } from '@/types/billing'
@@ -51,9 +57,15 @@ export default function BillingPage() {
   }, [])
 
   // Stripe からの戻り（?checkout=success/cancel）を検知。
-  // webhook は非同期なので、成功時はサマリーを数回ポーリングして反映を待つ（手動リロード不要に）。
+  //
+  // webhook を待つだけだと、届かない環境ではいつまでも反映されない
+  // （開発機で決済すると webhook は本番へ飛ぶ）。戻り先に載っている決済 id で
+  // その場で取り込みを頼み、そのうえで従来どおりサマリーを数回ポーリングする。
+  // 取り込みと webhook は同じ鍵で反映するので、両方走っても二重にはならない。
   useEffect(() => {
-    const checkout = new URLSearchParams(window.location.search).get('checkout')
+    const params = new URLSearchParams(window.location.search)
+    const checkout = params.get('checkout')
+    const sessionId = params.get('session_id')
     if (checkout !== 'success' && checkout !== 'cancel') return
     window.history.replaceState(null, '', window.location.pathname)
 
@@ -90,7 +102,12 @@ export default function BillingPage() {
       setCheckoutNotice(checkout)
       if (checkout === 'success') {
         setApplyState('confirming')
-        setTimeout(poll, 1500)
+        // 取り込みが済んでからポーリングすれば、たいてい1回目で反映が確認できる
+        const start = () => {
+          if (!cancelled) poll()
+        }
+        if (sessionId) syncCheckout(sessionId).then(start).catch(start)
+        else setTimeout(poll, 1500)
       }
     }, 0)
 
