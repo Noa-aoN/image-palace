@@ -83,3 +83,22 @@ export const USAGE_METRICS: Record<
   items: { label: 'カード作成', unit: ' 枚', pick: (u) => u.items.daily },
   ai: { label: 'AI利用', unit: ' 回', pick: (u) => u.ai.daily },
 }
+
+// クレジットの増減の明細（バックエンド /api/v1/billing/credit_transactions に対応）
+export interface CreditTransaction {
+  id: string
+  kind: string
+  label: string
+  /** 符号付き。増えたら正、減ったら負 */
+  credits: number
+  description: string | null
+  item_id: string | null
+  subscription_credits_after: number | null
+  topup_credits_after: number | null
+  created_at: string
+}
+
+export interface CreditTransactionsPage {
+  transactions: CreditTransaction[]
+  next_cursor: string | null
+}

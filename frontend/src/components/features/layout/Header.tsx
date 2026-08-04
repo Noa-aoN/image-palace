@@ -105,6 +105,19 @@ export function AppHeader() {
       </div>
 
       <div className="flex items-center gap-1.5">
+        {showUserMenu && adminSession?.admin && (
+          // 運営権限を持つアカウントであることを常に見えるようにする。
+          // 権限のある状態に気づかないまま操作するのを防ぐためのもので、守りではない
+          // （実際の判定はサーバー側で毎リクエスト行われる）。
+          <Link
+            href="/admin"
+            title={adminSession.owner ? '運営の管理者' : '運営'}
+            className="hidden rounded-full border border-[var(--palace)]/50 bg-[rgba(198,167,94,0.12)] px-2 py-0.5 text-xs font-medium text-[var(--palace)] transition-colors hover:bg-[rgba(198,167,94,0.22)] sm:inline-flex sm:items-center sm:gap-1"
+          >
+            <ShieldCheck size={12} />
+            管理者
+          </Link>
+        )}
         {showUserMenu && billingSummary && (
           <Link
             href="/billing"
@@ -132,19 +145,6 @@ export function AppHeader() {
               </span>
             )}
           </button>
-        )}
-        {showUserMenu && adminSession?.admin && (
-          // 運営権限を持つアカウントであることを常に見えるようにする。
-          // 権限のある状態に気づかないまま操作するのを防ぐためのもので、守りではない
-          // （実際の判定はサーバー側で毎リクエスト行われる）。
-          <Link
-            href="/admin"
-            title={adminSession.owner ? '運営の管理者' : '運営'}
-            className="hidden rounded-full border border-[var(--palace)]/50 bg-[rgba(198,167,94,0.12)] px-2 py-0.5 text-xs font-medium text-[var(--palace)] transition-colors hover:bg-[rgba(198,167,94,0.22)] sm:inline-flex sm:items-center sm:gap-1"
-          >
-            <ShieldCheck size={12} />
-            管理者
-          </Link>
         )}
         {showUserMenu ? (
           <DropdownMenu open={menuOpen} onOpenChange={setMenuOpen}>

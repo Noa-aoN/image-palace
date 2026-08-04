@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_08_04_000009) do
+ActiveRecord::Schema[8.1].define(version: 2026_08_04_000010) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
   enable_extension "pgcrypto"
@@ -556,6 +556,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_08_04_000009) do
     t.string "reset_password_token"
     t.string "role", default: "user", null: false
     t.string "stripe_customer_id"
+    t.datetime "stripe_reconciled_at"
     t.integer "subscription_credits", default: 0, null: false
     t.jsonb "tokens", default: {}
     t.integer "topup_credits", default: 0, null: false

@@ -25,6 +25,7 @@ Rails.application.routes.draw do
         get "plans", to: "plans#index"
         get "summary", to: "summaries#show"
         get "ai_usage", to: "ai_usages#show"
+        get "credit_transactions", to: "credit_transactions#index"
         post "checkout", to: "checkouts#create"
         # 決済から戻ったときの取り込み（webhook が届かない環境でも反映できるように）
         post "checkout/sync", to: "checkout_syncs#create"

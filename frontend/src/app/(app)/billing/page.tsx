@@ -5,6 +5,7 @@ import { CreditCard, Coins, Sparkles, Loader2, ExternalLink, Gauge, History, Har
 import { Button } from '@/components/ui/button'
 import { CategorySections, type CategorySection } from '@/components/features/myroom/CategorySections'
 import { ComingSoon } from '@/components/features/myroom/ComingSoon'
+import { CreditHistoryPanel } from '@/components/features/billing/CreditHistoryPanel'
 import { AiUsagePanel } from '@/components/features/billing/AiUsagePanel'
 import {
   getPlans,
@@ -348,12 +349,7 @@ export default function BillingPage() {
             </section>
           )}
 
-          <ComingSoon
-            title="クレジット履歴"
-            icon={<History size={18} />}
-            description="消費・回復の履歴や、失効予定の表示は順次対応予定です。"
-            items={['クレジット履歴', '消費履歴', '回復履歴', '失効予定']}
-          />
+          <CreditHistoryPanel />
         </>
       ),
     },
