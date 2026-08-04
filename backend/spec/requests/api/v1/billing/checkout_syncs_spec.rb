@@ -50,10 +50,19 @@ RSpec.describe "Api::V1::Billing::CheckoutSyncs", type: :request do
     expect(user.reload.topup_credits).to eq(0)
   end
 
-  it "決済 id が無ければ 404" do
+  it "決済 id を渡さなくても、直近の支払いから拾って反映する" do
+    session = Stripe::Checkout::Session.construct_from(
+      id: "cs_test_recent", mode: "payment", payment_status: "paid",
+      customer: "cus_1", client_reference_id: user.id, metadata: { plan_name: topup.name }
+    )
+    allow(Stripe::Checkout::Session).to receive(:list)
+      .and_return(Stripe::ListObject.construct_from(data: [ session ]))
+
     post "/api/v1/billing/checkout/sync", headers: headers, as: :json
 
-    expect(response).to have_http_status(:not_found)
+    expect(response).to have_http_status(:success)
+    expect(json_response["applied"]).to be(true)
+    expect(user.reload.topup_credits).to eq(topup.credits_per_period * Billing::POINTS_PER_CREDIT)
   end
 
   it "Stripe が落ちていても壊れない" do

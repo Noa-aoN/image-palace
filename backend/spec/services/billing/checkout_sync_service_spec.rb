@@ -124,16 +124,69 @@ RSpec.describe Billing::CheckoutSyncService do
   end
 
   describe "受け付けないもの" do
-    it "決済 id が無ければ NotFound" do
-      expect { described_class.call(user: user, session_id: "") }.to raise_error(described_class::NotFound)
-    end
-
     it "Stripe に無い決済なら NotFound" do
       allow(Stripe::Checkout::Session).to receive(:retrieve)
         .and_raise(Stripe::InvalidRequestError.new("no such session", "id"))
 
       expect { described_class.call(user: user, session_id: "cs_nope") }
         .to raise_error(described_class::NotFound)
+    end
+  end
+
+  describe "決済 id が分からないとき" do
+    def stub_list(*sessions)
+      allow(Stripe::Checkout::Session).to receive(:list)
+        .and_return(Stripe::ListObject.construct_from(data: sessions.map { |s| Stripe::Checkout::Session.construct_from(s) }))
+    end
+
+    it "直近の支払い済みを拾って反映する" do
+      topup
+      stub_list(topup_session(id: "cs_a"), topup_session(id: "cs_b"))
+
+      result = described_class.call(user: user, session_id: nil)
+
+      expect(result.applied).to be(true)
+      expect(user.reload.topup_credits).to eq(2 * topup.credits_per_period * Billing::POINTS_PER_CREDIT)
+    end
+
+    it "反映済みのものは素通りする" do
+      topup
+      stub_list(topup_session(id: "cs_a"))
+      described_class.call(user: user, session_id: nil)
+
+      expect { described_class.call(user: user, session_id: nil) }
+        .not_to(change { user.reload.topup_credits })
+    end
+
+    it "まだ支払われていないものは反映しない" do
+      topup
+      stub_list(topup_session(id: "cs_a", payment_status: "unpaid"))
+
+      result = described_class.call(user: user, session_id: nil)
+
+      expect(result.status).to eq("nothing_to_apply")
+      expect(user.reload.topup_credits).to eq(0)
+    end
+
+    it "自分の顧客に紐づくものだけを見る（他人の決済を拾わない）" do
+      topup
+      allow(Stripe::Checkout::Session).to receive(:list)
+        .and_return(Stripe::ListObject.construct_from(data: []))
+
+      described_class.call(user: user, session_id: nil)
+
+      expect(Stripe::Checkout::Session).to have_received(:list)
+        .with(hash_including(customer: "cus_1"))
+    end
+
+    it "顧客がまだ無ければ何もしない（Stripe を呼ばない）" do
+      user.update!(stripe_customer_id: nil)
+      allow(Stripe::Checkout::Session).to receive(:list)
+
+      result = described_class.call(user: user, session_id: nil)
+
+      expect(result.status).to eq("no_customer")
+      expect(Stripe::Checkout::Session).not_to have_received(:list)
     end
   end
 end

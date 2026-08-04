@@ -15,6 +15,8 @@ module Billing
 
     # 支払いが済んでいるとみなす状態（金額 0 の場合は no_payment_required になる）
     PAID_STATUSES = %w[paid no_payment_required].freeze
+    # 決済 id が分からないときに遡って調べる件数
+    RECENT_LIMIT = 10
 
     Result = Struct.new(:status, :applied, keyword_init: true)
 
@@ -28,17 +30,39 @@ module Billing
     end
 
     def call
-      raise NotFound, "決済が見つかりません" if @session_id.blank?
+      return apply_recent! if @session_id.blank?
 
       session = retrieve
       authorize!(session)
-      return Result.new(status: "unpaid", applied: false) unless PAID_STATUSES.include?(session.payment_status.to_s)
+      return Result.new(status: "unpaid", applied: false) unless paid?(session)
 
-      applied = session.mode == "subscription" ? apply_subscription!(session) : apply_topup!(session)
-      Result.new(status: "paid", applied: applied)
+      Result.new(status: "paid", applied: apply!(session))
     end
 
     private
+
+    # 決済 id が分からないときの受け皿。
+    #
+    # 戻り先の URL に id が載っていない（古い画面から戻った・リンクを踏み直した等）場合でも、
+    # 「払ったのに増えない」を自力で直せるようにする。
+    # 自分の顧客に紐づく決済だけを、直近から順に見る。反映済みのものは素通りする。
+    def apply_recent!
+      return Result.new(status: "no_customer", applied: false) if @user.stripe_customer_id.blank?
+
+      sessions = Stripe::Checkout::Session.list(
+        customer: @user.stripe_customer_id, limit: RECENT_LIMIT, expand: [ "data.subscription" ]
+      )
+      applied = sessions.data.count { |session| paid?(session) && apply!(session) }
+      Result.new(status: applied.positive? ? "paid" : "nothing_to_apply", applied: applied.positive?)
+    end
+
+    def paid?(session)
+      PAID_STATUSES.include?(session.payment_status.to_s)
+    end
+
+    def apply!(session)
+      session.mode == "subscription" ? apply_subscription!(session) : apply_topup!(session)
+    end
 
     def retrieve
       Stripe::Checkout::Session.retrieve(id: @session_id, expand: [ "subscription" ])
