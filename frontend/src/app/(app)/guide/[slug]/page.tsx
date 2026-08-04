@@ -150,11 +150,11 @@ function TreeNode({
 
 function SitemapContent() {
   // 横断アクションも同じツリーに載せるため、擬似セクションとして先頭に並べる。
-  const groups = [{ title: '横断', items: GLOBAL_ACTIONS }, ...NAV_SECTIONS]
+  const groups = [{ key: 'global', title: '横断', items: GLOBAL_ACTIONS }, ...NAV_SECTIONS]
   return (
     <div className="space-y-6 rounded-xl border border-border bg-card p-5">
       {groups.map((group) => (
-        <div key={group.title}>
+        <div key={group.key}>
           <h2 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">{group.title}</h2>
           <ul className="mt-2 space-y-0.5">
             {group.items.map((item) => (
@@ -163,7 +163,7 @@ function SitemapContent() {
                 {item.children && (
                   <ul className="ml-[9px] mt-0.5 space-y-0.5 border-l border-border pl-3.5">
                     {item.children.map((child) => (
-                      <li key={child.href}>
+                      <li key={child.label}>
                         <TreeNode href={child.href} icon={child.icon} label={child.label} child />
                       </li>
                     ))}

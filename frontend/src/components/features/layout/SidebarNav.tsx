@@ -7,7 +7,7 @@ import { ChevronDown, ChevronUp } from 'lucide-react'
 import { useUiStore } from '@/stores/ui'
 import { useAdminStore } from '@/stores/admin'
 import { isNavItemActive } from '@/lib/nav-active'
-import { ADMIN_SECTION, NAV_SECTIONS, type NavNode } from './nav-items'
+import { navSectionsFor, type NavNode } from './nav-items'
 import { useOpenCardCreate } from '@/components/features/items/CardCreatePanel'
 
 interface Props {
@@ -169,8 +169,8 @@ function NavTree({
 
   return (
     <div className={`flex flex-col gap-1 ${iconsOnly ? 'px-1.5' : 'px-2'}`}>
-      {(isAdmin ? [ ...NAV_SECTIONS, ADMIN_SECTION ] : NAV_SECTIONS).map((section) => (
-        <div key={section.title} className="flex flex-col gap-1">
+      {navSectionsFor(isAdmin).map((section) => (
+        <div key={section.key} className="flex flex-col gap-1">
           {iconsOnly ? (
             <div className="mx-auto my-1 h-px w-6" style={{ backgroundColor: 'var(--palace)', opacity: 0.4 }} />
           ) : (

@@ -11,6 +11,7 @@ import { PalaceLordCard } from '@/components/features/dashboard/PalaceLordCard'
 import { QuickCreateCard } from '@/components/features/dashboard/QuickCreateCard'
 import { getItemsSummary, type ItemsSummary } from '@/lib/api/items'
 import { useBillingStore } from '@/stores/billing'
+import { generatableCards } from '@/lib/credits'
 import { tierLabel, CREDIT_UNIT, CREDIT_UNIT_SHORT } from '@/lib/billing'
 
 const GETTING_STARTED = [
@@ -38,6 +39,7 @@ function creditPercent(available: number, perPeriod: number): number | null {
   if (perPeriod <= 0) return null
   return Math.min(100, Math.round((available / perPeriod) * 100))
 }
+
 
 // クレジット更新日（次回付与日）を "YYYY/M/D" に整形。null/不正は null。
 function formatRenewal(iso: string | null | undefined): string | null {
@@ -170,7 +172,8 @@ export function DashboardContent() {
 
   const credits = billing?.available_credits ?? null
   const perPeriod = billing?.plan?.credits_per_period ?? 0
-  const creditPct = credits !== null ? creditPercent(credits, perPeriod) : null
+  const cards = credits !== null ? generatableCards(credits) : null
+  const creditPct = cards !== null ? creditPercent(cards, perPeriod) : null
   // 有料はサブスク期末、無料は次回クレジット回復日（翌月初）。どちらも「M/D に更新」で表示する。
   const renewal = formatRenewal(billing?.subscription?.current_period_end ?? billing?.next_credit_reset)
 
@@ -227,7 +230,7 @@ export function DashboardContent() {
                     <div className="flex items-baseline justify-between">
                       <span className="text-sm text-muted-foreground">生成可能カードの枚数目安</span>
                       <span>
-                        <span className="text-base font-semibold tabular-nums">{credits}</span>
+                        <span className="text-base font-semibold tabular-nums">{cards}</span>
                         <span className="text-sm text-muted-foreground"> / {perPeriod} 枚</span>
                       </span>
                     </div>
