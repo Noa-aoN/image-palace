@@ -11,17 +11,18 @@ import {
   getBox, updateBox, deleteBox,
   addEntryToBox, removeEntryFromBox,
   uploadBoxCover, removeBoxCover, generateBoxCover } from '@/lib/api/boxes'
-import { getItems } from '@/lib/api/items'
-import { getSpaces } from '@/lib/api/spaces'
-import { getViews } from '@/lib/api/views'
-import { viewTypeLabel } from '@/lib/view-types'
 import { useCoverGeneration } from '@/hooks/useCoverGeneration'
 import { CoverLauncher } from '@/components/features/shared/CoverLauncher'
+import { EntryPicker } from '@/components/features/boxes/EntryPicker'
+import { CreateSpaceForm } from '@/components/features/spaces/CreateSpaceForm'
+import { CreateViewForm } from '@/components/features/views/CreateViewForm'
+import { PanelSlotContent } from '@/components/features/panel/PanelSlot'
+import { useRightPanelStore } from '@/stores/rightPanel'
+import { useOpenCardCreate } from '@/components/features/items/CardCreatePanel'
 import type { BoxDetail, BoxEntry, BoxEntryType } from '@/types/box'
 import type { CoverType } from '@/types/cover'
 
 // 追加候補の正規化表現
-type Pickable = { id: string; label: string; image: string | null; sub?: string }
 
 const TYPE_META: Record<BoxEntryType, { label: string; icon: React.ReactNode; path: string }> = {
   Item: { label: 'カード', icon: <GalleryHorizontal size={16} />, path: 'items' },
@@ -29,6 +30,10 @@ const TYPE_META: Record<BoxEntryType, { label: string; icon: React.ReactNode; pa
   View: { label: 'キャンバス', icon: <LayoutGrid size={16} />, path: 'views' },
 }
 const TYPE_ORDER: BoxEntryType[] = ['Item', 'Space', 'View']
+
+// ボックスからの作成を右パネルで開くときの目印
+const CREATE_SPACE_KEY = 'box-create-space'
+const CREATE_VIEW_KEY = 'box-create-view'
 
 function entryHref(e: BoxEntry): string {
   return `/${TYPE_META[e.entry_type].path}/${e.id}`
@@ -92,8 +97,16 @@ export default function BoxDetailPage() {
   const [deleting, setDeleting] = useState(false)
 
   const [pickerType, setPickerType] = useState<BoxEntryType | null>(null)
-  const [pickables, setPickables] = useState<Pickable[]>([])
-  const [pickerLoading, setPickerLoading] = useState(false)
+  const openSection = useRightPanelStore((s) => s.openSection)
+  const closePanel = useRightPanelStore((s) => s.close)
+  const openCardCreate = useOpenCardCreate()
+
+  // 手元に無いものは、ここから作ってそのままボックスへ入れられるようにする
+  const openCreate = (type: BoxEntryType) => {
+    if (type === 'Item') return openCardCreate()
+    if (type === 'Space') return openSection({ key: CREATE_SPACE_KEY, title: 'スペースを作成' })
+    openSection({ key: CREATE_VIEW_KEY, title: 'キャンバスを作成' })
+  }
   const [busyKey, setBusyKey] = useState<string | null>(null)
 
   const [loadingMore, setLoadingMore] = useState(false)
@@ -134,26 +147,6 @@ export default function BoxDetailPage() {
       cancelled = true
     }
   }, [id])
-
-  const openPicker = async (type: BoxEntryType) => {
-    setPickerType(type)
-    setPickerLoading(true)
-    try {
-      let list: Pickable[] = []
-      if (type === 'Item') {
-        list = (await getItems()).map((i) => ({ id: i.id, label: i.title, image: i.media?.thumb_url ?? i.media?.url ?? null }))
-      } else if (type === 'Space') {
-        list = (await getSpaces()).map((s) => ({ id: s.id, label: s.name, image: null }))
-      } else {
-        list = (await getViews()).map((v) => ({ id: v.id, label: v.name, image: null, sub: viewTypeLabel(v.view_type) }))
-      }
-      setPickables(list)
-    } catch {
-      setPickables([])
-    } finally {
-      setPickerLoading(false)
-    }
-  }
 
   const handleSaveName = async () => {
     const trimmed = nameDraft.trim()
@@ -291,10 +284,9 @@ export default function BoxDetailPage() {
     )
   }
 
-  const inBox = new Set(box.entries.map((e) => `${e.entry_type}:${e.id}`))
-  const pickable = pickerType
-    ? pickables.filter((p) => !inBox.has(`${pickerType}:${p.id}`))
-    : []
+  // すでに入っているものは選ばせない（押しても何も起きないものを並べない）
+  const inBoxIds = (type: BoxEntryType) =>
+    new Set(box.entries.filter((e) => e.entry_type === type).map((e) => e.id))
 
   return (
     <div className="max-w-7xl mx-auto px-6 py-12">
@@ -361,16 +353,16 @@ export default function BoxDetailPage() {
 
       {error && <p className="text-sm text-destructive mb-4">{error}</p>}
 
-      {/* 追加（種別を選んでから対象を選ぶ） */}
+      {/* 追加（種別を選んでから対象を選ぶ）。一覧は少しずつ読み、絞り込みはサーバー側で行う */}
       <div className="mb-8 rounded-xl border border-border/70 bg-muted/30 p-4">
         <div className="flex flex-wrap items-center gap-2">
-          <span className="text-sm font-medium mr-1 flex items-center gap-1"><Plus size={14} />追加:</span>
+          <span className="mr-1 flex items-center gap-1 text-sm font-medium"><Plus size={14} />追加:</span>
           {TYPE_ORDER.map((type) => (
             <Button
               key={type}
               variant={pickerType === type ? 'default' : 'outline'}
               size="sm"
-              onClick={() => openPicker(type)}
+              onClick={() => setPickerType(pickerType === type ? null : type)}
               className="flex items-center gap-1.5"
             >
               {TYPE_META[type].icon}
@@ -378,49 +370,52 @@ export default function BoxDetailPage() {
             </Button>
           ))}
           {pickerType && (
-            <Button variant="ghost" size="sm" onClick={() => setPickerType(null)} className="ml-auto">閉じる</Button>
+            <>
+              {/* 手元に無いときは、ここから作ってそのまま入れられる */}
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => openCreate(pickerType)}
+                className="flex items-center gap-1"
+              >
+                <Plus size={14} />
+                新しく作る
+              </Button>
+              <Button variant="ghost" size="sm" onClick={() => setPickerType(null)} className="ml-auto">
+                閉じる
+              </Button>
+            </>
           )}
         </div>
 
         {pickerType && (
-          <div className="mt-4">
-            {pickerLoading ? (
-              <p className="text-sm text-muted-foreground">読み込み中...</p>
-            ) : pickable.length === 0 ? (
-              <p className="text-sm text-muted-foreground">追加できる{TYPE_META[pickerType].label}がありません。</p>
-            ) : (
-              <div className="flex flex-col gap-2 max-h-72 overflow-y-auto">
-                {pickable.map((p) => (
-                  <div key={p.id} className="flex items-center justify-between gap-2 rounded-lg bg-card border border-border px-3 py-2">
-                    <div className="flex items-center gap-2 min-w-0">
-                      {p.image ? (
-                        // eslint-disable-next-line @next/next/no-img-element
-                        <img src={p.image} alt="" className="h-9 w-9 rounded object-cover shrink-0" />
-                      ) : (
-                        <span className="h-9 w-9 rounded bg-muted flex items-center justify-center shrink-0" style={{ color: 'var(--palace)' }}>
-                          {TYPE_META[pickerType].icon}
-                        </span>
-                      )}
-                      <div className="min-w-0">
-                        <span className="text-sm font-medium truncate block">{p.label}</span>
-                        {p.sub && <span className="text-xs text-muted-foreground">{p.sub}</span>}
-                      </div>
-                    </div>
-                    <Button
-                      size="sm"
-                      onClick={() => handleAdd(pickerType, p.id)}
-                      disabled={busyKey === `${pickerType}:${p.id}`}
-                      className="shrink-0"
-                    >
-                      追加
-                    </Button>
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
+          <EntryPicker
+            key={pickerType}
+            type={pickerType}
+            excludeIds={inBoxIds(pickerType)}
+            onPick={(entryId) => handleAdd(pickerType, entryId)}
+            busyId={busyKey?.startsWith(`${pickerType}:`) ? busyKey.split(':').slice(1).join(':') : null}
+          />
         )}
       </div>
+
+      {/* 作成は右パネルで。作ったものはそのままボックスへ入れる */}
+      <PanelSlotContent sectionKey={CREATE_SPACE_KEY}>
+        <CreateSpaceForm
+          onCreated={(space) => {
+            handleAdd('Space', space.id)
+            closePanel()
+          }}
+        />
+      </PanelSlotContent>
+      <PanelSlotContent sectionKey={CREATE_VIEW_KEY}>
+        <CreateViewForm
+          onCreated={(view) => {
+            handleAdd('View', view.id)
+            closePanel()
+          }}
+        />
+      </PanelSlotContent>
 
       {/* エントリ（種別ごとに表示） */}
       {box.entries.length === 0 ? (

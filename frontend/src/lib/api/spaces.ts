@@ -9,6 +9,22 @@ export async function getSpaces(limit?: number): Promise<Space[]> {
   return res.data.spaces
 }
 
+// 名前で絞りつつ、少しずつ読む（選ぶための一覧に使う）
+export async function getSpacesPage(params: {
+  q?: string
+  limit?: number
+  cursor?: string | null
+}): Promise<{ spaces: Space[]; next_cursor: string | null }> {
+  const res = await apiClient.get<{ spaces: Space[]; next_cursor: string | null }>('/api/v1/spaces', {
+    params: {
+      ...(params.q ? { q: params.q } : {}),
+      ...(params.limit ? { limit: params.limit } : {}),
+      ...(params.cursor ? { cursor: params.cursor } : {}),
+    },
+  })
+  return res.data
+}
+
 export async function getSpace(id: string): Promise<SpaceDetail> {
   const res = await apiClient.get<SpaceDetail>(`/api/v1/spaces/${id}`)
   return res.data

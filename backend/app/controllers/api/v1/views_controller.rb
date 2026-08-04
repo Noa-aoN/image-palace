@@ -19,6 +19,8 @@ module Api
                             .includes(cover_item: { medias: { file_attachment: :blob } })
                             .with_attached_cover_image.with_attached_cover_thumb
 
+        views = filter_by_name(views)
+        views = views.where(view_type: params[:type]) if View::VIEW_TYPES.include?(params[:type].to_s)
         views, next_cursor = paginate_list(views)
         View.preload_cover_items(views)
         render json: { views: views.map { |v| serialize_view(v) }, next_cursor: next_cursor }
@@ -202,6 +204,14 @@ module Api
       end
 
       private
+
+      # 名前での絞り込み。全件読み込まずに目当てのものへ辿り着けるようにする
+      def filter_by_name(scope)
+        query = params[:q].to_s.strip
+        return scope if query.blank?
+
+        scope.where("name ILIKE ?", "%#{ActiveRecord::Base.sanitize_sql_like(query)}%")
+      end
 
       def set_view
         # 詳細でも serialize_view が cover_cards（view_items）を走査するため preload する

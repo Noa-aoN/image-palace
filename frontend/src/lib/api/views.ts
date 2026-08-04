@@ -32,6 +32,24 @@ export async function getViews(limit?: number): Promise<View[]> {
   return res.data.views
 }
 
+// 名前・種別で絞りつつ、少しずつ読む（選ぶための一覧に使う）
+export async function getViewsPage(params: {
+  q?: string
+  type?: string
+  limit?: number
+  cursor?: string | null
+}): Promise<{ views: View[]; next_cursor: string | null }> {
+  const res = await apiClient.get<{ views: View[]; next_cursor: string | null }>('/api/v1/views', {
+    params: {
+      ...(params.q ? { q: params.q } : {}),
+      ...(params.type ? { type: params.type } : {}),
+      ...(params.limit ? { limit: params.limit } : {}),
+      ...(params.cursor ? { cursor: params.cursor } : {}),
+    },
+  })
+  return res.data
+}
+
 export async function getView(id: string): Promise<View> {
   const res = await apiClient.get<View>(`/api/v1/views/${id}`)
   return res.data
