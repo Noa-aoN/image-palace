@@ -83,24 +83,18 @@ class User < ApplicationRecord
     available_credit_points.fdiv(Billing::POINTS_PER_CREDIT)
   end
 
-  # 無料のお試し枠を1回だけ配る。
+  # 無料枠を整える。登録直後の「お試し」と、毎月の少量。
   #
-  # 以前は毎月配り続けていたため、人が増えるほど、使われなくても原価だけが積み上がった。
-  # アカウントを作り直せば何度でももらえる形でもあった。
-  # 1アカウント1回にし、期限も他のクレジットと同じ扱いにする。
+  # 無料枠は回収の当てがない支出なので、配る量も配る相手も絞る。
+  #   お試し … 1回だけ。退会して登録し直しても再取得できない
+  #   毎月分 … 訪れた人にだけ配る（来ない人には配られない）
   #
   # 有料契約がある人には配らない（プランのぶんが毎月届くため）。
   def ensure_free_credits!
-    return if trial_granted_at.present?
     return if active_subscription.present?
 
-    amount = Billing::Catalog::TRIAL_CREDITS * Billing::POINTS_PER_CREDIT
-    return if amount <= 0
-    # 配りすぎのブレーカー。当たった場合は配らないが、印は付けて何度も試させない
-    return mark_trial_granted! unless Billing::FreeGrantGuard.allow?(amount)
-
-    grant_credits!(amount, kind: "trial", expires_at: Billing::Catalog::CREDIT_LIFETIME.from_now)
-    mark_trial_granted!
+    grant_trial_credits!
+    grant_monthly_free_credits!
   end
 
   # 旧名。呼び出し側を一度に直さないための入口（意味は「無料枠を整えておく」で変わらない）
@@ -109,6 +103,46 @@ class User < ApplicationRecord
   def mark_trial_granted!
     update_column(:trial_granted_at, Time.current) # rubocop:disable Rails/SkipsModelValidations
   end
+
+  # 配った相手を照合するための識別子。アカウントを消しても残す方に渡す
+  def trial_identifiers
+    identifiers = { email: email }
+    identifiers[:oauth] = "#{provider}:#{uid}" if provider.present? && provider != "email" && uid.present?
+    identifiers
+  end
+
+  private
+
+  def grant_trial_credits!
+    return if trial_granted_at.present?
+
+    amount = Billing::Catalog::TRIAL_CREDITS * Billing::POINTS_PER_CREDIT
+    return if amount <= 0
+
+    # 一度配った相手には配らない。退会して登録し直しても同じ
+    return mark_trial_granted! if TrialGrantRecord.granted?(trial_identifiers)
+    # 配りすぎのブレーカー。当たった場合は配らないが、印は付けて何度も試させない
+    return mark_trial_granted! unless Billing::FreeGrantGuard.allow?(amount)
+
+    grant_credits!(amount, kind: "trial", expires_at: Billing::Catalog::CREDIT_LIFETIME.from_now)
+    TrialGrantRecord.remember!(trial_identifiers)
+    mark_trial_granted!
+  end
+
+  # 月に一度、少量だけ。来た人にしか配らないので、休眠アカウントには出ていかない
+  def grant_monthly_free_credits!
+    amount = Billing::Catalog::MONTHLY_FREE_CREDITS * Billing::POINTS_PER_CREDIT
+    return if amount <= 0
+
+    period_start = free_period_start
+    return if credits_period_start && credits_period_start >= period_start
+    return unless Billing::FreeGrantGuard.allow?(amount)
+
+    grant_credits!(amount, kind: "monthly_free", expires_at: Billing::Catalog::CREDIT_LIFETIME.from_now)
+    update_column(:credits_period_start, period_start) # rubocop:disable Rails/SkipsModelValidations
+  end
+
+  public
 
   # 無料枠の現周期の開始日時（登録日アニバーサリー基準・月次。有料の契約日周期と整合させる）。
   # 例: 1/15 登録なら毎月15日が周期境界。月末日は ActiveSupport が丸める（1/31→2/28 等）。

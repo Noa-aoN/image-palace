@@ -154,34 +154,71 @@ RSpec.describe "User credit ledger", type: :model do
     end
   end
 
-  describe "#ensure_free_credits!（お試し枠は1回だけ）" do
-    it "はじめてなら期限付きで配る" do
+  describe "#ensure_free_credits!（お試しは1回・毎月は少量）" do
+    let(:trial_points) { Billing::Catalog::TRIAL_CREDITS * Billing::POINTS_PER_CREDIT }
+    let(:monthly_points) { Billing::Catalog::MONTHLY_FREE_CREDITS * Billing::POINTS_PER_CREDIT }
+
+    it "はじめては、お試しと当月分をどちらも期限付きで配る" do
       expect { user.ensure_free_credits! }
         .to change { user.reload.available_credit_points }
-        .from(0).to(Billing::Catalog::TRIAL_CREDITS * Billing::POINTS_PER_CREDIT)
+        .from(0).to(trial_points + monthly_points)
 
-      grant = user.credit_grants.last
-      expect(grant.kind).to eq("trial")
-      expect(grant.expires_at).to be_within(1.day).of(Billing::Catalog::CREDIT_LIFETIME.from_now)
+      trial = user.credit_grants.find_by(kind: "trial")
+      expect(trial.expires_at).to be_within(1.day).of(Billing::Catalog::CREDIT_LIFETIME.from_now)
+      expect(user.credit_grants.find_by(kind: "monthly_free")).to be_present
       expect(user.trial_granted_at).to be_present
     end
 
-    it "二度目は配らない（毎月もらえない）" do
+    it "同じ月に何度呼んでも増えない" do
       user.ensure_free_credits!
 
       expect { user.ensure_free_credits! }.not_to(change { user.reload.available_credit_points })
       expect(user.credit_grants.where(kind: "trial").count).to eq(1)
     end
 
-    it "月が変わっても配らない" do
+    it "月が変わると当月分だけ配る（お試しは配り直さない）" do
       user.ensure_free_credits!
 
       travel_to(2.months.from_now) do
-        expect { user.ensure_free_credits! }.not_to(change { user.reload.credit_grants.count })
+        expect { user.ensure_free_credits! }
+          .to change { user.reload.available_credit_points }.by(monthly_points)
       end
+      expect(user.credit_grants.where(kind: "trial").count).to eq(1)
     end
 
-    it "使い切ってもまた配られることはない" do
+    it "来なかった月のぶんは配らない（休眠アカウントに出ていかない）" do
+      travel_to(3.months.from_now) do
+        user.ensure_free_credits!
+      end
+
+      # 3ヶ月ぶんではなく、訪れた時点の1回ぶんだけ
+      expect(user.reload.credit_grants.where(kind: "monthly_free").count).to eq(1)
+    end
+
+    it "退会して同じアドレスで登録し直しても、お試しは配られない" do
+      user.ensure_free_credits!
+      email = user.email
+      user.destroy!
+
+      returning = create(:user, :confirmed, email: email)
+      returning.ensure_free_credits!
+
+      expect(returning.credit_grants.where(kind: "trial")).to be_empty
+      expect(returning.available_credit_points).to eq(monthly_points)
+    end
+
+    it "同じ Google アカウントで登録し直してもお試しは配られない" do
+      oauth_user = create(:user, :confirmed, provider: "google_oauth2", uid: "g-1")
+      oauth_user.ensure_free_credits!
+      oauth_user.destroy!
+
+      returning = create(:user, :confirmed, provider: "google_oauth2", uid: "g-1")
+      returning.ensure_free_credits!
+
+      expect(returning.credit_grants.where(kind: "trial")).to be_empty
+    end
+
+    it "使い切ってもお試しは配り直されない" do
       user.ensure_free_credits!
       user.consume_credits!(user.available_credit_points)
 
@@ -208,6 +245,11 @@ RSpec.describe "User credit ledger", type: :model do
     it "旧名でも同じように動く（呼び出し側を一度に直さないため）" do
       expect { user.ensure_current_period_credits! }
         .to change { user.reload.available_credit_points }.from(0)
+    end
+
+    it "登録1件あたりの持ち出しに上限がある（回収の当てがない支出のため）" do
+      cost = (Billing::Catalog::TRIAL_CREDITS * Billing::Catalog::COST_PER_CREDIT)
+      expect(cost).to be <= 30
     end
   end
 end

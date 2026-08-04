@@ -63,8 +63,9 @@ RSpec.describe "Billing endpoints", type: :request do
       get "/api/v1/billing/summary", headers: auth_headers_for(user), as: :json
 
       expect(response).to have_http_status(:ok)
-      # 無料枠が lazy 付与され、free プランの 10cr が表示される
-      expect(json_response["available_credits"]).to eq(10.0)
+      # 無料枠（お試し＋当月分）が lazy 付与されて表示される
+      expect(json_response["available_credits"])
+        .to eq(Billing::Catalog::TRIAL_CREDITS + Billing::Catalog::MONTHLY_FREE_CREDITS)
       expect(json_response.dig("plan", "name")).to eq("free")
     end
 
@@ -90,7 +91,7 @@ RSpec.describe "Billing endpoints", type: :request do
       bd = json_response["credit_breakdown"]
       # 契約が無いので月額分は 0。お試し枠（10）とキャンペーン（3）は期限付きグラント側に入る
       expect(bd["subscription"]).to eq(0.0)
-      expect(bd["grant"]).to eq(Billing::Catalog::TRIAL_CREDITS + 3.0)
+      expect(bd["grant"]).to eq((Billing::Catalog::TRIAL_CREDITS + Billing::Catalog::MONTHLY_FREE_CREDITS) + 3.0)
       expect(bd["topup"]).to eq(0.0)
       # 期限がいちばん近いもの（キャンペーンの方がお試し枠の6ヶ月後より早い）
       expect(Time.zone.parse(bd["grant_expires_at"])).to eq(Time.zone.local(2026, 12, 1))

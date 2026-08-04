@@ -27,7 +27,7 @@ module Billing
       cap = daily_cap
       return true if cap <= 0
 
-      granted = CreditGrant.where(kind: "trial", created_at: 24.hours.ago..).sum(:amount_points)
+      granted = CreditGrant.where(kind: %w[trial monthly_free], created_at: 24.hours.ago..).sum(:amount_points)
       return true if (granted + amount_points) <= cap * Billing::POINTS_PER_CREDIT
 
       report_capped!(granted)
