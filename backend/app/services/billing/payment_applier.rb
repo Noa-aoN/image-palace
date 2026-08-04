@@ -23,7 +23,8 @@ module Billing
       return false if user.nil? || plan.nil? || applied?(payment_key)
 
       user.add_topup_credits!(
-        plan.credits_per_period * Billing::POINTS_PER_CREDIT, stripe_event_id: payment_key
+        plan.credits_per_period * Billing::POINTS_PER_CREDIT, stripe_event_id: payment_key,
+        amount_cents: plan.price_cents, currency: plan.currency
       )
       true
     end
@@ -38,7 +39,8 @@ module Billing
       local_sub = Subscription.find_by(stripe_subscription_id: stripe_subscription_id)
       user.reset_subscription_credits!(
         plan.credits_per_period * Billing::POINTS_PER_CREDIT,
-        subscription: local_sub, stripe_event_id: payment_key
+        subscription: local_sub, stripe_event_id: payment_key,
+        amount_cents: plan.price_cents, currency: plan.currency
       )
       true
     end

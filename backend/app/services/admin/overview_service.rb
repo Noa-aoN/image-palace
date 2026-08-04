@@ -25,6 +25,7 @@ module Admin
         content: content_summary,
         generation: generation_summary,
         billing: billing_summary,
+        credit_liability: credit_liability,
         ai: ai_summary,
         series: {
           days: SERIES_DAYS,
@@ -88,6 +89,56 @@ module Admin
         outstanding_credits: (User.sum(:subscription_credits) + User.sum(:topup_credits))
                              .fdiv(::Billing::POINTS_PER_CREDIT).round(2)
       }
+    end
+
+    # 未使用クレジットの総量。
+    #
+    # 受け取ったのにまだ提供していないぶん＝これから原価がかかる約束。
+    # 期限の有無で分けて見えないと、いつまでにいくら出ていくのかが読めない。
+    # サービスを畳むときの返金額の目安にもなる。
+    def credit_liability
+      grants = CreditGrant.where("remaining_points > 0")
+      expiring = grants.where.not(expires_at: nil)
+
+      subscription_points = User.sum(:subscription_credits)
+      topup_points = User.sum(:topup_credits)
+      grant_points = grants.sum(:remaining_points)
+
+      {
+        # 期限付き: 月額の当月分と、期限付きグラント（繰り越し・ボーナス）
+        expiring: to_credits(subscription_points + expiring.sum(:remaining_points)),
+        # 無期限: 買い切りと、期限の無いグラント
+        unlimited: to_credits(topup_points + grants.where(expires_at: nil).sum(:remaining_points)),
+        total: to_credits(subscription_points + topup_points + grant_points),
+        # 内訳（どこに溜まっているか）
+        breakdown: {
+          subscription: to_credits(subscription_points),
+          topup: to_credits(topup_points),
+          grant: to_credits(grant_points)
+        },
+        # 直近30日で失効したぶん（使われずに消えた量）
+        expired_last_30d: to_credits(-CreditTransaction.where(kind: %w[subscription_expire grant_expire])
+                                                       .where(created_at: @since..).sum(:delta)),
+        # 買い切りで受け取った金額のうち、まだ使われていないぶんの目安（返金の当たり）
+        unused_topup_value: unused_topup_value,
+        # 直近で期限が来るもの
+        next_expiry_at: expiring.minimum(:expires_at)
+      }
+    end
+
+    # 買い切りの平均単価 × 未使用の買い切りクレジット。
+    # 畳むときにいくら返すことになるかの目安（正確な返金額は購入単位で計算する）。
+    def unused_topup_value
+      purchases = CreditTransaction.where(kind: "topup_purchase").where.not(amount_cents: nil)
+      paid = purchases.sum(:amount_cents)
+      points = purchases.sum(:delta)
+      return 0 if points.zero?
+
+      (User.sum(:topup_credits) * paid.fdiv(points)).round
+    end
+
+    def to_credits(points)
+      points.to_i.fdiv(::Billing::POINTS_PER_CREDIT).round(2)
     end
 
     def ai_summary
