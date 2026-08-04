@@ -13,23 +13,10 @@ item_types_data.each do |data|
   end
 end
 
-# Planのseedデータ（JPY はゼロ小数通貨のため price_cents には円をそのまま入れる）。
-# stripe_price_id は Stripe Products/Prices 作成後に別途投入する。
-plans_data = [
-  { name: "free",      tier: "free",     kind: "subscription", interval: "month", price_cents: 0,     credits_per_period: 10 },
-  { name: "standard",  tier: "standard", kind: "subscription", interval: "month", price_cents: 1480,  credits_per_period: 100 },
-  { name: "pro",       tier: "pro",      kind: "subscription", interval: "month", price_cents: 3980,  credits_per_period: 500 },
-  { name: "creator",   tier: "creator",  kind: "subscription", interval: "month", price_cents: 9800,  credits_per_period: 1500 },
-  { name: "studio",    tier: "studio",   kind: "subscription", interval: "month", price_cents: 19800, credits_per_period: 4000 },
-  # 買い切り（Top-up）。まとまるほど1クレジットあたりを安くする。
-  # サブスクより割高に保ち、続けて使う人はサブスクへ寄るようにする。
-  #   10cr=15.0円/cr / 50cr=13.0 / 100cr=12.0 / 300cr=11.0 / 1000cr=10.0
-  { name: "topup_10",   tier: "topup",    kind: "one_time",     interval: nil,     price_cents: 150,   credits_per_period: 10 },
-  { name: "topup_50",   tier: "topup",    kind: "one_time",     interval: nil,     price_cents: 650,   credits_per_period: 50 },
-  { name: "topup_100",  tier: "topup",    kind: "one_time",     interval: nil,     price_cents: 1200,  credits_per_period: 100 },
-  { name: "topup_300",  tier: "topup",    kind: "one_time",     interval: nil,     price_cents: 3300,  credits_per_period: 300 },
-  { name: "topup_1000", tier: "topup",    kind: "one_time",     interval: nil,     price_cents: 10000, credits_per_period: 1000 }
-]
+# Plan の内容は Billing::Catalog に集約している。
+# 「上位ほど1枚あたりが安い」「原価を割らない」といった性質はテストで守っているので、
+# 価格を変えるときは Catalog を直すこと（ここには書かない）。
+plans_data = Billing::Catalog.plans
 
 plans_data.each do |data|
   plan = Plan.find_or_initialize_by(name: data[:name])
