@@ -45,6 +45,8 @@ export interface NavNode {
 }
 
 export interface NavSection {
+  /** React の鍵と、条件付きで項目を足すときの目印。表題とは別に持つ */
+  key: string
   title: string
   items: NavNode[]
 }
@@ -59,6 +61,7 @@ export const GLOBAL_ACTIONS: NavNode[] = [
 // サイドバー（デスクトップ）とモバイルドロワーで共有するセクション付きナビ。
 export const NAV_SECTIONS: NavSection[] = [
   {
+    key: 'palace',
     title: '宮殿',
     items: [
       { href: '/entrance', icon: <DoorOpen size={22} />, label: 'エントランス' },
@@ -122,6 +125,7 @@ export const NAV_SECTIONS: NavSection[] = [
     ],
   },
   {
+    key: 'outside',
     title: '宮殿外',
     items: [
       { href: '/acropolis', icon: <Wand2 size={22} />, label: 'アクロポリス' },
@@ -130,6 +134,7 @@ export const NAV_SECTIONS: NavSection[] = [
     ],
   },
   {
+    key: 'ops',
     title: '運営',
     items: [
       { href: '/news', icon: <Megaphone size={22} />, label: 'お知らせ' },
@@ -139,9 +144,16 @@ export const NAV_SECTIONS: NavSection[] = [
   },
 ]
 
-// 運営メンバーにだけ出すセクション（サイドバーで条件付きに足す）。
+// 運営メンバーにだけ出す項目。既存の「運営」セクションの末尾へ足す。
 // ここに出す／出さないは見た目の話で、守りはサーバー側の権限判定が行う。
-export const ADMIN_SECTION: NavSection = {
-  title: '運営',
-  items: [{ href: '/admin', icon: <ShieldCheck size={22} />, label: '運営' }],
+export const ADMIN_SECTION_KEY = 'ops'
+export const ADMIN_ITEM: NavNode = { href: '/admin', icon: <ShieldCheck size={22} />, label: '管理' }
+
+/** 運営メンバーなら「運営」セクションの末尾に管理を足したものを返す */
+export function navSectionsFor(isAdmin: boolean): NavSection[] {
+  if (!isAdmin) return NAV_SECTIONS
+
+  return NAV_SECTIONS.map((section) =>
+    section.key === ADMIN_SECTION_KEY ? { ...section, items: [...section.items, ADMIN_ITEM] } : section
+  )
 }
