@@ -83,17 +83,31 @@ class User < ApplicationRecord
     available_credit_points.fdiv(Billing::POINTS_PER_CREDIT)
   end
 
-  # 無料枠クレジットを「登録日アニバーサリー基準の現周期」に lazy 付与する。
-  # 有料（active_subscription あり）は Stripe webhook 側で付与するため対象外。
-  def ensure_current_period_credits!
+  # 無料のお試し枠を1回だけ配る。
+  #
+  # 以前は毎月配り続けていたため、人が増えるほど、使われなくても原価だけが積み上がった。
+  # アカウントを作り直せば何度でももらえる形でもあった。
+  # 1アカウント1回にし、期限も他のクレジットと同じ扱いにする。
+  #
+  # 有料契約がある人には配らない（プランのぶんが毎月届くため）。
+  def ensure_free_credits!
+    return if trial_granted_at.present?
     return if active_subscription.present?
 
-    period_start = free_period_start
-    return if credits_period_start && credits_period_start >= period_start
+    amount = Billing::Catalog::TRIAL_CREDITS * Billing::POINTS_PER_CREDIT
+    return if amount <= 0
+    # 配りすぎのブレーカー。当たった場合は配らないが、印は付けて何度も試させない
+    return mark_trial_granted! unless Billing::FreeGrantGuard.allow?(amount)
 
-    free_credits = Plan.find_by(name: "free")&.credits_per_period.to_i
-    reset_subscription_credits!(free_credits * Billing::POINTS_PER_CREDIT)
-    update_column(:credits_period_start, period_start) # rubocop:disable Rails/SkipsModelValidations
+    grant_credits!(amount, kind: "trial", expires_at: Billing::Catalog::CREDIT_LIFETIME.from_now)
+    mark_trial_granted!
+  end
+
+  # 旧名。呼び出し側を一度に直さないための入口（意味は「無料枠を整えておく」で変わらない）
+  alias ensure_current_period_credits! ensure_free_credits!
+
+  def mark_trial_granted!
+    update_column(:trial_granted_at, Time.current) # rubocop:disable Rails/SkipsModelValidations
   end
 
   # 無料枠の現周期の開始日時（登録日アニバーサリー基準・月次。有料の契約日周期と整合させる）。

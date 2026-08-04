@@ -342,7 +342,7 @@ export default function BillingPage() {
                 <h2 className="text-lg font-semibold">クレジットを追加</h2>
               </div>
               <p className="text-sm text-muted-foreground">
-                買い切りのクレジットは繰り越して使えます。まとめるほど1枚あたりが安くなります。
+                まとめるほど1枚あたりが安くなります。クレジットは受け取ってから6ヶ月間有効です。
               </p>
               <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
                 {topupPlans.map((plan) => {

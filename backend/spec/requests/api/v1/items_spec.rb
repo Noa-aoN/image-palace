@@ -74,6 +74,8 @@ RSpec.describe "Api::V1::Items", type: :request do
       # 無料枠を付与してから 0 にし、残高切れを再現する
       user.ensure_current_period_credits!
       user.update!(subscription_credits: 0, topup_credits: 0)
+      user.credit_grants.destroy_all
+      user.mark_trial_granted!
 
       expect {
         post "/api/v1/items", params: { item: { title: "no-credit" } }, headers: headers, as: :json

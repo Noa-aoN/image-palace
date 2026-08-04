@@ -14,6 +14,22 @@ module Billing
     COST_PER_CREDIT = 6.0
     # 決済手数料（日本のカード）。粗利はこれを引いてから見る
     STRIPE_FEE_RATE = 0.036
+    # クレジットの寿命。受け取ってから使える期間。
+    #
+    # 期限を置く理由は3つ。
+    #   1. 受け取ったのにまだ提供していないぶん（＝これから出ていく原価）を抑える
+    #   2. 売上は毎月立つのに、原価は使われた時に出る。離れすぎないようにする
+    #   3. 前払式支払手段は、6ヶ月以内に限り使えるものなら規制の適用除外に入りやすい
+    # 3 があるので、6ヶ月を超えないこと。
+    CREDIT_LIFETIME = 6.months
+
+    # 無料のお試し枠。1アカウントにつき1回だけ配る。
+    #
+    # 以前は毎月10枚を配り続けていたため、人が増えるほど原価だけが積み上がった。
+    # アカウントを作り直せば何度でももらえる形でもあった。
+    # 「試すのに足りる量を1回」に改める。
+    TRIAL_CREDITS = 10
+
     # 上限まで使われても残したい粗利率。下回る価格は置かない。
     #
     # 35% にしているのは、原価が見立ての 6 円から 7 円台まで上がっても黒字を保てる水準だから。
@@ -29,20 +45,21 @@ module Billing
     # （¥19,800 / 4,000枚 = ¥4.95/枚 に対し原価 ¥6）。
     # 価格は据え置き、付与枚数を実態に合わせて下げた。
     SUBSCRIPTIONS = [
-      { name: "free",     tier: "free",     price: 0,      credits: 10 },
-      { name: "standard", tier: "standard", price: 1_480,  credits: 100 },
-      { name: "pro",      tier: "pro",      price: 3_980,  credits: 300 },
-      { name: "creator",  tier: "creator",  price: 9_800,  credits: 800 },
-      { name: "studio",   tier: "studio",   price: 19_800, credits: 1_800 }
+      # free は「契約なし」を表す枠。毎月の付与は行わない（お試しは TRIAL_CREDITS を1回だけ）
+      { name: "free",     tier: "free",     price: 0,      credits: 0 },
+      { name: "standard", tier: "standard", price: 1_480,  credits: 120 },
+      { name: "pro",      tier: "pro",      price: 3_980,  credits: 350 },
+      { name: "creator",  tier: "creator",  price: 9_800,  credits: 900 },
+      { name: "studio",   tier: "studio",   price: 19_800, credits: 2_000 }
     ].freeze
 
     # 買い切り（Top-up）。まとまるほど1枚あたりを安くする。
     TOPUPS = [
-      { name: "topup_10",   price: 150,    credits: 10 },
-      { name: "topup_50",   price: 650,    credits: 50 },
-      { name: "topup_100",  price: 1_200,  credits: 100 },
-      { name: "topup_300",  price: 3_300,  credits: 300 },
-      { name: "topup_1000", price: 10_000, credits: 1_000 }
+      { name: "topup_10",   price: 170,    credits: 10 },
+      { name: "topup_50",   price: 750,    credits: 50 },
+      { name: "topup_100",  price: 1_400,  credits: 100 },
+      { name: "topup_300",  price: 3_900,  credits: 300 },
+      { name: "topup_1000", price: 12_000, credits: 1_000 }
     ].freeze
 
     module_function

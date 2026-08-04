@@ -1,6 +1,7 @@
 class CreditGrant < ApplicationRecord
   # 期限付きクレジット（Free引き継ぎ・キャンペーン等）。残量が0になるか期限切れで無効。
-  KINDS = %w[free_carryover campaign goodwill].freeze
+  # trial: 登録時のお試し枠（1アカウント1回）
+  KINDS = %w[trial free_carryover campaign goodwill].freeze
 
   belongs_to :user
 

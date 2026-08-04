@@ -88,9 +88,11 @@ RSpec.describe "Billing endpoints", type: :request do
       get "/api/v1/billing/summary", headers: auth_headers_for(user), as: :json
 
       bd = json_response["credit_breakdown"]
-      expect(bd["subscription"]).to eq(10.0) # 無料枠
-      expect(bd["grant"]).to eq(3.0)
+      # 契約が無いので月額分は 0。お試し枠（10）とキャンペーン（3）は期限付きグラント側に入る
+      expect(bd["subscription"]).to eq(0.0)
+      expect(bd["grant"]).to eq(Billing::Catalog::TRIAL_CREDITS + 3.0)
       expect(bd["topup"]).to eq(0.0)
+      # 期限がいちばん近いもの（キャンペーンの方がお試し枠の6ヶ月後より早い）
       expect(Time.zone.parse(bd["grant_expires_at"])).to eq(Time.zone.local(2026, 12, 1))
     end
   end
