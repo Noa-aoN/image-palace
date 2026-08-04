@@ -209,12 +209,6 @@ export default function BillingPage() {
 
           <AiUsagePanel />
 
-          <ComingSoon
-            title="使用量の推移"
-            icon={<Gauge size={18} />}
-            description="消費の推移グラフは順次対応予定です。"
-            items={['消費の推移', '失効予定の通知']}
-          />
         </>
       ),
     },

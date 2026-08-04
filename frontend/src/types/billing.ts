@@ -29,8 +29,22 @@ export type BillingSummary = {
   next_credit_reset: string | null
 }
 
-// 画像以外の AI 利用（意味・タグ・ファクトチェック等）の内訳
-export type AiUsageRow = {
+// 使用量（AIの利用・クレジットの消費・カードの作成）。バックエンド /api/v1/billing/ai_usage に対応。
+
+export type UsagePeriod = 'month' | '30d' | '90d'
+
+export const USAGE_PERIODS: Record<UsagePeriod, string> = {
+  month: '今月',
+  '30d': '直近30日',
+  '90d': '直近90日',
+}
+
+export interface UsageSeriesPoint {
+  date: string
+  count: number
+}
+
+export interface AiUsageRow {
   kind: string
   label: string
   count: number
@@ -38,14 +52,34 @@ export type AiUsageRow = {
   credits: number
 }
 
-export type AiUsageSummary = {
-  days: number
+export interface UsageSummary {
+  period: UsagePeriod
+  period_label: string
   since: string
-  total_count: number
-  total_tokens: number
-  total_credits: number
-  /** 1日の呼び出し上限。0 以下なら無効 */
-  daily_cap: number
-  used_today: number
-  breakdown: AiUsageRow[]
+  until: string
+  days: number
+  ai: {
+    total_count: number
+    total_tokens: number
+    total_credits: number
+    /** 1日の呼び出し上限。0 以下なら無効 */
+    daily_cap: number
+    used_today: number
+    by_kind: AiUsageRow[]
+    daily: UsageSeriesPoint[]
+  }
+  credits: { consumed: number; daily: UsageSeriesPoint[] }
+  items: { created: number; daily: UsageSeriesPoint[] }
+}
+
+/** 推移グラフで選べる対象 */
+export type UsageMetric = 'credits' | 'items' | 'ai'
+
+export const USAGE_METRICS: Record<
+  UsageMetric,
+  { label: string; unit: string; pick: (usage: UsageSummary) => UsageSeriesPoint[] }
+> = {
+  credits: { label: 'クレジット消費', unit: ' cr', pick: (u) => u.credits.daily },
+  items: { label: 'カード作成', unit: ' 枚', pick: (u) => u.items.daily },
+  ai: { label: 'AI利用', unit: ' 回', pick: (u) => u.ai.daily },
 }
