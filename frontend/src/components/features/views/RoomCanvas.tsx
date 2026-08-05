@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useRef, useState, type PointerEvent as ReactPointerEvent } from 'react'
-import { ZoomIn, ZoomOut, Maximize, Maximize2, Settings } from 'lucide-react'
+import { ZoomIn, ZoomOut, Maximize, Maximize2 } from 'lucide-react'
 import { updateSpacePoint } from '@/lib/api/spaces'
 import type { SpacePoint, RoomSurface } from '@/types/space'
 import { roomSurfaceLabel, wallViewFloorGrid } from '@/lib/room-surfaces'
@@ -165,7 +165,7 @@ type RoomCanvasProps = {
   /** 編集時の選択。右パネルで向きを調整するためページ側が持つ */
   selectedPointId?: string | null
   onSelectPoint?: (id: string | null) => void
-  /** 設定を開く（歯車のつまみ・ダブルクリック）。選ぶだけの onSelectPoint とは分ける */
+  /** 設定を開く（ダブルクリック）。選ぶだけの onSelectPoint とは分ける */
   onOpenPoint?: (id: string) => void
   /** 枠なしで親いっぱいに描く（ウォークスルー用） */
   fullBleed?: boolean
@@ -243,7 +243,7 @@ export function RoomCanvas({
   //
   // 押しただけでは選ぶだけにして、設定は開かない。右パネルはルームに覆いかぶさるので、
   // 動かそうと掴んだ瞬間に置き場所が隠れてしまうため。
-  // 続けて2回押したら「設定を開く」とみなす（歯車のつまみと同じ結果への近道）。
+  // 続けて2回押したら「設定を開く」とみなす（盤面の上の「設定」と同じ結果への近道）。
   //
   // dblclick イベントを使わないのは、pointerdown で preventDefault しているとブラウザによって
   // 後続のマウス互換イベントが出ないことがあるため。押した間隔で自前で判定する。
@@ -379,47 +379,26 @@ export function RoomCanvas({
           />
         )}
         <PointMarker point={point} index={points.indexOf(point)} />
-        {/* つまみは上下に離さず、画面座標で横に並べた1組にする。
-            面に寝かせた点（床など）は投影で縦方向が潰れるため、上下に置くと
-            画面上で重なってしまい、手前に来た方が相手を覆ってしまう。
-            横に並べておけば、潰れても重ならない。 */}
+        {/* マーカーの上に置くつまみはサイズ変更だけにする。
+            設定はマーカーの外（盤面の上の行）から開く。点は小さく、数も多いので、
+            ここに的を増やすと絵そのものが見えなくなる。 */}
         {!readOnly && (
           <div
-            className={`absolute -bottom-2 -right-2 flex items-center gap-1 transition-opacity group-hover:opacity-100 ${
+            onPointerDown={startResize(point)}
+            className={`absolute -bottom-2 -right-2 flex h-5 w-5 cursor-nwse-resize items-center justify-center rounded-full border-2 border-white shadow transition-opacity group-hover:opacity-100 ${
               selectedPointId === point.id ? 'opacity-100' : 'opacity-0'
             }`}
-            // マーカー側の拡大率を打ち消し、つまみの大きさを一定に保つ（小さい点でも掴める）。
-            // 角に留めたいので、拡大の基点も角に合わせる
+            // マーカー側の拡大率を打ち消し、ハンドルの大きさを一定に保つ（小さい点でも掴める）
             style={{
+              backgroundColor: 'var(--palace)',
               transform: `scale(${1 / Math.max(0.3, pointScale * (point.scale ?? 1))})`,
-              transformOrigin: 'bottom right',
+              transformOrigin: 'center',
             }}
+            title="ドラッグでサイズ変更"
+            aria-label="サイズ変更"
           >
-            <div
-              onPointerDown={(e) => {
-                e.preventDefault()
-                e.stopPropagation() // ここからドラッグを始めない
-                onOpenPoint?.(point.id)
-              }}
-              role="button"
-              tabIndex={0}
-              className="flex h-5 w-5 cursor-pointer items-center justify-center rounded-full border-2 border-white shadow"
-              style={{ backgroundColor: 'var(--palace)' }}
-              title="設定を開く（ダブルクリックでも開けます）"
-              aria-label="設定を開く"
-            >
-              <Settings size={10} strokeWidth={3} className="text-white" />
-            </div>
-            <div
-              onPointerDown={startResize(point)}
-              className="flex h-5 w-5 cursor-nwse-resize items-center justify-center rounded-full border-2 border-white shadow"
-              style={{ backgroundColor: 'var(--palace)' }}
-              title="ドラッグでサイズ変更"
-              aria-label="サイズ変更"
-            >
-              {/* 矢印の対角を左右反転して、右下ハンドルの引く向き（↖↘）に合わせる */}
-              <Maximize2 size={10} strokeWidth={3} className="-scale-x-100 text-white" />
-            </div>
+            {/* 矢印の対角を左右反転して、右下ハンドルの引く向き（↖↘）に合わせる */}
+            <Maximize2 size={10} strokeWidth={3} className="-scale-x-100 text-white" />
           </div>
         )}
       </div>

@@ -340,12 +340,12 @@ export default function SpaceDetailPage() {
   // 以前は選んだ時点で開いていたが、右パネルはルームに覆いかぶさるので、
   // 動かそうと掴んだだけで置き場所が隠れてしまっていた。
   // ルームは「置く・動かす・大きさを変える」が主で、設定を開くのは時々なので、
-  // 開くのは歯車かダブルクリックで意図を示したときだけにする。
+  // 開くのは「設定」ボタンかダブルクリックで意図を示したときだけにする。
   const handleSelectPoint = useCallback((pointId: string | null) => {
     setSelectedPointId(pointId)
   }, [])
 
-  // 設定を開く（歯車のつまみ・ダブルクリックから）
+  // 設定を開く（盤面の上の「設定」ボタン・ダブルクリックから）
   const handleOpenPoint = useCallback(
     (pointId: string) => {
       setSelectedPointId(pointId)
@@ -650,6 +650,8 @@ export default function SpaceDetailPage() {
   }
 
   const points = space.points ?? []
+  // 盤面の上の行に名前と「設定」を出すため、選んでいる点そのものを引く
+  const selectedPoint = points.find((p) => p.id === selectedPointId) ?? null
   const isRoad = space.space_type === 'road'
   const intro = isRoad
     ? '序数のあるポイントを並べ、各点に画像を1つ設定します。名前から「生成」（1クレジット）するか、「既存カードを配置」（無料・カード画像を使用）できます。連結法/ジャーニー法の道になります。'
@@ -744,7 +746,7 @@ export default function SpaceDetailPage() {
           <PanelSlotContent sectionKey="point-settings">
             <PointSettingsPanel
               space={space}
-              selectedPoint={points.find((p) => p.id === selectedPointId) ?? null}
+              selectedPoint={selectedPoint}
               autoScale={autoScale}
               onAutoScaleChange={setAutoScale}
               onSpaceSetting={handleSpaceSetting}
@@ -837,13 +839,33 @@ export default function SpaceDetailPage() {
                 </div>
               )}
             </div>
-            {/* 押し方の約束を一行だけ添える。歯車のつまみでも開けるので、
-                読まれなくても詰まらないようにしてある（文言は念のため） */}
-            {!showNet && (
-              <p className="mb-2 text-xs text-muted-foreground">
-                ドラッグで配置、クリックで選択。設定は歯車、またはダブルクリックで開きます。
-              </p>
-            )}
+            {/* 盤面の上の一行。何も選んでいなければ押し方の案内、選んでいれば
+                その点の名前と「設定」を出す。
+                設定の入口をマーカーの上に置くと、点は小さく数も多いので絵そのものが
+                見えなくなる。マーカーの外に出せば、邪魔にならず1クリックで開ける。 */}
+            {!showNet &&
+              (selectedPoint ? (
+                <div className="mb-2 flex items-center gap-2 text-xs">
+                  <span className="shrink-0 text-muted-foreground">選択中</span>
+                  <span className="truncate font-medium">{selectedPoint.name || '未命名'}</span>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={() => handleOpenPoint(selectedPoint.id)}
+                    className="ml-1 flex h-7 shrink-0 items-center gap-1"
+                  >
+                    <Settings2 size={13} />
+                    設定
+                  </Button>
+                  <span className="ml-auto hidden shrink-0 text-muted-foreground sm:inline">
+                    ダブルクリックでも開けます
+                  </span>
+                </div>
+              ) : (
+                <p className="mb-2 text-xs text-muted-foreground">
+                  ドラッグで配置、クリックで選択。設定は選択して「設定」、またはダブルクリックで開きます。
+                </p>
+              ))}
             {viewMode === '3d' ? (
               <Room3D spaceId={id} points={points} width={space.width} depth={space.depth} height={space.height} pointScale={space.point_scale} style={roomStyle} onMoved={handleMovePoint} selectedPointId={selectedPointId} onSelectPoint={handleSelectPoint} onOpenPoint={handleOpenPoint} onScaled={handleScalePoint} />
             ) : showNet ? (

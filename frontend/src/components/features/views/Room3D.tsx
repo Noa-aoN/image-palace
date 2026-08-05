@@ -4,7 +4,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import * as THREE from 'three'
 import { Canvas, useFrame, useThree, type ThreeEvent } from '@react-three/fiber'
 import { OrbitControls, Edges, Html } from '@react-three/drei'
-import { Maximize2, Settings } from 'lucide-react'
+import { Maximize2 } from 'lucide-react'
 import { updateSpacePoint } from '@/lib/api/spaces'
 import type { SpacePoint, RoomSurface } from '@/types/space'
 import { type RoomStyle } from '@/lib/room-style'
@@ -149,37 +149,21 @@ function PointMarker({
         <planeGeometry args={[grab, grab]} />
         <meshBasicMaterial transparent opacity={0} depthWrite={false} side={THREE.DoubleSide} />
       </mesh>
-      {/* つまみは上下に離さず、1つの Html に横並びで収める。
-          Html はカメラからの距離で z-index が決まるので、上下に分けると
-          面に寝かせた点（床など）では画面上で重なり、手前に来た方が相手を覆う。
-          同じ Html の中なら並びは画面座標で決まるため、重なりようがない。 */}
+      {/* マーカーの上に置くつまみはサイズ変更だけにする。
+          設定はマーカーの外（盤面の上の行）から開く。点は小さく数も多いので、
+          ここに的を増やすと絵そのものが見えなくなる。
+          （上下に分けて置くと、床の点は投影で潰れて重なるという問題もあった） */}
       {showHandle && (
         <Html position={[m / 2 + 0.12, -m / 2 - 0.12, 0.05]} center distanceFactor={11} zIndexRange={[20, 0]}>
-          <div className="flex items-center gap-1">
-            <div
-              onPointerDown={(e) => {
-                e.stopPropagation()
-                onOpen(point.id)
-              }}
-              role="button"
-              tabIndex={0}
-              title="設定を開く（ダブルクリックでも開けます）"
-              aria-label="設定を開く"
-              className="flex h-5 w-5 cursor-pointer items-center justify-center rounded-full border-2 border-white shadow"
-              style={{ backgroundColor: ACCENT }}
-            >
-              <Settings size={10} strokeWidth={3} className="text-white" />
-            </div>
-            <div
-              onPointerDown={startResize}
-              title="ドラッグでサイズ変更"
-              aria-label="サイズ変更"
-              className="flex h-5 w-5 cursor-nwse-resize items-center justify-center rounded-full border-2 border-white shadow"
-              style={{ backgroundColor: ACCENT }}
-            >
-              {/* 矢印の対角を左右反転して、右下ハンドルの引く向き（↖↘）に合わせる */}
-              <Maximize2 size={10} strokeWidth={3} className="-scale-x-100 text-white" />
-            </div>
+          <div
+            onPointerDown={startResize}
+            title="ドラッグでサイズ変更"
+            aria-label="サイズ変更"
+            className="flex h-5 w-5 cursor-nwse-resize items-center justify-center rounded-full border-2 border-white shadow"
+            style={{ backgroundColor: ACCENT }}
+          >
+            {/* 矢印の対角を左右反転して、右下ハンドルの引く向き（↖↘）に合わせる */}
+            <Maximize2 size={10} strokeWidth={3} className="-scale-x-100 text-white" />
           </div>
         </Html>
       )}
@@ -421,7 +405,7 @@ type Room3DProps = {
   /** 選択の外部管理（向きの調整は右パネルで行うため、ページ側が選択を持つ） */
   selectedPointId?: string | null
   onSelectPoint?: (id: string | null) => void
-  /** 設定を開く（歯車のつまみ・ダブルクリック）。選ぶだけの onSelectPoint とは分ける */
+  /** 設定を開く（ダブルクリック）。選ぶだけの onSelectPoint とは分ける */
   onOpenPoint?: (id: string) => void
   onScaled?: (id: string, scale: number) => void
 }
