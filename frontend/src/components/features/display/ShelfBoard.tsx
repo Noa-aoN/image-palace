@@ -104,30 +104,17 @@ export function SurfaceBoard({ surface, children }: { surface: Surface; children
     中身をその間に挟むことで、アイテムは柱の *下を潜って* 流れる。
     柱を消す必要がなくなるので、送っている間も棚の幅は変わらない。
   */
-  // 枠の内側がそのまま棚の内側になるので、アイテムが柱に載ることはない
-  const shelf = stacked
-    ? {
-        borderTopWidth: '83px',
-        borderBottomWidth: '83px',
-        borderLeftWidth: '77px',
-        borderRightWidth: '77px',
-        borderImageSource: "url('/shelf/vertical.webp')",
-        borderImageSlice: '150 190 150 190 fill',
-      }
-    : {
-        borderTopWidth: '45px',
-        borderBottomWidth: '62px',
-        borderLeftWidth: '135px',
-        borderRightWidth: '135px',
-        borderImageSource: "url('/shelf/horizontal.webp')",
-        borderImageSlice: '50 150 69 150 fill',
-      }
+  /*
+    枠の内側がそのまま棚の内側になるので、アイテムが柱に載ることはない。
 
+    柱の幅は globals.css に置いている。狭い画面では柱だけで横幅を使い切ってしまい、
+    内側にアイテムが1枚も収まらなくなるため、画面幅に合わせて狭める必要がある。
+    インラインの style では画面幅で切り替えられない。
+  */
   return (
     <div className="relative flex h-full min-h-0 flex-1 flex-col">
       <div
-        className={`relative flex flex-1 ${stacked ? 'items-start' : 'items-end'}`}
-        style={{ ...shelf, borderStyle: 'solid', borderColor: 'transparent', borderImageRepeat: 'stretch' }}
+        className={`shelf-frame ${stacked ? 'shelf-frame-columns items-start' : 'shelf-frame-rows items-end'} relative flex flex-1`}
       >
         <div
           className={`relative z-10 min-w-0 flex-1 [&>[data-rail]>*]:drop-shadow-[0_6px_5px_rgba(0,0,0,0.22)] ${
