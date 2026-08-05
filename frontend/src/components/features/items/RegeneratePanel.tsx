@@ -1,13 +1,15 @@
 'use client'
 
 import { useEffect, useRef, useState } from 'react'
-import { RefreshCw, ChevronDown } from 'lucide-react'
+import { RefreshCw } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { useBillingStore } from '@/stores/billing'
 import { CREDIT_UNIT_SHORT } from '@/lib/billing'
 import { Label } from '@/components/ui/label'
 import { Spinner } from '@/components/ui/spinner'
-import { retryItem } from '@/lib/api/items'
+import { retryItem, updateItem } from '@/lib/api/items'
+import { PanelSlotContent } from '@/components/features/panel/PanelSlot'
+import { usePanelForm } from '@/components/features/panel/usePanelForm'
 import { getSettings } from '@/lib/api/settings'
 import { STYLE_OPTIONS, CUSTOM_PROMPT_MAX_LENGTH } from '@/lib/item-styles'
 import type { Item } from '@/types/item'
@@ -17,18 +19,25 @@ interface Props {
   onUpdated: (item: Item) => void
 }
 
+const PANEL_KEY = 'item-regenerate'
+
 /**
- * カードの画像を再生成するパネル。failed・completed どちらの状態からも使える。
- * 任意で「入力補足・指示」（custom_prompt）とスタイルを指定でき、
- * 曖昧な入力の補足や、生成済み画像のニュアンス調整・置き換えに使う。
+ * カードの画像を作り直す。failed・completed どちらの状態からも使える。
+ *
+ * ページに置くのはボタン1つだけにして、中身は右パネルで開く。
+ * 画像そのものを見る面積を、設定のために削らないため。
+ *
+ * ここで**情景プロンプトを直接直せる**ようにしてある。
+ * 思った絵にならないとき、いちばん効くのがそこだから。
+ * 直してから作り直すまでを1回の操作で終える。
  *
  * 出来上がったものの作り直しは、新しい画像を1枚作るので1クレジット使う。
  * 失敗からの作り直しは無料（渡せていないものに課金しない）。
- * 押す前に、どちらなのかと残高が分かるようにしておく。
  */
 export function RegeneratePanel({ item, onUpdated }: Props) {
   const isFailed = item.generation_status === 'failed'
-  const [open, setOpen] = useState(isFailed)
+  const panel = usePanelForm(PANEL_KEY, '画像を作り直す')
+  const [scenePrompt, setScenePrompt] = useState(item.scene_prompt ?? '')
   const [customPrompt, setCustomPrompt] = useState(item.custom_prompt ?? '')
   const [style, setStyle] = useState(item.style ?? '')
   const [useMeaning, setUseMeaning] = useState(false)
@@ -55,6 +64,10 @@ export function RegeneratePanel({ item, onUpdated }: Props) {
     setRetrying(true)
     setError(null)
     try {
+      // 情景を直していたら先に保存する。直してから作り直すまでを1回で終える
+      if (scenePrompt !== (item.scene_prompt ?? '')) {
+        onUpdated(await updateItem(item.id, { scene_prompt: scenePrompt }))
+      }
       const updated = await retryItem(item.id, {
         customPrompt: customPrompt.trim(),
         style,
@@ -76,26 +89,22 @@ export function RegeneratePanel({ item, onUpdated }: Props) {
   }
 
   return (
-    <div className="space-y-3 rounded-xl border border-border/70 bg-background px-4 py-3">
-      {isFailed && item.generation_error && (
-        <p className="text-sm leading-6 text-destructive">{item.generation_error}</p>
-      )}
+    <>
+      <button
+        type="button"
+        onClick={panel.open}
+        aria-expanded={panel.isOpen}
+        className="flex items-center gap-1 text-xs text-muted-foreground transition-colors hover:text-foreground"
+      >
+        <RefreshCw size={14} />
+        画像を作り直す{costsCredit && `（1 ${CREDIT_UNIT_SHORT}）`}
+      </button>
 
-      {!open ? (
-        <Button
-          variant="outline"
-          onClick={() => setOpen(true)}
-          className="w-full flex items-center justify-center gap-2"
-        >
-          <RefreshCw size={15} />
-          画像を作り直す{costsCredit && `（1 ${CREDIT_UNIT_SHORT}）`}
-        </Button>
-      ) : (
+      <PanelSlotContent sectionKey={PANEL_KEY}>
         <div className="space-y-4">
-          <div className="flex items-center gap-1.5 text-sm font-medium">
-            <RefreshCw size={15} />
-            画像を作り直す
-          </div>
+          {isFailed && item.generation_error && (
+            <p className="text-sm leading-6 text-destructive">{item.generation_error}</p>
+          )}
 
           <p className="text-xs leading-relaxed text-muted-foreground">
             {costsCredit ? (
@@ -108,6 +117,23 @@ export function RegeneratePanel({ item, onUpdated }: Props) {
             )}
           </p>
 
+          {/* 思った絵にならないとき、いちばん効くのがここ。直してそのまま作り直せるようにする */}
+          <div className="space-y-2">
+            <Label htmlFor="regen-scene">画像への指示（情景）</Label>
+            <textarea
+              id="regen-scene"
+              value={scenePrompt}
+              onChange={(e) => setScenePrompt(e.target.value)}
+              disabled={retrying}
+              rows={4}
+              placeholder="未設定のときは単語をそのまま使います"
+              className="w-full resize-y rounded-lg border border-input bg-background px-3 py-2 font-mono text-xs leading-relaxed placeholder:font-sans placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+            />
+            <p className="text-xs text-muted-foreground">
+              ここを直すと、そのまま作り直しに使われます。空にすると単語をそのまま使います。
+            </p>
+          </div>
+
           <div className="space-y-2">
             <Label htmlFor="regen-instruction">入力補足・指示（任意）</Label>
             <textarea
@@ -118,11 +144,8 @@ export function RegeneratePanel({ item, onUpdated }: Props) {
               maxLength={CUSTOM_PROMPT_MAX_LENGTH}
               rows={2}
               placeholder="例: もっと写実的に / 背景を青空に / りんごは断面を見せて"
-              className="w-full rounded-lg border border-input bg-background px-3 py-2 text-sm placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring resize-y"
+              className="w-full resize-y rounded-lg border border-input bg-background px-3 py-2 text-sm placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
             />
-            <p className="text-xs text-muted-foreground">
-              曖昧な単語を補ったり、生成済み画像のニュアンスを調整して置き換えられます。
-            </p>
           </div>
 
           <div className="space-y-2">
@@ -169,25 +192,21 @@ export function RegeneratePanel({ item, onUpdated }: Props) {
             </label>
           )}
 
-          <div className="flex items-center gap-2">
-            <Button
-              onClick={handleRegenerate}
-              disabled={retrying || insufficient}
-              className="flex-1 flex items-center justify-center gap-2"
-            >
-              {retrying ? <Spinner size={15} /> : <RefreshCw size={15} />}
-              {retrying ? '作り直しています...' : `この内容で作り直す${costsCredit ? `（1 ${CREDIT_UNIT_SHORT}）` : ''}`}
-            </Button>
-            {!isFailed && (
-              <Button variant="ghost" onClick={() => setOpen(false)} disabled={retrying} aria-label="閉じる">
-                <ChevronDown size={16} />
-              </Button>
-            )}
-          </div>
-        </div>
-      )}
+          <Button
+            onClick={handleRegenerate}
+            disabled={retrying || insufficient}
+            className="flex w-full items-center justify-center gap-2"
+          >
+            {retrying ? <Spinner size={15} /> : <RefreshCw size={15} />}
+            {retrying ? '作り直しています...' : `この内容で作り直す${costsCredit ? `（1 ${CREDIT_UNIT_SHORT}）` : ''}`}
+          </Button>
 
-      {error && <p className="text-sm text-destructive">{error}</p>}
-    </div>
+          {insufficient && (
+            <p className="text-sm text-destructive">クレジットが不足しています。</p>
+          )}
+          {error && <p className="text-sm text-destructive">{error}</p>}
+        </div>
+      </PanelSlotContent>
+    </>
   )
 }

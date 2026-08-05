@@ -11,6 +11,7 @@ module Api
           count: params[:count].presence,
           exclude: params[:exclude],
           avoid: params[:avoid],
+          difficulty: params[:difficulty].presence || current_user.setting&.word_difficulty,
           user: current_user
         )
         render json: { words: words }

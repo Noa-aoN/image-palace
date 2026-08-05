@@ -14,6 +14,9 @@ class Setting < ApplicationRecord
   # アニメーションの扱い。auto は端末（OS）の prefers-reduced-motion に従う。
   MOTION_MODES = %w[auto on off].freeze
 
+  # 単語生成の既定の難しさ（アクロポリス・デルフォイの初期値）
+  validates :word_difficulty, inclusion: { in: GenerateWordsService::DIFFICULTIES }
+
   # ライブラリの棚（大項目）。既定の並び順でもある
   LIBRARY_SECTIONS = %w[cards canvas spaces boxes materials].freeze
 

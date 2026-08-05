@@ -53,4 +53,55 @@ RSpec.describe GenerateWordsService do
     stub_chat("これはJSONではない")
     expect { described_class.call(theme: "x", count: 3) }.to raise_error(GenerateWordsService::GenerationError)
   end
+
+  describe "語彙の難しさ" do
+    def captured_system_prompt
+      captured = nil
+      allow(Ai::Chat).to receive(:call) do |messages:, **|
+        captured = messages.first[:content]
+        { "choices" => [ { "message" => { "content" => { words: [ "あ" ] }.to_json } } ] }
+      end
+      yield
+      captured
+    end
+
+    it "指定した難しさの指示を足す" do
+      prompt = captured_system_prompt { described_class.call(theme: "科学", difficulty: "expert") }
+
+      expect(prompt).to include("その分野を学んだ人でなければ知らない水準")
+    end
+
+    it "やさしい指定では身近なものに寄せる" do
+      prompt = captured_system_prompt { described_class.call(theme: "科学", difficulty: "easy") }
+
+      expect(prompt).to include("小学生でも知っている")
+    end
+
+    it "指定が無ければ既定（ふつう）になる" do
+      prompt = captured_system_prompt { described_class.call(theme: "科学") }
+
+      expect(prompt).to include("中学〜高校で出会う程度")
+    end
+
+    it "知らない指定は既定に丸める" do
+      prompt = captured_system_prompt { described_class.call(theme: "科学", difficulty: "とても難しい") }
+
+      expect(prompt).to include("中学〜高校で出会う程度")
+    end
+
+    it "元の指示は残したまま、難しさだけを重ねる（打ち消し合わない）" do
+      prompt = captured_system_prompt { described_class.call(theme: "科学", difficulty: "hard") }
+
+      expect(prompt).to include("学習用の単語リスト作成アシスタント")
+      expect(prompt).to include("画像化しやすい具体的な名詞を優先")
+      expect(prompt).to include("大学の教養課程")
+    end
+
+    it "受け付ける難しさは4段階" do
+      expect(described_class::DIFFICULTIES).to eq(%w[easy normal hard expert])
+      described_class::DIFFICULTIES.each do |level|
+        expect(described_class::DIFFICULTY_GUIDES).to have_key(level)
+      end
+    end
+  end
 end

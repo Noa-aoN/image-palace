@@ -6,6 +6,8 @@ interface GenerateWordsOptions {
   exclude?: string[]
   // 出る確率を大きく下げる語（キャンセル済み）。
   avoid?: string[]
+  // 語彙の難しさ（未指定なら利用者の設定に従う）
+  difficulty?: string
 }
 
 // テーマ/ジャンルから単語を生成する（テキストのみ・クレジット消費なし）。
@@ -16,6 +18,7 @@ export async function generateWords(theme: string, count?: number, opts?: Genera
   if (count != null) payload.count = count
   if (opts?.exclude?.length) payload.exclude = opts.exclude
   if (opts?.avoid?.length) payload.avoid = opts.avoid
+  if (opts?.difficulty) payload.difficulty = opts.difficulty
   const res = await apiClient.post<{ words: string[] }>('/api/v1/words/generate', payload)
   return res.data.words
 }
