@@ -149,39 +149,37 @@ function PointMarker({
         <planeGeometry args={[grab, grab]} />
         <meshBasicMaterial transparent opacity={0} depthWrite={false} side={THREE.DoubleSide} />
       </mesh>
-      {/* 設定のつまみ。左上は番号バッジが使っているので、2D と同じ右上に置く
-          （サイズ変更ハンドルは右下。上下で役割を分ける） */}
-      {showHandle && (
-        <Html position={[m / 2 + 0.12, m / 2 + 0.12, 0.05]} center distanceFactor={11} zIndexRange={[20, 0]}>
-          <div
-            onPointerDown={(e) => {
-              e.stopPropagation()
-              onOpen(point.id)
-            }}
-            role="button"
-            tabIndex={0}
-            title="設定を開く（ダブルクリックでも開けます）"
-            aria-label="設定を開く"
-            className="flex h-5 w-5 cursor-pointer items-center justify-center rounded-full border-2 border-white shadow"
-            style={{ backgroundColor: ACCENT }}
-          >
-            <Settings size={10} strokeWidth={3} className="text-white" />
-          </div>
-        </Html>
-      )}
-      {/* 拡大縮小ハンドル（ホバー/選択中に出る）。2D と同じアイコンで意味を揃える。
-          向きの調整は右パネルに集約しているため、ここには出さない */}
+      {/* つまみは上下に離さず、1つの Html に横並びで収める。
+          Html はカメラからの距離で z-index が決まるので、上下に分けると
+          面に寝かせた点（床など）では画面上で重なり、手前に来た方が相手を覆う。
+          同じ Html の中なら並びは画面座標で決まるため、重なりようがない。 */}
       {showHandle && (
         <Html position={[m / 2 + 0.12, -m / 2 - 0.12, 0.05]} center distanceFactor={11} zIndexRange={[20, 0]}>
-          <div
-            onPointerDown={startResize}
-            title="ドラッグでサイズ変更"
-            aria-label="サイズ変更"
-            className="flex h-5 w-5 cursor-nwse-resize items-center justify-center rounded-full border-2 border-white shadow"
-            style={{ backgroundColor: ACCENT }}
-          >
-            {/* 矢印の対角を左右反転して、右下ハンドルの引く向き（↖↘）に合わせる */}
-            <Maximize2 size={10} strokeWidth={3} className="-scale-x-100 text-white" />
+          <div className="flex items-center gap-1">
+            <div
+              onPointerDown={(e) => {
+                e.stopPropagation()
+                onOpen(point.id)
+              }}
+              role="button"
+              tabIndex={0}
+              title="設定を開く（ダブルクリックでも開けます）"
+              aria-label="設定を開く"
+              className="flex h-5 w-5 cursor-pointer items-center justify-center rounded-full border-2 border-white shadow"
+              style={{ backgroundColor: ACCENT }}
+            >
+              <Settings size={10} strokeWidth={3} className="text-white" />
+            </div>
+            <div
+              onPointerDown={startResize}
+              title="ドラッグでサイズ変更"
+              aria-label="サイズ変更"
+              className="flex h-5 w-5 cursor-nwse-resize items-center justify-center rounded-full border-2 border-white shadow"
+              style={{ backgroundColor: ACCENT }}
+            >
+              {/* 矢印の対角を左右反転して、右下ハンドルの引く向き（↖↘）に合わせる */}
+              <Maximize2 size={10} strokeWidth={3} className="-scale-x-100 text-white" />
+            </div>
           </div>
         </Html>
       )}

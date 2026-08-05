@@ -379,50 +379,47 @@ export function RoomCanvas({
           />
         )}
         <PointMarker point={point} index={points.indexOf(point)} />
-        {/* 設定のつまみ。選んだときだけ出す。
-            ダブルクリックでも開けるが、それだけだと気づけないうえ、
-            タッチではダブルタップが当てにくいので、押せる的を用意する。 */}
+        {/* つまみは上下に離さず、画面座標で横に並べた1組にする。
+            面に寝かせた点（床など）は投影で縦方向が潰れるため、上下に置くと
+            画面上で重なってしまい、手前に来た方が相手を覆ってしまう。
+            横に並べておけば、潰れても重ならない。 */}
         {!readOnly && (
           <div
-            onPointerDown={(e) => {
-              e.preventDefault()
-              e.stopPropagation() // ここからドラッグを始めない
-              onOpenPoint?.(point.id)
-            }}
-            role="button"
-            tabIndex={0}
-            className={`absolute -right-2 -top-2 flex h-5 w-5 cursor-pointer items-center justify-center rounded-full border-2 border-white shadow transition-opacity group-hover:opacity-100 ${
+            className={`absolute -bottom-2 -right-2 flex items-center gap-1 transition-opacity group-hover:opacity-100 ${
               selectedPointId === point.id ? 'opacity-100' : 'opacity-0'
             }`}
-            // マーカー側の拡大率を打ち消し、つまみの大きさを一定に保つ（サイズ変更ハンドルと同じ）
+            // マーカー側の拡大率を打ち消し、つまみの大きさを一定に保つ（小さい点でも掴める）。
+            // 角に留めたいので、拡大の基点も角に合わせる
             style={{
-              backgroundColor: 'var(--palace)',
               transform: `scale(${1 / Math.max(0.3, pointScale * (point.scale ?? 1))})`,
-              transformOrigin: 'center',
+              transformOrigin: 'bottom right',
             }}
-            title="設定を開く（ダブルクリックでも開けます）"
-            aria-label="設定を開く"
           >
-            <Settings size={10} strokeWidth={3} className="text-white" />
-          </div>
-        )}
-        {!readOnly && (
-          <div
-            onPointerDown={startResize(point)}
-            className={`absolute -bottom-2 -right-2 flex h-5 w-5 cursor-nwse-resize items-center justify-center rounded-full border-2 border-white shadow transition-opacity group-hover:opacity-100 ${
-              selectedPointId === point.id ? 'opacity-100' : 'opacity-0'
-            }`}
-            // マーカー側の拡大率を打ち消し、ハンドルの大きさを一定に保つ（小さい点でも掴める）
-            style={{
-              backgroundColor: 'var(--palace)',
-              transform: `scale(${1 / Math.max(0.3, pointScale * (point.scale ?? 1))})`,
-              transformOrigin: 'center',
-            }}
-            title="ドラッグでサイズ変更"
-            aria-label="サイズ変更"
-          >
-            {/* 矢印の対角を左右反転して、右下ハンドルの引く向き（↖↘）に合わせる */}
-            <Maximize2 size={10} strokeWidth={3} className="-scale-x-100 text-white" />
+            <div
+              onPointerDown={(e) => {
+                e.preventDefault()
+                e.stopPropagation() // ここからドラッグを始めない
+                onOpenPoint?.(point.id)
+              }}
+              role="button"
+              tabIndex={0}
+              className="flex h-5 w-5 cursor-pointer items-center justify-center rounded-full border-2 border-white shadow"
+              style={{ backgroundColor: 'var(--palace)' }}
+              title="設定を開く（ダブルクリックでも開けます）"
+              aria-label="設定を開く"
+            >
+              <Settings size={10} strokeWidth={3} className="text-white" />
+            </div>
+            <div
+              onPointerDown={startResize(point)}
+              className="flex h-5 w-5 cursor-nwse-resize items-center justify-center rounded-full border-2 border-white shadow"
+              style={{ backgroundColor: 'var(--palace)' }}
+              title="ドラッグでサイズ変更"
+              aria-label="サイズ変更"
+            >
+              {/* 矢印の対角を左右反転して、右下ハンドルの引く向き（↖↘）に合わせる */}
+              <Maximize2 size={10} strokeWidth={3} className="-scale-x-100 text-white" />
+            </div>
           </div>
         )}
       </div>
