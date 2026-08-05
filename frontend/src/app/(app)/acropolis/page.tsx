@@ -10,6 +10,14 @@ import { generateWords } from '@/lib/api/wordlists'
 import { createItem } from '@/lib/api/items'
 import { STYLE_OPTIONS } from '@/lib/item-styles'
 import { useBillingStore } from '@/stores/billing'
+import { useSettingsStore } from '@/stores/settings'
+import {
+  WORD_DIFFICULTIES,
+  WORD_DIFFICULTY_LABELS,
+  WORD_DIFFICULTY_DESCRIPTIONS,
+  normalizeWordDifficulty,
+  type WordDifficulty,
+} from '@/lib/word-difficulty'
 import { useAcropolisStore } from '@/stores/acropolis'
 import { useMotion } from '@/hooks/useMotion'
 
@@ -26,6 +34,10 @@ function formatDate(ts: number): string {
 export default function AcropolisPage() {
   const [genre, setGenre] = useState('')
   const [count, setCount] = useState(1)
+  // 難しさは環境設定の既定から始め、その場で変えられる
+  const settingsDifficulty = useSettingsStore((s) => s.settings?.word_difficulty)
+  const [difficulty, setDifficulty] = useState<WordDifficulty | null>(null)
+  const effectiveDifficulty = difficulty ?? normalizeWordDifficulty(settingsDifficulty)
   // 既定は「写真(photo)」。未指定だと realism 指示が付かずイラスト寄りになるため。
   const [style, setStyle] = useState('photo')
   const [forging, setForging] = useState(false)
@@ -66,7 +78,11 @@ export default function AcropolisPage() {
     setForging(true)
     setError(null)
     try {
-      const words = await generateWords(genre.trim(), count, { exclude: excludeWords, avoid: avoidWords })
+      const words = await generateWords(genre.trim(), count, {
+        exclude: excludeWords,
+        avoid: avoidWords,
+        difficulty: effectiveDifficulty,
+      })
       if (words.length === 0) {
         setError('神託が得られませんでした。もう一度お試しください。')
         return
@@ -167,6 +183,21 @@ export default function AcropolisPage() {
                 {/* 既定の写真は「おすすめ」として見せる */}
                 {opt.value === 'photo' ? `おすすめ（${opt.label}）` : opt.label}
               </option>
+            ))}
+          </select>
+        </div>
+        <div className="w-36">
+          <label htmlFor="difficulty" className="mb-1 block text-sm font-medium">難しさ</label>
+          <select
+            id="difficulty"
+            value={effectiveDifficulty}
+            onChange={(e) => setDifficulty(e.target.value as WordDifficulty)}
+            disabled={busy}
+            title={WORD_DIFFICULTY_DESCRIPTIONS[effectiveDifficulty]}
+            className="h-9 w-full rounded-lg border border-input bg-background px-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+          >
+            {WORD_DIFFICULTIES.map((level) => (
+              <option key={level} value={level}>{WORD_DIFFICULTY_LABELS[level]}</option>
             ))}
           </select>
         </div>

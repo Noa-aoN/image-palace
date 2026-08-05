@@ -11,6 +11,23 @@ class GenerateWordsService
   # 除外/回避リストの上限（プロンプト肥大化・トークンコスト抑制）。
   EXCLUDE_LIMIT = 300
 
+  # 語彙の難しさ。学ぶ人の段階に合わせて振れ幅を変える。
+  # 「難しい」ほど、耳慣れない語・専門の語・出会いにくい語を多くする。
+  DIFFICULTIES = %w[easy normal hard expert].freeze
+  DEFAULT_DIFFICULTY = "normal"
+
+  DIFFICULTY_GUIDES = {
+    "easy" => "小学生でも知っている、身近で目に見えるものを中心にしてください。" \
+              "専門用語や固有名詞は避け、日常で出会う具体物・生き物・道具・食べ物などから選びます。",
+    "normal" => "中学〜高校で出会う程度の一般教養レベルにしてください。" \
+                "誰もが知っているとは限らないが、説明されれば分かる語を中心にします。",
+    "hard" => "大学の教養課程〜専門入門で出会う程度にしてください。" \
+              "分野の専門用語、歴史上の事物、あまり知られていない固有名詞を多く含めます。",
+    "expert" => "その分野を学んだ人でなければ知らない水準にしてください。" \
+                "専門用語・古典的な術語・地域や時代の限られた事物・希少な固有名詞を積極的に選びます。" \
+                "ただし実在し、調べれば確かめられるものに限ります。"
+  }.freeze
+
   SYSTEM_PROMPT = <<~PROMPT.freeze
     あなたは学習用の単語リスト作成アシスタントです。
     与えられたテーマ（ジャンル）に沿った、学習に役立つ単語・概念を、指定された条件で重複なく挙げてください。
@@ -27,14 +44,20 @@ class GenerateWordsService
   PROMPT
 
   # exclude: 絶対に出さない語（既出＝受け取り済み）。avoid: 出す確率を大きく下げる語（キャンセル済み）。
-  def self.call(theme: nil, count: nil, exclude: [], avoid: [], user: nil)
-    new(theme:, count:, exclude:, avoid:, user:).call
+  # difficulty: 語彙の難しさ（easy / normal / hard / expert）。
+  def self.call(theme: nil, count: nil, exclude: [], avoid: [], difficulty: nil, user: nil)
+    new(theme:, count:, exclude:, avoid:, difficulty:, user:).call
+  end
+
+  def self.normalize_difficulty(value)
+    DIFFICULTIES.include?(value.to_s) ? value.to_s : DEFAULT_DIFFICULTY
   end
 
   # count が nil/空のときは「おまかせ（自動）」。AI がテーマに応じた自然な数を返す。
   # 数値指定時は 1〜MAX_COUNT にクランプ。いずれも MAX_COUNT を超えないよう必ず切り詰める。
-  def initialize(theme:, count:, exclude: [], avoid: [], user: nil)
+  def initialize(theme:, count:, exclude: [], avoid: [], difficulty: nil, user: nil)
     @user = user
+    @difficulty = self.class.normalize_difficulty(difficulty)
     @theme = theme.to_s.strip
     @count = count.present? ? count.to_i.clamp(1, MAX_COUNT) : nil
     @exclude = clean_list(exclude)
@@ -50,6 +73,12 @@ class GenerateWordsService
   # 切り詰めの上限（おまかせ時はハードキャップ＝MAX_COUNT）。
   def cap
     @count || MAX_COUNT
+  end
+
+  # 難しさの指示を末尾に足す。同じ土台に一段だけ条件を重ねる形にして、
+  # 指示同士が打ち消し合わないようにする。
+  def system_prompt
+    "#{SYSTEM_PROMPT}\n難しさの指定: #{DIFFICULTY_GUIDES.fetch(@difficulty)}"
   end
 
   def user_prompt
@@ -82,7 +111,7 @@ class GenerateWordsService
       user: @user,
       model: model,
       messages: [
-        { role: "system", content: SYSTEM_PROMPT },
+        { role: "system", content: system_prompt },
         { role: "user", content: user_prompt }
       ],
       temperature: 0.9,

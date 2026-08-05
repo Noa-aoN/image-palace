@@ -27,7 +27,7 @@ module Api
           :auto_generate_meanings, :auto_generate_tags, :default_image_style, :default_aspect_ratio,
           :display_style, :shelf_orientation, :onboarded,
           :regenerate_with_meaning,
-          :diagram_mode, :motion_mode,
+          :diagram_mode, :motion_mode, :word_difficulty,
           library_order: []
         )
       end
@@ -40,6 +40,7 @@ module Api
           default_aspect_ratio: setting.default_aspect_ratio,
           display_style: setting.display_style,
           shelf_orientation: setting.shelf_orientation,
+          word_difficulty: setting.word_difficulty,
           # 実際に描く並び（未設定でも既定の順が入る）
           library_order: setting.ordered_library_sections,
           # 初回の表示スタイル確認を出すかどうかの判断に使う

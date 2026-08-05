@@ -13,6 +13,8 @@ export interface UserSettings {
   shelf_orientation: string
   /** ライブラリの棚の並び順。空配列を送ると既定の順に戻る */
   library_order: string[]
+  /** 単語生成の既定の難しさ（easy / normal / hard / expert） */
+  word_difficulty: string
   // 初回の表示スタイル確認を済ませたか
   onboarded: boolean
   /** 再生成時に「意味・説明を参考にする」の既定値（既定 ON） */

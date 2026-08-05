@@ -1,9 +1,12 @@
 'use client'
 
-import { useEffect, useState, useRef } from 'react'
+import { useEffect, useMemo, useState, useRef } from 'react'
 import { ChevronRight, Eraser, ListChecks, Sparkles } from 'lucide-react'
 import { PanelSlotContent } from '@/components/features/panel/PanelSlot'
 import { useRightPanelStore } from '@/stores/rightPanel'
+import { useSettingsStore } from '@/stores/settings'
+import { useAcropolisStore } from '@/stores/acropolis'
+import { normalizeWordDifficulty } from '@/lib/word-difficulty'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { Button } from '@/components/ui/button'
@@ -100,15 +103,36 @@ export function CreateItemForm({
   const [confirmClear, setConfirmClear] = useState(false)
   const [consulting, setConsulting] = useState(false)
   const [oracleError, setOracleError] = useState<string | null>(null)
+  const settings = useSettingsStore((st) => st.settings)
+  // アクロポリスと同じ履歴を見る。受け取り済みは出さず、キャンセル済みは出にくくする
+  const acropolisHistory = useAcropolisStore((st) => st.history)
+  const oracleExclude = useMemo(
+    () =>
+      Array.from(
+        new Set(acropolisHistory.filter((r) => r.status === 'received').flatMap((r) => r.words))
+      ),
+    [acropolisHistory]
+  )
+  const oracleAvoid = useMemo(
+    () =>
+      Array.from(
+        new Set(acropolisHistory.filter((r) => r.status === 'cancelled').flatMap((r) => r.words))
+      ),
+    [acropolisHistory]
+  )
 
   /*
     デルフォイ挿入。神託から単語をひとつ受け取り、入力欄の末尾へ足す。
     ここで作るのは単語だけで、クレジットは消費しない（消費はカードを作る段階）。
 
-    既に入力してある単語は exclude で除く。押すたびに同じ語が出ては使えない。
-    ジャンルや枚数は指定できるようにしない。細かく選びたいときは
-    アクロポリスへ行けばよく、ここは入力を一語足すだけの補助に留める。
-    アクロポリスの履歴にも残さない（あちらは神託を受けて受け取る一連の流れで、
+    出す語の選び方はアクロポリスと揃える。あちらだけ賢いと、同じ「神託」なのに
+    こちらでは同じような語ばかり出る、という食い違いが起きるため。
+      ・入力済みの語と、アクロポリスで受け取り済みの語は出さない
+      ・キャンセルした語は出にくくする
+      ・難しさは環境設定の既定に従う
+    ジャンルや枚数は指定できるようにしない。細かく選びたいときはアクロポリスへ行けばよく、
+    ここは入力を一語足すだけの補助に留める。
+    アクロポリスの履歴には残さない（あちらは神託を受けて受け取る一連の流れで、
     こちらは入力補助。混ぜると両方の意味が濁る）。
   */
   const consultOracle = async () => {
@@ -117,7 +141,11 @@ export function CreateItemForm({
     setOracleError(null)
     try {
       const existing = parseTitles(input, splitByPunctuation)
-      const words = await generateWords('', 1, { exclude: existing })
+      const words = await generateWords('', 1, {
+        exclude: [...existing, ...oracleExclude],
+        avoid: oracleAvoid,
+        difficulty: normalizeWordDifficulty(settings?.word_difficulty),
+      })
       const word = words[0]?.trim()
       if (!word) {
         setOracleError('神託が得られませんでした。もう一度お試しください。')

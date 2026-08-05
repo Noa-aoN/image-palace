@@ -9,6 +9,7 @@ import { exportAccountData } from '@/lib/api/account'
 import { getSettings, updateSettings } from '@/lib/api/settings'
 import { useSettingsStore } from '@/stores/settings'
 import { LibraryOrderSetting } from '@/components/features/settings/LibraryOrderSetting'
+import { WordDifficultySetting } from '@/components/features/settings/WordDifficultySetting'
 import type { DiagramMode, MotionMode } from '@/types/settings'
 import { STYLE_OPTIONS } from '@/lib/item-styles'
 import { useUiStore } from '@/stores/ui'
@@ -315,6 +316,11 @@ export default function SettingsPage() {
                 <Loader2 size={12} className="animate-spin" /> 保存中…
               </p>
             )}
+
+            {/* 単語を作ってもらうときの既定。アクロポリス側ではその場で変えられる */}
+            <div className="rounded-lg border border-border/70 bg-muted/30 p-3">
+              <WordDifficultySetting />
+            </div>
           </section>
 
           <section className="space-y-3 rounded-xl border border-border bg-card p-5">
