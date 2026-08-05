@@ -11,7 +11,8 @@ module Billing
 
     def call(kind: :item_generation, **_context)
       case kind
-      when :item_generation, :point_generation, :avatar, :cover
+      # 作り直しも新しい画像を1枚作るので、原価は初回と同じ。値引きの根拠が無い
+      when :item_generation, :point_generation, :avatar, :cover, :regeneration
         BASE_GENERATION
       else
         BASE_GENERATION

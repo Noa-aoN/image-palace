@@ -936,4 +936,88 @@ RSpec.describe "Api::V1::Items", type: :request do
       end
     end
   end
+
+  describe "作り直しのクレジット" do
+    let(:cost) { ::Billing::CreditCost.call(kind: :regeneration) }
+
+    # 「使い切った」状態を作る。先に付与を済ませてから空にしないと、
+    # 消費時の付与（お試し・毎月分）でまた入ってしまう
+    def empty_balance!
+      user.ensure_free_credits!
+      user.update!(subscription_credits: 0, topup_credits: 0)
+      user.credit_grants.destroy_all
+    end
+
+    it "出来上がったものを作り直すとクレジットを使う" do
+      item = user.items.create!(title: "りんご", item_type: item_type, generation_status: "completed")
+      user.ensure_free_credits!
+      before = user.reload.available_credit_points
+
+      post "/api/v1/items/#{item.id}/retry", headers: headers, as: :json
+
+      expect(response).to have_http_status(:accepted)
+      expect(user.reload.available_credit_points).to eq(before - cost)
+    end
+
+    it "失敗からの作り直しは無料（渡せていないものに課金しない）" do
+      item = user.items.create!(title: "りんご", item_type: item_type, generation_status: "failed")
+      user.ensure_free_credits!
+
+      expect {
+        post "/api/v1/items/#{item.id}/retry", headers: headers, as: :json
+      }.not_to(change { user.reload.available_credit_points })
+
+      expect(response).to have_http_status(:accepted)
+    end
+
+    it "指示を付けて失敗から作り直しても無料" do
+      item = user.items.create!(title: "りんご", item_type: item_type, generation_status: "failed")
+      user.ensure_free_credits!
+
+      expect {
+        post "/api/v1/items/#{item.id}/retry",
+             params: { item: { custom_prompt: "断面を見せて" } }, headers: headers, as: :json
+      }.not_to(change { user.reload.available_credit_points })
+    end
+
+    it "残高が足りなければ作り直せない（生成も積まない）" do
+      item = user.items.create!(title: "りんご", item_type: item_type, generation_status: "completed")
+      empty_balance!
+
+      expect {
+        post "/api/v1/items/#{item.id}/retry", headers: headers, as: :json
+      }.not_to have_enqueued_job
+
+      expect(response).to have_http_status(:unprocessable_entity)
+      expect(json_response["error"]).to eq("クレジットが不足しています")
+      expect(item.reload.generation_status).to eq("completed")
+    end
+
+    it "作り直しは台帳に残る（何に使ったか追える）" do
+      item = user.items.create!(title: "りんご", item_type: item_type, generation_status: "completed")
+      user.ensure_free_credits!
+
+      post "/api/v1/items/#{item.id}/retry", headers: headers, as: :json
+
+      entry = user.credit_transactions.where(kind: "consumption").order(:created_at).last
+      expect(entry.item_id).to eq(item.id)
+      expect(entry.delta).to eq(-cost)
+    end
+
+    it "何度も作り直すと、そのぶん減る（無料で引き放題にしない）" do
+      item = user.items.create!(title: "りんご", item_type: item_type, generation_status: "completed")
+      user.ensure_free_credits!
+      before = user.reload.available_credit_points
+
+      post "/api/v1/items/#{item.id}/retry", headers: headers, as: :json
+      expect(response).to have_http_status(:accepted)
+      item.reload.update!(generation_status: "completed")
+
+      post "/api/v1/items/#{item.id}/retry", headers: headers, as: :json
+      expect(response).to have_http_status(:accepted)
+
+      expect(user.reload.available_credit_points).to eq(before - cost * 2)
+      expect(user.credit_transactions.where(kind: "consumption").count).to eq(2)
+    end
+  end
 end
