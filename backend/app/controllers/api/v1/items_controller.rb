@@ -185,11 +185,17 @@ module Api
         # 意味・説明を参考にするオプション（既定オフ）。プロンプトが変わるため再生成扱いにする。
         use_meaning = regeneration_use_meaning?
 
+        # 出来上がったものを作り直すときはクレジットを使う。新しい画像を1枚作るので、
+        # 原価は初回とまったく同じ。失敗からの作り直しは無料（渡せていないものに課金しない）。
+        charge_for_regeneration!(current_item) if was_completed
+
         # completed の再生成や指示の変更時はキャッシュを使わず新しい画像を生成する
         force = was_completed || instructions.present? || use_meaning
         current_item.update_generation_status!("pending")
         enqueue_generation(current_item, force_generate: force, use_meaning: use_meaning)
         render json: serialize_item(current_item.reload), status: :accepted
+      rescue User::InsufficientCredits
+        render json: { error: "クレジットが不足しています" }, status: :unprocessable_entity
       rescue Items::CreateService::ContentBlocked => e
         render json: { error: e.message }, status: :unprocessable_entity
       rescue ActiveRecord::RecordInvalid => e
@@ -308,6 +314,19 @@ module Api
           GenerateBriefJob.perform_later(target.id, force_generate: force_generate, use_meaning: use_meaning)
         else
           GenerateImageJob.perform_later(target.id, force_generate: force_generate, use_meaning: use_meaning)
+        end
+      end
+
+      # 作り直しぶんのクレジットを、生成を積む前に消費する。
+      # 積んでから足りないと分かると、画像だけ作られて課金できない状態になる。
+      def charge_for_regeneration!(target)
+        current_user.ensure_free_credits!
+        cost = ::Billing::CreditCost.call(kind: :regeneration)
+
+        current_user.with_lock do
+          raise User::InsufficientCredits if current_user.available_credit_points < cost
+
+          current_user.consume_credits!(cost, item: target)
         end
       end
 
