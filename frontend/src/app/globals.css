@@ -2977,3 +2977,50 @@
 :root[data-motion='off'] .sw-point {
   transition: none;
 }
+
+/*
+  棚の枠（border-image で柱・棚板を描く）。
+
+  柱の幅を固定にすると、狭い画面では柱だけで横幅を使い切ってしまい、
+  内側にアイテムが1枚も収まらなくなる。画面幅に合わせて柱を狭める。
+  柱の絵は横に詰まるが、中身が見えないよりはよい。
+
+  インラインの style では画面幅で切り替えられないため、ここに置く。
+*/
+.shelf-frame {
+  border-style: solid;
+  border-color: transparent;
+  border-image-repeat: stretch;
+}
+
+/* 横棚（rows）: 上 / 左右 / 下 */
+.shelf-frame-rows {
+  border-width: 45px 135px 62px;
+  border-image-source: url('/shelf/horizontal.webp');
+  border-image-slice: 50 150 69 150 fill;
+}
+
+/* 縦棚（columns）: 上下 / 左右 */
+.shelf-frame-columns {
+  border-width: 83px 77px;
+  border-image-source: url('/shelf/vertical.webp');
+  border-image-slice: 150 190 150 190 fill;
+}
+
+/*
+  携帯の幅。いちばん大きいタイル（w-40 = 160px）が丸ごと1枚は見えるまで柱を狭める。
+
+  いちばん狭い 320px の端末で計算すると:
+    320 - 48（ページの px-6） - 24（棚の内側 px-3） - 柱2本 ≧ 160
+  から柱は 44px 以下。余裕を見て 40px にしている。
+  375px の端末なら内側に 199px 残り、1枚と次の始まりが見える。
+*/
+@media (max-width: 640px) {
+  .shelf-frame-rows {
+    border-width: 30px 40px 40px;
+  }
+  /* 縦棚は内側にタイルを横幅いっぱいで並べるので、内側の余白ぶんは要らない */
+  .shelf-frame-columns {
+    border-width: 52px 36px;
+  }
+}

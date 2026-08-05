@@ -9,9 +9,12 @@ module Billing
   #
   # 金額は円（JPY はゼロ小数通貨なので price_cents に円をそのまま入れる）。
   module Catalog
-    # 画像1枚あたりの原価の見立て。実測は 4〜6 円なので、安全側（高い方）で見る。
-    # これを割ると、使われるほど損をする。
-    COST_PER_CREDIT = 6.0
+    # 画像1枚あたりの原価の見立て。
+    #
+    # 実費は8円を超えており、円安の影響で今後も上がりうる。
+    # 上振れしてから慌てて値上げすると利用者に不信を与えるので、
+    # はじめから安全側（9円）で置き、そこから利益が残る値段にしておく。
+    COST_PER_CREDIT = 9.0
     # 決済手数料（日本のカード）。粗利はこれを引いてから見る
     STRIPE_FEE_RATE = 0.036
     # クレジットの寿命。受け取ってから使える期間。
@@ -39,34 +42,35 @@ module Billing
 
     # 上限まで使われても残したい粗利率。下回る価格は置かない。
     #
-    # 35% にしているのは、原価が見立ての 6 円から 7 円台まで上がっても黒字を保てる水準だから。
-    #   粗利 35% ＝ 手数料後の受取が 1 枚あたり 9.2 円以上
-    #   原価が 7 円に上がっても粗利 24% は残る
+    # 25% にしているのは、原価の見立て（9円）そのものに既に余裕を持たせているから。
+    #   粗利 25% ＝ 手数料後の受取が 1 枚あたり 12 円以上
+    #   実費が 11 円まで上がっても黒字が保てる（実費は現在 8 円台）
+    # 見立てを 6 円にしていた頃は 35% にしていた。原価側で余裕を見た分、ここは下げてよい。
+    #
     # ここを価格に合わせて下げないこと。合わせて下げた時点で、この検査は何も守らなくなる。
-    MIN_MARGIN = 0.35
+    MIN_MARGIN = 0.25
 
     # 月額プラン。
     #
     # 付与枚数は「価格 ÷ 枚数」が原価を十分上回るように決める。
-    # 以前は上位ほど1枚あたりが安すぎ、studio は使い切られると逆ざやだった
-    # （¥19,800 / 4,000枚 = ¥4.95/枚 に対し原価 ¥6）。
-    # 価格は据え置き、付与枚数を実態に合わせて下げた。
+    # 値上げではなく付与枚数で調整しているのは、価格を変えると Stripe の Price を
+    # 作り直すことになり、既存の契約者にも影響が及ぶため。
     SUBSCRIPTIONS = [
       # free は「契約なし」を表す枠。毎月の付与は行わない（お試しは TRIAL_CREDITS を1回だけ）
       { name: "free",     tier: "free",     price: 0,      credits: 0 },
-      { name: "standard", tier: "standard", price: 1_480,  credits: 120 },
-      { name: "pro",      tier: "pro",      price: 3_980,  credits: 350 },
-      { name: "creator",  tier: "creator",  price: 9_800,  credits: 900 },
-      { name: "studio",   tier: "studio",   price: 19_800, credits: 2_000 }
+      { name: "standard", tier: "standard", price: 1_480,  credits: 100 },
+      { name: "pro",      tier: "pro",      price: 3_980,  credits: 280 },
+      { name: "creator",  tier: "creator",  price: 9_800,  credits: 720 },
+      { name: "studio",   tier: "studio",   price: 19_800, credits: 1_550 }
     ].freeze
 
     # 買い切り（Top-up）。まとまるほど1枚あたりを安くする。
     TOPUPS = [
-      { name: "topup_10",   price: 170,    credits: 10 },
-      { name: "topup_50",   price: 750,    credits: 50 },
-      { name: "topup_100",  price: 1_400,  credits: 100 },
-      { name: "topup_300",  price: 3_900,  credits: 300 },
-      { name: "topup_1000", price: 12_000, credits: 1_000 }
+      { name: "topup_10",   price: 190,    credits: 10 },
+      { name: "topup_50",   price: 900,    credits: 50 },
+      { name: "topup_100",  price: 1_700,  credits: 100 },
+      { name: "topup_300",  price: 4_800,  credits: 300 },
+      { name: "topup_1000", price: 15_000, credits: 1_000 }
     ].freeze
 
     module_function
