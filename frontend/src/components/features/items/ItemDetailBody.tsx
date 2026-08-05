@@ -144,7 +144,7 @@ export function ItemDetailBody({ itemId, onDeleted }: { itemId: string; onDelete
       )}
 
       {/* 画像まわりの操作と情報。画像を見る面積を削らないよう一行に収める */}
-      <div className="flex flex-wrap items-center justify-end gap-4">
+      <div className="flex items-center justify-end gap-3 overflow-x-auto">
         {(item.generation_status === 'failed' || item.generation_status === 'completed') && (
           <RegeneratePanel item={item} onUpdated={applyUpdated} />
         )}

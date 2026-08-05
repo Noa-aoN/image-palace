@@ -1,5 +1,7 @@
 'use client'
 
+import { FileText } from 'lucide-react'
+import { InfoPopover } from '@/components/features/shared/InfoPopover'
 import type { SpaceDetail, SpacePoint } from '@/types/space'
 import { RoomStyleSettings } from '@/components/features/views/RoomStyleSettings'
 
@@ -97,6 +99,38 @@ export function RoomSettingsPanel({
 }
 
 /** ポイントの設定（表示サイズ・選んだ点の向き） */
+/**
+ * この記憶資産の絵が、どんな指示から作られたかを見せる。
+ *
+ * 点は名前をそのまま画像の指示に使う。思った絵にならないとき、
+ * 名前の付け方が効いていることが分かるようにしておく。
+ * カード詳細の「プロンプト情報」と同じ形にして、置き場所が違っても迷わないようにする。
+ */
+function PointPromptInfo({ point }: { point: SpacePoint }) {
+  const prompt = point.prompt ?? point.name
+  if (!prompt) return null
+
+  return (
+    <InfoPopover label="プロンプト情報" icon={<FileText size={14} />} width="w-72">
+      <div>
+        <p className="mb-0.5 text-xs font-medium text-muted-foreground">画像への指示</p>
+        <p className="whitespace-pre-wrap font-mono text-[11px] leading-relaxed">{prompt}</p>
+      </div>
+      <p className="text-xs text-muted-foreground">
+        記憶資産は、点の名前をそのまま画像の指示に使います。名前を変えて作り直すと絵が変わります。
+      </p>
+      {point.revised_prompt && (
+        <div className="border-t border-border/60 pt-2">
+          <p className="text-xs text-muted-foreground">revised_prompt（生成時にAIが補正した指示）</p>
+          <p className="mt-0.5 max-h-28 overflow-y-auto whitespace-pre-wrap text-xs leading-relaxed">
+            {point.revised_prompt}
+          </p>
+        </div>
+      )}
+    </InfoPopover>
+  )
+}
+
 export function PointSettingsPanel({
   space,
   selectedPoint,
@@ -116,6 +150,12 @@ export function PointSettingsPanel({
 }) {
   return (
     <div className="space-y-5 p-4">
+      {selectedPoint && (
+        <div className="flex justify-end">
+          <PointPromptInfo point={selectedPoint} />
+        </div>
+      )}
+
       <Section title="表示">
         <Field label="表示サイズ（全体）" value={`×${space.point_scale.toFixed(1)}`}>
           <input

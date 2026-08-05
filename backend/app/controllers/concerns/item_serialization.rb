@@ -31,6 +31,10 @@ module ItemSerialization
       rotation_y: point.rotation_y,
       rotation_z: point.rotation_z,
       image: serialize_point_image(point),
+      # 画像を作るのに使った指示。思った絵にならないときに確かめられるようにする。
+      # ポイントは名前をそのまま渡すので、名前が指示そのもの。
+      prompt: point.name,
+      revised_prompt: point.revised_prompt,
       item: point.item ? serialize_item(point.item) : nil
     }
   end

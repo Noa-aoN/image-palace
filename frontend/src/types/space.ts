@@ -82,6 +82,10 @@ export interface SpacePoint {
   rotation_y: number
   rotation_z: number
   image: SpacePointImage | null // ポイント名から生成した画像
+  /** 画像を作るのに使った指示（ポイントは名前がそのまま指示になる） */
+  prompt?: string | null
+  /** 生成時にAIが補正した指示 */
+  revised_prompt?: string | null
   item: SpacePointCard | null // 割り当てたカード（任意）
 }
 
