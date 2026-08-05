@@ -181,6 +181,19 @@ RSpec.describe "User credit ledger", type: :model do
       expect(user.trial_granted_at).to be_present
     end
 
+    # 残高エンドポイントは画面が繰り返し叩く。並べて投げるだけで何度も受け取れると、
+    # 新規登録のたびに無料枠を好きなだけ積めてしまう（実際に 20 並列で 20 ヶ月分が出た）。
+    it "同時に来たリクエストが揃って「まだ配っていない」を読んでも、配るのは1回だけ" do
+      # 同じ行を指す別インスタンス＝まだ誰も書いていない状態を読んだ同時リクエスト
+      concurrent = Array.new(20) { User.find(user.id) }
+
+      concurrent.each(&:ensure_free_credits!)
+
+      expect(user.reload.available_credit_points).to eq(trial_points + monthly_points)
+      expect(user.credit_grants.where(kind: "monthly_free").count).to eq(1)
+      expect(user.credit_grants.where(kind: "trial").count).to eq(1)
+    end
+
     it "同じ月に何度呼んでも増えない" do
       user.ensure_free_credits!
 

@@ -94,6 +94,23 @@ class Rack::Attack
     req.ip if req.post? && COVER_GENERATE_PATH.match?(req.path)
   end
 
+  # アバターの生成（画像生成＝高コスト）。自分の顔は何度も作り直すものではない。
+  throttle("avatar_generate/ip", limit: 10, period: 60.seconds) do |req|
+    req.ip if req.post? && req.path == "/api/v1/account/avatar"
+  end
+
+  # 記憶資産の点（作成・更新とも画像生成をトリガーし得る）。
+  # 並べ替え（reorder）は画像を作らないうえドラッグで連続するので、ここには含めない。
+  SPACE_POINT_PATH = %r{\A/api/v1/spaces/[^/]+/points(/(?!reorder\z)[^/]+)?\z}
+  throttle("space_points/ip", limit: 20, period: 60.seconds) do |req|
+    req.ip if (req.post? || req.patch? || req.put?) && SPACE_POINT_PATH.match?(req.path)
+  end
+
+  # 説明文・情景の作り直し（OpenAI Chat 呼び出し）
+  throttle("item_brief/ip", limit: 20, period: 60.seconds) do |req|
+    req.ip if req.post? && req.path.match?(%r{\A/api/v1/items/[^/]+/brief\z})
+  end
+
   ### スロットル時のレスポンス ###
 
   # 429 を JSON で返す。フロントエンドが一貫してエラー表示できるようにする。

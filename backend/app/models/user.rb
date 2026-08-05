@@ -90,11 +90,29 @@ class User < ApplicationRecord
   #   毎月分 … 訪れた人にだけ配る（来ない人には配られない）
   #
   # 有料契約がある人には配らない（プランのぶんが毎月届くため）。
+  #
+  # 「配ったか」を見てから配るので、行ロックの中で判断する。
+  # 外でやると、同時に来たリクエストが揃って「まだ配っていない」を読み、
+  # 人数分だけ配ってしまう（残高エンドポイントは画面が繰り返し叩くので、
+  # 並べて投げるだけで何回でも受け取れてしまっていた）。
   def ensure_free_credits!
     return if active_subscription.present?
+    # ほとんどの呼び出しは「もう配ってある」で終わる。そこでロックを取ると
+    # 同じ人のリクエストが一列に並んでしまうので、先に安い判定で抜ける。
+    return if free_grants_settled?
 
-    grant_trial_credits!
-    grant_monthly_free_credits!
+    with_lock do
+      reload
+      grant_trial_credits!
+      grant_monthly_free_credits!
+    end
+  end
+
+  # お試しも今期の毎月分も配り終えているか（ロックを取る前の早期判定）
+  def free_grants_settled?
+    trial_granted_at.present? &&
+      credits_period_start.present? &&
+      credits_period_start >= free_period_start
   end
 
   # 旧名。呼び出し側を一度に直さないための入口（意味は「無料枠を整えておく」で変わらない）
