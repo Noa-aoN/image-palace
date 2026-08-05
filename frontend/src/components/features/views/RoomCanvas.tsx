@@ -1,12 +1,13 @@
 'use client'
 
 import { useEffect, useRef, useState, type PointerEvent as ReactPointerEvent } from 'react'
-import { ZoomIn, ZoomOut, Maximize, Maximize2 } from 'lucide-react'
+import { ZoomIn, ZoomOut, Maximize, Maximize2, Settings } from 'lucide-react'
 import { updateSpacePoint } from '@/lib/api/spaces'
 import type { SpacePoint, RoomSurface } from '@/types/space'
 import { roomSurfaceLabel, wallViewFloorGrid } from '@/lib/room-surfaces'
 import { gridStroke, shadeSurface, type RoomStyle } from '@/lib/room-style'
 import { pointImageUrl, pointCssTransform } from '@/lib/space-points'
+import { isDoublePress, movedEnough, type PressRecord } from '@/lib/pointer-gestures'
 
 const clamp01 = (n: number) => Math.min(1, Math.max(0, n))
 const clampScale = (n: number) => Math.min(3, Math.max(0.3, n))
@@ -164,6 +165,8 @@ type RoomCanvasProps = {
   /** 編集時の選択。右パネルで向きを調整するためページ側が持つ */
   selectedPointId?: string | null
   onSelectPoint?: (id: string | null) => void
+  /** 設定を開く（歯車のつまみ・ダブルクリック）。選ぶだけの onSelectPoint とは分ける */
+  onOpenPoint?: (id: string) => void
   /** 枠なしで親いっぱいに描く（ウォークスルー用） */
   fullBleed?: boolean
   onMoved?: (pointId: string, surface: RoomSurface, u: number, v: number) => void
@@ -171,6 +174,7 @@ type RoomCanvasProps = {
 }
 
 const WALL_KEYS: RoomSurface[] = ['wall_north', 'wall_east', 'wall_south', 'wall_west']
+
 
 export function RoomCanvas({
   spaceId,
@@ -186,6 +190,7 @@ export function RoomCanvas({
   selectedPointId = null,
   fullBleed = false,
   onSelectPoint,
+  onOpenPoint,
   onMoved,
   onScaled,
 }: RoomCanvasProps) {
@@ -194,6 +199,8 @@ export function RoomCanvas({
   const frameRef = useRef<HTMLDivElement>(null)
   const [dragId, setDragId] = useState<string | null>(null)
   const [dragPos, setDragPos] = useState<{ x: number; y: number } | null>(null) // ドラッグ中のゴースト位置（ステージ%）
+  // 直前に押した点と時刻（2回続けて押したか＝設定を開くかの判定に使う）
+  const lastPressRef = useRef<PressRecord>(null)
   const [zoom, setZoom] = useState(1)
   const [pan, setPan] = useState({ x: 0, y: 0 })
   const facePoints = points.filter((p) => (p.surface ?? 'floor') === surface)
@@ -233,13 +240,30 @@ export function RoomCanvas({
     wall ? resolveWallViewUV(surface, sx, sy) : resolveFloorViewUV(sx, sy)
 
   // ドラッグ中はゴースト（カーソル追従の大マーカー）だけを動かし、離した位置で面・座標を確定＝滑らか。
+  //
+  // 押しただけでは選ぶだけにして、設定は開かない。右パネルはルームに覆いかぶさるので、
+  // 動かそうと掴んだ瞬間に置き場所が隠れてしまうため。
+  // 続けて2回押したら「設定を開く」とみなす（歯車のつまみと同じ結果への近道）。
+  //
+  // dblclick イベントを使わないのは、pointerdown で preventDefault しているとブラウザによって
+  // 後続のマウス互換イベントが出ないことがあるため。押した間隔で自前で判定する。
   const startDrag = (pointId: string) => (e: ReactPointerEvent) => {
     if (readOnly) return
     e.preventDefault()
     e.stopPropagation()
     onSelectPoint?.(pointId)
+
+    if (isDoublePress(lastPressRef.current, pointId, e.timeStamp)) {
+      lastPressRef.current = null
+      onOpenPoint?.(pointId)
+      return // 2回目はドラッグを始めない（開いた直後に動いてしまわないように）
+    }
+    lastPressRef.current = { id: pointId, at: e.timeStamp }
+
     setDragId(pointId)
-    const { sx, sy } = stagePct(e.clientX, e.clientY)
+    const startX = e.clientX
+    const startY = e.clientY
+    const { sx, sy } = stagePct(startX, startY)
     setDragPos({ x: sx, y: sy })
     const onMove = (ev: PointerEvent) => {
       const p = stagePct(ev.clientX, ev.clientY)
@@ -248,10 +272,13 @@ export function RoomCanvas({
     const onUp = (ev: PointerEvent) => {
       window.removeEventListener('pointermove', onMove)
       window.removeEventListener('pointerup', onUp)
-      const p = stagePct(ev.clientX, ev.clientY)
-      const r = resolveUV(p.sx, p.sy)
       setDragId(null)
       setDragPos(null)
+      // 指が動いていなければ「選んだだけ」。同じ場所を書き戻さない
+      if (!movedEnough(startX, startY, ev.clientX, ev.clientY)) return
+
+      const p = stagePct(ev.clientX, ev.clientY)
+      const r = resolveUV(p.sx, p.sy)
       onMoved?.(pointId, r.surface, r.u, r.v)
       updateSpacePoint(spaceId, pointId, { surface: r.surface, u: r.u, v: r.v }).catch(() => {})
     }
@@ -352,6 +379,33 @@ export function RoomCanvas({
           />
         )}
         <PointMarker point={point} index={points.indexOf(point)} />
+        {/* 設定のつまみ。選んだときだけ出す。
+            ダブルクリックでも開けるが、それだけだと気づけないうえ、
+            タッチではダブルタップが当てにくいので、押せる的を用意する。 */}
+        {!readOnly && (
+          <div
+            onPointerDown={(e) => {
+              e.preventDefault()
+              e.stopPropagation() // ここからドラッグを始めない
+              onOpenPoint?.(point.id)
+            }}
+            role="button"
+            tabIndex={0}
+            className={`absolute -right-2 -top-2 flex h-5 w-5 cursor-pointer items-center justify-center rounded-full border-2 border-white shadow transition-opacity group-hover:opacity-100 ${
+              selectedPointId === point.id ? 'opacity-100' : 'opacity-0'
+            }`}
+            // マーカー側の拡大率を打ち消し、つまみの大きさを一定に保つ（サイズ変更ハンドルと同じ）
+            style={{
+              backgroundColor: 'var(--palace)',
+              transform: `scale(${1 / Math.max(0.3, pointScale * (point.scale ?? 1))})`,
+              transformOrigin: 'center',
+            }}
+            title="設定を開く（ダブルクリックでも開けます）"
+            aria-label="設定を開く"
+          >
+            <Settings size={10} strokeWidth={3} className="text-white" />
+          </div>
+        )}
         {!readOnly && (
           <div
             onPointerDown={startResize(point)}

@@ -4,11 +4,12 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import * as THREE from 'three'
 import { Canvas, useFrame, useThree, type ThreeEvent } from '@react-three/fiber'
 import { OrbitControls, Edges, Html } from '@react-three/drei'
-import { Maximize2 } from 'lucide-react'
+import { Maximize2, Settings } from 'lucide-react'
 import { updateSpacePoint } from '@/lib/api/spaces'
 import type { SpacePoint, RoomSurface } from '@/types/space'
 import { type RoomStyle } from '@/lib/room-style'
 import { pointImageUrl } from '@/lib/space-points'
+import { isDoublePress, type PressRecord } from '@/lib/pointer-gestures'
 import { useImageTexture } from './useImageTexture'
 import {
   buildSurfaces,
@@ -42,6 +43,7 @@ function PointMarker({
   sizeScale,
   selected,
   onGrab,
+  onOpen,
   onScaled,
   onScaleCommit,
   onInteracting,
@@ -54,12 +56,15 @@ function PointMarker({
   sizeScale: number
   selected: boolean
   onGrab: (id: string) => void
+  onOpen: (id: string) => void
   onScaled: (id: string, scale: number) => void
   onScaleCommit: (id: string, scale: number) => void
   onInteracting: (value: boolean) => void
 }) {
   const { camera, gl } = useThree()
   const url = pointImageUrl(point)
+  // 直前に押した点と時刻（2回続けて押したか＝設定を開くかの判定に使う）
+  const lastPressRef = useRef<PressRecord>(null)
   const tex = useImageTexture(url)
 
 
@@ -131,12 +136,39 @@ function PointMarker({
         onPointerOut={() => setHovered(false)}
         onPointerDown={(e: ThreeEvent<PointerEvent>) => {
           e.stopPropagation()
+          // 2D と同じ約束。押しただけでは選ぶだけ、続けて2回押したら設定を開く
+          if (isDoublePress(lastPressRef.current, point.id, e.nativeEvent.timeStamp)) {
+            lastPressRef.current = null
+            onOpen(point.id)
+            return
+          }
+          lastPressRef.current = { id: point.id, at: e.nativeEvent.timeStamp }
           onGrab(point.id)
         }}
       >
         <planeGeometry args={[grab, grab]} />
         <meshBasicMaterial transparent opacity={0} depthWrite={false} side={THREE.DoubleSide} />
       </mesh>
+      {/* 設定のつまみ。左上は番号バッジが使っているので、2D と同じ右上に置く
+          （サイズ変更ハンドルは右下。上下で役割を分ける） */}
+      {showHandle && (
+        <Html position={[m / 2 + 0.12, m / 2 + 0.12, 0.05]} center distanceFactor={11} zIndexRange={[20, 0]}>
+          <div
+            onPointerDown={(e) => {
+              e.stopPropagation()
+              onOpen(point.id)
+            }}
+            role="button"
+            tabIndex={0}
+            title="設定を開く（ダブルクリックでも開けます）"
+            aria-label="設定を開く"
+            className="flex h-5 w-5 cursor-pointer items-center justify-center rounded-full border-2 border-white shadow"
+            style={{ backgroundColor: ACCENT }}
+          >
+            <Settings size={10} strokeWidth={3} className="text-white" />
+          </div>
+        </Html>
+      )}
       {/* 拡大縮小ハンドル（ホバー/選択中に出る）。2D と同じアイコンで意味を揃える。
           向きの調整は右パネルに集約しているため、ここには出さない */}
       {showHandle && (
@@ -232,6 +264,7 @@ function Scene({
   onMoved,
   selectedId,
   onSelect,
+  onOpen,
   dims,
   pointScale,
   style,
@@ -243,6 +276,7 @@ function Scene({
   onMoved: (id: string, surface: RoomSurface, u: number, v: number) => void
   selectedId: string | null
   onSelect: (id: string | null) => void
+  onOpen: (id: string) => void
   dims: { W: number; H: number; D: number }
   pointScale: number
   style: RoomStyle
@@ -364,6 +398,7 @@ function Scene({
             sizeScale={pointScale * (point.scale ?? 1)}
             selected={point.id === selectedId}
             onGrab={grab}
+            onOpen={onOpen}
             onScaled={onScaled}
             onScaleCommit={(id, scale) => {
               updateSpacePoint(spaceId, id, { scale }).catch(() => {})
@@ -388,6 +423,8 @@ type Room3DProps = {
   /** 選択の外部管理（向きの調整は右パネルで行うため、ページ側が選択を持つ） */
   selectedPointId?: string | null
   onSelectPoint?: (id: string | null) => void
+  /** 設定を開く（歯車のつまみ・ダブルクリック）。選ぶだけの onSelectPoint とは分ける */
+  onOpenPoint?: (id: string) => void
   onScaled?: (id: string, scale: number) => void
 }
 
@@ -403,6 +440,7 @@ export function Room3D({
   onMoved,
   selectedPointId,
   onSelectPoint,
+  onOpenPoint,
   onScaled,
 }: Room3DProps) {
   const [innerSelectedId, setInnerSelectedId] = useState<string | null>(null)
@@ -417,6 +455,14 @@ export function Room3D({
     interacting.current = value
   }, [])
   const setSelectedId = applySelection
+  // 設定を開く指示が無いとき（単体利用）は、選ぶだけにしておく
+  const openPoint = useCallback(
+    (id: string) => {
+      if (onOpenPoint) onOpenPoint(id)
+      else applySelection(id)
+    },
+    [onOpenPoint, applySelection]
+  )
   const clearSelectionOnMiss = useCallback(() => {
     if (interacting.current) return
     applySelection(null)
@@ -444,7 +490,7 @@ export function Room3D({
       <div className="absolute inset-0">
         <Canvas dpr={[1, 1.75]} shadows={false} camera={{ position: startCamera, fov: 45 }} onPointerMissed={clearSelectionOnMiss}>
           <color attach="background" args={[style.background]} />
-          <Scene spaceId={spaceId} points={points} onMoved={onMoved} selectedId={selectedId} onSelect={setSelectedId} dims={dims} pointScale={pointScale} style={style} onInteracting={setInteracting} onScaled={onScaled ?? (() => {})} />
+          <Scene spaceId={spaceId} points={points} onMoved={onMoved} selectedId={selectedId} onSelect={setSelectedId} onOpen={openPoint} dims={dims} pointScale={pointScale} style={style} onInteracting={setInteracting} onScaled={onScaled ?? (() => {})} />
         </Canvas>
       </div>
       {points.length === 0 && (

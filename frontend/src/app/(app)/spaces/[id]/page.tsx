@@ -335,12 +335,21 @@ export default function SpaceDetailPage() {
   // 3D で選んでいるポイント（向きの調整は右パネルで行うのでページ側が持つ）
   const [selectedPointId, setSelectedPointId] = useState<string | null>(null)
   const openSection = useRightPanelStore((s) => s.openSection)
-  // 点を選んだら、その場で向きを調整できるようにポイント設定を開く
-  // （パネルが閉じていると「クリックしても何も出ない」ように見えるため）
-  const handleSelectPoint = useCallback(
-    (pointId: string | null) => {
+  // 選ぶだけ。パネルは開かない。
+  //
+  // 以前は選んだ時点で開いていたが、右パネルはルームに覆いかぶさるので、
+  // 動かそうと掴んだだけで置き場所が隠れてしまっていた。
+  // ルームは「置く・動かす・大きさを変える」が主で、設定を開くのは時々なので、
+  // 開くのは歯車かダブルクリックで意図を示したときだけにする。
+  const handleSelectPoint = useCallback((pointId: string | null) => {
+    setSelectedPointId(pointId)
+  }, [])
+
+  // 設定を開く（歯車のつまみ・ダブルクリックから）
+  const handleOpenPoint = useCallback(
+    (pointId: string) => {
       setSelectedPointId(pointId)
-      if (pointId) openSection({ key: 'point-settings', title: 'ポイントの設定' })
+      openSection({ key: 'point-settings', title: 'ポイントの設定' })
     },
     [openSection]
   )
@@ -828,8 +837,15 @@ export default function SpaceDetailPage() {
                 </div>
               )}
             </div>
+            {/* 押し方の約束を一行だけ添える。歯車のつまみでも開けるので、
+                読まれなくても詰まらないようにしてある（文言は念のため） */}
+            {!showNet && (
+              <p className="mb-2 text-xs text-muted-foreground">
+                ドラッグで配置、クリックで選択。設定は歯車、またはダブルクリックで開きます。
+              </p>
+            )}
             {viewMode === '3d' ? (
-              <Room3D spaceId={id} points={points} width={space.width} depth={space.depth} height={space.height} pointScale={space.point_scale} style={roomStyle} onMoved={handleMovePoint} selectedPointId={selectedPointId} onSelectPoint={handleSelectPoint} onScaled={handleScalePoint} />
+              <Room3D spaceId={id} points={points} width={space.width} depth={space.depth} height={space.height} pointScale={space.point_scale} style={roomStyle} onMoved={handleMovePoint} selectedPointId={selectedPointId} onSelectPoint={handleSelectPoint} onOpenPoint={handleOpenPoint} onScaled={handleScalePoint} />
             ) : showNet ? (
               <RoomNet
                 points={points}
@@ -857,6 +873,7 @@ export default function SpaceDetailPage() {
                   onScaled={handleScalePoint}
                   selectedPointId={selectedPointId}
                   onSelectPoint={handleSelectPoint}
+                  onOpenPoint={handleOpenPoint}
                 />
                 {/* 上下左右で隣の面へ（視点移動） */}
                 {(['up', 'down', 'left', 'right'] as const).map((dir) => {
