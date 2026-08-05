@@ -695,57 +695,64 @@ export function ItemList({ initialTag = null }: { initialTag?: string | null }) 
     toolbar
   ) : (
     <div className="space-y-2">
-      <div className="flex flex-wrap items-center gap-3 rounded-lg border border-border bg-muted/40 px-3 py-2">
-        <button
-          type="button"
-          onClick={toggleSelectAll}
-          disabled={bulkBusy}
-          className="flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors disabled:opacity-50"
-        >
-          {allSelected ? <CheckSquare size={16} /> : <Square size={16} />}
-          {allSelected ? 'すべて解除' : 'すべて選択'}
-        </button>
-        <span className="text-sm text-muted-foreground">{selectedIds.size}件を選択中</span>
-        <div className="ml-auto flex flex-wrap items-center gap-2">
-          <Button variant="outline" size="sm" onClick={handleTagFill} disabled={bulkBusy || selectedIds.size === 0}
-            className="flex items-center gap-1.5" title="タグが無いカードにだけAIでタグを付けます">
-            <TagIcon size={14} />タグを付与
-          </Button>
-          <Button
-            variant={confirmTagReplace ? 'destructive' : 'outline'}
-            size="sm"
-            onClick={handleTagReplace}
-            disabled={bulkBusy || selectedIds.size === 0}
-            onBlur={() => setConfirmTagReplace(false)}
-            className="flex items-center gap-1.5"
-            title="選択カードのタグをAIの結果で置き換えます"
+      {/* 選択中も「作成」は右端に残す。モードに入った瞬間に両方消えると、
+          押せるものの位置が変わってしまう。選択の操作盤はその左を使い切る。 */}
+      <div className="flex items-center gap-2">
+        <div className="flex min-w-0 flex-1 flex-wrap items-center gap-3 rounded-lg border border-border bg-muted/40 px-3 py-2">
+          <button
+            type="button"
+            onClick={toggleSelectAll}
+            disabled={bulkBusy}
+            className="flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors disabled:opacity-50"
           >
-            <Tags size={14} />
-            {confirmTagReplace ? `置き換える（${selectedIds.size}件）` : 'タグを再設定'}
-          </Button>
-          <Button variant="outline" size="sm" onClick={handleMeaningFill} disabled={bulkBusy || selectedIds.size === 0}
-            className="flex items-center gap-1.5" title="説明が無いカードにだけAIで説明を付けます">
-            <FileText size={14} />説明を付与
-          </Button>
-          <Button variant="outline" size="sm" onClick={handleFactCheck} disabled={bulkBusy || selectedIds.size === 0}
-            className="flex items-center gap-1.5" title="説明が事実として正しいかAIでチェックし、訂正案を出します">
-            <ShieldCheck size={14} />AIで情報をチェック
-          </Button>
-          <span className="mx-1 h-5 w-px bg-border" aria-hidden />
-          <Button
-            variant={confirmBulkDelete ? 'destructive' : 'outline'}
-            size="sm"
-            onClick={handleBulkDelete}
-            disabled={bulkBusy || selectedIds.size === 0}
-            onBlur={() => setConfirmBulkDelete(false)}
-            className="flex items-center gap-1.5"
-          >
-            {deleting ? <Spinner size={14} /> : <Trash2 size={14} />}
-            {deleting ? '削除中...' : confirmBulkDelete ? `本当に削除（${selectedIds.size}件）` : '削除'}
-          </Button>
-          <Button variant="ghost" size="sm" onClick={exitSelection} disabled={bulkBusy}>
-            キャンセル
-          </Button>
+            {allSelected ? <CheckSquare size={16} /> : <Square size={16} />}
+            {allSelected ? 'すべて解除' : 'すべて選択'}
+          </button>
+          <span className="text-sm text-muted-foreground">{selectedIds.size}件を選択中</span>
+          <div className="ml-auto flex flex-wrap items-center gap-2">
+            <Button variant="outline" size="sm" onClick={handleTagFill} disabled={bulkBusy || selectedIds.size === 0}
+              className="flex items-center gap-1.5" title="タグが無いカードにだけAIでタグを付けます">
+              <TagIcon size={14} />タグを付与
+            </Button>
+            <Button
+              variant={confirmTagReplace ? 'destructive' : 'outline'}
+              size="sm"
+              onClick={handleTagReplace}
+              disabled={bulkBusy || selectedIds.size === 0}
+              onBlur={() => setConfirmTagReplace(false)}
+              className="flex items-center gap-1.5"
+              title="選択カードのタグをAIの結果で置き換えます"
+            >
+              <Tags size={14} />
+              {confirmTagReplace ? `置き換える（${selectedIds.size}件）` : 'タグを再設定'}
+            </Button>
+            <Button variant="outline" size="sm" onClick={handleMeaningFill} disabled={bulkBusy || selectedIds.size === 0}
+              className="flex items-center gap-1.5" title="説明が無いカードにだけAIで説明を付けます">
+              <FileText size={14} />説明を付与
+            </Button>
+            <Button variant="outline" size="sm" onClick={handleFactCheck} disabled={bulkBusy || selectedIds.size === 0}
+              className="flex items-center gap-1.5" title="説明が事実として正しいかAIでチェックし、訂正案を出します">
+              <ShieldCheck size={14} />AIで情報をチェック
+            </Button>
+            <span className="mx-1 h-5 w-px bg-border" aria-hidden />
+            <Button
+              variant={confirmBulkDelete ? 'destructive' : 'outline'}
+              size="sm"
+              onClick={handleBulkDelete}
+              disabled={bulkBusy || selectedIds.size === 0}
+              onBlur={() => setConfirmBulkDelete(false)}
+              className="flex items-center gap-1.5"
+            >
+              {deleting ? <Spinner size={14} /> : <Trash2 size={14} />}
+              {deleting ? '削除中...' : confirmBulkDelete ? `本当に削除（${selectedIds.size}件）` : '削除'}
+            </Button>
+            <Button variant="ghost" size="sm" onClick={exitSelection} disabled={bulkBusy}>
+              キャンセル
+            </Button>
+          </div>
+        </div>
+        <div className="shrink-0">
+          <CardCreateButton />
         </div>
       </div>
       {bulkAction && (
