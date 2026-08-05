@@ -22,18 +22,11 @@ export default function WordlistsPage() {
 
   return (
     <div className="max-w-7xl mx-auto px-6 py-12">
-      <div className="mb-6 flex items-center justify-between">
-        <h1 className="flex items-center gap-2.5 text-2xl font-semibold">
-          <ListChecks size={26} style={{ color: 'var(--palace)' }} />
-          ワードリスト
-        </h1>
-        <Link href="/wordlists/new">
-          <Button size="sm" className="flex items-center gap-1.5">
-            <Plus size={16} />
-            新規作成
-          </Button>
-        </Link>
-      </div>
+      {/* 見出しは「ここが何の一覧か」だけ。押せるものは一覧の上の操作列に集める */}
+      <h1 className="mb-6 flex items-center gap-2.5 text-2xl font-semibold">
+        <ListChecks size={26} style={{ color: 'var(--palace)' }} />
+        ワードリスト
+      </h1>
 
       {wordlists === null ? (
         <div className="space-y-2">
@@ -51,7 +44,16 @@ export default function WordlistsPage() {
           </Link>
         </div>
       ) : (
-        <ul className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+        <div className="space-y-4">
+          <div className="flex justify-end">
+            <Link href="/wordlists/new">
+              <Button size="sm" variant="outline" className="flex items-center gap-1.5">
+                <Plus size={16} />
+                作成
+              </Button>
+            </Link>
+          </div>
+          <ul className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
           {wordlists.map((wl) => (
             <li key={wl.id}>
               <Link
@@ -66,7 +68,8 @@ export default function WordlistsPage() {
               </Link>
             </li>
           ))}
-        </ul>
+          </ul>
+        </div>
       )}
     </div>
   )

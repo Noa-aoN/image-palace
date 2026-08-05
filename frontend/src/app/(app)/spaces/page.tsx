@@ -74,22 +74,17 @@ function SpacesPageInner() {
 
   return (
     <div className="max-w-7xl mx-auto px-6 py-12">
-      <div className="flex items-center justify-between mb-2">
-        <div className="flex items-baseline gap-3">
-          <h1 className="flex items-center gap-2.5 text-2xl font-semibold">
-            <Frame size={26} style={{ color: 'var(--palace)' }} />
-            {heading}
-          </h1>
-          {typeFilter && (
-            <Link href="/spaces" className="text-sm hover:underline" style={{ color: 'var(--palace)' }}>
-              すべてのスペース
-            </Link>
-          )}
-        </div>
-                  <Button size="sm" onClick={() => createForm.open()} className="flex items-center gap-1.5">
-            <Plus size={16} />
-            新規作成
-          </Button>
+      {/* 見出しは「ここが何の一覧か」だけ。押せるものは一覧の上の操作列に集める */}
+      <div className="mb-2 flex items-baseline gap-3">
+        <h1 className="flex items-center gap-2.5 text-2xl font-semibold">
+          <Frame size={26} style={{ color: 'var(--palace)' }} />
+          {heading}
+        </h1>
+        {typeFilter && (
+          <Link href="/spaces" className="text-sm hover:underline" style={{ color: 'var(--palace)' }}>
+            すべてのスペース
+          </Link>
+        )}
       </div>
       <p className="text-sm text-muted-foreground mb-6">
         記憶の場所。種別を選んで作ります — ルーム（棚にボックスを並べる）/ ロード（順路にカードを置く連結法）。
@@ -120,7 +115,14 @@ function SpacesPageInner() {
           <Button onClick={() => createForm.open()}>{heading}を作成</Button>
         </div>
       ) : (
-        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
+        <div className="space-y-4">
+          <div className="flex justify-end">
+            <Button size="sm" variant="outline" onClick={() => createForm.open()} className="flex items-center gap-1.5">
+              <Plus size={16} />
+              作成
+            </Button>
+          </div>
+          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
           {visibleSpaces.map((space) => (
             <Link
               key={space.id}
@@ -136,6 +138,7 @@ function SpacesPageInner() {
               </div>
             </Link>
           ))}
+          </div>
         </div>
       )}
     </div>
