@@ -54,16 +54,11 @@ export default function BoxesPage() {
 
   return (
     <div className="max-w-7xl mx-auto px-6 py-12">
-      <div className="flex items-center justify-between mb-2">
-        <h1 className="flex items-center gap-2.5 text-2xl font-semibold">
-          <BoxIcon size={26} style={{ color: 'var(--palace)' }} />
-          ボックス一覧
-        </h1>
-                  <Button size="sm" onClick={() => createForm.open()} className="flex items-center gap-1.5">
-            <Plus size={16} />
-            新規作成
-          </Button>
-      </div>
+      {/* 見出しは「ここが何の一覧か」だけ。押せるものは一覧の上の操作列に集める */}
+      <h1 className="mb-2 flex items-center gap-2.5 text-2xl font-semibold">
+        <BoxIcon size={26} style={{ color: 'var(--palace)' }} />
+        ボックス一覧
+      </h1>
       <p className="text-sm text-muted-foreground mb-6">
         カードをテーマごとにまとめる入れ物。関連するカードを整理して保存できます。
       </p>
@@ -92,7 +87,14 @@ export default function BoxesPage() {
                       <Button onClick={() => createForm.open()}>最初のボックスを作成</Button>
         </div>
       ) : (
-        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
+        <div className="space-y-4">
+          <div className="flex justify-end">
+            <Button size="sm" variant="outline" onClick={() => createForm.open()} className="flex items-center gap-1.5">
+              <Plus size={16} />
+              作成
+            </Button>
+          </div>
+          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
           {boxes.map((box) => (
             <Link
               key={box.id}
@@ -108,6 +110,7 @@ export default function BoxesPage() {
               </div>
             </Link>
           ))}
+          </div>
         </div>
       )}
     </div>

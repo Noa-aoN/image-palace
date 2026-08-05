@@ -8,6 +8,7 @@ import { Button } from '@/components/ui/button'
 import { Spinner } from '@/components/ui/spinner'
 import { CardGridSkeleton } from '@/components/ui/skeleton'
 import { GeneratingOverlay } from '@/components/features/items/GeneratingOverlay'
+import { CardCreateButton } from '@/components/features/items/CardCreatePanel'
 import { STATUS_LABEL } from '@/lib/item-status'
 import { usePendingRefresh } from '@/hooks/usePendingRefresh'
 import { StatusBadge } from '@/components/features/items/StatusBadge'
@@ -629,6 +630,23 @@ export function ItemList({ initialTag = null }: { initialTag?: string | null }) 
     </div>
   )
 
+  // 一覧に対する操作をまとめた列。見出しの行は「ここが何の一覧か」だけにして、
+  // 押せるものはこちらへ集める。
+  //
+  // 作成は絞り込みの結果が0件でも押せるようにする（見出しから外したので、
+  // ここに出さないと「該当なし」の画面から作りに行けなくなる）。
+  // 選択は並んでいるものに対する操作なので、0件のときは出さない。
+  const toolbar = (
+    <div className="flex justify-end gap-2">
+      {items.length > 0 && (
+        <Button variant="outline" size="sm" onClick={() => setSelectionMode(true)}>
+          選択
+        </Button>
+      )}
+      <CardCreateButton />
+    </div>
+  )
+
   if (loading) {
     return (
       <div className="space-y-6">
@@ -647,6 +665,7 @@ export function ItemList({ initialTag = null }: { initialTag?: string | null }) 
       return (
         <div className="space-y-6">
           {filterBar}
+          {toolbar}
           <p className="text-center text-muted-foreground py-12">
             {appliedQuery
               ? `「${appliedQuery}」に一致するカードはありません。`
@@ -673,11 +692,7 @@ export function ItemList({ initialTag = null }: { initialTag?: string | null }) 
   }
 
   const selectionBar = !selectionMode ? (
-    <div className="flex justify-end">
-      <Button variant="outline" size="sm" onClick={() => setSelectionMode(true)}>
-        選択
-      </Button>
-    </div>
+    toolbar
   ) : (
     <div className="space-y-2">
       <div className="flex flex-wrap items-center gap-3 rounded-lg border border-border bg-muted/40 px-3 py-2">
