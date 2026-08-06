@@ -42,7 +42,11 @@ import type { SpaceDetail, SpacePoint, RoomSurface } from '@/types/space'
 import { PLACEABLE_SURFACES, SURFACE_NAV, roomSurfaceShort } from '@/lib/room-surfaces'
 import { resolveRoomStyle } from '@/lib/room-style'
 import { RoomNet } from '@/components/features/views/RoomNet'
-import { RoomSettingsPanel, PointSettingsPanel } from '@/components/features/spaces/SpaceSettingsPanel'
+import {
+  RoomSettingsPanel,
+  PointCommonSettingsPanel,
+  PointDetailSettingsPanel,
+} from '@/components/features/spaces/SpaceSettingsPanel'
 import { PanelSlotContent } from '@/components/features/panel/PanelSlot'
 import { useRightPanelStore } from '@/stores/rightPanel'
 import { Settings2 } from 'lucide-react'
@@ -62,6 +66,11 @@ function SpaceCoverFallback({ spaceType }: { spaceType: string }) {
 }
 
 // 生成中とみなすステータス（ポーリング継続条件）
+
+// 点に画像を付ける方法は2通り。説明する場所が増えても言い方がぶれないよう、文言はここに集める。
+// クレジットを使うかどうかは、押す前にいつも同じ言い方で分かるようにしておきたい。
+const IMAGE_SOURCE_HELP =
+  '画像は「生成」（名前から作成・1クレジット）か「既存カードを配置」（カードの画像を使用・無料）で付けます。'
 
 
 // 既存カードを配置する検索ピッカー（モーダル）。カードの画像を点の背景画像に使う。
@@ -301,7 +310,7 @@ function PointRow({
           <p className="text-[11px] leading-snug text-muted-foreground">
             {point.item
               ? `カードの画像を使用中：${point.item.title}`
-              : '「生成」は名前から画像を作成し、1クレジット消費します。「既存カードを配置」はカードの画像を使い、消費しません。'}
+              : IMAGE_SOURCE_HELP}
           </p>
         </div>
       </div>
@@ -349,7 +358,7 @@ export default function SpaceDetailPage() {
   const handleOpenPoint = useCallback(
     (pointId: string) => {
       setSelectedPointId(pointId)
-      openSection({ key: 'point-settings', title: 'ポイントの設定' })
+      openSection({ key: 'point-detail-settings', title: 'ポイントの個別設定' })
     },
     [openSection]
   )
@@ -654,8 +663,8 @@ export default function SpaceDetailPage() {
   const selectedPoint = points.find((p) => p.id === selectedPointId) ?? null
   const isRoad = space.space_type === 'road'
   const intro = isRoad
-    ? '序数のあるポイントを並べ、各点に画像を1つ設定します。名前から「生成」（1クレジット）するか、「既存カードを配置」（無料・カード画像を使用）できます。連結法/ジャーニー法の道になります。'
-    : '部屋のポイントをドラッグで間取りに配置できます。各点の画像は「生成」または「既存カードを配置」で1つ設定します。'
+    ? `ポイントを順に並べ、それぞれに画像を1つ付けます。${IMAGE_SOURCE_HELP}連結法／ジャーニー法の道になります。`
+    : `ポイントを部屋の間取りに置き、それぞれに画像を1つ付けます。${IMAGE_SOURCE_HELP}`
 
   return (
     <div className="max-w-3xl mx-auto px-6 py-12">
@@ -743,13 +752,17 @@ export default function SpaceDetailPage() {
           <PanelSlotContent sectionKey="room-settings">
             <RoomSettingsPanel space={space} onSpaceSetting={handleSpaceSetting} />
           </PanelSlotContent>
-          <PanelSlotContent sectionKey="point-settings">
-            <PointSettingsPanel
+          <PanelSlotContent sectionKey="point-common-settings">
+            <PointCommonSettingsPanel
               space={space}
-              selectedPoint={selectedPoint}
               autoScale={autoScale}
               onAutoScaleChange={setAutoScale}
               onSpaceSetting={handleSpaceSetting}
+            />
+          </PanelSlotContent>
+          <PanelSlotContent sectionKey="point-detail-settings">
+            <PointDetailSettingsPanel
+              selectedPoint={selectedPoint}
               onRotate={handleRotatePointAxis}
               onRotateCommit={(pointId: string, patch: Record<string, number>) => {
                 updateSpacePoint(id, pointId, patch).catch(() => {})
@@ -775,11 +788,25 @@ export default function SpaceDetailPage() {
               </button>
               <button
                 type="button"
-                onClick={() => openSection({ key: 'point-settings', title: 'ポイントの設定' })}
+                onClick={() => openSection({ key: 'point-common-settings', title: 'ポイントの全体設定' })}
                 className="inline-flex items-center gap-1.5 rounded-lg border border-border px-2.5 py-1.5 text-xs font-medium text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
               >
                 <Settings2 size={14} />
-                ポイントの設定
+                ポイントの全体設定
+              </button>
+              {/* 選んでいるポイントがあれば名前を添える。何に効くのか押す前に分かるように */}
+              <button
+                type="button"
+                onClick={() => openSection({ key: 'point-detail-settings', title: 'ポイントの個別設定' })}
+                className="inline-flex items-center gap-1.5 rounded-lg border border-border px-2.5 py-1.5 text-xs font-medium text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+              >
+                <Settings2 size={14} />
+                ポイントの個別設定
+                {selectedPoint && (
+                  <span className="max-w-24 truncate font-normal text-foreground">
+                    {selectedPoint.name || '未命名'}
+                  </span>
+                )}
               </button>
             </div>
 
@@ -839,33 +866,13 @@ export default function SpaceDetailPage() {
                 </div>
               )}
             </div>
-            {/* 盤面の上の一行。何も選んでいなければ押し方の案内、選んでいれば
-                その点の名前と「設定」を出す。
-                設定の入口をマーカーの上に置くと、点は小さく数も多いので絵そのものが
-                見えなくなる。マーカーの外に出せば、邪魔にならず1クリックで開ける。 */}
-            {!showNet &&
-              (selectedPoint ? (
-                <div className="mb-2 flex items-center gap-2 text-xs">
-                  <span className="shrink-0 text-muted-foreground">選択中</span>
-                  <span className="truncate font-medium">{selectedPoint.name || '未命名'}</span>
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    onClick={() => handleOpenPoint(selectedPoint.id)}
-                    className="ml-1 flex h-7 shrink-0 items-center gap-1"
-                  >
-                    <Settings2 size={13} />
-                    設定
-                  </Button>
-                  <span className="ml-auto hidden shrink-0 text-muted-foreground sm:inline">
-                    ダブルクリックでも開けます
-                  </span>
-                </div>
-              ) : (
-                <p className="mb-2 text-xs text-muted-foreground">
-                  ドラッグで配置、クリックで選択。設定は選択して「設定」、またはダブルクリックで開きます。
-                </p>
-              ))}
+            {/* 押し方の約束を一行だけ。設定の入口は上のボタン列に集めてあるので、
+                ここは操作の説明に徹する。 */}
+            {!showNet && (
+              <p className="mb-2 text-xs text-muted-foreground">
+                ドラッグで置き、クリックで選び、ダブルクリックで個別設定を開きます。大きさは角のつまみで変えられます。
+              </p>
+            )}
             {viewMode === '3d' ? (
               <Room3D spaceId={id} points={points} width={space.width} depth={space.depth} height={space.height} pointScale={space.point_scale} style={roomStyle} onMoved={handleMovePoint} selectedPointId={selectedPointId} onSelectPoint={handleSelectPoint} onOpenPoint={handleOpenPoint} onScaled={handleScalePoint} />
             ) : showNet ? (
