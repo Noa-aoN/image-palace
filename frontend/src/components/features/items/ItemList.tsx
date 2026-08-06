@@ -134,6 +134,11 @@ function ItemCard({ item, selectionMode, selected, onToggle, fit, sizes }: ItemC
   const resolvedImageUrl = imageUrl ?? null
   const hasImageError = resolvedImageUrl !== null && failedImageUrl === resolvedImageUrl
 
+  // 単語名が枠に入り切らないときだけ、ホバーで全文を出す。
+  // 列数を増やせるようにした結果、8〜10列では名前が数文字で切れる。
+  // 切れていないカードにまで出すと、ただの邪魔になるので測ってから決める。
+  const [titleClipped, setTitleClipped] = useState(false)
+
   const warmupDetail = () => {
     if (warmedRef.current) return
     warmedRef.current = true
@@ -147,15 +152,28 @@ function ItemCard({ item, selectionMode, selected, onToggle, fit, sizes }: ItemC
   const inner = (
     <>
       {/* テキストを上・画像を下に配置 */}
-      <div className="px-3 py-2 flex items-center justify-between gap-2">
+      <div className="relative px-3 py-2 flex items-center justify-between gap-2">
         {/* ファクトチェックで「正しい」以外なら単語名に色を付けて気づけるようにする */}
         <span
           className={`text-sm font-medium truncate ${factCheckTitleClass(item.fact_check_status)}`}
           title={item.fact_check_status && item.fact_check_status !== 'correct' ? 'ファクトチェックで要確認' : undefined}
+          onMouseEnter={(e) => setTitleClipped(e.currentTarget.scrollWidth > e.currentTarget.clientWidth)}
+          onMouseLeave={() => setTitleClipped(false)}
         >
           {item.title}
         </span>
         <StatusBadge status={item.generation_status} />
+        {/* 出す先はタイトル行のすぐ下＝画像の上。カードは overflow-hidden なので、
+            外へ出すと切られる。ブラウザ標準の title は出るまで約1秒かかり、
+            棚を流し見するには遅い */}
+        {titleClipped && (
+          <span
+            role="tooltip"
+            className="pointer-events-none absolute left-3 right-3 top-full z-20 rounded-md bg-foreground px-2 py-1 text-xs leading-snug text-background shadow-md"
+          >
+            {item.title}
+          </span>
+        )}
       </div>
       {/* 画像の周りに細い余白（マット）を入れ、トレーディングカードの縁に見せる。
           スキンやフレームを差し替えるときはこの枠を変える。
