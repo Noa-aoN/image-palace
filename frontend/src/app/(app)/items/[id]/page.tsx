@@ -9,8 +9,7 @@ import { Breadcrumb } from '@/components/ui/breadcrumb'
 import { Input } from '@/components/ui/input'
 import { Spinner } from '@/components/ui/spinner'
 import { ItemProperties } from '@/components/features/items/ItemProperties'
-import { RegeneratePanel } from '@/components/features/items/RegeneratePanel'
-import { GenerationInfo } from '@/components/features/items/GenerationInfo'
+import { ItemImageBar } from '@/components/features/items/ItemImageBar'
 import { getItemNavigationIds } from '@/lib/api/items'
 import { getViewDetail } from '@/lib/api/views'
 import { GeneratingOverlay } from '@/components/features/items/GeneratingOverlay'
@@ -261,15 +260,8 @@ export default function ItemDetailPage() {
           </div>
         </div>
 
-        {/* 生成情報: メタ情報なので常時表示せず ⓘ ボタンのクリックで開く */}
-        <div className="flex justify-end">
-          <GenerationInfo item={item} />
-        </div>
-
-        {/* 再生成パネル: failed・completed どちらからも指示付きで再生成できる */}
-        {(item.generation_status === 'failed' || item.generation_status === 'completed') && (
-          <RegeneratePanel item={item} onUpdated={applyUpdated} />
-        )}
+        {/* 画像まわりの情報と操作（生成情報・プロンプト情報・作り直す）。右パネルと同じ並び */}
+        <ItemImageBar item={item} onUpdated={applyUpdated} />
 
         {/* プロパティ（種別・意味） */}
         <ItemProperties item={item} onUpdated={applyUpdated} />

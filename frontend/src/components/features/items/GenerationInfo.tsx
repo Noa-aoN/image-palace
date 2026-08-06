@@ -22,7 +22,7 @@ export function GenerationInfo({ item }: { item: Item }) {
   const generatedAt = new Date(item.created_at).toLocaleString('ja-JP')
 
   return (
-    <InfoPopover label="生成情報" icon={<Info size={14} />}>
+    <InfoPopover label="生成情報" icon={<Info size={14} />} align="left">
       <dl className="space-y-1 text-xs">
         {info.model && (
           <div className="flex justify-between gap-3">

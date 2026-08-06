@@ -18,6 +18,20 @@ class PromptBuilderService
   STYLES = STYLE_MODIFIERS.keys.freeze
   CUSTOM_PROMPT_MAX_LENGTH = 300
 
+  # 構図。空（おまかせ）は従来どおりで、指定したときだけ末尾の指示を差し替える。
+  #
+  # 既定を変えないのは、末尾の一文がキャッシュキー（normalized_prompt）に入るため。
+  # ここを全カードで変えると共有キャッシュが総入れ替えになり、同じ単語の使い回しが
+  # 効かなくなって画像生成のコストが上がる。選んだカードだけ別画像にする。
+  FRAMING_MODIFIERS = {
+    # 被写体だけを大きく。肖像はここ。「見切れさせない」を外さないと胸から上で切れない
+    "single" => "a single subject filling the frame, close view, plain uncluttered background",
+    # 場面として見せる。抽象語のように、周りまで写っていないと意味が伝わらないもの向け
+    "scene" => "a wide view showing the whole scene and its surroundings"
+  }.freeze
+
+  FRAMINGS = FRAMING_MODIFIERS.keys.freeze
+
   # 主役（subject）以外は足さない方針は変えていない。gpt-image-1 本来の表現力を殺さないため、
   # 構図・背景・カメラ設定は指定しない。主役が単語そのものか、単語から起こした情景かの違いだけ。
   # 末尾の軽い指示は、生成画像に紛れ込みがちな文字と見切れを避けるためのもの。
@@ -31,6 +45,12 @@ class PromptBuilderService
   # include_meaning: true のとき、カードの意味・説明（primary_meaning.definition）を
   # 被写体の補足として追記する。再生成時のオプション（既定オフ）から渡される。
   # 追記すると normalized_prompt が変わるため、別画像として正しく扱われる。
+  #
+  # これが効くのは**情景が無いとき（＝被写体が単語そのもの）だけ**。
+  # 情景があるときは、それが既に視覚の言葉へ翻訳された完成品なので、
+  # 人向けの日本語の説明文を末尾に足しても絵に効かず、短い補足指示を薄めるだけになる。
+  # 情景があるカードで意味を効かせたいときは、末尾に足すのではなく情景そのものを
+  # 書き直す（Images::SceneRewriteService）。UI もその条件でしか本オプションを出さない。
   # 情景プロンプト（Images::BriefService が起こしたもの）があればそれを主役に据える。
   # 無ければ単語そのもの＝従来の文字列になるので、既存カードのキャッシュはそのまま効く。
   def self.subject(item)
@@ -54,7 +74,10 @@ class PromptBuilderService
       parts << meaning if meaning.present?
     end
 
-    parts << FRAMING_HINT
+    # 構図を選んでいればその指示、選んでいなければ従来どおり「見切れさせない」。
+    # 単体（肖像）のときに FRAMING_HINT を残すと、被写体を全部入れろという指示が
+    # 胸から上で切る構図を禁じてしまい、何を選んでも引きの絵になる。
+    parts << (FRAMING_MODIFIERS[item.framing.presence] || FRAMING_HINT)
     parts << NO_TEXT_HINT
     parts.join(", ")
   end

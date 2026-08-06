@@ -35,22 +35,36 @@ module Items
           title: @params[:title],
           item_type_id: @params[:item_type_id] || default_item_type_id,
           generation_status: "pending",
-          brief_status: "pending",
+          # 単語をそのまま渡す経路では下ごしらえを作らない。pending のままだと
+          # 画面に「作成中…」が出たきり終わらない
+          brief_status: prompt_source == "word" ? "none" : "pending",
           # スタイル未指定（おまかせ）なら、ユーザーのデフォルト画像スタイルにフォールバックする
           style: @params[:style].presence || @user.setting&.default_image_style.presence,
           aspect_ratio: (@params[:aspect_ratio].presence ||
                         @user.setting&.default_aspect_ratio.presence ||
                         AspectRatios::DEFAULT),
-          custom_prompt: @params[:custom_prompt].presence
+          custom_prompt: @params[:custom_prompt].presence,
+          framing: @params[:framing].presence,
+          prompt_source: prompt_source
         )
         @user.consume_credits!(cost, item: item)
       end
 
-      # 画像の前に説明文・情景プロンプトを作る。終わり次第 GenerateImageJob へ引き継がれる
-      GenerateBriefJob.perform_later(item.id, force_generate: @params[:force_generate] == true)
+      # 指示の作り方はカードごと。単語をそのまま渡すなら下ごしらえを挟まず画像へ直行する。
+      #
+      # 「調べてから」なら、意味・説明づくりも指示の書き直しもこの連鎖の中でやる。
+      # 意味が出来上がる前に書き直しを始めては意味がないので、別ジョブに分けない。
+      research = prompt_source == "research"
+      force = @params[:force_generate] == true
+      if prompt_source == "word"
+        GenerateImageJob.perform_later(item.id, force_generate: force)
+      else
+        GenerateBriefJob.perform_later(item.id, force_generate: force, research_level: research ? meaning_level : nil)
+      end
       # 意味の自動生成: 作成時に generate_meaning が明示指定されればそれを優先し、
-      # 指定がなければユーザー設定（auto_generate_meanings）にフォールバックする
-      GenerateMeaningJob.perform_later(item.id, meaning_level) if generate_meaning?
+      # 指定がなければユーザー設定（auto_generate_meanings）にフォールバックする。
+      # 調べてから作る場合は上の連鎖が先に作るので、ここでは積まない（二重生成になる）
+      GenerateMeaningJob.perform_later(item.id, meaning_level) if generate_meaning? && !research
       # タグの自動生成: generate_tags が明示指定されればそれを優先し、
       # 指定がなければユーザー設定（auto_generate_tags）にフォールバックする
       GenerateTagsJob.perform_later(item.id) if generate_tags?
@@ -58,6 +72,15 @@ module Items
     end
 
     private
+
+    # 画像への指示の作り方（word / brief / research）。未指定・不正な値は既定へ倒す。
+    # research は指示がカード固有になるぶん画像キャッシュが効かなくなるので、明示指定のときだけ。
+    def prompt_source
+      @prompt_source ||= begin
+        value = @params[:prompt_source].to_s
+        Item::PROMPT_SOURCES.include?(value) ? value : Item::DEFAULT_PROMPT_SOURCE
+      end
+    end
 
     # 作成時に generate_meaning が渡された場合はその真偽値を、なければユーザー設定を使う
     def generate_meaning?

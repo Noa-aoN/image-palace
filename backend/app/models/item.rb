@@ -25,12 +25,25 @@ class Item < ApplicationRecord
   MAX_IMAGE_DESCRIPTION_LENGTH = 2000
   MAX_SCENE_PROMPT_LENGTH = 1000
 
-  store_accessor :metadata, :generation_error, :generation_error_code, :style, :custom_prompt
+  # 画像への指示をどう作るか。空（未指定）は brief と同じ＝既定の経路。
+  #   word     … 単語をそのまま画像生成へ渡す（下ごしらえ無し。最初期のやり方）
+  #   brief    … 単語から説明文と情景を起こす（IMAGE_BRIEF_ENABLED の既定の経路）
+  #   research … 先に意味・説明を調べ、それをもとに指示を書き直す
+  #
+  # カードごとに覚える。作り直しのときも同じ経路をたどらないと、
+  # 「単語そのまま」で作ったカードが作り直しただけで別のやり方に化ける。
+  PROMPT_SOURCES = %w[word brief research].freeze
+  DEFAULT_PROMPT_SOURCE = "brief"
+
+  store_accessor :metadata, :generation_error, :generation_error_code, :style, :custom_prompt, :framing,
+                 :prompt_source
 
   validates :title, presence: true, length: { maximum: MAX_TITLE_LENGTH }
   validates :generation_status, inclusion: { in: GENERATION_STATUSES }
   validates :style, inclusion: { in: PromptBuilderService::STYLES }, allow_blank: true
   validates :custom_prompt, length: { maximum: PromptBuilderService::CUSTOM_PROMPT_MAX_LENGTH }, allow_blank: true
+  validates :framing, inclusion: { in: PromptBuilderService::FRAMINGS }, allow_blank: true
+  validates :prompt_source, inclusion: { in: PROMPT_SOURCES }, allow_blank: true
   validates :brief_status, inclusion: { in: BRIEF_STATUSES }
   validates :image_description, length: { maximum: MAX_IMAGE_DESCRIPTION_LENGTH }, allow_blank: true
   validates :scene_prompt, length: { maximum: MAX_SCENE_PROMPT_LENGTH }, allow_blank: true
@@ -44,6 +57,11 @@ class Item < ApplicationRecord
   scope :stuck_generation, ->(cutoff) {
     where(generation_status: %w[pending processing]).where(updated_at: ..cutoff)
   }
+
+  # 未指定のカード（旧データ・既定のまま作られたもの）は既定の経路として扱う
+  def effective_prompt_source
+    prompt_source.presence || DEFAULT_PROMPT_SOURCE
+  end
 
   def primary_media
     if association(:medias).loaded?

@@ -19,7 +19,13 @@ import { getSettings } from '@/lib/api/settings'
 import { useItemsStore } from '@/stores/items'
 import { useBillingStore } from '@/stores/billing'
 import { estimatedCards } from '@/lib/billing'
-import { STYLE_OPTIONS, CUSTOM_PROMPT_MAX_LENGTH } from '@/lib/item-styles'
+import {
+  STYLE_OPTIONS,
+  FRAMING_OPTIONS,
+  PROMPT_SOURCE_OPTIONS,
+  DEFAULT_PROMPT_SOURCE,
+  CUSTOM_PROMPT_MAX_LENGTH,
+} from '@/lib/item-styles'
 import { MEANING_LEVELS, meaningLevelLabel, DEFAULT_MEANING_LEVEL } from '@/lib/meaning-levels'
 import { getWordlists, generateWords } from '@/lib/api/wordlists'
 import type { View } from '@/types/view'
@@ -67,6 +73,8 @@ export function CreateItemForm({
   const [input, setInput] = useState('')
   const [tagsInput, setTagsInput] = useState('')
   const [style, setStyle] = useState('')
+  const [framing, setFraming] = useState('')
+  const [promptSource, setPromptSource] = useState(DEFAULT_PROMPT_SOURCE)
   // 画像の縦横比。未選択なら保存側でユーザー既定が使われる
   const [aspectRatio, setAspectRatio] = useState<AspectRatioKey | ''>('')
   const [customPrompt, setCustomPrompt] = useState('')
@@ -227,6 +235,8 @@ export function CreateItemForm({
       for (let i = 0; i < titles.length; i++) {
         const item = await createItem(titles[i], forceGenerate, tagNames.length ? tagNames : undefined, {
           style: style || undefined,
+          framing: framing || undefined,
+          promptSource,
           aspectRatio: aspectRatio || undefined,
           customPrompt: customPrompt.trim() || undefined,
           generateMeaning,
@@ -280,7 +290,13 @@ export function CreateItemForm({
   // 閉じていても何が効くのかが分かるよう、グループごとに選んだものを示す
   const join = (parts: (string | false | '')[]) => parts.filter(Boolean).join(' / ')
   const optionSummary = {
-    image: join([customPrompt.trim() && '追加指示', style && 'スタイル', aspectRatio && '形']),
+    image: join([
+      promptSource !== DEFAULT_PROMPT_SOURCE && '指示の作り方',
+      customPrompt.trim() && '追加指示',
+      style && 'スタイル',
+      framing && '構図',
+      aspectRatio && '形',
+    ]),
     enrich: join([generateMeaning && '意味', generateTags && 'タグ']),
     place: join([(createNewDeck || selectedDeckIds.length > 0) && 'デッキ']),
   }
@@ -448,6 +464,45 @@ export function CreateItemForm({
           open={openGroup === 'image'}
           onToggle={() => setOpenGroup((cur) => (cur === 'image' ? null : 'image'))}
         >
+      {/*
+        画像への指示をどう作るか。3つは「単語をどれだけ噛み砕いてから絵にするか」の段階で、
+        噛み砕くほど絵は的確になり、そのぶん遅く・高くなる。
+
+        既定（単語から情景を起こす）を動かさないのは、指示が単語だけで決まるおかげで
+        同じ単語の画像を全ユーザーで使い回せているため。ここを外すとその共有が効かなくなる。
+      */}
+      <div className="space-y-2">
+        <Label>画像への指示の作り方</Label>
+        <p className="text-xs text-muted-foreground">単語をどこまで噛み砕いてから絵にするか。</p>
+        <div className="flex flex-wrap gap-2">
+          {PROMPT_SOURCE_OPTIONS.map((opt) => {
+            const active = promptSource === opt.value
+            return (
+              <button
+                key={opt.value}
+                type="button"
+                onClick={() => setPromptSource(opt.value)}
+                disabled={submitting}
+                className={`rounded-full border px-3 py-1 text-sm transition-colors disabled:opacity-50 ${
+                  active ? 'border-transparent text-white' : 'border-border text-muted-foreground hover:bg-muted'
+                }`}
+                style={active ? { backgroundColor: 'var(--palace)' } : undefined}
+              >
+                {opt.label}
+              </button>
+            )
+          })}
+        </div>
+        <p className="text-xs text-muted-foreground">
+          {PROMPT_SOURCE_OPTIONS.find((opt) => opt.value === promptSource)?.note}
+        </p>
+        {promptSource === 'research' && (
+          <p className="text-xs text-muted-foreground">
+            意味・説明も必ず作られます。指示がカードごとに変わるため同じ単語の画像を使い回せなくなり、
+            <strong>生成コストが上がります</strong>。
+          </p>
+        )}
+      </div>
       {/* 追加の指示（自由入力） */}
       <div className="space-y-2">
         <Label htmlFor="custom-prompt">追加の指示</Label>
@@ -488,6 +543,33 @@ export function CreateItemForm({
           })}
         </div>
         <p className="text-xs text-muted-foreground">作成するすべてのカードに同じスタイルが適用されます。</p>
+      </div>
+      {/* 構図。人物は「単体」、概念は「情景」が向く。おまかせは従来どおり */}
+      <div className="space-y-2">
+        <Label>構図</Label>
+        <p className="text-xs text-muted-foreground">被写体をどう写すか。人物の肖像が欲しいときは「単体」を選びます。</p>
+        <div className="flex flex-wrap gap-2">
+          {FRAMING_OPTIONS.map((opt) => {
+            const active = framing === opt.value
+            return (
+              <button
+                key={opt.value || 'default'}
+                type="button"
+                onClick={() => setFraming(opt.value)}
+                disabled={submitting}
+                className={`rounded-full border px-3 py-1 text-sm transition-colors disabled:opacity-50 ${
+                  active ? 'border-transparent text-white' : 'border-border text-muted-foreground hover:bg-muted'
+                }`}
+                style={active ? { backgroundColor: 'var(--palace)' } : undefined}
+              >
+                {opt.label}
+              </button>
+            )
+          })}
+        </div>
+        <p className="text-xs text-muted-foreground">
+          {FRAMING_OPTIONS.find((opt) => opt.value === framing)?.note}
+        </p>
       </div>
       {/* 画像の形（縦横比）。生成・保存・表示に共通で効く */}
       <div className="space-y-2">

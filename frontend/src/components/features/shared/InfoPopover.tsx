@@ -18,6 +18,7 @@ export function InfoPopover({
   title,
   children,
   width = 'w-72',
+  align = 'right',
 }: {
   label: string
   icon: ReactNode
@@ -25,6 +26,8 @@ export function InfoPopover({
   title?: string
   children: ReactNode
   width?: string
+  /** ボタンのどちら側を起点に開くか。行の左端に置くボタンは left にしないと画面外へ出る */
+  align?: 'left' | 'right'
 }) {
   const [open, setOpen] = useState(false)
   const ref = useRef<HTMLDivElement>(null)
@@ -61,7 +64,8 @@ export function InfoPopover({
 
       {open && (
         <div
-          className={`absolute right-0 z-30 mt-2 ${width} space-y-2 rounded-xl border border-border bg-card p-3 text-sm shadow-lg`}
+          // 幅は画面幅で頭打ちにする。細い端末では w-72/w-80 が画面から食み出すため
+          className={`absolute ${align === 'left' ? 'left-0' : 'right-0'} z-30 mt-2 ${width} max-w-[calc(100vw-2rem)] space-y-2 rounded-xl border border-border bg-card p-3 text-sm shadow-lg`}
         >
           <div className="flex items-center justify-between">
             <span className="text-xs font-medium text-muted-foreground">{title ?? label}</span>

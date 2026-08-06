@@ -1,52 +1,42 @@
 'use client'
 
-import { useState } from 'react'
-import { FileText, Sparkles } from 'lucide-react'
+import { FileText } from 'lucide-react'
 import { InfoPopover } from '@/components/features/shared/InfoPopover'
 import { Spinner } from '@/components/ui/spinner'
-import { regenerateBrief } from '@/lib/api/items'
 import type { Item } from '@/types/item'
 
 /**
  * この画像がどんな指示から作られたかを ⓘ ボタンで開いて見せる。
  *
  * 画像は単語からいきなり作られるのではなく、いちど
- *   ① 単語を噛み砕いた説明文 → ② そこから起こした情景
+ *   ① 単語を噛み砕いた説明文 → ② そこから起こした画像への指示
  * を経由する。学習そのものの中身ではないので、生成情報と同じく畳んでおく。
  *
- * 直すのは「画像を作り直す」側で行う。見るだけの場所と、直して作り直す場所を分ける。
+ * ここは**見るだけ**にする。直すのも作り直すのも「作り直す」側に集める。
+ * 以前はここにも「AIで書き直す」があったが、見るだけの場所から
+ * 保存済みの指示が黙って書き換わるのは筋が悪く、入口も二重になっていた。
  */
-export function PromptInfo({ item, onUpdated }: { item: Item; onUpdated: (item: Item) => void }) {
-  const [busy, setBusy] = useState(false)
-  const [error, setError] = useState<string | null>(null)
-
+export function PromptInfo({ item }: { item: Item }) {
   const status = item.brief_status ?? 'none'
   const preparing = status === 'pending' || status === 'processing'
   // まだ何も無く、これから作られる気配も無いカード（機能オフ・旧データ）は出さない
   if (status === 'none' && !item.scene_prompt && !item.image_description) return null
 
-  const regenerate = async () => {
-    setBusy(true)
-    setError(null)
-    try {
-      onUpdated(await regenerateBrief(item.id))
-    } catch {
-      setError('作り直せませんでした。時間を置いてお試しください')
-    } finally {
-      setBusy(false)
-    }
-  }
-
   return (
-    <InfoPopover label="プロンプト情報" icon={preparing ? <Spinner size={13} /> : <FileText size={14} />} width="w-80">
+    <InfoPopover
+      label="プロンプト情報"
+      icon={preparing ? <Spinner size={13} /> : <FileText size={14} />}
+      width="w-80"
+      align="left"
+    >
       <p className="text-xs leading-relaxed text-muted-foreground">
-        単語をいちど説明文にしてから、絵にできる情景へ言い換えています。
+        単語をいちど説明文にしてから、絵にできる指示へ言い換えています。
       </p>
 
       <Field label="① 説明文">
         <Text value={item.image_description} placeholder={preparing ? '作成中...' : '未作成'} />
       </Field>
-      <Field label="② 情景（画像への指示）">
+      <Field label="② 画像への指示">
         <Text
           value={item.scene_prompt}
           placeholder={preparing ? '作成中...' : '未作成（単語をそのまま使用）'}
@@ -55,20 +45,9 @@ export function PromptInfo({ item, onUpdated }: { item: Item; onUpdated: (item: 
       </Field>
 
       <div className="flex items-center justify-between border-t border-border/60 pt-2">
-        <button
-          type="button"
-          onClick={regenerate}
-          disabled={busy || preparing}
-          className="flex items-center gap-1 text-xs text-muted-foreground transition-colors hover:text-foreground disabled:opacity-50"
-        >
-          {busy ? <Spinner size={12} /> : <Sparkles size={12} />}
-          AIで作り直す
-        </button>
+        <span className="text-xs text-muted-foreground">直すときは「作り直す」から。</span>
         {item.brief_edited && <span className="text-xs text-muted-foreground">編集済み</span>}
       </div>
-
-      <p className="text-xs text-muted-foreground">直すときは「画像を作り直す」から。</p>
-      {error && <p className="text-xs text-destructive">{error}</p>}
     </InfoPopover>
   )
 }

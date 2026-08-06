@@ -67,4 +67,47 @@ RSpec.describe GenerateBriefJob do
   it "カードが消えていたら何もしない" do
     expect { described_class.perform_now(SecureRandom.uuid) }.not_to have_enqueued_job(GenerateImageJob)
   end
+
+  describe "調べてから作る（research_level あり）" do
+    before { allow(Images::BriefResolver).to receive(:call).and_return(brief) }
+
+    def stub_rewrite(scene)
+      allow(Images::SceneRewriteService).to receive(:call).and_return(
+        Images::SceneRewriteService::Result.new(
+          options: [ Images::SceneRewriteService::Option.new(label: "経済学の用語", scene_prompt: scene) ],
+          model: "gpt-4o-mini"
+        )
+      )
+    end
+
+    it "意味・説明を作ってから、それをもとに画像への指示を書き直す" do
+      allow(GenerateMeaningService).to receive(:call)
+      stub_rewrite("A rewritten scene grounded in the definition")
+
+      described_class.perform_now(item.id, research_level: "simple")
+
+      expect(GenerateMeaningService).to have_received(:call).with(item: item, level: "simple")
+      expect(item.reload.scene_prompt).to eq("A rewritten scene grounded in the definition")
+    end
+
+    it "書き直しに失敗しても、単語から作った指示のまま画像生成へ進む" do
+      allow(GenerateMeaningService).to receive(:call)
+      allow(Images::SceneRewriteService).to receive(:call)
+        .and_raise(Images::SceneRewriteService::RewriteError, "boom")
+
+      expect { described_class.perform_now(item.id, research_level: "simple") }
+        .to have_enqueued_job(GenerateImageJob)
+
+      expect(item.reload.scene_prompt).to include("fork in a country road")
+    end
+
+    it "指定が無ければ意味・説明も書き直しもしない（既定の経路）" do
+      expect(GenerateMeaningService).not_to receive(:call)
+      expect(Images::SceneRewriteService).not_to receive(:call)
+
+      described_class.perform_now(item.id)
+
+      expect(item.reload.scene_prompt).to include("fork in a country road")
+    end
+  end
 end

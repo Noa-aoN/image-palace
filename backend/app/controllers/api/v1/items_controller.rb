@@ -4,7 +4,8 @@ module Api
       include ItemSerialization
 
       before_action :set_item,
-                    only: [ :show, :update, :destroy, :retry, :meaning, :brief, :generate_tags, :fact_check ]
+                    only: [ :show, :update, :destroy, :retry, :meaning, :brief, :scene_rewrite,
+                            :generate_tags, :fact_check ]
 
       DEFAULT_PER_PAGE = 24
       MAX_PER_PAGE = 100
@@ -129,15 +130,22 @@ module Api
         render json: { errors: e.record.errors.full_messages }, status: :unprocessable_entity
       end
 
-      # 説明文・情景プロンプトを作り直す（同期）。詳細画面の「作り直す」から呼ばれる。
-      # 手で直した内容も、明示的に押されたときだけ作り直す。
+      # 説明文・画像への指示を単語から作り直す（同期）。
+      #
+      # preview=true のときは保存しない。作り直しパネルから呼ばれる用で、
+      # 返した文は入力欄に入るだけ。手で書いた指示が、押した瞬間に消えないようにする。
+      # （保存されるのは利用者が「この内容で作り直す」まで進んだときだけ）
       def brief
         unless Images::BriefResolver.enabled?
           return render json: { error: "この機能は現在無効になっています" }, status: :service_unavailable
         end
 
         result = Images::BriefResolver.call(title: item.title, user: current_user)
-        return render json: { error: "情景を作成できませんでした" }, status: :unprocessable_entity if result.nil?
+        return render json: { error: "画像への指示を作成できませんでした" }, status: :unprocessable_entity if result.nil?
+
+        if ActiveModel::Type::Boolean.new.cast(params[:preview])
+          return render json: { image_description: result.description, scene_prompt: result.scene_prompt }, status: :ok
+        end
 
         item.update!(
           image_description: result.description,
@@ -150,7 +158,27 @@ module Api
         render json: { error: e.message }, status: :too_many_requests
       rescue Images::BriefService::GenerationError, KeyError, Faraday::Error => e
         Rails.logger.warn "[ItemsController#brief] failed item_id=#{item.id}: #{e.class}: #{e.message}"
-        render json: { error: "情景の作成に失敗しました。時間を置いて再度お試しください。" }, status: :unprocessable_entity
+        render json: { error: "画像への指示の作成に失敗しました。時間を置いて再度お試しください。" }, status: :unprocessable_entity
+      end
+
+      # 意味・説明をもとに画像への指示を書き直す（同期）。「作り直す」パネルの
+      # 「意味・説明から書き直す」から呼ばれる。
+      #
+      # ここでは保存しない。返した文は入力欄に入るだけで、利用者が読んで
+      # 納得してから「この内容で作り直す」に進む。クレジットを使う前に
+      # 何が変わるのかを目で確かめられるようにするため。
+      #
+      # 意味・ジャンルが分かれる語では候補が複数返る。どれを選ぶかは利用者が決める。
+      def scene_rewrite
+        result = Images::SceneRewriteService.call(item: item, user: current_user)
+        render json: { options: result.options.map { |o| { label: o.label, scene_prompt: o.scene_prompt } } }, status: :ok
+      rescue Images::SceneRewriteService::RewriteError => e
+        render json: { error: e.message }, status: :unprocessable_entity
+      rescue Ai::Chat::LimitExceeded => e
+        render json: { error: e.message }, status: :too_many_requests
+      rescue KeyError, Faraday::Error => e
+        Rails.logger.warn "[ItemsController#scene_rewrite] failed item_id=#{item.id}: #{e.class}: #{e.message}"
+        render json: { error: "書き直しに失敗しました。時間を置いて再度お試しください。" }, status: :unprocessable_entity
       end
 
       def destroy
@@ -280,17 +308,20 @@ module Api
 
       def item_params
         params.require(:item).permit(
-          :title, :item_type_id, :force_generate, :style, :custom_prompt, :aspect_ratio,
-          :generate_meaning, :generate_meaning_level, :generate_tags
+          :title, :item_type_id, :force_generate, :style, :custom_prompt, :framing, :aspect_ratio,
+          :generate_meaning, :generate_meaning_level, :generate_tags, :prompt_source
         )
       end
 
-      # 再生成時の指示（custom_prompt / style）。指定されたキーのみを返す。
+      # 再生成時の指示（custom_prompt / style / framing）。指定されたキーのみを返す。
       def regeneration_instructions
         item_param = params[:item]
         return {} unless item_param.respond_to?(:permit)
 
-        item_param.permit(:custom_prompt, :style).to_h.symbolize_keys.reject { |_, v| v.nil? }
+        # prompt_source は作成時の選択で、ここでは受け取らない。
+        # 作り直し側には「単語から書き直す」「意味・説明から書き直す」があり、
+        # 押した結果が入力欄に見える。黙って経路が変わるより、そちらのほうが分かる。
+        item_param.permit(:custom_prompt, :style, :framing).to_h.symbolize_keys.reject { |_, v| v.nil? }
       end
 
       # 再生成時に意味・説明を参考にするか（既定 false）。boolean 以外は false に丸める。
@@ -306,11 +337,16 @@ module Api
         target.update!(instructions)
       end
 
-      # 情景プロンプトがまだ無いカードは、再生成のついでに下ごしらえから作り直す。
+      # 画像への指示がまだ無いカードは、再生成のついでに下ごしらえから作り直す。
       # 既にある（＝作成時に作られた／手で直した）ものは、そのまま画像生成へ進めて
       # 無駄な問い合わせを増やさない。
+      #
+      # 「単語をそのまま」で作ったカードは、作り直しでも下ごしらえを挟まない。
+      # 挟むと、作り直しただけで別のやり方の絵に化けてしまう。
       def enqueue_generation(target, force_generate:, use_meaning:)
-        if target.scene_prompt.blank? && !target.brief_edited?
+        needs_brief = target.effective_prompt_source != "word" &&
+                      target.scene_prompt.blank? && !target.brief_edited?
+        if needs_brief
           GenerateBriefJob.perform_later(target.id, force_generate: force_generate, use_meaning: use_meaning)
         else
           GenerateImageJob.perform_later(target.id, force_generate: force_generate, use_meaning: use_meaning)
@@ -421,6 +457,8 @@ module Api
           fact_check_claims: item.primary_meaning&.fact_check_claims || [],
           fact_checked_at: item.primary_meaning&.fact_checked_at,
           style: item.style,
+          framing: item.framing,
+          prompt_source: item.effective_prompt_source,
           custom_prompt: item.custom_prompt,
           image_description: item.image_description,
           scene_prompt: item.scene_prompt,

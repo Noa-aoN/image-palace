@@ -65,6 +65,8 @@ export interface Item {
   fact_check_claims?: FactCheckClaim[]
   fact_checked_at?: string | null
   style?: string | null
+  /** 構図（'' = おまかせ / single = 単体 / scene = 情景） */
+  framing?: string | null
   custom_prompt?: string | null
   /** ① 画像を作る前に単語を噛み砕いた説明文（日本語） */
   image_description?: string | null
