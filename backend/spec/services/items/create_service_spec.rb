@@ -23,6 +23,48 @@ RSpec.describe Items::CreateService, type: :service do
       expect(item.generation_error).to be_nil
     end
 
+    describe "画像への指示の作り方（prompt_source）" do
+      it "未指定なら従来どおり下ごしらえを挟む（既定）" do
+        result = described_class.call(user: user, params: { title: "富士山" })
+        expect(result.item.effective_prompt_source).to eq("brief")
+        expect(result.item.brief_status).to eq("pending")
+      end
+
+      it "word なら下ごしらえを挟まず画像生成へ直行する（以前のやり方）" do
+        expect {
+          described_class.call(user: user, params: { title: "富士山", prompt_source: "word" })
+        }.to have_enqueued_job(GenerateImageJob)
+
+        expect(GenerateBriefJob).not_to have_been_enqueued
+      end
+
+      it "word のカードは brief_status を none にする（作成中のまま止まらないように）" do
+        result = described_class.call(user: user, params: { title: "富士山", prompt_source: "word" })
+        expect(result.item.brief_status).to eq("none")
+      end
+
+      it "research なら下ごしらえの連鎖に調べる指示を渡す" do
+        described_class.call(user: user, params: { title: "アポロ", prompt_source: "research" })
+
+        expect(GenerateBriefJob).to have_been_enqueued.with(
+          anything, hash_including(research_level: Meaning::DEFAULT_DETAIL_LEVEL)
+        )
+      end
+
+      it "research のときは意味を二重に作らない（連鎖の中で作るため）" do
+        create(:setting, user: user, auto_generate_meanings: true)
+
+        described_class.call(user: user, params: { title: "アポロ", prompt_source: "research" })
+
+        expect(GenerateMeaningJob).not_to have_been_enqueued
+      end
+
+      it "知らない値は既定へ倒す" do
+        result = described_class.call(user: user, params: { title: "富士山", prompt_source: "bogus" })
+        expect(result.item.effective_prompt_source).to eq("brief")
+      end
+    end
+
     it "passes through force_generate to the enqueued job" do
       described_class.call(user: user, params: { title: "富士山", force_generate: true })
 

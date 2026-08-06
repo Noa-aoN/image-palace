@@ -41,9 +41,10 @@ export function WordDifficultySetting() {
 
   return (
     <div className="space-y-2">
-      <p className="text-sm font-medium">単語の難しさ</p>
+      <p className="text-sm font-medium">出してもらう単語の難しさ</p>
       <p className="text-xs text-muted-foreground">
-        アクロポリスやデルフォイで単語を作ってもらうときの既定です。
+        神託（アクロポリス／作成画面のデルフォイ）に単語を出してもらうときの既定です。
+        画像の作り方には効きません。アクロポリスではその場で変えられます。
       </p>
       <div className="grid gap-2 sm:grid-cols-2">
         {WORD_DIFFICULTIES.map((level) => {

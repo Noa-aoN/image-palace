@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { Download, Sparkles, Loader2, Share2, Plug, SlidersHorizontal, Bell, Database, Image as ImageIcon, Boxes, Zap, Settings } from 'lucide-react'
+import { Download, Sparkles, Loader2, Share2, Plug, SlidersHorizontal, Bell, Database, Image as ImageIcon, Boxes, Zap, Settings, Wand2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { CategorySections, type CategorySection } from '@/components/features/myroom/CategorySections'
 import { ComingSoon } from '@/components/features/myroom/ComingSoon'
@@ -317,10 +317,19 @@ export default function SettingsPage() {
               </p>
             )}
 
-            {/* 単語を作ってもらうときの既定。アクロポリス側ではその場で変えられる */}
-            <div className="rounded-lg border border-border/70 bg-muted/30 p-3">
-              <WordDifficultySetting />
+          </section>
+
+          {/*
+            神託（アクロポリス・デルフォイ）の設定は、カード生成の設定とは別物。
+            上は「作ったカードに何を足すか」、こちらは「どんな単語を出してもらうか」で、
+            効く相手が違う。同じ箱に入れていると、難しさが画像に効くように読める。
+          */}
+          <section className="space-y-3 rounded-xl border border-border bg-card p-5">
+            <div className="flex items-center gap-2">
+              <Wand2 size={18} style={{ color: 'var(--palace)' }} />
+              <h2 className="text-lg font-semibold">神託（デルフォイ）の単語</h2>
             </div>
+            <WordDifficultySetting />
           </section>
 
           <section className="space-y-3 rounded-xl border border-border bg-card p-5">

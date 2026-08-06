@@ -16,6 +16,8 @@ export interface ItemsSummary {
 
 export interface CreateItemOptions {
   style?: string
+  /** 構図プリセット（'' = おまかせ） */
+  framing?: string
   customPrompt?: string
   /** 各カードの意味・説明を AI で自動生成するか（未指定ならユーザー設定に従う） */
   generateMeaning?: boolean
@@ -23,6 +25,8 @@ export interface CreateItemOptions {
   generateMeaningLevel?: string
   /** 各カードのタグを AI で自動生成するか（未指定ならユーザー設定に従う） */
   generateTags?: boolean
+  /** 画像への指示の作り方（word / brief / research）。未指定は brief */
+  promptSource?: string
   /** 画像の縦横比（未指定ならユーザー設定の既定を使う） */
   aspectRatio?: string
 }
@@ -39,10 +43,12 @@ export async function createItem(
       force_generate: forceGenerate,
       ...(tags ? { tags } : {}),
       ...(options?.style ? { style: options.style } : {}),
+      ...(options?.framing ? { framing: options.framing } : {}),
       ...(options?.customPrompt ? { custom_prompt: options.customPrompt } : {}),
       ...(options?.generateMeaning !== undefined ? { generate_meaning: options.generateMeaning } : {}),
       ...(options?.generateMeaningLevel ? { generate_meaning_level: options.generateMeaningLevel } : {}),
       ...(options?.generateTags !== undefined ? { generate_tags: options.generateTags } : {}),
+      ...(options?.promptSource ? { prompt_source: options.promptSource } : {}),
       ...(options?.aspectRatio ? { aspect_ratio: options.aspectRatio } : {}),
     },
   })
@@ -129,7 +135,7 @@ export interface ItemUpdatePayload {
   tags?: string[]
   /** ① 画像を作る前の説明文。手で直すと以後の自動生成で上書きされない */
   image_description?: string
-  /** ② 情景プロンプト。空文字を渡すと単語をそのまま使う状態に戻る */
+  /** ② 画像への指示。空文字を渡すと単語をそのまま使う状態に戻る */
   scene_prompt?: string
 }
 
@@ -165,6 +171,8 @@ export interface RegenerateOptions {
   customPrompt?: string
   /** スタイルプリセット */
   style?: string
+  /** 構図プリセット（'' = おまかせ） */
+  framing?: string
   /** カードの意味・説明をプロンプトの補足に加えるか（既定オフ） */
   useMeaning?: boolean
 }
@@ -174,6 +182,7 @@ export async function retryItem(id: string, options?: RegenerateOptions): Promis
   const payload: Record<string, string | boolean> = {}
   if (options?.customPrompt !== undefined) payload.custom_prompt = options.customPrompt
   if (options?.style !== undefined) payload.style = options.style
+  if (options?.framing !== undefined) payload.framing = options.framing
   if (options?.useMeaning !== undefined) payload.use_meaning = options.useMeaning
   const res = await apiClient.post<Item>(
     `/api/v1/items/${id}/retry`,
@@ -218,11 +227,35 @@ export async function generateTags(
   return res.data
 }
 
-// 画像の下ごしらえ（説明文・情景プロンプト）を作り直す（同期）。
+// 画像の下ごしらえ（説明文・画像への指示）を単語から作り直す（同期）。
 // 手で直した内容も、明示的に呼ばれたときだけ作り直す。
 export async function regenerateBrief(id: string): Promise<Item> {
   const res = await apiClient.post<Item>(`/api/v1/items/${id}/brief`)
   return res.data
+}
+
+// 同じものを保存せずに作るだけ（下書き）。作り直しパネルの「単語から書き直す」用。
+// 押した瞬間に、手で書いた指示が消えないようにする。
+export async function previewBrief(id: string): Promise<{ image_description: string; scene_prompt: string }> {
+  const res = await apiClient.post<{ image_description: string; scene_prompt: string }>(
+    `/api/v1/items/${id}/brief`,
+    { preview: true }
+  )
+  return res.data
+}
+
+/** 書き直した情景の候補。label は「どの意味・ジャンルか」の見出し（1件のときは無いこともある） */
+export interface SceneOption {
+  label: string | null
+  scene_prompt: string
+}
+
+// 意味・説明をもとに情景（画像への指示）を書き直す（同期）。
+// 保存はしない。書き直した文だけを返すので、呼び出し側が入力欄に入れて確認させる。
+// 絵がまるで変わるほど意味・ジャンルが分かれる語では候補が複数返る（最大3件）。
+export async function rewriteScenePrompt(id: string): Promise<SceneOption[]> {
+  const res = await apiClient.post<{ options: SceneOption[] }>(`/api/v1/items/${id}/scene_rewrite`)
+  return res.data.options
 }
 
 // AI による説明（meaning）のファクトチェック（同期）。説明が無いカードはスキップ。

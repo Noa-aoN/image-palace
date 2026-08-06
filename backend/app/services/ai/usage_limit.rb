@@ -24,6 +24,7 @@ module Ai
       "meaning" => 0,
       "tags" => 0,
       "brief" => 0,
+      "scene_rewrite" => 0,
       "fact_check" => 0,
       "words_generate" => 0,
       "words_check" => 0,

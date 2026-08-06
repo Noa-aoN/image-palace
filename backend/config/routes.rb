@@ -75,6 +75,7 @@ Rails.application.routes.draw do
           post :retry
           post :meaning
           post :brief
+          post :scene_rewrite
           post :fact_check
           post "tags", action: :generate_tags
         end

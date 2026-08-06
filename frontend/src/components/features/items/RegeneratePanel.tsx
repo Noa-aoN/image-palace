@@ -1,17 +1,17 @@
 'use client'
 
 import { useEffect, useRef, useState } from 'react'
-import { RefreshCw } from 'lucide-react'
+import { RefreshCw, Sparkles, Undo2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { useBillingStore } from '@/stores/billing'
 import { CREDIT_UNIT_SHORT } from '@/lib/billing'
 import { Label } from '@/components/ui/label'
 import { Spinner } from '@/components/ui/spinner'
-import { retryItem, updateItem } from '@/lib/api/items'
+import { previewBrief, retryItem, rewriteScenePrompt, updateItem, type SceneOption } from '@/lib/api/items'
 import { PanelSlotContent } from '@/components/features/panel/PanelSlot'
 import { usePanelForm } from '@/components/features/panel/usePanelForm'
 import { getSettings } from '@/lib/api/settings'
-import { STYLE_OPTIONS, CUSTOM_PROMPT_MAX_LENGTH } from '@/lib/item-styles'
+import { STYLE_OPTIONS, FRAMING_OPTIONS, CUSTOM_PROMPT_MAX_LENGTH } from '@/lib/item-styles'
 import type { Item } from '@/types/item'
 
 interface Props {
@@ -27,9 +27,20 @@ const PANEL_KEY = 'item-regenerate'
  * ページに置くのはボタン1つだけにして、中身は右パネルで開く。
  * 画像そのものを見る面積を、設定のために削らないため。
  *
- * ここで**情景プロンプトを直接直せる**ようにしてある。
+ * ここで**画像への指示を直接直せる**ようにしてある。
  * 思った絵にならないとき、いちばん効くのがそこだから。
  * 直してから作り直すまでを1回の操作で終える。
+ *
+ * 手で書くのが難しいときのために「意味・説明から書き直す」を置く。
+ * 説明文を指示の末尾に足す（＝旧「意味・説明を参考にする」）やり方は、
+ * 指示がある状態では効かなかった。指示は既に視覚の言葉へ翻訳された完成品で、
+ * そこへ人向けの日本語を足しても絵に届かないため。足すのではなく書き直す。
+ * 書き直した文はこの入力欄に入るだけで、まだ作り直しは始まらない。
+ * クレジットを使う前に、何がどう変わるのかを読んで決められるようにする。
+ *
+ * もとにする説明文はここには写さない。カード詳細に出ているものの二重表示になるうえ、
+ * 画像を見る面積を設定で削ることになる。どの意味で書き直したかは候補の見出しで分かる。
+ * 絵がまるで変わるほど意味・ジャンルが分かれる語では候補が複数返るので、ここで選んでもらう。
  *
  * 出来上がったものの作り直しは、新しい画像を1枚作るので1クレジット使う。
  * 失敗からの作り直しは無料（渡せていないものに課金しない）。
@@ -40,17 +51,31 @@ export function RegeneratePanel({ item, onUpdated }: Props) {
   const [scenePrompt, setScenePrompt] = useState(item.scene_prompt ?? '')
   const [customPrompt, setCustomPrompt] = useState(item.custom_prompt ?? '')
   const [style, setStyle] = useState(item.style ?? '')
+  const [framing, setFraming] = useState(item.framing ?? '')
   const [useMeaning, setUseMeaning] = useState(false)
   const [retrying, setRetrying] = useState(false)
+  // どちらの書き直しが走っているか（null なら止まっている）
+  const [rewriting, setRewriting] = useState<'title' | 'meaning' | null>(null)
+  const [rewriteError, setRewriteError] = useState<string | null>(null)
+  // 書き直す前の指示。置き換えは一瞬で終わるが、手で書いたものが消えるので戻せるようにする
+  const [beforeRewrite, setBeforeRewrite] = useState<string | null>(null)
+  // 意味・ジャンルが分かれる語で返る候補。1件だけならそのまま入れるので、ここには残らない
+  const [sceneOptions, setSceneOptions] = useState<SceneOption[]>([])
   const [error, setError] = useState<string | null>(null)
   const available = useBillingStore((s) => s.summary?.available_credits) ?? null
   // 失敗からの作り直しは無料。出来上がったものの作り直しだけ1クレジット
   const costsCredit = !isFailed
   const insufficient = costsCredit && available !== null && available < 1
-  // 「意味・説明を参考にする」の初期値はユーザー設定（既定 ON）に従う。ユーザーが触ったら以後は上書きしない。
+  // 「意味・説明を参考にする」の初期値はユーザー設定（既定 OFF）に従う。ユーザーが触ったら以後は上書きしない。
   const meaningTouched = useRef(false)
 
   const hasMeaning = Boolean(item.meaning && item.meaning.trim())
+  // 「意味・説明を参考にする」（＝説明文を指示の末尾に足す）が実際に効くのは、
+  // 指示が空＝単語をそのまま被写体にするときだけ。指示があるときは、それが既に
+  // 視覚の言葉へ翻訳された完成品なので、末尾に日本語の説明文を足しても絵に効かない。
+  // 効かない選択肢を置いておくと「チェックしたのに変わらない」になるので、出さない。
+  // 指示があるカードで意味を効かせたいときは「意味・説明から書き直す」を使う。
+  const showMeaningOption = hasMeaning && !scenePrompt.trim()
 
   useEffect(() => {
     getSettings()
@@ -60,18 +85,55 @@ export function RegeneratePanel({ item, onUpdated }: Props) {
       .catch(() => {})
   }, [])
 
+  // 書き直した指示を入力欄に入れる。まだ保存も作り直しもしない。
+  // 「書き直す」なので既存の指示は置き換わる。足したままでは効かないのが今回の主旨だから。
+  // ただし手で書いたものが一発で消えるので、直前の内容を控えて戻せるようにする。
+  const applyScene = (next: string) => {
+    setBeforeRewrite(scenePrompt)
+    setScenePrompt(next)
+    setSceneOptions([])
+  }
+
+  // AI に指示を書き直させる。もとにするものが2つある。
+  //   title   … 単語だけから（全ユーザー共有の下ごしらえ。以前「プロンプト情報」にあったもの）
+  //   meaning … このカードの意味・説明から（カード固有）
+  // どちらも保存はしない。1 クレジット使う前に、何がどう変わるのかを読んで決められるようにする。
+  //
+  // meaning のほうは、絵がまるで変わるほど意味・ジャンルが分かれる語（アポロ＝神／宇宙計画 など）で
+  // 候補が複数返る。どちらの絵が欲しいかは説明文からは決まらないので、黙って選ばず選んでもらう。
+  const handleRewrite = async (source: 'title' | 'meaning') => {
+    setRewriting(source)
+    setRewriteError(null)
+    setSceneOptions([])
+    try {
+      if (source === 'title') {
+        applyScene((await previewBrief(item.id)).scene_prompt)
+      } else {
+        const options = await rewriteScenePrompt(item.id)
+        if (options.length === 1) applyScene(options[0].scene_prompt)
+        else setSceneOptions(options)
+      }
+    } catch (err: unknown) {
+      const axiosErr = err as { response?: { data?: { error?: string } } }
+      setRewriteError(axiosErr?.response?.data?.error ?? '書き直せませんでした。時間を置いてお試しください。')
+    } finally {
+      setRewriting(null)
+    }
+  }
+
   const handleRegenerate = async () => {
     setRetrying(true)
     setError(null)
     try {
-      // 情景を直していたら先に保存する。直してから作り直すまでを1回で終える
+      // 指示を直していたら先に保存する。直してから作り直すまでを1回で終える
       if (scenePrompt !== (item.scene_prompt ?? '')) {
         onUpdated(await updateItem(item.id, { scene_prompt: scenePrompt }))
       }
       const updated = await retryItem(item.id, {
         customPrompt: customPrompt.trim(),
         style,
-        useMeaning: hasMeaning ? useMeaning : false,
+        framing,
+        useMeaning: showMeaningOption ? useMeaning : false,
       })
       onUpdated(updated)
       // 消費したぶんを残高表示へ反映する（ヘッダーと共有）
@@ -97,7 +159,8 @@ export function RegeneratePanel({ item, onUpdated }: Props) {
         className="flex items-center gap-1 text-xs text-muted-foreground transition-colors hover:text-foreground"
       >
         <RefreshCw size={14} />
-        画像を作り直す{costsCredit && `（1 ${CREDIT_UNIT_SHORT}）`}
+        {/* 画像のすぐ下の行に置くので「画像を」は省く。細い画面でも一行に収めたい */}
+        作り直す{costsCredit && `（1 ${CREDIT_UNIT_SHORT}）`}
       </button>
 
       <PanelSlotContent sectionKey={PANEL_KEY}>
@@ -119,19 +182,88 @@ export function RegeneratePanel({ item, onUpdated }: Props) {
 
           {/* 思った絵にならないとき、いちばん効くのがここ。直してそのまま作り直せるようにする */}
           <div className="space-y-2">
-            <Label htmlFor="regen-scene">画像への指示（情景）</Label>
+            <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-2">
+              <Label htmlFor="regen-scene">画像への指示</Label>
+              {/* AI に書かせる入口はここだけに集める。見るだけの「プロンプト情報」には置かない */}
+              <div className="flex items-center gap-4">
+                <button
+                  type="button"
+                  onClick={() => handleRewrite('title')}
+                  disabled={retrying || Boolean(rewriting)}
+                  className="flex items-center gap-1 text-xs text-muted-foreground transition-colors hover:text-foreground disabled:opacity-50"
+                >
+                  {rewriting === 'title' ? <Spinner size={12} /> : <Sparkles size={12} />}
+                  単語から書き直す
+                </button>
+                {hasMeaning && (
+                  <button
+                    type="button"
+                    onClick={() => handleRewrite('meaning')}
+                    disabled={retrying || Boolean(rewriting)}
+                    className="flex items-center gap-1 text-xs text-muted-foreground transition-colors hover:text-foreground disabled:opacity-50"
+                  >
+                    {rewriting === 'meaning' ? <Spinner size={12} /> : <Sparkles size={12} />}
+                    意味・説明から書き直す
+                  </button>
+                )}
+              </div>
+            </div>
             <textarea
               id="regen-scene"
               value={scenePrompt}
-              onChange={(e) => setScenePrompt(e.target.value)}
-              disabled={retrying}
+              onChange={(e) => {
+                // 手で書き始めたら、書き直し前の内容へ戻す道は畳む（もう別物なので）
+                setBeforeRewrite(null)
+                setScenePrompt(e.target.value)
+              }}
+              disabled={retrying || Boolean(rewriting)}
               rows={4}
               placeholder="未設定のときは単語をそのまま使います"
               className="w-full resize-y rounded-lg border border-input bg-background px-3 py-2 font-mono text-xs leading-relaxed placeholder:font-sans placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
             />
-            <p className="text-xs text-muted-foreground">
-              ここを直すと、そのまま作り直しに使われます。空にすると単語をそのまま使います。
-            </p>
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <p className="text-xs text-muted-foreground">
+                ここを直すと、そのまま作り直しに使われます。空にすると単語をそのまま使います。
+              </p>
+              {beforeRewrite !== null && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setScenePrompt(beforeRewrite)
+                    setBeforeRewrite(null)
+                  }}
+                  disabled={retrying}
+                  className="flex shrink-0 items-center gap-1 text-xs text-muted-foreground transition-colors hover:text-foreground disabled:opacity-50"
+                >
+                  <Undo2 size={12} />
+                  書き直す前に戻す
+                </button>
+              )}
+            </div>
+            {rewriteError && <p className="text-xs text-destructive">{rewriteError}</p>}
+
+            {/* 絵がまるで変わるほど意味・ジャンルが分かれる語では候補が返る。選ぶのは利用者 */}
+            {sceneOptions.length > 1 && (
+              <div className="space-y-2 rounded-xl border border-border/70 bg-background px-4 py-3">
+                <p className="text-xs text-muted-foreground">
+                  この語には絵が変わるほど違う意味があります。どれで作りますか。
+                </p>
+                {sceneOptions.map((option, index) => (
+                  <button
+                    key={`${option.label ?? ''}-${index}`}
+                    type="button"
+                    onClick={() => applyScene(option.scene_prompt)}
+                    disabled={retrying}
+                    className="block w-full rounded-lg border border-border px-3 py-2 text-left transition-colors hover:bg-muted disabled:opacity-50"
+                  >
+                    {option.label && <span className="block text-xs font-medium">{option.label}</span>}
+                    <span className="mt-0.5 block line-clamp-2 font-mono text-[11px] leading-relaxed text-muted-foreground">
+                      {option.scene_prompt}
+                    </span>
+                  </button>
+                ))}
+              </div>
+            )}
           </div>
 
           <div className="space-y-2">
@@ -146,6 +278,33 @@ export function RegeneratePanel({ item, onUpdated }: Props) {
               placeholder="例: もっと写実的に / 背景を青空に / りんごは断面を見せて"
               className="w-full resize-y rounded-lg border border-input bg-background px-3 py-2 text-sm placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
             />
+          </div>
+
+          {/* 構図。人物の肖像が欲しいのに引きの絵になる、を直せる唯一の入口 */}
+          <div className="space-y-2">
+            <Label>構図（任意）</Label>
+            <div className="flex flex-wrap gap-2">
+              {FRAMING_OPTIONS.map((opt) => {
+                const active = framing === opt.value
+                return (
+                  <button
+                    key={opt.value || 'default'}
+                    type="button"
+                    onClick={() => setFraming(opt.value)}
+                    disabled={retrying}
+                    className={`rounded-full border px-3 py-1 text-sm transition-colors disabled:opacity-50 ${
+                      active ? 'border-transparent text-white' : 'border-border text-muted-foreground hover:bg-muted'
+                    }`}
+                    style={active ? { backgroundColor: 'var(--palace)' } : undefined}
+                  >
+                    {opt.label}
+                  </button>
+                )
+              })}
+            </div>
+            <p className="text-xs text-muted-foreground">
+              {FRAMING_OPTIONS.find((opt) => opt.value === framing)?.note}
+            </p>
           </div>
 
           <div className="space-y-2">
@@ -171,7 +330,7 @@ export function RegeneratePanel({ item, onUpdated }: Props) {
             </div>
           </div>
 
-          {hasMeaning && (
+          {showMeaningOption && (
             <label className="flex items-start gap-3 rounded-xl border border-border/70 bg-background px-4 py-3">
               <input
                 type="checkbox"
@@ -187,6 +346,7 @@ export function RegeneratePanel({ item, onUpdated }: Props) {
                 <span className="block text-sm font-medium">意味・説明を参考にする</span>
                 <span className="block text-xs text-muted-foreground">
                   このカードの意味・説明文を画像生成のヒントに加えます（既定は環境設定で変更できます）。
+                  画像への指示を書くと、そちらが優先されるためこの項目は消えます。
                 </span>
               </span>
             </label>

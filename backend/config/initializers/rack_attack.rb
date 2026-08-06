@@ -111,6 +111,11 @@ class Rack::Attack
     req.ip if req.post? && req.path.match?(%r{\A/api/v1/items/[^/]+/brief\z})
   end
 
+  # 意味・説明からの情景の書き直し（OpenAI Chat 呼び出し）
+  throttle("item_scene_rewrite/ip", limit: 20, period: 60.seconds) do |req|
+    req.ip if req.post? && req.path.match?(%r{\A/api/v1/items/[^/]+/scene_rewrite\z})
+  end
+
   ### スロットル時のレスポンス ###
 
   # 429 を JSON で返す。フロントエンドが一貫してエラー表示できるようにする。

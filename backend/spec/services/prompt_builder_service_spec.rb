@@ -17,6 +17,28 @@ RSpec.describe PromptBuilderService do
       expect(result).to include(described_class::FRAMING_HINT)
     end
 
+    it "構図に単体を選ぶと、見切れさせない指示を肖像向けの指示に差し替える" do
+      item = build(:item, user: user, title: "Napoleon", framing: "single")
+      result = described_class.effective_prompt(item)
+      # 「被写体を全部入れろ」が残ると、胸から上で切る構図が禁じられて引きの絵になる
+      expect(result).not_to include(described_class::FRAMING_HINT)
+      expect(result).to include(described_class::FRAMING_MODIFIERS["single"])
+    end
+
+    it "構図に情景を選ぶと場面の指示に差し替える" do
+      item = build(:item, user: user, title: "機会費用", framing: "scene")
+      result = described_class.effective_prompt(item)
+      expect(result).not_to include(described_class::FRAMING_HINT)
+      expect(result).to include(described_class::FRAMING_MODIFIERS["scene"])
+    end
+
+    it "構図がおまかせ（未指定）なら従来とまったく同じ文字列になる（既存キャッシュを壊さない）" do
+      plain = build(:item, user: user, title: "cat")
+      blank = build(:item, user: user, title: "cat", framing: "")
+      expect(described_class.effective_prompt(blank)).to eq(described_class.effective_prompt(plain))
+      expect(described_class.effective_prompt(plain)).to include(described_class::FRAMING_HINT)
+    end
+
     it "スタイルプリセットの修飾句を付与する" do
       item = build(:item, user: user, title: "cat", style: "watercolor")
       result = described_class.effective_prompt(item)

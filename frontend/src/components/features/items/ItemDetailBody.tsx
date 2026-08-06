@@ -7,9 +7,7 @@ import { Input } from '@/components/ui/input'
 import { Spinner } from '@/components/ui/spinner'
 import { Skeleton } from '@/components/ui/skeleton'
 import { ItemProperties } from '@/components/features/items/ItemProperties'
-import { RegeneratePanel } from '@/components/features/items/RegeneratePanel'
-import { GenerationInfo } from '@/components/features/items/GenerationInfo'
-import { PromptInfo } from '@/components/features/items/PromptInfo'
+import { ItemImageBar } from '@/components/features/items/ItemImageBar'
 import { GeneratingOverlay } from '@/components/features/items/GeneratingOverlay'
 import { StatusBadge } from '@/components/features/items/StatusBadge'
 import { useItemDetail } from '@/hooks/useItemDetail'
@@ -143,14 +141,8 @@ export function ItemDetailBody({ itemId, onDeleted }: { itemId: string; onDelete
         />
       )}
 
-      {/* 画像まわりの操作と情報。画像を見る面積を削らないよう一行に収める */}
-      <div className="flex items-center justify-end gap-3 overflow-x-auto">
-        {(item.generation_status === 'failed' || item.generation_status === 'completed') && (
-          <RegeneratePanel item={item} onUpdated={applyUpdated} />
-        )}
-        <PromptInfo item={item} onUpdated={applyUpdated} />
-        <GenerationInfo item={item} />
-      </div>
+      {/* 画像まわりの情報と操作（生成情報・プロンプト情報・作り直す） */}
+      <ItemImageBar item={item} onUpdated={applyUpdated} />
 
       {/* プロパティ */}
       <ItemProperties item={item} onUpdated={applyUpdated} />
