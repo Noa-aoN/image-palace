@@ -22,12 +22,22 @@ module AspectRatios
       ratio: 1024.0 / 1536,
       crop_ratio: nil
     },
-    # 黄金比は生成 API が直接出せないため、縦長で生成してから切り出す（試験導入）
+    # 黄金比は生成 API が直接出せないため、近い比で生成してから切り出す（試験導入）。
+    #
+    # キー "golden" は縦のまま据え置く。保存済みの画像は縦で焼かれているので、
+    # ここを横に付け替えると既存カードだけ枠と中身が食い違う。横は別キーで足す。
     "golden" => {
-      label: "黄金比（試験）",
+      label: "黄金比（縦・試験）",
       provider_size: "1024x1536",
       ratio: 1 / 1.618,
       crop_ratio: 1 / 1.618,
+      experimental: true
+    },
+    "golden_landscape" => {
+      label: "黄金比（横・試験）",
+      provider_size: "1536x1024",
+      ratio: 1.618,
+      crop_ratio: 1.618,
       experimental: true
     }
   }.freeze
