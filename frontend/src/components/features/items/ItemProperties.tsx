@@ -9,6 +9,7 @@ import { MEANING_LEVELS, meaningLevelLabel, DEFAULT_MEANING_LEVEL } from '@/lib/
 import { getTags } from '@/lib/api/tags'
 import type { Item, ItemType } from '@/types/item'
 import type { Tag } from '@/types/tag'
+import { PropertyBlock, BlockAction, BlockEmpty, BlockError } from '@/components/features/items/PropertyBlock'
 
 type ItemPropertiesProps = {
   item: Item
@@ -356,71 +357,57 @@ export function ItemProperties({ item, onUpdated }: ItemPropertiesProps) {
   }
 
   return (
-    <div className="space-y-5 rounded-xl border border-border/70 bg-muted/30 px-4 py-4">
-      {/* 種別 */}
-      <div className="space-y-1.5">
-        <label htmlFor="item-type" className="block text-sm font-medium">
-          種別
-        </label>
-        <div className="flex items-center gap-2">
-          <select
-            id="item-type"
-            value={item.item_type?.id ?? ''}
-            onChange={(e) => handleTypeChange(e.target.value)}
-            disabled={savingType || itemTypes.length === 0}
-            className="h-9 rounded-lg border border-input bg-background px-3 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-50"
-          >
-            {itemTypes.length === 0 && <option value="">読み込み中...</option>}
-            {item.item_type == null && itemTypes.length > 0 && <option value="">未設定</option>}
-            {itemTypes.map((type) => (
-              <option key={type.id} value={type.id}>
-                {type.label}
-              </option>
-            ))}
-          </select>
-          {savingType && <Spinner size={16} className="text-muted-foreground" />}
-        </div>
-        {typeError && <p className="text-xs text-destructive">{typeError}</p>}
-      </div>
+    <div className="space-y-3">
+      <PropertyBlock title="種別" busy={savingType}>
+        <select
+          id="item-type"
+          aria-label="種別"
+          value={item.item_type?.id ?? ''}
+          onChange={(e) => handleTypeChange(e.target.value)}
+          disabled={savingType || itemTypes.length === 0}
+          className="h-9 rounded-lg border border-input bg-background px-3 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-50"
+        >
+          {itemTypes.length === 0 && <option value="">読み込み中...</option>}
+          {item.item_type == null && itemTypes.length > 0 && <option value="">未設定</option>}
+          {itemTypes.map((type) => (
+            <option key={type.id} value={type.id}>
+              {type.label}
+            </option>
+          ))}
+        </select>
+        <BlockError message={typeError} />
+      </PropertyBlock>
 
-      {/* 意味・説明 */}
-      <div className="space-y-1.5">
-        <div className="flex items-center justify-between">
-          <span className="text-sm font-medium">意味・説明</span>
-          {!editingMeaning && (
-            <div className="flex items-center gap-2">
-              <button
+      <PropertyBlock
+        title="意味・説明"
+        actions={
+          !editingMeaning && (
+            <>
+              <BlockAction
+                icon={<Sparkles size={14} />}
+                label={item.meaning ? '再生成' : 'AIで生成'}
                 onClick={handleGenerateMeaning}
-                disabled={generatingMeaning}
-                className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground transition-colors disabled:opacity-50"
-                aria-label="AIで意味・説明を生成"
-                title="AIで生成"
-              >
-                {generatingMeaning ? <Spinner size={14} /> : <Sparkles size={14} />}
-                {item.meaning ? '再生成' : 'AIで生成'}
-              </button>
+                busy={generatingMeaning}
+              />
               {item.meaning && (
-                <button
+                <BlockAction
+                  icon={<ShieldCheck size={14} />}
+                  label="AIチェック"
                   onClick={handleFactCheck}
-                  disabled={checkingFact}
-                  className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground transition-colors disabled:opacity-50"
-                  aria-label="説明をAIでファクトチェック"
+                  busy={checkingFact}
                   title="説明が事実として正しいかAIでチェックし、訂正案を出します"
-                >
-                  {checkingFact ? <Spinner size={14} /> : <ShieldCheck size={14} />}
-                  AIチェック
-                </button>
+                />
               )}
-              <button
+              <BlockAction
+                icon={<Pencil size={15} />}
+                label="編集"
                 onClick={startEditMeaning}
-                className="text-muted-foreground hover:text-foreground transition-colors"
-                aria-label="意味・説明を編集"
-              >
-                <Pencil size={15} />
-              </button>
-            </div>
-          )}
-        </div>
+                hideLabel
+              />
+            </>
+          )
+        }
+      >
 
         {!editingMeaning && (
           <div className="flex flex-wrap items-center gap-1.5">
@@ -473,7 +460,7 @@ export function ItemProperties({ item, onUpdated }: ItemPropertiesProps) {
                 キャンセル
               </Button>
             </div>
-            {meaningError && <p className="text-xs text-destructive">{meaningError}</p>}
+            <BlockError message={meaningError} />
           </div>
         ) : item.meaning ? (
           <div className="space-y-1.5">
@@ -492,29 +479,24 @@ export function ItemProperties({ item, onUpdated }: ItemPropertiesProps) {
             />
           </div>
         ) : (
-          <p className="text-sm text-muted-foreground">未設定（「AIで生成」または鉛筆アイコンから追加できます）</p>
+          <BlockEmpty>未設定（「AIで生成」または鉛筆アイコンから追加できます）</BlockEmpty>
         )}
-        {!editingMeaning && meaningError && <p className="text-xs text-destructive">{meaningError}</p>}
-      </div>
+        {!editingMeaning && <BlockError message={meaningError} />}
+      </PropertyBlock>
 
-      {/* タグ */}
-      <div className="space-y-2">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <span className="text-sm font-medium">タグ</span>
-            {savingTags && <Spinner size={14} className="text-muted-foreground" />}
-          </div>
-          <button
+      <PropertyBlock
+        title="タグ"
+        busy={savingTags}
+        actions={
+          <BlockAction
+            icon={<Sparkles size={14} />}
+            label="AIで生成"
             onClick={handleGenerateTags}
-            disabled={generatingTags || savingTags}
-            className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground transition-colors disabled:opacity-50"
-            aria-label="AIでタグを生成"
-            title="AIで生成"
-          >
-            {generatingTags ? <Spinner size={14} /> : <Sparkles size={14} />}
-            AIで生成
-          </button>
-        </div>
+            busy={generatingTags}
+            disabled={savingTags}
+          />
+        }
+      >
         {tags.length > 0 && (
           <div className="flex flex-wrap gap-1.5">
             {tags.map((tag) => (
@@ -573,8 +555,8 @@ export function ItemProperties({ item, onUpdated }: ItemPropertiesProps) {
             </ul>
           )}
         </div>
-        {tagError && <p className="text-xs text-destructive">{tagError}</p>}
-      </div>
+        <BlockError message={tagError} />
+      </PropertyBlock>
     </div>
   )
 }
