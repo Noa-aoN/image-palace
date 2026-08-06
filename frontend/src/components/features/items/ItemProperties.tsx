@@ -1,15 +1,15 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { Pencil, Check, X, Sparkles, ShieldCheck } from 'lucide-react'
-import { Spinner } from '@/components/ui/spinner'
+import { X, Sparkles, ShieldCheck } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { getItemTypes, updateItem, generateMeaning, generateTags, factCheckItem, isItemSkip } from '@/lib/api/items'
 import { MEANING_LEVELS, meaningLevelLabel, DEFAULT_MEANING_LEVEL } from '@/lib/meaning-levels'
 import { getTags } from '@/lib/api/tags'
 import type { Item, ItemType } from '@/types/item'
 import type { Tag } from '@/types/tag'
-import { PropertyBlock, BlockAction, BlockEmpty, BlockError } from '@/components/features/items/PropertyBlock'
+import { PropertyBlock, BlockAction, BlockError } from '@/components/features/items/PropertyBlock'
+import { MeaningList } from '@/components/features/items/MeaningList'
 
 type ItemPropertiesProps = {
   item: Item
@@ -168,9 +168,6 @@ export function ItemProperties({ item, onUpdated }: ItemPropertiesProps) {
   const [savingType, setSavingType] = useState(false)
   const [typeError, setTypeError] = useState<string | null>(null)
 
-  const [editingMeaning, setEditingMeaning] = useState(false)
-  const [meaningDraft, setMeaningDraft] = useState('')
-  const [savingMeaning, setSavingMeaning] = useState(false)
   const [meaningError, setMeaningError] = useState<string | null>(null)
   const [generatingMeaning, setGeneratingMeaning] = useState(false)
   const [meaningLevel, setMeaningLevel] = useState<string>(item.meaning_level ?? DEFAULT_MEANING_LEVEL)
@@ -331,31 +328,6 @@ export function ItemProperties({ item, onUpdated }: ItemPropertiesProps) {
     }
   }
 
-  const startEditMeaning = () => {
-    setMeaningDraft(item.meaning ?? '')
-    setMeaningError(null)
-    setEditingMeaning(true)
-  }
-
-  const handleSaveMeaning = async () => {
-    const trimmed = meaningDraft.trim()
-    if (trimmed === (item.meaning ?? '')) {
-      setEditingMeaning(false)
-      return
-    }
-    setSavingMeaning(true)
-    setMeaningError(null)
-    try {
-      const updated = await updateItem(item.id, { meaning: trimmed })
-      onUpdated(updated)
-      setEditingMeaning(false)
-    } catch {
-      setMeaningError('意味・説明の更新に失敗しました')
-    } finally {
-      setSavingMeaning(false)
-    }
-  }
-
   return (
     <div className="space-y-3">
       <PropertyBlock title="種別" busy={savingType}>
@@ -381,95 +353,53 @@ export function ItemProperties({ item, onUpdated }: ItemPropertiesProps) {
       <PropertyBlock
         title="意味・説明"
         actions={
-          !editingMeaning && (
-            <>
-              <BlockAction
+          <>
+            <BlockAction
                 icon={<Sparkles size={14} />}
                 label={item.meaning ? '再生成' : 'AIで生成'}
                 onClick={handleGenerateMeaning}
                 busy={generatingMeaning}
               />
-              {item.meaning && (
-                <BlockAction
-                  icon={<ShieldCheck size={14} />}
-                  label="AIチェック"
-                  onClick={handleFactCheck}
-                  busy={checkingFact}
-                  title="説明が事実として正しいかAIでチェックし、訂正案を出します"
-                />
-              )}
+            {item.meaning && (
               <BlockAction
-                icon={<Pencil size={15} />}
-                label="編集"
-                onClick={startEditMeaning}
-                hideLabel
+                icon={<ShieldCheck size={14} />}
+                label="AIチェック"
+                onClick={handleFactCheck}
+                busy={checkingFact}
+                title="説明が事実として正しいかAIでチェックし、訂正案を出します"
               />
-            </>
-          )
+            )}
+          </>
         }
       >
 
-        {!editingMeaning && (
-          <div className="flex flex-wrap items-center gap-1.5">
-            <span className="text-xs text-muted-foreground">詳しさ:</span>
-            {MEANING_LEVELS.map((lv) => {
-              const active = meaningLevel === lv
-              return (
-                <button
-                  key={lv}
-                  type="button"
-                  onClick={() => setMeaningLevel(lv)}
-                  disabled={generatingMeaning}
-                  className={`rounded-full border px-2.5 py-0.5 text-xs transition-colors disabled:opacity-50 ${
-                    active ? 'border-transparent text-white' : 'border-border text-muted-foreground hover:bg-muted'
-                  }`}
-                  style={active ? { backgroundColor: 'var(--palace)' } : undefined}
-                  aria-pressed={active}
-                >
-                  {meaningLevelLabel(lv)}
-                </button>
-              )
-            })}
-          </div>
-        )}
-
-        {editingMeaning ? (
-          <div className="space-y-2">
-            <textarea
-              value={meaningDraft}
-              onChange={(e) => setMeaningDraft(e.target.value)}
-              disabled={savingMeaning}
-              autoFocus
-              rows={3}
-              placeholder="このカードの意味や説明を入力（空にすると削除されます）"
-              className="w-full rounded-lg border border-input bg-background px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring resize-y"
-            />
-            <div className="flex gap-2">
-              <Button size="sm" onClick={handleSaveMeaning} disabled={savingMeaning} className="flex items-center gap-1.5">
-                {savingMeaning ? <Spinner size={14} /> : <Check size={14} />}
-                保存
-              </Button>
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => setEditingMeaning(false)}
-                disabled={savingMeaning}
-                className="flex items-center gap-1.5"
+        {/* AI生成に渡す詳しさ。書いた文そのものの詳しさは、各件の編集側で選ぶ */}
+        <div className="flex flex-wrap items-center gap-1.5">
+          <span className="text-xs text-muted-foreground">AIで生成する詳しさ:</span>
+          {MEANING_LEVELS.map((lv) => {
+            const active = meaningLevel === lv
+            return (
+              <button
+                key={lv}
+                type="button"
+                onClick={() => setMeaningLevel(lv)}
+                disabled={generatingMeaning}
+                className={`rounded-full border px-2.5 py-0.5 text-xs transition-colors disabled:opacity-50 ${
+                  active ? 'border-transparent text-white' : 'border-border text-muted-foreground hover:bg-muted'
+                }`}
+                style={active ? { backgroundColor: 'var(--palace)' } : undefined}
+                aria-pressed={active}
               >
-                <X size={14} />
-                キャンセル
-              </Button>
-            </div>
-            <BlockError message={meaningError} />
-          </div>
-        ) : item.meaning ? (
-          <div className="space-y-1.5">
-            <p className="text-sm leading-relaxed whitespace-pre-wrap text-foreground">{item.meaning}</p>
-            {item.meaning_example && (
-              <p className="text-xs leading-relaxed text-muted-foreground border-l-2 border-border pl-2">
-                例: {item.meaning_example}
-              </p>
-            )}
+                {meaningLevelLabel(lv)}
+              </button>
+            )
+          })}
+        </div>
+
+        <MeaningList
+          item={item}
+          onUpdated={onUpdated}
+          primaryExtra={
             <FactCheckResult
               item={item}
               onApplyMeaning={handleApplyFactCheckSuggestion}
@@ -477,11 +407,9 @@ export function ItemProperties({ item, onUpdated }: ItemPropertiesProps) {
               onApplyTitle={handleApplyTitleSuggestion}
               applyingTitle={applyingTitle}
             />
-          </div>
-        ) : (
-          <BlockEmpty>未設定（「AIで生成」または鉛筆アイコンから追加できます）</BlockEmpty>
-        )}
-        {!editingMeaning && <BlockError message={meaningError} />}
+          }
+        />
+        <BlockError message={meaningError} />
       </PropertyBlock>
 
       <PropertyBlock

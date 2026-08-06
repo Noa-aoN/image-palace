@@ -446,6 +446,8 @@ module Api
           generation_status: item.generation_status,
           generation_error: item.generation_error,
           item_type: serialize_item_type(item.item_type),
+          # 代表の1件は据え置き（既にこれを読んでいる画面を後退させない）。
+          # 複数を扱う画面は meanings のほうを見る
           meaning: item.primary_meaning&.definition,
           meaning_example: item.primary_meaning&.example_sentence,
           meaning_level: item.primary_meaning&.detail_level,
@@ -456,6 +458,7 @@ module Api
           fact_check_known: item.primary_meaning&.fact_check_known,
           fact_check_claims: item.primary_meaning&.fact_check_claims || [],
           fact_checked_at: item.primary_meaning&.fact_checked_at,
+          meanings: item.meanings.ordered.map { |m| serialize_meaning_entry(m) },
           style: item.style,
           framing: item.framing,
           prompt_source: item.effective_prompt_source,
@@ -467,6 +470,22 @@ module Api
           tags: item.tags.map { |t| { id: t.id, name: t.name } },
           media: serialize_media(item.primary_media),
           created_at: item.created_at
+        }
+      end
+
+      # 意味・説明の1件ぶん。MeaningsController の返す形と揃える
+      def serialize_meaning_entry(record)
+        {
+          id: record.id,
+          definition: record.definition,
+          example_sentence: record.example_sentence,
+          detail_level: record.detail_level,
+          language_code: record.language_code,
+          position: record.position,
+          fact_check_status: record.fact_check_status,
+          fact_check_comment: record.fact_check_comment,
+          fact_check_suggestion: record.fact_check_suggestion,
+          fact_checked_at: record.fact_checked_at
         }
       end
 

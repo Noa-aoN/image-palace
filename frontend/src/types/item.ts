@@ -41,6 +41,20 @@ export interface ItemTag {
   name: string
 }
 
+/** カード1枚にぶら下がる意味・説明の1件。代表の1件は Item.meaning にも入る */
+export interface ItemMeaning {
+  id: string
+  definition: string
+  example_sentence?: string | null
+  detail_level: string
+  language_code: string
+  position: number | null
+  fact_check_status?: 'correct' | 'doubtful' | 'incorrect' | null
+  fact_check_comment?: string | null
+  fact_check_suggestion?: string | null
+  fact_checked_at?: string | null
+}
+
 export interface Item {
   // カード画像の縦横比（square / portrait / golden）
   aspect_ratio?: string
@@ -49,9 +63,12 @@ export interface Item {
   generation_status: GenerationStatus
   generation_error?: string | null
   item_type?: ItemType | null
+  /** 代表の1件（日本語優先→並び順の先頭）。複数を扱う画面は meanings を見る */
   meaning?: string | null
   meaning_example?: string | null
   meaning_level?: string | null
+  /** 並び順どおりの全件 */
+  meanings?: ItemMeaning[]
   /** 説明のAIファクトチェック結果 */
   fact_check_status?: 'correct' | 'doubtful' | 'incorrect' | null
   fact_check_comment?: string | null

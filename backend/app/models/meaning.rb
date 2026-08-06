@@ -14,6 +14,10 @@ class Meaning < ApplicationRecord
   validates :fact_check_status, inclusion: { in: FACT_CHECK_STATUSES }, allow_nil: true
 
   scope :in_language, ->(lang) { where(language_code: lang) }
+  # 並びは position。埋まっていない古い行が混じっても、作成順で後ろに落ち着かせる
+  scope :ordered, -> { order(Arel.sql("position NULLS LAST"), :created_at) }
+
+  before_create :assign_position
 
   # ファクトチェック結果を構成する属性。説明や単語名が変わったら丸ごと無効化する
   FACT_CHECK_ATTRIBUTES = %w[
@@ -29,5 +33,14 @@ class Meaning < ApplicationRecord
   # 不正値は既定（simple）へ丸める
   def self.normalize_level(level)
     DETAIL_LEVELS.include?(level.to_s) ? level.to_s : DEFAULT_DETAIL_LEVEL
+  end
+
+  private
+
+  # 末尾に足す。並べ替えは position の書き換えで行う
+  def assign_position
+    return if position.present?
+
+    self.position = (item&.meanings&.maximum(:position) || -1) + 1
   end
 end

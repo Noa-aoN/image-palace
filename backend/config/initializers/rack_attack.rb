@@ -111,6 +111,12 @@ class Rack::Attack
     req.ip if req.post? && req.path.match?(%r{\A/api/v1/items/[^/]+/brief\z})
   end
 
+  # 意味・説明の追加・書き換え（AI は通らないが、書き込みなので歯止めは要る）
+  MEANING_PATH = %r{\A/api/v1/items/[^/]+/meanings(/.*)?\z}
+  throttle("item_meanings/ip", limit: 60, period: 60.seconds) do |req|
+    req.ip if (req.post? || req.patch? || req.put? || req.delete?) && MEANING_PATH.match?(req.path)
+  end
+
   # 意味・説明からの情景の書き直し（OpenAI Chat 呼び出し）
   throttle("item_scene_rewrite/ip", limit: 20, period: 60.seconds) do |req|
     req.ip if req.post? && req.path.match?(%r{\A/api/v1/items/[^/]+/scene_rewrite\z})

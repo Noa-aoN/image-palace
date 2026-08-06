@@ -71,13 +71,15 @@ class Item < ApplicationRecord
     end
   end
 
-  # 表示・編集用の代表的な意味（日本語を優先）
+  # 表示・編集用の代表的な意味（日本語を優先）。
+  # 複数持てるようになったので、同じ言語が並んだときは position の先頭を代表にする。
+  #
+  # 並べ替えはメモリ上で行う。`meanings.ordered` のようにスコープを挟むと Relation になり、
+  # まだ保存していないカード（build して meanings.build した状態）で組み立てた中身が
+  # 見えなくなる。プロンプト組み立てはその状態でも通るので、ここで落とせない。
   def primary_meaning
-    if association(:meanings).loaded?
-      meanings.find { |m| m.language_code == "ja" } || meanings.first
-    else
-      meanings.in_language("ja").first || meanings.first
-    end
+    sorted = meanings.to_a.sort_by { |m| [ m.position || Float::INFINITY, m.created_at || Time.zone.at(0) ] }
+    sorted.find { |m| m.language_code == "ja" } || sorted.first
   end
 
   # ユーザーが説明文・情景プロンプトを手で直したか。直したものは自動生成で上書きしない

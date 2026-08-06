@@ -1,5 +1,5 @@
 import { apiClient } from './client'
-import type { Item, ItemType } from '@/types/item'
+import type { Item, ItemMeaning, ItemType } from '@/types/item'
 
 export interface ItemsSummary {
   total_count: number
@@ -262,4 +262,45 @@ export async function rewriteScenePrompt(id: string): Promise<SceneOption[]> {
 export async function factCheckItem(id: string): Promise<ItemOrSkip> {
   const res = await apiClient.post<ItemOrSkip>(`/api/v1/items/${id}/fact_check`)
   return res.data
+}
+
+// --- 意味・説明（カード1枚に複数） ---------------------------------------
+//
+// 代表の1件は Item.meaning に残るので、既にそれを読んでいる画面は変わらない。
+// 複数を扱う画面だけがこちらを使う。
+
+export interface MeaningPayload {
+  definition?: string
+  example_sentence?: string | null
+  detail_level?: string
+  language_code?: string
+}
+
+export async function createMeaning(itemId: string, payload: MeaningPayload): Promise<ItemMeaning> {
+  const res = await apiClient.post<ItemMeaning>(`/api/v1/items/${itemId}/meanings`, { meaning: payload })
+  return res.data
+}
+
+export async function updateMeaning(
+  itemId: string,
+  meaningId: string,
+  payload: MeaningPayload
+): Promise<ItemMeaning> {
+  const res = await apiClient.patch<ItemMeaning>(`/api/v1/items/${itemId}/meanings/${meaningId}`, {
+    meaning: payload,
+  })
+  return res.data
+}
+
+export async function deleteMeaning(itemId: string, meaningId: string): Promise<void> {
+  await apiClient.delete(`/api/v1/items/${itemId}/meanings/${meaningId}`)
+}
+
+// 並び替えは渡した順に position を振り直す。1件ずつ送ると途中で失敗したとき順序が壊れる
+export async function reorderMeanings(itemId: string, ids: string[]): Promise<ItemMeaning[]> {
+  const res = await apiClient.patch<{ meanings: ItemMeaning[] }>(
+    `/api/v1/items/${itemId}/meanings/reorder`,
+    { ids }
+  )
+  return res.data.meanings
 }

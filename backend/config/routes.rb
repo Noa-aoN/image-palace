@@ -71,6 +71,10 @@ Rails.application.routes.draw do
           get :navigation
           delete :bulk_destroy
         end
+        # 意味・説明はカード1枚に複数ぶら下がる。並び替えは一括で受ける
+        resources :meanings, only: [ :create, :update, :destroy ] do
+          collection { patch :reorder }
+        end
         member do
           post :retry
           post :meaning
