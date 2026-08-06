@@ -7,7 +7,10 @@ import { PanelSlotContent } from '@/components/features/panel/PanelSlot'
 import { usePanelForm } from '@/components/features/panel/usePanelForm'
 import {
   CARD_COLUMN_CHOICES,
-  CARD_PER_PAGE_CHOICES,
+  CARD_ROW_CHOICES,
+  MAX_CARDS_PER_PAGE,
+  availableRowChoices,
+  cardsPerPage,
   type CardDisplay,
 } from '@/hooks/useCardDisplay'
 
@@ -31,6 +34,8 @@ export function CardDisplayPanel({
   onChange: (patch: Partial<CardDisplay>) => void
 }) {
   const panel = usePanelForm(PANEL_KEY, '表示')
+  const rowChoices = availableRowChoices(display.columns)
+  const perPage = cardsPerPage(display)
 
   return (
     <>
@@ -63,7 +68,7 @@ export function CardDisplayPanel({
           </div>
 
           <div className="space-y-2">
-            <Label>1行の枚数</Label>
+            <Label>列数</Label>
             <div className="flex flex-wrap gap-2">
               {CARD_COLUMN_CHOICES.map((count) => (
                 <Chip key={count} active={display.columns === count} onClick={() => onChange({ columns: count })}>
@@ -71,22 +76,34 @@ export function CardDisplayPanel({
                 </Chip>
               ))}
             </div>
-            <p className="text-xs text-muted-foreground">画面が広いときの枚数です。狭い画面では自動で減ります。</p>
+            <p className="text-xs text-muted-foreground">
+              画面が広いときの列数です。狭い画面では自動で減ります。多くするほど単語名は省略されます。
+            </p>
           </div>
 
           <div className="space-y-2">
-            <Label>1ページの枚数</Label>
+            <Label>行数（1ページあたり）</Label>
             <div className="flex flex-wrap gap-2">
-              {CARD_PER_PAGE_CHOICES.map((count) => (
-                <Chip key={count} active={display.perPage === count} onClick={() => onChange({ perPage: count })}>
+              {rowChoices.map((count) => (
+                <Chip key={count} active={display.rows === count} onClick={() => onChange({ rows: count })}>
                   {count}
                 </Chip>
               ))}
             </div>
             <p className="text-xs text-muted-foreground">
-              多くすると送りの回数は減りますが、そのぶん1回の読み込みが重くなります。
+              枚数ではなく行数で持ちます。列数を変えても最後の行が欠けません。
+              {rowChoices.length < CARD_ROW_CHOICES.length &&
+                `　列数が多いと、1ページ ${MAX_CARDS_PER_PAGE} 枚を超える行数は選べません。`}
             </p>
           </div>
+
+          {/* 選んだ組み合わせが何枚になるかは、行数だけでは分からない。ここで出す */}
+          <p className="rounded-lg bg-muted/40 px-3 py-2 text-xs text-muted-foreground">
+            いまの設定: <strong className="text-foreground">{display.columns} 列 × {display.rows} 行</strong> ＝ 1ページ{' '}
+            <strong className="text-foreground">{perPage} 枚</strong>
+            <br />
+            多くすると送りの回数は減りますが、そのぶん1回の読み込みが重くなります。
+          </p>
         </div>
       </PanelSlotContent>
     </>

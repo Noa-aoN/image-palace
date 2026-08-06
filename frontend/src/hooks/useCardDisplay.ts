@@ -24,13 +24,17 @@ export type CardFit = 'natural' | 'uniform'
 export interface CardDisplay {
   fit: CardFit
   columns: number
-  perPage: number
+  /** 1ページの行数。実際の枚数は columns × rows */
+  rows: number
 }
 
-export const CARD_COLUMN_CHOICES = [2, 3, 4, 5, 6] as const
-export const CARD_PER_PAGE_CHOICES = [12, 24, 48, 96] as const
+export const CARD_COLUMN_CHOICES = [2, 3, 4, 5, 6, 7, 8] as const
+export const CARD_ROW_CHOICES = [3, 5, 10, 20] as const
 
-export const DEFAULT_CARD_DISPLAY: CardDisplay = { fit: 'natural', columns: 5, perPage: 24 }
+// サーバー側の上限（Api::V1::ItemsController::MAX_PER_PAGE）。超える組み合わせは選ばせない
+export const MAX_CARDS_PER_PAGE = 100
+
+export const DEFAULT_CARD_DISPLAY: CardDisplay = { fit: 'natural', columns: 5, rows: 5 }
 
 // Tailwind は文字列を静的に読むので、組み立てず対応表から選ぶ
 export const CARD_GRID_CLASSES: Record<number, string> = {
@@ -39,21 +43,44 @@ export const CARD_GRID_CLASSES: Record<number, string> = {
   4: 'grid-cols-2 md:grid-cols-3 lg:grid-cols-4',
   5: 'grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5',
   6: 'grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6',
+  7: 'grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-7',
+  8: 'grid-cols-2 md:grid-cols-4 lg:grid-cols-6 xl:grid-cols-8',
+}
+
+/** 1ページの枚数。行で持つので、列数を変えても行はきれいに埋まる */
+export function cardsPerPage(display: CardDisplay): number {
+  return display.columns * display.rows
+}
+
+/** その列数で選べる行数。枚数がサーバーの上限を超える組み合わせは出さない */
+export function availableRowChoices(columns: number): number[] {
+  const fits = CARD_ROW_CHOICES.filter((rows) => columns * rows <= MAX_CARDS_PER_PAGE)
+  // 列数が多いと全部外れうる。そのときは一番小さい行数だけは残す
+  return fits.length > 0 ? [...fits] : [CARD_ROW_CHOICES[0]]
+}
+
+/**
+ * 一覧の画像に申告する表示幅。列数から作る。
+ * 固定値のままだと、8列（実質 12.5vw）でも 25vw ぶんの解像度を落としてきて無駄になる。
+ */
+export function cardImageSizes(columns: number): string {
+  return `(max-width: 768px) 50vw, (max-width: 1200px) 33vw, ${Math.round(100 / columns)}vw`
 }
 
 const STORAGE_KEY = 'image-palace:card-display'
 
 function normalize(raw: unknown): CardDisplay {
   const value = (raw ?? {}) as Partial<CardDisplay>
-  return {
-    fit: value.fit === 'uniform' ? 'uniform' : 'natural',
-    columns: CARD_COLUMN_CHOICES.includes(value.columns as never)
-      ? (value.columns as number)
-      : DEFAULT_CARD_DISPLAY.columns,
-    perPage: CARD_PER_PAGE_CHOICES.includes(value.perPage as never)
-      ? (value.perPage as number)
-      : DEFAULT_CARD_DISPLAY.perPage,
-  }
+  const columns = CARD_COLUMN_CHOICES.includes(value.columns as never)
+    ? (value.columns as number)
+    : DEFAULT_CARD_DISPLAY.columns
+  const allowed = availableRowChoices(columns)
+  const rows = allowed.includes(value.rows as number)
+    ? (value.rows as number)
+    : // 列を増やすと、それまでの行数では上限を超えることがある。入る中の一番多い行数へ寄せる
+      (allowed.find((r) => r === DEFAULT_CARD_DISPLAY.rows) ?? allowed[allowed.length - 1])
+
+  return { fit: value.fit === 'uniform' ? 'uniform' : 'natural', columns, rows }
 }
 
 // 読み出し結果は覚えておく。useSyncExternalStore は同じ値が返り続けることを求めるため

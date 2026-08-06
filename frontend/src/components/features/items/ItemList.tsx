@@ -28,7 +28,14 @@ import { useItemsStore } from '@/stores/items'
 import type { Item } from '@/types/item'
 import type { Tag } from '@/types/tag'
 import { aspectRatioCss } from '@/lib/aspect-ratio'
-import { useCardDisplay, CARD_GRID_CLASSES, type CardDisplay, type CardFit } from '@/hooks/useCardDisplay'
+import {
+  useCardDisplay,
+  CARD_GRID_CLASSES,
+  cardsPerPage,
+  cardImageSizes,
+  type CardDisplay,
+  type CardFit,
+} from '@/hooks/useCardDisplay'
 import { CardDisplayPanel } from '@/components/features/items/CardDisplayPanel'
 
 // 一括AI操作の per-item 結果（完了後の確認ダイアログ用）
@@ -115,9 +122,11 @@ type ItemCardProps = {
   selected: boolean
   onToggle: (id: string) => void
   fit: CardFit
+  /** 列数から作った表示幅の申告。列を増やしたのに大きい画像を落とさないため */
+  sizes: string
 }
 
-function ItemCard({ item, selectionMode, selected, onToggle, fit }: ItemCardProps) {
+function ItemCard({ item, selectionMode, selected, onToggle, fit, sizes }: ItemCardProps) {
   const router = useRouter()
   const [failedImageUrl, setFailedImageUrl] = useState<string | null>(null)
   const warmedRef = useRef(false)
@@ -184,7 +193,7 @@ function ItemCard({ item, selectionMode, selected, onToggle, fit }: ItemCardProp
             }`}
             loading="lazy"
             decoding="async"
-            sizes="(max-width: 768px) 50vw, (max-width: 1200px) 33vw, 25vw"
+            sizes={sizes}
             onError={() => setFailedImageUrl(resolvedImageUrl)}
           />
         ) : (
@@ -254,10 +263,13 @@ export function ItemList({ initialTag = null }: { initialTag?: string | null }) 
   // 一覧の見え方（画像の収め方・1行の枚数・1ページの枚数）。端末ごとに覚える
   const [display, setDisplay] = useCardDisplay()
 
-  // 1ページの枚数を変えたら先頭へ戻す。5ページ目のまま枚数を増やすと、
+  // 1ページの枚数（列数×行数）が変わったら先頭へ戻す。5ページ目のまま増やすと、
   // そのページ自体が無くなって空の棚が出る
   const changeDisplay = (patch: Partial<CardDisplay>) => {
-    if (patch.perPage !== undefined && patch.perPage !== display.perPage) setPage(1)
+    const changesCount =
+      (patch.columns !== undefined && patch.columns !== display.columns) ||
+      (patch.rows !== undefined && patch.rows !== display.rows)
+    if (changesCount) setPage(1)
     setDisplay(patch)
   }
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set())
@@ -460,7 +472,7 @@ export function ItemList({ initialTag = null }: { initialTag?: string | null }) 
     requestInFlightRef.current = true
     try {
       const [sort, direction] = sortKey.split(':')
-      const { items: fetched, meta } = await getItemsPage(targetPage, display.perPage, {
+      const { items: fetched, meta } = await getItemsPage(targetPage, cardsPerPage(display), {
         tagId: activeTag ?? undefined,
         query: appliedQuery || undefined,
         sort,
@@ -519,7 +531,7 @@ export function ItemList({ initialTag = null }: { initialTag?: string | null }) 
     return () => {
       cancelled = true
     }
-  }, [page, activeTag, appliedQuery, sortKey, statusFilter, refreshToken, display.perPage])
+  }, [page, activeTag, appliedQuery, sortKey, statusFilter, refreshToken, display.columns, display.rows])
 
   /*
     生成中のカードがある間だけ取り直す。
@@ -857,6 +869,7 @@ export function ItemList({ initialTag = null }: { initialTag?: string | null }) 
             selected={selectedIds.has(item.id)}
             onToggle={toggleSelect}
             fit={display.fit}
+            sizes={cardImageSizes(display.columns)}
           />
         ))}
       </div>
