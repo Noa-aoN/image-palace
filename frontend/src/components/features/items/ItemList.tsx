@@ -3,7 +3,7 @@
 import { startTransition, useEffect, useEffectEvent, useRef, useState, useCallback } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
-import { ChevronLeft, ChevronRight, Search, X, Trash2, CheckSquare, Square, Tags, Tag as TagIcon, ShieldCheck, FileText } from 'lucide-react'
+import { ChevronLeft, ChevronRight, Search, X, Trash2, Check, CircleCheck, Circle, Tags, Tag as TagIcon, ShieldCheck, FileText } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Spinner } from '@/components/ui/spinner'
 import { CardGridSkeleton } from '@/components/ui/skeleton'
@@ -28,8 +28,8 @@ import { useItemsStore } from '@/stores/items'
 import type { Item } from '@/types/item'
 import type { Tag } from '@/types/tag'
 import { aspectRatioCss } from '@/lib/aspect-ratio'
-
-const PER_PAGE = 24
+import { useCardDisplay, CARD_GRID_CLASSES, type CardDisplay, type CardFit } from '@/hooks/useCardDisplay'
+import { CardDisplayPanel } from '@/components/features/items/CardDisplayPanel'
 
 // 一括AI操作の per-item 結果（完了後の確認ダイアログ用）
 type BulkResultEntry = {
@@ -114,9 +114,10 @@ type ItemCardProps = {
   selectionMode: boolean
   selected: boolean
   onToggle: (id: string) => void
+  fit: CardFit
 }
 
-function ItemCard({ item, selectionMode, selected, onToggle }: ItemCardProps) {
+function ItemCard({ item, selectionMode, selected, onToggle, fit }: ItemCardProps) {
   const router = useRouter()
   const [failedImageUrl, setFailedImageUrl] = useState<string | null>(null)
   const warmedRef = useRef(false)
@@ -148,17 +149,39 @@ function ItemCard({ item, selectionMode, selected, onToggle }: ItemCardProps) {
         <StatusBadge status={item.generation_status} />
       </div>
       {/* 画像の周りに細い余白（マット）を入れ、トレーディングカードの縁に見せる。
-          スキンやフレームを差し替えるときはこの枠を変える */}
+          スキンやフレームを差し替えるときはこの枠を変える。
+
+          そろえるときは枠を正方形に固定し、画像は縮めて全体を収める。台紙の余白が
+          画像の周りに回るので、比率の違うカードが混ざっても棚が波打たない。
+          画像側に w/h を張らないのは、張ると縁の影と線が画像ではなく余白の外周に付くため。 */}
       <div
-        className="w-full bg-[color-mix(in_srgb,var(--card)_92%,var(--foreground))] p-[5%] flex items-center justify-center overflow-hidden"
-        style={{ aspectRatio: aspectRatioCss(item.aspect_ratio) }}
+        className="relative w-full bg-[color-mix(in_srgb,var(--card)_92%,var(--foreground))] p-[5%] flex items-center justify-center overflow-hidden"
+        style={{ aspectRatio: fit === 'uniform' ? '1 / 1' : aspectRatioCss(item.aspect_ratio) }}
       >
+        {/* 丸型のチェックを画像の右上に。カードの上端はタイトルと状態バッジで
+            埋まっているので、そこに重ねると読みたいものが隠れる。
+            丸なのは、押して入り切りするつまみが一個だけだから */}
+        {selectionMode && (
+          <span
+            aria-hidden
+            className={`absolute right-2 top-2 z-10 flex h-6 w-6 items-center justify-center rounded-full border-2 transition-colors ${
+              selected
+                ? 'border-[var(--palace)] bg-[var(--palace)] text-white'
+                : 'border-white/90 bg-black/25 text-transparent'
+            }`}
+            style={{ boxShadow: '0 1px 3px rgba(0,0,0,0.45)' }}
+          >
+            <Check size={14} strokeWidth={3} />
+          </span>
+        )}
         {resolvedImageUrl && !hasImageError ? (
           // eslint-disable-next-line @next/next/no-img-element
           <img
             src={resolvedImageUrl}
             alt={item.title}
-            className="w-full h-full rounded-[2px] object-cover shadow-[0_1px_3px_rgba(0,0,0,0.25)] ring-1 ring-black/15"
+            className={`rounded-[2px] shadow-[0_1px_3px_rgba(0,0,0,0.25)] ring-1 ring-black/15 ${
+              fit === 'uniform' ? 'max-h-full max-w-full object-contain' : 'w-full h-full object-cover'
+            }`}
             loading="lazy"
             decoding="async"
             sizes="(max-width: 768px) 50vw, (max-width: 1200px) 33vw, 25vw"
@@ -187,12 +210,6 @@ function ItemCard({ item, selectionMode, selected, onToggle }: ItemCardProps) {
           selected ? 'border-[var(--palace)] ring-2 ring-[var(--palace)]' : 'border-border hover:shadow-md'
         }`}
       >
-        <span
-          className={`absolute left-2 top-2 z-10 rounded-md ${selected ? 'text-[var(--palace)]' : 'text-white'}`}
-          style={{ filter: 'drop-shadow(0 1px 2px rgba(0,0,0,0.5))' }}
-        >
-          {selected ? <CheckSquare size={22} /> : <Square size={22} />}
-        </span>
         {inner}
       </button>
     )
@@ -234,6 +251,15 @@ export function ItemList({ initialTag = null }: { initialTag?: string | null }) 
 
   // 選択モード・一括削除
   const [selectionMode, setSelectionMode] = useState(false)
+  // 一覧の見え方（画像の収め方・1行の枚数・1ページの枚数）。端末ごとに覚える
+  const [display, setDisplay] = useCardDisplay()
+
+  // 1ページの枚数を変えたら先頭へ戻す。5ページ目のまま枚数を増やすと、
+  // そのページ自体が無くなって空の棚が出る
+  const changeDisplay = (patch: Partial<CardDisplay>) => {
+    if (patch.perPage !== undefined && patch.perPage !== display.perPage) setPage(1)
+    setDisplay(patch)
+  }
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set())
   const [confirmBulkDelete, setConfirmBulkDelete] = useState(false)
   const [deleting, setDeleting] = useState(false)
@@ -434,7 +460,7 @@ export function ItemList({ initialTag = null }: { initialTag?: string | null }) 
     requestInFlightRef.current = true
     try {
       const [sort, direction] = sortKey.split(':')
-      const { items: fetched, meta } = await getItemsPage(targetPage, PER_PAGE, {
+      const { items: fetched, meta } = await getItemsPage(targetPage, display.perPage, {
         tagId: activeTag ?? undefined,
         query: appliedQuery || undefined,
         sort,
@@ -493,7 +519,7 @@ export function ItemList({ initialTag = null }: { initialTag?: string | null }) 
     return () => {
       cancelled = true
     }
-  }, [page, activeTag, appliedQuery, sortKey, statusFilter, refreshToken])
+  }, [page, activeTag, appliedQuery, sortKey, statusFilter, refreshToken, display.perPage])
 
   /*
     生成中のカードがある間だけ取り直す。
@@ -638,11 +664,16 @@ export function ItemList({ initialTag = null }: { initialTag?: string | null }) 
   // 選択は並んでいるものに対する操作なので、0件のときは出さない。
   const toolbar = (
     <div className="flex justify-end gap-2">
+      {/* 並びは [選択][表示][作成]。選択は左を使い切り、
+          #450 で決めたとおり「作成」を右端に据え置く。
+          選択モードに入っても押せるものの位置が変わらない。 */}
       {items.length > 0 && (
         <Button variant="outline" size="sm" onClick={() => setSelectionMode(true)}>
+          <CircleCheck size={14} className="mr-1" />
           選択
         </Button>
       )}
+      <CardDisplayPanel display={display} onChange={changeDisplay} />
       <CardCreateButton />
     </div>
   )
@@ -695,23 +726,28 @@ export function ItemList({ initialTag = null }: { initialTag?: string | null }) 
     toolbar
   ) : (
     <div className="space-y-2">
-      {/* 選択中も「作成」は右端に残す。モードに入った瞬間に両方消えると、
-          押せるものの位置が変わってしまう。選択の操作盤はその左を使い切る。 */}
+      {/* 操作盤が広がるのは「選択」が置かれていた場所から左だけ。
+          「表示」「作成」は選択中も同じ位置に残す。モードを切り替えた瞬間に
+          押せるものが動くと、次に押したいものを目で探し直すことになる。
+
+          押す前と縦幅も揃える。行が伸びると下の棚がずれて、いま見ていたカードを
+          目で追い直すことになる。そのため枠の上下余白と枠線は持たせず（背景だけで
+          モードを示す）、入り切らないぶんは折り返さずに横へ流す。 */}
       <div className="flex items-center gap-2">
-        <div className="flex min-w-0 flex-1 flex-wrap items-center gap-3 rounded-lg border border-border bg-muted/40 px-3 py-2">
+        <div className="flex min-w-0 flex-1 items-center gap-3 rounded-lg bg-muted/40 px-2">
           <button
             type="button"
             onClick={toggleSelectAll}
             disabled={bulkBusy}
-            className="flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors disabled:opacity-50"
+            className="flex shrink-0 items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors disabled:opacity-50"
           >
-            {allSelected ? <CheckSquare size={16} /> : <Square size={16} />}
+            {allSelected ? <CircleCheck size={16} /> : <Circle size={16} />}
             {allSelected ? 'すべて解除' : 'すべて選択'}
           </button>
-          <span className="text-sm text-muted-foreground">{selectedIds.size}件を選択中</span>
-          <div className="ml-auto flex flex-wrap items-center gap-2">
+          <span className="shrink-0 text-sm text-muted-foreground">{selectedIds.size}件を選択中</span>
+          <div className="ml-auto flex min-w-0 items-center gap-2 overflow-x-auto">
             <Button variant="outline" size="sm" onClick={handleTagFill} disabled={bulkBusy || selectedIds.size === 0}
-              className="flex items-center gap-1.5" title="タグが無いカードにだけAIでタグを付けます">
+              className="flex shrink-0 items-center gap-1.5" title="タグが無いカードにだけAIでタグを付けます">
               <TagIcon size={14} />タグを付与
             </Button>
             <Button
@@ -720,38 +756,39 @@ export function ItemList({ initialTag = null }: { initialTag?: string | null }) 
               onClick={handleTagReplace}
               disabled={bulkBusy || selectedIds.size === 0}
               onBlur={() => setConfirmTagReplace(false)}
-              className="flex items-center gap-1.5"
+              className="flex shrink-0 items-center gap-1.5"
               title="選択カードのタグをAIの結果で置き換えます"
             >
               <Tags size={14} />
               {confirmTagReplace ? `置き換える（${selectedIds.size}件）` : 'タグを再設定'}
             </Button>
             <Button variant="outline" size="sm" onClick={handleMeaningFill} disabled={bulkBusy || selectedIds.size === 0}
-              className="flex items-center gap-1.5" title="説明が無いカードにだけAIで説明を付けます">
+              className="flex shrink-0 items-center gap-1.5" title="説明が無いカードにだけAIで説明を付けます">
               <FileText size={14} />説明を付与
             </Button>
             <Button variant="outline" size="sm" onClick={handleFactCheck} disabled={bulkBusy || selectedIds.size === 0}
-              className="flex items-center gap-1.5" title="説明が事実として正しいかAIでチェックし、訂正案を出します">
+              className="flex shrink-0 items-center gap-1.5" title="説明が事実として正しいかAIでチェックし、訂正案を出します">
               <ShieldCheck size={14} />AIで情報をチェック
             </Button>
-            <span className="mx-1 h-5 w-px bg-border" aria-hidden />
+            <span className="mx-1 h-5 w-px shrink-0 bg-border" aria-hidden />
             <Button
               variant={confirmBulkDelete ? 'destructive' : 'outline'}
               size="sm"
               onClick={handleBulkDelete}
               disabled={bulkBusy || selectedIds.size === 0}
               onBlur={() => setConfirmBulkDelete(false)}
-              className="flex items-center gap-1.5"
+              className="flex shrink-0 items-center gap-1.5"
             >
               {deleting ? <Spinner size={14} /> : <Trash2 size={14} />}
               {deleting ? '削除中...' : confirmBulkDelete ? `本当に削除（${selectedIds.size}件）` : '削除'}
             </Button>
-            <Button variant="ghost" size="sm" onClick={exitSelection} disabled={bulkBusy}>
+            <Button variant="ghost" size="sm" className="shrink-0" onClick={exitSelection} disabled={bulkBusy}>
               キャンセル
             </Button>
           </div>
         </div>
-        <div className="shrink-0">
+        <div className="flex shrink-0 items-center gap-2">
+          <CardDisplayPanel display={display} onChange={changeDisplay} />
           <CardCreateButton />
         </div>
       </div>
@@ -811,7 +848,7 @@ export function ItemList({ initialTag = null }: { initialTag?: string | null }) 
     <div className="space-y-6">
       {filterBar}
       {selectionBar}
-      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
+      <div className={`grid gap-4 ${CARD_GRID_CLASSES[display.columns]}`}>
         {items.map((item) => (
           <ItemCard
             key={item.id}
@@ -819,6 +856,7 @@ export function ItemList({ initialTag = null }: { initialTag?: string | null }) 
             selectionMode={selectionMode}
             selected={selectedIds.has(item.id)}
             onToggle={toggleSelect}
+            fit={display.fit}
           />
         ))}
       </div>
