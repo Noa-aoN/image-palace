@@ -46,9 +46,9 @@ export function CardDisplayPanel({
 
       <PanelSlotContent sectionKey={PANEL_KEY}>
         <div className="space-y-5">
-          <p className="text-xs leading-relaxed text-muted-foreground">
-            この端末での見え方です。ほかの端末やほかの人の画面は変わりません。
-          </p>
+          {/* 説明は「選ぶと何が変わるか」だけに絞る。仕組みの話（枚数でなく行数で持つ等）は
+              下の「◯列 × ◯行 ＝ ◯枚」を見れば分かるので、文にはしない */}
+          <p className="text-xs text-muted-foreground">この端末だけの設定です。</p>
 
           <div className="space-y-2">
             <Label>画像の収め方</Label>
@@ -62,8 +62,8 @@ export function CardDisplayPanel({
             </div>
             <p className="text-xs text-muted-foreground">
               {display.fit === 'uniform'
-                ? 'すべて正方形にして、画像は余白を付けて全体を収めます。縦横比の違うカードが混ざっても棚が波打ちません。'
-                : 'カードの縦横比そのままで並べます。画像は枠いっぱいに入ります。'}
+                ? '正方形にそろえ、余白を付けて画像全体を収めます。棚が波打ちません。'
+                : 'カードの縦横比のまま、画像は枠いっぱいに入ります。'}
             </p>
           </div>
 
@@ -77,12 +77,12 @@ export function CardDisplayPanel({
               ))}
             </div>
             <p className="text-xs text-muted-foreground">
-              画面が広いときの列数です。狭い画面では自動で減ります。多くするほど単語名は省略されます。
+              広い画面での列数です。狭い画面では自動で減り、多いほど単語名は省略されます。
             </p>
           </div>
 
           <div className="space-y-2">
-            <Label>行数（1ページあたり）</Label>
+            <Label>1ページの行数</Label>
             <div className="flex flex-wrap gap-2">
               {rowChoices.map((count) => (
                 <Chip key={count} active={display.rows === count} onClick={() => onChange({ rows: count })}>
@@ -90,19 +90,16 @@ export function CardDisplayPanel({
                 </Chip>
               ))}
             </div>
-            <p className="text-xs text-muted-foreground">
-              枚数ではなく行数で持ちます。列数を変えても最後の行が欠けません。
-              {rowChoices.length < CARD_ROW_CHOICES.length &&
-                `　列数が多いと、1ページ ${MAX_CARDS_PER_PAGE} 枚を超える行数は選べません。`}
-            </p>
+            {rowChoices.length < CARD_ROW_CHOICES.length && (
+              <p className="text-xs text-muted-foreground">1ページ {MAX_CARDS_PER_PAGE} 枚までです。</p>
+            )}
           </div>
 
-          {/* 選んだ組み合わせが何枚になるかは、行数だけでは分からない。ここで出す */}
           <p className="rounded-lg bg-muted/40 px-3 py-2 text-xs text-muted-foreground">
-            いまの設定: <strong className="text-foreground">{display.columns} 列 × {display.rows} 行</strong> ＝ 1ページ{' '}
-            <strong className="text-foreground">{perPage} 枚</strong>
-            <br />
-            多くすると送りの回数は減りますが、そのぶん1回の読み込みが重くなります。
+            <strong className="text-foreground">
+              {display.columns} 列 × {display.rows} 行
+            </strong>{' '}
+            ＝ 1ページ <strong className="text-foreground">{perPage} 枚</strong>
           </p>
         </div>
       </PanelSlotContent>
