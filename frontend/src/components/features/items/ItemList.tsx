@@ -152,7 +152,7 @@ function ItemCard({ item, selectionMode, selected, onToggle, fit, sizes }: ItemC
   const inner = (
     <>
       {/* テキストを上・画像を下に配置 */}
-      <div className="relative px-3 py-2 flex items-center justify-between gap-2">
+      <div className="px-3 py-2 flex items-center justify-between gap-2">
         {/* ファクトチェックで「正しい」以外なら単語名に色を付けて気づけるようにする */}
         <span
           className={`text-sm font-medium truncate ${factCheckTitleClass(item.fact_check_status)}`}
@@ -163,17 +163,6 @@ function ItemCard({ item, selectionMode, selected, onToggle, fit, sizes }: ItemC
           {item.title}
         </span>
         <StatusBadge status={item.generation_status} />
-        {/* 出す先はタイトル行のすぐ下＝画像の上。カードは overflow-hidden なので、
-            外へ出すと切られる。ブラウザ標準の title は出るまで約1秒かかり、
-            棚を流し見するには遅い */}
-        {titleClipped && (
-          <span
-            role="tooltip"
-            className="pointer-events-none absolute left-3 right-3 top-full z-20 rounded-md bg-foreground px-2 py-1 text-xs leading-snug text-background shadow-md"
-          >
-            {item.title}
-          </span>
-        )}
       </div>
       {/* 画像の周りに細い余白（マット）を入れ、トレーディングカードの縁に見せる。
           スキンやフレームを差し替えるときはこの枠を変える。
@@ -227,22 +216,18 @@ function ItemCard({ item, selectionMode, selected, onToggle, fit, sizes }: ItemC
   )
 
   // 選択モード中はナビゲーションせず、クリックで選択をトグルする
-  if (selectionMode) {
-    return (
-      <button
-        type="button"
-        onClick={() => onToggle(item.id)}
-        aria-pressed={selected}
-        className={`relative flex flex-col rounded-xl border overflow-hidden bg-card text-left transition-shadow ${
-          selected ? 'border-[var(--palace)] ring-2 ring-[var(--palace)]' : 'border-border hover:shadow-md'
-        }`}
-      >
-        {inner}
-      </button>
-    )
-  }
-
-  return (
+  const card = selectionMode ? (
+    <button
+      type="button"
+      onClick={() => onToggle(item.id)}
+      aria-pressed={selected}
+      className={`relative flex w-full flex-col rounded-xl border overflow-hidden bg-card text-left transition-shadow ${
+        selected ? 'border-[var(--palace)] ring-2 ring-[var(--palace)]' : 'border-border hover:shadow-md'
+      }`}
+    >
+      {inner}
+    </button>
+  ) : (
     <Link
       href={`/items/${item.id}`}
       className="flex flex-col rounded-xl border border-border overflow-hidden bg-card hover:shadow-md transition-shadow"
@@ -252,6 +237,24 @@ function ItemCard({ item, selectionMode, selected, onToggle, fit, sizes }: ItemC
     >
       {inner}
     </Link>
+  )
+
+  // 吹き出しはカードの外に置く。カード自身は overflow-hidden（画像を角丸で切るため）なので、
+  // 中に置くと上へはみ出したぶんが切られる。
+  //
+  // 幅は中身なり（w-max）。折り返すのは、画面や隣のカードを押しのけるほど長いときだけ。
+  return (
+    <div className="relative flex flex-col">
+      {titleClipped && (
+        <span
+          role="tooltip"
+          className="pointer-events-none absolute bottom-full left-1/2 z-30 mb-1 w-max max-w-[min(18rem,80vw)] -translate-x-1/2 rounded-md bg-foreground px-2 py-1 text-xs leading-snug text-background shadow-md"
+        >
+          {item.title}
+        </span>
+      )}
+      {card}
+    </div>
   )
 }
 
