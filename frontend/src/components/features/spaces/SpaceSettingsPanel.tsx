@@ -98,7 +98,19 @@ export function RoomSettingsPanel({
   )
 }
 
-/** ポイントの設定（表示サイズ・選んだ点の向き） */
+/**
+ * 「効く範囲」で設定を2つに分けている。
+ *
+ *   全体設定 … この部屋のポイント全部に効く（表示サイズなど）
+ *   個別設定 … いま選んでいるポイント1つだけに効く（向きなど）
+ *
+ * 同じパネルに混ぜていた頃は、スライダーを動かしたときに
+ * 全部が変わるのか1つだけ変わるのかが分からなかった。
+ * 説明文もこの2つの言い方で揃えている。
+ */
+const SCOPE_ALL = 'この部屋のポイント全部に効きます。'
+const SCOPE_ONE = 'いま選んでいるポイント1つだけに効きます。'
+
 /**
  * この記憶資産の絵が、どんな指示から作られたかを見せる。
  *
@@ -131,33 +143,24 @@ function PointPromptInfo({ point }: { point: SpacePoint }) {
   )
 }
 
-export function PointSettingsPanel({
+/** ポイントの全体設定（この部屋のポイント全部に効く） */
+export function PointCommonSettingsPanel({
   space,
-  selectedPoint,
   autoScale,
   onAutoScaleChange,
   onSpaceSetting,
-  onRotate,
-  onRotateCommit,
 }: {
   space: SpaceDetail
-  selectedPoint: SpacePoint | null
   autoScale: boolean
   onAutoScaleChange: (value: boolean) => void
   onSpaceSetting: (patch: Partial<SpaceDetail>) => void
-  onRotate: (pointId: string, axis: 'x' | 'y' | 'z', deg: number) => void
-  onRotateCommit: (pointId: string, patch: Record<string, number>) => void
 }) {
   return (
     <div className="space-y-5 p-4">
-      {selectedPoint && (
-        <div className="flex justify-end">
-          <PointPromptInfo point={selectedPoint} />
-        </div>
-      )}
+      <p className="text-[11px] text-muted-foreground">{SCOPE_ALL}</p>
 
       <Section title="表示">
-        <Field label="表示サイズ（全体）" value={`×${space.point_scale.toFixed(1)}`}>
+        <Field label="表示サイズ" value={`×${space.point_scale.toFixed(1)}`}>
           <input
             type="range"
             min={0.5}
@@ -180,76 +183,104 @@ export function PointSettingsPanel({
           />
         </label>
       </Section>
+    </div>
+  )
+}
 
-      <Section title="選んだポイントの向き">
-        {selectedPoint ? (
-          <>
-            <div className="flex items-center justify-between gap-2">
-              <span className="truncate text-xs font-medium">{selectedPoint.name || '未命名'}</span>
-              <button
-                type="button"
-                onClick={() => {
-                  ROTATION_AXES.forEach(({ axis }) => onRotate(selectedPoint.id, axis, 0))
-                  onRotateCommit(selectedPoint.id, { rotation_x: 0, rotation_y: 0, rotation_z: 0 })
-                }}
-                className="shrink-0 text-[11px] text-muted-foreground underline hover:text-foreground"
+/** ポイントの個別設定（いま選んでいる1つだけに効く） */
+export function PointDetailSettingsPanel({
+  selectedPoint,
+  onRotate,
+  onRotateCommit,
+}: {
+  selectedPoint: SpacePoint | null
+  onRotate: (pointId: string, axis: 'x' | 'y' | 'z', deg: number) => void
+  onRotateCommit: (pointId: string, patch: Record<string, number>) => void
+}) {
+  if (!selectedPoint) {
+    return (
+      <div className="space-y-2 p-4">
+        <p className="text-[11px] text-muted-foreground">{SCOPE_ONE}</p>
+        <p className="text-[11px] text-muted-foreground">
+          2D / 3D のポイントをクリックして選ぶと、ここで調整できます。
+        </p>
+      </div>
+    )
+  }
+
+  return (
+    <div className="space-y-5 p-4">
+      {/* どのポイントを触っているかを最初に出す。ここが分からないと、
+          スライダーが何に効いているのか分からない */}
+      <div className="space-y-1">
+        <div className="flex items-center justify-between gap-2">
+          <span className="truncate text-sm font-medium">{selectedPoint.name || '未命名'}</span>
+          <PointPromptInfo point={selectedPoint} />
+        </div>
+        <p className="text-[11px] text-muted-foreground">{SCOPE_ONE}</p>
+      </div>
+
+      <Section title="向き">
+        <div className="flex justify-end">
+          <button
+            type="button"
+            onClick={() => {
+              ROTATION_AXES.forEach(({ axis }) => onRotate(selectedPoint.id, axis, 0))
+              onRotateCommit(selectedPoint.id, { rotation_x: 0, rotation_y: 0, rotation_z: 0 })
+            }}
+            className="shrink-0 text-[11px] text-muted-foreground underline hover:text-foreground"
+          >
+            すべて戻す
+          </button>
+        </div>
+        {ROTATION_AXES.map(({ axis, label }) => {
+            const value =
+              axis === 'x'
+                ? selectedPoint.rotation_x
+                : axis === 'y'
+                  ? selectedPoint.rotation_y
+                  : selectedPoint.rotation_z
+            const changed = Math.round(value ?? 0) !== 0
+            return (
+              <Field
+                key={axis}
+                label={label}
+                value={`${Math.round(value ?? 0)}°`}
+                action={
+                  changed ? (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        onRotate(selectedPoint.id, axis, 0)
+                        onRotateCommit(selectedPoint.id, { [`rotation_${axis}`]: 0 })
+                      }}
+                      className="underline hover:text-foreground"
+                      aria-label={`${label}をリセット`}
+                    >
+                      リセット
+                    </button>
+                  ) : undefined
+                }
               >
-                すべて戻す
-              </button>
-            </div>
-            {ROTATION_AXES.map(({ axis, label }) => {
-              const value =
-                axis === 'x'
-                  ? selectedPoint.rotation_x
-                  : axis === 'y'
-                    ? selectedPoint.rotation_y
-                    : selectedPoint.rotation_z
-              const changed = Math.round(value ?? 0) !== 0
-              return (
-                <Field
-                  key={axis}
-                  label={label}
-                  value={`${Math.round(value ?? 0)}°`}
-                  action={
-                    changed ? (
-                      <button
-                        type="button"
-                        onClick={() => {
-                          onRotate(selectedPoint.id, axis, 0)
-                          onRotateCommit(selectedPoint.id, { [`rotation_${axis}`]: 0 })
-                        }}
-                        className="underline hover:text-foreground"
-                        aria-label={`${label}をリセット`}
-                      >
-                        リセット
-                      </button>
-                    ) : undefined
+                <input
+                  type="range"
+                  min={-180}
+                  max={179}
+                  step={1}
+                  value={value ?? 0}
+                  onChange={(e) => onRotate(selectedPoint.id, axis, Number(e.target.value))}
+                  onPointerUp={(e) =>
+                    onRotateCommit(selectedPoint.id, {
+                      [`rotation_${axis}`]: Number((e.target as HTMLInputElement).value),
+                    })
                   }
-                >
-                  <input
-                    type="range"
-                    min={-180}
-                    max={179}
-                    step={1}
-                    value={value ?? 0}
-                    onChange={(e) => onRotate(selectedPoint.id, axis, Number(e.target.value))}
-                    onPointerUp={(e) =>
-                      onRotateCommit(selectedPoint.id, {
-                        [`rotation_${axis}`]: Number((e.target as HTMLInputElement).value),
-                      })
-                    }
-                    className="w-full accent-[var(--palace)]"
-                    aria-label={`${label}（度）`}
-                  />
-                </Field>
-              )
-            })}
-          </>
-        ) : (
-          <p className="text-[11px] text-muted-foreground">
-            2D / 3D でポイントを選ぶと、向きを調整できます。2D は傾きを遠近で近似表示します。
-          </p>
-        )}
+                  className="w-full accent-[var(--palace)]"
+                  aria-label={`${label}（度）`}
+                />
+              </Field>
+            )
+        })}
+        <p className="text-[11px] text-muted-foreground">2D では、傾きを遠近で近似して表示します。</p>
       </Section>
     </div>
   )
