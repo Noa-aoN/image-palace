@@ -10,8 +10,8 @@ import { useSyncExternalStore } from 'react'
  *   uniform  どのカードも正方形にして、画像は余白を付けて全体を収める
  *   比率の違うカードが混ざると、CSS グリッドは行の高さを一番高いカードに合わせるため、
  *   低いカードの下に空きができて棚が波打つ。uniform はそれを止めるための見え方。
- * columns  … 広い画面での1行の枚数（狭い画面では自動で減る）
- * perPage  … 1ページの枚数
+ * columns  … 広い画面での列数（狭い画面では自動で減る）
+ * rows     … 1ページの行数。枚数は columns × rows で決まる
  *
  * アカウントに紐づける性質のものではないので localStorage に端末ごと持つ。
  * 同じアカウントでも、机の大きな画面と手元の携帯とで好みは変わる。
@@ -28,7 +28,7 @@ export interface CardDisplay {
   rows: number
 }
 
-export const CARD_COLUMN_CHOICES = [2, 3, 4, 5, 6, 7, 8] as const
+export const CARD_COLUMN_CHOICES = [2, 3, 4, 5, 6, 7, 8, 9, 10] as const
 export const CARD_ROW_CHOICES = [3, 5, 10, 20] as const
 
 // サーバー側の上限（Api::V1::ItemsController::MAX_PER_PAGE）。超える組み合わせは選ばせない
@@ -45,6 +45,8 @@ export const CARD_GRID_CLASSES: Record<number, string> = {
   6: 'grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6',
   7: 'grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-7',
   8: 'grid-cols-2 md:grid-cols-4 lg:grid-cols-6 xl:grid-cols-8',
+  9: 'grid-cols-3 md:grid-cols-4 lg:grid-cols-6 xl:grid-cols-9',
+  10: 'grid-cols-3 md:grid-cols-5 lg:grid-cols-7 xl:grid-cols-10',
 }
 
 /** 1ページの枚数。行で持つので、列数を変えても行はきれいに埋まる */
@@ -61,7 +63,7 @@ export function availableRowChoices(columns: number): number[] {
 
 /**
  * 一覧の画像に申告する表示幅。列数から作る。
- * 固定値のままだと、8列（実質 12.5vw）でも 25vw ぶんの解像度を落としてきて無駄になる。
+ * 固定値のままだと、10列（実質 10vw）でも 25vw ぶんの解像度を落としてきて無駄になる。
  */
 export function cardImageSizes(columns: number): string {
   return `(max-width: 768px) 50vw, (max-width: 1200px) 33vw, ${Math.round(100 / columns)}vw`
