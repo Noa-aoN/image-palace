@@ -108,6 +108,15 @@ function bulkResultDetail(kind: BulkKind, e: BulkResultEntry): string | null {
   return null
 }
 
+// 単語名の吹き出しの最大幅（max-w-[18rem] と合わせる）。寄せ方の判定に使う
+const TITLE_TOOLTIP_MAX_WIDTH = 288
+
+const TOOLTIP_ALIGN_CLASSES = {
+  left: 'left-0',
+  center: 'left-1/2 -translate-x-1/2',
+  right: 'right-0',
+} as const
+
 // ファクトチェックで「正しい」以外のときの単語名の色（一覧カードで使用）
 function factCheckTitleClass(status?: string | null): string {
   if (status === 'incorrect') return 'text-red-600'
@@ -137,7 +146,25 @@ function ItemCard({ item, selectionMode, selected, onToggle, fit, sizes }: ItemC
   // 単語名が枠に入り切らないときだけ、ホバーで全文を出す。
   // 列数を増やせるようにした結果、8〜10列では名前が数文字で切れる。
   // 切れていないカードにまで出すと、ただの邪魔になるので測ってから決める。
-  const [titleClipped, setTitleClipped] = useState(false)
+  //
+  // 寄せ方も測って決める。真ん中から伸ばすと、左端・右端の列では棚の外へ出て切れる。
+  // 段数は画面幅で変わる（xl で10列でも、md では5列）ので、何列目かは数えられない。
+  // 棚そのものの左右端と見比べて、はみ出す側には付けない。
+  const [tooltipAlign, setTooltipAlign] = useState<'left' | 'center' | 'right' | null>(null)
+
+  const showTitleTooltip = (e: React.MouseEvent<HTMLSpanElement>) => {
+    const el = e.currentTarget
+    if (el.scrollWidth <= el.clientWidth) return setTooltipAlign(null)
+
+    const grid = el.closest('[data-card-grid]')?.getBoundingClientRect()
+    if (!grid) return setTooltipAlign('center')
+
+    const card = el.getBoundingClientRect()
+    const center = (card.left + card.right) / 2
+    // 実際の幅は出してみないと分からないので、上限で見積もっておく（狭まるぶんには困らない）
+    const half = TITLE_TOOLTIP_MAX_WIDTH / 2
+    setTooltipAlign(center - half < grid.left ? 'left' : center + half > grid.right ? 'right' : 'center')
+  }
 
   const warmupDetail = () => {
     if (warmedRef.current) return
@@ -157,8 +184,8 @@ function ItemCard({ item, selectionMode, selected, onToggle, fit, sizes }: ItemC
         <span
           className={`text-sm font-medium truncate ${factCheckTitleClass(item.fact_check_status)}`}
           title={item.fact_check_status && item.fact_check_status !== 'correct' ? 'ファクトチェックで要確認' : undefined}
-          onMouseEnter={(e) => setTitleClipped(e.currentTarget.scrollWidth > e.currentTarget.clientWidth)}
-          onMouseLeave={() => setTitleClipped(false)}
+          onMouseEnter={showTitleTooltip}
+          onMouseLeave={() => setTooltipAlign(null)}
         >
           {item.title}
         </span>
@@ -245,10 +272,10 @@ function ItemCard({ item, selectionMode, selected, onToggle, fit, sizes }: ItemC
   // 幅は中身なり（w-max）。折り返すのは、画面や隣のカードを押しのけるほど長いときだけ。
   return (
     <div className="relative flex flex-col">
-      {titleClipped && (
+      {tooltipAlign && (
         <span
           role="tooltip"
-          className="pointer-events-none absolute bottom-full left-1/2 z-30 mb-1 w-max max-w-[min(18rem,80vw)] -translate-x-1/2 rounded-md bg-foreground px-2 py-1 text-xs leading-snug text-background shadow-md"
+          className={`pointer-events-none absolute bottom-full z-30 mb-1 w-max max-w-[min(18rem,80vw)] rounded-md bg-foreground px-2 py-1 text-xs leading-snug text-background shadow-md ${TOOLTIP_ALIGN_CLASSES[tooltipAlign]}`}
         >
           {item.title}
         </span>
@@ -881,7 +908,7 @@ export function ItemList({ initialTag = null }: { initialTag?: string | null }) 
     <div className="space-y-6">
       {filterBar}
       {selectionBar}
-      <div className={`grid gap-4 ${CARD_GRID_CLASSES[display.columns]}`}>
+      <div data-card-grid className={`grid gap-4 ${CARD_GRID_CLASSES[display.columns]}`}>
         {items.map((item) => (
           <ItemCard
             key={item.id}
