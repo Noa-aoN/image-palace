@@ -7,6 +7,7 @@ import { Input } from '@/components/ui/input'
 import { Spinner } from '@/components/ui/spinner'
 import { Skeleton } from '@/components/ui/skeleton'
 import { Tooltip } from '@/components/ui/tooltip'
+import { PropertyBlock, BlockAction, BlockError } from '@/components/features/items/PropertyBlock'
 import { ItemProperties } from '@/components/features/items/ItemProperties'
 import { ItemImageBar } from '@/components/features/items/ItemImageBar'
 import { GeneratingOverlay } from '@/components/features/items/GeneratingOverlay'
@@ -56,97 +57,103 @@ export function ItemDetailBody({ itemId, onDeleted }: { itemId: string; onDelete
 
   return (
     <div className="space-y-5">
-      {/* タイトル + ステータス */}
-      {editing ? (
-        <div className="space-y-2">
-          <div className="flex items-center gap-2">
-            <Input
-              value={titleDraft}
-              onChange={(e) => setTitleDraft(e.target.value)}
-              onKeyDown={(e) => {
-                if (e.key === 'Enter') {
-                  e.preventDefault()
-                  handleSaveTitle()
-                }
-                if (e.key === 'Escape') cancelEdit()
-              }}
-              disabled={saving}
-              autoFocus
-              aria-label="タイトル"
-            />
-            <Tooltip label="保存">
-              <Button size="sm" onClick={handleSaveTitle} disabled={saving} aria-label="保存" className="shrink-0">
-                {saving ? <Spinner size={16} /> : <Check size={16} />}
-              </Button>
-            </Tooltip>
-            <Tooltip label="キャンセル">
-              <Button variant="ghost" size="sm" onClick={cancelEdit} disabled={saving} aria-label="キャンセル" className="shrink-0">
-                <X size={16} />
-              </Button>
-            </Tooltip>
+      {/*
+        見出し語も、下のプロパティと同じ薄い枠に載せる。
+        カードが持つものはどれも同じ形で並ぶ、という見え方に揃えるため。
+      */}
+      <PropertyBlock
+        title="見出し語"
+        actions={
+          !editing && (
+            <BlockAction icon={<Pencil size={14} />} label="単語を編集" onClick={startEdit} hideLabel />
+          )
+        }
+      >
+        {editing ? (
+          <div className="space-y-2">
+            <div className="flex items-center gap-2">
+              <Input
+                value={titleDraft}
+                onChange={(e) => setTitleDraft(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') {
+                    e.preventDefault()
+                    handleSaveTitle()
+                  }
+                  if (e.key === 'Escape') cancelEdit()
+                }}
+                disabled={saving}
+                autoFocus
+                aria-label="見出し語"
+              />
+              <Tooltip label="保存">
+                <Button size="sm" onClick={handleSaveTitle} disabled={saving} aria-label="保存" className="shrink-0">
+                  {saving ? <Spinner size={16} /> : <Check size={16} />}
+                </Button>
+              </Tooltip>
+              <Tooltip label="キャンセル">
+                <Button variant="ghost" size="sm" onClick={cancelEdit} disabled={saving} aria-label="キャンセル" className="shrink-0">
+                  <X size={16} />
+                </Button>
+              </Tooltip>
+            </div>
+            <BlockError message={editError} />
           </div>
-          {editError && <p className="text-sm text-destructive">{editError}</p>}
-        </div>
-      ) : (
-        <div className="flex items-start justify-between gap-2">
-          <div className="flex min-w-0 items-center gap-2">
+        ) : (
+          <div className="flex items-center justify-between gap-2">
             <h2 className="truncate text-lg font-semibold">{item.title}</h2>
-            <Tooltip label="単語を編集">
+            <StatusBadge status={item.generation_status} />
+          </div>
+        )}
+      </PropertyBlock>
+
+      {/*
+        イメージも同じ枠に載せる。周りの余白は、あとで台紙やフレームを
+        差し替えられるよう、画像そのものではなくこの枠側に持たせる。
+      */}
+      <PropertyBlock title="イメージ">
+        {item.media?.url && !imgError ? (
+          <div
+            className="group relative w-full overflow-hidden rounded-lg bg-muted"
+            style={
+              item.media.blur
+                ? { backgroundImage: `url("${item.media.blur}")`, backgroundSize: 'cover', backgroundPosition: 'center' }
+                : undefined
+            }
+          >
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
+              src={item.media.url}
+              alt={item.title}
+              className="w-full cursor-zoom-in rounded-lg object-cover"
+              decoding="async"
+              onClick={() => setZoomed(true)}
+              onError={() => setImgError(true)}
+            />
+            <Tooltip label="画像をダウンロード">
               <button
-                onClick={startEdit}
-                className="shrink-0 text-muted-foreground transition-colors hover:text-foreground"
-                aria-label="単語を編集"
+                type="button"
+                onClick={(e) => {
+                  e.stopPropagation()
+                  downloadImage(item.media!.url!, item.title)
+                }}
+                aria-label="画像をダウンロード"
+                className="absolute right-2 top-2 rounded-lg bg-black/55 p-1.5 text-white opacity-0 transition-opacity hover:bg-black/70 focus-visible:opacity-100 group-hover:opacity-100"
               >
-                <Pencil size={15} />
+                <Download size={16} />
               </button>
             </Tooltip>
           </div>
-          <StatusBadge status={item.generation_status} />
-        </div>
-      )}
-
-      {/* 画像 */}
-      {item.media?.url && !imgError ? (
-        <div
-          className="group relative w-full overflow-hidden rounded-xl bg-muted"
-          style={
-            item.media.blur
-              ? { backgroundImage: `url("${item.media.blur}")`, backgroundSize: 'cover', backgroundPosition: 'center' }
-              : undefined
-          }
-        >
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img
-            src={item.media.url}
-            alt={item.title}
-            className="w-full cursor-zoom-in rounded-xl object-cover"
-            decoding="async"
-            onClick={() => setZoomed(true)}
-            onError={() => setImgError(true)}
+        ) : (
+          <GeneratingOverlay
+            status={item.generation_status}
+            label={imgError ? '画像を表示できません' : STATUS_LABEL[item.generation_status]}
+            className="w-full rounded-lg text-muted-foreground"
+            style={{ aspectRatio: aspectRatioCss(item?.aspect_ratio) }}
+            textClassName="text-sm"
           />
-          {/* ダウンロード（ホバーで表示） */}
-          <button
-            type="button"
-            onClick={(e) => {
-              e.stopPropagation()
-              downloadImage(item.media!.url!, item.title)
-            }}
-            aria-label="画像をダウンロード"
-            title="画像をダウンロード"
-            className="absolute right-2 top-2 rounded-lg bg-black/55 p-1.5 text-white opacity-0 transition-opacity hover:bg-black/70 focus-visible:opacity-100 group-hover:opacity-100"
-          >
-            <Download size={16} />
-          </button>
-        </div>
-      ) : (
-        <GeneratingOverlay
-          status={item.generation_status}
-          label={imgError ? '画像を表示できません' : STATUS_LABEL[item.generation_status]}
-          className="w-full rounded-xl text-muted-foreground"
-          style={{ aspectRatio: aspectRatioCss(item?.aspect_ratio) }}
-          textClassName="text-sm"
-        />
-      )}
+        )}
+      </PropertyBlock>
 
       {/* 画像まわりの情報と操作（生成情報・プロンプト情報・作り直す） */}
       <ItemImageBar item={item} onUpdated={applyUpdated} />

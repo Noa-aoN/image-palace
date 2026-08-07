@@ -6,7 +6,14 @@ import { Button } from '@/components/ui/button'
 import { Spinner } from '@/components/ui/spinner'
 import { BlockEmpty, BlockError } from '@/components/features/items/PropertyBlock'
 import { Tooltip } from '@/components/ui/tooltip'
-import { MEANING_LEVELS, meaningLevelLabel, DEFAULT_MEANING_LEVEL } from '@/lib/meaning-levels'
+import {
+  MEANING_LEVELS,
+  meaningLevelLabel,
+  DEFAULT_MEANING_LEVEL,
+  MEANING_LANGUAGES,
+  DEFAULT_MEANING_LANGUAGE,
+  meaningLanguageLabel,
+} from '@/lib/meaning-levels'
 import { createMeaning, updateMeaning, deleteMeaning, reorderMeanings, getItem } from '@/lib/api/items'
 import type { Item, ItemMeaning } from '@/types/item'
 
@@ -34,6 +41,7 @@ export function MeaningList({
   const [draft, setDraft] = useState('')
   const [exampleDraft, setExampleDraft] = useState('')
   const [levelDraft, setLevelDraft] = useState<string>(DEFAULT_MEANING_LEVEL)
+  const [languageDraft, setLanguageDraft] = useState<string>(DEFAULT_MEANING_LANGUAGE)
   const [busyId, setBusyId] = useState<string | null>(null)
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -50,6 +58,7 @@ export function MeaningList({
     setDraft('')
     setExampleDraft('')
     setLevelDraft(DEFAULT_MEANING_LEVEL)
+    setLanguageDraft(DEFAULT_MEANING_LANGUAGE)
     setError(null)
   }
 
@@ -59,6 +68,7 @@ export function MeaningList({
     setDraft(entry.definition)
     setExampleDraft(entry.example_sentence ?? '')
     setLevelDraft(entry.detail_level)
+    setLanguageDraft(entry.language_code)
     setError(null)
   }
 
@@ -78,6 +88,7 @@ export function MeaningList({
         definition: draft.trim(),
         example_sentence: exampleDraft.trim() || null,
         detail_level: levelDraft,
+        language_code: languageDraft,
       }
       if (editingId) await updateMeaning(item.id, editingId, payload)
       else await createMeaning(item.id, payload)
@@ -149,6 +160,8 @@ export function MeaningList({
               onExample={setExampleDraft}
               level={levelDraft}
               onLevel={setLevelDraft}
+              language={languageDraft}
+              onLanguage={setLanguageDraft}
               saving={saving}
               onSave={save}
               onCancel={cancel}
@@ -168,7 +181,8 @@ export function MeaningList({
                   )}
                   <span className="text-[11px] text-muted-foreground">
                     {meaningLevelLabel(entry.detail_level)}
-                    {entry.language_code !== 'ja' && ` / ${entry.language_code}`}
+                    {entry.language_code !== DEFAULT_MEANING_LANGUAGE &&
+                      ` / ${meaningLanguageLabel(entry.language_code)}`}
                   </span>
                 </div>
                 <div className="flex shrink-0 items-center gap-1.5 text-muted-foreground">
@@ -218,6 +232,8 @@ export function MeaningList({
             onExample={setExampleDraft}
             level={levelDraft}
             onLevel={setLevelDraft}
+            language={languageDraft}
+            onLanguage={setLanguageDraft}
             saving={saving}
             onSave={save}
             onCancel={cancel}
@@ -248,6 +264,8 @@ function Editor({
   onExample,
   level,
   onLevel,
+  language,
+  onLanguage,
   saving,
   onSave,
   onCancel,
@@ -258,6 +276,8 @@ function Editor({
   onExample: (v: string) => void
   level: string
   onLevel: (v: string) => void
+  language: string
+  onLanguage: (v: string) => void
   saving: boolean
   onSave: () => void
   onCancel: () => void
@@ -300,6 +320,22 @@ function Editor({
             </button>
           )
         })}
+      </div>
+      <div className="flex flex-wrap items-center gap-1.5">
+        <span className="text-xs text-muted-foreground">言語:</span>
+        <select
+          value={language}
+          onChange={(e) => onLanguage(e.target.value)}
+          disabled={saving}
+          aria-label="言語"
+          className="h-7 rounded-lg border border-input bg-background px-2 text-xs focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-50"
+        >
+          {MEANING_LANGUAGES.map((lang) => (
+            <option key={lang.code} value={lang.code}>
+              {lang.label}
+            </option>
+          ))}
+        </select>
       </div>
       <div className="flex gap-2">
         <Button size="sm" onClick={onSave} disabled={saving} className="flex items-center gap-1.5">

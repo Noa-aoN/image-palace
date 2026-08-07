@@ -1,7 +1,7 @@
 'use client'
 
 import { useState } from 'react'
-import { Check, Pencil, Plus, Settings2, Sparkles, X } from 'lucide-react'
+import { Check, Pencil, Plus, RefreshCw, Settings2, Sparkles, X } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Spinner } from '@/components/ui/spinner'
 import { PropertyBlock, BlockAction, BlockEmpty, BlockError } from '@/components/features/items/PropertyBlock'
@@ -33,18 +33,19 @@ export function ItemPropertyBlocks({
   const [filling, setFilling] = useState(false)
   const [fillNote, setFillNote] = useState<string | null>(null)
 
-  // 項目ごとに呼ばず、1回でまとめて埋める。空いている項目だけが対象で、
-  // 手で書いたものは上書きしない
-  const fillAll = async () => {
+  // 項目ごとに呼ばず、1回でまとめて埋める。
+  // 既定は空いている項目だけ。書いたものを消されると困る場面のほうが多いので、
+  // 入れ直しは押す前に選ばせる（押した先で分岐させない）
+  const fillAll = async (overwrite: boolean) => {
     setFilling(true)
     setFillNote(null)
     try {
-      const result = await fillItemProperties(item.id)
+      const result = await fillItemProperties(item.id, { overwrite })
       onUpdated(await getItem(item.id))
       setFillNote(
         result.filled_keys.length === 0
           ? '埋められる項目がありませんでした（確かでないものは書きません）'
-          : `${result.filled_keys.length}件を埋めました${
+          : `${result.filled_keys.length}件を${overwrite ? '入れ直しました' : '埋めました'}${
               result.skipped_keys.length > 0 ? `（${result.skipped_keys.length}件は見送り）` : ''
             }`
       )
@@ -75,23 +76,35 @@ export function ItemPropertyBlocks({
   const emptyCount = entries.filter((e) =>
     e.value_type === 'list' ? ((e.value as string[] | null) ?? []).length === 0 : e.value == null || e.value === ''
   ).length
+  const filledCount = entries.length - emptyCount
 
   return (
     <>
-      {emptyCount > 0 && (
-        <div className="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-border/70 bg-muted/30 px-4 py-2">
-          <p className="text-xs text-muted-foreground">
-            {fillNote ?? `未記入の項目が ${emptyCount} 件あります`}
-          </p>
-          <BlockAction
-            icon={<Sparkles size={14} />}
-            label="AIでまとめて埋める"
-            onClick={fillAll}
-            busy={filling}
-            title="空いている項目だけを、1回の問い合わせでまとめて埋めます（手で書いたものは変えません）"
-          />
+      <div className="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-border/70 bg-muted/30 px-4 py-2">
+        <p className="text-xs text-muted-foreground">
+          {fillNote ?? `未記入の項目が ${emptyCount} 件あります`}
+        </p>
+        <div className="flex items-center gap-3">
+          {emptyCount > 0 && (
+            <BlockAction
+              icon={<Sparkles size={14} />}
+              label="空欄をAIで埋める"
+              onClick={() => fillAll(false)}
+              busy={filling}
+              title="空いている項目だけを、1回の問い合わせでまとめて埋めます（書いたものは変えません）"
+            />
+          )}
+          {filledCount > 0 && (
+            <BlockAction
+              icon={<RefreshCw size={14} />}
+              label="ぜんぶ入れ直す"
+              onClick={() => fillAll(true)}
+              busy={filling}
+              title="書いたものも含めて、すべての項目をAIで入れ直します"
+            />
+          )}
         </div>
-      )}
+      </div>
       {entries.map((entry, index) => (
         <PropertyEntryBlock
           key={entry.property_definition_id}
