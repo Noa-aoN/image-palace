@@ -37,7 +37,13 @@ class Item < ApplicationRecord
   DEFAULT_PROMPT_SOURCE = "brief"
 
   store_accessor :metadata, :generation_error, :generation_error_code, :style, :custom_prompt, :framing,
-                 :prompt_source
+                 :prompt_source, :block_view
+
+  # カード1枚ごとの見え方（どのブロックを出すか・並び順）。
+  # 中身は { "hidden" => [key...], "order" => [key...] }。
+  # 種別の設定（どの項目を持つか）とは別で、こちらは**この1枚だけ**に効く。
+  MAX_BLOCK_KEYS = 100
+  MAX_BLOCK_KEY_LENGTH = 64
 
   validates :title, presence: true, length: { maximum: MAX_TITLE_LENGTH }
   validates :generation_status, inclusion: { in: GENERATION_STATUSES }
@@ -58,6 +64,16 @@ class Item < ApplicationRecord
   scope :stuck_generation, ->(cutoff) {
     where(generation_status: %w[pending processing]).where(updated_at: ..cutoff)
   }
+
+  # 隠しているブロックのキー。未設定なら空
+  def hidden_block_keys
+    Array((block_view || {})["hidden"])
+  end
+
+  # 並び順の指定。未設定なら空（画面側の既定の並びを使う）
+  def ordered_block_keys
+    Array((block_view || {})["order"])
+  end
 
   # 未指定のカード（旧データ・既定のまま作られたもの）は既定の経路として扱う
   def effective_prompt_source

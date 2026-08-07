@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import React, { useEffect, useState } from 'react'
 import { X, Sparkles, ShieldCheck } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { getItemTypes, updateItem, generateMeaning, generateTags, factCheckItem, isItemSkip } from '@/lib/api/items'
@@ -12,6 +12,7 @@ import { PropertyBlock, BlockAction, BlockError } from '@/components/features/it
 import { MeaningList } from '@/components/features/items/MeaningList'
 import { ItemPropertyBlocks } from '@/components/features/items/ItemPropertyBlocks'
 import { ItemUsageBlock } from '@/components/features/items/ItemUsageBlock'
+import { CardViewPanel, applyBlockOrder } from '@/components/features/items/CardViewPanel'
 import {
   PropertyDefinitionsPanel,
   PROPERTY_DEFINITIONS_PANEL_KEY,
@@ -337,163 +338,193 @@ export function ItemProperties({ item, onUpdated }: ItemPropertiesProps) {
     }
   }
 
-  return (
-    <div className="space-y-3">
-      <PropertyBlock title="種別" busy={savingType}>
-        <select
-          id="item-type"
-          aria-label="種別"
-          value={item.item_type?.id ?? ''}
-          onChange={(e) => handleTypeChange(e.target.value)}
-          disabled={savingType || itemTypes.length === 0}
-          className="h-9 rounded-lg border border-input bg-background px-3 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-50"
-        >
-          {itemTypes.length === 0 && <option value="">読み込み中...</option>}
-          {item.item_type == null && itemTypes.length > 0 && <option value="">未設定</option>}
-          {itemTypes.map((type) => (
-            <option key={type.id} value={type.id}>
-              {type.label}
-            </option>
-          ))}
-        </select>
-        <BlockError message={typeError} />
-      </PropertyBlock>
-
-      <PropertyBlock
-        title="意味・説明"
-        actions={
-          <>
-            <BlockAction
+  // ブロックは「キー＋中身」の並びにしておく。並べ替えも表示切替も、
+  // ここを差し替えるだけで効く（見せ方の指定はカード1枚ごとに持つ）
+  const blocks: { key: string; label: string; node: React.ReactNode }[] = [
+    {
+      key: 'item_type',
+      label: '種別',
+      node: (
+        <PropertyBlock title="種別" busy={savingType}>
+          <select
+            id="item-type"
+            aria-label="種別"
+            value={item.item_type?.id ?? ''}
+            onChange={(e) => handleTypeChange(e.target.value)}
+            disabled={savingType || itemTypes.length === 0}
+            className="h-9 rounded-lg border border-input bg-background px-3 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-50"
+          >
+            {itemTypes.length === 0 && <option value="">読み込み中...</option>}
+            {item.item_type == null && itemTypes.length > 0 && <option value="">未設定</option>}
+            {itemTypes.map((type) => (
+              <option key={type.id} value={type.id}>
+                {type.label}
+              </option>
+            ))}
+          </select>
+          <BlockError message={typeError} />
+        </PropertyBlock>
+      ),
+    },
+    {
+      key: 'meanings',
+      label: '意味・説明',
+      node: (
+        <PropertyBlock
+          title="意味・説明"
+          actions={
+            <>
+              <BlockAction
                 icon={<Sparkles size={14} />}
                 label={item.meaning ? '再生成' : 'AIで生成'}
                 onClick={handleGenerateMeaning}
                 busy={generatingMeaning}
               />
-            {item.meaning && (
-              <BlockAction
-                icon={<ShieldCheck size={14} />}
-                label="AIチェック"
-                onClick={handleFactCheck}
-                busy={checkingFact}
-                title="説明が事実として正しいかAIでチェックし、訂正案を出します"
+              {item.meaning && (
+                <BlockAction
+                  icon={<ShieldCheck size={14} />}
+                  label="AIチェック"
+                  onClick={handleFactCheck}
+                  busy={checkingFact}
+                  title="説明が事実として正しいかAIでチェックし、訂正案を出します"
+                />
+              )}
+            </>
+          }
+        >
+          <div className="flex flex-wrap items-center gap-1.5">
+            <span className="text-xs text-muted-foreground">AIで生成する詳しさ:</span>
+            {MEANING_LEVELS.map((lv) => {
+              const active = meaningLevel === lv
+              return (
+                <button
+                  key={lv}
+                  type="button"
+                  onClick={() => setMeaningLevel(lv)}
+                  disabled={generatingMeaning}
+                  className={`rounded-full border px-2.5 py-0.5 text-xs transition-colors disabled:opacity-50 ${
+                    active ? 'border-transparent text-white' : 'border-border text-muted-foreground hover:bg-muted'
+                  }`}
+                  style={active ? { backgroundColor: 'var(--palace)' } : undefined}
+                  aria-pressed={active}
+                >
+                  {meaningLevelLabel(lv)}
+                </button>
+              )
+            })}
+          </div>
+
+          <MeaningList
+            item={item}
+            onUpdated={onUpdated}
+            primaryExtra={
+              <FactCheckResult
+                item={item}
+                onApplyMeaning={handleApplyFactCheckSuggestion}
+                applyingMeaning={applyingSuggestion}
+                onApplyTitle={handleApplyTitleSuggestion}
+                applyingTitle={applyingTitle}
               />
-            )}
-          </>
-        }
-      >
-
-        {/* AI生成に渡す詳しさ。書いた文そのものの詳しさは、各件の編集側で選ぶ */}
-        <div className="flex flex-wrap items-center gap-1.5">
-          <span className="text-xs text-muted-foreground">AIで生成する詳しさ:</span>
-          {MEANING_LEVELS.map((lv) => {
-            const active = meaningLevel === lv
-            return (
-              <button
-                key={lv}
-                type="button"
-                onClick={() => setMeaningLevel(lv)}
-                disabled={generatingMeaning}
-                className={`rounded-full border px-2.5 py-0.5 text-xs transition-colors disabled:opacity-50 ${
-                  active ? 'border-transparent text-white' : 'border-border text-muted-foreground hover:bg-muted'
-                }`}
-                style={active ? { backgroundColor: 'var(--palace)' } : undefined}
-                aria-pressed={active}
-              >
-                {meaningLevelLabel(lv)}
-              </button>
-            )
-          })}
-        </div>
-
-        <MeaningList
-          item={item}
-          onUpdated={onUpdated}
-          primaryExtra={
-            <FactCheckResult
-              item={item}
-              onApplyMeaning={handleApplyFactCheckSuggestion}
-              applyingMeaning={applyingSuggestion}
-              onApplyTitle={handleApplyTitleSuggestion}
-              applyingTitle={applyingTitle}
+            }
+          />
+          <BlockError message={meaningError} />
+        </PropertyBlock>
+      ),
+    },
+    {
+      key: 'tags',
+      label: 'タグ',
+      node: (
+        <PropertyBlock
+          title="タグ"
+          busy={savingTags}
+          actions={
+            <BlockAction
+              icon={<Sparkles size={14} />}
+              label="AIで生成"
+              onClick={handleGenerateTags}
+              busy={generatingTags}
+              disabled={savingTags}
             />
           }
-        />
-        <BlockError message={meaningError} />
-      </PropertyBlock>
-
-      <PropertyBlock
-        title="タグ"
-        busy={savingTags}
-        actions={
-          <BlockAction
-            icon={<Sparkles size={14} />}
-            label="AIで生成"
-            onClick={handleGenerateTags}
-            busy={generatingTags}
-            disabled={savingTags}
-          />
-        }
-      >
-        {tags.length > 0 && (
-          <div className="flex flex-wrap gap-1.5">
-            {tags.map((tag) => (
-              <span
-                key={tag.id}
-                className="inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-xs"
-                style={{ backgroundColor: 'rgba(198,167,94,0.15)', color: '#7a6432' }}
-              >
-                {tag.name}
-                <button
-                  onClick={() => handleRemoveTag(tag.id)}
-                  disabled={savingTags}
-                  aria-label={`タグ「${tag.name}」を外す`}
-                  className="hover:text-foreground transition-colors"
+        >
+          {tags.length > 0 && (
+            <div className="flex flex-wrap gap-1.5">
+              {tags.map((tag) => (
+                <span
+                  key={tag.id}
+                  className="inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-xs"
+                  style={{ backgroundColor: 'rgba(198,167,94,0.15)', color: '#7a6432' }}
                 >
-                  <X size={12} />
-                </button>
-              </span>
-            ))}
-          </div>
-        )}
-        <div className="relative max-w-xs">
-          <input
-            value={tagDraft}
-            onChange={(e) => setTagDraft(e.target.value)}
-            onFocus={() => setTagFocused(true)}
-            onBlur={() => setTagFocused(false)}
-            onKeyDown={(e) => {
-              // IME変換確定の Enter では追加しない（確定後、再度 Enter で設定）
-              if (e.key !== 'Enter') return
-              if (e.nativeEvent.isComposing) return
-              e.preventDefault()
-              addTagName(tagDraft)
-            }}
-            disabled={savingTags}
-            placeholder="タグを入力して Enter"
-            aria-label="タグを追加"
-            autoComplete="off"
-            className="w-full rounded-lg border border-input bg-background px-3 py-1.5 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-          />
-          {showTagSuggestions && (
-            <ul className="absolute z-20 mt-1 w-full max-h-48 overflow-y-auto rounded-lg border border-border bg-card shadow-lg">
-              {tagSuggestions.map((t) => (
-                <li key={t.id}>
+                  {tag.name}
                   <button
-                    type="button"
-                    // blur より先に発火させてクリックを成立させる
-                    onMouseDown={(e) => { e.preventDefault(); addTagName(t.name) }}
-                    className="flex w-full items-center justify-between gap-2 px-3 py-1.5 text-left text-sm hover:bg-muted"
+                    onClick={() => handleRemoveTag(tag.id)}
+                    disabled={savingTags}
+                    aria-label={`タグ「${tag.name}」を外す`}
+                    className="hover:text-foreground transition-colors"
                   >
-                    <span className="truncate">{t.name}</span>
-                    <span className="text-xs text-muted-foreground shrink-0">{t.item_count}</span>
+                    <X size={12} />
                   </button>
-                </li>
+                </span>
               ))}
-            </ul>
+            </div>
           )}
-        </div>
-        <BlockError message={tagError} />
-      </PropertyBlock>
+          <div className="relative max-w-xs">
+            <input
+              value={tagDraft}
+              onChange={(e) => setTagDraft(e.target.value)}
+              onFocus={() => setTagFocused(true)}
+              onBlur={() => setTagFocused(false)}
+              onKeyDown={(e) => {
+                // IME変換確定の Enter では追加しない（確定後、再度 Enter で設定）
+                if (e.key !== 'Enter') return
+                if (e.nativeEvent.isComposing) return
+                e.preventDefault()
+                addTagName(tagDraft)
+              }}
+              disabled={savingTags}
+              placeholder="タグを入力して Enter"
+              aria-label="タグを追加"
+              autoComplete="off"
+              className="w-full rounded-lg border border-input bg-background px-3 py-1.5 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+            />
+            {showTagSuggestions && (
+              <ul className="absolute z-20 mt-1 w-full max-h-48 overflow-y-auto rounded-lg border border-border bg-card shadow-lg">
+                {tagSuggestions.map((t) => (
+                  <li key={t.id}>
+                    <button
+                      type="button"
+                      // blur より先に発火させてクリックを成立させる
+                      onMouseDown={(e) => { e.preventDefault(); addTagName(t.name) }}
+                      className="flex w-full items-center justify-between gap-2 px-3 py-1.5 text-left text-sm hover:bg-muted"
+                    >
+                      <span className="truncate">{t.name}</span>
+                      <span className="text-xs text-muted-foreground shrink-0">{t.item_count}</span>
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </div>
+          <BlockError message={tagError} />
+        </PropertyBlock>
+      ),
+    },
+    {
+      key: 'usages',
+      label: '使っている場所',
+      node: <ItemUsageBlock itemId={item.id} />,
+    },
+  ]
+
+  const hiddenKeys = new Set(item.block_view?.hidden ?? [])
+  const orderedBlocks = applyBlockOrder(blocks, item.block_view?.order)
+
+  return (
+    <div className="space-y-3">
+      {orderedBlocks.filter((b) => !hiddenKeys.has(b.key)).map((b) => (
+        <React.Fragment key={b.key}>{b.node}</React.Fragment>
+      ))}
 
       {/* 利用者が定義した項目。作り付けの項目と同じブロックで並ぶ */}
       <ItemPropertyBlocks
@@ -502,8 +533,8 @@ export function ItemProperties({ item, onUpdated }: ItemPropertiesProps) {
         onOpenSettings={() => openSection({ key: PROPERTY_DEFINITIONS_PANEL_KEY, title: '項目の設定' })}
       />
 
-      {/* どこに置いたかは、それぞれの表が正。カードには持たせず、見るときに引く */}
-      <ItemUsageBlock itemId={item.id} />
+      {/* この1枚だけの見え方。種別ぜんぶに効く「項目の設定」とは分けてある */}
+      <CardViewPanel item={item} blocks={orderedBlocks.map(({ key, label }) => ({ key, label }))} onUpdated={onUpdated} />
 
       {/* 定義（種別ぜんぶに効く）は右パネルで触る。値はカードの各ブロックで */}
       <PropertyDefinitionsPanel

@@ -5,6 +5,7 @@ import { Check, ChevronDown, ChevronUp, Pencil, Plus, Trash2, X } from 'lucide-r
 import { Button } from '@/components/ui/button'
 import { Spinner } from '@/components/ui/spinner'
 import { BlockEmpty, BlockError } from '@/components/features/items/PropertyBlock'
+import { Tooltip } from '@/components/ui/tooltip'
 import { MEANING_LEVELS, meaningLevelLabel, DEFAULT_MEANING_LEVEL } from '@/lib/meaning-levels'
 import { createMeaning, updateMeaning, deleteMeaning, reorderMeanings, getItem } from '@/lib/api/items'
 import type { Item, ItemMeaning } from '@/types/item'
@@ -326,15 +327,16 @@ function IconButton({
   children: ReactNode
 }) {
   return (
-    <button
-      type="button"
-      onClick={onClick}
-      disabled={disabled}
-      aria-label={label}
-      title={label}
-      className="transition-colors hover:text-foreground disabled:opacity-30"
-    >
-      {children}
-    </button>
+    <Tooltip label={label}>
+      <button
+        type="button"
+        onClick={onClick}
+        disabled={disabled}
+        aria-label={label}
+        className="transition-colors hover:text-foreground disabled:opacity-30"
+      >
+        {children}
+      </button>
+    </Tooltip>
   )
 }

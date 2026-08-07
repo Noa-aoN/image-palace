@@ -2,6 +2,7 @@
 
 import type { ReactNode } from 'react'
 import { Spinner } from '@/components/ui/spinner'
+import { Tooltip } from '@/components/ui/tooltip'
 
 /**
  * カード詳細のプロパティを載せる、共通の器。
@@ -70,19 +71,23 @@ export function BlockAction({
   /** 押す前に効き方を説明したいときだけ。既定は label */
   title?: string
 }) {
-  return (
+  const button = (
     <button
       type="button"
       onClick={onClick}
       disabled={disabled || busy}
       aria-label={label}
-      title={title ?? label}
       className="flex items-center gap-1 text-xs text-muted-foreground transition-colors hover:text-foreground disabled:opacity-50"
     >
       {busy ? <Spinner size={14} /> : icon}
       {!hideLabel && label}
     </button>
   )
+
+  // ラベルを畳んだものは、何のボタンか見て分からない。指を乗せたら出す。
+  // ラベルが出ているものでも、効き方の説明があるなら添える
+  const hint = hideLabel ? (title ? `${label}（${title}）` : label) : title
+  return hint ? <Tooltip label={hint}>{button}</Tooltip> : button
 }
 
 /** 未設定のときの案内。項目ごとに書き方がぶれないよう、ここに寄せる */

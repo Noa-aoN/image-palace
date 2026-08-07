@@ -73,6 +73,8 @@ export interface Item {
   meanings?: ItemMeaning[]
   /** その種別で定義されている項目（未入力のものも含む） */
   properties?: ItemPropertyEntry[]
+  /** このカードだけの見え方（隠すブロック・並び順） */
+  block_view?: { hidden: string[]; order: string[] }
   /** 説明のAIファクトチェック結果 */
   fact_check_status?: 'correct' | 'doubtful' | 'incorrect' | null
   fact_check_comment?: string | null
@@ -88,6 +90,8 @@ export interface Item {
   style?: string | null
   /** 構図（'' = おまかせ / single = 単体 / scene = 情景） */
   framing?: string | null
+  /** 画像への指示の作り方（word / brief / research） */
+  prompt_source?: string | null
   custom_prompt?: string | null
   /** ① 画像を作る前に単語を噛み砕いた説明文（日本語） */
   image_description?: string | null

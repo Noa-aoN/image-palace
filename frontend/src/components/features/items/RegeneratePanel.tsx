@@ -47,7 +47,7 @@ const PANEL_KEY = 'item-regenerate'
  */
 export function RegeneratePanel({ item, onUpdated }: Props) {
   const isFailed = item.generation_status === 'failed'
-  const panel = usePanelForm(PANEL_KEY, '画像を作り直す')
+  const panel = usePanelForm(PANEL_KEY, 'イメージを作り直す')
   const [scenePrompt, setScenePrompt] = useState(item.scene_prompt ?? '')
   const [customPrompt, setCustomPrompt] = useState(item.custom_prompt ?? '')
   const [style, setStyle] = useState(item.style ?? '')
@@ -159,8 +159,7 @@ export function RegeneratePanel({ item, onUpdated }: Props) {
         className="flex items-center gap-1 text-xs text-muted-foreground transition-colors hover:text-foreground"
       >
         <RefreshCw size={14} />
-        {/* 画像のすぐ下の行に置くので「画像を」は省く。細い画面でも一行に収めたい */}
-        作り直す{costsCredit && `（1 ${CREDIT_UNIT_SHORT}）`}
+        イメージを作り直す{costsCredit && `（1 ${CREDIT_UNIT_SHORT}）`}
       </button>
 
       <PanelSlotContent sectionKey={PANEL_KEY}>

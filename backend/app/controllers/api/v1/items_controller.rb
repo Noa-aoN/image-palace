@@ -5,7 +5,7 @@ module Api
 
       before_action :set_item,
                     only: [ :show, :update, :destroy, :retry, :meaning, :brief, :scene_rewrite,
-                            :generate_tags, :fact_check, :fill_properties, :usages ]
+                            :generate_tags, :fact_check, :fill_properties, :usages, :update_block_view ]
 
       DEFAULT_PER_PAGE = 24
       MAX_PER_PAGE = 100
@@ -179,6 +179,17 @@ module Api
       rescue KeyError, Faraday::Error => e
         Rails.logger.warn "[ItemsController#scene_rewrite] failed item_id=#{item.id}: #{e.class}: #{e.message}"
         render json: { error: "書き直しに失敗しました。時間を置いて再度お試しください。" }, status: :unprocessable_entity
+      end
+
+      # カード1枚ごとの見え方（どのブロックを出すか・並び順）。
+      #
+      # 種別の設定（どの項目を持つか）とは効く範囲が違う。あちらは種別ぜんぶ、
+      # こちらはこの1枚だけ。同じ画面で混ぜると、どこまで効くのか分からなくなる。
+      def update_block_view
+        item.update!(block_view: { "hidden" => block_keys(:hidden), "order" => block_keys(:order) })
+        render json: serialize_item(item.reload)
+      rescue ActiveRecord::RecordInvalid => e
+        render json: { errors: e.record.errors.full_messages }, status: :unprocessable_entity
       end
 
       # このカードがどこで使われているか（キャンバス・スペース・ボックス）。
@@ -406,6 +417,12 @@ module Api
         end
       end
 
+      # 画面から来たキーを整える。長さも件数も抑えて、metadata が肥らないようにする
+      def block_keys(name)
+        Array(params[name]).map { |k| k.to_s.strip.first(Item::MAX_BLOCK_KEY_LENGTH) }
+                           .reject(&:blank?).uniq.first(Item::MAX_BLOCK_KEYS)
+      end
+
       def moderate_instruction!(text)
         return if text.blank?
 
@@ -503,6 +520,7 @@ module Api
           style: item.style,
           framing: item.framing,
           prompt_source: item.effective_prompt_source,
+          block_view: { hidden: item.hidden_block_keys, order: item.ordered_block_keys },
           custom_prompt: item.custom_prompt,
           image_description: item.image_description,
           scene_prompt: item.scene_prompt,

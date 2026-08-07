@@ -6,6 +6,7 @@ import { downloadImage } from '@/lib/download'
 import { Input } from '@/components/ui/input'
 import { Spinner } from '@/components/ui/spinner'
 import { Skeleton } from '@/components/ui/skeleton'
+import { Tooltip } from '@/components/ui/tooltip'
 import { ItemProperties } from '@/components/features/items/ItemProperties'
 import { ItemImageBar } from '@/components/features/items/ItemImageBar'
 import { GeneratingOverlay } from '@/components/features/items/GeneratingOverlay'
@@ -73,12 +74,16 @@ export function ItemDetailBody({ itemId, onDeleted }: { itemId: string; onDelete
               autoFocus
               aria-label="タイトル"
             />
-            <Button size="sm" onClick={handleSaveTitle} disabled={saving} aria-label="保存" className="shrink-0">
-              {saving ? <Spinner size={16} /> : <Check size={16} />}
-            </Button>
-            <Button variant="ghost" size="sm" onClick={cancelEdit} disabled={saving} aria-label="キャンセル" className="shrink-0">
-              <X size={16} />
-            </Button>
+            <Tooltip label="保存">
+              <Button size="sm" onClick={handleSaveTitle} disabled={saving} aria-label="保存" className="shrink-0">
+                {saving ? <Spinner size={16} /> : <Check size={16} />}
+              </Button>
+            </Tooltip>
+            <Tooltip label="キャンセル">
+              <Button variant="ghost" size="sm" onClick={cancelEdit} disabled={saving} aria-label="キャンセル" className="shrink-0">
+                <X size={16} />
+              </Button>
+            </Tooltip>
           </div>
           {editError && <p className="text-sm text-destructive">{editError}</p>}
         </div>
@@ -86,13 +91,15 @@ export function ItemDetailBody({ itemId, onDeleted }: { itemId: string; onDelete
         <div className="flex items-start justify-between gap-2">
           <div className="flex min-w-0 items-center gap-2">
             <h2 className="truncate text-lg font-semibold">{item.title}</h2>
-            <button
-              onClick={startEdit}
-              className="shrink-0 text-muted-foreground transition-colors hover:text-foreground"
-              aria-label="タイトルを編集"
-            >
-              <Pencil size={15} />
-            </button>
+            <Tooltip label="単語を編集">
+              <button
+                onClick={startEdit}
+                className="shrink-0 text-muted-foreground transition-colors hover:text-foreground"
+                aria-label="単語を編集"
+              >
+                <Pencil size={15} />
+              </button>
+            </Tooltip>
           </div>
           <StatusBadge status={item.generation_status} />
         </div>

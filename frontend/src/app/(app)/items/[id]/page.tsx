@@ -3,13 +3,15 @@
 import { useEffect, useState } from 'react'
 import Link from 'next/link'
 import { useParams, useRouter, useSearchParams } from 'next/navigation'
-import { Trash2, ChevronLeft, ChevronRight, Pencil, Check, X, ExternalLink } from 'lucide-react'
+import { Trash2, ChevronLeft, ChevronRight, Pencil, Check, X, ExternalLink, LayoutList } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Breadcrumb } from '@/components/ui/breadcrumb'
 import { Input } from '@/components/ui/input'
 import { Spinner } from '@/components/ui/spinner'
 import { ItemProperties } from '@/components/features/items/ItemProperties'
 import { ItemImageBar } from '@/components/features/items/ItemImageBar'
+import { CARD_VIEW_PANEL_KEY } from '@/components/features/items/CardViewPanel'
+import { useRightPanelStore } from '@/stores/rightPanel'
 import { getItemNavigationIds } from '@/lib/api/items'
 import { getViewDetail } from '@/lib/api/views'
 import { GeneratingOverlay } from '@/components/features/items/GeneratingOverlay'
@@ -22,6 +24,7 @@ import { aspectRatioCss } from '@/lib/aspect-ratio'
 export default function ItemDetailPage() {
   const { id } = useParams<{ id: string }>()
   const router = useRouter()
+  const openSection = useRightPanelStore((s) => s.openSection)
   const searchParams = useSearchParams()
   // デッキ/ボード経由で開いた場合は元の view を保持し、前後ナビをその並び順（view 由来）に切り替える。
   const deckId = searchParams.get('deck')
@@ -134,7 +137,19 @@ export default function ItemDetailPage() {
         {/* ヘッダー行 */}
         <div className="flex items-center justify-between">
           <Breadcrumb className="mb-0" items={[{ href: backHref, label: fromViewId ? (fromViewName ?? fromLabel) : 'カード' }, { label: item.title }]} />
-          <Button
+          <div className="flex shrink-0 items-center gap-2">
+            {/* このカード1枚の見え方（どのブロックを出すか・並び順）。
+                中身は ItemProperties 側が右パネルへ差し込む */}
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => openSection({ key: CARD_VIEW_PANEL_KEY, title: '表示' })}
+              className="flex items-center gap-1.5 text-sm"
+            >
+              <LayoutList size={14} />
+              表示
+            </Button>
+            <Button
             variant={confirmDelete ? 'destructive' : 'ghost'}
             size="sm"
             onClick={handleDelete}
@@ -144,7 +159,8 @@ export default function ItemDetailPage() {
           >
             {deleting ? <Spinner size={14} /> : <Trash2 size={14} />}
             {deleting ? '削除中...' : confirmDelete ? '本当に削除' : '削除'}
-          </Button>
+            </Button>
+          </div>
         </div>
 
         {/* タイトル + ステータス（テキストを画像の上に表示） */}

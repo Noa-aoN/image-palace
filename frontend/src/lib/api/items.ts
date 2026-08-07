@@ -316,3 +316,15 @@ export async function getItemUsages(id: string): Promise<ItemUsages> {
   const res = await apiClient.get<ItemUsages>(`/api/v1/items/${id}/usages`)
   return res.data
 }
+
+/** カード1枚ごとの見え方。key はブロックの識別子（作り付けは固定名、項目は prop:<id>） */
+export interface BlockView {
+  hidden: string[]
+  order: string[]
+}
+
+// 種別の設定（どの項目を持つか）とは効く範囲が違う。これはこの1枚だけ
+export async function updateBlockView(id: string, view: BlockView): Promise<Item> {
+  const res = await apiClient.patch<Item>(`/api/v1/items/${id}/block_view`, view)
+  return res.data
+}

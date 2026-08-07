@@ -84,6 +84,7 @@ Rails.application.routes.draw do
           post :scene_rewrite
           post :fill_properties
           get :usages
+          patch :block_view, action: :update_block_view
           post :fact_check
           post "tags", action: :generate_tags
         end
