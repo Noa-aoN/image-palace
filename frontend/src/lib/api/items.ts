@@ -296,6 +296,20 @@ export async function deleteMeaning(itemId: string, meaningId: string): Promise<
   await apiClient.delete(`/api/v1/items/${itemId}/meanings/${meaningId}`)
 }
 
+// ファクトチェックの指摘を「読んで判断した」と記録する。判定そのものは消さない
+// （何を見て決めたのかが辿れなくなるため）。一覧の警告色だけが引っ込む。
+export async function acknowledgeFactCheck(
+  itemId: string,
+  meaningId: string,
+  acknowledged = true
+): Promise<ItemMeaning> {
+  const res = await apiClient.patch<ItemMeaning>(
+    `/api/v1/items/${itemId}/meanings/${meaningId}/acknowledge`,
+    { acknowledged }
+  )
+  return res.data
+}
+
 // 並び替えは渡した順に position を振り直す。1件ずつ送ると途中で失敗したとき順序が壊れる
 export async function reorderMeanings(itemId: string, ids: string[]): Promise<ItemMeaning[]> {
   const res = await apiClient.patch<{ meanings: ItemMeaning[] }>(

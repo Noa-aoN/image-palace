@@ -137,7 +137,8 @@ export default function ItemDetailPage() {
         {/* ヘッダー行 */}
         <div className="flex items-center justify-between">
           <Breadcrumb className="mb-0" items={[{ href: backHref, label: fromViewId ? (fromViewName ?? fromLabel) : 'カード' }, { label: item.title }]} />
-          <div className="flex shrink-0 items-center gap-2">
+          {/* 「表示」と「削除」はどちらもこのカードへの操作。間を詰めて一組に見せる */}
+          <div className="flex shrink-0 items-center gap-0.5">
             {/* このカード1枚の見え方（どのブロックを出すか・並び順）。
                 中身は ItemProperties 側が右パネルへ差し込む */}
             <Button

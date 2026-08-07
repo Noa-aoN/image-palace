@@ -9,7 +9,7 @@ module Api
     # そこは変えない。既に代表を読んでいる画面を後退させないため。
     class MeaningsController < BaseController
       before_action :set_item
-      before_action :set_meaning, only: [ :update, :destroy ]
+      before_action :set_meaning, only: [ :update, :destroy, :acknowledge ]
 
       MAX_PER_ITEM = 20
 
@@ -36,6 +36,17 @@ module Api
       def destroy
         meaning.destroy!
         head :no_content
+      end
+
+      # ファクトチェックの指摘を「読んで判断した」と記録する。
+      #
+      # 判定そのものは消さない。消すと、何を見て決めたのかが後から辿れなくなる。
+      # 一覧の警告色だけを引っ込め、確認済みとして畳む。
+      # もう一度考え直したくなったら acknowledged: false で戻せる。
+      def acknowledge
+        acknowledged = params.key?(:acknowledged) ? ActiveModel::Type::Boolean.new.cast(params[:acknowledged]) : true
+        meaning.update!(fact_check_acknowledged_at: acknowledged ? Time.current : nil)
+        render json: serialize_meaning(meaning)
       end
 
       # 並び替え。渡された順に position を振り直す。
@@ -91,7 +102,8 @@ module Api
           fact_check_status: record.fact_check_status,
           fact_check_comment: record.fact_check_comment,
           fact_check_suggestion: record.fact_check_suggestion,
-          fact_checked_at: record.fact_checked_at
+          fact_checked_at: record.fact_checked_at,
+          fact_check_acknowledged_at: record.fact_check_acknowledged_at
         }
       end
     end

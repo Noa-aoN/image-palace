@@ -1,7 +1,24 @@
 'use client'
 
 import { useState } from 'react'
-import { ChevronDown, ChevronUp, Eye, EyeOff } from 'lucide-react'
+import { Eye, EyeOff, GripVertical } from 'lucide-react'
+import {
+  DndContext,
+  PointerSensor,
+  KeyboardSensor,
+  useSensor,
+  useSensors,
+  closestCenter,
+  type DragEndEvent,
+} from '@dnd-kit/core'
+import {
+  SortableContext,
+  useSortable,
+  arrayMove,
+  verticalListSortingStrategy,
+  sortableKeyboardCoordinates,
+} from '@dnd-kit/sortable'
+import { CSS } from '@dnd-kit/utilities'
 import { Spinner } from '@/components/ui/spinner'
 import { Tooltip } from '@/components/ui/tooltip'
 import { PanelSlotContent } from '@/components/features/panel/PanelSlot'
@@ -38,6 +55,12 @@ export function CardViewPanel({
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const hidden = new Set(item.block_view?.hidden ?? [])
+  // 4px 動かすまでは並べ替えを始めない。表示の入り切りを押すだけのつもりが
+  // 指が滑って並びまで変わる、を防ぐ
+  const sensors = useSensors(
+    useSensor(PointerSensor, { activationConstraint: { distance: 4 } }),
+    useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates })
+  )
 
   const save = async (nextHidden: string[], nextOrder: string[]) => {
     setBusy(true)
@@ -58,13 +81,15 @@ export function CardViewPanel({
     save(next, blocks.map((b) => b.key))
   }
 
-  const move = (index: number, direction: -1 | 1) => {
-    const next = index + direction
-    if (next < 0 || next >= blocks.length) return
+  const handleDragEnd = (event: DragEndEvent) => {
+    const { active, over } = event
+    if (!over || active.id === over.id) return
 
-    const order = blocks.map((b) => b.key)
-    ;[order[index], order[next]] = [order[next], order[index]]
-    save([...hidden], order)
+    const from = blocks.findIndex((b) => b.key === active.id)
+    const to = blocks.findIndex((b) => b.key === over.id)
+    if (from < 0 || to < 0) return
+
+    save([...hidden], arrayMove(blocks, from, to).map((b) => b.key))
   }
 
   return (
@@ -79,40 +104,21 @@ export function CardViewPanel({
         {blocks.length === 0 ? (
           <p className="text-sm text-muted-foreground">並べ替えられるものがありません。</p>
         ) : (
-          <div className="space-y-1.5">
-            {blocks.map((block, index) => {
-              const isHidden = hidden.has(block.key)
-              return (
-                <div
-                  key={block.key}
-                  className="flex items-center justify-between gap-2 rounded-lg border border-border/70 bg-background px-3 py-2"
-                >
-                  <span className={`truncate text-sm ${isHidden ? 'text-muted-foreground line-through' : ''}`}>
-                    {block.label}
-                  </span>
-                  <div className="flex shrink-0 items-center gap-1.5 text-muted-foreground">
-                    <IconButton label="上へ" disabled={busy || index === 0} onClick={() => move(index, -1)}>
-                      <ChevronUp size={15} />
-                    </IconButton>
-                    <IconButton
-                      label="下へ"
-                      disabled={busy || index === blocks.length - 1}
-                      onClick={() => move(index, 1)}
-                    >
-                      <ChevronDown size={15} />
-                    </IconButton>
-                    <IconButton
-                      label={isHidden ? '出す' : '隠す'}
-                      disabled={busy}
-                      onClick={() => toggle(block.key)}
-                    >
-                      {isHidden ? <EyeOff size={15} /> : <Eye size={15} />}
-                    </IconButton>
-                  </div>
-                </div>
-              )
-            })}
-          </div>
+          <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
+            <SortableContext items={blocks.map((b) => b.key)} strategy={verticalListSortingStrategy}>
+              <div className="space-y-1.5">
+                {blocks.map((block) => (
+                  <SortableRow
+                    key={block.key}
+                    block={block}
+                    hidden={hidden.has(block.key)}
+                    busy={busy}
+                    onToggle={() => toggle(block.key)}
+                  />
+                ))}
+              </div>
+            </SortableContext>
+          </DndContext>
         )}
 
         {busy && (
@@ -127,29 +133,57 @@ export function CardViewPanel({
   )
 }
 
-function IconButton({
-  label,
-  onClick,
-  disabled = false,
-  children,
+function SortableRow({
+  block,
+  hidden,
+  busy,
+  onToggle,
 }: {
-  label: string
-  onClick: () => void
-  disabled?: boolean
-  children: React.ReactNode
+  block: CardBlock
+  hidden: boolean
+  busy: boolean
+  onToggle: () => void
 }) {
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: block.key })
+
   return (
-    <Tooltip label={label}>
-      <button
-        type="button"
-        onClick={onClick}
-        disabled={disabled}
-        aria-label={label}
-        className="transition-colors hover:text-foreground disabled:opacity-30"
-      >
-        {children}
-      </button>
-    </Tooltip>
+    <div
+      ref={setNodeRef}
+      style={{ transform: CSS.Transform.toString(transform), transition }}
+      className={`flex items-center justify-between gap-2 rounded-lg border border-border/70 bg-background px-3 py-2 ${
+        isDragging ? 'opacity-60 shadow-md' : ''
+      }`}
+    >
+      <div className="flex min-w-0 items-center gap-2">
+        {/* つまみは持つところを分ける。行そのものを掴めるようにすると、
+            表示の入り切りを押したいだけのときに動いてしまう */}
+        <Tooltip label="ドラッグで並べ替え">
+          <button
+            type="button"
+            aria-label={`${block.label}を並べ替え`}
+            className="cursor-grab text-muted-foreground transition-colors hover:text-foreground active:cursor-grabbing"
+            {...attributes}
+            {...listeners}
+          >
+            <GripVertical size={15} />
+          </button>
+        </Tooltip>
+        <span className={`truncate text-sm ${hidden ? 'text-muted-foreground line-through' : ''}`}>
+          {block.label}
+        </span>
+      </div>
+      <Tooltip label={hidden ? '出す' : '隠す'}>
+        <button
+          type="button"
+          onClick={onToggle}
+          disabled={busy}
+          aria-label={hidden ? `${block.label}を出す` : `${block.label}を隠す`}
+          className="shrink-0 text-muted-foreground transition-colors hover:text-foreground disabled:opacity-30"
+        >
+          {hidden ? <EyeOff size={15} /> : <Eye size={15} />}
+        </button>
+      </Tooltip>
+    </div>
   )
 }
 

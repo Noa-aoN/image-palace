@@ -3,6 +3,7 @@
 import React, { useEffect, useState } from 'react'
 import { X, Sparkles, ShieldCheck } from 'lucide-react'
 import { Button } from '@/components/ui/button'
+import { Spinner } from '@/components/ui/spinner'
 import { getItemTypes, updateItem, generateMeaning, generateTags, factCheckItem, isItemSkip } from '@/lib/api/items'
 import { MEANING_LEVELS, meaningLevelLabel, DEFAULT_MEANING_LEVEL } from '@/lib/meaning-levels'
 import { getTags } from '@/lib/api/tags'
@@ -18,7 +19,7 @@ import {
   PROPERTY_DEFINITIONS_PANEL_KEY,
 } from '@/components/features/items/PropertyDefinitionsPanel'
 import { useRightPanelStore } from '@/stores/rightPanel'
-import { getItem } from '@/lib/api/items'
+import { getItem, acknowledgeFactCheck } from '@/lib/api/items'
 
 type ItemPropertiesProps = {
   item: Item
@@ -104,17 +105,43 @@ function FactCheckResult({
   applyingMeaning,
   onApplyTitle,
   applyingTitle,
+  onAcknowledge,
+  acknowledging,
 }: {
   item: Item
   onApplyMeaning?: (text: string) => void
   applyingMeaning?: boolean
   onApplyTitle?: (text: string) => void
   applyingTitle?: boolean
+  onAcknowledge?: (acknowledged: boolean) => void
+  acknowledging?: boolean
 }) {
   const [confirmMeaning, setConfirmMeaning] = useState(false)
   const [confirmTitle, setConfirmTitle] = useState(false)
   const badge = item.fact_check_status ? FACT_CHECK_BADGE[item.fact_check_status] : undefined
   if (!badge) return null
+
+  // 人が読んで判断したものは畳む。判定は消さない（何を見て決めたのかが辿れなくなる）
+  if (item.fact_check_acknowledged_at) {
+    return (
+      <div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
+        <span>
+          ファクトチェック: 確認済み（
+          {new Date(item.fact_check_acknowledged_at).toLocaleDateString('ja-JP')}）
+        </span>
+        {onAcknowledge && (
+          <button
+            type="button"
+            onClick={() => onAcknowledge(false)}
+            disabled={acknowledging}
+            className="underline underline-offset-2 transition-colors hover:text-foreground disabled:opacity-50"
+          >
+            もう一度見る
+          </button>
+        )}
+      </div>
+    )
+  }
   const titleSuggestion = item.fact_check_title_suggestion
   const suggestion = item.fact_check_suggestion
   return (
@@ -126,6 +153,18 @@ function FactCheckResult({
         <p className="mt-1.5 text-xs leading-relaxed text-muted-foreground whitespace-pre-wrap">{item.fact_check_comment}</p>
       )}
       <FactCheckEvidence item={item} />
+      {onAcknowledge && (
+        <button
+          type="button"
+          onClick={() => onAcknowledge(true)}
+          disabled={acknowledging}
+          className="mt-2 flex items-center gap-1 text-xs text-muted-foreground underline underline-offset-2 transition-colors hover:text-foreground disabled:opacity-50"
+          title="読んで判断したものとして畳みます。判定は残り、一覧の警告色だけ消えます"
+        >
+          {acknowledging ? <Spinner size={12} /> : null}
+          確認済みにする
+        </button>
+      )}
       {titleSuggestion && onApplyTitle && (
         <div className="mt-2 rounded border border-border bg-background px-2.5 py-2">
           <p className="text-xs font-medium text-muted-foreground">単語名の訂正案</p>
@@ -183,6 +222,25 @@ export function ItemProperties({ item, onUpdated }: ItemPropertiesProps) {
   const [meaningLevel, setMeaningLevel] = useState<string>(item.meaning_level ?? DEFAULT_MEANING_LEVEL)
   const [applyingSuggestion, setApplyingSuggestion] = useState(false)
   const [applyingTitle, setApplyingTitle] = useState(false)
+  const [acknowledging, setAcknowledging] = useState(false)
+
+  // 指摘を「読んで判断した」と記録する。代表の1件に対して行う
+  // （一覧の警告色も代表を見ているため）。
+  const handleAcknowledge = async (acknowledged: boolean) => {
+    const target = item.meanings?.[0]
+    if (!target) return
+
+    setAcknowledging(true)
+    setMeaningError(null)
+    try {
+      await acknowledgeFactCheck(item.id, target.id, acknowledged)
+      onUpdated(await getItem(item.id))
+    } catch {
+      setMeaningError('確認済みにできませんでした。もう一度お試しください。')
+    } finally {
+      setAcknowledging(false)
+    }
+  }
 
   // ファクトチェックの訂正案で説明を書き換える（確認後に呼ばれる）。
   const handleApplyFactCheckSuggestion = async (text: string) => {
@@ -424,6 +482,8 @@ export function ItemProperties({ item, onUpdated }: ItemPropertiesProps) {
                 applyingMeaning={applyingSuggestion}
                 onApplyTitle={handleApplyTitleSuggestion}
                 applyingTitle={applyingTitle}
+                onAcknowledge={handleAcknowledge}
+                acknowledging={acknowledging}
               />
             }
           />

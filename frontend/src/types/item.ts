@@ -53,6 +53,7 @@ export interface ItemMeaning {
   fact_check_comment?: string | null
   fact_check_suggestion?: string | null
   fact_checked_at?: string | null
+  fact_check_acknowledged_at?: string | null
 }
 
 import type { ItemPropertyEntry } from '@/lib/api/properties'
@@ -87,6 +88,8 @@ export interface Item {
   /** 説明文から取り出した主張ごとの検証結果 */
   fact_check_claims?: FactCheckClaim[]
   fact_checked_at?: string | null
+  /** 人が読んで判断した日時。入っていれば一覧でも警告色を出さない */
+  fact_check_acknowledged_at?: string | null
   style?: string | null
   /** 構図（'' = おまかせ / single = 単体 / scene = 情景） */
   framing?: string | null

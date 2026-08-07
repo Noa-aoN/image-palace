@@ -118,3 +118,54 @@ export async function fillItemProperties(
   })
   return res.data
 }
+
+/**
+ * よく使う項目の出発点。
+ *
+ * 一から key と型を決めるのは骨が折れるうえ、key の付け方が人によってばらつくと
+ * あとで書き出しや AI への指示を揃えにくくなる。分野ごとの出発点を用意しておく。
+ */
+export const PROPERTY_PRESETS: {
+  group: string
+  items: { key: string; label: string; value_type: PropertyValueType }[]
+}[] = [
+  {
+    group: 'ことば',
+    items: [
+      { key: 'reading', label: '読み仮名', value_type: 'text' },
+      { key: 'aliases', label: '別名・異表記', value_type: 'list' },
+      { key: 'pronunciation', label: '発音記号', value_type: 'text' },
+      { key: 'part_of_speech', label: '品詞', value_type: 'text' },
+      { key: 'derivatives', label: '派生語', value_type: 'list' },
+      { key: 'examples', label: '例', value_type: 'list' },
+      { key: 'etymology', label: '語源', value_type: 'longtext' },
+    ],
+  },
+  {
+    group: 'ものごと',
+    items: [
+      { key: 'category', label: '分類', value_type: 'text' },
+      { key: 'formula', label: '式・公式', value_type: 'text' },
+      { key: 'year', label: '年', value_type: 'number' },
+      { key: 'date', label: '日付', value_type: 'date' },
+      { key: 'source', label: '出典', value_type: 'url' },
+      { key: 'caution', label: '注意点', value_type: 'longtext' },
+    ],
+  },
+  {
+    group: '覚えかた',
+    items: [
+      { key: 'mnemonic', label: '語呂合わせ', value_type: 'longtext' },
+      { key: 'note', label: 'メモ', value_type: 'longtext' },
+    ],
+  },
+]
+
+/** 名前から識別名を下書きする。英字が拾えなければ空にして、利用者に決めてもらう */
+export function suggestPropertyKey(label: string): string {
+  const ascii = label
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '_')
+    .replace(/^_+|_+$/g, '')
+  return /^[a-z]/.test(ascii) ? ascii.slice(0, 40) : ''
+}

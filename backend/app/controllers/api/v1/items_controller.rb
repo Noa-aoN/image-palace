@@ -515,6 +515,7 @@ module Api
           fact_check_known: item.primary_meaning&.fact_check_known,
           fact_check_claims: item.primary_meaning&.fact_check_claims || [],
           fact_checked_at: item.primary_meaning&.fact_checked_at,
+          fact_check_acknowledged_at: item.primary_meaning&.fact_check_acknowledged_at,
           meanings: item.meanings.ordered.map { |m| serialize_meaning_entry(m) },
           properties: serialize_properties(item),
           style: item.style,
@@ -562,7 +563,8 @@ module Api
           fact_check_status: record.fact_check_status,
           fact_check_comment: record.fact_check_comment,
           fact_check_suggestion: record.fact_check_suggestion,
-          fact_checked_at: record.fact_checked_at
+          fact_checked_at: record.fact_checked_at,
+          fact_check_acknowledged_at: record.fact_check_acknowledged_at
         }
       end
 

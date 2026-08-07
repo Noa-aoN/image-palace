@@ -74,6 +74,7 @@ Rails.application.routes.draw do
         # 意味・説明はカード1枚に複数ぶら下がる。並び替えは一括で受ける
         resources :meanings, only: [ :create, :update, :destroy ] do
           collection { patch :reorder }
+          member { patch :acknowledge }
         end
         # 項目の値。定義（どの項目を持つか）は property_definitions 側
         put "properties/:property_definition_id", to: "item_properties#upsert", as: :property

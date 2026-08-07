@@ -151,4 +151,61 @@ RSpec.describe "Api::V1::Meanings", type: :request do
       expect(json_response["meaning"]).to eq("1つめ")
     end
   end
+
+  describe "PATCH /api/v1/items/:item_id/meanings/:id/acknowledge" do
+    def flagged_meaning
+      add_meaning("あやしい説明", fact_check_status: "doubtful", fact_checked_at: Time.current)
+    end
+
+    it "指摘を確認済みにする（判定そのものは消さない）" do
+      meaning = flagged_meaning
+
+      patch "/api/v1/items/#{item.id}/meanings/#{meaning.id}/acknowledge", headers: headers
+
+      expect(response).to have_http_status(:success)
+      expect(meaning.reload.fact_check_acknowledged?).to be(true)
+      # 何を見て決めたのかが後から辿れるよう、判定は残す
+      expect(meaning.fact_check_status).to eq("doubtful")
+    end
+
+    it "確認済みを取り消せる" do
+      meaning = flagged_meaning
+      meaning.update!(fact_check_acknowledged_at: Time.current)
+
+      patch "/api/v1/items/#{item.id}/meanings/#{meaning.id}/acknowledge",
+            params: { acknowledged: false }, headers: headers
+
+      expect(meaning.reload.fact_check_acknowledged?).to be(false)
+    end
+
+    it "説明を書き換えると確認済みは外れる（判定ごと無効になるため）" do
+      meaning = flagged_meaning
+      meaning.update!(fact_check_acknowledged_at: Time.current)
+
+      patch "/api/v1/items/#{item.id}/meanings/#{meaning.id}",
+            params: { meaning: { definition: "書き直した説明" } }, headers: headers
+
+      expect(meaning.reload.fact_check_acknowledged_at).to be_nil
+      expect(meaning.fact_check_status).to be_nil
+    end
+
+    it "確認済みかどうかはカード詳細にも出る" do
+      meaning = flagged_meaning
+      meaning.update!(fact_check_acknowledged_at: Time.current)
+
+      get "/api/v1/items/#{item.id}", headers: headers
+
+      expect(json_response["fact_check_acknowledged_at"]).to be_present
+      expect(json_response["meanings"].first["fact_check_acknowledged_at"]).to be_present
+    end
+
+    it "他ユーザーのものは 404" do
+      other = create(:item, user: create(:user, :confirmed))
+      foreign = other.meanings.create!(language_code: "ja", definition: "よそ", fact_check_status: "doubtful")
+
+      patch "/api/v1/items/#{other.id}/meanings/#{foreign.id}/acknowledge", headers: headers
+
+      expect(response).to have_http_status(:not_found)
+    end
+  end
 end
