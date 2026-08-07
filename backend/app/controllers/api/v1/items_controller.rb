@@ -5,7 +5,7 @@ module Api
 
       before_action :set_item,
                     only: [ :show, :update, :destroy, :retry, :meaning, :brief, :scene_rewrite,
-                            :generate_tags, :fact_check, :fill_properties ]
+                            :generate_tags, :fact_check, :fill_properties, :usages ]
 
       DEFAULT_PER_PAGE = 24
       MAX_PER_PAGE = 100
@@ -179,6 +179,20 @@ module Api
       rescue KeyError, Faraday::Error => e
         Rails.logger.warn "[ItemsController#scene_rewrite] failed item_id=#{item.id}: #{e.class}: #{e.message}"
         render json: { error: "書き直しに失敗しました。時間を置いて再度お試しください。" }, status: :unprocessable_entity
+      end
+
+      # このカードがどこで使われているか（キャンバス・スペース・ボックス）。
+      #
+      # プロパティとして持たせない。配置は view_items / space_points / box_items が
+      # 既に持っていて、そちらが正。カード側にも書くと必ず食い違う。
+      # 見たいときに逆引きするだけにする。
+      def usages
+        render json: {
+          views: item.views.distinct.map { |v| { id: v.id, name: v.name, view_type: v.view_type } },
+          spaces: item.space_points.includes(:space).filter_map(&:space).uniq
+                      .map { |s| { id: s.id, name: s.name } },
+          boxes: item.boxes.distinct.map { |b| { id: b.id, name: b.name } }
+        }
       end
 
       # 項目を AI でまとめて埋める（同期）。

@@ -11,6 +11,7 @@ import type { Tag } from '@/types/tag'
 import { PropertyBlock, BlockAction, BlockError } from '@/components/features/items/PropertyBlock'
 import { MeaningList } from '@/components/features/items/MeaningList'
 import { ItemPropertyBlocks } from '@/components/features/items/ItemPropertyBlocks'
+import { ItemUsageBlock } from '@/components/features/items/ItemUsageBlock'
 import {
   PropertyDefinitionsPanel,
   PROPERTY_DEFINITIONS_PANEL_KEY,
@@ -500,6 +501,9 @@ export function ItemProperties({ item, onUpdated }: ItemPropertiesProps) {
         onUpdated={onUpdated}
         onOpenSettings={() => openSection({ key: PROPERTY_DEFINITIONS_PANEL_KEY, title: '項目の設定' })}
       />
+
+      {/* どこに置いたかは、それぞれの表が正。カードには持たせず、見るときに引く */}
+      <ItemUsageBlock itemId={item.id} />
 
       {/* 定義（種別ぜんぶに効く）は右パネルで触る。値はカードの各ブロックで */}
       <PropertyDefinitionsPanel

@@ -304,3 +304,15 @@ export async function reorderMeanings(itemId: string, ids: string[]): Promise<It
   )
   return res.data.meanings
 }
+
+/** このカードがどこで使われているか。配置はそれぞれの表が正なので、見るときに引く */
+export interface ItemUsages {
+  views: { id: string; name: string; view_type: string }[]
+  spaces: { id: string; name: string }[]
+  boxes: { id: string; name: string }[]
+}
+
+export async function getItemUsages(id: string): Promise<ItemUsages> {
+  const res = await apiClient.get<ItemUsages>(`/api/v1/items/${id}/usages`)
+  return res.data
+}

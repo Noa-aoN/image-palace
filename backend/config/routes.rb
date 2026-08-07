@@ -83,6 +83,7 @@ Rails.application.routes.draw do
           post :brief
           post :scene_rewrite
           post :fill_properties
+          get :usages
           post :fact_check
           post "tags", action: :generate_tags
         end
