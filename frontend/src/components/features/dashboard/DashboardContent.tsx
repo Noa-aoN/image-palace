@@ -11,6 +11,10 @@ import { PalaceLordCard } from '@/components/features/dashboard/PalaceLordCard'
 import { QuickCreateCard } from '@/components/features/dashboard/QuickCreateCard'
 import { getItemsSummary, type ItemsSummary } from '@/lib/api/items'
 import { useBillingStore } from '@/stores/billing'
+import {
+  CreditBreakdownPanel,
+  CreditBreakdownButton,
+} from '@/components/features/billing/CreditBreakdownPanel'
 import { generatableCards } from '@/lib/credits'
 import { tierLabel, CREDIT_UNIT, CREDIT_UNIT_SHORT } from '@/lib/billing'
 
@@ -252,6 +256,10 @@ export function DashboardContent() {
             </CardContent>
           </Card>
         </Link>
+        {/* カード全体がリンクなので、内訳のボタンはその外に置く（リンクの入れ子を避ける） */}
+        <div className="flex justify-end">
+          <CreditBreakdownButton />
+        </div>
       </section>
 
       <PalaceLordCard tier={billing?.plan?.tier ?? null} />
@@ -344,6 +352,9 @@ export function DashboardContent() {
         <h2 className="text-sm font-semibold text-muted-foreground">クイック作成</h2>
         <QuickCreateCard />
       </section>
+
+      {/* 残高の内訳。開くのは上のボタンから */}
+      <CreditBreakdownPanel />
     </div>
   )
 }
