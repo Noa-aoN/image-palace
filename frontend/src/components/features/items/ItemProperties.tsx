@@ -13,6 +13,7 @@ import { PropertyBlock, BlockAction, BlockError } from '@/components/features/it
 import { MeaningList } from '@/components/features/items/MeaningList'
 import { ItemPropertyBlocks } from '@/components/features/items/ItemPropertyBlocks'
 import { ItemUsageBlock } from '@/components/features/items/ItemUsageBlock'
+import { ItemReviewBlock } from '@/components/features/items/ItemReviewBlock'
 import { CardViewPanel, applyBlockOrder } from '@/components/features/items/CardViewPanel'
 import {
   PropertyDefinitionsPanel,
@@ -569,6 +570,11 @@ export function ItemProperties({ item, onUpdated }: ItemPropertiesProps) {
           <BlockError message={tagError} />
         </PropertyBlock>
       ),
+    },
+    {
+      key: 'reviews',
+      label: '学習の記録',
+      node: <ItemReviewBlock itemId={item.id} />,
     },
     {
       key: 'usages',

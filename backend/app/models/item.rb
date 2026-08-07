@@ -5,6 +5,7 @@ class Item < ApplicationRecord
   belongs_to :item_type
   has_many :meanings, dependent: :destroy
   has_many :item_properties, dependent: :destroy
+  has_many :item_reviews, dependent: :destroy
   has_many :medias, dependent: :destroy
   has_many :box_items, dependent: :destroy
   has_many :boxes, through: :box_items

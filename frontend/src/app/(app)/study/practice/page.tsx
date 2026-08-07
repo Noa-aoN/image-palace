@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { Shuffle, ArrowRight, ImageIcon, Type, Loader2, AlertTriangle, Layers } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Breadcrumb } from '@/components/ui/breadcrumb'
@@ -9,6 +9,7 @@ import { RecentTargets } from '@/components/features/study/RecentTargets'
 import { StudyArea } from '@/components/features/study/StudyArea'
 import { StudyStatsArea } from '@/components/features/study/StudyStatsArea'
 import { useStudyRecordStore } from '@/stores/studyRecords'
+import { recordReviews } from '@/lib/api/reviews'
 import { loadPracticeCards, targetKey, targetLabel, type QuizTarget, type PracticeCard } from '@/lib/quiz'
 import { shuffle } from '@/lib/shuffle'
 
@@ -27,6 +28,20 @@ export default function PracticePage() {
 
   const addRecord = useStudyRecordStore((s) => s.addRecord)
   const label = target ? targetLabel(target) : ''
+
+  // 実際にめくったカードだけを覚えておき、離れるときにまとめて送る。
+  // 始めた時点で全枚数を記録すると、2枚見てやめた人も20枚見たことになる。
+  // 見返しは正誤の付かない記録（seen）なので、正答率には混ざらない。
+  const viewedRef = useRef<Set<string>>(new Set())
+
+  const flushViewed = () => {
+    const ids = [...viewedRef.current]
+    viewedRef.current.clear()
+    recordReviews(ids.map((id) => ({ item_id: id, result: 'seen' as const, mode: 'practice' as const })))
+  }
+
+  // 画面を離れるとき（別ページ・対象の切り替え）に送る
+  useEffect(() => flushViewed, [])
 
   const start = async () => {
     if (!target) return
@@ -57,6 +72,8 @@ export default function PracticePage() {
   }
 
   const next = () => {
+    const current = cards[index]
+    if (current) viewedRef.current.add(current.id)
     setRevealed(false)
     setIndex((i) => (cards.length > 0 ? (i + 1) % cards.length : 0))
   }

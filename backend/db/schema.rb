@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_08_07_000003) do
+ActiveRecord::Schema[8.1].define(version: 2026_08_07_000004) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
   enable_extension "pgcrypto"
@@ -145,6 +145,20 @@ ActiveRecord::Schema[8.1].define(version: 2026_08_07_000003) do
     t.index ["item_id", "property_definition_id"], name: "index_item_properties_on_item_and_definition", unique: true
     t.index ["item_id"], name: "index_item_properties_on_item_id"
     t.index ["property_definition_id"], name: "index_item_properties_on_property_definition_id"
+  end
+
+  create_table "item_reviews", id: :uuid, default: -> { "gen_random_uuid()" }, force: :cascade do |t|
+    t.datetime "created_at", null: false
+    t.uuid "item_id", null: false
+    t.string "mode", null: false
+    t.string "result", null: false
+    t.datetime "reviewed_at", null: false
+    t.datetime "updated_at", null: false
+    t.uuid "user_id", null: false
+    t.index ["item_id", "reviewed_at"], name: "index_item_reviews_on_item_id_and_reviewed_at"
+    t.index ["item_id"], name: "index_item_reviews_on_item_id"
+    t.index ["user_id", "reviewed_at"], name: "index_item_reviews_on_user_id_and_reviewed_at"
+    t.index ["user_id"], name: "index_item_reviews_on_user_id"
   end
 
   create_table "item_tags", id: :uuid, default: -> { "gen_random_uuid()" }, force: :cascade do |t|
@@ -695,6 +709,8 @@ ActiveRecord::Schema[8.1].define(version: 2026_08_07_000003) do
   add_foreign_key "credit_transactions", "users", on_delete: :cascade
   add_foreign_key "item_properties", "items"
   add_foreign_key "item_properties", "property_definitions"
+  add_foreign_key "item_reviews", "items"
+  add_foreign_key "item_reviews", "users"
   add_foreign_key "item_tags", "items", on_delete: :cascade
   add_foreign_key "item_tags", "tags", on_delete: :cascade
   add_foreign_key "items", "item_types", on_delete: :restrict

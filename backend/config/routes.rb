@@ -86,11 +86,14 @@ Rails.application.routes.draw do
           post :fill_properties
           get :usages
           patch :block_view, action: :update_block_view
+          get "reviews/summary", to: "item_reviews#summary"
           post :fact_check
           post "tags", action: :generate_tags
         end
       end
       resources :item_types, only: [ :index ]
+      # 学習の記録。1回の学習ぶんをまとめて受ける
+      resources :item_reviews, only: [ :create ]
       # カードが持つ項目の定義。種別ごとに利用者が決める
       resources :property_definitions, only: [ :index, :create, :update, :destroy ] do
         collection { patch :reorder }
