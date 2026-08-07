@@ -10,6 +10,13 @@ import type { Item, ItemType } from '@/types/item'
 import type { Tag } from '@/types/tag'
 import { PropertyBlock, BlockAction, BlockError } from '@/components/features/items/PropertyBlock'
 import { MeaningList } from '@/components/features/items/MeaningList'
+import { ItemPropertyBlocks } from '@/components/features/items/ItemPropertyBlocks'
+import {
+  PropertyDefinitionsPanel,
+  PROPERTY_DEFINITIONS_PANEL_KEY,
+} from '@/components/features/items/PropertyDefinitionsPanel'
+import { useRightPanelStore } from '@/stores/rightPanel'
+import { getItem } from '@/lib/api/items'
 
 type ItemPropertiesProps = {
   item: Item
@@ -164,6 +171,7 @@ function FactCheckResult({
  * 種別は選択即保存、意味はインライン編集で保存する。
  */
 export function ItemProperties({ item, onUpdated }: ItemPropertiesProps) {
+  const openSection = useRightPanelStore((s) => s.openSection)
   const [itemTypes, setItemTypes] = useState<ItemType[]>([])
   const [savingType, setSavingType] = useState(false)
   const [typeError, setTypeError] = useState<string | null>(null)
@@ -485,6 +493,19 @@ export function ItemProperties({ item, onUpdated }: ItemPropertiesProps) {
         </div>
         <BlockError message={tagError} />
       </PropertyBlock>
+
+      {/* 利用者が定義した項目。作り付けの項目と同じブロックで並ぶ */}
+      <ItemPropertyBlocks
+        item={item}
+        onUpdated={onUpdated}
+        onOpenSettings={() => openSection({ key: PROPERTY_DEFINITIONS_PANEL_KEY, title: '項目の設定' })}
+      />
+
+      {/* 定義（種別ぜんぶに効く）は右パネルで触る。値はカードの各ブロックで */}
+      <PropertyDefinitionsPanel
+        itemType={item.item_type}
+        onChanged={async () => onUpdated(await getItem(item.id))}
+      />
     </div>
   )
 }

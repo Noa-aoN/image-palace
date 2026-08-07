@@ -134,7 +134,17 @@ export function RightPanel() {
           ) : undefined
         }
       >
-        {mode === 'card' && itemId && <ItemDetailBody itemId={itemId} />}
+        {/*
+          セクションを開いている間も、カード本体は外さずに隠しておく。
+          本体の中から PanelSlotContent でスロットへ差し込む作りなので、
+          外すと差し込む側が消えて、開いたパネルが空になる
+          （「作り直す」「項目の設定」など、カードから開くものが全部これに当たる）。
+        */}
+        {itemId && (mode === 'card' || mode === 'section') && (
+          <div className={mode === 'card' ? undefined : 'hidden'}>
+            <ItemDetailBody itemId={itemId} />
+          </div>
+        )}
         {mode === 'board-cards' && viewId && <BoardCardsList viewId={viewId} />}
         {mode === 'add-cards' && viewId && <AddCardsBody viewId={viewId} />}
         {mode === 'board-objects' && viewId && <ObjectList viewId={viewId} />}

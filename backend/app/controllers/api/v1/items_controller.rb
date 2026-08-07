@@ -459,6 +459,7 @@ module Api
           fact_check_claims: item.primary_meaning&.fact_check_claims || [],
           fact_checked_at: item.primary_meaning&.fact_checked_at,
           meanings: item.meanings.ordered.map { |m| serialize_meaning_entry(m) },
+          properties: serialize_properties(item),
           style: item.style,
           framing: item.framing,
           prompt_source: item.effective_prompt_source,
@@ -471,6 +472,24 @@ module Api
           media: serialize_media(item.primary_media),
           created_at: item.created_at
         }
+      end
+
+      # その種別で定義されている項目を、順番どおりに全部返す。
+      # 値が入っていない項目も出す（画面で「まだ書いていない」と分かるように）。
+      def serialize_properties(item)
+        return [] if item.item_type_id.blank?
+
+        values = item.item_properties.index_by(&:property_definition_id)
+        current_user.property_definitions.for_item_type(item.item_type_id).ordered.map do |definition|
+          {
+            property_definition_id: definition.id,
+            key: definition.key,
+            label: definition.label,
+            value_type: definition.value_type,
+            description: definition.description,
+            value: values[definition.id]&.typed_value || (definition.list? ? [] : nil)
+          }
+        end
       end
 
       # 意味・説明の1件ぶん。MeaningsController の返す形と揃える

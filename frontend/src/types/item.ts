@@ -55,6 +55,8 @@ export interface ItemMeaning {
   fact_checked_at?: string | null
 }
 
+import type { ItemPropertyEntry } from '@/lib/api/properties'
+
 export interface Item {
   // カード画像の縦横比（square / portrait / golden）
   aspect_ratio?: string
@@ -69,6 +71,8 @@ export interface Item {
   meaning_level?: string | null
   /** 並び順どおりの全件 */
   meanings?: ItemMeaning[]
+  /** その種別で定義されている項目（未入力のものも含む） */
+  properties?: ItemPropertyEntry[]
   /** 説明のAIファクトチェック結果 */
   fact_check_status?: 'correct' | 'doubtful' | 'incorrect' | null
   fact_check_comment?: string | null
