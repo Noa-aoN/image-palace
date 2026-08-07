@@ -29,7 +29,9 @@ gem "image_processing", "~> 2.0"
 
 # libvips 本体のバインディング。image_processing 2.0 で依存から外れたため明示的に指定する
 # （OptimizeImageService や vips initializer が Vips を直接使う）
-gem "ruby-vips", "~> 2.3"
+# require: false 必須。起動時に読み込むと libvips 未インストール環境（CI 等）で落ちる。
+# 読み込みは config/initializers/vips.rb が LoadError を握って行う
+gem "ruby-vips", "~> 2.3", require: false
 
 # Use Rack CORS for handling Cross-Origin Resource Sharing (CORS), making cross-origin Ajax possible
 gem "rack-cors"
