@@ -192,12 +192,17 @@ export function DashboardContent() {
       <div className="grid gap-6 lg:grid-cols-2 lg:items-stretch">
       <section className="flex flex-col space-y-3">
         <h2 className="text-sm font-semibold text-muted-foreground">宮殿の生成資産</h2>
-        <Link
-          href="/billing"
-          aria-label="プランと利用状況を見る"
-          className="group block flex-1 rounded-xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--palace)]"
-        >
-          <Card className="h-full cursor-pointer transition hover:border-[var(--palace)] hover:shadow-md">
+        {/*
+          カード全体を /billing への入口にしつつ、中に別のボタンも置く。
+          リンクでカードを包むと入れ子になって button を入れられないので、
+          リンクは面いっぱいに敷き、その上へ中身を重ねる。
+        */}
+        <Card className="group relative h-full flex-1 cursor-pointer transition hover:border-[var(--palace)] hover:shadow-md">
+          <Link
+            href="/billing"
+            aria-label="プランと利用状況を見る"
+            className="absolute inset-0 z-0 rounded-xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--palace)]"
+          />
             <CardContent className="space-y-4">
               <div>
                 <div className="flex items-center justify-between">
@@ -253,13 +258,12 @@ export function DashboardContent() {
                   クレジットがありません。プランのアップグレードかクレジット追加で生成を続けられます。
                 </p>
               )}
+              {/* 敷いたリンクより手前に出す。押してもプラン画面へは飛ばない */}
+              <div className="relative z-10 flex justify-end border-t pt-3">
+                <CreditBreakdownButton />
+              </div>
             </CardContent>
-          </Card>
-        </Link>
-        {/* カード全体がリンクなので、内訳のボタンはその外に置く（リンクの入れ子を避ける） */}
-        <div className="flex justify-end">
-          <CreditBreakdownButton />
-        </div>
+        </Card>
       </section>
 
       <PalaceLordCard tier={billing?.plan?.tier ?? null} />
