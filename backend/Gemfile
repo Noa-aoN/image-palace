@@ -25,7 +25,11 @@ gem "kamal", require: false
 gem "thruster", require: false
 
 # Use Active Storage variants [https://guides.rubyonrails.org/active_storage_overview.html#transforming-images]
-gem "image_processing", "~> 1.2"
+gem "image_processing", "~> 2.0"
+
+# libvips 本体のバインディング。image_processing 2.0 で依存から外れたため明示的に指定する
+# （OptimizeImageService や vips initializer が Vips を直接使う）
+gem "ruby-vips", "~> 2.3"
 
 # Use Rack CORS for handling Cross-Origin Resource Sharing (CORS), making cross-origin Ajax possible
 gem "rack-cors"
