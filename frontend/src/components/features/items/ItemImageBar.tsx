@@ -26,7 +26,7 @@ export function ItemImageBar({ item, onUpdated }: { item: Item; onUpdated: (item
     <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-2">
       <div className="flex items-center gap-4">
         <GenerationInfo item={item} />
-        <PromptInfo item={item} />
+        <PromptInfo item={item} onUpdated={onUpdated} />
       </div>
       {canRegenerate && <RegeneratePanel item={item} onUpdated={onUpdated} />}
     </div>
