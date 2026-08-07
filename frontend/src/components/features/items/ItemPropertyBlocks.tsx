@@ -1,11 +1,11 @@
 'use client'
 
 import { useState } from 'react'
-import { Check, Pencil, Plus, Settings2, X } from 'lucide-react'
+import { Check, Pencil, Plus, Settings2, Sparkles, X } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Spinner } from '@/components/ui/spinner'
 import { PropertyBlock, BlockAction, BlockEmpty, BlockError } from '@/components/features/items/PropertyBlock'
-import { setItemProperty, type ItemPropertyEntry } from '@/lib/api/properties'
+import { setItemProperty, fillItemProperties, type ItemPropertyEntry } from '@/lib/api/properties'
 import { getItem } from '@/lib/api/items'
 import type { Item } from '@/types/item'
 
@@ -30,6 +30,31 @@ export function ItemPropertyBlocks({
   onOpenSettings: () => void
 }) {
   const entries = item.properties ?? []
+  const [filling, setFilling] = useState(false)
+  const [fillNote, setFillNote] = useState<string | null>(null)
+
+  // 項目ごとに呼ばず、1回でまとめて埋める。空いている項目だけが対象で、
+  // 手で書いたものは上書きしない
+  const fillAll = async () => {
+    setFilling(true)
+    setFillNote(null)
+    try {
+      const result = await fillItemProperties(item.id)
+      onUpdated(await getItem(item.id))
+      setFillNote(
+        result.filled_keys.length === 0
+          ? '埋められる項目がありませんでした（確かでないものは書きません）'
+          : `${result.filled_keys.length}件を埋めました${
+              result.skipped_keys.length > 0 ? `（${result.skipped_keys.length}件は見送り）` : ''
+            }`
+      )
+    } catch (err: unknown) {
+      const axiosErr = err as { response?: { data?: { error?: string } } }
+      setFillNote(axiosErr?.response?.data?.error ?? '埋められませんでした。時間を置いてお試しください。')
+    } finally {
+      setFilling(false)
+    }
+  }
 
   // 定義が1つも無いときは、入口だけ出す。空のブロックを並べても意味がない
   if (entries.length === 0) {
@@ -47,8 +72,26 @@ export function ItemPropertyBlocks({
     )
   }
 
+  const emptyCount = entries.filter((e) =>
+    e.value_type === 'list' ? ((e.value as string[] | null) ?? []).length === 0 : e.value == null || e.value === ''
+  ).length
+
   return (
     <>
+      {emptyCount > 0 && (
+        <div className="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-border/70 bg-muted/30 px-4 py-2">
+          <p className="text-xs text-muted-foreground">
+            {fillNote ?? `未記入の項目が ${emptyCount} 件あります`}
+          </p>
+          <BlockAction
+            icon={<Sparkles size={14} />}
+            label="AIでまとめて埋める"
+            onClick={fillAll}
+            busy={filling}
+            title="空いている項目だけを、1回の問い合わせでまとめて埋めます（手で書いたものは変えません）"
+          />
+        </div>
+      )}
       {entries.map((entry, index) => (
         <PropertyEntryBlock
           key={entry.property_definition_id}

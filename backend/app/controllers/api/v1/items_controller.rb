@@ -5,7 +5,7 @@ module Api
 
       before_action :set_item,
                     only: [ :show, :update, :destroy, :retry, :meaning, :brief, :scene_rewrite,
-                            :generate_tags, :fact_check ]
+                            :generate_tags, :fact_check, :fill_properties ]
 
       DEFAULT_PER_PAGE = 24
       MAX_PER_PAGE = 100
@@ -179,6 +179,32 @@ module Api
       rescue KeyError, Faraday::Error => e
         Rails.logger.warn "[ItemsController#scene_rewrite] failed item_id=#{item.id}: #{e.class}: #{e.message}"
         render json: { error: "書き直しに失敗しました。時間を置いて再度お試しください。" }, status: :unprocessable_entity
+      end
+
+      # 項目を AI でまとめて埋める（同期）。
+      #
+      # 項目ごとに呼ばず、1回の問い合わせで全項目を埋める。項目を10個定義した人が
+      # 1枚のカードで10回 AI を叩くことになると、費用も待ち時間も項目数に比例する。
+      #
+      # 既定は空いている項目だけ。手で書いたものを黙って上書きしない。
+      def fill_properties
+        result = Items::FillPropertiesService.call(
+          item: item,
+          user: current_user,
+          overwrite: ActiveModel::Type::Boolean.new.cast(params[:overwrite]) || false
+        )
+        render json: {
+          filled_keys: result.filled_keys,
+          skipped_keys: result.skipped_keys,
+          item: serialize_item(item.reload)
+        }, status: :ok
+      rescue Items::FillPropertiesService::FillError => e
+        render json: { error: e.message }, status: :unprocessable_entity
+      rescue Ai::Chat::LimitExceeded => e
+        render json: { error: e.message }, status: :too_many_requests
+      rescue KeyError, Faraday::Error => e
+        Rails.logger.warn "[ItemsController#fill_properties] failed item_id=#{item.id}: #{e.class}: #{e.message}"
+        render json: { error: "項目を埋められませんでした。時間を置いて再度お試しください。" }, status: :unprocessable_entity
       end
 
       def destroy

@@ -99,3 +99,22 @@ export async function setItemProperty(
   )
   return res.data
 }
+
+/** AI でまとめて埋めた結果。埋まらなかった項目は skipped_keys に載る */
+export interface FillPropertiesResult {
+  filled_keys: string[]
+  skipped_keys: string[]
+  item: unknown
+}
+
+// 項目ごとではなく1回でまとめて埋める（項目数に費用と待ち時間を比例させない）。
+// 既定は空いている項目だけ。手で書いたものは上書きしない。
+export async function fillItemProperties(
+  itemId: string,
+  opts?: { overwrite?: boolean }
+): Promise<FillPropertiesResult> {
+  const res = await apiClient.post<FillPropertiesResult>(`/api/v1/items/${itemId}/fill_properties`, {
+    overwrite: opts?.overwrite ?? false,
+  })
+  return res.data
+}

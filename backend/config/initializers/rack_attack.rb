@@ -123,6 +123,11 @@ class Rack::Attack
     req.ip if (req.post? || req.patch? || req.put? || req.delete?) && MEANING_PATH.match?(req.path)
   end
 
+  # 項目のAI一括入力（OpenAI Chat 呼び出し）
+  throttle("item_fill_properties/ip", limit: 20, period: 60.seconds) do |req|
+    req.ip if req.post? && req.path.match?(%r{\A/api/v1/items/[^/]+/fill_properties\z})
+  end
+
   # 意味・説明からの情景の書き直し（OpenAI Chat 呼び出し）
   throttle("item_scene_rewrite/ip", limit: 20, period: 60.seconds) do |req|
     req.ip if req.post? && req.path.match?(%r{\A/api/v1/items/[^/]+/scene_rewrite\z})
