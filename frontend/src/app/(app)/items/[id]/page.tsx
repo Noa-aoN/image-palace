@@ -3,13 +3,17 @@
 import { useEffect, useState } from 'react'
 import Link from 'next/link'
 import { useParams, useRouter, useSearchParams } from 'next/navigation'
-import { Trash2, ChevronLeft, ChevronRight, Pencil, Check, X, ExternalLink } from 'lucide-react'
+import { Trash2, ChevronLeft, ChevronRight, Pencil, Check, X, ExternalLink, LayoutList } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Breadcrumb } from '@/components/ui/breadcrumb'
 import { Input } from '@/components/ui/input'
 import { Spinner } from '@/components/ui/spinner'
 import { ItemProperties } from '@/components/features/items/ItemProperties'
 import { ItemImageBar } from '@/components/features/items/ItemImageBar'
+import { CARD_VIEW_PANEL_KEY } from '@/components/features/items/CardViewPanel'
+import { PropertyBlock, BlockAction } from '@/components/features/items/PropertyBlock'
+import { Tooltip } from '@/components/ui/tooltip'
+import { useRightPanelStore } from '@/stores/rightPanel'
 import { getItemNavigationIds } from '@/lib/api/items'
 import { getViewDetail } from '@/lib/api/views'
 import { GeneratingOverlay } from '@/components/features/items/GeneratingOverlay'
@@ -22,6 +26,7 @@ import { aspectRatioCss } from '@/lib/aspect-ratio'
 export default function ItemDetailPage() {
   const { id } = useParams<{ id: string }>()
   const router = useRouter()
+  const openSection = useRightPanelStore((s) => s.openSection)
   const searchParams = useSearchParams()
   // デッキ/ボード経由で開いた場合は元の view を保持し、前後ナビをその並び順（view 由来）に切り替える。
   const deckId = searchParams.get('deck')
@@ -134,7 +139,20 @@ export default function ItemDetailPage() {
         {/* ヘッダー行 */}
         <div className="flex items-center justify-between">
           <Breadcrumb className="mb-0" items={[{ href: backHref, label: fromViewId ? (fromViewName ?? fromLabel) : 'カード' }, { label: item.title }]} />
-          <Button
+          {/* 「表示」と「削除」はどちらもこのカードへの操作。間を詰めて一組に見せる */}
+          <div className="flex shrink-0 items-center gap-0.5">
+            {/* このカード1枚の見え方（どのブロックを出すか・並び順）。
+                中身は ItemProperties 側が右パネルへ差し込む */}
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => openSection({ key: CARD_VIEW_PANEL_KEY, title: '表示' })}
+              className="flex items-center gap-1.5 text-sm"
+            >
+              <LayoutList size={14} />
+              表示
+            </Button>
+            <Button
             variant={confirmDelete ? 'destructive' : 'ghost'}
             size="sm"
             onClick={handleDelete}
@@ -144,67 +162,67 @@ export default function ItemDetailPage() {
           >
             {deleting ? <Spinner size={14} /> : <Trash2 size={14} />}
             {deleting ? '削除中...' : confirmDelete ? '本当に削除' : '削除'}
-          </Button>
+            </Button>
+          </div>
         </div>
 
-        {/* タイトル + ステータス（テキストを画像の上に表示） */}
-        {editing ? (
-          <div className="space-y-2">
-            <div className="flex items-center gap-2">
-              <Input
-                value={titleDraft}
-                onChange={(e) => setTitleDraft(e.target.value)}
-                onKeyDown={(e) => {
-                  if (e.key === 'Enter') { e.preventDefault(); handleSaveTitle() }
-                  if (e.key === 'Escape') cancelEdit()
-                }}
-                disabled={saving}
-                autoFocus
-                aria-label="タイトル"
-                className="text-lg"
-              />
-              <Button size="sm" onClick={handleSaveTitle} disabled={saving} aria-label="保存" className="shrink-0">
-                {saving ? <Spinner size={16} /> : <Check size={16} />}
-              </Button>
-              <Button variant="ghost" size="sm" onClick={cancelEdit} disabled={saving} aria-label="キャンセル" className="shrink-0">
-                <X size={16} />
-              </Button>
+        {/* 見出し語も、下のプロパティと同じ薄い枠に載せて見え方を揃える */}
+        <PropertyBlock
+          title="見出し語"
+          actions={
+            !editing && (
+              <>
+                <BlockAction icon={<Pencil size={16} />} label="単語を編集" onClick={startEdit} hideLabel />
+                <Tooltip label="ブラウザで検索（別タブ）">
+                  <a
+                    href={`https://www.google.com/search?q=${encodeURIComponent(item.title)}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="block text-muted-foreground transition-colors hover:text-foreground"
+                    aria-label="ブラウザで検索（別タブ）"
+                  >
+                    <ExternalLink size={16} />
+                  </a>
+                </Tooltip>
+              </>
+            )
+          }
+        >
+          {editing ? (
+            <div className="space-y-2">
+              <div className="flex items-center gap-2">
+                <Input
+                  value={titleDraft}
+                  onChange={(e) => setTitleDraft(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') { e.preventDefault(); handleSaveTitle() }
+                    if (e.key === 'Escape') cancelEdit()
+                  }}
+                  disabled={saving}
+                  autoFocus
+                  aria-label="見出し語"
+                  className="text-lg"
+                />
+                <Tooltip label="保存">
+                  <Button size="sm" onClick={handleSaveTitle} disabled={saving} aria-label="保存" className="shrink-0">
+                    {saving ? <Spinner size={16} /> : <Check size={16} />}
+                  </Button>
+                </Tooltip>
+                <Tooltip label="キャンセル">
+                  <Button variant="ghost" size="sm" onClick={cancelEdit} disabled={saving} aria-label="キャンセル" className="shrink-0">
+                    <X size={16} />
+                  </Button>
+                </Tooltip>
+              </div>
+              {editError && <p className="text-sm text-destructive">{editError}</p>}
             </div>
-            {editError && <p className="text-sm text-destructive">{editError}</p>}
-          </div>
-        ) : (
-          <div className="flex items-center justify-between gap-3">
-            <div className="flex items-center gap-2 min-w-0">
-              <h1 className="text-2xl font-semibold truncate">{item.title}</h1>
-              <button
-                onClick={startEdit}
-                className="shrink-0 text-muted-foreground hover:text-foreground transition-colors"
-                aria-label="タイトルを編集"
-              >
-                <Pencil size={16} />
-              </button>
-              {/* この単語をブラウザ（Google）で別タブ検索する。ホバーで「ブラウザで検索」を表示 */}
-              <span className="group relative shrink-0">
-                <a
-                  href={`https://www.google.com/search?q=${encodeURIComponent(item.title)}`}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="block text-muted-foreground hover:text-foreground transition-colors"
-                  aria-label="ブラウザで検索（別タブ）"
-                >
-                  <ExternalLink size={16} />
-                </a>
-                <span
-                  role="tooltip"
-                  className="pointer-events-none absolute left-1/2 top-full z-20 mt-1.5 -translate-x-1/2 whitespace-nowrap rounded-md bg-foreground px-2 py-1 text-xs text-background opacity-0 shadow-md transition-opacity group-hover:opacity-100"
-                >
-                  ブラウザで検索
-                </span>
-              </span>
+          ) : (
+            <div className="flex items-center justify-between gap-3">
+              <h1 className="truncate text-2xl font-semibold">{item.title}</h1>
+              <StatusBadge status={item.generation_status} size="lg" />
             </div>
-            <StatusBadge status={item.generation_status} size="lg" />
-          </div>
-        )}
+          )}
+        </PropertyBlock>
 
         {/*
           ── 画像 + ナビゲーション ──
@@ -221,33 +239,35 @@ export default function ItemDetailPage() {
             )}
           </div>
 
-          {/* 画像 */}
+          {/* 画像。周りの余白は枠側に持たせ、あとで台紙やフレームを差し替えられるようにする */}
           <div className="flex-1 min-w-0 md:flex-none md:w-full">
-            {item.media?.url && !imgError ? (
-              <div
-                className="w-full overflow-hidden rounded-xl bg-muted"
-                style={item.media.blur ? { backgroundImage: `url("${item.media.blur}")`, backgroundSize: 'cover', backgroundPosition: 'center' } : undefined}
-              >
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img
-                  src={item.media.url}
-                  alt={item.title}
-                  className="w-full rounded-xl object-cover cursor-zoom-in"
-                  decoding="async"
-                  fetchPriority="high"
-                  onClick={() => setZoomed(true)}
-                  onError={() => setImgError(true)}
+            <PropertyBlock title="イメージ">
+              {item.media?.url && !imgError ? (
+                <div
+                  className="w-full overflow-hidden rounded-lg bg-muted"
+                  style={item.media.blur ? { backgroundImage: `url("${item.media.blur}")`, backgroundSize: 'cover', backgroundPosition: 'center' } : undefined}
+                >
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img
+                    src={item.media.url}
+                    alt={item.title}
+                    className="w-full cursor-zoom-in rounded-lg object-cover"
+                    decoding="async"
+                    fetchPriority="high"
+                    onClick={() => setZoomed(true)}
+                    onError={() => setImgError(true)}
+                  />
+                </div>
+              ) : (
+                <GeneratingOverlay
+                  status={item.generation_status}
+                  label={imgError ? '画像を表示できません' : STATUS_LABEL[item.generation_status]}
+                  className="w-full rounded-lg text-muted-foreground"
+                  style={{ aspectRatio: aspectRatioCss(item?.aspect_ratio) }}
+                  textClassName="text-sm"
                 />
-              </div>
-            ) : (
-              <GeneratingOverlay
-                status={item.generation_status}
-                label={imgError ? '画像を表示できません' : STATUS_LABEL[item.generation_status]}
-                className="w-full rounded-xl text-muted-foreground"
-                style={{ aspectRatio: aspectRatioCss(item?.aspect_ratio) }}
-                textClassName="text-sm"
-              />
-            )}
+              )}
+            </PropertyBlock>
           </div>
 
           {/* 右矢印スロット: モバイルのみ表示 */}

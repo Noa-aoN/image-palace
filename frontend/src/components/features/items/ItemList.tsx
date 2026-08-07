@@ -117,11 +117,20 @@ const TOOLTIP_ALIGN_CLASSES = {
   right: 'right-0',
 } as const
 
-// ファクトチェックで「正しい」以外のときの単語名の色（一覧カードで使用）
-function factCheckTitleClass(status?: string | null): string {
-  if (status === 'incorrect') return 'text-red-600'
-  if (status === 'doubtful') return 'text-yellow-700'
+// ファクトチェックで「正しい」以外のときの単語名の色（一覧カードで使用）。
+// 人が読んで判断したもの（確認済み）は色を出さない。棚を開くたびに
+// 解決済みの指摘で警告され続けるのは、警告そのものを読み飛ばす癖につながる。
+function factCheckTitleClass(item: Item): string {
+  if (item.fact_check_acknowledged_at) return ''
+  if (item.fact_check_status === 'incorrect') return 'text-red-600'
+  if (item.fact_check_status === 'doubtful') return 'text-yellow-700'
   return ''
+}
+
+function needsFactCheckAttention(item: Item): boolean {
+  return Boolean(
+    !item.fact_check_acknowledged_at && item.fact_check_status && item.fact_check_status !== 'correct'
+  )
 }
 
 
@@ -182,8 +191,8 @@ function ItemCard({ item, selectionMode, selected, onToggle, fit, sizes }: ItemC
       <div className="px-3 py-2 flex items-center justify-between gap-2">
         {/* ファクトチェックで「正しい」以外なら単語名に色を付けて気づけるようにする */}
         <span
-          className={`text-sm font-medium truncate ${factCheckTitleClass(item.fact_check_status)}`}
-          title={item.fact_check_status && item.fact_check_status !== 'correct' ? 'ファクトチェックで要確認' : undefined}
+          className={`text-sm font-medium truncate ${factCheckTitleClass(item)}`}
+          title={needsFactCheckAttention(item) ? 'ファクトチェックで要確認' : undefined}
           onMouseEnter={showTitleTooltip}
           onMouseLeave={() => setTooltipAlign(null)}
         >

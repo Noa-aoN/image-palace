@@ -4,6 +4,8 @@ class Item < ApplicationRecord
   belongs_to :user
   belongs_to :item_type
   has_many :meanings, dependent: :destroy
+  has_many :item_properties, dependent: :destroy
+  has_many :item_reviews, dependent: :destroy
   has_many :medias, dependent: :destroy
   has_many :box_items, dependent: :destroy
   has_many :boxes, through: :box_items
@@ -36,7 +38,13 @@ class Item < ApplicationRecord
   DEFAULT_PROMPT_SOURCE = "brief"
 
   store_accessor :metadata, :generation_error, :generation_error_code, :style, :custom_prompt, :framing,
-                 :prompt_source
+                 :prompt_source, :block_view
+
+  # カード1枚ごとの見え方（どのブロックを出すか・並び順）。
+  # 中身は { "hidden" => [key...], "order" => [key...] }。
+  # 種別の設定（どの項目を持つか）とは別で、こちらは**この1枚だけ**に効く。
+  MAX_BLOCK_KEYS = 100
+  MAX_BLOCK_KEY_LENGTH = 64
 
   validates :title, presence: true, length: { maximum: MAX_TITLE_LENGTH }
   validates :generation_status, inclusion: { in: GENERATION_STATUSES }
@@ -58,6 +66,16 @@ class Item < ApplicationRecord
     where(generation_status: %w[pending processing]).where(updated_at: ..cutoff)
   }
 
+  # 隠しているブロックのキー。未設定なら空
+  def hidden_block_keys
+    Array((block_view || {})["hidden"])
+  end
+
+  # 並び順の指定。未設定なら空（画面側の既定の並びを使う）
+  def ordered_block_keys
+    Array((block_view || {})["order"])
+  end
+
   # 未指定のカード（旧データ・既定のまま作られたもの）は既定の経路として扱う
   def effective_prompt_source
     prompt_source.presence || DEFAULT_PROMPT_SOURCE
@@ -71,13 +89,15 @@ class Item < ApplicationRecord
     end
   end
 
-  # 表示・編集用の代表的な意味（日本語を優先）
+  # 表示・編集用の代表的な意味（日本語を優先）。
+  # 複数持てるようになったので、同じ言語が並んだときは position の先頭を代表にする。
+  #
+  # 並べ替えはメモリ上で行う。`meanings.ordered` のようにスコープを挟むと Relation になり、
+  # まだ保存していないカード（build して meanings.build した状態）で組み立てた中身が
+  # 見えなくなる。プロンプト組み立てはその状態でも通るので、ここで落とせない。
   def primary_meaning
-    if association(:meanings).loaded?
-      meanings.find { |m| m.language_code == "ja" } || meanings.first
-    else
-      meanings.in_language("ja").first || meanings.first
-    end
+    sorted = meanings.to_a.sort_by { |m| [ m.position || Float::INFINITY, m.created_at || Time.zone.at(0) ] }
+    sorted.find { |m| m.language_code == "ja" } || sorted.first
   end
 
   # ユーザーが説明文・情景プロンプトを手で直したか。直したものは自動生成で上書きしない

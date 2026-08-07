@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_08_05_000004) do
+ActiveRecord::Schema[8.1].define(version: 2026_08_07_000004) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
   enable_extension "pgcrypto"
@@ -136,6 +136,31 @@ ActiveRecord::Schema[8.1].define(version: 2026_08_05_000004) do
     t.index ["user_id"], name: "index_credit_transactions_on_user_id"
   end
 
+  create_table "item_properties", id: :uuid, default: -> { "gen_random_uuid()" }, force: :cascade do |t|
+    t.datetime "created_at", null: false
+    t.uuid "item_id", null: false
+    t.uuid "property_definition_id", null: false
+    t.datetime "updated_at", null: false
+    t.jsonb "value", default: {}, null: false
+    t.index ["item_id", "property_definition_id"], name: "index_item_properties_on_item_and_definition", unique: true
+    t.index ["item_id"], name: "index_item_properties_on_item_id"
+    t.index ["property_definition_id"], name: "index_item_properties_on_property_definition_id"
+  end
+
+  create_table "item_reviews", id: :uuid, default: -> { "gen_random_uuid()" }, force: :cascade do |t|
+    t.datetime "created_at", null: false
+    t.uuid "item_id", null: false
+    t.string "mode", null: false
+    t.string "result", null: false
+    t.datetime "reviewed_at", null: false
+    t.datetime "updated_at", null: false
+    t.uuid "user_id", null: false
+    t.index ["item_id", "reviewed_at"], name: "index_item_reviews_on_item_id_and_reviewed_at"
+    t.index ["item_id"], name: "index_item_reviews_on_item_id"
+    t.index ["user_id", "reviewed_at"], name: "index_item_reviews_on_user_id_and_reviewed_at"
+    t.index ["user_id"], name: "index_item_reviews_on_user_id"
+  end
+
   create_table "item_tags", id: :uuid, default: -> { "gen_random_uuid()" }, force: :cascade do |t|
     t.datetime "created_at", null: false
     t.uuid "item_id", null: false
@@ -182,6 +207,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_08_05_000004) do
     t.text "definition", null: false
     t.string "detail_level", default: "simple", null: false
     t.text "example_sentence"
+    t.datetime "fact_check_acknowledged_at"
     t.jsonb "fact_check_claims", default: [], null: false
     t.text "fact_check_comment"
     t.text "fact_check_known"
@@ -191,7 +217,9 @@ ActiveRecord::Schema[8.1].define(version: 2026_08_05_000004) do
     t.datetime "fact_checked_at"
     t.uuid "item_id", null: false
     t.string "language_code", default: "ja", null: false
+    t.integer "position"
     t.datetime "updated_at", null: false
+    t.index ["item_id", "position"], name: "index_meanings_on_item_id_and_position"
     t.index ["item_id"], name: "index_meanings_on_item_id"
   end
 
@@ -255,6 +283,22 @@ ActiveRecord::Schema[8.1].define(version: 2026_08_05_000004) do
     t.datetime "updated_at", null: false
     t.index ["category", "published_at"], name: "index_posts_on_category_and_published_at"
     t.index ["slug"], name: "index_posts_on_slug", unique: true
+  end
+
+  create_table "property_definitions", id: :uuid, default: -> { "gen_random_uuid()" }, force: :cascade do |t|
+    t.datetime "created_at", null: false
+    t.text "description"
+    t.uuid "item_type_id", null: false
+    t.string "key", null: false
+    t.string "label", null: false
+    t.integer "position", default: 0, null: false
+    t.datetime "updated_at", null: false
+    t.uuid "user_id", null: false
+    t.string "value_type", default: "text", null: false
+    t.index ["item_type_id"], name: "index_property_definitions_on_item_type_id"
+    t.index ["user_id", "item_type_id", "key"], name: "index_property_definitions_on_user_type_key", unique: true
+    t.index ["user_id", "item_type_id", "position"], name: "index_property_definitions_on_user_type_position"
+    t.index ["user_id"], name: "index_property_definitions_on_user_id"
   end
 
   create_table "relations", id: :uuid, default: -> { "gen_random_uuid()" }, force: :cascade do |t|
@@ -663,6 +707,10 @@ ActiveRecord::Schema[8.1].define(version: 2026_08_05_000004) do
   add_foreign_key "boxes", "users", on_delete: :cascade
   add_foreign_key "credit_grants", "users"
   add_foreign_key "credit_transactions", "users", on_delete: :cascade
+  add_foreign_key "item_properties", "items"
+  add_foreign_key "item_properties", "property_definitions"
+  add_foreign_key "item_reviews", "items"
+  add_foreign_key "item_reviews", "users"
   add_foreign_key "item_tags", "items", on_delete: :cascade
   add_foreign_key "item_tags", "tags", on_delete: :cascade
   add_foreign_key "items", "item_types", on_delete: :restrict
@@ -671,6 +719,8 @@ ActiveRecord::Schema[8.1].define(version: 2026_08_05_000004) do
   add_foreign_key "medias", "items", on_delete: :cascade
   add_foreign_key "notifications", "users", on_delete: :cascade
   add_foreign_key "posts", "users", column: "author_id", on_delete: :nullify
+  add_foreign_key "property_definitions", "item_types"
+  add_foreign_key "property_definitions", "users"
   add_foreign_key "relations", "items", column: "from_item_id", on_delete: :cascade
   add_foreign_key "relations", "items", column: "to_item_id", on_delete: :cascade
   add_foreign_key "relations", "users", on_delete: :cascade

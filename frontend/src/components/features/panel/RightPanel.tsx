@@ -29,6 +29,7 @@ export function RightPanel() {
   const bulkItemIds = useRightPanelStore((s) => s.bulkItemIds)
   const bulkEdgeIds = useRightPanelStore((s) => s.bulkEdgeIds)
   const section = useRightPanelStore((s) => s.section)
+  const openCard = useRightPanelStore((s) => s.openCard)
   const close = useRightPanelStore((s) => s.close)
   const openBoardCards = useRightPanelStore((s) => s.openBoardCards)
   const openBoardObjects = useRightPanelStore((s) => s.openBoardObjects)
@@ -84,13 +85,22 @@ export function RightPanel() {
                 : undefined
 
   // 一覧 > 詳細 の親子関係。詳細/編集からは対応する一覧へ戻す。
+  //
+  // カードから開いたセクション（表示・項目の設定・作り直す）からは、そのカードへ戻す。
+  // ここが無いと、開いた先を閉じるしかなく、見ていたカードを開き直すことになる。
   const onBack =
     mode === 'card' && viewId
       ? () => openBoardCards(viewId)
       : mode === 'edge' && viewId
         ? () => openBoardObjects(viewId)
-        : undefined
-  const backLabel = mode === 'card' ? '配置カード一覧' : mode === 'edge' ? 'オブジェクト一覧' : undefined
+        : mode === 'section' && itemId
+          ? () => openCard(itemId, viewId)
+          : undefined
+  const backLabel =
+    mode === 'card' ? '配置カード一覧'
+    : mode === 'edge' ? 'オブジェクト一覧'
+    : mode === 'section' && itemId ? 'カード'
+    : undefined
 
   return (
     <aside
@@ -134,7 +144,17 @@ export function RightPanel() {
           ) : undefined
         }
       >
-        {mode === 'card' && itemId && <ItemDetailBody itemId={itemId} />}
+        {/*
+          セクションを開いている間も、カード本体は外さずに隠しておく。
+          本体の中から PanelSlotContent でスロットへ差し込む作りなので、
+          外すと差し込む側が消えて、開いたパネルが空になる
+          （「作り直す」「項目の設定」など、カードから開くものが全部これに当たる）。
+        */}
+        {itemId && (mode === 'card' || mode === 'section') && (
+          <div className={mode === 'card' ? undefined : 'hidden'}>
+            <ItemDetailBody itemId={itemId} />
+          </div>
+        )}
         {mode === 'board-cards' && viewId && <BoardCardsList viewId={viewId} />}
         {mode === 'add-cards' && viewId && <AddCardsBody viewId={viewId} />}
         {mode === 'board-objects' && viewId && <ObjectList viewId={viewId} />}

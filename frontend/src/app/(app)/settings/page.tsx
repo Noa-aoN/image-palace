@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useState } from 'react'
+import Link from 'next/link'
 import { Download, Sparkles, Loader2, Share2, Plug, SlidersHorizontal, Bell, Database, Image as ImageIcon, Boxes, Zap, Settings, Wand2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { CategorySections, type CategorySection } from '@/components/features/myroom/CategorySections'
@@ -317,6 +318,24 @@ export default function SettingsPage() {
               </p>
             )}
 
+          </section>
+
+          {/* カードが持つ項目。種別ごとに決めるので、一望できる場所を別ページに置く */}
+          <section className="space-y-3 rounded-xl border border-border bg-card p-5">
+            <div className="flex items-center gap-2">
+              <Boxes size={18} style={{ color: 'var(--palace)' }} />
+              <h2 className="text-lg font-semibold">カードの項目</h2>
+            </div>
+            <p className="text-sm text-muted-foreground">
+              読み仮名・別名・発音記号など、カードに持たせる項目を種別ごとに決めます。
+              足した項目は、その種別のカード全部に出ます。
+            </p>
+            <Link
+              href="/settings/card-properties"
+              className="inline-flex items-center gap-1.5 rounded-lg border border-border px-3 py-1.5 text-sm transition-colors hover:bg-muted"
+            >
+              項目を設定する
+            </Link>
           </section>
 
           {/*

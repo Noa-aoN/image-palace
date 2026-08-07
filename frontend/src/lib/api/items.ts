@@ -1,5 +1,5 @@
 import { apiClient } from './client'
-import type { Item, ItemType } from '@/types/item'
+import type { Item, ItemMeaning, ItemType } from '@/types/item'
 
 export interface ItemsSummary {
   total_count: number
@@ -261,5 +261,84 @@ export async function rewriteScenePrompt(id: string): Promise<SceneOption[]> {
 // AI による説明（meaning）のファクトチェック（同期）。説明が無いカードはスキップ。
 export async function factCheckItem(id: string): Promise<ItemOrSkip> {
   const res = await apiClient.post<ItemOrSkip>(`/api/v1/items/${id}/fact_check`)
+  return res.data
+}
+
+// --- 意味・説明（カード1枚に複数） ---------------------------------------
+//
+// 代表の1件は Item.meaning に残るので、既にそれを読んでいる画面は変わらない。
+// 複数を扱う画面だけがこちらを使う。
+
+export interface MeaningPayload {
+  definition?: string
+  example_sentence?: string | null
+  detail_level?: string
+  language_code?: string
+}
+
+export async function createMeaning(itemId: string, payload: MeaningPayload): Promise<ItemMeaning> {
+  const res = await apiClient.post<ItemMeaning>(`/api/v1/items/${itemId}/meanings`, { meaning: payload })
+  return res.data
+}
+
+export async function updateMeaning(
+  itemId: string,
+  meaningId: string,
+  payload: MeaningPayload
+): Promise<ItemMeaning> {
+  const res = await apiClient.patch<ItemMeaning>(`/api/v1/items/${itemId}/meanings/${meaningId}`, {
+    meaning: payload,
+  })
+  return res.data
+}
+
+export async function deleteMeaning(itemId: string, meaningId: string): Promise<void> {
+  await apiClient.delete(`/api/v1/items/${itemId}/meanings/${meaningId}`)
+}
+
+// ファクトチェックの指摘を「読んで判断した」と記録する。判定そのものは消さない
+// （何を見て決めたのかが辿れなくなるため）。一覧の警告色だけが引っ込む。
+export async function acknowledgeFactCheck(
+  itemId: string,
+  meaningId: string,
+  acknowledged = true
+): Promise<ItemMeaning> {
+  const res = await apiClient.patch<ItemMeaning>(
+    `/api/v1/items/${itemId}/meanings/${meaningId}/acknowledge`,
+    { acknowledged }
+  )
+  return res.data
+}
+
+// 並び替えは渡した順に position を振り直す。1件ずつ送ると途中で失敗したとき順序が壊れる
+export async function reorderMeanings(itemId: string, ids: string[]): Promise<ItemMeaning[]> {
+  const res = await apiClient.patch<{ meanings: ItemMeaning[] }>(
+    `/api/v1/items/${itemId}/meanings/reorder`,
+    { ids }
+  )
+  return res.data.meanings
+}
+
+/** このカードがどこで使われているか。配置はそれぞれの表が正なので、見るときに引く */
+export interface ItemUsages {
+  views: { id: string; name: string; view_type: string }[]
+  spaces: { id: string; name: string }[]
+  boxes: { id: string; name: string }[]
+}
+
+export async function getItemUsages(id: string): Promise<ItemUsages> {
+  const res = await apiClient.get<ItemUsages>(`/api/v1/items/${id}/usages`)
+  return res.data
+}
+
+/** カード1枚ごとの見え方。key はブロックの識別子（作り付けは固定名、項目は prop:<id>） */
+export interface BlockView {
+  hidden: string[]
+  order: string[]
+}
+
+// 種別の設定（どの項目を持つか）とは効く範囲が違う。これはこの1枚だけ
+export async function updateBlockView(id: string, view: BlockView): Promise<Item> {
+  const res = await apiClient.patch<Item>(`/api/v1/items/${id}/block_view`, view)
   return res.data
 }

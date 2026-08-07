@@ -71,16 +71,33 @@ Rails.application.routes.draw do
           get :navigation
           delete :bulk_destroy
         end
+        # 意味・説明はカード1枚に複数ぶら下がる。並び替えは一括で受ける
+        resources :meanings, only: [ :create, :update, :destroy ] do
+          collection { patch :reorder }
+          member { patch :acknowledge }
+        end
+        # 項目の値。定義（どの項目を持つか）は property_definitions 側
+        put "properties/:property_definition_id", to: "item_properties#upsert", as: :property
         member do
           post :retry
           post :meaning
           post :brief
           post :scene_rewrite
+          post :fill_properties
+          get :usages
+          patch :block_view, action: :update_block_view
+          get "reviews/summary", to: "item_reviews#summary"
           post :fact_check
           post "tags", action: :generate_tags
         end
       end
       resources :item_types, only: [ :index ]
+      # 学習の記録。1回の学習ぶんをまとめて受ける
+      resources :item_reviews, only: [ :create ]
+      # カードが持つ項目の定義。種別ごとに利用者が決める
+      resources :property_definitions, only: [ :index, :create, :update, :destroy ] do
+        collection { patch :reorder }
+      end
       resources :tags, only: [ :index, :create, :update, :destroy ]
       resources :tag_groups, only: [ :index, :create, :update, :destroy ] do
         collection do

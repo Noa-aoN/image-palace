@@ -10,6 +10,7 @@ import { RecentTargets } from '@/components/features/study/RecentTargets'
 import { StudyArea } from '@/components/features/study/StudyArea'
 import { StudyStatsArea } from '@/components/features/study/StudyStatsArea'
 import { useStudyRecordStore } from '@/stores/studyRecords'
+import { recordReviews, type ReviewEntry } from '@/lib/api/reviews'
 import {
   loadQuizCards,
   buildQuestions,
@@ -48,6 +49,8 @@ export default function QuizPage() {
   const [selectedId, setSelectedId] = useState<string | null>(null)
   const [missed, setMissed] = useState<QuizQuestion[]>([])
   const [correctCount, setCorrectCount] = useState(0)
+  // 1問ずつ送らず、終わってからまとめて送る（20問で20往復させない）
+  const [reviewLog, setReviewLog] = useState<ReviewEntry[]>([])
 
   const addRecord = useStudyRecordStore((s) => s.addRecord)
 
@@ -58,6 +61,8 @@ export default function QuizPage() {
   useEffect(() => {
     if (step === 'result' && questions.length > 0) {
       addRecord({ mode: 'quiz', targetLabel: label, format: formatLabel, total: questions.length, correct: correctCount })
+      // カードごとの記録はサーバーへ。端末を変えても残り、確認回数が出せる
+      recordReviews(reviewLog)
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [step])
@@ -79,6 +84,7 @@ export default function QuizPage() {
       setSelectedId(null)
       setMissed([])
       setCorrectCount(0)
+      setReviewLog([])
       setStep('play')
     } catch {
       setLoadError('クイズの読み込みに失敗しました。時間を置いて再度お試しください。')
@@ -91,8 +97,10 @@ export default function QuizPage() {
     if (selectedId) return
     setSelectedId(choiceId)
     const q = questions[qIndex]
-    if (choiceId === q.card.id) setCorrectCount((c) => c + 1)
+    const correct = choiceId === q.card.id
+    if (correct) setCorrectCount((c) => c + 1)
     else setMissed((m) => [...m, q])
+    setReviewLog((log) => [...log, { item_id: q.card.id, result: correct ? 'correct' : 'incorrect', mode: 'quiz' }])
   }
 
   const nextQuestion = () => {

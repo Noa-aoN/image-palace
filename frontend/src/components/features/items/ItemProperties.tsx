@@ -1,14 +1,26 @@
 'use client'
 
-import { useEffect, useState } from 'react'
-import { Pencil, Check, X, Sparkles, ShieldCheck } from 'lucide-react'
-import { Spinner } from '@/components/ui/spinner'
+import React, { useEffect, useState } from 'react'
+import { X, Sparkles, ShieldCheck } from 'lucide-react'
 import { Button } from '@/components/ui/button'
+import { Spinner } from '@/components/ui/spinner'
 import { getItemTypes, updateItem, generateMeaning, generateTags, factCheckItem, isItemSkip } from '@/lib/api/items'
 import { MEANING_LEVELS, meaningLevelLabel, DEFAULT_MEANING_LEVEL } from '@/lib/meaning-levels'
 import { getTags } from '@/lib/api/tags'
 import type { Item, ItemType } from '@/types/item'
 import type { Tag } from '@/types/tag'
+import { PropertyBlock, BlockAction, BlockError } from '@/components/features/items/PropertyBlock'
+import { MeaningList } from '@/components/features/items/MeaningList'
+import { ItemPropertyBlocks } from '@/components/features/items/ItemPropertyBlocks'
+import { ItemUsageBlock } from '@/components/features/items/ItemUsageBlock'
+import { ItemReviewBlock } from '@/components/features/items/ItemReviewBlock'
+import { CardViewPanel, applyBlockOrder } from '@/components/features/items/CardViewPanel'
+import {
+  PropertyDefinitionsPanel,
+  PROPERTY_DEFINITIONS_PANEL_KEY,
+} from '@/components/features/items/PropertyDefinitionsPanel'
+import { useRightPanelStore } from '@/stores/rightPanel'
+import { getItem, acknowledgeFactCheck } from '@/lib/api/items'
 
 type ItemPropertiesProps = {
   item: Item
@@ -94,17 +106,43 @@ function FactCheckResult({
   applyingMeaning,
   onApplyTitle,
   applyingTitle,
+  onAcknowledge,
+  acknowledging,
 }: {
   item: Item
   onApplyMeaning?: (text: string) => void
   applyingMeaning?: boolean
   onApplyTitle?: (text: string) => void
   applyingTitle?: boolean
+  onAcknowledge?: (acknowledged: boolean) => void
+  acknowledging?: boolean
 }) {
   const [confirmMeaning, setConfirmMeaning] = useState(false)
   const [confirmTitle, setConfirmTitle] = useState(false)
   const badge = item.fact_check_status ? FACT_CHECK_BADGE[item.fact_check_status] : undefined
   if (!badge) return null
+
+  // 人が読んで判断したものは畳む。判定は消さない（何を見て決めたのかが辿れなくなる）
+  if (item.fact_check_acknowledged_at) {
+    return (
+      <div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
+        <span>
+          ファクトチェック: 確認済み（
+          {new Date(item.fact_check_acknowledged_at).toLocaleDateString('ja-JP')}）
+        </span>
+        {onAcknowledge && (
+          <button
+            type="button"
+            onClick={() => onAcknowledge(false)}
+            disabled={acknowledging}
+            className="underline underline-offset-2 transition-colors hover:text-foreground disabled:opacity-50"
+          >
+            もう一度見る
+          </button>
+        )}
+      </div>
+    )
+  }
   const titleSuggestion = item.fact_check_title_suggestion
   const suggestion = item.fact_check_suggestion
   return (
@@ -116,6 +154,18 @@ function FactCheckResult({
         <p className="mt-1.5 text-xs leading-relaxed text-muted-foreground whitespace-pre-wrap">{item.fact_check_comment}</p>
       )}
       <FactCheckEvidence item={item} />
+      {onAcknowledge && (
+        <button
+          type="button"
+          onClick={() => onAcknowledge(true)}
+          disabled={acknowledging}
+          className="mt-2 flex items-center gap-1 text-xs text-muted-foreground underline underline-offset-2 transition-colors hover:text-foreground disabled:opacity-50"
+          title="読んで判断したものとして畳みます。判定は残り、一覧の警告色だけ消えます"
+        >
+          {acknowledging ? <Spinner size={12} /> : null}
+          確認済みにする
+        </button>
+      )}
       {titleSuggestion && onApplyTitle && (
         <div className="mt-2 rounded border border-border bg-background px-2.5 py-2">
           <p className="text-xs font-medium text-muted-foreground">単語名の訂正案</p>
@@ -163,18 +213,35 @@ function FactCheckResult({
  * 種別は選択即保存、意味はインライン編集で保存する。
  */
 export function ItemProperties({ item, onUpdated }: ItemPropertiesProps) {
+  const openSection = useRightPanelStore((s) => s.openSection)
   const [itemTypes, setItemTypes] = useState<ItemType[]>([])
   const [savingType, setSavingType] = useState(false)
   const [typeError, setTypeError] = useState<string | null>(null)
 
-  const [editingMeaning, setEditingMeaning] = useState(false)
-  const [meaningDraft, setMeaningDraft] = useState('')
-  const [savingMeaning, setSavingMeaning] = useState(false)
   const [meaningError, setMeaningError] = useState<string | null>(null)
   const [generatingMeaning, setGeneratingMeaning] = useState(false)
   const [meaningLevel, setMeaningLevel] = useState<string>(item.meaning_level ?? DEFAULT_MEANING_LEVEL)
   const [applyingSuggestion, setApplyingSuggestion] = useState(false)
   const [applyingTitle, setApplyingTitle] = useState(false)
+  const [acknowledging, setAcknowledging] = useState(false)
+
+  // 指摘を「読んで判断した」と記録する。代表の1件に対して行う
+  // （一覧の警告色も代表を見ているため）。
+  const handleAcknowledge = async (acknowledged: boolean) => {
+    const target = item.meanings?.[0]
+    if (!target) return
+
+    setAcknowledging(true)
+    setMeaningError(null)
+    try {
+      await acknowledgeFactCheck(item.id, target.id, acknowledged)
+      onUpdated(await getItem(item.id))
+    } catch {
+      setMeaningError('確認済みにできませんでした。もう一度お試しください。')
+    } finally {
+      setAcknowledging(false)
+    }
+  }
 
   // ファクトチェックの訂正案で説明を書き換える（確認後に呼ばれる）。
   const handleApplyFactCheckSuggestion = async (text: string) => {
@@ -330,41 +397,17 @@ export function ItemProperties({ item, onUpdated }: ItemPropertiesProps) {
     }
   }
 
-  const startEditMeaning = () => {
-    setMeaningDraft(item.meaning ?? '')
-    setMeaningError(null)
-    setEditingMeaning(true)
-  }
-
-  const handleSaveMeaning = async () => {
-    const trimmed = meaningDraft.trim()
-    if (trimmed === (item.meaning ?? '')) {
-      setEditingMeaning(false)
-      return
-    }
-    setSavingMeaning(true)
-    setMeaningError(null)
-    try {
-      const updated = await updateItem(item.id, { meaning: trimmed })
-      onUpdated(updated)
-      setEditingMeaning(false)
-    } catch {
-      setMeaningError('意味・説明の更新に失敗しました')
-    } finally {
-      setSavingMeaning(false)
-    }
-  }
-
-  return (
-    <div className="space-y-5 rounded-xl border border-border/70 bg-muted/30 px-4 py-4">
-      {/* 種別 */}
-      <div className="space-y-1.5">
-        <label htmlFor="item-type" className="block text-sm font-medium">
-          種別
-        </label>
-        <div className="flex items-center gap-2">
+  // ブロックは「キー＋中身」の並びにしておく。並べ替えも表示切替も、
+  // ここを差し替えるだけで効く（見せ方の指定はカード1枚ごとに持つ）
+  const blocks: { key: string; label: string; node: React.ReactNode }[] = [
+    {
+      key: 'item_type',
+      label: '種別',
+      node: (
+        <PropertyBlock title="種別" busy={savingType}>
           <select
             id="item-type"
+            aria-label="種別"
             value={item.item_type?.id ?? ''}
             onChange={(e) => handleTypeChange(e.target.value)}
             disabled={savingType || itemTypes.length === 0}
@@ -378,53 +421,38 @@ export function ItemProperties({ item, onUpdated }: ItemPropertiesProps) {
               </option>
             ))}
           </select>
-          {savingType && <Spinner size={16} className="text-muted-foreground" />}
-        </div>
-        {typeError && <p className="text-xs text-destructive">{typeError}</p>}
-      </div>
-
-      {/* 意味・説明 */}
-      <div className="space-y-1.5">
-        <div className="flex items-center justify-between">
-          <span className="text-sm font-medium">意味・説明</span>
-          {!editingMeaning && (
-            <div className="flex items-center gap-2">
-              <button
+          <BlockError message={typeError} />
+        </PropertyBlock>
+      ),
+    },
+    {
+      key: 'meanings',
+      label: '意味・説明',
+      node: (
+        <PropertyBlock
+          title="意味・説明"
+          actions={
+            <>
+              <BlockAction
+                icon={<Sparkles size={14} />}
+                label={item.meaning ? '再生成' : 'AIで生成'}
                 onClick={handleGenerateMeaning}
-                disabled={generatingMeaning}
-                className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground transition-colors disabled:opacity-50"
-                aria-label="AIで意味・説明を生成"
-                title="AIで生成"
-              >
-                {generatingMeaning ? <Spinner size={14} /> : <Sparkles size={14} />}
-                {item.meaning ? '再生成' : 'AIで生成'}
-              </button>
+                busy={generatingMeaning}
+              />
               {item.meaning && (
-                <button
+                <BlockAction
+                  icon={<ShieldCheck size={14} />}
+                  label="AIチェック"
                   onClick={handleFactCheck}
-                  disabled={checkingFact}
-                  className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground transition-colors disabled:opacity-50"
-                  aria-label="説明をAIでファクトチェック"
+                  busy={checkingFact}
                   title="説明が事実として正しいかAIでチェックし、訂正案を出します"
-                >
-                  {checkingFact ? <Spinner size={14} /> : <ShieldCheck size={14} />}
-                  AIチェック
-                </button>
+                />
               )}
-              <button
-                onClick={startEditMeaning}
-                className="text-muted-foreground hover:text-foreground transition-colors"
-                aria-label="意味・説明を編集"
-              >
-                <Pencil size={15} />
-              </button>
-            </div>
-          )}
-        </div>
-
-        {!editingMeaning && (
+            </>
+          }
+        >
           <div className="flex flex-wrap items-center gap-1.5">
-            <span className="text-xs text-muted-foreground">詳しさ:</span>
+            <span className="text-xs text-muted-foreground">AIで生成する詳しさ:</span>
             {MEANING_LEVELS.map((lv) => {
               const active = meaningLevel === lv
               return (
@@ -444,137 +472,141 @@ export function ItemProperties({ item, onUpdated }: ItemPropertiesProps) {
               )
             })}
           </div>
-        )}
 
-        {editingMeaning ? (
-          <div className="space-y-2">
-            <textarea
-              value={meaningDraft}
-              onChange={(e) => setMeaningDraft(e.target.value)}
-              disabled={savingMeaning}
-              autoFocus
-              rows={3}
-              placeholder="このカードの意味や説明を入力（空にすると削除されます）"
-              className="w-full rounded-lg border border-input bg-background px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring resize-y"
-            />
-            <div className="flex gap-2">
-              <Button size="sm" onClick={handleSaveMeaning} disabled={savingMeaning} className="flex items-center gap-1.5">
-                {savingMeaning ? <Spinner size={14} /> : <Check size={14} />}
-                保存
-              </Button>
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => setEditingMeaning(false)}
-                disabled={savingMeaning}
-                className="flex items-center gap-1.5"
-              >
-                <X size={14} />
-                キャンセル
-              </Button>
-            </div>
-            {meaningError && <p className="text-xs text-destructive">{meaningError}</p>}
-          </div>
-        ) : item.meaning ? (
-          <div className="space-y-1.5">
-            <p className="text-sm leading-relaxed whitespace-pre-wrap text-foreground">{item.meaning}</p>
-            {item.meaning_example && (
-              <p className="text-xs leading-relaxed text-muted-foreground border-l-2 border-border pl-2">
-                例: {item.meaning_example}
-              </p>
-            )}
-            <FactCheckResult
-              item={item}
-              onApplyMeaning={handleApplyFactCheckSuggestion}
-              applyingMeaning={applyingSuggestion}
-              onApplyTitle={handleApplyTitleSuggestion}
-              applyingTitle={applyingTitle}
-            />
-          </div>
-        ) : (
-          <p className="text-sm text-muted-foreground">未設定（「AIで生成」または鉛筆アイコンから追加できます）</p>
-        )}
-        {!editingMeaning && meaningError && <p className="text-xs text-destructive">{meaningError}</p>}
-      </div>
-
-      {/* タグ */}
-      <div className="space-y-2">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <span className="text-sm font-medium">タグ</span>
-            {savingTags && <Spinner size={14} className="text-muted-foreground" />}
-          </div>
-          <button
-            onClick={handleGenerateTags}
-            disabled={generatingTags || savingTags}
-            className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground transition-colors disabled:opacity-50"
-            aria-label="AIでタグを生成"
-            title="AIで生成"
-          >
-            {generatingTags ? <Spinner size={14} /> : <Sparkles size={14} />}
-            AIで生成
-          </button>
-        </div>
-        {tags.length > 0 && (
-          <div className="flex flex-wrap gap-1.5">
-            {tags.map((tag) => (
-              <span
-                key={tag.id}
-                className="inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-xs"
-                style={{ backgroundColor: 'rgba(198,167,94,0.15)', color: '#7a6432' }}
-              >
-                {tag.name}
-                <button
-                  onClick={() => handleRemoveTag(tag.id)}
-                  disabled={savingTags}
-                  aria-label={`タグ「${tag.name}」を外す`}
-                  className="hover:text-foreground transition-colors"
-                >
-                  <X size={12} />
-                </button>
-              </span>
-            ))}
-          </div>
-        )}
-        <div className="relative max-w-xs">
-          <input
-            value={tagDraft}
-            onChange={(e) => setTagDraft(e.target.value)}
-            onFocus={() => setTagFocused(true)}
-            onBlur={() => setTagFocused(false)}
-            onKeyDown={(e) => {
-              // IME変換確定の Enter では追加しない（確定後、再度 Enter で設定）
-              if (e.key !== 'Enter') return
-              if (e.nativeEvent.isComposing) return
-              e.preventDefault()
-              addTagName(tagDraft)
-            }}
-            disabled={savingTags}
-            placeholder="タグを入力して Enter"
-            aria-label="タグを追加"
-            autoComplete="off"
-            className="w-full rounded-lg border border-input bg-background px-3 py-1.5 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+          <MeaningList
+            item={item}
+            onUpdated={onUpdated}
+            primaryExtra={
+              <FactCheckResult
+                item={item}
+                onApplyMeaning={handleApplyFactCheckSuggestion}
+                applyingMeaning={applyingSuggestion}
+                onApplyTitle={handleApplyTitleSuggestion}
+                applyingTitle={applyingTitle}
+                onAcknowledge={handleAcknowledge}
+                acknowledging={acknowledging}
+              />
+            }
           />
-          {showTagSuggestions && (
-            <ul className="absolute z-20 mt-1 w-full max-h-48 overflow-y-auto rounded-lg border border-border bg-card shadow-lg">
-              {tagSuggestions.map((t) => (
-                <li key={t.id}>
+          <BlockError message={meaningError} />
+        </PropertyBlock>
+      ),
+    },
+    {
+      key: 'tags',
+      label: 'タグ',
+      node: (
+        <PropertyBlock
+          title="タグ"
+          busy={savingTags}
+          actions={
+            <BlockAction
+              icon={<Sparkles size={14} />}
+              label="AIで生成"
+              onClick={handleGenerateTags}
+              busy={generatingTags}
+              disabled={savingTags}
+            />
+          }
+        >
+          {tags.length > 0 && (
+            <div className="flex flex-wrap gap-1.5">
+              {tags.map((tag) => (
+                <span
+                  key={tag.id}
+                  className="inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-xs"
+                  style={{ backgroundColor: 'rgba(198,167,94,0.15)', color: '#7a6432' }}
+                >
+                  {tag.name}
                   <button
-                    type="button"
-                    // blur より先に発火させてクリックを成立させる
-                    onMouseDown={(e) => { e.preventDefault(); addTagName(t.name) }}
-                    className="flex w-full items-center justify-between gap-2 px-3 py-1.5 text-left text-sm hover:bg-muted"
+                    onClick={() => handleRemoveTag(tag.id)}
+                    disabled={savingTags}
+                    aria-label={`タグ「${tag.name}」を外す`}
+                    className="hover:text-foreground transition-colors"
                   >
-                    <span className="truncate">{t.name}</span>
-                    <span className="text-xs text-muted-foreground shrink-0">{t.item_count}</span>
+                    <X size={12} />
                   </button>
-                </li>
+                </span>
               ))}
-            </ul>
+            </div>
           )}
-        </div>
-        {tagError && <p className="text-xs text-destructive">{tagError}</p>}
-      </div>
+          <div className="relative max-w-xs">
+            <input
+              value={tagDraft}
+              onChange={(e) => setTagDraft(e.target.value)}
+              onFocus={() => setTagFocused(true)}
+              onBlur={() => setTagFocused(false)}
+              onKeyDown={(e) => {
+                // IME変換確定の Enter では追加しない（確定後、再度 Enter で設定）
+                if (e.key !== 'Enter') return
+                if (e.nativeEvent.isComposing) return
+                e.preventDefault()
+                addTagName(tagDraft)
+              }}
+              disabled={savingTags}
+              placeholder="タグを入力して Enter"
+              aria-label="タグを追加"
+              autoComplete="off"
+              className="w-full rounded-lg border border-input bg-background px-3 py-1.5 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+            />
+            {showTagSuggestions && (
+              <ul className="absolute z-20 mt-1 w-full max-h-48 overflow-y-auto rounded-lg border border-border bg-card shadow-lg">
+                {tagSuggestions.map((t) => (
+                  <li key={t.id}>
+                    <button
+                      type="button"
+                      // blur より先に発火させてクリックを成立させる
+                      onMouseDown={(e) => { e.preventDefault(); addTagName(t.name) }}
+                      className="flex w-full items-center justify-between gap-2 px-3 py-1.5 text-left text-sm hover:bg-muted"
+                    >
+                      <span className="truncate">{t.name}</span>
+                      <span className="text-xs text-muted-foreground shrink-0">{t.item_count}</span>
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </div>
+          <BlockError message={tagError} />
+        </PropertyBlock>
+      ),
+    },
+    {
+      key: 'reviews',
+      label: '学習の記録',
+      node: <ItemReviewBlock itemId={item.id} />,
+    },
+    {
+      key: 'usages',
+      label: '使っている場所',
+      node: <ItemUsageBlock itemId={item.id} />,
+    },
+  ]
+
+  const hiddenKeys = new Set(item.block_view?.hidden ?? [])
+  const orderedBlocks = applyBlockOrder(blocks, item.block_view?.order)
+
+  return (
+    <div className="space-y-3">
+      {orderedBlocks.filter((b) => !hiddenKeys.has(b.key)).map((b) => (
+        <React.Fragment key={b.key}>{b.node}</React.Fragment>
+      ))}
+
+      {/* 利用者が定義した項目。作り付けの項目と同じブロックで並ぶ */}
+      <ItemPropertyBlocks
+        item={item}
+        onUpdated={onUpdated}
+        onOpenSettings={() => openSection({ key: PROPERTY_DEFINITIONS_PANEL_KEY, title: '項目の設定' })}
+      />
+
+      {/* この1枚だけの見え方。種別ぜんぶに効く「項目の設定」とは分けてある */}
+      <CardViewPanel item={item} blocks={orderedBlocks.map(({ key, label }) => ({ key, label }))} onUpdated={onUpdated} />
+
+      {/* 定義（種別ぜんぶに効く）は右パネルで触る。値はカードの各ブロックで */}
+      <PropertyDefinitionsPanel
+        itemType={item.item_type}
+        onChanged={async () => onUpdated(await getItem(item.id))}
+      />
     </div>
   )
 }

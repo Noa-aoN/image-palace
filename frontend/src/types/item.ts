@@ -41,6 +41,23 @@ export interface ItemTag {
   name: string
 }
 
+/** カード1枚にぶら下がる意味・説明の1件。代表の1件は Item.meaning にも入る */
+export interface ItemMeaning {
+  id: string
+  definition: string
+  example_sentence?: string | null
+  detail_level: string
+  language_code: string
+  position: number | null
+  fact_check_status?: 'correct' | 'doubtful' | 'incorrect' | null
+  fact_check_comment?: string | null
+  fact_check_suggestion?: string | null
+  fact_checked_at?: string | null
+  fact_check_acknowledged_at?: string | null
+}
+
+import type { ItemPropertyEntry } from '@/lib/api/properties'
+
 export interface Item {
   // カード画像の縦横比（square / portrait / golden）
   aspect_ratio?: string
@@ -49,9 +66,16 @@ export interface Item {
   generation_status: GenerationStatus
   generation_error?: string | null
   item_type?: ItemType | null
+  /** 代表の1件（日本語優先→並び順の先頭）。複数を扱う画面は meanings を見る */
   meaning?: string | null
   meaning_example?: string | null
   meaning_level?: string | null
+  /** 並び順どおりの全件 */
+  meanings?: ItemMeaning[]
+  /** その種別で定義されている項目（未入力のものも含む） */
+  properties?: ItemPropertyEntry[]
+  /** このカードだけの見え方（隠すブロック・並び順） */
+  block_view?: { hidden: string[]; order: string[] }
   /** 説明のAIファクトチェック結果 */
   fact_check_status?: 'correct' | 'doubtful' | 'incorrect' | null
   fact_check_comment?: string | null
@@ -64,9 +88,13 @@ export interface Item {
   /** 説明文から取り出した主張ごとの検証結果 */
   fact_check_claims?: FactCheckClaim[]
   fact_checked_at?: string | null
+  /** 人が読んで判断した日時。入っていれば一覧でも警告色を出さない */
+  fact_check_acknowledged_at?: string | null
   style?: string | null
   /** 構図（'' = おまかせ / single = 単体 / scene = 情景） */
   framing?: string | null
+  /** 画像への指示の作り方（word / brief / research） */
+  prompt_source?: string | null
   custom_prompt?: string | null
   /** ① 画像を作る前に単語を噛み砕いた説明文（日本語） */
   image_description?: string | null

@@ -137,24 +137,36 @@ export default function AdminPage() {
               受け取ったのに、まだ提供していないぶんです。これから原価がかかる約束にあたります。
             </p>
             <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+              {/* 出どころで並べる。受け取ったぶん（月額・買い切り）と、
+                  こちらが配ったぶん（付与）が一目で分かるようにする */}
               <Stat
-                label="期限付き"
-                value={`${overview.credit_liability.expiring.toLocaleString()} cr`}
-                sub={
-                  overview.credit_liability.next_expiry_at
-                    ? `最短 ${new Date(overview.credit_liability.next_expiry_at).toLocaleDateString('ja-JP')}`
-                    : undefined
-                }
+                label="月額"
+                value={`${overview.credit_liability.breakdown.subscription.toLocaleString()} cr`}
+                sub="当月分"
               />
               <Stat
-                label="無期限"
-                value={`${overview.credit_liability.unlimited.toLocaleString()} cr`}
-                sub={`買い切り ${overview.credit_liability.breakdown.topup.toLocaleString()} cr`}
+                label="買い切り"
+                value={`${overview.credit_liability.breakdown.topup.toLocaleString()} cr`}
+                sub={`6か月で失効・未提供 ¥${overview.credit_liability.unused_topup_value.toLocaleString()}`}
+              />
+              <Stat
+                label="付与"
+                value={`${overview.credit_liability.breakdown.grant.toLocaleString()} cr`}
+                sub="お試し・繰り越し・キャンペーン"
               />
               <Stat
                 label="合計"
                 value={`${overview.credit_liability.total.toLocaleString()} cr`}
-                sub={`未提供の買い切り ¥${overview.credit_liability.unused_topup_value.toLocaleString()}`}
+                sub={
+                  overview.credit_liability.next_expiry_at
+                    ? `最短の失効 ${new Date(overview.credit_liability.next_expiry_at).toLocaleDateString('ja-JP')}`
+                    : undefined
+                }
+              />
+              <Stat
+                label="期限なし（旧仕様）"
+                value={`${overview.credit_liability.unlimited.toLocaleString()} cr`}
+                sub="期限が付く前の残り"
               />
               <Stat
                 label="30日で失効"

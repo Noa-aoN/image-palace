@@ -1,5 +1,7 @@
 'use client'
 
+import { useState } from 'react'
+
 export interface SeriesPoint {
   date: string
   count: number
@@ -42,6 +44,13 @@ export function TrendChart({
   // 日数が多いと点が潰れて読めなくなるので、少ないときだけ打つ
   const dots = showDots ?? points.length <= 45
 
+  // ホバーしている日。値は目で読めないので、載せた日だけ数字を出す
+  const [hovered, setHovered] = useState<number | null>(null)
+  const active = hovered !== null ? points[hovered] : null
+  // 端の日は吹き出しが枠から出るので、寄せを切り替える
+  const ratio = hovered !== null && points.length > 1 ? hovered / (points.length - 1) : 0
+  const align = ratio < 0.15 ? 'left' : ratio > 0.85 ? 'right' : 'center'
+
   return (
     <div className="space-y-2 rounded-xl border border-border bg-card p-5">
       <div className="flex items-baseline justify-between gap-3">
@@ -50,6 +59,31 @@ export function TrendChart({
           {points.length}日で {round(total).toLocaleString()}{unit}（最大 {round(max).toLocaleString()}{unit}/日）
         </p>
       </div>
+      {/*
+        吹き出しは SVG の外に HTML で出す。SVG は preserveAspectRatio="none" で
+        横に引き伸ばしているので、中に描くと文字まで歪む。
+        位置は「何日目か」の割合で置けば、引き伸ばしの影響を受けない。
+      */}
+      <div className="relative" onPointerLeave={() => setHovered(null)}>
+        {active && (
+          <div
+            className="pointer-events-none absolute -top-1 z-10 -translate-y-full"
+            style={{
+              left: `${ratio * 100}%`,
+              transform:
+                align === 'center'
+                  ? 'translate(-50%, -100%)'
+                  : align === 'right'
+                    ? 'translate(-100%, -100%)'
+                    : 'translate(0, -100%)',
+            }}
+          >
+            <span className="whitespace-nowrap rounded-md bg-foreground px-2 py-1 text-xs text-background shadow-md">
+              {active.date}　{round(active.count).toLocaleString()}
+              {unit}
+            </span>
+          </div>
+        )}
       <svg
         viewBox={`0 0 ${width} ${height}`}
         className="h-28 w-full"
@@ -61,11 +95,44 @@ export function TrendChart({
         {line && <path d={line} fill="none" stroke={color} strokeWidth={2} vectorEffect="non-scaling-stroke" />}
         {dots &&
           coords.map((c, i) => (
-            <circle key={i} cx={c.x} cy={c.y} r={2.5} fill={color} vectorEffect="non-scaling-stroke">
-              <title>{`${points[i].date}: ${round(points[i].count)}${unit}`}</title>
-            </circle>
+            <circle key={i} cx={c.x} cy={c.y} r={2.5} fill={color} vectorEffect="non-scaling-stroke" />
           ))}
+        {/* 載せている日を強調する。どこを読んでいるのか分かるように */}
+        {hovered !== null && coords[hovered] && (
+          <>
+            <line
+              x1={coords[hovered].x}
+              y1={0}
+              x2={coords[hovered].x}
+              y2={height}
+              stroke={color}
+              strokeWidth={1}
+              opacity={0.35}
+              vectorEffect="non-scaling-stroke"
+            />
+            <circle
+              cx={coords[hovered].x}
+              cy={coords[hovered].y}
+              r={4}
+              fill={color}
+              vectorEffect="non-scaling-stroke"
+            />
+          </>
+        )}
+        {/* 当たり判定は1日1本の透明な帯。点そのものは小さすぎて狙えない */}
+        {points.map((p, i) => (
+          <rect
+            key={`hit-${p.date}-${i}`}
+            x={points.length > 1 ? i * step - step / 2 : 0}
+            y={0}
+            width={points.length > 1 ? step : width}
+            height={height}
+            fill="transparent"
+            onPointerEnter={() => setHovered(i)}
+          />
+        ))}
       </svg>
+      </div>
       <div className="flex justify-between text-xs text-muted-foreground">
         <span>{points[0]?.date}</span>
         <span>{points[points.length - 1]?.date}</span>

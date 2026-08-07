@@ -5,7 +5,7 @@ module Api
 
       before_action :set_item,
                     only: [ :show, :update, :destroy, :retry, :meaning, :brief, :scene_rewrite,
-                            :generate_tags, :fact_check ]
+                            :generate_tags, :fact_check, :fill_properties, :usages, :update_block_view ]
 
       DEFAULT_PER_PAGE = 24
       MAX_PER_PAGE = 100
@@ -179,6 +179,57 @@ module Api
       rescue KeyError, Faraday::Error => e
         Rails.logger.warn "[ItemsController#scene_rewrite] failed item_id=#{item.id}: #{e.class}: #{e.message}"
         render json: { error: "書き直しに失敗しました。時間を置いて再度お試しください。" }, status: :unprocessable_entity
+      end
+
+      # カード1枚ごとの見え方（どのブロックを出すか・並び順）。
+      #
+      # 種別の設定（どの項目を持つか）とは効く範囲が違う。あちらは種別ぜんぶ、
+      # こちらはこの1枚だけ。同じ画面で混ぜると、どこまで効くのか分からなくなる。
+      def update_block_view
+        item.update!(block_view: { "hidden" => block_keys(:hidden), "order" => block_keys(:order) })
+        render json: serialize_item(item.reload)
+      rescue ActiveRecord::RecordInvalid => e
+        render json: { errors: e.record.errors.full_messages }, status: :unprocessable_entity
+      end
+
+      # このカードがどこで使われているか（キャンバス・スペース・ボックス）。
+      #
+      # プロパティとして持たせない。配置は view_items / space_points / box_items が
+      # 既に持っていて、そちらが正。カード側にも書くと必ず食い違う。
+      # 見たいときに逆引きするだけにする。
+      def usages
+        render json: {
+          views: item.views.distinct.map { |v| { id: v.id, name: v.name, view_type: v.view_type } },
+          spaces: item.space_points.includes(:space).filter_map(&:space).uniq
+                      .map { |s| { id: s.id, name: s.name } },
+          boxes: item.boxes.distinct.map { |b| { id: b.id, name: b.name } }
+        }
+      end
+
+      # 項目を AI でまとめて埋める（同期）。
+      #
+      # 項目ごとに呼ばず、1回の問い合わせで全項目を埋める。項目を10個定義した人が
+      # 1枚のカードで10回 AI を叩くことになると、費用も待ち時間も項目数に比例する。
+      #
+      # 既定は空いている項目だけ。手で書いたものを黙って上書きしない。
+      def fill_properties
+        result = Items::FillPropertiesService.call(
+          item: item,
+          user: current_user,
+          overwrite: ActiveModel::Type::Boolean.new.cast(params[:overwrite]) || false
+        )
+        render json: {
+          filled_keys: result.filled_keys,
+          skipped_keys: result.skipped_keys,
+          item: serialize_item(item.reload)
+        }, status: :ok
+      rescue Items::FillPropertiesService::FillError => e
+        render json: { error: e.message }, status: :unprocessable_entity
+      rescue Ai::Chat::LimitExceeded => e
+        render json: { error: e.message }, status: :too_many_requests
+      rescue KeyError, Faraday::Error => e
+        Rails.logger.warn "[ItemsController#fill_properties] failed item_id=#{item.id}: #{e.class}: #{e.message}"
+        render json: { error: "項目を埋められませんでした。時間を置いて再度お試しください。" }, status: :unprocessable_entity
       end
 
       def destroy
@@ -366,6 +417,12 @@ module Api
         end
       end
 
+      # 画面から来たキーを整える。長さも件数も抑えて、metadata が肥らないようにする
+      def block_keys(name)
+        Array(params[name]).map { |k| k.to_s.strip.first(Item::MAX_BLOCK_KEY_LENGTH) }
+                           .reject(&:blank?).uniq.first(Item::MAX_BLOCK_KEYS)
+      end
+
       def moderate_instruction!(text)
         return if text.blank?
 
@@ -446,6 +503,8 @@ module Api
           generation_status: item.generation_status,
           generation_error: item.generation_error,
           item_type: serialize_item_type(item.item_type),
+          # 代表の1件は据え置き（既にこれを読んでいる画面を後退させない）。
+          # 複数を扱う画面は meanings のほうを見る
           meaning: item.primary_meaning&.definition,
           meaning_example: item.primary_meaning&.example_sentence,
           meaning_level: item.primary_meaning&.detail_level,
@@ -456,9 +515,13 @@ module Api
           fact_check_known: item.primary_meaning&.fact_check_known,
           fact_check_claims: item.primary_meaning&.fact_check_claims || [],
           fact_checked_at: item.primary_meaning&.fact_checked_at,
+          fact_check_acknowledged_at: item.primary_meaning&.fact_check_acknowledged_at,
+          meanings: item.meanings.ordered.map { |m| serialize_meaning_entry(m) },
+          properties: serialize_properties(item),
           style: item.style,
           framing: item.framing,
           prompt_source: item.effective_prompt_source,
+          block_view: { hidden: item.hidden_block_keys, order: item.ordered_block_keys },
           custom_prompt: item.custom_prompt,
           image_description: item.image_description,
           scene_prompt: item.scene_prompt,
@@ -467,6 +530,41 @@ module Api
           tags: item.tags.map { |t| { id: t.id, name: t.name } },
           media: serialize_media(item.primary_media),
           created_at: item.created_at
+        }
+      end
+
+      # その種別で定義されている項目を、順番どおりに全部返す。
+      # 値が入っていない項目も出す（画面で「まだ書いていない」と分かるように）。
+      def serialize_properties(item)
+        return [] if item.item_type_id.blank?
+
+        values = item.item_properties.index_by(&:property_definition_id)
+        current_user.property_definitions.for_item_type(item.item_type_id).ordered.map do |definition|
+          {
+            property_definition_id: definition.id,
+            key: definition.key,
+            label: definition.label,
+            value_type: definition.value_type,
+            description: definition.description,
+            value: values[definition.id]&.typed_value || (definition.list? ? [] : nil)
+          }
+        end
+      end
+
+      # 意味・説明の1件ぶん。MeaningsController の返す形と揃える
+      def serialize_meaning_entry(record)
+        {
+          id: record.id,
+          definition: record.definition,
+          example_sentence: record.example_sentence,
+          detail_level: record.detail_level,
+          language_code: record.language_code,
+          position: record.position,
+          fact_check_status: record.fact_check_status,
+          fact_check_comment: record.fact_check_comment,
+          fact_check_suggestion: record.fact_check_suggestion,
+          fact_checked_at: record.fact_checked_at,
+          fact_check_acknowledged_at: record.fact_check_acknowledged_at
         }
       end
 
