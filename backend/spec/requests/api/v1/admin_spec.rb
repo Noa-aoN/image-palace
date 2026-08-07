@@ -169,6 +169,54 @@ RSpec.describe "Api::V1::Admin", type: :request do
       expect(breakdown["topup"]).to eq(2.0)
     end
 
+    # 買い切りは2か所に散る。期限が付く前の古い残り（users.topup_credits）と、
+    # いまの積み方（credit_grants の kind: topup）。片方だけ数えると、
+    # 受け取ったお金のぶんが「付与」に化ける
+    it "期限付きで積まれた買い切りも、内訳の買い切りに数える" do
+      member.update!(topup_credits: 100)
+      member.credit_grants.create!(
+        kind: "topup", amount_points: 300, remaining_points: 300, expires_at: 6.months.from_now
+      )
+      member.credit_grants.create!(
+        kind: "campaign", amount_points: 200, remaining_points: 200, expires_at: 6.months.from_now
+      )
+
+      get "/api/v1/admin/overview", headers: admin_headers
+
+      breakdown = json_response["credit_liability"]["breakdown"]
+      # 古い残り(1.0) + 期限付きの買い切り(3.0)
+      expect(breakdown["topup"]).to eq(4.0)
+      # 付与は買い切りを除いたぶんだけ
+      expect(breakdown["grant"]).to eq(2.0)
+    end
+
+    it "期限なしは、期限が付く前の残りだけを数える（買い切りは6か月で失効するため）" do
+      member.update!(topup_credits: 100)
+      member.credit_grants.create!(
+        kind: "topup", amount_points: 300, remaining_points: 300, expires_at: 6.months.from_now
+      )
+
+      get "/api/v1/admin/overview", headers: admin_headers
+
+      # 期限付きで積まれた買い切りは、期限なしには入らない
+      expect(json_response["credit_liability"]["unlimited"]).to eq(1.0)
+    end
+
+    it "内訳を足すと合計になる（どこにも二重に数えない）" do
+      member.update!(subscription_credits: 100, topup_credits: 200)
+      member.credit_grants.create!(
+        kind: "topup", amount_points: 300, remaining_points: 300, expires_at: 6.months.from_now
+      )
+      member.credit_grants.create!(kind: "campaign", amount_points: 400, remaining_points: 400, expires_at: nil)
+
+      get "/api/v1/admin/overview", headers: admin_headers
+
+      liability = json_response["credit_liability"]
+      breakdown = liability["breakdown"]
+      sum = breakdown["subscription"] + breakdown["topup"] + breakdown["grant"]
+      expect(sum).to eq(liability["total"])
+    end
+
     it "使い切られたグラントは数えない" do
       member.credit_grants.create!(
         kind: "grant", amount_points: 500, remaining_points: 0, expires_at: 1.month.from_now

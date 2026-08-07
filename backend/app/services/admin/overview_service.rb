@@ -101,15 +101,21 @@ module Admin
       expiring = grants.where.not(expires_at: nil)
 
       subscription_points = User.sum(:subscription_credits)
-      topup_points = User.sum(:topup_credits)
-      grant_points = grants.sum(:remaining_points)
+      # 買い切りは2か所に散っている。期限が付く前の古い残り（users.topup_credits）と、
+      # いまの積み方（credit_grants の kind: topup、6か月で失効）。
+      # 片方だけ数えると、受け取ったお金のぶんが「付与」に化ける。
+      topup_points = User.sum(:topup_credits) + grants.where(kind: "topup").sum(:remaining_points)
+      # 付与はこちらが配ったぶん。買い切りを除く
+      grant_points = grants.where.not(kind: "topup").sum(:remaining_points)
+      all_grant_points = grants.sum(:remaining_points)
 
       {
         # 期限付き: 月額の当月分と、期限付きグラント（繰り越し・ボーナス）
         expiring: to_credits(subscription_points + expiring.sum(:remaining_points)),
-        # 無期限: 買い切りと、期限の無いグラント
-        unlimited: to_credits(topup_points + grants.where(expires_at: nil).sum(:remaining_points)),
-        total: to_credits(subscription_points + topup_points + grant_points),
+        # 期限なし: 期限が付く前の古い買い切りと、期限を付けずに配ったグラント。
+        # いまは買い切りも6か月で失効するので、ここは増えない（古い残りが減るだけ）
+        unlimited: to_credits(User.sum(:topup_credits) + grants.where(expires_at: nil).sum(:remaining_points)),
+        total: to_credits(subscription_points + User.sum(:topup_credits) + all_grant_points),
         # 内訳（どこに溜まっているか）
         breakdown: {
           subscription: to_credits(subscription_points),
