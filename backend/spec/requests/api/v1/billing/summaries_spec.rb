@@ -106,5 +106,46 @@ RSpec.describe "Api::V1::Billing::Summaries", type: :request do
       expect(expiries).to eq(expiries.sort)
       expect(buckets.first["label"]).to be_present
     end
+
+    # 同じ種類でも、期限が違えば別々に出す。まとめてしまうと
+    # 「どれがいつ消えるか」が分からなくなり、使い切る判断ができない
+    it "同じ種類でも期限が違えば1件ずつ列挙する" do
+      user.credit_grants.create!(
+        kind: "topup", amount_points: 300, remaining_points: 300, expires_at: 2.months.from_now
+      )
+      user.credit_grants.create!(
+        kind: "topup", amount_points: 500, remaining_points: 500, expires_at: 5.months.from_now
+      )
+
+      get "/api/v1/billing/summary", headers: headers
+
+      topups = json_response["credit_buckets"].select { |b| b["kind"] == "topup" }
+      expect(topups.size).to eq(2)
+      expect(topups.map { |b| b["credits"] }).to contain_exactly(3.0, 5.0)
+      # 近いほうが先
+      expect(topups.first["expires_at"]).to be < topups.last["expires_at"]
+    end
+
+    it "期限なしのぶんは、期限つきの後ろに並べる（先に使われるのは期限つきなので）" do
+      user.update!(topup_credits: 100)
+      user.credit_grants.create!(
+        kind: "topup", amount_points: 200, remaining_points: 200, expires_at: 1.month.from_now
+      )
+
+      get "/api/v1/billing/summary", headers: headers
+
+      kinds = json_response["credit_buckets"].map { |b| b["kind"] }
+      expect(kinds.last).to eq("topup_legacy")
+    end
+
+    it "使い切ったぶんは出さない" do
+      user.credit_grants.create!(
+        kind: "campaign", amount_points: 300, remaining_points: 0, expires_at: 1.month.from_now
+      )
+
+      get "/api/v1/billing/summary", headers: headers
+
+      expect(json_response["credit_buckets"].map { |b| b["kind"] }).not_to include("campaign")
+    end
   end
 end
