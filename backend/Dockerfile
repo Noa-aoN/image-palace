@@ -11,7 +11,16 @@ RUN apt-get update -qq && \
       libvips42 \
       pkg-config \
       curl \
-    && rm -rf /var/lib/apt/lists/*
+    && rm -rf /var/lib/apt/lists/* \
+    # CVE-2026-66066 対策の1層目: 使わない libvips ローダモジュールをイメージから消す。
+    # 本アプリが扱うのは PNG/JPEG/WebP のみ（ImageFormat::ALLOWED）。
+    # heif/pdf は block_untrusted の対象外で素通りする（8.16.1 で実測）ため、
+    # ブロックではなくモジュールごと削除して攻撃面そのものを無くす。
+    # 特に heif は壊れた入力でプロセスごと abort する。
+    # 削除は apt と同一レイヤで行う（後段レイヤだと .so がイメージ内に残るため）
+    && find /usr/lib -type d -name 'vips-modules-*' \
+         -exec rm -f {}/vips-heif.so {}/vips-jxl.so {}/vips-magick.so \
+                     {}/vips-openslide.so {}/vips-poppler.so \;
 
 ENV BUNDLE_PATH="/usr/local/bundle"
 
