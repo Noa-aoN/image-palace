@@ -5,15 +5,14 @@ RSpec.describe "Api::V1::Views カードから作る", type: :request do
   let(:headers) { auth_headers_for(user) }
   let(:view) { create(:view, user: user, view_type: "deck") }
 
-  def ai_response(cards, notes: nil)
-    { "choices" => [ { "message" => { "content" => { cards: cards, notes: notes }.to_json } } ] }
+  # 語を選ぶところは GenerateWordsService（ワードリスト生成と共通）に任せている
+  def ai_response(words)
+    { "choices" => [ { "message" => { "content" => { words: words }.to_json } } ] }
   end
 
   describe "POST /api/v1/views/:id/card_proposal" do
     it "案を返すだけで、カードは作らない" do
-      allow(Ai::Chat).to receive(:call).and_return(
-        ai_response([ { "title" => "光合成", "reason" => "対の概念" }, { "title" => "呼吸", "reason" => "対比" } ])
-      )
+      allow(Ai::Chat).to receive(:call).and_return(ai_response([ "光合成", "呼吸" ]))
 
       expect {
         post "/api/v1/views/#{view.id}/card_proposal",
@@ -29,14 +28,23 @@ RSpec.describe "Api::V1::Views カードから作る", type: :request do
     it "すでに持っているカードは提案しない" do
       item_type = ItemType.find_or_create_by!(name: "term") { |t| t.label = "単語" }
       user.items.create!(title: "光合成", item_type: item_type, generation_status: "completed")
-      allow(Ai::Chat).to receive(:call).and_return(
-        ai_response([ { "title" => "光合成" }, { "title" => "呼吸" } ])
-      )
+      allow(Ai::Chat).to receive(:call).and_return(ai_response([ "光合成", "呼吸" ]))
 
       post "/api/v1/views/#{view.id}/card_proposal",
         params: { proposal: { instruction: "足して" } }, headers: headers, as: :json
 
       expect(json_response["proposals"].map { |p| p["title"] }).to eq([ "呼吸" ])
+    end
+
+    # ワードリスト生成と同じ経路を通す（プロンプトを二重に持たない）
+    it "語の選定はワードリスト生成と同じサービスに任せる" do
+      allow(GenerateWordsService).to receive(:call).and_return([ "光合成" ])
+
+      post "/api/v1/views/#{view.id}/card_proposal",
+        params: { proposal: { instruction: "生物" } }, headers: headers, as: :json
+
+      expect(GenerateWordsService).to have_received(:call).with(hash_including(theme: "生物", user: user))
+      expect(json_response["proposals"].map { |p| p["title"] }).to eq([ "光合成" ])
     end
 
     it "指示が空なら弾く" do

@@ -30,8 +30,8 @@ const MODES: { value: EditChoice; label: string; description: string }[] = [
   },
   {
     value: 'create',
-    label: 'カードから作る',
-    description: '足りないカードをAIが提案します。作る前に枚数を確認できます。',
+    label: 'カードから作る（cr消費）',
+    description: '足りないカードをAIが提案します。作る前に枚数を確認でき、作った枚数ぶんクレジットを使います。',
   },
 ]
 
@@ -220,7 +220,8 @@ export function AiEditPanel({
 
           <div>
             <p className="mb-1 text-xs text-muted-foreground">使うカード</p>
-            <div className="flex flex-wrap gap-2">
+            {/* 縦に並べる。横だと「カードから作る（cr消費）」で折り返し、選択肢が読み取りにくい */}
+            <div className="flex flex-col gap-1.5">
               {MODES.map((option) => (
                 <Button
                   key={option.value}
@@ -228,6 +229,7 @@ export function AiEditPanel({
                   variant={mode === option.value ? 'default' : 'outline'}
                   disabled={busy !== null}
                   onClick={() => setMode(option.value)}
+                  className="w-full justify-start"
                 >
                   {option.label}
                 </Button>
