@@ -45,8 +45,9 @@ class GenerateWordsService
 
   # exclude: 絶対に出さない語（既出＝受け取り済み）。avoid: 出す確率を大きく下げる語（キャンセル済み）。
   # difficulty: 語彙の難しさ（easy / normal / hard / expert）。
-  def self.call(theme: nil, count: nil, exclude: [], avoid: [], difficulty: nil, user: nil)
-    new(theme:, count:, exclude:, avoid:, difficulty:, user:).call
+  # kind は利用記録（ai_usages）のラベル。呼び出し元ごとに分けると、原価の内訳を用途別に見られる
+  def self.call(theme: nil, count: nil, exclude: [], avoid: [], difficulty: nil, user: nil, kind: "words_generate")
+    new(theme:, count:, exclude:, avoid:, difficulty:, user:, kind:).call
   end
 
   def self.normalize_difficulty(value)
@@ -55,8 +56,9 @@ class GenerateWordsService
 
   # count が nil/空のときは「おまかせ（自動）」。AI がテーマに応じた自然な数を返す。
   # 数値指定時は 1〜MAX_COUNT にクランプ。いずれも MAX_COUNT を超えないよう必ず切り詰める。
-  def initialize(theme:, count:, exclude: [], avoid: [], difficulty: nil, user: nil)
+  def initialize(theme:, count:, exclude: [], avoid: [], difficulty: nil, user: nil, kind: "words_generate")
     @user = user
+    @kind = kind
     @difficulty = self.class.normalize_difficulty(difficulty)
     @theme = theme.to_s.strip
     @count = count.present? ? count.to_i.clamp(1, MAX_COUNT) : nil
@@ -107,7 +109,7 @@ class GenerateWordsService
 
   def request
     response = Ai::Chat.call(
-      kind: "words_generate",
+      kind: @kind,
       user: @user,
       model: model,
       messages: [
