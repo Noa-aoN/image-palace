@@ -105,6 +105,49 @@ export interface AdminOverview {
   top_creators: { user_id: string; items: number }[]
 }
 
+/** 付与ポリシー（何を・いくつ・どの条件で配るか） */
+export interface AdminGrantPolicy {
+  key: string
+  label: string
+  description: string | null
+  reward_type: 'credits' | 'item'
+  enabled: boolean
+  amount: number
+  item_kind: string | null
+  conditions: Record<string, unknown>
+  notes: string | null
+  /** 画面で触った結果か（false なら Billing::Catalog の既定で動いている） */
+  customized: boolean
+  default_amount: number | null
+}
+
+export interface AdminGrantPoliciesPage {
+  policies: AdminGrantPolicy[]
+  item_kinds: string[]
+  reward_types: string[]
+}
+
+/** プラン（ユーザー種類）ごとの付与 */
+export interface AdminPlan {
+  id: string
+  name: string
+  tier: string | null
+  kind: string
+  price: number | null
+  credits_per_period: number
+  active: boolean
+  /** 粗利率(%)。無料プランなど対象外は null */
+  margin: number | null
+  stripe_linked: boolean
+}
+
+export interface AdminPlansPage {
+  plans: AdminPlan[]
+  min_margin: number
+  cost_per_credit: number
+  stripe_fee_rate: number
+}
+
 /** 供給側の疎通確認の結果 */
 export interface AdminProviderCheck {
   ok: boolean

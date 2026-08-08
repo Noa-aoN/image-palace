@@ -1,14 +1,11 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { ShieldCheck, Loader2 } from 'lucide-react'
-import { getAdminOverview, getAdminSession } from '@/lib/api/admin'
+import { Loader2 } from 'lucide-react'
+import { getAdminOverview } from '@/lib/api/admin'
 import { TrendChart } from '@/components/features/shared/TrendChart'
-import { AdminUsersPanel } from '@/components/features/admin/AdminUsersPanel'
-import { AdminAuditPanel } from '@/components/features/admin/AdminAuditPanel'
-import { AdminPostsPanel } from '@/components/features/admin/AdminPostsPanel'
 import { AdminLimitsPanel } from '@/components/features/admin/AdminLimitsPanel'
-import type { AdminOverview, AdminSession } from '@/types/admin'
+import type { AdminOverview } from '@/types/admin'
 
 /**
  * 運営（管理）ダッシュボード。
@@ -17,34 +14,24 @@ import type { AdminOverview, AdminSession } from '@/types/admin'
  * 権限の判定はサーバー側で毎リクエスト行われる。
  */
 export default function AdminPage() {
-  const [session, setSession] = useState<AdminSession | null>(null)
   const [overview, setOverview] = useState<AdminOverview | null>(null)
   const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
     let cancelled = false
-    getAdminSession()
-      .then((s) => {
-        if (cancelled) return
-        setSession(s)
-        if (!s.admin) return
-        getAdminOverview()
-          .then((data) => {
-            if (!cancelled) setOverview(data)
-          })
-          .catch(() => {
-            if (!cancelled) setError('数字を取得できませんでした')
-          })
+    getAdminOverview()
+      .then((data) => {
+        if (!cancelled) setOverview(data)
       })
       .catch(() => {
-        if (!cancelled) setError('権限を確認できませんでした')
+        if (!cancelled) setError('数字を取得できませんでした')
       })
     return () => {
       cancelled = true
     }
   }, [])
 
-  if (!session) {
+  if (!overview && !error) {
     return (
       <div className="flex items-center justify-center py-24 text-muted-foreground">
         <Loader2 size={20} className="mr-2 animate-spin" /> 読み込み中…
@@ -52,27 +39,8 @@ export default function AdminPage() {
     )
   }
 
-  if (!session.admin) {
-    return (
-      <div className="mx-auto max-w-2xl px-6 py-24 text-center">
-        <h1 className="text-xl font-semibold">権限がありません</h1>
-        <p className="mt-2 text-sm text-muted-foreground">このページは運営のみが利用できます。</p>
-      </div>
-    )
-  }
-
   return (
-    <div className="mx-auto max-w-7xl space-y-8 px-6 py-12">
-      <div>
-        <h1 className="flex items-center gap-2.5 text-2xl font-semibold">
-          <ShieldCheck size={26} style={{ color: 'var(--palace)' }} />
-          運営
-        </h1>
-        <p className="mt-2 text-muted-foreground">
-          サービス全体の状況と、利用者・権限の管理を行います（あなたの役割: {roleLabel(session.role)}）。
-        </p>
-      </div>
-
+    <div className="space-y-8">
       {error && <p className="text-sm text-destructive">{error}</p>}
 
       {overview && (
@@ -196,9 +164,6 @@ export default function AdminPage() {
           </section>
 
           <AdminLimitsPanel overview={overview} />
-          <AdminPostsPanel />
-          <AdminUsersPanel canChangeRole={session.owner} />
-          <AdminAuditPanel />
         </>
       )}
     </div>
@@ -222,12 +187,3 @@ function rate(part: number, total: number) {
   return `全体の ${((part / total) * 100).toFixed(1)}%`
 }
 
-const ROLE_LABELS: Record<string, string> = {
-  user: '一般',
-  admin: '運営',
-  owner: '運営の管理者',
-}
-
-function roleLabel(role: string) {
-  return ROLE_LABELS[role] ?? role
-}

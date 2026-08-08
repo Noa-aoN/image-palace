@@ -136,8 +136,11 @@ class User < ApplicationRecord
   def grant_trial_credits!
     return if trial_granted_at.present?
 
-    amount = Billing::Catalog::TRIAL_CREDITS * Billing::POINTS_PER_CREDIT
-    return if amount <= 0
+    # 付与量は管理画面から変えられる（GrantPolicy）。行が無ければ Catalog の既定
+    amount = GrantPolicy.amount_for("trial") * Billing::POINTS_PER_CREDIT
+    # 配らない設定でも印は付ける。付けないと free_grants_settled? が常に外れ、
+    # ensure_free_credits! が毎リクエストで行ロックを取ってしまう
+    return mark_trial_granted! if amount <= 0
 
     # 一度配った相手には配らない。退会して登録し直しても同じ
     return mark_trial_granted! if TrialGrantRecord.granted?(trial_identifiers)
@@ -151,14 +154,20 @@ class User < ApplicationRecord
 
   # 月に一度、少量だけ。来た人にしか配らないので、休眠アカウントには出ていかない
   def grant_monthly_free_credits!
-    amount = Billing::Catalog::MONTHLY_FREE_CREDITS * Billing::POINTS_PER_CREDIT
-    return if amount <= 0
-
     period_start = free_period_start
     return if credits_period_start && credits_period_start >= period_start
+
+    amount = GrantPolicy.amount_for("monthly_free") * Billing::POINTS_PER_CREDIT
+    # 配らない設定でも周期の印は進める（進めないと毎リクエストで行ロックを取る）。
+    # 一方、配りすぎのブレーカーに当たったときは進めない（上限が空いたら配りたいため）
+    return advance_free_period!(period_start) if amount <= 0
     return unless Billing::FreeGrantGuard.allow?(amount)
 
     grant_credits!(amount, kind: "monthly_free", expires_at: Billing::Catalog::CREDIT_LIFETIME.from_now)
+    advance_free_period!(period_start)
+  end
+
+  def advance_free_period!(period_start)
     update_column(:credits_period_start, period_start) # rubocop:disable Rails/SkipsModelValidations
   end
 
