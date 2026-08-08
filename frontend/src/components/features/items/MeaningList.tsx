@@ -170,6 +170,8 @@ export function MeaningList({
             <div className="space-y-1.5">
               <div className="flex items-start justify-between gap-2">
                 <div className="flex flex-wrap items-center gap-1.5">
+                  {/* 例のブロックと突き合わせられるよう番号を振る */}
+                  <span className="text-sm font-medium tabular-nums text-muted-foreground">{index + 1}.</span>
                   {index === 0 && (
                     <span
                       className="rounded-full px-2 py-0.5 text-[11px]"
@@ -212,11 +214,6 @@ export function MeaningList({
               </div>
 
               <p className="whitespace-pre-wrap text-sm leading-relaxed text-foreground">{entry.definition}</p>
-              {entry.example_sentence && (
-                <p className="border-l-2 border-border pl-2 text-xs leading-relaxed text-muted-foreground">
-                  例: {entry.example_sentence}
-                </p>
-              )}
               {index === 0 && primaryExtra}
             </div>
           )}
