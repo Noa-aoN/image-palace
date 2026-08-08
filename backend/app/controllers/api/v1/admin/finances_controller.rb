@@ -7,15 +7,17 @@ module Api
           now = Time.zone.now
           year = params[:year].presence&.to_i || now.year
           month = params[:month].presence&.to_i || now.month
+          # 単価はどの集計でも同じものを見る。1回だけ読む
+          costs = CostParameter.table
 
           render json: {
-            summary: ::Admin::FinanceService.call(year: year, month: month),
+            summary: ::Admin::FinanceService.call(year: year, month: month, costs: costs),
             # 開業から今までの積み上げ
             totals: ::Admin::FinanceService.totals,
             # 月選択に出す候補（データがある範囲）
             available_months: available_months,
             # 直近12か月の推移（概算の粗利）
-            trend: trend(now),
+            trend: ::Admin::FinanceTrendService.call(now: now, costs: costs),
             parameters: CostParameter.overview,
             groups: CostParameter::GROUPS
           }
@@ -70,21 +72,6 @@ module Api
             cursor = cursor.next_month
           end
           months.reverse
-        end
-
-        # 概要に出す推移。月ごとに1回ずつ集計する（対象は12か月なので許容範囲）
-        def trend(now)
-          (0..11).map do |offset|
-            date = now.beginning_of_month - offset.months
-            summary = ::Admin::FinanceService.call(year: date.year, month: date.month)
-            {
-              year: date.year,
-              month: date.month,
-              revenue: summary[:revenue][:total],
-              cost: summary[:cost][:total],
-              profit: summary[:profit]
-            }
-          end.reverse
         end
       end
     end

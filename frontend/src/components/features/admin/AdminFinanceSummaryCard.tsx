@@ -1,30 +1,14 @@
 'use client'
 
-import { useEffect, useState } from 'react'
 import Link from 'next/link'
 import { ChevronRight } from 'lucide-react'
-import { getAdminFinance } from '@/lib/api/admin'
 import type { AdminFinanceSummary } from '@/types/admin'
 
 const yen = (value: number) => `¥${Math.round(value).toLocaleString()}`
 
-// 概要に出す今月の収支。詳細は /admin/finance
-export function AdminFinanceSummaryCard() {
-  const [summary, setSummary] = useState<AdminFinanceSummary | null>(null)
-
-  useEffect(() => {
-    let cancelled = false
-    getAdminFinance()
-      .then((data) => {
-        if (!cancelled) setSummary(data.summary)
-      })
-      .catch(() => undefined)
-    return () => {
-      cancelled = true
-    }
-  }, [])
-
-  if (!summary) return null
+// 概要に出す今月の収支。詳細は /admin/finance。
+// 数字は概要のレスポンスに同梱されている（別に取りに行くと往復が二重になる）
+export function AdminFinanceSummaryCard({ summary }: { summary: AdminFinanceSummary }) {
 
   return (
     <section className="space-y-3">

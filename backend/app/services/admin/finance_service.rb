@@ -7,8 +7,8 @@ module Admin
   # 回数は正確（image_usages / ai_usages）だが単価は設定値なので、そこが誤差になる。
   # だから請求実額（MonthlyActual）を並べ、乖離率を出して単価を直せるようにしてある。
   class FinanceService
-    def self.call(year:, month:)
-      new(year: year, month: month).call
+    def self.call(year:, month:, costs: nil)
+      new(year: year, month: month, costs: costs).call
     end
 
     # 開業から今までの総計。
@@ -17,7 +17,7 @@ module Admin
     # 月数も一緒に返して、何を掛けた結果なのかが画面から分かるようにしておく。
     def self.totals(now: Time.zone.now)
       first = [ User.minimum(:created_at), CreditTransaction.minimum(:created_at) ].compact.min || now
-      new(from: first.beginning_of_month, to: now.next_month.beginning_of_month).call.merge(
+      new(from: first.beginning_of_month, to: now.next_month.beginning_of_month, costs: CostParameter.table).call.merge(
         months: months_between(first, now)
       )
     end
@@ -26,21 +26,23 @@ module Admin
       ((to.year - from.year) * 12 + (to.month - from.month)) + 1
     end
 
-    def initialize(year: nil, month: nil, from: nil, to: nil)
+    def initialize(year: nil, month: nil, from: nil, to: nil, costs: nil)
       @from = from || Time.zone.local(year, month, 1)
       @to = to || @from.next_month
       @year = year
       @month = month
       # 総計のときはインフラ月額を月数ぶん掛ける
       @infra_months = year.nil? ? self.class.months_between(@from, @to - 1.day) : 1
+      # 単価は同じ値を何十回も参照する。1回読んで使い回す
+      @costs = costs || CostParameter.table
     end
 
     def call
       revenue = revenue_jpy
-      fee = (revenue * CostParameter.value_for("stripe_fee_rate")).round
+      fee = (revenue * @costs.value_for("stripe_fee_rate")).round
       image = image_cost
       text = text_cost
-      infra = (CostParameter.infra_monthly_jpy * @infra_months).round
+      infra = (@costs.infra_monthly_jpy * @infra_months).round
       estimated_cost = fee + image[:jpy] + text[:jpy] + infra
 
       {
@@ -59,7 +61,7 @@ module Admin
         profit: revenue - estimated_cost,
         margin: revenue.positive? ? ((revenue - estimated_cost).fdiv(revenue) * 100).round(1) : nil,
         actual: actual_comparison(estimated_cost - fee),
-        fx: CostParameter.value_for("fx_usd_jpy")
+        fx: @costs.value_for("fx_usd_jpy")
       }
     end
 
@@ -85,7 +87,7 @@ module Admin
     # 上回るので、移行期に二重計上しない。
     # ※アバター・カバー・ポイントは記録前のぶんを拾えない（当時の記録が無いため）
     def image_cost
-      fx = CostParameter.value_for("fx_usd_jpy")
+      fx = @costs.value_for("fx_usd_jpy")
       usages = ImageUsage.between(@from, @to).group(:model, :quality, :kind).count
       item_counts = merged_item_counts(usages)
 
@@ -93,7 +95,7 @@ module Admin
       rows += usages.reject { |(_, _, kind), _| kind == "item" }.to_a
 
       breakdown = rows.map do |(model, quality, kind), count|
-        usd = CostParameter.image_unit_usd(model: model, quality: quality) * count
+        usd = @costs.image_unit_usd(model: model, quality: quality) * count
         { model: model, quality: quality, kind: kind, count: count, usd: usd.round(4), jpy: (usd * fx).round }
       end
 
@@ -134,11 +136,11 @@ module Admin
                       Arel.sql("COALESCE(SUM(completion_tokens), 0)"),
                       Arel.sql("COUNT(*)")
                     )
-      fx = CostParameter.value_for("fx_usd_jpy")
+      fx = @costs.value_for("fx_usd_jpy")
 
       breakdown = rows.map do |model, prompt_tokens, completion_tokens, count|
-        usd = (prompt_tokens.to_f / 1_000_000) * CostParameter.value_for("text_in_usd.#{model}") +
-              (completion_tokens.to_f / 1_000_000) * CostParameter.value_for("text_out_usd.#{model}")
+        usd = (prompt_tokens.to_f / 1_000_000) * @costs.value_for("text_in_usd.#{model}") +
+              (completion_tokens.to_f / 1_000_000) * @costs.value_for("text_out_usd.#{model}")
         {
           model: model, calls: count,
           prompt_tokens: prompt_tokens, completion_tokens: completion_tokens,

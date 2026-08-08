@@ -49,7 +49,22 @@ export async function updateAdminUserRole(id: string, role: AdminRole): Promise<
   return res.data
 }
 
-export async function getAdminAuditLogs(): Promise<AdminAuditLog[]> {
+export interface AdminAuditLogsPage {
+  logs: AdminAuditLog[]
+  /** 絞り込みの選択肢（記録に出てくる種類・実行者） */
+  actions: string[]
+  actors: string[]
+}
+
+export async function getAdminAuditLogs(params?: {
+  action_name?: string
+  actor?: string
+}): Promise<AdminAuditLogsPage> {
+  const res = await apiClient.get<AdminAuditLogsPage>('/api/v1/admin/audit_logs', { params })
+  return res.data
+}
+
+export async function getAdminAuditLogList(): Promise<AdminAuditLog[]> {
   const res = await apiClient.get<{ logs: AdminAuditLog[] }>('/api/v1/admin/audit_logs')
   return res.data.logs
 }

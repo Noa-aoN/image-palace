@@ -178,6 +178,32 @@ RSpec.describe "Api::V1::Admin", type: :request do
     end
   end
 
+  describe "GET /api/v1/admin/audit_logs" do
+    before do
+      AdminAuditLog.record!(actor: admin, action: "plan_update")
+      AdminAuditLog.record!(actor: owner, action: "user.role_changed")
+    end
+
+    it "絞り込みの選択肢を返す" do
+      get "/api/v1/admin/audit_logs", headers: admin_headers
+
+      expect(json_response["actions"]).to include("plan_update", "user.role_changed")
+      expect(json_response["actors"]).to include(admin.email)
+    end
+
+    it "操作の種類で絞り込める" do
+      get "/api/v1/admin/audit_logs", params: { action_name: "plan_update" }, headers: admin_headers
+
+      expect(json_response["logs"].map { |log| log["action"] }).to eq([ "plan_update" ])
+    end
+
+    it "実行者で絞り込める" do
+      get "/api/v1/admin/audit_logs", params: { actor: owner.email }, headers: admin_headers
+
+      expect(json_response["logs"].map { |log| log["actor_email"] }).to eq([ owner.email ])
+    end
+  end
+
   describe "POST /api/v1/admin/provider_check" do
     it "一般ユーザーには 403" do
       post "/api/v1/admin/provider_check", headers: member_headers

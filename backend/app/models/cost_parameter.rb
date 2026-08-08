@@ -35,25 +35,81 @@ class CostParameter < ApplicationRecord
     "text_in_usd.gpt-4o" => { group: "text", label: "文章 gpt-4o（入力）", unit: "USD/1Mトークン", default: 2.5 },
     "text_out_usd.gpt-4o" => { group: "text", label: "文章 gpt-4o（出力）", unit: "USD/1Mトークン", default: 10.0 },
 
-    # インフラは月額。請求書を見て入れる
-    "infra_jpy.fly" => { group: "infra", label: "Fly.io", unit: "円/月", default: 0 },
-    "infra_jpy.neon" => { group: "infra", label: "Neon", unit: "円/月", default: 0 },
-    "infra_jpy.r2" => { group: "infra", label: "Cloudflare R2", unit: "円/月", default: 0 },
-    "infra_jpy.workers" => { group: "infra", label: "Cloudflare Workers", unit: "円/月", default: 0 },
-    "infra_jpy.sentry" => { group: "infra", label: "Sentry", unit: "円/月", default: 0 },
-    "infra_jpy.domain" => { group: "infra", label: "ドメイン", unit: "円/月", default: 0 },
+    # インフラの月額。海外ベンダーはドル建てなので USD で持ち、為替を掛ける
+    # （円で固定すると、為替が動いたときに黙ってずれる）。
+    # 既定は構成から見積もった概算で、正確な額ではない。請求書の実額（MonthlyActual）で補正する。
+    "infra_usd.fly" => {
+      group: "infra", label: "Fly.io", unit: "USD/月", default: 13,
+      description: "shared-cpu-1x / 1GB を2台（app + worker）稼働。待機1台は起動時のみ課金"
+    },
+    "infra_usd.neon" => {
+      group: "infra", label: "Neon", unit: "USD/月", default: 19,
+      description: "有料プラン。実額は請求書で確認して直す"
+    },
+    "infra_usd.workers" => {
+      group: "infra", label: "Cloudflare Workers", unit: "USD/月", default: 5,
+      description: "Workers Paid"
+    },
+    "infra_usd.r2" => {
+      group: "infra", label: "Cloudflare R2", unit: "USD/月", default: 1,
+      description: "egress は無料。保存量に応じて増える"
+    },
+    "infra_usd.sentry" => {
+      group: "infra", label: "Sentry", unit: "USD/月", default: 0,
+      description: "無料枠に収まっている想定"
+    },
+    "infra_jpy.domain" => {
+      group: "infra", label: "ドメイン", unit: "円/月", default: 130,
+      description: "年額を12で割った額"
+    },
     "infra_jpy.other" => { group: "infra", label: "その他", unit: "円/月", default: 0 }
   }.freeze
 
   validates :key, presence: true, uniqueness: true
   validates :value, numericality: true
 
-  # 値を引く。行が無ければ既定、既定も無ければ fallback
+  # 値を引く。行が無ければ既定、既定も無ければ fallback。
+  # 1件ずつ引くと SQL が回数ぶん飛ぶので、まとめて読むときは .table を使う
   def self.value_for(key, fallback = 0)
     row = find_by(key: key)
     return row.value.to_f if row
 
     DEFAULTS.dig(key, :default)&.to_f || fallback
+  end
+
+  # 全件を1回読んで、以後はメモリ上で引く。
+  # 概算は同じ値を何十回も参照するため、都度 SQL だと往復だけで秒単位になる
+  # （本番の DB は往復 69ms）。
+  def self.table
+    Table.new(all.index_by(&:key))
+  end
+
+  # 読み取り専用の値引き。クラスメソッドと同じ名前で使えるようにしてある
+  class Table
+    def initialize(rows)
+      @rows = rows
+    end
+
+    def value_for(key, fallback = 0)
+      row = @rows[key]
+      return row.value.to_f if row
+
+      DEFAULTS.dig(key, :default)&.to_f || fallback
+    end
+
+    def image_unit_usd(model:, quality: nil)
+      with_quality = quality.present? ? value_for("image_usd.#{model}.#{quality}", -1) : -1
+      return with_quality if with_quality >= 0
+
+      value_for("image_usd.#{model}", 0)
+    end
+
+    def infra_monthly_jpy
+      keys = (DEFAULTS.keys + @rows.keys).uniq
+      jpy = keys.select { |key| key.start_with?("infra_jpy.") }.sum { |key| value_for(key) }
+      usd = keys.select { |key| key.start_with?("infra_usd.") }.sum { |key| value_for(key) }
+      jpy + usd * value_for("fx_usd_jpy")
+    end
   end
 
   # モデル+品質 → モデル の順に探す。品質別の単価を置いていなければモデルの値を使う
@@ -64,8 +120,16 @@ class CostParameter < ApplicationRecord
     value_for("image_usd.#{model}", 0)
   end
 
+  # インフラの月額（円）。ドル建てのものは為替を掛けて足す
   def self.infra_monthly_jpy
-    DEFAULTS.keys.select { |key| key.start_with?("infra_jpy.") }.sum { |key| value_for(key) }
+    jpy = infra_keys("infra_jpy.").sum { |key| value_for(key) }
+    usd = infra_keys("infra_usd.").sum { |key| value_for(key) }
+    jpy + usd * value_for("fx_usd_jpy")
+  end
+
+  # 既定に無いキーを足しても集計に入るよう、DB 側の行も見る
+  def self.infra_keys(prefix)
+    (DEFAULTS.keys + pluck(:key)).uniq.select { |key| key.start_with?(prefix) }
   end
 
   # 画面に出す一覧。DB の行と、まだ行が無い既定を合わせて返す

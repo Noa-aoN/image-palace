@@ -164,7 +164,7 @@ export default function AdminPage() {
             )}
           </section>
 
-          <AdminFinanceSummaryCard />
+          <AdminFinanceSummaryCard summary={overview.finance} />
           <AdminLimitsPanel overview={overview} />
         </>
       )}

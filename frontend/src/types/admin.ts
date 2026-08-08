@@ -85,6 +85,8 @@ export interface AdminOverview {
       }[]
     }
   }
+  /** 今月の収支（概算）。詳細は /admin/finance */
+  finance: AdminFinanceSummary
   /** 供給側（OpenAI 等）が止まっていないか */
   provider_status: {
     ongoing: boolean
