@@ -11,6 +11,7 @@ import type { Item, ItemType } from '@/types/item'
 import type { Tag } from '@/types/tag'
 import { PropertyBlock, BlockAction, BlockError } from '@/components/features/items/PropertyBlock'
 import { MeaningList } from '@/components/features/items/MeaningList'
+import { ExampleList } from '@/components/features/items/ExampleList'
 import { ItemPropertyBlocks } from '@/components/features/items/ItemPropertyBlocks'
 import { ItemUsageBlock } from '@/components/features/items/ItemUsageBlock'
 import { ItemReviewBlock } from '@/components/features/items/ItemReviewBlock'
@@ -489,6 +490,16 @@ export function ItemProperties({ item, onUpdated }: ItemPropertiesProps) {
             }
           />
           <BlockError message={meaningError} />
+        </PropertyBlock>
+      ),
+    },
+    {
+      // 例文は意味・説明とは別の項目として並べる。番号で対応が追える
+      key: 'examples',
+      label: '例',
+      node: (
+        <PropertyBlock title="例">
+          <ExampleList item={item} onUpdated={onUpdated} />
         </PropertyBlock>
       ),
     },
