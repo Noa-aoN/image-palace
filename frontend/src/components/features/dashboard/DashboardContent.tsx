@@ -33,8 +33,6 @@ const EMPTY_SUMMARY: ItemsSummary = {
   views_count: 0,
   spaces_count: 0,
   monthly_count: 0,
-  monthly_limit: 0,
-  monthly_remaining: 0,
 }
 
 // クレジットメーターの進捗率（残高 / 今期付与, 0〜100）。付与枠が無い/不明なら null。

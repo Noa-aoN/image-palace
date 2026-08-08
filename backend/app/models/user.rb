@@ -60,7 +60,7 @@ class User < ApplicationRecord
   end
 
   # 当月の生成数。カード（items）と、名前付きスペースポイント（画像生成を伴う）を
-  # 合算して数える。月間生成上限（月100枚）は両者で共有する。
+  # 合算して数える。枚数の上限はクレジット残高で決まるので、これは実績の集計。
   def monthly_generation_count
     items.created_this_month.count + space_points.named.created_this_month.count
   end

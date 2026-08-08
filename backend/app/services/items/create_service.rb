@@ -1,9 +1,6 @@
 module Items
   class CreateService
-    # 旧・月間枚数上限（summary 表示の互換のため残置。生成ゲートはクレジット残高へ移行済み）。
-    # 無料プランの付与（free credits_per_period=10）に表示を合わせる。
-    FREE_ITEM_LIMIT_PER_MONTH = 10
-    class MonthlyLimitExceeded < StandardError; end
+    # 生成の可否はクレジット残高で決まる（1クレジット = 1枚）。固定の月間枚数上限は無い。
     # クレジット残高が不足していて生成できない
     class InsufficientCredits < StandardError; end
     # ブロックリストに該当する不適切なプロンプトを生成前に弾く
