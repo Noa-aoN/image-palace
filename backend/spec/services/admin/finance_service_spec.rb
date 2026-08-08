@@ -73,6 +73,52 @@ RSpec.describe Admin::FinanceService do
     end
   end
 
+  # image_usages を入れる前の生成は記録が無い。shared_medias から拾えないと
+  # 8月の画像原価が「1枚 6円」のように実態とかけ離れる（本番で実際にそうなった）
+  describe "記録を入れる前の画像" do
+    before do
+      CostParameter.create!(key: "fx_usd_jpy", value: 150)
+      CostParameter.create!(key: "image_usd.gpt-image-1.medium", value: 0.04)
+    end
+
+    def shared(count)
+      count.times do |n|
+        SharedMedia.create!(normalized_prompt: "w#{n}", metadata: { "model" => "gpt-image-1", "quality" => "medium" })
+      end
+    end
+
+    it "共有画像から枚数を拾う" do
+      shared(10)
+
+      image = summary[:cost][:image]
+      expect(image[:count]).to eq(10)
+      expect(image[:jpy]).to eq(60)
+    end
+
+    # 移行期は両方に行があるので、多い方を採って二重計上を避ける
+    it "記録と共有画像の両方があっても二重に数えない" do
+      shared(10)
+      4.times { ImageUsage.record!(kind: "item", provider: "openai", model: "gpt-image-1", quality: "medium") }
+
+      expect(summary[:cost][:image][:count]).to eq(10)
+    end
+
+    it "記録の方が多ければ記録を採る" do
+      shared(2)
+      5.times { ImageUsage.record!(kind: "item", provider: "openai", model: "gpt-image-1", quality: "medium") }
+
+      expect(summary[:cost][:image][:count]).to eq(5)
+    end
+
+    # カード以外（アバター等）は共有画像を通らないので、記録のぶんがそのまま乗る
+    it "カード以外の生成は別で数える" do
+      shared(3)
+      2.times { ImageUsage.record!(kind: "avatar", provider: "openai", model: "gpt-image-1", quality: "medium") }
+
+      expect(summary[:cost][:image][:count]).to eq(5)
+    end
+  end
+
   describe "請求実額との比較" do
     it "未入力なら recorded は false" do
       expect(summary[:actual][:recorded]).to be(false)

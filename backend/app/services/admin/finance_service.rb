@@ -60,10 +60,20 @@ module Admin
                        .sum(:amount_cents)
     end
 
-    # 画像は「枚数 × 1枚あたりの単価」。モデルと品質ごとに単価が違う
+    # 画像は「枚数 × 1枚あたりの単価」。モデルと品質ごとに単価が違う。
+    #
+    # image_usages は 2026-08-09 に入れたもので、それ以前の生成は記録が無い。
+    # カード画像だけは shared_medias（キャッシュミス＝実際に呼んだ回数）から拾えるので、
+    # モデル・品質ごとに「多い方」を採る。記録前は shared_medias、記録後は image_usages が
+    # 上回るので、移行期に二重計上しない。
+    # ※アバター・カバー・ポイントは記録前のぶんを拾えない（当時の記録が無いため）
     def image_cost
-      rows = ImageUsage.between(@from, @to).group(:model, :quality, :kind).count
       fx = CostParameter.value_for("fx_usd_jpy")
+      usages = ImageUsage.between(@from, @to).group(:model, :quality, :kind).count
+      item_counts = merged_item_counts(usages)
+
+      rows = item_counts.map { |(model, quality), count| [ [ model, quality, "item" ], count ] }
+      rows += usages.reject { |(_, _, kind), _| kind == "item" }.to_a
 
       breakdown = rows.map do |(model, quality, kind), count|
         usd = CostParameter.image_unit_usd(model: model, quality: quality) * count
@@ -75,6 +85,26 @@ module Admin
         jpy: breakdown.sum { |row| row[:jpy] },
         breakdown: breakdown.sort_by { |row| -row[:jpy] }
       }
+    end
+
+    # カード画像の枚数。記録（image_usages）と共有画像（shared_medias）の多い方を採る
+    def merged_item_counts(usages)
+      from_usages = usages.select { |(_, _, kind), _| kind == "item" }
+                          .transform_keys { |(model, quality, _)| [ model, quality ] }
+
+      counts = shared_media_counts
+      from_usages.each do |key, count|
+        counts[key] = [ counts[key].to_i, count ].max
+      end
+      counts
+    end
+
+    # 共有画像の metadata からモデル・品質を数える（記録を入れる前の期間の手当て）
+    def shared_media_counts
+      SharedMedia.where(created_at: @from...@to).pluck(:metadata).each_with_object({}) do |metadata, acc|
+        key = [ metadata["model"], metadata["quality"] ]
+        acc[key] = acc[key].to_i + 1
+      end
     end
 
     # 文章はトークン数 × 100万トークンあたりの単価。入力と出力で単価が違う

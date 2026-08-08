@@ -324,6 +324,16 @@ class User < ApplicationRecord
     ENV.fetch("ADMIN_EMAILS", "").split(",").map { |email| email.strip.downcase }.reject(&:blank?)
   end
 
+  # 実効的に運営権限を持つ人。role だけを見ると、ENV 由来の owner が数から漏れる
+  # （管理画面の「運営メンバー」が 0 と出ていた）
+  scope :effective_admins, lambda {
+    emails = bootstrap_owner_emails
+    scope = where(role: %w[admin owner])
+    return scope if emails.empty?
+
+    scope.or(where(confirmed_at: ..Time.current).where("LOWER(email) IN (?)", emails))
+  }
+
   def self.find_for_oauth(auth_hash)
     # provider + uid のみで既存ユーザーを検索
     user = find_by(provider: auth_hash["provider"], uid: auth_hash["uid"])
