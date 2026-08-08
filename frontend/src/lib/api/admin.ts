@@ -1,7 +1,11 @@
 import { apiClient } from './client'
 import type {
   AdminAuditLog,
+  AdminGrantPoliciesPage,
+  AdminGrantPolicy,
   AdminOverview,
+  AdminPlan,
+  AdminPlansPage,
   AdminProviderCheck,
   AdminRole,
   AdminSession,
@@ -45,4 +49,39 @@ export async function updateAdminUserRole(id: string, role: AdminRole): Promise<
 export async function getAdminAuditLogs(): Promise<AdminAuditLog[]> {
   const res = await apiClient.get<{ logs: AdminAuditLog[] }>('/api/v1/admin/audit_logs')
   return res.data.logs
+}
+
+// ── 付与の管理 ────────────────────────────────────────────────
+
+export async function getAdminGrantPolicies(): Promise<AdminGrantPoliciesPage> {
+  const res = await apiClient.get<AdminGrantPoliciesPage>('/api/v1/admin/grant_policies')
+  return res.data
+}
+
+// キーごとに作成/更新する。触ったときに初めて行ができ、以後はそちらが効く
+export async function updateAdminGrantPolicy(
+  key: string,
+  policy: Partial<Pick<AdminGrantPolicy, 'enabled' | 'amount' | 'item_kind' | 'notes' | 'reward_type'>>
+): Promise<AdminGrantPolicy> {
+  const res = await apiClient.put<{ policy: AdminGrantPolicy }>(`/api/v1/admin/grant_policies/${key}`, { policy })
+  return res.data.policy
+}
+
+// 既定へ戻す（行を消す）
+export async function resetAdminGrantPolicy(key: string): Promise<AdminGrantPolicy> {
+  const res = await apiClient.delete<{ policy: AdminGrantPolicy }>(`/api/v1/admin/grant_policies/${key}`)
+  return res.data.policy
+}
+
+export async function getAdminPlans(): Promise<AdminPlansPage> {
+  const res = await apiClient.get<AdminPlansPage>('/api/v1/admin/plans')
+  return res.data
+}
+
+export async function updateAdminPlan(
+  id: string,
+  plan: { credits_per_period?: number; active?: boolean }
+): Promise<AdminPlan> {
+  const res = await apiClient.patch<{ plan: AdminPlan }>(`/api/v1/admin/plans/${id}`, { plan })
+  return res.data.plan
 }
