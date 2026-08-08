@@ -14,9 +14,6 @@ jobs:
   backend:
     name: Backend (rubocop + rspec)
     runs-on: ubuntu-latest
-    defaults:
-      run:
-        working-directory: backend
 
     services:
       postgres:
@@ -35,31 +32,45 @@ jobs:
     env:
       RAILS_ENV: test
       TEST_DATABASE_URL: postgres://postgres@localhost:5432/image_palace_test
+      # libvips 不在を理由に画像テストが黙ってスキップされるのを禁止する
+      REQUIRE_VIPS: "1"
 
     steps:
       - uses: actions/checkout@v7
 
-      - name: Set up Ruby
-        uses: ruby/setup-ruby@v1
+      - uses: docker/setup-buildx-action@v3
+
+      # 本番と同じ production ターゲットのイメージで検証する。
+      # libvips のローダ構成（不要モジュールの削除）はイメージの性質なので、
+      # 素のランナーに libvips を入れても本番の検証にはならない
+      - name: Build backend image
+        uses: docker/build-push-action@v6
         with:
-          working-directory: backend
-          bundler-cache: true
+          context: ./backend
+          target: production
+          load: true
+          tags: image-palace-backend:ci
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
 
       - name: Lint (rubocop)
-        run: bundle exec rubocop
+        run: docker run --rm image-palace-backend:ci bundle exec rubocop
 
       - name: Prepare DB
-        run: bundle exec rails db:schema:load
+        run: docker run --rm --network host -e RAILS_ENV -e TEST_DATABASE_URL image-palace-backend:ci bundle exec rails db:schema:load
 
+      # VIPS_BLOCK_UNTRUSTED はあえて渡さない。渡すと initializer が消えても
+      # 環境変数側で守られてしまい、initializer の回帰を検知できなくなる。
+      # 環境変数の層は spec が fly.toml を静的検査して担保する
       - name: Test (rspec)
-        run: bundle exec rspec
+        run: docker run --rm --network host -e RAILS_ENV -e TEST_DATABASE_URL -e REQUIRE_VIPS image-palace-backend:ci bundle exec rspec
 
       # ローカルの Docker からは advisory DB を取得できないため、gem の脆弱性検査は CI を正とする
       - name: Audit gems (bundler-audit)
-        run: bundle exec bundle-audit check --update
+        run: docker run --rm image-palace-backend:ci bundle exec bundle-audit check --update
 
       - name: Static analysis (brakeman)
-        run: bundle exec brakeman -q --no-pager
+        run: docker run --rm image-palace-backend:ci bundle exec brakeman -q --no-pager
 
   frontend:
     name: Frontend (eslint + tsc + test)
