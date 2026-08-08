@@ -189,3 +189,60 @@ export interface AdminAuditLog {
   details: Record<string, unknown>
   created_at: string
 }
+
+// ── 支出入 ──────────────────────────────────────────────────
+
+export interface AdminFinanceSummary {
+  period: { year: number; month: number }
+  revenue: { total: number; by_kind: Record<string, number> }
+  cost: {
+    total: number
+    stripe_fee: number
+    image: {
+      count: number
+      jpy: number
+      breakdown: { model: string; quality: string | null; kind: string; count: number; usd: number; jpy: number }[]
+    }
+    text: {
+      calls: number
+      jpy: number
+      breakdown: { model: string; calls: number; prompt_tokens: number; completion_tokens: number; usd: number; jpy: number }[]
+    }
+    infra: number
+  }
+  profit: number
+  /** 粗利率(%)。売上0なら null */
+  margin: number | null
+  /** 請求実額との比較。未入力なら recorded=false */
+  actual: {
+    recorded: boolean
+    estimated: number
+    actual?: number
+    openai?: number
+    infra?: number
+    other?: number
+    diff?: number
+    diff_rate?: number | null
+    note?: string | null
+  }
+  fx: number
+}
+
+export interface AdminCostParameter {
+  key: string
+  group: string
+  label: string
+  unit: string | null
+  description: string | null
+  value: number
+  default_value: number | null
+  customized: boolean
+  note: string | null
+}
+
+export interface AdminFinancePage {
+  summary: AdminFinanceSummary
+  trend: { year: number; month: number; revenue: number; cost: number; profit: number }[]
+  parameters: AdminCostParameter[]
+  groups: string[]
+}

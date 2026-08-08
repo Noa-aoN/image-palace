@@ -5,6 +5,7 @@ import { Loader2 } from 'lucide-react'
 import { getAdminOverview } from '@/lib/api/admin'
 import { TrendChart } from '@/components/features/shared/TrendChart'
 import { AdminLimitsPanel } from '@/components/features/admin/AdminLimitsPanel'
+import { AdminFinanceSummaryCard } from '@/components/features/admin/AdminFinanceSummaryCard'
 import type { AdminOverview } from '@/types/admin'
 
 /**
@@ -163,6 +164,7 @@ export default function AdminPage() {
             )}
           </section>
 
+          <AdminFinanceSummaryCard />
           <AdminLimitsPanel overview={overview} />
         </>
       )}

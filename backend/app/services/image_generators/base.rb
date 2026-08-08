@@ -30,15 +30,21 @@ module ImageGenerators
 
     # テンプレートメソッド。共通の骨格を定義し、詳細はサブクラスのフックに委ねる。
     # aspect_ratio は AspectRatios のキー。プロバイダごとに対応サイズへ読み替える。
-    def generate(prompt:, aspect_ratio: AspectRatios::DEFAULT)
+    #
+    # kind / user_id は原価集計のための記録に使う（画像が出ることが最優先なので、
+    # 記録に失敗しても生成は止めない）。
+    def generate(prompt:, aspect_ratio: AspectRatios::DEFAULT, kind: "unknown", user_id: nil)
       @aspect_ratio = aspect_ratio
       raw = with_retry(prompt:) { perform_request(prompt:) }
       normalized = normalize_response(raw)
+      metadata = normalized.fetch(:metadata)
+
+      record_usage!(metadata, kind: kind, user_id: user_id)
 
       {
         image_data: extract_image_data(normalized.fetch(:image_ref)),
         content_type: normalized[:content_type].presence || DEFAULT_CONTENT_TYPE,
-        metadata: normalized.fetch(:metadata)
+        metadata: metadata
       }
     end
 
@@ -48,6 +54,19 @@ module ImageGenerators
     end
 
     private
+
+    # 実回数を1行残す。原価はここでしか正確に数えられない
+    # （shared_medias はカード画像のキャッシュミス分しか通らない）
+    def record_usage!(metadata, kind:, user_id:)
+      ImageUsage.record!(
+        kind: kind,
+        provider: metadata[:provider] || metadata["provider"] || "unknown",
+        model: metadata[:model] || metadata["model"] || model,
+        size: metadata[:size] || metadata["size"],
+        quality: metadata[:quality] || metadata["quality"],
+        user_id: user_id
+      )
+    end
 
     # 生成に使う縦横比（サブクラスから参照する）
     attr_reader :aspect_ratio

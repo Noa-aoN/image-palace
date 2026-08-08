@@ -1,6 +1,9 @@
 import { apiClient } from './client'
 import type {
   AdminAuditLog,
+  AdminCostParameter,
+  AdminFinancePage,
+  AdminFinanceSummary,
   AdminGrantPoliciesPage,
   AdminGrantPolicy,
   AdminOverview,
@@ -84,4 +87,37 @@ export async function updateAdminPlan(
 ): Promise<AdminPlan> {
   const res = await apiClient.patch<{ plan: AdminPlan }>(`/api/v1/admin/plans/${id}`, { plan })
   return res.data.plan
+}
+
+
+// ── 支出入 ──────────────────────────────────────────────────
+
+export async function getAdminFinance(params?: { year?: number; month?: number }): Promise<AdminFinancePage> {
+  const res = await apiClient.get<AdminFinancePage>('/api/v1/admin/finance', { params })
+  return res.data
+}
+
+// 単価・レートの変更。触ったキーだけ行ができ、以後はそちらが効く
+export async function updateAdminCostParameter(
+  key: string,
+  parameter: { value: number; note?: string }
+): Promise<AdminCostParameter> {
+  const res = await apiClient.put<{ parameter: AdminCostParameter }>(
+    `/api/v1/admin/finance/parameters/${encodeURIComponent(key)}`,
+    { parameter }
+  )
+  return res.data.parameter
+}
+
+// 請求実額の入力。概算との乖離を出すために使う
+export async function updateAdminMonthlyActual(
+  year: number,
+  month: number,
+  actual: { openai_jpy: number; infra_jpy: number; other_jpy: number; note?: string }
+): Promise<AdminFinanceSummary> {
+  const res = await apiClient.put<{ summary: AdminFinanceSummary }>(
+    `/api/v1/admin/finance/actuals/${year}/${month}`,
+    { actual }
+  )
+  return res.data.summary
 }

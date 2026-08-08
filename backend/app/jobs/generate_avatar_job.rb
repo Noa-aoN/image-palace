@@ -26,7 +26,7 @@ class GenerateAvatarJob < ApplicationJob
     user.update_avatar_status!("processing")
     Rails.logger.info "[GenerateAvatarJob] START user_id=#{user.id}"
 
-    result = GenerateImageService.call(prompt: build_prompt(prompt, style))
+    result = GenerateImageService.call(prompt: build_prompt(prompt, style), kind: "avatar", user_id: user.id)
     optimized = OptimizeImageService.call(image_data: result.image_data, content_type: result.content_type)
 
     user.avatar.attach(

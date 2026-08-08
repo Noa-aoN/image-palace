@@ -27,7 +27,7 @@ class GenerateCoverImageJob < ApplicationJob
     record.update_cover_generation_status!("processing")
     Rails.logger.info "[GenerateCoverImageJob] START #{label(record)}"
 
-    result = GenerateImageService.call(prompt: build_prompt(prompt, style))
+    result = GenerateImageService.call(prompt: build_prompt(prompt, style), kind: "cover", user_id: record.try(:user_id))
     optimized = OptimizeImageService.call(image_data: result.image_data, content_type: result.content_type)
 
     attach!(record, optimized)

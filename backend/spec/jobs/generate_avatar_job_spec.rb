@@ -30,9 +30,11 @@ RSpec.describe GenerateAvatarJob, type: :job do
       described_class.new.perform(user.id, "robot", "photo")
 
       expect(GenerateImageService).to have_received(:call).with(
-        prompt: a_string_including("robot")
-          .and(a_string_including(PromptBuilderService::STYLE_MODIFIERS["photo"]))
-          .and(a_string_including(PromptBuilderService::NO_TEXT_HINT))
+        hash_including(
+          prompt: a_string_including("robot")
+            .and(a_string_including(PromptBuilderService::STYLE_MODIFIERS["photo"]))
+            .and(a_string_including(PromptBuilderService::NO_TEXT_HINT))
+        )
       )
     end
 

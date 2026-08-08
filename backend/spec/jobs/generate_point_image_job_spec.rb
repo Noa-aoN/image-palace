@@ -30,7 +30,7 @@ RSpec.describe GeneratePointImageJob, type: :job do
       described_class.new.perform(point.id)
 
       point.reload
-      expect(GenerateImageService).to have_received(:call).with(prompt: "玄関")
+      expect(GenerateImageService).to have_received(:call).with(hash_including(prompt: "玄関"))
       expect(point.generation_status).to eq("completed")
       expect(point.image).to be_attached
       expect(point.revised_prompt).to eq("a vivid 玄関")

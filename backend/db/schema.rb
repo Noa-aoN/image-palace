@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_08_09_000002) do
+ActiveRecord::Schema[8.1].define(version: 2026_08_09_000004) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
   enable_extension "pgcrypto"
@@ -104,6 +104,15 @@ ActiveRecord::Schema[8.1].define(version: 2026_08_09_000002) do
     t.index ["user_id"], name: "index_boxes_on_user_id"
   end
 
+  create_table "cost_parameters", id: :uuid, default: -> { "gen_random_uuid()" }, force: :cascade do |t|
+    t.datetime "created_at", null: false
+    t.string "key", null: false
+    t.text "note"
+    t.datetime "updated_at", null: false
+    t.decimal "value", precision: 14, scale: 6, null: false
+    t.index ["key"], name: "index_cost_parameters_on_key", unique: true
+  end
+
   create_table "credit_grants", id: :uuid, default: -> { "gen_random_uuid()" }, force: :cascade do |t|
     t.integer "amount_points", null: false
     t.datetime "created_at", null: false
@@ -147,6 +156,19 @@ ActiveRecord::Schema[8.1].define(version: 2026_08_09_000002) do
     t.string "reward_type", default: "credits", null: false
     t.datetime "updated_at", null: false
     t.index ["key"], name: "index_grant_policies_on_key", unique: true
+  end
+
+  create_table "image_usages", id: :uuid, default: -> { "gen_random_uuid()" }, force: :cascade do |t|
+    t.datetime "created_at", null: false
+    t.string "kind", null: false
+    t.string "model", null: false
+    t.string "provider", null: false
+    t.string "quality"
+    t.string "size"
+    t.uuid "user_id"
+    t.index ["created_at"], name: "index_image_usages_on_created_at"
+    t.index ["model", "created_at"], name: "index_image_usages_on_model_and_created_at"
+    t.index ["user_id"], name: "index_image_usages_on_user_id"
   end
 
   create_table "item_properties", id: :uuid, default: -> { "gen_random_uuid()" }, force: :cascade do |t|
@@ -246,6 +268,18 @@ ActiveRecord::Schema[8.1].define(version: 2026_08_09_000002) do
     t.text "url"
     t.index ["item_id", "position"], name: "index_medias_on_item_id_and_position"
     t.index ["item_id"], name: "index_medias_on_item_id"
+  end
+
+  create_table "monthly_actuals", id: :uuid, default: -> { "gen_random_uuid()" }, force: :cascade do |t|
+    t.datetime "created_at", null: false
+    t.integer "infra_jpy", default: 0, null: false
+    t.integer "month", null: false
+    t.text "note"
+    t.integer "openai_jpy", default: 0, null: false
+    t.integer "other_jpy", default: 0, null: false
+    t.datetime "updated_at", null: false
+    t.integer "year", null: false
+    t.index ["year", "month"], name: "index_monthly_actuals_on_year_and_month", unique: true
   end
 
   create_table "notifications", id: :uuid, default: -> { "gen_random_uuid()" }, force: :cascade do |t|

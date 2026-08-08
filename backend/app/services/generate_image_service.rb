@@ -16,8 +16,8 @@ class GenerateImageService
 
   Result = Struct.new(:image_data, :content_type, :metadata, keyword_init: true)
 
-  def self.call(prompt:, aspect_ratio: AspectRatios::DEFAULT)
-    new.call(prompt:, aspect_ratio:)
+  def self.call(prompt:, aspect_ratio: AspectRatios::DEFAULT, kind: "unknown", user_id: nil)
+    new.call(prompt:, aspect_ratio:, kind:, user_id:)
   end
 
   # 現在有効な provider 名。
@@ -52,8 +52,9 @@ class GenerateImageService
     aspect_ratio.to_s == AspectRatios::DEFAULT ? base : "#{aspect_ratio}:#{base}"
   end
 
-  def call(prompt:, aspect_ratio: AspectRatios::DEFAULT)
-    result = self.class.generator_class.new.generate(prompt:, aspect_ratio:)
+  # kind / user_id は原価集計の記録に渡すだけで、生成そのものには影響しない
+  def call(prompt:, aspect_ratio: AspectRatios::DEFAULT, kind: "unknown", user_id: nil)
+    result = self.class.generator_class.new.generate(prompt:, aspect_ratio:, kind:, user_id:)
     Result.new(
       image_data: result[:image_data],
       content_type: result[:content_type],
