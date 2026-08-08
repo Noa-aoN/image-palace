@@ -27,6 +27,8 @@ module Admin
         billing: billing_summary,
         credit_liability: credit_liability,
         ai: ai_summary,
+        limits: limits_summary,
+        provider_status: provider_status,
         series: {
           days: SERIES_DAYS,
           new_users: daily_counts(User.all),
@@ -162,6 +164,65 @@ module Admin
         by_kind: rows.map { |kind, count, tokens|
           { kind: kind, label: AiUsage.label_for(kind), count: count, tokens: tokens }
         }.sort_by { |row| -row[:count] }
+      }
+    end
+
+    # いま効いている上限。
+    #
+    # 「月に何枚まで作れるのか」は複数の定数と ENV に散っていて、コードを読まないと分からない。
+    # 値を持っている場所（定数名・ENV 名）ごと出して、画面と実態がずれないようにする。
+    #
+    # 画像生成の枚数はクレジット残高で決まる（1クレジット = 1枚）。
+    # 固定の月間上限は無く、付与量が実質の上限になる。
+    def limits_summary
+      {
+        image: {
+          gate: "credits",
+          trial_credits: ::Billing::Catalog::TRIAL_CREDITS,
+          monthly_free_credits: ::Billing::Catalog::MONTHLY_FREE_CREDITS,
+          credit_lifetime_months: (::Billing::Catalog::CREDIT_LIFETIME / 1.month).to_i,
+          plans: ::Billing::Catalog::SUBSCRIPTIONS.map do |plan|
+            { name: plan[:name], price: plan[:price], monthly_credits: plan[:credits] }
+          end
+        },
+        ai: {
+          daily_call_cap: ::Ai::UsageLimit.daily_call_cap,
+          daily_call_cap_env: "AI_DAILY_CALL_CAP",
+          cost_points: ai_cost_points
+        }
+      }
+    end
+
+    # 文章生成の1回あたりのコスト。ENV で上書きされているものは印を付ける
+    def ai_cost_points
+      ::Ai::UsageLimit::DEFAULT_COST_POINTS.keys.map do |kind|
+        env_name = "AI_COST_#{kind.upcase}"
+        {
+          kind: kind,
+          label: AiUsage.label_for(kind),
+          points: ::Ai::UsageLimit.cost_points(kind),
+          env: env_name,
+          overridden: ENV[env_name].present?
+        }
+      end
+    end
+
+    # 供給側（OpenAI 等）が止まっていないか。
+    # ここが分からないと、生成の失敗が自前の不具合なのか外の都合なのか切り分けられない。
+    def provider_status
+      incident = ProviderIncident.latest_first.first
+      return { ongoing: false, last_incident: nil } if incident.nil?
+
+      {
+        ongoing: incident.ongoing?(now: @now),
+        last_incident: {
+          provider: incident.provider,
+          kind: incident.kind,
+          code: incident.code,
+          occurrences: incident.occurrences,
+          first_occurred_at: incident.first_occurred_at,
+          last_occurred_at: incident.last_occurred_at
+        }
       }
     end
 

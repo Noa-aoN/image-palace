@@ -62,12 +62,55 @@ export interface AdminOverview {
     tokens_last_30d: number
     by_kind: { kind: string; label: string; count: number; tokens: number }[]
   }
+  /** いま効いている上限。値の出どころ（ENV 名）も含む */
+  limits: {
+    image: {
+      /** 画像の枚数は固定の月上限ではなくクレジット残高で決まる */
+      gate: 'credits'
+      trial_credits: number
+      monthly_free_credits: number
+      credit_lifetime_months: number
+      plans: { name: string; price: number; monthly_credits: number }[]
+    }
+    ai: {
+      daily_call_cap: number
+      daily_call_cap_env: string
+      cost_points: {
+        kind: string
+        label: string
+        points: number
+        env: string
+        /** 環境変数で既定から上書きされているか */
+        overridden: boolean
+      }[]
+    }
+  }
+  /** 供給側（OpenAI 等）が止まっていないか */
+  provider_status: {
+    ongoing: boolean
+    last_incident: {
+      provider: string
+      kind: string
+      code: string | null
+      occurrences: number
+      first_occurred_at: string
+      last_occurred_at: string
+    } | null
+  }
   series: {
     days: number
     new_users: AdminSeriesPoint[]
     new_items: AdminSeriesPoint[]
   }
   top_creators: { user_id: string; items: number }[]
+}
+
+/** 供給側の疎通確認の結果 */
+export interface AdminProviderCheck {
+  ok: boolean
+  code: string | null
+  message: string | null
+  checked_at: string
 }
 
 export interface AdminUser {

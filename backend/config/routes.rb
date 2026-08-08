@@ -41,6 +41,7 @@ Rails.application.routes.draw do
         get "users", to: "users#index"
         patch "users/:id/role", to: "users#update_role"
         get "audit_logs", to: "audit_logs#index"
+        post "provider_check", to: "provider_checks#create"
         resources :posts, only: [ :index, :create, :update, :destroy ] do
           member do
             post :deliver

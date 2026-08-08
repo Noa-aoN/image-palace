@@ -7,6 +7,7 @@ import { TrendChart } from '@/components/features/shared/TrendChart'
 import { AdminUsersPanel } from '@/components/features/admin/AdminUsersPanel'
 import { AdminAuditPanel } from '@/components/features/admin/AdminAuditPanel'
 import { AdminPostsPanel } from '@/components/features/admin/AdminPostsPanel'
+import { AdminLimitsPanel } from '@/components/features/admin/AdminLimitsPanel'
 import type { AdminOverview, AdminSession } from '@/types/admin'
 
 /**
@@ -194,6 +195,7 @@ export default function AdminPage() {
             )}
           </section>
 
+          <AdminLimitsPanel overview={overview} />
           <AdminPostsPanel />
           <AdminUsersPanel canChangeRole={session.owner} />
           <AdminAuditPanel />

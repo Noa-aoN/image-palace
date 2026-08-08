@@ -2,6 +2,7 @@ import { apiClient } from './client'
 import type {
   AdminAuditLog,
   AdminOverview,
+  AdminProviderCheck,
   AdminRole,
   AdminSession,
   AdminUser,
@@ -16,6 +17,13 @@ export async function getAdminSession(): Promise<AdminSession> {
 
 export async function getAdminOverview(): Promise<AdminOverview> {
   const res = await apiClient.get<AdminOverview>('/api/v1/admin/overview')
+  return res.data
+}
+
+// 供給側（OpenAI）へ実際に1回投げて、いま応じるかを確かめる。
+// 残高そのものは API から読めないため、残高切れは呼び出しの失敗として現れる
+export async function checkAdminProvider(): Promise<AdminProviderCheck> {
+  const res = await apiClient.post<AdminProviderCheck>('/api/v1/admin/provider_check')
   return res.data
 }
 

@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_08_07_000004) do
+ActiveRecord::Schema[8.1].define(version: 2026_08_09_000001) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
   enable_extension "pgcrypto"
@@ -299,6 +299,19 @@ ActiveRecord::Schema[8.1].define(version: 2026_08_07_000004) do
     t.index ["user_id", "item_type_id", "key"], name: "index_property_definitions_on_user_type_key", unique: true
     t.index ["user_id", "item_type_id", "position"], name: "index_property_definitions_on_user_type_position"
     t.index ["user_id"], name: "index_property_definitions_on_user_id"
+  end
+
+  create_table "provider_incidents", id: :uuid, default: -> { "gen_random_uuid()" }, force: :cascade do |t|
+    t.string "code"
+    t.datetime "created_at", null: false
+    t.datetime "first_occurred_at", null: false
+    t.string "kind", null: false
+    t.datetime "last_occurred_at", null: false
+    t.text "message"
+    t.integer "occurrences", default: 1, null: false
+    t.string "provider", null: false
+    t.datetime "updated_at", null: false
+    t.index ["provider", "kind", "last_occurred_at"], name: "idx_on_provider_kind_last_occurred_at_8901aa37f7"
   end
 
   create_table "relations", id: :uuid, default: -> { "gen_random_uuid()" }, force: :cascade do |t|
