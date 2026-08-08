@@ -48,6 +48,9 @@ Rails.application.routes.draw do
         delete "grant_policies/:key", to: "grant_policies#destroy"
         get "plans", to: "plans#index"
         patch "plans/:id", to: "plans#update"
+        get "finance", to: "finances#show"
+        put "finance/parameters/:key", to: "finances#update_parameter"
+        put "finance/actuals/:year/:month", to: "finances#update_actual"
         resources :posts, only: [ :index, :create, :update, :destroy ] do
           member do
             post :deliver

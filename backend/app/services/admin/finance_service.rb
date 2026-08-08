@@ -1,0 +1,129 @@
+# frozen_string_literal: true
+
+module Admin
+  # 月ごとの支出入の概算。
+  #
+  # 収入は実績（Stripe の決済額）なので確度が高い。支出は「実回数 × 単価」の概算で、
+  # 回数は正確（image_usages / ai_usages）だが単価は設定値なので、そこが誤差になる。
+  # だから請求実額（MonthlyActual）を並べ、乖離率を出して単価を直せるようにしてある。
+  class FinanceService
+    def self.call(year:, month:)
+      new(year: year, month: month).call
+    end
+
+    def initialize(year:, month:)
+      @from = Time.zone.local(year, month, 1)
+      @to = @from.next_month
+      @year = year
+      @month = month
+    end
+
+    def call
+      revenue = revenue_jpy
+      fee = (revenue * CostParameter.value_for("stripe_fee_rate")).round
+      image = image_cost
+      text = text_cost
+      infra = CostParameter.infra_monthly_jpy.round
+      estimated_cost = fee + image[:jpy] + text[:jpy] + infra
+
+      {
+        period: { year: @year, month: @month },
+        revenue: {
+          total: revenue,
+          by_kind: revenue_by_kind
+        },
+        cost: {
+          total: estimated_cost,
+          stripe_fee: fee,
+          image: image,
+          text: text,
+          infra: infra
+        },
+        profit: revenue - estimated_cost,
+        margin: revenue.positive? ? ((revenue - estimated_cost).fdiv(revenue) * 100).round(1) : nil,
+        actual: actual_comparison(estimated_cost - fee),
+        fx: CostParameter.value_for("fx_usd_jpy")
+      }
+    end
+
+    private
+
+    # 実際に入ってきたお金（円）。amount_cents は JPY なので円がそのまま入る
+    def revenue_jpy
+      CreditTransaction.where(created_at: @from...@to).where.not(amount_cents: nil).sum(:amount_cents)
+    end
+
+    def revenue_by_kind
+      CreditTransaction.where(created_at: @from...@to)
+                       .where.not(amount_cents: nil)
+                       .group(:kind)
+                       .sum(:amount_cents)
+    end
+
+    # 画像は「枚数 × 1枚あたりの単価」。モデルと品質ごとに単価が違う
+    def image_cost
+      rows = ImageUsage.between(@from, @to).group(:model, :quality, :kind).count
+      fx = CostParameter.value_for("fx_usd_jpy")
+
+      breakdown = rows.map do |(model, quality, kind), count|
+        usd = CostParameter.image_unit_usd(model: model, quality: quality) * count
+        { model: model, quality: quality, kind: kind, count: count, usd: usd.round(4), jpy: (usd * fx).round }
+      end
+
+      {
+        count: breakdown.sum { |row| row[:count] },
+        jpy: breakdown.sum { |row| row[:jpy] },
+        breakdown: breakdown.sort_by { |row| -row[:jpy] }
+      }
+    end
+
+    # 文章はトークン数 × 100万トークンあたりの単価。入力と出力で単価が違う
+    def text_cost
+      rows = AiUsage.where(created_at: @from...@to)
+                    .group(:model)
+                    .pluck(
+                      Arel.sql("model"),
+                      Arel.sql("COALESCE(SUM(prompt_tokens), 0)"),
+                      Arel.sql("COALESCE(SUM(completion_tokens), 0)"),
+                      Arel.sql("COUNT(*)")
+                    )
+      fx = CostParameter.value_for("fx_usd_jpy")
+
+      breakdown = rows.map do |model, prompt_tokens, completion_tokens, count|
+        usd = (prompt_tokens.to_f / 1_000_000) * CostParameter.value_for("text_in_usd.#{model}") +
+              (completion_tokens.to_f / 1_000_000) * CostParameter.value_for("text_out_usd.#{model}")
+        {
+          model: model, calls: count,
+          prompt_tokens: prompt_tokens, completion_tokens: completion_tokens,
+          usd: usd.round(4), jpy: (usd * fx).round
+        }
+      end
+
+      {
+        calls: breakdown.sum { |row| row[:calls] },
+        jpy: breakdown.sum { |row| row[:jpy] },
+        breakdown: breakdown.sort_by { |row| -row[:jpy] }
+      }
+    end
+
+    # 概算（決済手数料を除いた外部への支払い）と請求実額を並べる。
+    # 手数料は売上から自動で引かれ請求書に出ないので、比較からは外す
+    def actual_comparison(estimated_external)
+      actual = MonthlyActual.for_period(@year, @month)
+      return { recorded: false, estimated: estimated_external } if actual.nil?
+
+      diff = actual.total_jpy - estimated_external
+      {
+        recorded: true,
+        estimated: estimated_external,
+        actual: actual.total_jpy,
+        openai: actual.openai_jpy,
+        infra: actual.infra_jpy,
+        other: actual.other_jpy,
+        diff: diff,
+        diff_rate: estimated_external.positive? ? (diff.fdiv(estimated_external) * 100).round(1) : nil,
+        note: actual.note
+      }
+    end
+  end
+end

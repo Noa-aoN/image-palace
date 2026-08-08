@@ -30,7 +30,7 @@ RSpec.describe GenerateCoverImageJob do
 
     described_class.perform_now(view, "森の入口", "watercolor")
 
-    expect(GenerateImageService).to have_received(:call) do |prompt:|
+    expect(GenerateImageService).to have_received(:call) do |prompt:, **|
       expect(prompt).to start_with("森の入口")
       expect(prompt).to include("watercolor")
       expect(prompt).to include(PromptBuilderService::NO_TEXT_HINT)

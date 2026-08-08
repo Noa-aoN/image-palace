@@ -43,7 +43,7 @@ class GeneratePointImageJob < ApplicationJob
         shared_media = cached
       else
         Rails.logger.info "[GeneratePointImageJob] CACHE MISS prompt_key=#{prompt_key}"
-        result = GenerateImageService.call(prompt: prompt)
+        result = GenerateImageService.call(prompt: prompt, kind: "point", user_id: point.space&.user_id)
         shared_media = create_shared_media!(point, shared_media_key(cache_key, force_generate:), result)
         attach_image_data(shared_media, result.image_data, result.content_type)
       end

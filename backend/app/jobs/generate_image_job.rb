@@ -50,7 +50,7 @@ class GenerateImageJob < ApplicationJob
           Rails.logger.warn "[GenerateImageJob] CACHE STALE prompt_key=#{prompt_key}"
         end
         Rails.logger.info "[GenerateImageJob] CACHE MISS prompt_key=#{prompt_key}"
-        result = GenerateImageService.call(prompt: effective_prompt, aspect_ratio: item.aspect_ratio)
+        result = GenerateImageService.call(prompt: effective_prompt, aspect_ratio: item.aspect_ratio, kind: "item", user_id: item.user_id)
         shared_media = create_shared_media!(item, shared_media_key(cache_key, force_generate:), result)
         attach_image_data(
           shared_media, result.image_data, result.content_type,
