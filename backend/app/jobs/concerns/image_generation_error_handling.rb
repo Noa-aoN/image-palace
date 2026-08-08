@@ -24,9 +24,14 @@ module ImageGenerationErrorHandling
   # content_policy_violation / safety system 等のマーカーを含む。
   CONTENT_POLICY_MARKERS = /moderation_blocked|content[_ ]?policy|safety system/i
 
+  QUOTA_ALERT_CACHE_KEY = "image_generation:quota_exhausted_alert"
+
   # 請求上限・クォータ枯渇。リトライしても回復せず運営者の対応が必要なエラーコード。
+  # OpenAI は同じ事象を code と type の両方で表す（残高切れは
+  # code=credit_balance_exhausted / type=insufficient_quota）ため、両方を突き合わせる。
   QUOTA_ERROR_CODES = %w[
-    billing_hard_limit_reached billing_limit_reached billing_limit_user_error insufficient_quota
+    billing_hard_limit_reached billing_limit_reached billing_limit_user_error
+    credit_balance_exhausted insufficient_quota
   ].freeze
 
   private
@@ -61,8 +66,24 @@ module ImageGenerationErrorHandling
     "現在、画像生成を一時的に利用できません。時間をおいて再度お試しいただくか、運営者にお問い合わせください。"
   end
 
+  # code だけを見ると、OpenAI が type はそのままに新しい code を足したときに取りこぼす。
+  # 実際 2026-08-08 に code=credit_balance_exhausted が現れ、残高切れが
+  # リトライ対象へ落ちて空振り3回＋誤った案内文になった。
   def quota_error?(error)
-    QUOTA_ERROR_CODES.include?(openai_error_code(error).to_s)
+    (openai_error_codes(error) & QUOTA_ERROR_CODES).any?
+  end
+
+  # 運営者が気づけるようにする。ユーザー側の再試行では復旧せず、
+  # 残高の補充が要るため、ログだけに残すと発覚が遅れる。
+  # 一括作成で枯渇すると件数ぶん飛ぶので、1時間に1回へ間引く。
+  def notify_quota_exhausted(error)
+    return unless defined?(Sentry)
+    return unless Rails.cache.write(QUOTA_ALERT_CACHE_KEY, true, unless_exist: true, expires_in: 1.hour)
+
+    Sentry.capture_message(
+      "[画像生成] OpenAI のクォータ枯渇で生成を停止しました code=#{openai_error_codes(error).join(',')}",
+      level: :error
+    )
   end
 
   # メッセージ本文・レスポンス本文のどちらかにポリシー違反マーカーがあれば true。
@@ -82,10 +103,15 @@ module ImageGenerationErrorHandling
   end
 
   def openai_error_code(error)
-    body = openai_error_body(error)
-    return nil unless body
+    openai_error_codes(error).first
+  end
 
-    body.dig("error", "code") || body.dig("error", "type")
+  # code と type の両方を返す（どちらに事象が出るかは OpenAI 側の都合で変わる）
+  def openai_error_codes(error)
+    body = openai_error_body(error)
+    return [] unless body
+
+    [ body.dig("error", "code"), body.dig("error", "type") ].compact.map(&:to_s)
   end
 
   def parse_json(str)

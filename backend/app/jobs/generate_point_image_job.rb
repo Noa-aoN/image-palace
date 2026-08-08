@@ -63,6 +63,7 @@ class GeneratePointImageJob < ApplicationJob
     raise unless non_retryable?(e)
 
     Rails.logger.warn "[GeneratePointImageJob] NON-RETRYABLE point_id=#{space_point_id} -> failed"
+    notify_quota_exhausted(e) if quota_error?(e)
     mark_failed!(space_point_id, e)
   end
 

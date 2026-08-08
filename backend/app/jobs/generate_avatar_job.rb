@@ -49,6 +49,7 @@ class GenerateAvatarJob < ApplicationJob
     raise unless non_retryable?(e)
 
     Rails.logger.warn "[GenerateAvatarJob] NON-RETRYABLE user_id=#{user_id} code=#{openai_error_code(e) || e.class} -> failed"
+    notify_quota_exhausted(e) if quota_error?(e)
     mark_failed!(user_id, e)
   end
 
