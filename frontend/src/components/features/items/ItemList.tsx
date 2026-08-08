@@ -3,7 +3,7 @@
 import { startTransition, useEffect, useEffectEvent, useRef, useState, useCallback } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
-import { ChevronLeft, ChevronRight, Search, X, Trash2, Check, CircleCheck, Circle, Tags, Tag as TagIcon, ShieldCheck, FileText } from 'lucide-react'
+import { ChevronLeft, ChevronRight, Search, X, Trash2, Check, CircleCheck, Circle, Tags, Tag as TagIcon, ShieldCheck, FileText, RefreshCw } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Spinner } from '@/components/ui/spinner'
 import { CardGridSkeleton } from '@/components/ui/skeleton'
@@ -19,6 +19,7 @@ import {
   generateTags,
   generateMeaning,
   factCheckItem,
+  retryItem,
   isItemSkip,
   type ItemSuggestion,
   type ItemOrSkip,
@@ -60,13 +61,15 @@ const FACT_CHECK_LABEL: Record<string, string> = {
 }
 
 // 一括AI操作の種別。結果の表示（バッジ色・要点）を切り替えるのに使う。
-type BulkKind = 'tag' | 'meaning' | 'factcheck'
+type BulkKind = 'tag' | 'meaning' | 'factcheck' | 'regenerate'
 
 // 結果バッジ（ラベル＋色）。ファクトチェックは判定（正しい/疑わしい/誤り）で色分けする。
 function bulkBadge(kind: BulkKind, e: BulkResultEntry): { text: string; className: string } {
   const base = 'shrink-0 rounded-full px-2 py-0.5 text-xs font-medium '
   if (e.outcome === 'failed') return { text: '失敗', className: base + 'bg-red-100 text-red-700' }
   if (e.outcome === 'skipped') return { text: 'スキップ', className: base + 'bg-muted text-muted-foreground' }
+  // 再生成は送信しただけで、絵ができるのはこの後。「完了」と出すと誤解を招く
+  if (kind === 'regenerate') return { text: '生成中', className: base + 'bg-blue-100 text-blue-700' }
   const status = kind === 'factcheck' ? e.item?.fact_check_status : undefined
   if (status) {
     const cls =
@@ -341,6 +344,7 @@ export function ItemList({ initialTag = null }: { initialTag?: string | null }) 
   const [bulkResults, setBulkResults] = useState<{ kind: BulkKind; entries: BulkResultEntry[] } | null>(null)
   const [resultsOpen, setResultsOpen] = useState(false)
   const [confirmTagReplace, setConfirmTagReplace] = useState(false)
+  const [confirmRegenerate, setConfirmRegenerate] = useState(false)
   const cancelBulkRef = useRef(false)
   const upsertItem = useItemsStore((state) => state.upsertItem)
   const bulkBusy = deleting || bulkAction !== null
@@ -359,6 +363,7 @@ export function ItemList({ initialTag = null }: { initialTag?: string | null }) 
     setSelectedIds(new Set())
     setConfirmBulkDelete(false)
     setConfirmTagReplace(false)
+    setConfirmRegenerate(false)
     setActionError(null)
     setBulkSummary(null)
     setBulkResults(null)
@@ -438,6 +443,13 @@ export function ItemList({ initialTag = null }: { initialTag?: string | null }) 
   const handleMeaningFill = () => runBulkAi('説明を付与', 'meaning', (id) => generateMeaning(id, undefined, { onlyIfEmpty: true }))
   // AIで情報をチェック（説明のファクトチェック・説明なしはスキップ）
   const handleFactCheck = () => runBulkAi('AIで情報をチェック', 'factcheck', (id) => factCheckItem(id))
+  // イメージを再生成（1枚につき1クレジット使う。取り消せないので2段階確認）
+  const handleRegenerate = () => {
+    if (selectedIds.size === 0) return
+    if (!confirmRegenerate) { setConfirmRegenerate(true); return }
+    setConfirmRegenerate(false)
+    runBulkAi('イメージを再生成', 'regenerate', (id) => retryItem(id))
+  }
 
   const allSelected = items.length > 0 && items.every((i) => selectedIds.has(i.id))
   const toggleSelectAll = () => {
@@ -838,6 +850,18 @@ export function ItemList({ initialTag = null }: { initialTag?: string | null }) 
             <Button variant="outline" size="sm" onClick={handleFactCheck} disabled={bulkBusy || selectedIds.size === 0}
               className="flex shrink-0 items-center gap-1.5" title="説明が事実として正しいかAIでチェックし、訂正案を出します">
               <ShieldCheck size={14} />AIで情報をチェック
+            </Button>
+            <Button
+              variant={confirmRegenerate ? 'destructive' : 'outline'}
+              size="sm"
+              onClick={handleRegenerate}
+              disabled={bulkBusy || selectedIds.size === 0}
+              onBlur={() => setConfirmRegenerate(false)}
+              className="flex shrink-0 items-center gap-1.5"
+              title="選択カードのイメージを作り直します（1枚につき1クレジット使います）"
+            >
+              <RefreshCw size={14} />
+              {confirmRegenerate ? `${selectedIds.size}件を再生成（${selectedIds.size}cr）` : 'イメージを再生成'}
             </Button>
             <span className="mx-1 h-5 w-px shrink-0 bg-border" aria-hidden />
             <Button
