@@ -67,22 +67,26 @@ module Api
         render json: { suggestions: items.map { |i| { id: i.id, title: i.title } } }
       end
 
+      # ダッシュボードの件数。
+      #
+      # 「あと何枚つくれるか」はクレジット残高（/billing/summary）が持つ。
+      # ここが返していた monthly_limit / monthly_remaining は、クレジット制へ移る前の
+      # 固定上限の名残で、実態と合わない数字を返していたため外した。
+      #
+      # 状態別の件数は1回の GROUP BY で数える（DB が遠く、往復が効くため）
       def summary
-        monthly_limit = Items::CreateService::FREE_ITEM_LIMIT_PER_MONTH
-        # カード＋名前付きスペースポイントの合算（月間生成上限を共有）
-        monthly_count = current_user.monthly_generation_count
+        by_status = current_user.items.group(:generation_status).count
 
         render json: {
-          total_count: current_user.items.count,
-          pending_count: current_user.items.where(generation_status: "pending").count,
-          processing_count: current_user.items.where(generation_status: "processing").count,
-          failed_count: current_user.items.where(generation_status: "failed").count,
+          total_count: by_status.values.sum,
+          pending_count: by_status["pending"].to_i,
+          processing_count: by_status["processing"].to_i,
+          failed_count: by_status["failed"].to_i,
           boxes_count: current_user.boxes.count,
           views_count: current_user.views.count,
           spaces_count: current_user.spaces.count,
-          monthly_count: monthly_count,
-          monthly_limit: monthly_limit,
-          monthly_remaining: [ monthly_limit - monthly_count, 0 ].max
+          # 当月の実績（上限ではない）。カードと名前付きスペースポイントの合算
+          monthly_count: current_user.monthly_generation_count
         }
       end
 
@@ -96,7 +100,7 @@ module Api
         result = Items::CreateService.call(user: current_user, params: item_params)
         assign_tags!(result.item)
         render json: serialize_item(result.item.reload), status: :accepted
-      rescue Items::CreateService::InsufficientCredits, Items::CreateService::MonthlyLimitExceeded => e
+      rescue Items::CreateService::InsufficientCredits => e
         render json: { error: e.message }, status: :unprocessable_entity
       rescue Items::CreateService::ContentBlocked => e
         render json: { error: e.message }, status: :unprocessable_entity

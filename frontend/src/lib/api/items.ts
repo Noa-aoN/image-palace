@@ -9,9 +9,8 @@ export interface ItemsSummary {
   boxes_count: number
   views_count: number
   spaces_count: number
+  /** 当月の生成実績（上限ではない）。カードと名前付きスペースポイントの合算 */
   monthly_count: number
-  monthly_limit: number
-  monthly_remaining: number
 }
 
 export interface CreateItemOptions {

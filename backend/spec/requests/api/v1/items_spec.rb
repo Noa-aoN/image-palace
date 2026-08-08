@@ -300,26 +300,22 @@ RSpec.describe "Api::V1::Items", type: :request do
       expect(json_response["failed_count"]).to eq(1)
     end
 
-    it "returns monthly usage counting only items created this month" do
-      freeze_time do
-        2.times { |n| user.items.create!(title: "今月-#{n}", item_type: item_type, generation_status: "completed") }
-        user.items.create!(
-          title: "先月分",
-          item_type: item_type,
-          generation_status: "completed",
-          created_at: 1.month.ago,
-          updated_at: 1.month.ago
-        )
+    it "returns container counts" do
+      user.items.create!(title: "あ", item_type: item_type, generation_status: "completed")
 
-        get "/api/v1/items/summary", headers: headers, as: :json
-      end
+      get "/api/v1/items/summary", headers: headers, as: :json
 
       expect(response).to have_http_status(:success)
-      expect(json_response["monthly_count"]).to eq(2)
-      expect(json_response["monthly_limit"]).to eq(Items::CreateService::FREE_ITEM_LIMIT_PER_MONTH)
-      expect(json_response["monthly_remaining"]).to eq(Items::CreateService::FREE_ITEM_LIMIT_PER_MONTH - 2)
-      expect(json_response["total_count"]).to eq(3)
+      expect(json_response["total_count"]).to eq(1)
       expect(json_response).to include("boxes_count", "views_count", "spaces_count")
+    end
+
+    # 「あと何枚つくれるか」はクレジット残高が持つ。ここが返していた固定上限は
+    # クレジット制へ移る前の名残で、実態と合わない数字だった
+    it "月間の固定上限は返さない（クレジット残高が上限を決めるため）" do
+      get "/api/v1/items/summary", headers: headers, as: :json
+
+      expect(json_response).not_to include("monthly_limit", "monthly_remaining")
     end
   end
 
