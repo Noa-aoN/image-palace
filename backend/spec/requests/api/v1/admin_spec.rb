@@ -151,6 +151,15 @@ RSpec.describe "Api::V1::Admin", type: :request do
       expect(limits["ai"]["cost_points"].map { |row| row["kind"] }).to include("canvas_edit")
     end
 
+    # role だけを見ると ENV 由来の owner が漏れ、「運営メンバー 0」と出ていた
+    it "環境変数で運営になっている人も運営メンバーに数える" do
+      allow(User).to receive(:bootstrap_owner_emails).and_return([ member.email.downcase ])
+
+      get "/api/v1/admin/overview", headers: admin_headers
+
+      expect(json_response["users"]["admins"]).to be >= 2
+    end
+
     it "供給側の停止が無ければ ongoing は false" do
       get "/api/v1/admin/overview", headers: admin_headers
 

@@ -48,7 +48,8 @@ module Admin
         new_last_30d: User.where(created_at: @since..).count,
         # 直近30日に1枚でもカードを作った人。「使われているか」を見るための数
         active_last_30d: Item.where(created_at: @since..).distinct.count(:user_id),
-        admins: User.where(role: %w[admin owner]).count
+        # ENV 由来の owner も数える。role だけを見ると「運営メンバー 0」と出てしまう
+        admins: User.effective_admins.count
       }
     end
 
