@@ -69,6 +69,7 @@ class GenerateImageJob < ApplicationJob
     raise unless non_retryable?(e)
 
     Rails.logger.warn "[GenerateImageJob] NON-RETRYABLE item_id=#{item_id} code=#{openai_error_code(e) || e.class} -> failed"
+    notify_quota_exhausted(e) if quota_error?(e)
     mark_failed!(item_id, e)
   end
 

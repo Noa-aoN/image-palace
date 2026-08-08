@@ -40,6 +40,7 @@ class GenerateCoverImageJob < ApplicationJob
     raise unless non_retryable?(e)
 
     Rails.logger.warn "[GenerateCoverImageJob] NON-RETRYABLE #{label(record)} code=#{openai_error_code(e) || e.class} -> failed"
+    notify_quota_exhausted(e) if quota_error?(e)
     mark_failed!(record, e)
   end
 
