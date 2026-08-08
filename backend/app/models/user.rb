@@ -21,6 +21,11 @@ class User < ApplicationRecord
   # == バリデーション =========================================================
   validates :uid, uniqueness: { scope: :provider }
 
+  # 表示名。外部アカウントの名前を登録時の初期値として入れてあるだけで、以後は本人が変えられる。
+  # 空にしたら「未設定」に戻す（画面側でメールのローカル部から作った既定名を出す）
+  validates :name, length: { maximum: 50 }
+  normalizes :name, with: ->(name) { name.to_s.gsub(/[[:cntrl:]]/, "").strip.presence }
+
   # == 関連付け ==============================================================
   has_one :setting, dependent: :destroy
   has_many :items, dependent: :destroy

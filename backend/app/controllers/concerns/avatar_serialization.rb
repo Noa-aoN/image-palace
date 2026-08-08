@@ -9,6 +9,8 @@ module AvatarSerialization
       name: user.name,
       email: user.email,
       role: user.role,
+      # 「入居日」。アカウントを開いた日を画面に出す
+      created_at: user.created_at,
       avatar_url: avatar_url(user),
       avatar_thumb_url: avatar_thumb_url(user),
       avatar_generation_status: user.avatar_generation_status,

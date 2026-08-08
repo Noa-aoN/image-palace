@@ -26,6 +26,7 @@ const ITEM_KIND_LABELS: Record<string, string> = {
 export function AdminGrantsPanel() {
   const [policies, setPolicies] = useState<AdminGrantPolicy[]>([])
   const [itemKinds, setItemKinds] = useState<string[]>([])
+  const [readyKinds, setReadyKinds] = useState<string[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [savingKey, setSavingKey] = useState<string | null>(null)
@@ -37,6 +38,7 @@ export function AdminGrantsPanel() {
         if (cancelled) return
         setPolicies(data.policies)
         setItemKinds(data.item_kinds)
+        setReadyKinds(data.ready_item_kinds)
       })
       .catch(() => {
         if (!cancelled) setError('付与の設定を取得できませんでした')
@@ -112,15 +114,22 @@ export function AdminGrantsPanel() {
                 )}
               </div>
 
-              <label className="flex shrink-0 items-center gap-2 text-sm">
-                <input
-                  type="checkbox"
-                  checked={policy.enabled}
-                  disabled={savingKey === policy.key}
-                  onChange={(e) => save(policy.key, { enabled: e.target.checked })}
-                />
-                配る
-              </label>
+              {policy.ready ? (
+                <label className="flex shrink-0 items-center gap-2 text-sm">
+                  <input
+                    type="checkbox"
+                    checked={policy.enabled}
+                    disabled={savingKey === policy.key}
+                    onChange={(e) => save(policy.key, { enabled: e.target.checked })}
+                  />
+                  配る
+                </label>
+              ) : (
+                // 受け取り側の仕組みができるまでは有効にできない（サーバー側でも弾く）
+                <span className="shrink-0 rounded-full border border-border px-2 py-0.5 text-xs text-muted-foreground">
+                  準備中
+                </span>
+              )}
             </div>
 
             <div className="mt-3 flex flex-wrap items-center gap-3">
@@ -153,6 +162,7 @@ export function AdminGrantsPanel() {
                     {itemKinds.map((kind) => (
                       <option key={kind} value={kind}>
                         {ITEM_KIND_LABELS[kind] ?? kind}
+                        {readyKinds.includes(kind) ? '' : '（準備中）'}
                       </option>
                     ))}
                   </select>
@@ -180,8 +190,9 @@ export function AdminGrantsPanel() {
 
       {/* 受け取り側の仕組みが無いものは、設定できても実際には配られない */}
       <p className="text-xs text-muted-foreground">
-        アイテムの付与は設定を保存できるが、受け取り側の仕組みができるまで実際には配られない。
-        スキンなど未実装のものは、機能の追加とあわせて有効にすること。
+        「準備中」は受け取り側の仕組みがまだ無いもの。設定は保存しておけるが、有効にはできない
+        （配られていないことに気づけなくなるため、サーバー側でも弾いている）。
+        機能ができたら <code>GrantPolicy::READY_ITEM_KINDS</code> にその種類を足すと有効にできる。
       </p>
     </section>
   )

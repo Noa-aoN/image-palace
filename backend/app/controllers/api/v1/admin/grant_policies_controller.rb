@@ -7,6 +7,7 @@ module Api
           render json: {
             policies: GrantPolicy.overview,
             item_kinds: GrantPolicy::ITEM_KINDS,
+            ready_item_kinds: GrantPolicy::READY_ITEM_KINDS,
             reward_types: GrantPolicy::REWARD_TYPES
           }
         end

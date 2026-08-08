@@ -57,6 +57,51 @@ RSpec.describe "Account avatar", type: :request do
       expect(response).to have_http_status(:success)
       expect(json_response.keys).to include("name", "email", "avatar_url", "avatar_thumb_url", "avatar_generation_status")
     end
+
+    # 「入居日」として画面に出す
+    it "アカウントを開いた日を返す" do
+      get "/api/v1/account/profile", headers: headers, as: :json
+
+      expect(json_response["created_at"]).to be_present
+    end
+  end
+
+  describe "PATCH /api/v1/account/profile" do
+    it "表示名を変えられる" do
+      patch "/api/v1/account/profile", params: { profile: { name: "宮殿の主" } }, headers: headers, as: :json
+
+      expect(response).to have_http_status(:success)
+      expect(json_response["name"]).to eq("宮殿の主")
+      expect(user.reload.name).to eq("宮殿の主")
+    end
+
+    # 空にしたら未設定へ戻す（画面側が既定名を出す）
+    it "空文字は未設定に戻す" do
+      user.update!(name: "元の名前")
+
+      patch "/api/v1/account/profile", params: { profile: { name: "  " } }, headers: headers, as: :json
+
+      expect(response).to have_http_status(:success)
+      expect(user.reload.name).to be_nil
+    end
+
+    it "長すぎる名前は弾く" do
+      patch "/api/v1/account/profile", params: { profile: { name: "あ" * 51 } }, headers: headers, as: :json
+
+      expect(response).to have_http_status(:unprocessable_entity)
+    end
+
+    it "制御文字は取り除く" do
+      patch "/api/v1/account/profile", params: { profile: { name: "宮殿\u0007の主" } }, headers: headers, as: :json
+
+      expect(user.reload.name).to eq("宮殿の主")
+    end
+
+    it "未ログインでは変えられない" do
+      patch "/api/v1/account/profile", params: { profile: { name: "x" } }, as: :json
+
+      expect(response).to have_http_status(:unauthorized)
+    end
   end
 
   describe "DELETE /api/v1/account/avatar" do

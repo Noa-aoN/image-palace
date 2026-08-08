@@ -6,6 +6,7 @@ import { Card, CardContent } from '@/components/ui/card'
 import { CardImage } from '@/components/ui/card-image'
 import { useAuthStore } from '@/stores/auth'
 import { tierLabel } from '@/lib/billing'
+import { displayNameOf } from '@/lib/display-name'
 
 /**
  * 「宮殿の主人」。生成資産（クレジット）の隣に並べる、本人のステータス面。
@@ -16,8 +17,12 @@ import { tierLabel } from '@/lib/billing'
 export function PalaceLordCard({ tier }: { tier: string | null }) {
   const user = useAuthStore((s) => s.user)
   const role = user?.role
-  const displayName = user?.name?.trim() || user?.email?.split('@')[0] || '主人'
+  const displayName = displayNameOf(user)
   const avatar = user?.avatar_thumb_url ?? user?.avatar_url ?? null
+  // 入居日＝アカウントを開いた日。取得前でも行の高さが変わらないよう「—」を置く
+  const movedInOn = user?.created_at
+    ? new Date(user.created_at).toLocaleDateString('ja-JP', { year: 'numeric', month: 'long', day: 'numeric' })
+    : '—'
 
   return (
     <section className="flex flex-col space-y-3">
@@ -49,7 +54,8 @@ export function PalaceLordCard({ tier }: { tier: string | null }) {
               />
               <div className="min-w-0">
                 <p className="truncate text-lg font-semibold">{displayName}</p>
-                <p className="truncate text-xs text-muted-foreground">{user?.email ?? ''}</p>
+                {/* メールアドレスは出さない。行数を保つため、同じ位置に入居日を置く */}
+                <p className="truncate text-xs text-muted-foreground">入居 {movedInOn}</p>
               </div>
             </div>
 

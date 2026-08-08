@@ -17,6 +17,7 @@ Rails.application.routes.draw do
       delete "account", to: "account#destroy"
       # プロフィール（アバター）
       get "account/profile", to: "account/profiles#show"
+      patch "account/profile", to: "account/profiles#update"
       post "account/avatar", to: "account/avatars#create"
       delete "account/avatar", to: "account/avatars#destroy"
 

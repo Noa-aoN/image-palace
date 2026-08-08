@@ -14,6 +14,8 @@ export async function deleteAccount(): Promise<void> {
 export interface Profile {
   name: string | null
   email: string
+  /** 入居日（アカウントを開いた日） */
+  created_at: string
   avatar_url: string | null
   avatar_thumb_url: string | null
   avatar_generation_status: string | null
@@ -23,6 +25,12 @@ export interface Profile {
 // 現在ユーザーのプロフィール（アバター URL・生成ステータス含む）。生成のポーリング先。
 export async function getProfile(): Promise<Profile> {
   const res = await apiClient.get<Profile>('/api/v1/account/profile')
+  return res.data
+}
+
+// 表示名を変更する。空文字を渡すと未設定へ戻る（画面側が既定名を出す）
+export async function updateProfile(profile: { name: string }): Promise<Profile> {
+  const res = await apiClient.patch<Profile>('/api/v1/account/profile', { profile })
   return res.data
 }
 
