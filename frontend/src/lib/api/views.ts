@@ -1,5 +1,5 @@
 import { apiClient } from './client'
-import type { AiEditMode, View, ViewDetail, ViewItemPlacement, ViewEdge, SpaceMapPoint, BoardSettings } from '@/types/view'
+import type { AiEditMode, CardProposalResult, View, ViewDetail, ViewItemPlacement, ViewEdge, SpaceMapPoint, BoardSettings } from '@/types/view'
 import type { CoverType } from '@/types/cover'
 
 // freeboard の接続線 API の入力
@@ -207,6 +207,25 @@ export async function aiEditView(id: string, instruction: string, mode: AiEditMo
   const res = await apiClient.post<ViewDetail>(`/api/v1/views/${id}/ai_edit`, {
     edit: { instruction, mode },
   })
+  return res.data
+}
+
+// 「カードから作る」の第1段階。案を出すだけで、まだ作らない
+// （作ると1枚1クレジット出ていくので、枚数を見てから決められるようにしている）
+export async function proposeCards(
+  id: string,
+  instruction: string,
+  count?: number
+): Promise<CardProposalResult> {
+  const res = await apiClient.post<CardProposalResult>(`/api/v1/views/${id}/card_proposal`, {
+    proposal: { instruction, ...(count ? { count } : {}) },
+  })
+  return res.data
+}
+
+// 承認された案だけを実際に作り、キャンバスに載せる
+export async function createCardsOnView(id: string, titles: string[]): Promise<ViewDetail> {
+  const res = await apiClient.post<ViewDetail>(`/api/v1/views/${id}/create_cards`, { titles })
   return res.data
 }
 

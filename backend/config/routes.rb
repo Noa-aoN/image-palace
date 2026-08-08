@@ -161,6 +161,8 @@ Rails.application.routes.draw do
           post "cover_image/generate", action: :generate_cover
           # ことばの指示でキャンバスを組み立て直す（デッキ / フリーボード）
           post :ai_edit
+          post :card_proposal
+          post :create_cards
           post :undo
           post :redo
           # freeboard: ボード背景画像

@@ -15,7 +15,8 @@ class AiUsage < ApplicationRecord
     "brief" => "画像の下ごしらえ",
     "words_generate" => "単語の生成",
     "words_check" => "単語の確認",
-    "canvas_edit" => "キャンバスのAI編集"
+    "canvas_edit" => "キャンバスのAI編集",
+    "canvas_card_proposal" => "カードの提案"
   }.freeze
 
   validates :kind, presence: true
