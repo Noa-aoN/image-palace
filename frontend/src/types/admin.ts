@@ -175,9 +175,21 @@ export interface AdminUser {
   created_at: string
 }
 
+export interface AdminUserStats {
+  total: number
+  confirmed: number
+  admins: number
+  new_this_month: number
+  new_last_month: number
+  /** 前月比(%)。前月が0なら null */
+  growth_rate: number | null
+  monthly: { month: string; count: number; cumulative: number }[]
+}
+
 export interface AdminUsersPage {
   users: AdminUser[]
   meta: { page: number; per: number; total_count: number; total_pages: number }
+  stats: AdminUserStats
 }
 
 export interface AdminAuditLog {
@@ -193,7 +205,7 @@ export interface AdminAuditLog {
 // ── 支出入 ──────────────────────────────────────────────────
 
 export interface AdminFinanceSummary {
-  period: { year: number; month: number }
+  period: { year: number | null; month: number | null; from: string; to: string }
   revenue: { total: number; by_kind: Record<string, number> }
   cost: {
     total: number
@@ -242,6 +254,9 @@ export interface AdminCostParameter {
 
 export interface AdminFinancePage {
   summary: AdminFinanceSummary
+  /** 開業からの積み上げ。months は稼働月数（インフラ月額を掛けた数） */
+  totals: AdminFinanceSummary & { months: number }
+  available_months: { year: number; month: number }[]
   trend: { year: number; month: number; revenue: number; cost: number; profit: number }[]
   parameters: AdminCostParameter[]
   groups: string[]

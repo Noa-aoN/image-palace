@@ -5,7 +5,7 @@ import { Search, Loader2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { getAdminUsers, updateAdminUserRole } from '@/lib/api/admin'
-import type { AdminRole, AdminUser, AdminUsersPage } from '@/types/admin'
+import type { AdminRole, AdminUser, AdminUserStats, AdminUsersPage } from '@/types/admin'
 
 const ROLE_LABELS: Record<AdminRole, string> = {
   user: '一般',
@@ -67,6 +67,9 @@ export function AdminUsersPanel({ canChangeRole }: { canChangeRole: boolean }) {
   return (
     <section className="space-y-3">
       <h2 className="text-lg font-semibold">利用者</h2>
+
+      {/* 一覧は「いま誰がいるか」しか分からない。伸びているかは数字と推移で見る */}
+      {page?.stats && <UserStats stats={page.stats} />}
 
       <form
         className="flex gap-2"
@@ -199,5 +202,60 @@ export function AdminUsersPanel({ canChangeRole }: { canChangeRole: boolean }) {
         <p className="text-xs text-muted-foreground">役割の変更は運営の管理者のみが行えます。</p>
       )}
     </section>
+  )
+}
+
+// 利用者の総計と推移。棒の高さは月ごとの新規、線の位置は累計
+function UserStats({ stats }: { stats: AdminUserStats }) {
+  const peak = Math.max(1, ...stats.monthly.map((m) => m.count))
+
+  return (
+    <div className="space-y-3 rounded-xl border border-border bg-card p-4">
+      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+        <Metric label="総数" value={stats.total} sub={`確認済み ${stats.confirmed} / 運営 ${stats.admins}`} />
+        <Metric label="今月の新規" value={stats.new_this_month} />
+        <Metric label="先月の新規" value={stats.new_last_month} />
+        <Metric
+          label="前月比"
+          value={stats.growth_rate === null ? '—' : `${stats.growth_rate > 0 ? '+' : ''}${stats.growth_rate}%`}
+          sub={stats.growth_rate === null ? '先月の新規が0のため出せない' : undefined}
+        />
+      </div>
+
+      <div>
+        <p className="text-xs text-muted-foreground">月ごとの新規（12か月）</p>
+        <div className="mt-2 flex h-24 items-end gap-1">
+          {stats.monthly.map((m) => (
+            <div key={m.month} className="group relative flex-1" title={`${m.month}: 新規 ${m.count} / 累計 ${m.cumulative}`}>
+              <div
+                className="w-full rounded-t"
+                style={{
+                  height: `${Math.max(2, (m.count / peak) * 100)}%`,
+                  backgroundColor: 'var(--palace)',
+                  opacity: m.count === 0 ? 0.25 : 0.85,
+                }}
+              />
+            </div>
+          ))}
+        </div>
+        <div className="mt-1 flex justify-between text-[11px] text-muted-foreground">
+          <span>{stats.monthly[0]?.month}</span>
+          <span>累計 {stats.monthly[stats.monthly.length - 1]?.cumulative ?? stats.total}</span>
+          <span>{stats.monthly[stats.monthly.length - 1]?.month}</span>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+function Metric({ label, value, sub }: { label: string; value: number | string; sub?: string }) {
+  return (
+    <div>
+      <p className="text-xs text-muted-foreground">{label}</p>
+      <p className="mt-0.5 text-2xl font-semibold tabular-nums">
+        {typeof value === 'number' ? value.toLocaleString() : value}
+      </p>
+      {sub && <p className="text-xs text-muted-foreground">{sub}</p>}
+    </div>
   )
 }

@@ -11,11 +11,28 @@ module Admin
       new(year: year, month: month).call
     end
 
-    def initialize(year:, month:)
-      @from = Time.zone.local(year, month, 1)
-      @to = @from.next_month
+    # 開業から今までの総計。
+    #
+    # インフラは月額なので「稼働した月数」を掛ける。これは概算の中でも粗い部分なので、
+    # 月数も一緒に返して、何を掛けた結果なのかが画面から分かるようにしておく。
+    def self.totals(now: Time.zone.now)
+      first = [ User.minimum(:created_at), CreditTransaction.minimum(:created_at) ].compact.min || now
+      new(from: first.beginning_of_month, to: now.next_month.beginning_of_month).call.merge(
+        months: months_between(first, now)
+      )
+    end
+
+    def self.months_between(from, to)
+      ((to.year - from.year) * 12 + (to.month - from.month)) + 1
+    end
+
+    def initialize(year: nil, month: nil, from: nil, to: nil)
+      @from = from || Time.zone.local(year, month, 1)
+      @to = to || @from.next_month
       @year = year
       @month = month
+      # 総計のときはインフラ月額を月数ぶん掛ける
+      @infra_months = year.nil? ? self.class.months_between(@from, @to - 1.day) : 1
     end
 
     def call
@@ -23,11 +40,11 @@ module Admin
       fee = (revenue * CostParameter.value_for("stripe_fee_rate")).round
       image = image_cost
       text = text_cost
-      infra = CostParameter.infra_monthly_jpy.round
+      infra = (CostParameter.infra_monthly_jpy * @infra_months).round
       estimated_cost = fee + image[:jpy] + text[:jpy] + infra
 
       {
-        period: { year: @year, month: @month },
+        period: { year: @year, month: @month, from: @from.to_date, to: (@to - 1.day).to_date },
         revenue: {
           total: revenue,
           by_kind: revenue_by_kind
