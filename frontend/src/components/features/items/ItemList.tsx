@@ -1,10 +1,18 @@
 'use client'
 
-import { startTransition, useEffect, useEffectEvent, useRef, useState, useCallback } from 'react'
+import { startTransition, useEffect, useEffectEvent, useRef, useState, useCallback, type ReactNode } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
-import { ChevronLeft, ChevronRight, Search, X, Trash2, Check, CircleCheck, Circle, Tags, Tag as TagIcon, ShieldCheck, FileText, RefreshCw } from 'lucide-react'
+import { ChevronLeft, ChevronRight, Search, X, Trash2, Check, CircleCheck, Circle, Tag as TagIcon, ShieldCheck, FileText, ChevronDown, Image as ImageIcon } from 'lucide-react'
 import { Button } from '@/components/ui/button'
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu'
 import { Spinner } from '@/components/ui/spinner'
 import { CardGridSkeleton } from '@/components/ui/skeleton'
 import { GeneratingOverlay } from '@/components/features/items/GeneratingOverlay'
@@ -343,8 +351,13 @@ export function ItemList({ initialTag = null }: { initialTag?: string | null }) 
   // 完了後に確認できる per-item 結果
   const [bulkResults, setBulkResults] = useState<{ kind: BulkKind; entries: BulkResultEntry[] } | null>(null)
   const [resultsOpen, setResultsOpen] = useState(false)
-  const [confirmTagReplace, setConfirmTagReplace] = useState(false)
-  const [confirmRegenerate, setConfirmRegenerate] = useState(false)
+  // 上書き系の確認。{ 見出し, 説明, 実行 } を持ち、確認バーから実行する
+  const [pendingBulk, setPendingBulk] = useState<{ title: string; detail: string; run: () => void } | null>(null)
+  const askBulk = (title: string, detail: string, run: () => void) => {
+    if (selectedIds.size === 0) return
+    setActionError(null)
+    setPendingBulk({ title, detail, run })
+  }
   const cancelBulkRef = useRef(false)
   const upsertItem = useItemsStore((state) => state.upsertItem)
   const bulkBusy = deleting || bulkAction !== null
@@ -362,8 +375,7 @@ export function ItemList({ initialTag = null }: { initialTag?: string | null }) 
     setSelectionMode(false)
     setSelectedIds(new Set())
     setConfirmBulkDelete(false)
-    setConfirmTagReplace(false)
-    setConfirmRegenerate(false)
+    setPendingBulk(null)
     setActionError(null)
     setBulkSummary(null)
     setBulkResults(null)
@@ -371,8 +383,14 @@ export function ItemList({ initialTag = null }: { initialTag?: string | null }) 
   }
 
   // 選択カードを1件ずつ AI 操作に通す共通ループ。進捗を出し、スキップ/失敗を集計する。
-  const runBulkAi = async (label: string, kind: BulkKind, fn: (id: string) => Promise<ItemOrSkip>) => {
-    const ids = [...selectedIds]
+  const runBulkAi = async (
+    label: string,
+    kind: BulkKind,
+    fn: (id: string) => Promise<ItemOrSkip>,
+    // 選択の一部だけを対象にするとき（例: 失敗したものだけ作り直す）
+    include?: (id: string) => boolean
+  ) => {
+    const ids = [...selectedIds].filter((id) => !include || include(id))
     if (ids.length === 0) return
     cancelBulkRef.current = false
     setActionError(null)
@@ -422,7 +440,6 @@ export function ItemList({ initialTag = null }: { initialTag?: string | null }) 
     }
 
     setBulkAction(null)
-    setConfirmTagReplace(false)
     const parts = [`${processed}件処理`]
     if (skipped) parts.push(`${skipped}件スキップ`)
     if (failed) parts.push(`${failed}件失敗`)
@@ -431,24 +448,39 @@ export function ItemList({ initialTag = null }: { initialTag?: string | null }) 
     if (entries.length > 0) setBulkResults({ kind, entries })
   }
 
-  // タグを付与（未設定のみ）
+  // ── 一括操作 ────────────────────────────────────────────────
+  // 上書き系（作り直す）は取り消せないので、実行前に確認バーを出す。
+  // 確認の作法をメニュー3つで揃えるため、pendingBulk に集約している。
   const handleTagFill = () => runBulkAi('タグを付与', 'tag', (id) => generateTags(id, { onlyIfEmpty: true }))
-  // タグを再設定（AI結果で置き換え・破壊的なので2段階確認）
-  const handleTagReplace = () => {
-    if (selectedIds.size === 0) return
-    if (!confirmTagReplace) { setConfirmTagReplace(true); return }
-    runBulkAi('タグを再設定', 'tag', (id) => generateTags(id, { replace: true }))
-  }
-  // 説明を付与（未設定のみ）
-  const handleMeaningFill = () => runBulkAi('説明を付与', 'meaning', (id) => generateMeaning(id, undefined, { onlyIfEmpty: true }))
-  // AIで情報をチェック（説明のファクトチェック・説明なしはスキップ）
-  const handleFactCheck = () => runBulkAi('AIで情報をチェック', 'factcheck', (id) => factCheckItem(id))
-  // イメージを再生成（1枚につき1クレジット使う。取り消せないので2段階確認）
-  const handleRegenerate = () => {
-    if (selectedIds.size === 0) return
-    if (!confirmRegenerate) { setConfirmRegenerate(true); return }
-    setConfirmRegenerate(false)
-    runBulkAi('イメージを再生成', 'regenerate', (id) => retryItem(id))
+  const handleMeaningFill = () =>
+    runBulkAi('説明を付与', 'meaning', (id) => generateMeaning(id, undefined, { onlyIfEmpty: true }))
+  const handleFactCheck = () => runBulkAi('説明のAIチェック', 'factcheck', (id) => factCheckItem(id))
+
+  const handleTagReplace = () =>
+    askBulk('タグをすべて作り直す', `選択 ${selectedIds.size} 件のタグをAIの結果で置き換えます`, () =>
+      runBulkAi('タグを作り直す', 'tag', (id) => generateTags(id, { replace: true }))
+    )
+
+  const handleMeaningReplace = () =>
+    askBulk('説明をすべて作り直す', `選択 ${selectedIds.size} 件の説明をAIの結果で置き換えます`, () =>
+      runBulkAi('説明を作り直す', 'meaning', (id) => generateMeaning(id))
+    )
+
+  // 画像は1枚につき1クレジット。失敗したものだけに絞れると、成功済みのぶんを無駄にしない
+  const regenerateTargets = (failedOnly: boolean) =>
+    [...selectedIds].filter((id) => !failedOnly || items.find((it) => it.id === id)?.generation_status === 'failed')
+
+  const handleRegenerate = (failedOnly: boolean) => {
+    const targets = new Set(regenerateTargets(failedOnly))
+    if (targets.size === 0) {
+      setActionError(failedOnly ? '選択の中に失敗したカードはありません' : 'カードを選んでください')
+      return
+    }
+    askBulk(
+      failedOnly ? '失敗した画像を作り直す' : '画像をすべて作り直す',
+      `${targets.size} 件を作り直します（${targets.size} クレジット使います）`,
+      () => runBulkAi('画像を作り直す', 'regenerate', (id) => retryItem(id), (id) => targets.has(id))
+    )
   }
 
   const allSelected = items.length > 0 && items.every((i) => selectedIds.has(i.id))
@@ -827,41 +859,48 @@ export function ItemList({ initialTag = null }: { initialTag?: string | null }) 
           </button>
           <span className="shrink-0 text-sm text-muted-foreground">{selectedIds.size}件を選択中</span>
           <div className="ml-auto flex min-w-0 items-center gap-2 overflow-x-auto">
-            <Button variant="outline" size="sm" onClick={handleTagFill} disabled={bulkBusy || selectedIds.size === 0}
-              className="flex shrink-0 items-center gap-1.5" title="タグが無いカードにだけAIでタグを付けます">
-              <TagIcon size={14} />タグを付与
-            </Button>
-            <Button
-              variant={confirmTagReplace ? 'destructive' : 'outline'}
-              size="sm"
-              onClick={handleTagReplace}
-              disabled={bulkBusy || selectedIds.size === 0}
-              onBlur={() => setConfirmTagReplace(false)}
-              className="flex shrink-0 items-center gap-1.5"
-              title="選択カードのタグをAIの結果で置き換えます"
-            >
-              <Tags size={14} />
-              {confirmTagReplace ? `置き換える（${selectedIds.size}件）` : 'タグを再設定'}
-            </Button>
-            <Button variant="outline" size="sm" onClick={handleMeaningFill} disabled={bulkBusy || selectedIds.size === 0}
-              className="flex shrink-0 items-center gap-1.5" title="説明が無いカードにだけAIで説明を付けます">
-              <FileText size={14} />説明を付与
-            </Button>
+            {/*
+              対象（タグ・説明・画像）ごとに1つの入口へまとめる。
+              「未設定だけ埋める」と「すべて上書き」は結果が全く違うので、同じボタンには載せず
+              メニュー内の別項目にする。上書き側は取り消せないため一段深い位置に置く。
+            */}
+            <BulkMenu label="タグ" icon={<TagIcon size={14} />} disabled={bulkBusy || selectedIds.size === 0}>
+              <DropdownMenuLabel>選択 {selectedIds.size} 件のタグ</DropdownMenuLabel>
+              <DropdownMenuItem onSelect={handleTagFill}>
+                未設定だけ付ける
+              </DropdownMenuItem>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem onSelect={handleTagReplace} variant="destructive">
+                すべて作り直す（上書き）
+              </DropdownMenuItem>
+            </BulkMenu>
+
+            <BulkMenu label="説明" icon={<FileText size={14} />} disabled={bulkBusy || selectedIds.size === 0}>
+              <DropdownMenuLabel>選択 {selectedIds.size} 件の説明</DropdownMenuLabel>
+              <DropdownMenuItem onSelect={handleMeaningFill}>
+                未設定だけ付ける
+              </DropdownMenuItem>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem onSelect={handleMeaningReplace} variant="destructive">
+                すべて作り直す（上書き）
+              </DropdownMenuItem>
+            </BulkMenu>
+
+            <BulkMenu label="画像" icon={<ImageIcon size={14} />} disabled={bulkBusy || selectedIds.size === 0}>
+              <DropdownMenuLabel>選択 {selectedIds.size} 件の画像</DropdownMenuLabel>
+              {/* 失敗したものだけ作り直せると、成功済みのぶんのクレジットを無駄にしない */}
+              <DropdownMenuItem onSelect={() => handleRegenerate(true)}>
+                失敗したものだけ作り直す
+              </DropdownMenuItem>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem onSelect={() => handleRegenerate(false)} variant="destructive">
+                すべて作り直す（{selectedIds.size} cr）
+              </DropdownMenuItem>
+            </BulkMenu>
+
             <Button variant="outline" size="sm" onClick={handleFactCheck} disabled={bulkBusy || selectedIds.size === 0}
               className="flex shrink-0 items-center gap-1.5" title="説明が事実として正しいかAIでチェックし、訂正案を出します">
-              <ShieldCheck size={14} />AIで情報をチェック
-            </Button>
-            <Button
-              variant={confirmRegenerate ? 'destructive' : 'outline'}
-              size="sm"
-              onClick={handleRegenerate}
-              disabled={bulkBusy || selectedIds.size === 0}
-              onBlur={() => setConfirmRegenerate(false)}
-              className="flex shrink-0 items-center gap-1.5"
-              title="選択カードのイメージを作り直します（1枚につき1クレジット使います）"
-            >
-              <RefreshCw size={14} />
-              {confirmRegenerate ? `${selectedIds.size}件を再生成（${selectedIds.size}cr）` : 'イメージを再生成'}
+              <ShieldCheck size={14} />説明のAIチェック
             </Button>
             <span className="mx-1 h-5 w-px shrink-0 bg-border" aria-hidden />
             <Button
@@ -885,6 +924,30 @@ export function ItemList({ initialTag = null }: { initialTag?: string | null }) 
           <CardCreateButton />
         </div>
       </div>
+      {pendingBulk && !bulkAction && (
+        <div className="flex flex-wrap items-center gap-3 rounded-lg border border-destructive/40 bg-destructive/5 px-3 py-2 text-sm">
+          <div className="min-w-0">
+            <p className="font-medium">{pendingBulk.title}</p>
+            <p className="text-xs text-muted-foreground">{pendingBulk.detail}・元には戻せません</p>
+          </div>
+          <div className="ml-auto flex shrink-0 items-center gap-2">
+            <Button
+              variant="destructive"
+              size="sm"
+              onClick={() => {
+                const run = pendingBulk.run
+                setPendingBulk(null)
+                run()
+              }}
+            >
+              実行する
+            </Button>
+            <Button variant="ghost" size="sm" onClick={() => setPendingBulk(null)}>
+              やめる
+            </Button>
+          </div>
+        </div>
+      )}
       {bulkAction && (
         <div className="flex items-center gap-2 text-sm text-muted-foreground">
           <Spinner size={14} />
@@ -983,5 +1046,38 @@ export function ItemList({ initialTag = null }: { initialTag?: string | null }) 
         </nav>
       )}
     </div>
+  )
+}
+
+/**
+ * 一括操作の入口。対象（タグ・説明・画像）ごとに1つ置き、動作はメニュー内で選ぶ。
+ * ボタンを動作の数だけ並べると横に溢れ、上書き系を押し間違えやすくなるため。
+ */
+function BulkMenu({
+  label,
+  icon,
+  disabled,
+  children,
+}: {
+  label: string
+  icon: ReactNode
+  disabled: boolean
+  children: ReactNode
+}) {
+  return (
+    <DropdownMenu>
+      {/* Base UI の Trigger は自前で要素を描くので、隣のボタンと同じ見た目を直接あてる */}
+      <DropdownMenuTrigger
+        disabled={disabled}
+        className="inline-flex h-7 shrink-0 items-center gap-1.5 rounded-[min(var(--radius-md),12px)] border border-border bg-background px-2.5 text-[0.8rem] font-medium whitespace-nowrap transition-colors hover:bg-muted disabled:pointer-events-none disabled:opacity-50"
+      >
+        {icon}
+        {label}
+        <ChevronDown size={13} className="text-muted-foreground" />
+      </DropdownMenuTrigger>
+      <DropdownMenuContent align="start" className="w-56">
+        {children}
+      </DropdownMenuContent>
+    </DropdownMenu>
   )
 }
