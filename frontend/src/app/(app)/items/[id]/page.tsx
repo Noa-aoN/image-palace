@@ -226,59 +226,60 @@ export default function ItemDetailPage() {
 
         {/*
           ── 画像 + ナビゲーション ──
-          モバイル (<md): flex row で [←][画像][→]
-          デスクトップ (≥md): 矢印スロットを hidden にして画像フル幅
+          イメージも他のプロパティと同じ幅に揃える。
+          以前は左右に矢印スロット（各32px）を並べていたため、モバイルでこのブロックだけ
+          狭くなり、カードが持つものが同じ形で並ぶという見え方が崩れていた。
+          矢印は画像の上に重ねる（幅を取らない）。
         */}
-        <div className="flex items-center gap-1 -mx-2 md:mx-0">
-          {/* 左矢印スロット: モバイルのみ表示 */}
-          <div className="w-8 shrink-0 flex justify-center md:hidden">
+        <PropertyBlock title="イメージ">
+          <div className="relative">
+            {item.media?.url && !imgError ? (
+              <div
+                className="w-full overflow-hidden rounded-lg bg-muted"
+                style={item.media.blur ? { backgroundImage: `url("${item.media.blur}")`, backgroundSize: 'cover', backgroundPosition: 'center' } : undefined}
+              >
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img
+                  src={item.media.url}
+                  alt={item.title}
+                  className="w-full cursor-zoom-in rounded-lg object-cover"
+                  decoding="async"
+                  fetchPriority="high"
+                  onClick={() => setZoomed(true)}
+                  onError={() => setImgError(true)}
+                />
+              </div>
+            ) : (
+              <GeneratingOverlay
+                status={item.generation_status}
+                label={imgError ? '画像を表示できません' : STATUS_LABEL[item.generation_status]}
+                className="w-full rounded-lg text-muted-foreground"
+                style={{ aspectRatio: aspectRatioCss(item?.aspect_ratio) }}
+                textClassName="text-sm"
+              />
+            )}
+
+            {/* 前後のカードへ。画面が広いときは画像の外に出す余地が無いので、常に重ねる */}
             {prevId && (
-              <button onClick={() => router.push(itemHref(prevId))} className={navBtnBase} aria-label="前のカード">
+              <button
+                onClick={() => router.push(itemHref(prevId))}
+                className={`${navBtnBase} absolute left-2 top-1/2 -translate-y-1/2 bg-background/70 backdrop-blur-sm md:hidden`}
+                aria-label="前のカード"
+              >
                 <ChevronLeft size={22} strokeWidth={1.5} />
               </button>
             )}
-          </div>
-
-          {/* 画像。周りの余白は枠側に持たせ、あとで台紙やフレームを差し替えられるようにする */}
-          <div className="flex-1 min-w-0 md:flex-none md:w-full">
-            <PropertyBlock title="イメージ">
-              {item.media?.url && !imgError ? (
-                <div
-                  className="w-full overflow-hidden rounded-lg bg-muted"
-                  style={item.media.blur ? { backgroundImage: `url("${item.media.blur}")`, backgroundSize: 'cover', backgroundPosition: 'center' } : undefined}
-                >
-                  {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img
-                    src={item.media.url}
-                    alt={item.title}
-                    className="w-full cursor-zoom-in rounded-lg object-cover"
-                    decoding="async"
-                    fetchPriority="high"
-                    onClick={() => setZoomed(true)}
-                    onError={() => setImgError(true)}
-                  />
-                </div>
-              ) : (
-                <GeneratingOverlay
-                  status={item.generation_status}
-                  label={imgError ? '画像を表示できません' : STATUS_LABEL[item.generation_status]}
-                  className="w-full rounded-lg text-muted-foreground"
-                  style={{ aspectRatio: aspectRatioCss(item?.aspect_ratio) }}
-                  textClassName="text-sm"
-                />
-              )}
-            </PropertyBlock>
-          </div>
-
-          {/* 右矢印スロット: モバイルのみ表示 */}
-          <div className="w-8 shrink-0 flex justify-center md:hidden">
             {nextId && (
-              <button onClick={() => router.push(itemHref(nextId))} className={navBtnBase} aria-label="次のカード">
+              <button
+                onClick={() => router.push(itemHref(nextId))}
+                className={`${navBtnBase} absolute right-2 top-1/2 -translate-y-1/2 bg-background/70 backdrop-blur-sm md:hidden`}
+                aria-label="次のカード"
+              >
                 <ChevronRight size={22} strokeWidth={1.5} />
               </button>
             )}
           </div>
-        </div>
+        </PropertyBlock>
 
         {/* 画像まわりの情報と操作（生成情報・プロンプト情報・作り直す）。右パネルと同じ並び */}
         <ItemImageBar item={item} onUpdated={applyUpdated} />
