@@ -51,12 +51,25 @@ RSpec.describe "Api::V1::Admin 付与の管理", type: :request do
       expect(json_response["errors"].join).to include("アイテム")
     end
 
-    it "アイテム付与を種類つきで登録できる" do
+    # 受け取り側の仕組みが無いものは、設定は保存できるが有効にはできない。
+    # 「配る」にできてしまうと、配られていないことに気づけない
+    it "準備中のアイテムは無効のままなら登録できる" do
       put "/api/v1/admin/grant_policies/welcome_skin",
-        params: { policy: { reward_type: "item", amount: 1, item_kind: "skin" } }, headers: admin_headers, as: :json
+        params: { policy: { reward_type: "item", amount: 1, item_kind: "skin", enabled: false } },
+        headers: admin_headers, as: :json
 
       expect(response).to have_http_status(:success)
       expect(json_response["policy"]["item_kind"]).to eq("skin")
+      expect(json_response["policy"]["ready"]).to be(false)
+    end
+
+    it "準備中のアイテムは有効にできない" do
+      put "/api/v1/admin/grant_policies/welcome_skin",
+        params: { policy: { reward_type: "item", amount: 1, item_kind: "skin", enabled: true } },
+        headers: admin_headers, as: :json
+
+      expect(response).to have_http_status(:unprocessable_entity)
+      expect(json_response["errors"].join).to include("準備中")
     end
   end
 

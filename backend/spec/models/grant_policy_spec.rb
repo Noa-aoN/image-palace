@@ -33,10 +33,18 @@ RSpec.describe GrantPolicy do
       expect(policy.errors[:item_kind]).to be_present
     end
 
-    it "種類があれば通る" do
-      policy = described_class.new(key: "welcome_skin", reward_type: "item", amount: 1, item_kind: "skin")
+    # 準備中のアイテムは、無効のままなら設定を保存できる
+    it "種類があり無効なら通る" do
+      policy = described_class.new(key: "welcome_skin", reward_type: "item", amount: 1, item_kind: "skin", enabled: false)
 
       expect(policy).to be_valid
+    end
+
+    it "準備中の種類は有効にできない" do
+      policy = described_class.new(key: "welcome_skin", reward_type: "item", amount: 1, item_kind: "skin", enabled: true)
+
+      expect(policy).not_to be_valid
+      expect(policy.errors[:base].join).to include("準備中")
     end
 
     it "知らない種類は弾く" do

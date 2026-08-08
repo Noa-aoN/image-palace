@@ -40,6 +40,7 @@ export function AuthGuard({ children }: { children: React.ReactNode }) {
           avatar_url: p.avatar_url,
           avatar_thumb_url: p.avatar_thumb_url,
           avatar_generation_status: p.avatar_generation_status,
+          created_at: p.created_at,
         })
       )
       .catch(() => {})

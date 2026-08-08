@@ -119,11 +119,15 @@ export interface AdminGrantPolicy {
   /** 画面で触った結果か（false なら Billing::Catalog の既定で動いている） */
   customized: boolean
   default_amount: number | null
+  /** 受け取り側の仕組みがあるか。false なら準備中で「配る」にできない */
+  ready: boolean
 }
 
 export interface AdminGrantPoliciesPage {
   policies: AdminGrantPolicy[]
   item_kinds: string[]
+  /** 実際に配れる種類。ここに無いものは準備中 */
+  ready_item_kinds: string[]
   reward_types: string[]
 }
 

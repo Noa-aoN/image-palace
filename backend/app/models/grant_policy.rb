@@ -11,9 +11,14 @@ class GrantPolicy < ApplicationRecord
   REWARD_TYPES = %w[credits item].freeze
 
   # 配れるアイテムの種類。
-  # ここに並んでいても、受け取り側の仕組みが無いものは「設定できるだけ」で実際には配られない。
-  # 実際に配るには、その機能側で GrantPolicy を読む処理が要る。
   ITEM_KINDS = %w[box space view wordlist skin].freeze
+
+  # このうち「実際に配れる」もの。受け取り側の仕組みができた種類をここへ足すと、
+  # 管理画面の準備中の表示が外れて有効にできるようになる（機能追加とセットで1行）。
+  #
+  # いまは空。詰め合わせ（テーマ別のボックス）や初期コンテンツの配布、
+  # スキンの実体ができるまでは、設定を保存できても配られない。
+  READY_ITEM_KINDS = [].freeze
 
   # 既定。DB に行が無いときはこの値で動く（＝これまでの挙動）
   DEFAULTS = {
@@ -36,6 +41,7 @@ class GrantPolicy < ApplicationRecord
   validates :amount, numericality: { greater_than_or_equal_to: 0, only_integer: true }
   validates :item_kind, inclusion: { in: ITEM_KINDS }, allow_blank: true
   validate :item_reward_needs_kind
+  validate :cannot_enable_unready_item
 
   # 有効な付与量。無効化されていれば 0（＝配らない）。
   # DB に行が無ければ既定値を返すので、未設定でも動きは変わらない。
@@ -74,9 +80,18 @@ class GrantPolicy < ApplicationRecord
         notes: policy&.notes,
         # 既定のままか、画面で触った結果か
         customized: policy.present?,
-        default_amount: default[:amount]&.to_i
+        default_amount: default[:amount]&.to_i,
+        # 受け取り側の仕組みが無いものは準備中。画面で「配る」にできない
+        ready: policy ? policy.deliverable? : true
       }
     end
+  end
+
+  # 実際に配れる状態か（受け取り側の仕組みがあるか）
+  def deliverable?
+    return true if reward_type == "credits"
+
+    READY_ITEM_KINDS.include?(item_kind)
   end
 
   private
@@ -86,5 +101,14 @@ class GrantPolicy < ApplicationRecord
     return if item_kind.present?
 
     errors.add(:item_kind, "はアイテムを配るときに必要です")
+  end
+
+  # 配れないものを「配る」にできてしまうと、配られていないことに気づけない。
+  # 設定の保存自体は許し、有効化だけを止める
+  def cannot_enable_unready_item
+    return unless enabled?
+    return if deliverable?
+
+    errors.add(:base, "#{item_kind} の付与はまだ準備中です（受け取り側の仕組みができてから有効にできます）")
   end
 end

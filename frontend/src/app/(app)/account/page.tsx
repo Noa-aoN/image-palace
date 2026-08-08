@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/button'
 import { CategorySections, type CategorySection } from '@/components/features/myroom/CategorySections'
 import { ComingSoon } from '@/components/features/myroom/ComingSoon'
 import { AvatarGenerator } from '@/components/features/account/AvatarGenerator'
+import { DisplayNameEditor } from '@/components/features/account/DisplayNameEditor'
 import { deleteAccount } from '@/lib/api/account'
 import { useAuthStore } from '@/stores/auth'
 import { useItemsStore } from '@/stores/items'
@@ -58,10 +59,7 @@ export default function AccountPage() {
       content: (
         <section className="space-y-3 rounded-xl border border-border bg-card p-5">
           <dl className="grid gap-3 text-sm">
-            <div className="flex items-center justify-between gap-4">
-              <dt className="text-muted-foreground">表示名</dt>
-              <dd className="font-medium">{user?.name?.trim() ? user.name : '未設定'}</dd>
-            </div>
+            <DisplayNameEditor />
             <div className="flex items-center justify-between gap-4 border-t border-border pt-3">
               <dt className="text-muted-foreground">メールアドレス</dt>
               <dd className="font-medium break-all">{user?.email ?? '—'}</dd>
