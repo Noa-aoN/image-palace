@@ -31,8 +31,9 @@ export function AdminFinancePanel() {
   const [page, setPage] = useState<AdminFinancePage | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [savingKey, setSavingKey] = useState<string | null>(null)
-  // null = 未選択（今月）。選ぶと過去の月を引く
+  // null = 未選択（今月）、'all' = 全期間（開業からの総計を出す）
   const [selected, setSelected] = useState<{ year: number; month: number } | null>(null)
+  const [allPeriod, setAllPeriod] = useState(false)
 
   useEffect(() => {
     let cancelled = false
@@ -92,7 +93,9 @@ export function AdminFinancePanel() {
     )
   }
 
-  const { summary, parameters } = page
+  // 「全期間」を選んだら、月の概算の代わりに総計を出す
+  const summary = allPeriod ? page.totals : page.summary
+  const { parameters } = page
   const grouped = page.groups.map((group) => ({
     group,
     rows: parameters.filter((row) => row.group === group),
@@ -106,7 +109,9 @@ export function AdminFinancePanel() {
         <div className="flex flex-wrap items-end justify-between gap-3">
           <div>
             <h2 className="text-lg font-semibold">
-              {summary.period.year}年{summary.period.month}月の概算
+              {allPeriod
+                ? `全期間の概算（${page.totals.period.from} 〜 ${page.totals.period.to}・${page.totals.months}か月）`
+                : `${summary.period.year}年${summary.period.month}月の概算`}
             </h2>
             <p className="mt-1 text-sm text-muted-foreground">
               収入は実績。支出は「実回数 × 単価」の概算で、回数は正確・単価は設定値（為替 {summary.fx} 円/USD）。
@@ -115,13 +120,19 @@ export function AdminFinancePanel() {
           <label className="text-sm">
             <span className="mr-2 text-muted-foreground">対象の月</span>
             <select
-              value={`${summary.period.year}-${summary.period.month}`}
+              value={allPeriod ? 'all' : `${page.summary.period.year}-${page.summary.period.month}`}
               onChange={(e) => {
+                if (e.target.value === 'all') {
+                  setAllPeriod(true)
+                  return
+                }
                 const [year, month] = e.target.value.split('-').map(Number)
+                setAllPeriod(false)
                 setSelected({ year, month })
               }}
               className="rounded-lg border border-border bg-background px-2 py-1"
             >
+              <option value="all">全期間</option>
               {page.available_months.map((m) => (
                 <option key={`${m.year}-${m.month}`} value={`${m.year}-${m.month}`}>
                   {m.year}年{m.month}月
@@ -184,6 +195,7 @@ export function AdminFinancePanel() {
         )}
       </section>
 
+      {!allPeriod && (
       <section className="space-y-3">
         <div>
           <h2 className="text-lg font-semibold">開業からの総計</h2>
@@ -204,8 +216,10 @@ export function AdminFinancePanel() {
           <Stat label="画像（累計）" value={`${page.totals.cost.image.count} 枚`} sub={yen(page.totals.cost.image.jpy)} />
         </div>
       </section>
+      )}
 
-      <ActualForm summary={summary} saving={savingKey === 'actual'} onSave={saveActual} />
+      {/* 請求実額は月ごとに入れるものなので、全期間のときは出さない */}
+      {!allPeriod && <ActualForm summary={page.summary} saving={savingKey === 'actual'} onSave={saveActual} />}
 
       <section className="space-y-3">
         <div>

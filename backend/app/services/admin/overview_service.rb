@@ -29,6 +29,8 @@ module Admin
         ai: ai_summary,
         limits: limits_summary,
         provider_status: provider_status,
+        # 概要にも今月の収支を出す。別リクエストにすると、遠い DB への往復が二重になる
+        finance: ::Admin::FinanceService.call(year: @now.year, month: @now.month),
         series: {
           days: SERIES_DAYS,
           new_users: daily_counts(User.all),
@@ -54,14 +56,17 @@ module Admin
     end
 
     def content_summary
-      {
-        items: Item.count,
-        views: View.count,
-        spaces: Space.count,
-        boxes: Box.count,
-        wordlists: Wordlist.count,
-        tags: Tag.count
-      }
+      row = Item.connection.select_one(<<~SQL.squish)
+        SELECT
+          (SELECT COUNT(*) FROM items) AS items,
+          (SELECT COUNT(*) FROM views) AS views,
+          (SELECT COUNT(*) FROM spaces) AS spaces,
+          (SELECT COUNT(*) FROM boxes) AS boxes,
+          (SELECT COUNT(*) FROM wordlists) AS wordlists,
+          (SELECT COUNT(*) FROM tags) AS tags
+      SQL
+
+      row.transform_values(&:to_i).symbolize_keys
     end
 
     def generation_summary
@@ -100,25 +105,25 @@ module Admin
     # 期限の有無で分けて見えないと、いつまでにいくら出ていくのかが読めない。
     # サービスを畳むときの返金額の目安にもなる。
     def credit_liability
-      grants = CreditGrant.where("remaining_points > 0")
-      expiring = grants.where.not(expires_at: nil)
+      grants = grant_totals
+      users = user_credit_totals
 
-      subscription_points = User.sum(:subscription_credits)
+      subscription_points = users["subscription"].to_i
+      old_topup_points = users["topup"].to_i
       # 買い切りは2か所に散っている。期限が付く前の古い残り（users.topup_credits）と、
       # いまの積み方（credit_grants の kind: topup、6か月で失効）。
       # 片方だけ数えると、受け取ったお金のぶんが「付与」に化ける。
-      topup_points = User.sum(:topup_credits) + grants.where(kind: "topup").sum(:remaining_points)
+      topup_points = old_topup_points + grants["topup"].to_i
       # 付与はこちらが配ったぶん。買い切りを除く
-      grant_points = grants.where.not(kind: "topup").sum(:remaining_points)
-      all_grant_points = grants.sum(:remaining_points)
+      grant_points = grants["non_topup"].to_i
 
       {
         # 期限付き: 月額の当月分と、期限付きグラント（繰り越し・ボーナス）
-        expiring: to_credits(subscription_points + expiring.sum(:remaining_points)),
+        expiring: to_credits(subscription_points + grants["expiring"].to_i),
         # 期限なし: 期限が付く前の古い買い切りと、期限を付けずに配ったグラント。
         # いまは買い切りも6か月で失効するので、ここは増えない（古い残りが減るだけ）
-        unlimited: to_credits(User.sum(:topup_credits) + grants.where(expires_at: nil).sum(:remaining_points)),
-        total: to_credits(subscription_points + User.sum(:topup_credits) + all_grant_points),
+        unlimited: to_credits(old_topup_points + grants["unlimited"].to_i),
+        total: to_credits(subscription_points + old_topup_points + grants["all"].to_i),
         # 内訳（どこに溜まっているか）
         breakdown: {
           subscription: to_credits(subscription_points),
@@ -130,23 +135,55 @@ module Admin
                                                        .where(created_at: @since..).sum(:delta)),
         # 買い切りで受け取った金額のうち、まだ提供していないぶんの目安（円）。
         # 終了を告知するとき、どれだけの未提供が残っているかの目安になる
-        unused_topup_value: unused_topup_value,
+        unused_topup_value: unused_topup_value(old_topup_points, grants["topup_all"].to_i),
         # 直近で期限が来るもの
-        next_expiry_at: expiring.minimum(:expires_at)
+        next_expiry_at: grants["next_expiry_at"]
       }
+    end
+
+    # クレジットの残量。条件ごとに SUM を並べると往復の数だけ待つので、1回にまとめる
+    def grant_totals
+      CreditGrant.connection.select_one(<<~SQL.squish)
+        SELECT
+          COALESCE(SUM(remaining_points) FILTER (WHERE remaining_points > 0), 0) AS all,
+          COALESCE(SUM(remaining_points) FILTER (WHERE remaining_points > 0 AND expires_at IS NOT NULL), 0) AS expiring,
+          COALESCE(SUM(remaining_points) FILTER (WHERE remaining_points > 0 AND expires_at IS NULL), 0) AS unlimited,
+          COALESCE(SUM(remaining_points) FILTER (WHERE remaining_points > 0 AND kind = 'topup'), 0) AS topup,
+          COALESCE(SUM(remaining_points) FILTER (WHERE remaining_points > 0 AND kind <> 'topup'), 0) AS non_topup,
+          COALESCE(SUM(remaining_points) FILTER (WHERE kind = 'topup'), 0) AS topup_all,
+          MIN(expires_at) FILTER (WHERE remaining_points > 0 AND expires_at IS NOT NULL) AS next_expiry_at
+        FROM credit_grants
+      SQL
+    end
+
+    def user_credit_totals
+      User.connection.select_one(<<~SQL.squish)
+        SELECT
+          COALESCE(SUM(subscription_credits), 0) AS subscription,
+          COALESCE(SUM(topup_credits), 0) AS topup
+        FROM users
+      SQL
     end
 
     # 買い切りの平均単価 × 未使用の買い切りクレジット。
     # 「受け取ったのにまだ提供していない額」の目安。終了を計画するときの判断材料になる。
-    def unused_topup_value
-      purchases = CreditTransaction.where(kind: "topup_purchase").where.not(amount_cents: nil)
-      paid = purchases.sum(:amount_cents)
-      points = purchases.sum(:delta)
+    def unused_topup_value(old_topup_points, topup_grant_points)
+      row = CreditTransaction.connection.select_one(
+        CreditTransaction.sanitize_sql_array([
+          <<~SQL.squish,
+            SELECT COALESCE(SUM(amount_cents), 0) AS paid, COALESCE(SUM(delta), 0) AS points
+            FROM credit_transactions
+            WHERE kind = :kind AND amount_cents IS NOT NULL
+          SQL
+          { kind: "topup_purchase" }
+        ])
+      )
+      points = row["points"].to_i
       return 0 if points.zero?
 
       # 期限付きで積むようになったので、買い切りのグラント残量も数える
-      unused = User.sum(:topup_credits) + CreditGrant.where(kind: "topup").sum(:remaining_points)
-      (unused * paid.fdiv(points)).round
+      unused = old_topup_points + topup_grant_points
+      (unused * row["paid"].to_i.fdiv(points)).round
     end
 
     def to_credits(points)

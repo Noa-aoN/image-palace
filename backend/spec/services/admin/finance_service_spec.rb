@@ -8,7 +8,13 @@ RSpec.describe Admin::FinanceService do
     described_class.call(year: 2026, month: 8)
   end
 
-  before { travel_to(now) }
+  before do
+    travel_to(now)
+    # インフラの既定は概算が入っているので、ここでは切って他の項目だけを見る
+    %w[infra_usd.fly infra_usd.neon infra_usd.workers infra_usd.r2 infra_usd.sentry infra_jpy.domain].each do |key|
+      CostParameter.create!(key: key, value: 0)
+    end
+  end
 
   describe "収入" do
     it "その月の決済額を合計する" do
@@ -137,6 +143,17 @@ RSpec.describe Admin::FinanceService do
       expect(actual[:actual]).to eq(72)
       expect(actual[:diff]).to eq(12)
       expect(actual[:diff_rate]).to eq(20.0)
+    end
+  end
+
+  # 海外ベンダーはドル建て。為替を掛けないと円安のときに黙って過少になる
+  describe "インフラ" do
+    it "ドル建ての月額に為替を掛けて足す" do
+      CostParameter.find_by(key: "infra_usd.fly").update!(value: 10)
+      CostParameter.find_by(key: "infra_jpy.domain").update!(value: 130)
+      CostParameter.create!(key: "fx_usd_jpy", value: 150)
+
+      expect(summary[:cost][:infra]).to eq(1_630) # 10 * 150 + 130
     end
   end
 

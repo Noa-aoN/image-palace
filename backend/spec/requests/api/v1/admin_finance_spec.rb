@@ -39,7 +39,10 @@ RSpec.describe "Api::V1::Admin 収支", type: :request do
 
     # 総計のインフラは「月額 × 稼働月数」。月額をそのまま出すと過少になる
     it "総計のインフラは稼働月数ぶんを掛ける" do
-      CostParameter.create!(key: "infra_jpy.fly", value: 1_000)
+      # 既定の概算を切って、確かめたい1項目だけ残す
+      %w[infra_usd.fly infra_usd.neon infra_usd.workers infra_usd.r2 infra_usd.sentry infra_jpy.domain]
+        .each { |key| CostParameter.create!(key: key, value: 0) }
+      CostParameter.create!(key: "infra_jpy.other", value: 1_000)
       member.update!(created_at: 3.months.ago)
 
       get "/api/v1/admin/finance", headers: admin_headers
