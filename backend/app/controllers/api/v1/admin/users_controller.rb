@@ -19,7 +19,9 @@ module Api
 
           render json: {
             users: users.map { |user| serialize_user(user, counts[user.id].to_i) },
-            meta: { page: page, per: per, total_count: total, total_pages: (total.to_f / per).ceil }
+            meta: { page: page, per: per, total_count: total, total_pages: (total.to_f / per).ceil },
+            # 一覧は「いま誰がいるか」しか分からない。伸びているのかは別に数字で出す
+            stats: stats
           }
         end
 
@@ -42,6 +44,48 @@ module Api
         end
 
         private
+
+        # 折れ線に出す月数
+        TREND_MONTHS = 12
+
+        # 利用者の伸び。絞り込みに関係なく全体の数字を返す（一覧の下に出す前提）
+        def stats
+          now = Time.current
+          this_month = User.where(created_at: now.beginning_of_month..).count
+          last_month = User.where(created_at: (now - 1.month).beginning_of_month...now.beginning_of_month).count
+          total = User.count
+
+          {
+            total: total,
+            confirmed: User.where.not(confirmed_at: nil).count,
+            admins: User.effective_admins.count,
+            new_this_month: this_month,
+            new_last_month: last_month,
+            # 前月比。前月が0なら率を出さない（分母0は「無限に増えた」ではない）
+            growth_rate: last_month.positive? ? ((this_month - last_month).fdiv(last_month) * 100).round(1) : nil,
+            monthly: monthly_series(now, total)
+          }
+        end
+
+        # 月ごとの新規と、その時点の累計
+        def monthly_series(now, total)
+          start = (now - (TREND_MONTHS - 1).months).beginning_of_month
+          counts = User.where(created_at: start..)
+                       .group(Arel.sql("DATE_TRUNC('month', created_at)"))
+                       .count
+                       .transform_keys { |key| key.to_date.strftime("%Y-%m") }
+
+          # 期間より前に登録した人数を起点に、累計を積み上げる
+          running = total - counts.values.sum
+
+          (0...TREND_MONTHS).map do |offset|
+            date = start + offset.months
+            key = date.strftime("%Y-%m")
+            count = counts[key].to_i
+            running += count
+            { month: key, count: count, cumulative: running }
+          end
+        end
 
         def filtered_users
           scope = User.all

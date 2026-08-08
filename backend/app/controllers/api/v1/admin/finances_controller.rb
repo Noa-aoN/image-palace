@@ -10,6 +10,10 @@ module Api
 
           render json: {
             summary: ::Admin::FinanceService.call(year: year, month: month),
+            # 開業から今までの積み上げ
+            totals: ::Admin::FinanceService.totals,
+            # 月選択に出す候補（データがある範囲）
+            available_months: available_months,
             # 直近12か月の推移（概算の粗利）
             trend: trend(now),
             parameters: CostParameter.overview,
@@ -51,6 +55,21 @@ module Api
 
         def actual_params
           params.require(:actual).permit(:openai_jpy, :infra_jpy, :other_jpy, :note)
+        end
+
+        # 選べる月。最初の登録・決済がある月から今月まで
+        def available_months
+          first = [ User.minimum(:created_at), CreditTransaction.minimum(:created_at) ].compact.min
+          return [] if first.nil?
+
+          months = []
+          cursor = first.beginning_of_month
+          last = Time.zone.now.beginning_of_month
+          while cursor <= last
+            months << { year: cursor.year, month: cursor.month }
+            cursor = cursor.next_month
+          end
+          months.reverse
         end
 
         # 概要に出す推移。月ごとに1回ずつ集計する（対象は12か月なので許容範囲）

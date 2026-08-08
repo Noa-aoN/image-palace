@@ -31,10 +31,12 @@ export function AdminFinancePanel() {
   const [page, setPage] = useState<AdminFinancePage | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [savingKey, setSavingKey] = useState<string | null>(null)
+  // null = 未選択（今月）。選ぶと過去の月を引く
+  const [selected, setSelected] = useState<{ year: number; month: number } | null>(null)
 
   useEffect(() => {
     let cancelled = false
-    getAdminFinance()
+    getAdminFinance(selected ?? undefined)
       .then((data) => {
         if (!cancelled) setPage(data)
       })
@@ -44,7 +46,7 @@ export function AdminFinancePanel() {
     return () => {
       cancelled = true
     }
-  }, [])
+  }, [selected])
 
   async function saveParameter(parameter: AdminCostParameter, value: number) {
     setSavingKey(parameter.key)
@@ -57,7 +59,7 @@ export function AdminFinancePanel() {
           : prev
       )
       // 単価が変われば概算も変わる。取り直して画面を合わせる
-      const refreshed = await getAdminFinance()
+      const refreshed = await getAdminFinance(selected ?? undefined)
       setPage(refreshed)
     } catch {
       setError('保存できませんでした')
@@ -69,7 +71,7 @@ export function AdminFinancePanel() {
   async function saveActual(summary: AdminFinanceSummary, values: { openai_jpy: number; infra_jpy: number; other_jpy: number }) {
     setSavingKey('actual')
     try {
-      const updated = await updateAdminMonthlyActual(summary.period.year, summary.period.month, values)
+      const updated = await updateAdminMonthlyActual(summary.period.year ?? 0, summary.period.month ?? 0, values)
       setPage((prev) => (prev ? { ...prev, summary: updated } : prev))
     } catch {
       setError('保存できませんでした')
@@ -101,13 +103,32 @@ export function AdminFinancePanel() {
       {error && <p className="text-sm text-destructive">{error}</p>}
 
       <section className="space-y-3">
-        <div>
-          <h2 className="text-lg font-semibold">
-            {summary.period.year}年{summary.period.month}月の概算
-          </h2>
-          <p className="mt-1 text-sm text-muted-foreground">
-            収入は実績。支出は「実回数 × 単価」の概算で、回数は正確・単価は設定値（為替 {summary.fx} 円/USD）。
-          </p>
+        <div className="flex flex-wrap items-end justify-between gap-3">
+          <div>
+            <h2 className="text-lg font-semibold">
+              {summary.period.year}年{summary.period.month}月の概算
+            </h2>
+            <p className="mt-1 text-sm text-muted-foreground">
+              収入は実績。支出は「実回数 × 単価」の概算で、回数は正確・単価は設定値（為替 {summary.fx} 円/USD）。
+            </p>
+          </div>
+          <label className="text-sm">
+            <span className="mr-2 text-muted-foreground">対象の月</span>
+            <select
+              value={`${summary.period.year}-${summary.period.month}`}
+              onChange={(e) => {
+                const [year, month] = e.target.value.split('-').map(Number)
+                setSelected({ year, month })
+              }}
+              className="rounded-lg border border-border bg-background px-2 py-1"
+            >
+              {page.available_months.map((m) => (
+                <option key={`${m.year}-${m.month}`} value={`${m.year}-${m.month}`}>
+                  {m.year}年{m.month}月
+                </option>
+              ))}
+            </select>
+          </label>
         </div>
 
         <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
@@ -161,6 +182,27 @@ export function AdminFinancePanel() {
             )}
           </div>
         )}
+      </section>
+
+      <section className="space-y-3">
+        <div>
+          <h2 className="text-lg font-semibold">開業からの総計</h2>
+          <p className="mt-1 text-sm text-muted-foreground">
+            {page.totals.period.from} 〜 {page.totals.period.to}（{page.totals.months} か月）。
+            インフラは月額 × {page.totals.months} か月で見積もっている。
+          </p>
+        </div>
+        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+          <Stat label="収入（累計）" value={yen(page.totals.revenue.total)} />
+          <Stat label="支出（累計・概算）" value={yen(page.totals.cost.total)} />
+          <Stat
+            label="差引（累計）"
+            value={yen(page.totals.profit)}
+            tone={page.totals.profit < 0 ? 'bad' : undefined}
+            sub={page.totals.margin === null ? undefined : `粗利率 ${page.totals.margin}%`}
+          />
+          <Stat label="画像（累計）" value={`${page.totals.cost.image.count} 枚`} sub={yen(page.totals.cost.image.jpy)} />
+        </div>
       </section>
 
       <ActualForm summary={summary} saving={savingKey === 'actual'} onSave={saveActual} />

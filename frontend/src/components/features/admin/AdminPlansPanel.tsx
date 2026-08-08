@@ -85,6 +85,7 @@ export function AdminPlansPanel() {
               <th className="px-4 py-2 text-left font-normal">プラン</th>
               <th className="px-4 py-2 text-right font-normal">月額</th>
               <th className="px-4 py-2 text-right font-normal">付与</th>
+              <th className="px-4 py-2 text-right font-normal">1枚あたり</th>
               <th className="px-4 py-2 text-right font-normal">粗利率</th>
               <th className="px-4 py-2 text-left font-normal">状態</th>
             </tr>
@@ -111,6 +112,12 @@ export function AdminPlansPanel() {
                     }}
                     className="w-24 rounded-lg border border-border bg-background px-2 py-1 text-right tabular-nums"
                   />
+                </td>
+                {/* 価格 ÷ 付与。原価（1クレジット {costPerCredit} 円）と直接比べられる */}
+                <td className="px-4 py-2 text-right tabular-nums">
+                  {plan.price && plan.credits_per_period > 0
+                    ? `¥${(plan.price / plan.credits_per_period).toFixed(1)}`
+                    : '—'}
                 </td>
                 <td className="px-4 py-2 text-right tabular-nums">
                   {plan.margin === null ? '—' : `${plan.margin}%`}
