@@ -7,22 +7,31 @@ import { Input } from '@/components/ui/input'
 import { Spinner } from '@/components/ui/spinner'
 import { PanelSlotContent } from '@/components/features/panel/PanelSlot'
 import { usePanelForm } from '@/components/features/panel/usePanelForm'
-import { aiEditView, redoView, undoView } from '@/lib/api/views'
-import type { AiEditMode, AiEditSummary, ViewDetail } from '@/types/view'
+import { aiEditView, createCardsOnView, proposeCards, redoView, undoView } from '@/lib/api/views'
+import type { AiEditMode, AiEditSummary, CardProposal, ViewDetail } from '@/types/view'
 
 const PANEL_KEY = 'canvas-ai-edit'
 const MAX_INSTRUCTION = 500
 
-const MODES: { value: AiEditMode; label: string; description: string }[] = [
+// 「カードから作る」は新しくカードを作る（＝クレジットを使う）ので、他の2つとは性質が違う。
+// 同じ並びに置きつつ、実行前に必ず枚数の確認を挟む
+type EditChoice = AiEditMode | 'create'
+
+const MODES: { value: EditChoice; label: string; description: string }[] = [
   {
     value: 'placed_only',
-    label: 'いまある札だけ',
+    label: 'いまあるカードだけ',
     description: 'すでに置いてあるカードだけで組み直します。',
   },
   {
     value: 'select',
-    label: '札を選ぶところから',
+    label: 'カードを選ぶところから',
     description: '手持ちのカードから、指示に合うものを探して足します。',
+  },
+  {
+    value: 'create',
+    label: 'カードから作る',
+    description: '足りないカードをAIが提案します。作る前に枚数を確認できます。',
   },
 ]
 
@@ -55,19 +64,65 @@ export function AiEditPanel({
 }) {
   const panel = usePanelForm(PANEL_KEY, 'AIに整えてもらう')
   const [instruction, setInstruction] = useState('')
-  const [mode, setMode] = useState<AiEditMode>('placed_only')
-  const [busy, setBusy] = useState<'edit' | 'undo' | 'redo' | null>(null)
+  const [mode, setMode] = useState<EditChoice>('placed_only')
+  const [busy, setBusy] = useState<'edit' | 'undo' | 'redo' | 'propose' | 'create' | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [result, setResult] = useState<AiEditSummary | null>(null)
+  // 提案（まだ作っていない）と、そのうち作るものの選択
+  const [proposals, setProposals] = useState<CardProposal[] | null>(null)
+  const [chosen, setChosen] = useState<Set<string>>(new Set())
+  const [credits, setCredits] = useState<number | null>(null)
+  const [createdCount, setCreatedCount] = useState<number | null>(null)
+
+  // 「カードから作る」は提案を出すだけ。作るのは確認したあと
+  const propose = async () => {
+    const trimmed = instruction.trim()
+    if (!trimmed || busy) return
+    setBusy('propose')
+    setError(null)
+    setProposals(null)
+    setCreatedCount(null)
+    try {
+      const result = await proposeCards(viewId, trimmed)
+      setProposals(result.proposals)
+      setChosen(new Set(result.proposals.map((p) => p.title)))
+      setCredits(result.available_credits)
+      if (result.proposals.length === 0) setError('足すべきカードは見つかりませんでした。')
+    } catch (err: unknown) {
+      const e = err as { response?: { data?: { error?: string } } }
+      setError(e?.response?.data?.error ?? '提案を作れませんでした。')
+    } finally {
+      setBusy(null)
+    }
+  }
+
+  const createChosen = async () => {
+    if (busy || chosen.size === 0) return
+    setBusy('create')
+    setError(null)
+    try {
+      const updated = await createCardsOnView(viewId, [...chosen])
+      onApplied(updated)
+      setCreatedCount(updated.created_cards?.count ?? chosen.size)
+      setProposals(null)
+      setChosen(new Set())
+    } catch (err: unknown) {
+      const e = err as { response?: { data?: { error?: string } } }
+      setError(e?.response?.data?.error ?? 'カードを作れませんでした。')
+    } finally {
+      setBusy(null)
+    }
+  }
 
   const run = async () => {
+    if (mode === 'create') return propose()
     const trimmed = instruction.trim()
     if (!trimmed || busy) return
     setBusy('edit')
     setError(null)
     setResult(null)
     try {
-      const updated = await aiEditView(viewId, trimmed, mode)
+      const updated = await aiEditView(viewId, trimmed, mode as AiEditMode)
       setResult(updated.ai_edit ?? null)
       onApplied(updated)
     } catch (err: unknown) {
@@ -188,9 +243,79 @@ export function AiEditPanel({
             disabled={busy !== null || !instruction.trim()}
             className="flex w-full items-center justify-center gap-1.5"
           >
-            {busy === 'edit' ? <Spinner size={14} /> : <Wand2 size={14} />}
-            {busy === 'edit' ? '編集中…' : '整える'}
+            {busy === 'edit' || busy === 'propose' ? <Spinner size={14} /> : <Wand2 size={14} />}
+            {mode === 'create'
+              ? busy === 'propose'
+                ? '考え中…'
+                : '作るカードを提案してもらう'
+              : busy === 'edit'
+                ? '編集中…'
+                : '整える'}
           </Button>
+
+          {/* 提案の確認。作ると1枚1クレジット出ていくので、枚数を見せてから決めてもらう */}
+          {proposals && proposals.length > 0 && (
+            <div className="space-y-2 rounded-lg border border-border bg-muted/30 px-3 py-2">
+              <div className="flex items-baseline justify-between gap-2">
+                <p className="text-sm font-medium">作るカードの案（{proposals.length}件）</p>
+                <button
+                  type="button"
+                  className="text-xs text-muted-foreground hover:text-foreground"
+                  onClick={() =>
+                    setChosen(chosen.size === proposals.length ? new Set() : new Set(proposals.map((p) => p.title)))
+                  }
+                >
+                  {chosen.size === proposals.length ? 'すべて外す' : 'すべて選ぶ'}
+                </button>
+              </div>
+
+              <ul className="space-y-1">
+                {proposals.map((proposal) => (
+                  <li key={proposal.title}>
+                    <label className="flex items-start gap-2 text-sm">
+                      <input
+                        type="checkbox"
+                        checked={chosen.has(proposal.title)}
+                        disabled={busy !== null}
+                        onChange={(e) => {
+                          const next = new Set(chosen)
+                          if (e.target.checked) next.add(proposal.title)
+                          else next.delete(proposal.title)
+                          setChosen(next)
+                        }}
+                        className="mt-0.5"
+                      />
+                      <span className="min-w-0">
+                        {proposal.title}
+                        {proposal.reason && (
+                          <span className="ml-1.5 text-xs text-muted-foreground">{proposal.reason}</span>
+                        )}
+                      </span>
+                    </label>
+                  </li>
+                ))}
+              </ul>
+
+              <p className="text-xs text-muted-foreground">
+                {chosen.size} 枚を作ります（{chosen.size} クレジット使います
+                {credits !== null && `・残高 ${credits}`}）。画像はこのあと順に作られます。
+              </p>
+
+              <div className="flex items-center gap-2">
+                <Button size="sm" onClick={createChosen} disabled={busy !== null || chosen.size === 0}>
+                  {busy === 'create' ? <Spinner size={14} /> : null}
+                  この{chosen.size}枚を作る
+                </Button>
+                <Button size="sm" variant="ghost" onClick={() => setProposals(null)} disabled={busy !== null}>
+                  やめる
+                </Button>
+              </div>
+            </div>
+          )}
+
+          {createdCount !== null && (
+            <p className="text-sm text-muted-foreground">{createdCount} 枚を作ってキャンバスに置きました。</p>
+          )}
 
           {result && (
             <div className="rounded-lg border border-border bg-muted/30 px-3 py-2">

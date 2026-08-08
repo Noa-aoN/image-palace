@@ -31,7 +31,9 @@ module Ai
       "words_check" => 0,
       # キャンバス編集は何度でも押せて、渡す中身も他より大きい。
       # ここだけは既定で有料にする（1pt = 0.01cr）
-      "canvas_edit" => 1
+      "canvas_edit" => 1,
+      # 「カードから作る」の提案。作るかどうかを決めるための下見なので既定は無料
+      "canvas_card_proposal" => 0
     }.freeze
 
     def daily_call_cap

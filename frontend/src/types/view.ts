@@ -101,6 +101,18 @@ export interface ViewEdge {
 // AI編集のモード。placed_only=いまある札だけ / select=手持ちから探して足す
 export type AiEditMode = 'placed_only' | 'select'
 
+/** 「カードから作る」の提案（まだ作られていない） */
+export interface CardProposal {
+  title: string
+  reason: string | null
+}
+
+export interface CardProposalResult {
+  proposals: CardProposal[]
+  notes: string | null
+  available_credits: number
+}
+
 // AI編集で何が変わったか
 export interface AiEditSummary {
   summary: string
@@ -113,6 +125,8 @@ export interface AiEditSummary {
 }
 
 export interface ViewDetail extends View {
+  /** 「カードから作る」で作られたぶん（その応答にだけ入る） */
+  created_cards?: { count: number; titles: string[] }
   items?: ViewItemPlacement[] // freeboard
   edges?: ViewEdge[] // freeboard
   space?: { id: string; name: string; space_type: string } | null // space_map

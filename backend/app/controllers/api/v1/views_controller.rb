@@ -8,7 +8,8 @@ module Api
 
       before_action :set_view, only: [
         :show, :update, :destroy, :add_item, :update_item, :remove_item, :reorder, :place_on_point, :clear_point,
-        :upload_cover, :remove_cover, :generate_cover, :ai_edit, :undo, :redo, :upload_background, :remove_background
+        :upload_cover, :remove_cover, :generate_cover, :ai_edit, :card_proposal, :create_cards,
+        :undo, :redo, :upload_background, :remove_background
       ]
 
       def index
@@ -160,6 +161,51 @@ module Api
       rescue KeyError, Faraday::Error => e
         Rails.logger.warn "[ViewsController#ai_edit] failed view_id=#{@view.id}: #{e.class}: #{e.message}"
         render json: { error: "AI編集に失敗しました。時間を置いて再度お試しください。" }, status: :unprocessable_entity
+      end
+
+      # POST /api/v1/views/:id/card_proposal
+      # 「カードから作る」の第1段階。案を出すだけで、まだ作らない。
+      # 作ると1枚1クレジット出ていくので、枚数を見てから決められるようにしている。
+      def card_proposal
+        result = Views::CardProposalService.call(
+          view: @view,
+          instruction: params.dig(:proposal, :instruction),
+          count: params.dig(:proposal, :count)
+        )
+
+        render json: {
+          proposals: result.proposals.map { |proposal| { title: proposal.title, reason: proposal.reason } },
+          notes: result.notes,
+          available_credits: current_user.available_credits
+        }
+      rescue Ai::Chat::LimitExceeded => e
+        render json: { error: e.message }, status: :too_many_requests
+      rescue Views::CardProposalService::ProposalError => e
+        render json: { error: e.message }, status: :unprocessable_entity
+      rescue Faraday::Error => e
+        Rails.logger.warn "[ViewsController#card_proposal] failed view_id=#{@view.id}: #{e.class}: #{e.message}"
+        render json: { error: "提案を作れませんでした。時間を置いて再度お試しください。" }, status: :unprocessable_entity
+      end
+
+      # POST /api/v1/views/:id/create_cards
+      # 承認された案だけを実際に作り、このキャンバスに載せる。
+      def create_cards
+        titles = Array(params[:titles]).map { |title| title.to_s.strip }.reject(&:blank?).uniq
+        return render json: { error: "作るカードを選んでください" }, status: :unprocessable_entity if titles.empty?
+        if titles.size > Views::CardProposalService::MAX_COUNT
+          return render json: { error: "一度に作れるのは #{Views::CardProposalService::MAX_COUNT} 枚までです" },
+                        status: :unprocessable_entity
+        end
+
+        Views::RevisionService.snapshot!(@view, label: "カード追加の前")
+        created = Views::CardCreationService.call(view: @view, titles: titles)
+        Views::RevisionService.snapshot!(@view.reload, label: "カード追加の後")
+
+        render json: serialize_view_detail(@view.reload).merge(
+          created_cards: { count: created.size, titles: created.map(&:title) }
+        )
+      rescue Items::CreateService::InsufficientCredits, Items::CreateService::ContentBlocked => e
+        render json: { error: e.message }, status: :unprocessable_entity
       end
 
       # POST /api/v1/views/:id/undo, /redo
