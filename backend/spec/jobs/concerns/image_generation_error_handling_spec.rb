@@ -103,20 +103,39 @@ RSpec.describe ImageGenerationErrorHandling do
   end
 
   describe "#notify_quota_exhausted" do
-    # テスト環境の cache_store は :null_store で間引きが検証できないため実体のあるストアに差し替える
-    before { allow(Rails).to receive(:cache).and_return(ActiveSupport::Cache::MemoryStore.new) }
-
     it "運営者向けに Sentry へ通知する" do
       expect(Sentry).to receive(:capture_message).with(/クォータ枯渇/, level: :error)
 
       handler.send(:notify_quota_exhausted, credit_exhausted_error)
     end
 
-    # 一括作成で枯渇すると件数ぶん飛ぶため
-    it "1時間に1回へ間引く" do
+    it "供給側の事象として記録する（管理画面が読む）" do
+      allow(Sentry).to receive(:capture_message)
+
+      expect { handler.send(:notify_quota_exhausted, credit_exhausted_error) }
+        .to change(ProviderIncident, :count).by(1)
+
+      incident = ProviderIncident.last
+      expect(incident.provider).to eq("openai")
+      expect(incident.kind).to eq(ProviderIncident::QUOTA_EXHAUSTED)
+      expect(incident.code).to include("credit_balance_exhausted")
+    end
+
+    # 一括作成で枯渇すると件数ぶん呼ばれる。行も通知も増やさない
+    it "続けて起きても通知は1回だけにする" do
       expect(Sentry).to receive(:capture_message).once
 
       3.times { handler.send(:notify_quota_exhausted, credit_exhausted_error) }
+
+      expect(ProviderIncident.count).to eq(1)
+      expect(ProviderIncident.first.occurrences).to eq(3)
+    end
+
+    # 失敗処理の中で呼ばれるので、ここで例外を出して本来の処理を壊してはいけない
+    it "記録に失敗しても例外を投げない" do
+      allow(ProviderIncident).to receive(:record!).and_raise(ActiveRecord::StatementInvalid, "boom")
+
+      expect { handler.send(:notify_quota_exhausted, credit_exhausted_error) }.not_to raise_error
     end
   end
 end

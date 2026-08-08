@@ -24,8 +24,6 @@ module ImageGenerationErrorHandling
   # content_policy_violation / safety system 等のマーカーを含む。
   CONTENT_POLICY_MARKERS = /moderation_blocked|content[_ ]?policy|safety system/i
 
-  QUOTA_ALERT_CACHE_KEY = "image_generation:quota_exhausted_alert"
-
   # 請求上限・クォータ枯渇。リトライしても回復せず運営者の対応が必要なエラーコード。
   # OpenAI は同じ事象を code と type の両方で表す（残高切れは
   # code=credit_balance_exhausted / type=insufficient_quota）ため、両方を突き合わせる。
@@ -75,15 +73,28 @@ module ImageGenerationErrorHandling
 
   # 運営者が気づけるようにする。ユーザー側の再試行では復旧せず、
   # 残高の補充が要るため、ログだけに残すと発覚が遅れる。
-  # 一括作成で枯渇すると件数ぶん飛ぶので、1時間に1回へ間引く。
+  #
+  # 記録は DB（provider_incidents）に置く。app と worker は別マシンで、
+  # 既定の file_store な Rails.cache はマシンをまたげないため、
+  # worker が検知した事象を管理画面から読めない。
+  # 通知は新規の発生だけに絞る（一括作成で件数ぶん飛ばさない）。
   def notify_quota_exhausted(error)
+    incident = ProviderIncident.record!(
+      provider: "openai",
+      kind: ProviderIncident::QUOTA_EXHAUSTED,
+      code: openai_error_codes(error).join(","),
+      message: error.message.to_s[0, 500]
+    )
     return unless defined?(Sentry)
-    return unless Rails.cache.write(QUOTA_ALERT_CACHE_KEY, true, unless_exist: true, expires_in: 1.hour)
+    return unless incident.occurrences == 1
 
     Sentry.capture_message(
-      "[画像生成] OpenAI のクォータ枯渇で生成を停止しました code=#{openai_error_codes(error).join(',')}",
+      "[画像生成] OpenAI のクォータ枯渇で生成を停止しました code=#{incident.code}",
       level: :error
     )
+  rescue StandardError => e
+    # 記録の失敗で本来の失敗処理を壊さない
+    Rails.logger.error "[ImageGeneration] クォータ枯渇の記録に失敗しました #{e.class}: #{e.message}"
   end
 
   # メッセージ本文・レスポンス本文のどちらかにポリシー違反マーカーがあれば true。

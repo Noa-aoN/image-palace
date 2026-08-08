@@ -133,6 +133,11 @@ class Rack::Attack
     req.ip if req.post? && req.path.match?(%r{\A/api/v1/items/[^/]+/scene_rewrite\z})
   end
 
+  # 供給側の疎通確認（OpenAI へ実際に1回投げる）。運営しか叩けないが、連打で外へ投げ続けないよう抑える
+  throttle("admin_provider_check/ip", limit: 10, period: 5.minutes) do |req|
+    req.ip if req.post? && req.path == "/api/v1/admin/provider_check"
+  end
+
   ### スロットル時のレスポンス ###
 
   # 429 を JSON で返す。フロントエンドが一貫してエラー表示できるようにする。

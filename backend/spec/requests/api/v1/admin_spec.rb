@@ -137,6 +137,66 @@ RSpec.describe "Api::V1::Admin", type: :request do
       expect(json_response["generation"]["cache_hit_rate"]).to eq(0.0)
       expect(json_response["billing"]["paid_rate"]).to be_a(Numeric)
     end
+
+    # 「いま何枚まで作れる設定なのか」を画面から確かめられるようにする
+    it "いま効いている上限を返す" do
+      get "/api/v1/admin/overview", headers: admin_headers
+
+      limits = json_response["limits"]
+      expect(limits["image"]["gate"]).to eq("credits")
+      expect(limits["image"]["trial_credits"]).to eq(Billing::Catalog::TRIAL_CREDITS)
+      expect(limits["image"]["monthly_free_credits"]).to eq(Billing::Catalog::MONTHLY_FREE_CREDITS)
+      expect(limits["image"]["plans"].map { |plan| plan["name"] }).to include("standard")
+      expect(limits["ai"]["daily_call_cap"]).to eq(Ai::UsageLimit.daily_call_cap)
+      expect(limits["ai"]["cost_points"].map { |row| row["kind"] }).to include("canvas_edit")
+    end
+
+    it "供給側の停止が無ければ ongoing は false" do
+      get "/api/v1/admin/overview", headers: admin_headers
+
+      expect(json_response["provider_status"]["ongoing"]).to be(false)
+      expect(json_response["provider_status"]["last_incident"]).to be_nil
+    end
+
+    it "クォータ枯渇を検知していれば継続中として返す" do
+      ProviderIncident.record!(provider: "openai", kind: ProviderIncident::QUOTA_EXHAUSTED, code: "credit_balance_exhausted")
+
+      get "/api/v1/admin/overview", headers: admin_headers
+
+      status = json_response["provider_status"]
+      expect(status["ongoing"]).to be(true)
+      expect(status["last_incident"]["code"]).to eq("credit_balance_exhausted")
+    end
+  end
+
+  describe "POST /api/v1/admin/provider_check" do
+    it "一般ユーザーには 403" do
+      post "/api/v1/admin/provider_check", headers: member_headers
+
+      expect(response).to have_http_status(:forbidden)
+    end
+
+    it "応答があれば ok を返す" do
+      allow(Admin::ProviderCheckService).to receive(:call)
+        .and_return(Admin::ProviderCheckService::Result.new(ok: true))
+
+      post "/api/v1/admin/provider_check", headers: admin_headers
+
+      expect(response).to have_http_status(:success)
+      expect(json_response["ok"]).to be(true)
+    end
+
+    it "残高切れなら理由を返し監査ログに残す" do
+      allow(Admin::ProviderCheckService).to receive(:call).and_return(
+        Admin::ProviderCheckService::Result.new(ok: false, code: "credit_balance_exhausted", message: "no credits")
+      )
+
+      expect { post "/api/v1/admin/provider_check", headers: admin_headers }
+        .to change(AdminAuditLog, :count).by(1)
+
+      expect(json_response["ok"]).to be(false)
+      expect(json_response["code"]).to eq("credit_balance_exhausted")
+    end
   end
 
   describe "未使用クレジット（これから出ていく約束）" do
