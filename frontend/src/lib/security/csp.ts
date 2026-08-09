@@ -9,19 +9,27 @@
  * 全て動的化するコストがあるため見送り）。その代わり **持ち出し経路** を絞ることを重視する。
  */
 
-/** API オリジン（画像の redirect 元にもなる） */
-const API_ORIGIN = 'https://image-palace-api.fly.dev'
+/**
+ * API オリジン（画像の redirect 元にもなる）。
+ *
+ * 独自ドメインへの移行中は**新旧の両方**を許可する。片方だけにすると、
+ * 切り替えの前後どちらかで通信が CSP に弾かれる。
+ * 移行が終わったら fly.dev の方を消す。
+ */
+const API_ORIGINS = ['https://image-palace-api.fly.dev', 'https://api.imagepalace.app']
 
 /**
  * 画像の実体配信元。
  *
- * 画像は API の `/rails/active_storage/blobs/redirect/...` が R2 の presigned URL へ 302 する。
+ * いまは API の `/rails/active_storage/blobs/redirect/...` が R2 の presigned URL へ 302 する。
  * CSP はリダイレクト後の URL も検査するため、**API と R2 の両方**を許可する必要がある。
  *
- * CDN_BASE_URL を有効化したら、その配信ホスト（例: https://cdn.example.com）をここに追加する。
- * 順序を誤ると画像が CSP でブロックされるため、CDN 切り替えより先にこの更新をデプロイすること。
+ * CDN（cdn.imagepalace.app）はここに**先に**入れておく。CDN_BASE_URL を設定した瞬間から
+ * 画像 URL がそちらへ変わるので、許可が後回しになると画像が一斉にブロックされる。
+ * 許可を広げるだけでは配信元は変わらないため、先に入れておいても副作用はない。
  */
-const IMAGE_ORIGINS = [API_ORIGIN, 'https://*.r2.cloudflarestorage.com']
+const CDN_ORIGIN = 'https://cdn.imagepalace.app'
+const IMAGE_ORIGINS = [...API_ORIGINS, CDN_ORIGIN, 'https://*.r2.cloudflarestorage.com']
 
 export function buildContentSecurityPolicy(): string {
   return [
@@ -32,7 +40,7 @@ export function buildContentSecurityPolicy(): string {
     // 認証トークンを持ち出せてしまう。外部画像ホストは実際に使っていないため自ホストに限定する。
     `img-src 'self' data: blob: ${IMAGE_ORIGINS.join(' ')}`,
     "font-src 'self' data:",
-    `connect-src 'self' ${API_ORIGIN} https://*.sentry.io https://cloudflareinsights.com https://*.google-analytics.com https://*.analytics.google.com`,
+    `connect-src 'self' ${API_ORIGINS.join(' ')} https://*.sentry.io https://cloudflareinsights.com https://*.google-analytics.com https://*.analytics.google.com`,
     // default-src 'self' へのフォールバックだと blob: の Worker が壊れるため明示する
     "worker-src 'self' blob:",
     "frame-ancestors 'none'",

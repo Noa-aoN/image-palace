@@ -25,6 +25,21 @@ describe('Content-Security-Policy', () => {
     expect(img).toContain('blob:')
   })
 
+  // CDN_BASE_URL を設定した瞬間に画像 URL が cdn へ変わる。
+  // 許可が後回しになると画像が一斉にブロックされるため、先に入れておく
+  it('img-src は CDN と新 API ドメインを許可する', () => {
+    const img = directive('img-src')
+    expect(img).toContain('https://cdn.imagepalace.app')
+    expect(img).toContain('https://api.imagepalace.app')
+  })
+
+  // 移行中に片方だけにすると、切り替えの前後どちらかで通信が弾かれる
+  it('移行中は新旧どちらの API ドメインも許可する', () => {
+    const connect = directive('connect-src')
+    expect(connect).toContain('https://image-palace-api.fly.dev')
+    expect(connect).toContain('https://api.imagepalace.app')
+  })
+
   it('通信先を絞る（connect-src に裸の https: を含めない）', () => {
     const connect = directive('connect-src')
     expect(connect.split(' ')).not.toContain('https:')
