@@ -62,8 +62,11 @@ module Views
       "grid" => "格子状に並べる。行と列を揃え、まとまりごとに行を分ける。"
     }.freeze
 
-    # 線とカードの大きさを、AI に触らせるかどうか
-    EDGE_MODES = %w[rebuild keep].freeze
+    # 線とカードの大きさを、AI に触らせるかどうか。
+    # infer は「指示に書かれていなくても、カードの意味を読んで関係を見つけて結ぶ」
+    EDGE_MODES = %w[rebuild keep infer].freeze
+    # 関係を読み取るときは、意味の抜粋を長めに渡す（60文字では関係の判断に足りない）
+    MEANING_EXCERPT_FOR_INFER = 160
     SIZE_MODES = %w[ai keep].freeze
 
     def self.call(view:, instruction:, mode: DEFAULT_MODE, layout: nil, edges: nil, sizing: nil)
@@ -242,18 +245,35 @@ module Views
 
         ## その他
         - remove はボードから外すだけで、カードそのものは消えません。
-        - 指示に無いことはしないこと。
+        #{@edge_mode == 'infer' ? '- 線については、指示に無くても関係を読み取って引くこと（上の規則が優先）。' : '- 指示に無いことはしないこと。'}
         - 内容に事実として疑わしい点や、図にする上で明らかに欠けている観点があれば notes に日本語で書くこと。
           ただし推測で断定しない。確証が持てないことは「確認できない」と書く。
       PROMPT
+    end
+
+    # 関係を読み取るときは、意味をもう少し長く見せる。短すぎると関係が判断できない
+    def meaning_limit
+      @edge_mode == "infer" ? MEANING_EXCERPT_FOR_INFER : MEANING_EXCERPT
     end
 
     # 画面で選んだ方針を規則として足す。指示文に混ぜず、規則の側に置く
     def option_rules
       rules = []
       rules << "## 並べ方の指定\n- #{LAYOUT_RULES[@layout]}" if LAYOUT_RULES.key?(@layout)
-      if @edge_mode == "keep"
+      case @edge_mode
+      when "keep"
         rules << "## 線\n- 線は触らない。edges は空配列で返すこと（いまある線をそのまま残す）。"
+      when "infer"
+        rules << <<~INFER.strip
+          ## 線（関係を読み取る）
+          - **指示に書かれていなくても、カードの意味・説明を読んで関係を見つけ、線で結ぶこと。**
+            並べ替えだけで終わらせない。
+          - 探す関係の例: 原因と結果 / 上位と下位（分類・包含）/ 対比・反対 / 時系列・順序 /
+            手段と目的 / 部分と全体 / 具体例
+          - label にその関係を短く書く（「原因」「下位」「対して」「次に」など）。
+          - 関係が読み取れないカードは無理に結ばない。**根拠のない線は引かないこと。**
+          - 迷ったものは notes に「この2枚は関係があるかもしれない」と書き、線にはしない。
+        INFER
       end
       if @size_mode == "keep"
         rules << "## 大きさ\n- カードの大きさは変えない。placements に width / height を書かないこと。"
@@ -297,7 +317,7 @@ module Views
 
     def placed_line(view_item)
       title = sanitize(view_item.item&.title, limit: 100)
-      meaning = sanitize(view_item.item&.primary_meaning&.definition, limit: MEANING_EXCERPT)
+      meaning = sanitize(view_item.item&.primary_meaning&.definition, limit: meaning_limit)
       note = meaning.present? ? "／#{meaning}" : ""
       if @view.deck?
         "- #{view_item.item_id}: #{title}#{note}（現在#{view_item.position || '-'}番目）"
@@ -308,7 +328,7 @@ module Views
     end
 
     def candidate_line(item)
-      meaning = sanitize(item.primary_meaning&.definition, limit: MEANING_EXCERPT)
+      meaning = sanitize(item.primary_meaning&.definition, limit: meaning_limit)
       "- #{item.id}: #{sanitize(item.title, limit: 100)}#{meaning.present? ? "／#{meaning}" : ''}"
     end
 

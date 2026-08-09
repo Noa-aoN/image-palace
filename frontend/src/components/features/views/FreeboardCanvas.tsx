@@ -689,7 +689,7 @@ function Canvas({ viewId, viewName, initialItems, initialEdges }: FreeboardCanva
           ref={boardRef}
           className="relative h-[72vh] w-full overflow-hidden rounded-xl border border-border bg-center bg-cover"
           style={{
-            backgroundColor: boardSettings.bg_color || 'var(--ivory-dark)',
+            backgroundColor: boardSettings.bg_color || 'var(--board-bg)',
             ...(backgroundImageUrl ? { backgroundImage: `url("${backgroundImageUrl}")` } : {}),
           }}
         >

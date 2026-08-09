@@ -157,6 +157,21 @@ RSpec.describe Views::AiEditService do
         expect(placement.x).to eq(100)
       end
 
+      # 並べ替えだけで終わらず、意味から関係を見つけて結んでほしいという要望
+      it "関係を読み取る指定なら、その規則を足して意味を長めに渡す" do
+        stub_plan({})
+
+        described_class.call(view: view, instruction: "整えて", edges: "infer")
+
+        expect(Ai::Chat).to have_received(:call) do |args|
+          system = args[:messages].first[:content]
+          expect(system).to include("関係を読み取る")
+          expect(system).to include("原因と結果")
+          # 「指示に無いことはしない」は打ち消す（打ち消さないと線を引かない）
+          expect(system).not_to include("- 指示に無いことはしないこと。\n")
+        end
+      end
+
       it "並べ方を指定すると、その規則を指示に足す" do
         stub_plan({})
 

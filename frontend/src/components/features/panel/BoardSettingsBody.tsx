@@ -8,9 +8,9 @@ import { cn } from '@/lib/utils'
 import type { BoardSettings } from '@/types/view'
 
 const BG_COLORS = [
-  { label: '既定', value: '' },
+  { label: '既定（白系）', value: '' },
   { label: 'クリーム', value: '#f4efe6' },
-  { label: '白', value: '#ffffff' },
+  { label: '純白', value: '#ffffff' },
   { label: 'グレー', value: '#e9e9ec' },
   { label: 'ダーク', value: '#2a2a2e' },
   { label: '黒板', value: '#2f4030' },
@@ -70,7 +70,7 @@ export function BoardSettingsBody() {
               onClick={() => patch({ bg_color: c.value || undefined })}
               aria-label={c.label}
               className={cn('h-7 w-7 rounded-full border-2', bgColor === c.value ? 'border-foreground' : 'border-border')}
-              style={{ backgroundColor: c.value || 'var(--ivory-dark)' }}
+              style={{ backgroundColor: c.value || 'var(--board-bg)' }}
             />
           ))}
         </div>
