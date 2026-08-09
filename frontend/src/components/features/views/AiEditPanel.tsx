@@ -8,7 +8,7 @@ import { Spinner } from '@/components/ui/spinner'
 import { PanelSlotContent } from '@/components/features/panel/PanelSlot'
 import { usePanelForm } from '@/components/features/panel/usePanelForm'
 import { aiEditView, createCardsOnView, proposeCards, redoView, undoView } from '@/lib/api/views'
-import type { AiEditMode, AiEditSummary, CardProposal, ViewDetail } from '@/types/view'
+import type { AiEditMode, AiEditSummary, CardEdge, CardProposal, CardReuse, ViewDetail } from '@/types/view'
 
 const PANEL_KEY = 'canvas-ai-edit'
 const MAX_INSTRUCTION = 500
@@ -73,6 +73,9 @@ export function AiEditPanel({
   const [chosen, setChosen] = useState<Set<string>>(new Set())
   const [credits, setCredits] = useState<number | null>(null)
   const [plan, setPlan] = useState<string | null>(null)
+  // 手持ちから組み込むもの（作らないのでクレジットは要らない）と、図のつながり
+  const [reuse, setReuse] = useState<CardReuse[]>([])
+  const [edges, setEdges] = useState<CardEdge[]>([])
   const [createdCount, setCreatedCount] = useState<number | null>(null)
   const [arranged, setArranged] = useState(false)
 
@@ -88,6 +91,8 @@ export function AiEditPanel({
       const result = await proposeCards(viewId, trimmed)
       setProposals(result.proposals)
       setPlan(result.plan)
+      setReuse(result.reuse)
+      setEdges(result.edges)
       setChosen(new Set(result.proposals.map((p) => p.title)))
       setCredits(result.available_credits)
       if (result.proposals.length === 0) setError('足すべきカードは見つかりませんでした。')
@@ -104,13 +109,20 @@ export function AiEditPanel({
     setBusy('create')
     setError(null)
     try {
-      // 指示も一緒に渡す。作っただけでは部品が積み上がるだけなので、図として組み上げてもらう
-      const updated = await createCardsOnView(viewId, [...chosen], instruction.trim())
+      // 承認した設計をそのまま渡す。指示文だけ渡し直すと、AI が一から考え直して別の図になる
+      const updated = await createCardsOnView(viewId, [...chosen], {
+        instruction: instruction.trim(),
+        reuseIds: reuse.map((row) => row.id),
+        plan,
+        edges,
+      })
       onApplied(updated)
       setCreatedCount(updated.created_cards?.count ?? chosen.size)
       setArranged(updated.created_cards?.arranged ?? false)
       setProposals(null)
       setPlan(null)
+      setReuse([])
+      setEdges([])
       setChosen(new Set())
     } catch (err: unknown) {
       const e = err as { response?: { data?: { error?: string } } }
@@ -310,6 +322,29 @@ export function AiEditPanel({
                   </li>
                 ))}
               </ul>
+
+              {reuse.length > 0 && (
+                <div className="rounded border border-border/60 bg-background/60 px-2 py-1.5">
+                  <p className="text-xs font-medium">手持ちから使う（{reuse.length}件・クレジット不要）</p>
+                  <p className="mt-0.5 text-xs text-muted-foreground">
+                    {reuse.map((row) => row.title).join('、')}
+                  </p>
+                </div>
+              )}
+
+              {edges.length > 0 && (
+                <details className="rounded border border-border/60 bg-background/60 px-2 py-1.5">
+                  <summary className="cursor-pointer text-xs font-medium">つなぐ組み合わせ（{edges.length}本）</summary>
+                  <ul className="mt-1 space-y-0.5 text-xs text-muted-foreground">
+                    {edges.map((edge) => (
+                      <li key={`${edge.from}-${edge.to}`}>
+                        {edge.from} → {edge.to}
+                        {edge.label && `（${edge.label}）`}
+                      </li>
+                    ))}
+                  </ul>
+                </details>
+              )}
 
               <p className="text-xs text-muted-foreground">
                 {chosen.size} 枚を作ります（{chosen.size} クレジット使います

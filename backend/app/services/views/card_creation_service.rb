@@ -14,6 +14,23 @@ module Views
       new(view:, titles:).call
     end
 
+    # 手持ちのカードを図に載せる。新しく作らないのでクレジットは要らない。
+    # 他人のカードを載せられないよう、必ず本人のものに絞ってから引く
+    def self.attach_existing!(view:, item_ids:)
+      ids = Array(item_ids).map(&:to_s).uniq
+      return [] if ids.empty?
+
+      items = view.user.items.where(id: ids).to_a
+      items.reject { |item| view.view_items.exists?(item_id: item.id) }.each do |item|
+        view.view_items.create!(
+          item: item,
+          position: (view.view_items.maximum(:position) || 0) + 1,
+          x: 0,
+          y: 0
+        )
+      end
+    end
+
     def initialize(view:, titles:)
       @view = view
       @user = view.user

@@ -175,6 +175,9 @@ module Api
 
         render json: {
           proposals: result.proposals.map { |proposal| { title: proposal.title, reason: proposal.reason } },
+          # 手持ちから図に組み込むもの。作らないのでクレジットは要らない
+          reuse: result.reuse.map { |row| { id: row.id, title: row.title, reason: row.reason } },
+          edges: result.edges.map { |edge| { from: edge.from, to: edge.to, label: edge.label } },
           plan: result.plan,
           available_credits: current_user.available_credits
         }
@@ -191,7 +194,11 @@ module Api
       # 承認された案だけを実際に作り、このキャンバスに載せる。
       def create_cards
         titles = Array(params[:titles]).map { |title| title.to_s.strip }.reject(&:blank?).uniq
-        return render json: { error: "作るカードを選んでください" }, status: :unprocessable_entity if titles.empty?
+        reuse_ids = Array(params[:reuse_ids]).map(&:to_s).uniq
+        # 手持ちを載せるだけ（新規作成なし）も正しい使い方なので、両方空のときだけ弾く
+        if titles.empty? && reuse_ids.empty?
+          return render json: { error: "作るカードを選んでください" }, status: :unprocessable_entity
+        end
         if titles.size > Views::CardProposalService::MAX_COUNT
           return render json: { error: "一度に作れるのは #{Views::CardProposalService::MAX_COUNT} 枚までです" },
                         status: :unprocessable_entity
@@ -199,12 +206,17 @@ module Api
 
         Views::RevisionService.snapshot!(@view, label: "カード追加の前")
         created = Views::CardCreationService.call(view: @view, titles: titles)
-        # 作っただけでは部品が積み上がっただけ。指示があれば、そのまま図として組み上げる
-        arranged = arrange_after_create(params[:instruction])
+        # 手持ちから図に組み込むぶん。作らないのでクレジットは減らない
+        reused = Views::CardCreationService.attach_existing!(view: @view, item_ids: reuse_ids)
+        # 作っただけでは部品が積み上がっただけ。設計どおりに配置・線つなぎまで行う
+        arranged = arrange_after_create(params[:instruction], params[:plan], params[:edges])
         Views::RevisionService.snapshot!(@view.reload, label: "カード追加の後")
 
         render json: serialize_view_detail(@view.reload).merge(
-          created_cards: { count: created.size, titles: created.map(&:title), arranged: arranged }
+          created_cards: {
+            count: created.size, titles: created.map(&:title),
+            reused: reused.size, arranged: arranged
+          }
         )
       rescue Items::CreateService::InsufficientCredits, Items::CreateService::ContentBlocked => e
         render json: { error: e.message }, status: :unprocessable_entity
@@ -212,14 +224,38 @@ module Api
 
       # 作ったカードを図として組み上げる。ここが失敗しても、カードは既に作られているので
       # 例外にはしない（作成そのものは成功しているため）。
-      def arrange_after_create(instruction)
+      # 提案のときに決めた設計（完成図の説明・つながり）を配置へ引き継ぐ。
+      # 指示文だけを渡し直すと、AI が設計を一から考え直して別の図になる
+      def arrange_after_create(instruction, plan, edges)
         return false if instruction.blank?
 
-        Views::AiEditService.call(view: @view.reload, instruction: instruction.to_s, mode: "placed_only")
+        Views::AiEditService.call(
+          view: @view.reload,
+          instruction: [ instruction.to_s, design_note(plan, edges) ].compact.join("\n\n"),
+          mode: "placed_only"
+        )
         true
       rescue StandardError => e
         Rails.logger.warn "[ViewsController#create_cards] 配置に失敗 view_id=#{@view.id}: #{e.class}: #{e.message}"
         false
+      end
+
+      # 承認した設計を、配置の指示に添える形にする
+      def design_note(plan, edges)
+        lines = []
+        lines << "完成図の設計: #{plan}" if plan.present?
+
+        pairs = Array(edges).filter_map do |edge|
+          from = edge.is_a?(ActionController::Parameters) || edge.is_a?(Hash) ? edge[:from] || edge["from"] : nil
+          to = edge.is_a?(ActionController::Parameters) || edge.is_a?(Hash) ? edge[:to] || edge["to"] : nil
+          label = edge.is_a?(ActionController::Parameters) || edge.is_a?(Hash) ? edge[:label] || edge["label"] : nil
+          next if from.blank? || to.blank?
+
+          label.present? ? "#{from} → #{to}（#{label}）" : "#{from} → #{to}"
+        end
+        lines << "つなぐ組み合わせ:\n#{pairs.join("\n")}" if pairs.any?
+
+        lines.presence&.join("\n")
       end
 
       # POST /api/v1/views/:id/undo, /redo

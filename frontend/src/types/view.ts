@@ -107,8 +107,24 @@ export interface CardProposal {
   reason: string | null
 }
 
+/** 手持ちから図に組み込むカード（作らないのでクレジットは要らない） */
+export interface CardReuse {
+  id: string
+  title: string
+  reason: string | null
+}
+
+/** 図のつながり。承認前に見せ、作成後の配置にも渡す */
+export interface CardEdge {
+  from: string
+  to: string
+  label: string | null
+}
+
 export interface CardProposalResult {
   proposals: CardProposal[]
+  reuse: CardReuse[]
+  edges: CardEdge[]
   /** フリーボードのとき、これから作る完成図の説明 */
   plan: string | null
   available_credits: number
@@ -127,7 +143,7 @@ export interface AiEditSummary {
 
 export interface ViewDetail extends View {
   /** 「カードから作る」で作られたぶん（その応答にだけ入る） */
-  created_cards?: { count: number; titles: string[]; arranged: boolean }
+  created_cards?: { count: number; titles: string[]; reused: number; arranged: boolean }
   items?: ViewItemPlacement[] // freeboard
   edges?: ViewEdge[] // freeboard
   space?: { id: string; name: string; space_type: string } | null // space_map
