@@ -32,6 +32,7 @@ module Billing
         until: @now,
         days: day_range.size,
         ai: ai_summary,
+        images: images_summary,
         credits: credits_summary,
         items: items_summary
       }
@@ -69,6 +70,28 @@ module Billing
         used_today: AiUsage.where(user_id: @user.id).since(24.hours.ago).count,
         by_kind: by_kind,
         daily: daily_counts(AiUsage.where(user_id: @user.id))
+      }
+    end
+
+    # 画像の生成。文章側と違い、キャッシュで済んだぶんも「作った」に数える
+    # （API は呼んでいなくてもクレジットは同じだけ消費しているため）。
+    # 内訳の cached はその枚数で、原価が掛かっていないことの説明に使う。
+    def images_summary
+      scope = ImageUsage.where(user_id: @user.id).since(since)
+      rows = scope.group(:kind).pluck(
+        Arel.sql("kind"),
+        Arel.sql("COUNT(*)"),
+        Arel.sql("COUNT(*) FILTER (WHERE cached)")
+      )
+      by_kind = rows.map { |kind, count, cached|
+        { kind: kind, label: ImageUsage.label_for(kind), count: count, cached: cached }
+      }.sort_by { |row| -row[:count] }
+
+      {
+        total_count: by_kind.sum { |row| row[:count] },
+        cached_count: by_kind.sum { |row| row[:cached] },
+        by_kind: by_kind,
+        daily: daily_counts(ImageUsage.where(user_id: @user.id))
       }
     end
 

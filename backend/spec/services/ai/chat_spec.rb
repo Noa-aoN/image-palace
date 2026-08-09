@@ -45,7 +45,7 @@ RSpec.describe Ai::Chat do
     expect(usage.model).to eq("gpt-4o-mini")
     expect(usage.prompt_tokens).to eq(120)
     expect(usage.completion_tokens).to eq(30)
-    expect(usage.cost_points).to eq(0)
+    expect(usage.cost_points).to eq(1)
   end
 
   it "usage が無い応答でも記録は残す（0 トークン扱い）" do
@@ -80,6 +80,19 @@ RSpec.describe Ai::Chat do
     expect {
       described_class.call(kind: "meaning", user: user, model: "gpt-4o-mini", messages: messages)
     }.not_to raise_error
+  end
+
+  # 以前は課金と記録が同じ rescue の中にあり、課金が落ちると記録ごと消えていた。
+  # 取りこぼしたことすら分からなくなるので、記録だけは必ず残す
+  it "課金に失敗しても生成は通し、記録は 0pt で残す" do
+    stub_client(response)
+    allow(Ai::UsageLimit).to receive(:charge!).and_raise(User::InsufficientCredits)
+
+    expect {
+      described_class.call(kind: "meaning", user: user, model: "gpt-4o-mini", messages: messages)
+    }.to change(AiUsage, :count).by(1)
+
+    expect(AiUsage.last.cost_points).to eq(0)
   end
 
   it "ユーザーが分からない呼び出しでも記録は残す" do

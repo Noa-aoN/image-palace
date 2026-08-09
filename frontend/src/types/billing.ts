@@ -62,6 +62,14 @@ export interface AiUsageRow {
   credits: number
 }
 
+export interface ImageUsageRow {
+  kind: string
+  label: string
+  count: number
+  /** そのうちキャッシュで済んだ枚数。クレジットは消費しているが生成はしていない */
+  cached: number
+}
+
 export interface UsageSummary {
   period: UsagePeriod
   period_label: string
@@ -78,12 +86,18 @@ export interface UsageSummary {
     by_kind: AiUsageRow[]
     daily: UsageSeriesPoint[]
   }
+  images: {
+    total_count: number
+    cached_count: number
+    by_kind: ImageUsageRow[]
+    daily: UsageSeriesPoint[]
+  }
   credits: { consumed: number; daily: UsageSeriesPoint[] }
   items: { created: number; daily: UsageSeriesPoint[] }
 }
 
 /** 推移グラフで選べる対象 */
-export type UsageMetric = 'credits' | 'items' | 'ai'
+export type UsageMetric = 'credits' | 'items' | 'ai' | 'images'
 
 export const USAGE_METRICS: Record<
   UsageMetric,
@@ -91,7 +105,8 @@ export const USAGE_METRICS: Record<
 > = {
   credits: { label: 'クレジット消費', unit: ' cr', pick: (u) => u.credits.daily },
   items: { label: 'カード作成', unit: ' 枚', pick: (u) => u.items.daily },
-  ai: { label: 'AI利用', unit: ' 回', pick: (u) => u.ai.daily },
+  ai: { label: '文章のAI', unit: ' 回', pick: (u) => u.ai.daily },
+  images: { label: '画像の生成', unit: ' 枚', pick: (u) => u.images.daily },
 }
 
 // クレジットの増減の明細（バックエンド /api/v1/billing/credit_transactions に対応）

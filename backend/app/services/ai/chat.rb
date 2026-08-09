@@ -31,7 +31,7 @@ module Ai
       Ai::UsageLimit.ensure_allowed!(user: @user, kind: @kind)
 
       response = client.chat(parameters: parameters)
-      record!(response)
+      record!(response, charge!)
       response
     end
 
@@ -48,10 +48,22 @@ module Ai
       { model: @model, messages: @messages }.merge(@options.except(:request_timeout))
     end
 
-    # 記録と課金。ここで転ぶと生成そのものが無駄になるので、失敗してもログだけ残して通す。
-    def record!(response)
+    # 課金。呼び出す前に ensure_allowed! で残高を見ているので、ここまで来て落ちるのは
+    # 同時実行で残高が減った場合くらい。そのときも生成は返す（API 代は既に払っていて、
+    # 利用者は結果を受け取っている）。取りこぼしはログと ai_usages の 0pt に残る。
+    #
+    # 記録と分けているのは、以前ここが記録と同じ rescue の中にあり、
+    # **課金が落ちると記録ごと消えて**、取りこぼしたことすら分からなかったため。
+    def charge!
+      Ai::UsageLimit.charge!(user: @user, kind: @kind)
+    rescue StandardError => e
+      Rails.logger.warn "[Ai::Chat] CHARGE FAILED kind=#{@kind} user_id=#{@user&.id} #{e.class}: #{e.message}"
+      0
+    end
+
+    # 記録。ここで転んでも生成そのものは無駄にしない（ログだけ残して通す）。
+    def record!(response, cost)
       usage = response["usage"] || {}
-      cost = Ai::UsageLimit.charge!(user: @user, kind: @kind)
 
       AiUsage.create!(
         user: @user,

@@ -9,43 +9,52 @@ module Ai
   #    事故（無限ループ・自動化・連打）で青天井にならないための1日の回数上限。
   #    商品としての制限ではないので、普通に使う限り当たらない値にする。
   #
-  # 2. 課金（既定は無料）
+  # 2. 課金
   #    種類ごとに 1 回あたりのポイントを設定できる（1cr = 100pt なので 1pt = 0.01cr）。
-  #    実際にいくら掛かっているかは ai_usages に貯まるので、それを見てから値を決められるよう
-  #    既定は全て 0 にしてある。ENV で有効にすると、その時点から課金が始まる。
+  #    値決めのため当初は全て 0（無料）にしていたが、ai_usages に実績が貯まったので
+  #    **一律 1pt = 0.01cr** にした。無料枠の 1cr でも 100 回使える額で、
+  #    「AI を使ったのに何も減っていない」状態を無くすことを優先している。
+  #    種類ごとの重さの差（トークン量）は、必要になったら ENV で個別に上げる。
   module UsageLimit
     module_function
 
     # 1日（24時間）あたりの呼び出し上限。0 以下で無効
     DEFAULT_DAILY_CALL_CAP = 300
 
-    # 種類ごとの既定コスト（ポイント）。実測を見てから決めるため、いまは全て無料
+    # 呼び出し1回あたりの既定コスト（ポイント）。1pt = 0.01cr。
+    #
+    # 一律にしているのは、種類ごとに差を付ける根拠がまだ無いため。
+    # トークン量には数倍の開きがあるが、いずれも画像1枚（100pt）とは桁が違う。
+    # 実績を見て重い種類が分かったら、ここか ENV で個別に上げる。
+    UNIT_COST_POINTS = 1
+
     DEFAULT_COST_POINTS = {
-      "meaning" => 0,
-      "tags" => 0,
-      "brief" => 0,
-      "scene_rewrite" => 0,
-      "fill_properties" => 0,
-      "fact_check" => 0,
-      "words_generate" => 0,
-      "words_check" => 0,
-      # キャンバス編集は何度でも押せて、渡す中身も他より大きい。
-      # ここだけは既定で有料にする（1pt = 0.01cr）
-      "canvas_edit" => 1,
-      # 「カードから作る」の提案。作るかどうかを決めるための下見なので既定は無料
-      "canvas_card_proposal" => 0
+      "meaning" => UNIT_COST_POINTS,
+      "tags" => UNIT_COST_POINTS,
+      "brief" => UNIT_COST_POINTS,
+      "scene_rewrite" => UNIT_COST_POINTS,
+      "fill_properties" => UNIT_COST_POINTS,
+      "fact_check" => UNIT_COST_POINTS,
+      "words_generate" => UNIT_COST_POINTS,
+      "words_check" => UNIT_COST_POINTS,
+      "canvas_edit" => UNIT_COST_POINTS,
+      "canvas_card_proposal" => UNIT_COST_POINTS
     }.freeze
 
     def daily_call_cap
       ENV.fetch("AI_DAILY_CALL_CAP", DEFAULT_DAILY_CALL_CAP.to_s).to_i
     end
 
-    # 種類ごとのコスト。ENV（AI_COST_FACT_CHECK=1 など）で上書きできる
+    # 種類ごとのコスト。ENV（AI_COST_FACT_CHECK=2 など）で上書きできる。
+    #
+    # 表に無い種類も既定で課金する。無料にしたいときは ENV で明示的に 0 を置くこと。
+    # 新しい呼び出しを足して表への追加を忘れると、気づかないまま無料で回り続ける。
+    # 取りこぼしより、気づける方に倒す。
     def cost_points(kind)
       from_env = ENV["AI_COST_#{kind.to_s.upcase}"]
       return from_env.to_i if from_env.present?
 
-      DEFAULT_COST_POINTS.fetch(kind.to_s, 0)
+      DEFAULT_COST_POINTS.fetch(kind.to_s, UNIT_COST_POINTS)
     end
 
     # 呼び出してよいかを確かめる。駄目なら LimitExceeded を投げる
