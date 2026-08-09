@@ -34,6 +34,14 @@ const LAYOUTS: { value: AiEditLayout; label: string }[] = [
 // 「触らない」を2つ手で選ばせるより、押したボタンで範囲が決まる方が迷わない
 type EditScope = 'all' | 'cards' | 'edges' | 'layout'
 
+// 実行の結果に、どこまでが対象だったかを添える
+const SCOPE_LABELS: Record<EditScope, string> = {
+  all: 'カード・線・配置をまとめて整えました',
+  cards: 'カードだけ整えました（線と配置はそのまま）',
+  edges: '線だけ整えました（カードと配置はそのまま）',
+  layout: '配置だけ整えました（カードと線はそのまま）',
+}
+
 const PANEL_KEY = 'canvas-ai-edit'
 const MAX_INSTRUCTION = 500
 
@@ -92,6 +100,9 @@ export function AiEditPanel({
   const [busy, setBusy] = useState<'edit' | 'undo' | 'redo' | 'propose' | 'create' | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [result, setResult] = useState<AiEditSummary | null>(null)
+  // いま何を実行しているか／何を実行した結果か。どこまで変わるのかを迷わせないため
+  const [runningScope, setRunningScope] = useState<EditScope | null>(null)
+  const [doneScope, setDoneScope] = useState<EditScope | null>(null)
   // 提案（まだ作っていない）と、そのうち作るものの選択
   const [proposals, setProposals] = useState<CardProposal[] | null>(null)
   const [chosen, setChosen] = useState<Set<string>>(new Set())
@@ -185,19 +196,23 @@ export function AiEditPanel({
     const trimmed = instruction.trim()
     if (!trimmed || busy) return
     setBusy('edit')
+    setRunningScope(scope)
     setError(null)
     setResult(null)
+    setDoneScope(null)
     try {
       // 線や配置だけを整えるときは、カードを足さない（範囲の外なので）
       const editMode: AiEditMode = scope === 'all' || scope === 'cards' ? (mode as AiEditMode) : 'placed_only'
       const updated = await aiEditView(viewId, trimmed, editMode, optionsFor(scope))
       setResult(updated.ai_edit ?? null)
+      setDoneScope(scope)
       onApplied(updated)
     } catch (err: unknown) {
       const e = err as { response?: { data?: { error?: string } } }
       setError(e?.response?.data?.error ?? '編集できませんでした。時間を置いてお試しください。')
     } finally {
       setBusy(null)
+      setRunningScope(null)
     }
   }
 
@@ -296,7 +311,12 @@ export function AiEditPanel({
             description="どのカードを使うか・大きさ"
             action={
               viewType === 'freeboard' && mode !== 'create' ? (
-                <RunButton label="カードを整える" busy={busy === 'edit'} disabled={!canRun} onClick={() => run('cards')} />
+                <RunButton
+                  label="カードだけ整える"
+                  busy={runningScope === 'cards'}
+                  disabled={!canRun}
+                  onClick={() => run('cards')}
+                />
               ) : undefined
             }
           >
@@ -329,7 +349,14 @@ export function AiEditPanel({
               <Section
                 title="線"
                 description="どうつなぐか"
-                action={<RunButton label="線を整える" busy={busy === 'edit'} disabled={!canRun} onClick={() => run('edges')} />}
+                action={
+                  <RunButton
+                    label="線だけ整える"
+                    busy={runningScope === 'edges'}
+                    disabled={!canRun}
+                    onClick={() => run('edges')}
+                  />
+                }
               >
                 <Choice
                   options={[
@@ -356,7 +383,14 @@ export function AiEditPanel({
               <Section
                 title="全体・配置"
                 description="どう並べるか"
-                action={<RunButton label="配置を整える" busy={busy === 'edit'} disabled={!canRun} onClick={() => run('layout')} />}
+                action={
+                  <RunButton
+                    label="配置だけ整える"
+                    busy={runningScope === 'layout'}
+                    disabled={!canRun}
+                    onClick={() => run('layout')}
+                  />
+                }
               >
                 <Choice
                   options={[
@@ -388,10 +422,19 @@ export function AiEditPanel({
               ? busy === 'propose'
                 ? '考え中…'
                 : '作るカードを提案してもらう'
-              : busy === 'edit'
-                ? '編集中…'
-                : '整える'}
+              : runningScope === 'all'
+                ? 'すべて整えています…'
+                : viewType === 'freeboard'
+                  ? 'すべて整える（カード・線・配置）'
+                  : '整える'}
           </Button>
+
+          {/* どこまでが変わるのかを、実行の前後で分かるようにする */}
+          {viewType === 'freeboard' && mode !== 'create' && !runningScope && !result && (
+            <p className="text-center text-[11px] text-muted-foreground">
+              各項目の「〜だけ整える」を押すと、その項目だけが変わります。
+            </p>
+          )}
 
           {/* 提案の確認。作ると1枚1クレジット出ていくので、枚数を見せてから決めてもらう */}
           {proposals && (proposals.length > 0 || reuse.length > 0) && (
@@ -515,6 +558,7 @@ export function AiEditPanel({
 
           {result && (
             <div className="rounded-lg border border-border bg-muted/30 px-3 py-2">
+              <p className="text-xs text-muted-foreground">{SCOPE_LABELS[doneScope ?? 'all']}</p>
               <p className="text-sm">{result.summary}</p>
               <p className="mt-1 text-xs text-muted-foreground">
                 追加 {result.added} / 取り外し {result.removed} / 配置 {result.placed}
