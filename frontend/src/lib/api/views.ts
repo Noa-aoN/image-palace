@@ -1,5 +1,5 @@
 import { apiClient } from './client'
-import type { AiEditMode, CardProposalResult, View, ViewDetail, ViewItemPlacement, ViewEdge, SpaceMapPoint, BoardSettings } from '@/types/view'
+import type { AiEditMode, CardEdge, CardProposalResult, View, ViewDetail, ViewItemPlacement, ViewEdge, SpaceMapPoint, BoardSettings } from '@/types/view'
 import type { CoverType } from '@/types/cover'
 
 // freeboard の接続線 API の入力
@@ -228,11 +228,14 @@ export async function proposeCards(
 export async function createCardsOnView(
   id: string,
   titles: string[],
-  instruction?: string
+  options?: { instruction?: string; reuseIds?: string[]; plan?: string | null; edges?: CardEdge[] }
 ): Promise<ViewDetail> {
   const res = await apiClient.post<ViewDetail>(`/api/v1/views/${id}/create_cards`, {
     titles,
-    ...(instruction ? { instruction } : {}),
+    ...(options?.reuseIds?.length ? { reuse_ids: options.reuseIds } : {}),
+    ...(options?.instruction ? { instruction: options.instruction } : {}),
+    ...(options?.plan ? { plan: options.plan } : {}),
+    ...(options?.edges?.length ? { edges: options.edges } : {}),
   })
   return res.data
 }
