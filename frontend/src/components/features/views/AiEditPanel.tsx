@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, type ReactNode } from 'react'
 import { Wand2, Undo2, Redo2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -29,6 +29,10 @@ const LAYOUTS: { value: AiEditLayout; label: string }[] = [
   { value: 'flow', label: '流れ（左→右）' },
   { value: 'grid', label: '格子' },
 ]
+
+// どこまで整えるか。ジャンル別に実行できるようにし、選ばなかったものは触らない。
+// 「触らない」を2つ手で選ばせるより、押したボタンで範囲が決まる方が迷わない
+type EditScope = 'all' | 'cards' | 'edges' | 'layout'
 
 const PANEL_KEY = 'canvas-ai-edit'
 const MAX_INSTRUCTION = 500
@@ -106,7 +110,8 @@ export function AiEditPanel({
   const [arranged, setArranged] = useState(false)
 
   // 「カードから作る」は提案を出すだけ。作るのは確認したあと
-  const propose = async () => {
+  // 「作る」も「手持ちから足す」も、いきなり適用せず一覧で見せてから決める
+  const propose = async (source: 'create' | 'select') => {
     const trimmed = instruction.trim()
     if (!trimmed || busy) return
     setBusy('propose')
@@ -114,7 +119,7 @@ export function AiEditPanel({
     setProposals(null)
     setCreatedCount(null)
     try {
-      const result = await proposeCards(viewId, trimmed)
+      const result = await proposeCards(viewId, trimmed, { source })
       setProposals(result.proposals)
       setPlan(result.plan)
       setReuse(result.reuse)
@@ -122,7 +127,9 @@ export function AiEditPanel({
       setLimit({ max: result.max_count, truncated: result.truncated })
       setChosen(new Set(result.proposals.map((p) => p.title)))
       setCredits(result.available_credits)
-      if (result.proposals.length === 0) setError('足すべきカードは見つかりませんでした。')
+      if (result.proposals.length === 0 && result.reuse.length === 0) {
+        setError('足すべきカードは見つかりませんでした。')
+      }
     } catch (err: unknown) {
       const e = err as { response?: { data?: { error?: string } } }
       setError(e?.response?.data?.error ?? '提案を作れませんでした。')
@@ -132,7 +139,7 @@ export function AiEditPanel({
   }
 
   const createChosen = async () => {
-    if (busy || chosen.size === 0) return
+    if (busy || (chosen.size === 0 && reuse.length === 0)) return
     setBusy('create')
     setError(null)
     try {
@@ -159,20 +166,31 @@ export function AiEditPanel({
     }
   }
 
-  const run = async () => {
-    if (mode === 'create') return propose()
+  // 範囲に応じて、触らない項目を自動で「そのまま」にする
+  const canRun = busy === null && instruction.trim().length > 0
+
+  const optionsFor = (scope: EditScope) => ({
+    layout,
+    placement: scope === 'all' || scope === 'layout' ? placementMode : ('keep' as const),
+    edges: scope === 'all' || scope === 'edges' ? edgeMode : ('keep' as const),
+    sizing: scope === 'all' || scope === 'cards' ? sizeMode : ('keep' as const),
+  })
+
+  const run = async (scope: EditScope = 'all') => {
+    // カードを足す2つの方針は、提案→承認を挟む
+    if (scope === 'all' || scope === 'cards') {
+      if (mode === 'create') return propose('create')
+      if (mode === 'select') return propose('select')
+    }
     const trimmed = instruction.trim()
     if (!trimmed || busy) return
     setBusy('edit')
     setError(null)
     setResult(null)
     try {
-      const updated = await aiEditView(viewId, trimmed, mode as AiEditMode, {
-        layout,
-        edges: edgeMode,
-        sizing: sizeMode,
-        placement: placementMode,
-      })
+      // 線や配置だけを整えるときは、カードを足さない（範囲の外なので）
+      const editMode: AiEditMode = scope === 'all' || scope === 'cards' ? (mode as AiEditMode) : 'placed_only'
+      const updated = await aiEditView(viewId, trimmed, editMode, optionsFor(scope))
       setResult(updated.ai_edit ?? null)
       onApplied(updated)
     } catch (err: unknown) {
@@ -268,128 +286,97 @@ export function AiEditPanel({
             </p>
           </div>
 
-          <div>
-            <p className="mb-1 text-xs text-muted-foreground">使うカード</p>
-            {/* 縦に並べる。横だと「カードから作る（cr消費）」で折り返し、選択肢が読み取りにくい */}
-            <div className="flex flex-col gap-1.5">
-              {MODES.map((option) => (
-                <Button
-                  key={option.value}
-                  size="sm"
-                  variant={mode === option.value ? 'default' : 'outline'}
-                  disabled={busy !== null}
-                  onClick={() => setMode(option.value)}
-                  className="w-full justify-start"
-                >
-                  {option.label}
-                </Button>
-              ))}
-            </div>
-            <p className="mt-1 text-xs text-muted-foreground">
-              {MODES.find((option) => option.value === mode)?.description}
-            </p>
-          </div>
+          {/*
+            ジャンルごとに区切り、それぞれに実行ボタンを置く。
+            押したボタンの範囲だけが変わり、他は触らない。
+            「触らない」を手で2つ選ばせるより、押した場所で範囲が決まる方が迷わない。
+          */}
+          <Section
+            title="カード"
+            description="どのカードを使うか・大きさ"
+            action={
+              viewType === 'freeboard' && mode !== 'create' ? (
+                <RunButton label="カードを整える" busy={busy === 'edit'} disabled={!canRun} onClick={() => run('cards')} />
+              ) : undefined
+            }
+          >
+            <Choice
+              label="使うカード"
+              options={MODES.map((option) => ({ value: option.value, label: option.label }))}
+              value={mode}
+              onChange={(value) => setMode(value as EditChoice)}
+              disabled={busy !== null}
+              hint={MODES.find((option) => option.value === mode)?.description}
+            />
 
-          {/* 並べ方・線・大きさの方針。フリーボードにしか効かない */}
+            {viewType === 'freeboard' && mode !== 'create' && (
+              <Choice
+                label="大きさ"
+                options={[
+                  { value: 'ai', label: 'AIが強弱をつける' },
+                  { value: 'uniform', label: '全部そろえる' },
+                  { value: 'keep', label: '触らない' },
+                ]}
+                value={sizeMode}
+                onChange={(value) => setSizeMode(value as AiEditSizeMode)}
+                disabled={busy !== null}
+              />
+            )}
+          </Section>
+
           {viewType === 'freeboard' && mode !== 'create' && (
-            <details className="rounded-lg border border-border px-3 py-2">
-              <summary className="cursor-pointer text-xs text-muted-foreground">整え方の指定</summary>
-
-              <div className="mt-3 space-y-4">
-                {/* 配置・線・大きさは対等な3項目。触らないを選べば、他だけを個別に実行できる */}
-                <div>
-                  <p className="mb-1 text-xs text-muted-foreground">配置</p>
-                  <div className="flex flex-col gap-1.5">
-                    <Button
-                      size="sm"
-                      variant={placementMode === 'keep' ? 'default' : 'outline'}
-                      disabled={busy !== null}
-                      onClick={() => setPlacementMode('keep')}
-                      className="w-full justify-start"
-                    >
-                      触らない
-                    </Button>
-                    {LAYOUTS.map((option) => (
-                      <Button
-                        key={option.value}
-                        size="sm"
-                        variant={placementMode === 'arrange' && layout === option.value ? 'default' : 'outline'}
-                        disabled={busy !== null}
-                        onClick={() => {
-                          setPlacementMode('arrange')
-                          setLayout(option.value)
-                        }}
-                        className="w-full justify-start"
-                      >
-                        {option.label}
-                      </Button>
-                    ))}
-                  </div>
-                </div>
-
-                <div>
-                  <p className="mb-1 text-xs text-muted-foreground">線</p>
-                  <div className="flex flex-col gap-1.5">
-                    {[
-                      { value: 'rebuild' as const, label: '指示どおりに引き直す' },
-                      { value: 'infer' as const, label: '意味を読んで関係を見つけて引く' },
-                      { value: 'keep' as const, label: 'いまの線をそのままにする' },
-                    ].map((option) => (
-                      <Button
-                        key={option.value}
-                        size="sm"
-                        variant={edgeMode === option.value ? 'default' : 'outline'}
-                        disabled={busy !== null}
-                        onClick={() => setEdgeMode(option.value)}
-                        className="w-full justify-start"
-                      >
-                        {option.label}
-                      </Button>
-                    ))}
-                  </div>
-                  <p className="mt-1 text-[11px] text-muted-foreground">
-                    {edgeMode === 'infer'
+            <>
+              <Section
+                title="線"
+                description="どうつなぐか"
+                action={<RunButton label="線を整える" busy={busy === 'edit'} disabled={!canRun} onClick={() => run('edges')} />}
+              >
+                <Choice
+                  options={[
+                    { value: 'rebuild', label: '指示どおりに引き直す' },
+                    { value: 'infer', label: '意味を読んで関係を見つけて引く' },
+                    { value: 'keep', label: 'いまの線をそのままにする' },
+                  ]}
+                  value={edgeMode}
+                  onChange={(value) => setEdgeMode(value as AiEditEdgeMode)}
+                  disabled={busy !== null}
+                  hint={
+                    edgeMode === 'infer'
                       ? 'カードの意味・説明を読み、原因と結果・上位と下位・対比などの関係を見つけて結びます。根拠のない線は引きません。'
                       : edgeMode === 'keep'
                         ? '手で描いた線が並べ替えで消えません。'
-                        : '指示にある関係だけを引き直します。'}
-                  </p>
-                </div>
+                        : '指示にある関係だけを引き直します。'
+                  }
+                />
+              </Section>
 
-                <div>
-                  <p className="mb-1 text-xs text-muted-foreground">カードの大きさ</p>
-                  <div className="flex flex-col gap-1.5">
-                    {[
-                      { value: 'ai' as const, label: 'AIが強弱をつける' },
-                      { value: 'uniform' as const, label: '全部そろえる' },
-                      { value: 'keep' as const, label: '触らない' },
-                    ].map((option) => (
-                      <Button
-                        key={option.value}
-                        size="sm"
-                        variant={sizeMode === option.value ? 'default' : 'outline'}
-                        disabled={busy !== null}
-                        onClick={() => setSizeMode(option.value)}
-                        className="w-full justify-start"
-                      >
-                        {option.label}
-                      </Button>
-                    ))}
-                  </div>
-                </div>
-
-                <p className="text-[11px] text-muted-foreground">
-                  それぞれ「触らない」を選べば、他の項目だけを個別に実行できます
-                  （線だけ整える、大きさだけそろえる、など）。
-                </p>
-
-
-              </div>
-            </details>
+              <Section
+                title="全体・配置"
+                description="どう並べるか"
+                action={<RunButton label="配置を整える" busy={busy === 'edit'} disabled={!canRun} onClick={() => run('layout')} />}
+              >
+                <Choice
+                  options={[
+                    ...LAYOUTS.map((option) => ({ value: option.value, label: option.label })),
+                    { value: 'keep', label: '触らない' },
+                  ]}
+                  value={placementMode === 'keep' ? 'keep' : layout}
+                  onChange={(value) => {
+                    if (value === 'keep') {
+                      setPlacementMode('keep')
+                      return
+                    }
+                    setPlacementMode('arrange')
+                    setLayout(value as AiEditLayout)
+                  }}
+                  disabled={busy !== null}
+                />
+              </Section>
+            </>
           )}
 
           <Button
-            onClick={run}
+            onClick={() => run('all')}
             disabled={busy !== null || !instruction.trim()}
             className="flex w-full items-center justify-center gap-1.5"
           >
@@ -404,7 +391,7 @@ export function AiEditPanel({
           </Button>
 
           {/* 提案の確認。作ると1枚1クレジット出ていくので、枚数を見せてから決めてもらう */}
-          {proposals && proposals.length > 0 && (
+          {proposals && (proposals.length > 0 || reuse.length > 0) && (
             <div className="space-y-2 rounded-lg border border-border bg-muted/30 px-3 py-2">
               {/* 何を作ろうとしているのかを先に見せる。部品だけ並べても図の姿が分からない */}
               {plan && (
@@ -413,6 +400,7 @@ export function AiEditPanel({
                 </p>
               )}
 
+              {proposals.length > 0 && (
               <div className="flex items-baseline justify-between gap-2">
                 <p className="text-sm font-medium">
                   図の部品として作るカード（{proposals.length}件）
@@ -428,7 +416,9 @@ export function AiEditPanel({
                   {chosen.size === proposals.length ? 'すべて外す' : 'すべて選ぶ'}
                 </button>
               </div>
+              )}
 
+              {proposals.length > 0 && (
               <ul className="space-y-1">
                 {proposals.map((proposal) => (
                   <li key={proposal.title}>
@@ -455,6 +445,7 @@ export function AiEditPanel({
                   </li>
                 ))}
               </ul>
+              )}
 
               {/* 上限で切ったなら伝える。黙って減らすと図の抜けに気づけない */}
               {limit?.truncated && (
@@ -466,7 +457,9 @@ export function AiEditPanel({
 
               {reuse.length > 0 && (
                 <div className="rounded border border-border/60 bg-background/60 px-2 py-1.5">
-                  <p className="text-xs font-medium">手持ちから使う（{reuse.length}件・クレジット不要）</p>
+                  <p className="text-xs font-medium">
+                    手持ちから足すカード（{reuse.length}件・クレジット不要）
+                  </p>
                   <p className="mt-0.5 text-xs text-muted-foreground">
                     {reuse.map((row) => row.title).join('、')}
                   </p>
@@ -494,9 +487,15 @@ export function AiEditPanel({
               </p>
 
               <div className="flex items-center gap-2">
-                <Button size="sm" onClick={createChosen} disabled={busy !== null || chosen.size === 0}>
+                <Button
+                  size="sm"
+                  onClick={createChosen}
+                  disabled={busy !== null || (chosen.size === 0 && reuse.length === 0)}
+                >
                   {busy === 'create' ? <Spinner size={14} /> : null}
-                  この{chosen.size}枚を作る
+                  {chosen.size > 0
+                    ? `この${chosen.size}枚を作る${reuse.length > 0 ? `＋${reuse.length}枚を足す` : ''}`
+                    : `この${reuse.length}枚を足す`}
                 </Button>
                 <Button size="sm" variant="ghost" onClick={() => setProposals(null)} disabled={busy !== null}>
                   やめる
@@ -530,5 +529,88 @@ export function AiEditPanel({
         </div>
       </PanelSlotContent>
     </>
+  )
+}
+
+// ジャンルの区切り。見出し・説明と、その範囲だけを実行するボタンを持つ
+function Section({
+  title,
+  description,
+  action,
+  children,
+}: {
+  title: string
+  description: string
+  action?: ReactNode
+  children: ReactNode
+}) {
+  return (
+    <section className="space-y-2 rounded-lg border border-border px-3 py-2.5">
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <div>
+          <p className="text-sm font-medium">{title}</p>
+          <p className="text-[11px] text-muted-foreground">{description}</p>
+        </div>
+        {action}
+      </div>
+      <div className="space-y-3">{children}</div>
+    </section>
+  )
+}
+
+function RunButton({
+  label,
+  busy,
+  disabled,
+  onClick,
+}: {
+  label: string
+  busy: boolean
+  disabled: boolean
+  onClick: () => void
+}) {
+  return (
+    <Button variant="outline" size="sm" onClick={onClick} disabled={disabled} className="shrink-0">
+      {busy ? <Spinner size={13} /> : <Wand2 size={13} />}
+      {label}
+    </Button>
+  )
+}
+
+// 縦並びの単一選択。選択肢の文言が長く、横並びだと折り返して読みにくい
+function Choice({
+  label,
+  options,
+  value,
+  onChange,
+  disabled,
+  hint,
+}: {
+  label?: string
+  options: { value: string; label: string }[]
+  value: string
+  onChange: (value: string) => void
+  disabled: boolean
+  hint?: string
+}) {
+  return (
+    <div>
+      {label && <p className="mb-1 text-xs text-muted-foreground">{label}</p>}
+      <div className="flex flex-col gap-1.5">
+        {options.map((option) => (
+          <Button
+            key={option.value}
+            size="sm"
+            variant={value === option.value ? 'default' : 'outline'}
+            disabled={disabled}
+            onClick={() => onChange(option.value)}
+            className="w-full justify-start"
+          >
+            {option.label}
+          </Button>
+        ))}
+      </div>
+      {hint && <p className="mt-1 text-[11px] text-muted-foreground">{hint}</p>}
+    </div>
   )
 }

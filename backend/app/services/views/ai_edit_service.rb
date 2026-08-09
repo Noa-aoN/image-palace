@@ -376,8 +376,14 @@ module Views
 
       ViewItem.transaction do
         removed = remove_items!(ids_from(plan["remove"]))
-        added = add_items!(ids_from(plan["add"]))
-        placed_count = @view.deck? ? apply_order!(ids_from(plan["order"])) : apply_placements!(plan["placements"])
+        added_ids = add_items!(ids_from(plan["add"]))
+        added = added_ids.size
+        placed_count =
+          if @view.deck?
+            apply_order!(ids_from(plan["order"]))
+          else
+            apply_placements!(plan["placements"], added_ids: added_ids)
+          end
         # そろえるのは AI の判断ではなく決めごと。挙がらなかったカードにも効かせる
         unify_card_sizes! if @view.freeboard? && @size_mode == "uniform"
         connected =
@@ -398,17 +404,19 @@ module Views
 
     # 追加できるのは、mode が select のときに渡した候補だけ。
     # AI が別の id を書いてきても通さない。
+    # 足したカードの id を返す。置き場所を決めるのに使う
+    # （置き場所を触らない設定でも、足したものだけは置かないと原点に重なる）
     def add_items!(ids)
-      return 0 if @mode != "select"
+      return [] if @mode != "select"
 
       allowed = candidates.map(&:id) & ids
-      allowed.count do |item_id|
+      allowed.filter_map do |item_id|
         view_item = @view.view_items.find_or_initialize_by(item_id: item_id)
-        next false if view_item.persisted?
+        next if view_item.persisted?
 
         view_item.position = next_position if @view.deck?
         view_item.save!
-        true
+        item_id
       end
     end
 
@@ -445,8 +453,9 @@ module Views
       ordered.size
     end
 
-    def apply_placements!(placements)
+    def apply_placements!(placements, added_ids: [])
       on_board = @view.view_items.pluck(:item_id).to_set
+      newly_added = added_ids.to_set
       Array(placements).first(MAX_OPERATIONS).count do |placement|
         next false unless placement.is_a?(Hash)
 
@@ -454,8 +463,9 @@ module Views
         next false unless on_board.include?(item_id)
 
         attributes = { updated_at: Time.current }
-        # 「置き場所は変えない」なら座標に触らない（線や大きさだけ整えたいとき）
-        if @placement_mode == "arrange"
+        # 「置き場所は変えない」なら座標に触らない（線や大きさだけ整えたいとき）。
+        # ただし今回足したカードは置き場所を持っていないので、そこは必ず置く
+        if @placement_mode == "arrange" || newly_added.include?(item_id)
           attributes[:x] = clamp(placement["x"], BOARD_WIDTH)
           attributes[:y] = clamp(placement["y"], BOARD_HEIGHT)
         end
