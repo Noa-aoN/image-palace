@@ -182,6 +182,29 @@ RSpec.describe Views::AiEditService do
         end
       end
 
+      # 線や大きさだけ整えたいとき、置き場所が動いてしまうと台無しになる
+      it "置き場所を変えない指定なら、座標に触らない" do
+        view.view_items.find_by(item_id: a.id).update!(x: 42, y: 84)
+        stub_plan("placements" => [ { "item_id" => a.id, "x" => 900, "y" => 900, "width" => 200, "height" => 240 } ])
+
+        described_class.call(view: view, instruction: "大きさだけ整えて", placement: "keep")
+
+        placement = view.view_items.find_by(item_id: a.id)
+        expect(placement.x).to eq(42)
+        expect(placement.width).to eq(200)
+      end
+
+      # そろえるのは決めごとなので、AI が挙げなかったカードにも効かせる
+      it "大きさをそろえる指定なら、全てのカードを同じ大きさにする" do
+        view.view_items.find_by(item_id: a.id).update!(width: 300, height: 360)
+        view.view_items.find_by(item_id: b.id).update!(width: 90, height: 108)
+        stub_plan("placements" => [])
+
+        described_class.call(view: view, instruction: "そろえて", sizing: "uniform")
+
+        expect(view.view_items.pluck(:width).uniq).to eq([ described_class::CARD_WIDTH ])
+      end
+
       it "知らない指定は既定に落とす" do
         stub_plan({})
 
@@ -198,6 +221,19 @@ RSpec.describe Views::AiEditService do
       placement = view.view_items.find_by(item_id: a.id)
       expect(placement.x).to eq(described_class::BOARD_WIDTH)
       expect(placement.y).to eq(0)
+    end
+
+    # 候補は渡していたが「選んで足せ」という規則が無く、AI が何も足さなかった
+    it "カードを選ぶところから のときは、追加を促す規則を足す" do
+      stub_plan({})
+
+      described_class.call(view: view, instruction: "関係するものも足して", mode: "select")
+
+      expect(Ai::Chat).to have_received(:call) do |args|
+        system = args[:messages].first[:content]
+        expect(system).to include("指示に合うものを選んで add に入れること")
+        expect(system).to include("指示に無くても")
+      end
     end
 
     it "ボードに無いカードの配置・接続は無視する" do

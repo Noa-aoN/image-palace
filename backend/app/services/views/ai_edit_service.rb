@@ -62,18 +62,21 @@ module Views
       "grid" => "格子状に並べる。行と列を揃え、まとまりごとに行を分ける。"
     }.freeze
 
-    # 線とカードの大きさを、AI に触らせるかどうか。
+    # 何を整えるかは項目ごとに選べる。関心のないものは "keep"（触らない）にすると、
+    # その項目だけを個別に実行できる（線だけ整える、大きさだけ揃える、など）
+    PLACEMENT_MODES = %w[arrange keep].freeze
     # infer は「指示に書かれていなくても、カードの意味を読んで関係を見つけて結ぶ」
     EDGE_MODES = %w[rebuild keep infer].freeze
+    # uniform は全てのカードを同じ大きさに揃える
+    SIZE_MODES = %w[ai uniform keep].freeze
     # 関係を読み取るときは、意味の抜粋を長めに渡す（60文字では関係の判断に足りない）
     MEANING_EXCERPT_FOR_INFER = 160
-    SIZE_MODES = %w[ai keep].freeze
 
-    def self.call(view:, instruction:, mode: DEFAULT_MODE, layout: nil, edges: nil, sizing: nil)
-      new(view:, instruction:, mode:, layout:, edges:, sizing:).call
+    def self.call(view:, instruction:, mode: DEFAULT_MODE, layout: nil, edges: nil, sizing: nil, placement: nil)
+      new(view:, instruction:, mode:, layout:, edges:, sizing:, placement:).call
     end
 
-    def initialize(view:, instruction:, mode:, layout: nil, edges: nil, sizing: nil)
+    def initialize(view:, instruction:, mode:, layout: nil, edges: nil, sizing: nil, placement: nil)
       @view = view
       @user = view.user
       @instruction = instruction.to_s.strip
@@ -82,6 +85,7 @@ module Views
       # 既定は従来どおり（線は引き直す・大きさは AI に任せる）
       @edge_mode = EDGE_MODES.include?(edges.to_s) ? edges.to_s : "rebuild"
       @size_mode = SIZE_MODES.include?(sizing.to_s) ? sizing.to_s : "ai"
+      @placement_mode = PLACEMENT_MODES.include?(placement.to_s) ? placement.to_s : "arrange"
     end
 
     def call
@@ -245,10 +249,21 @@ module Views
 
         ## その他
         - remove はボードから外すだけで、カードそのものは消えません。
-        #{@edge_mode == 'infer' ? '- 線については、指示に無くても関係を読み取って引くこと（上の規則が優先）。' : '- 指示に無いことはしないこと。'}
+        #{no_extra_rule}
         - 内容に事実として疑わしい点や、図にする上で明らかに欠けている観点があれば notes に日本語で書くこと。
           ただし推測で断定しない。確証が持てないことは「確認できない」と書く。
       PROMPT
+    end
+
+    # 「指示に無いことはしない」は保守的で良いが、追加や関係の読み取りを頼まれている
+    # ときにまで効くと、頼んだことをやらなくなる。その場合は上の規則を優先させる
+    def no_extra_rule
+      exceptions = []
+      exceptions << "候補からのカード追加" if @mode == "select"
+      exceptions << "意味から読み取った線" if @edge_mode == "infer"
+      return "- 指示に無いことはしないこと。" if exceptions.empty?
+
+      "- 指示に無いことはしないこと。ただし#{exceptions.join('と')}は、指示に無くても上の規則に従って行うこと。"
     end
 
     # 関係を読み取るときは、意味をもう少し長く見せる。短すぎると関係が判断できない
@@ -259,7 +274,19 @@ module Views
     # 画面で選んだ方針を規則として足す。指示文に混ぜず、規則の側に置く
     def option_rules
       rules = []
-      rules << "## 並べ方の指定\n- #{LAYOUT_RULES[@layout]}" if LAYOUT_RULES.key?(@layout)
+      if @mode == "select"
+        rules << <<~SELECT.strip
+          ## カードの追加
+          - 資料の「追加できるカード」から、**指示に合うものを選んで add に入れること**。
+            足せる状態で呼ばれているので、必要なら遠慮なく足す。
+          - ただし関係のないものは入れない。図に要るものだけを選ぶ。
+        SELECT
+      end
+      if @placement_mode == "keep"
+        rules << "## 置き場所\n- カードの位置は変えない。placements に x / y を書かないこと。"
+      elsif LAYOUT_RULES.key?(@layout)
+        rules << "## 並べ方の指定\n- #{LAYOUT_RULES[@layout]}"
+      end
       case @edge_mode
       when "keep"
         rules << "## 線\n- 線は触らない。edges は空配列で返すこと（いまある線をそのまま残す）。"
@@ -275,8 +302,11 @@ module Views
           - 迷ったものは notes に「この2枚は関係があるかもしれない」と書き、線にはしない。
         INFER
       end
-      if @size_mode == "keep"
+      case @size_mode
+      when "keep"
         rules << "## 大きさ\n- カードの大きさは変えない。placements に width / height を書かないこと。"
+      when "uniform"
+        rules << "## 大きさ\n- カードの大きさは全て同じにする。強弱を付けないこと。"
       end
       rules.join("\n\n")
     end
@@ -348,6 +378,8 @@ module Views
         removed = remove_items!(ids_from(plan["remove"]))
         added = add_items!(ids_from(plan["add"]))
         placed_count = @view.deck? ? apply_order!(ids_from(plan["order"])) : apply_placements!(plan["placements"])
+        # そろえるのは AI の判断ではなく決めごと。挙がらなかったカードにも効かせる
+        unify_card_sizes! if @view.freeboard? && @size_mode == "uniform"
         connected =
           if @view.freeboard? && @edge_mode == "rebuild"
             apply_edges!(plan["edges"])
@@ -421,20 +453,31 @@ module Views
         item_id = placement["item_id"].to_s
         next false unless on_board.include?(item_id)
 
-        attributes = {
-          x: clamp(placement["x"], BOARD_WIDTH),
-          y: clamp(placement["y"], BOARD_HEIGHT),
-          updated_at: Time.current
-        }
-        # 「大きさは変えない」を選んだときは幅・高さに触らない
-        if @size_mode == "ai"
+        attributes = { updated_at: Time.current }
+        # 「置き場所は変えない」なら座標に触らない（線や大きさだけ整えたいとき）
+        if @placement_mode == "arrange"
+          attributes[:x] = clamp(placement["x"], BOARD_WIDTH)
+          attributes[:y] = clamp(placement["y"], BOARD_HEIGHT)
+        end
+        case @size_mode
+        when "ai"
           attributes[:width] = card_size(placement["width"], CARD_WIDTH)
           attributes[:height] = card_size(placement["height"], CARD_HEIGHT)
+        when "uniform"
+          # 全部そろえる。AI の強弱は使わず既定の大きさに統一する
+          attributes[:width] = CARD_WIDTH
+          attributes[:height] = CARD_HEIGHT
         end
+        next false if attributes.keys == [ :updated_at ]
 
         @view.view_items.where(item_id: item_id).update_all(attributes)
         true
       end
+    end
+
+    # 全てのカードを同じ大きさにする
+    def unify_card_sizes!
+      @view.view_items.update_all(width: CARD_WIDTH, height: CARD_HEIGHT, updated_at: Time.current)
     end
 
     # 画面の外へ飛ばされると見失うため、盤の中に収める

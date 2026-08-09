@@ -110,12 +110,14 @@ export type AiEditMode = 'placed_only' | 'select'
 /** AI に整えてもらうときの方針（フリーボードのみ） */
 export type AiEditLayout = 'auto' | 'hierarchy' | 'radial' | 'flow' | 'grid'
 export type AiEditEdgeMode = 'rebuild' | 'keep' | 'infer'
-export type AiEditSizeMode = 'ai' | 'keep'
+export type AiEditSizeMode = 'ai' | 'uniform' | 'keep'
+export type AiEditPlacementMode = 'arrange' | 'keep'
 
 export interface AiEditOptions {
   layout?: AiEditLayout
   edges?: AiEditEdgeMode
   sizing?: AiEditSizeMode
+  placement?: AiEditPlacementMode
 }
 
 /** 「カードから作る」の提案（まだ作られていない） */
