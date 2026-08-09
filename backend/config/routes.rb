@@ -90,6 +90,8 @@ Rails.application.routes.draw do
         put "properties/:property_definition_id", to: "item_properties#upsert", as: :property
         member do
           post :retry
+          # セーフガードの承認（覆いを外す）
+          post :approve_image
           post :meaning
           post :brief
           post :scene_rewrite

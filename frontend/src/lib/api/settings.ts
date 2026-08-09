@@ -18,6 +18,7 @@ export async function updateSettings(
       | 'shelf_orientation'
       | 'onboarded'
       | 'regenerate_with_meaning'
+      | 'image_safeguard'
       | 'diagram_mode'
       | 'motion_mode'
     >

@@ -24,6 +24,7 @@ export default function SettingsPage() {
   const [autoMeanings, setAutoMeanings] = useState<boolean | null>(null)
   const [autoTags, setAutoTags] = useState<boolean | null>(null)
   const [regenWithMeaning, setRegenWithMeaning] = useState<boolean | null>(null)
+  const [imageSafeguard, setImageSafeguard] = useState<boolean | null>(null)
   const [savingSettings, setSavingSettings] = useState(false)
   // デフォルト画像スタイル（null = 読み込み中）
   const [defaultStyle, setDefaultStyle] = useState<string | null>(null)
@@ -57,6 +58,7 @@ export default function SettingsPage() {
         setAutoMeanings(s.auto_generate_meanings)
         setAutoTags(s.auto_generate_tags)
         setRegenWithMeaning(s.regenerate_with_meaning)
+        setImageSafeguard(s.image_safeguard)
         setDefaultStyle(s.default_image_style)
         setDefaultAspect(s.default_aspect_ratio)
         setListStyle(s.display_style)
@@ -200,6 +202,21 @@ export default function SettingsPage() {
     }
   }
 
+  const toggleImageSafeguard = async () => {
+    if (imageSafeguard === null || savingSettings) return
+    const next = !imageSafeguard
+    setSavingSettings(true)
+    setImageSafeguard(next)
+    try {
+      const s = await updateSettings({ image_safeguard: next })
+      setImageSafeguard(s.image_safeguard)
+    } catch {
+      setImageSafeguard(!next) // 失敗したら元に戻す
+    } finally {
+      setSavingSettings(false)
+    }
+  }
+
   // データエクスポート
   const [exporting, setExporting] = useState(false)
   const [exportError, setExportError] = useState<string | null>(null)
@@ -310,6 +327,23 @@ export default function SettingsPage() {
                 label="再生成で意味・説明を参考にする"
                 disabled={regenWithMeaning === null || savingSettings}
                 onClick={toggleRegenMeaning}
+              />
+            </div>
+            <div className="flex items-start justify-between gap-4 border-t border-border pt-3">
+              <div>
+                <p className="text-sm font-medium">できた絵に覆いを掛ける</p>
+                <p className="mt-1 text-sm text-muted-foreground">
+                  AI が作る絵は、思っていたものと違うことがあります。ONにすると、
+                  できた絵をぼかした状態で出し、確かめてから「これでよい」を押すまで
+                  はっきりとは表示しません。既にあるカードはそのままで、
+                  ONにしたあとに作った絵だけが対象になります。
+                </p>
+              </div>
+              <Toggle
+                checked={imageSafeguard === true}
+                label="できた絵に覆いを掛ける"
+                disabled={imageSafeguard === null || savingSettings}
+                onClick={toggleImageSafeguard}
               />
             </div>
             {savingSettings && (

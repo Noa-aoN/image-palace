@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_08_10_000001) do
+ActiveRecord::Schema[8.1].define(version: 2026_08_10_000002) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
   enable_extension "pg_trgm"
@@ -265,6 +265,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_08_10_000001) do
     t.uuid "item_id", null: false
     t.string "media_type", null: false
     t.jsonb "metadata", default: {}, null: false
+    t.boolean "needs_approval", default: false, null: false
     t.integer "position"
     t.datetime "updated_at", null: false
     t.text "url"
@@ -385,6 +386,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_08_10_000001) do
     t.string "default_image_style", default: "", null: false
     t.string "diagram_mode", default: "3d", null: false
     t.string "display_style", default: "palace", null: false
+    t.boolean "image_safeguard", default: false, null: false
     t.jsonb "library_order", default: [], null: false
     t.string "locale", default: "ja", null: false
     t.string "motion_mode", default: "auto", null: false

@@ -85,7 +85,9 @@ module ItemSerialization
       url: media_url(blob),
       thumb_url: media_thumb_url(media, blob),
       blur: media.metadata&.dig("lqip"),
-      media_type: media.media_type
+      media_type: media.media_type,
+      # セーフガードを入にしてから作った絵は、承認するまで覆いを掛けて出す
+      needs_approval: media.needs_approval
     }
   end
 

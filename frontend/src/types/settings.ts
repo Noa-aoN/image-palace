@@ -19,6 +19,8 @@ export interface UserSettings {
   onboarded: boolean
   /** 再生成時に「意味・説明を参考にする」の既定値（既定 ON） */
   regenerate_with_meaning: boolean
+  /** 生成された絵に覆いを掛けて、承認するまで直視しないで済むようにする。既定 OFF */
+  image_safeguard: boolean
   /** 図（間取り図・記憶資産など）の表現。既定 "3d" */
   diagram_mode: DiagramMode
   /** アニメーションの扱い。"auto" は端末（OS）の設定に従う。既定 "auto" */
