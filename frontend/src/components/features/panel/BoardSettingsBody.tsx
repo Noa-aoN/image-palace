@@ -132,6 +132,39 @@ export function BoardSettingsBody() {
             <span className="text-xs text-muted-foreground">px</span>
           </div>
         </div>
+
+        {/* 縦横比の違うカードが並ぶと、切り取りのせいで見えている範囲がまちまちになる */}
+        <div className="space-y-1.5">
+          <span className="text-xs text-muted-foreground">画像の見せ方</span>
+          <div className="flex gap-1.5">
+            {[
+              { value: 'cover' as const, label: '埋める', hint: 'カードいっぱいに広げ、はみ出す分は切り取る' },
+              { value: 'contain' as const, label: '全景', hint: '切り取らずに全体を収める（見える範囲が揃う）' },
+            ].map((option) => {
+              const active = (settings.card_image_fit ?? 'cover') === option.value
+              return (
+                <button
+                  key={option.value}
+                  type="button"
+                  title={option.hint}
+                  aria-pressed={active}
+                  onClick={() => patch({ card_image_fit: option.value })}
+                  className={`rounded-lg border px-2.5 py-1 text-xs transition ${
+                    active ? 'border-transparent text-white' : 'border-border text-muted-foreground hover:bg-muted'
+                  }`}
+                  style={active ? { backgroundColor: 'var(--palace)' } : undefined}
+                >
+                  {option.label}
+                </button>
+              )
+            })}
+          </div>
+          <p className="text-[11px] text-muted-foreground">
+            {(settings.card_image_fit ?? 'cover') === 'contain'
+              ? '切り取らずに全体を収めます。カードの大きさが違っても見える範囲が揃います。'
+              : 'カードいっぱいに広げます。縦横比が違うカードでは切り取られる範囲が変わります。'}
+          </p>
+        </div>
       </section>
 
       <section className="space-y-3 border-t border-border pt-4">
