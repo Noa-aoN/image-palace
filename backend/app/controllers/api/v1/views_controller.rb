@@ -175,7 +175,9 @@ module Api
         result = Views::CardProposalService.call(
           view: @view,
           instruction: params.dig(:proposal, :instruction),
-          count: params.dig(:proposal, :count)
+          count: params.dig(:proposal, :count),
+          # create（新しく作る）/ select（手持ちから足す）
+          source: params.dig(:proposal, :source) || "create"
         )
 
         render json: {

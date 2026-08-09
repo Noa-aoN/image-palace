@@ -171,6 +171,35 @@ RSpec.describe "Api::V1::Views カードから作る", type: :request do
       end
     end
 
+    # 「カードを選ぶところから」でも、いきなり足さずに一覧で見せてから決めたい
+    context "手持ちから足す提案（source=select）" do
+      let(:item_type) { ItemType.find_or_create_by!(name: "term") { |t| t.label = "単語" } }
+
+      it "手持ちのカードを提案し、新しくは作らない" do
+        owned = user.items.create!(title: "齧歯目", item_type: item_type, generation_status: "completed")
+        allow(Ai::Chat).to receive(:call).and_return(
+          { "choices" => [ { "message" => { "content" => {
+            plan: "系統図", reuse: [ { "title" => "齧歯目", "reason" => "最上位" } ]
+          }.to_json } } ] }
+        )
+
+        post "/api/v1/views/#{board.id}/card_proposal",
+          params: { proposal: { instruction: "齧歯目の系統図", source: "select" } }, headers: headers, as: :json
+
+        expect(response).to have_http_status(:success)
+        expect(json_response["proposals"]).to be_empty
+        expect(json_response["reuse"].first).to include("id" => owned.id, "title" => "齧歯目")
+      end
+
+      it "手持ちが無ければ何も返さない" do
+        post "/api/v1/views/#{board.id}/card_proposal",
+          params: { proposal: { instruction: "図", source: "select" } }, headers: headers, as: :json
+
+        expect(response).to have_http_status(:success)
+        expect(json_response["reuse"]).to be_empty
+      end
+    end
+
     it "指示が空なら弾く" do
       post "/api/v1/views/#{view.id}/card_proposal",
         params: { proposal: { instruction: "  " } }, headers: headers, as: :json

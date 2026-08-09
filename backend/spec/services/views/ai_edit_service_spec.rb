@@ -205,6 +205,23 @@ RSpec.describe Views::AiEditService do
         expect(view.view_items.pluck(:width).uniq).to eq([ described_class::CARD_WIDTH ])
       end
 
+      # 「カードだけ整える」で足したカードが原点に重なるのを防ぐ
+      it "置き場所を変えない指定でも、足したカードだけは置く" do
+        newcomer = card("新入り")
+        stub_plan(
+          "add" => [ newcomer.id ],
+          "placements" => [ { "item_id" => newcomer.id, "x" => 600, "y" => 400 },
+                            { "item_id" => a.id, "x" => 900, "y" => 900 } ]
+        )
+        view.view_items.find_by(item_id: a.id).update!(x: 10, y: 20)
+
+        described_class.call(view: view, instruction: "足して", mode: "select", placement: "keep")
+
+        expect(view.view_items.find_by(item_id: newcomer.id).x).to eq(600)
+        # もとからあるカードは動かさない
+        expect(view.view_items.find_by(item_id: a.id).x).to eq(10)
+      end
+
       it "知らない指定は既定に落とす" do
         stub_plan({})
 

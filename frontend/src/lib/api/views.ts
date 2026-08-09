@@ -220,10 +220,14 @@ export async function aiEditView(
 export async function proposeCards(
   id: string,
   instruction: string,
-  count?: number
+  options?: { count?: number; source?: 'create' | 'select' }
 ): Promise<CardProposalResult> {
   const res = await apiClient.post<CardProposalResult>(`/api/v1/views/${id}/card_proposal`, {
-    proposal: { instruction, ...(count ? { count } : {}) },
+    proposal: {
+      instruction,
+      ...(options?.count ? { count: options.count } : {}),
+      ...(options?.source ? { source: options.source } : {}),
+    },
   })
   return res.data
 }
