@@ -15,7 +15,15 @@ module Billing
   class SyncPlans
     class MissingApiKey < StandardError; end
 
-    Result = Struct.new(:created_products, :created_prices, :replaced_prices, keyword_init: true)
+    # 商品の税コード。Managed Payments（Stripe が販売者となり各国の消費税を扱う仕組み）が
+    # 有効な口座では**必須**で、無いと Checkout Session の作成自体が弾かれる。
+    #
+    # txcd_10000000 = General - Electronically Supplied Services。
+    # 本サービスは物理商品の配送を伴わず、Web 上で完結するデジタル役務
+    # （AI 画像生成による学習支援、アプリ内クレジットとサブスクリプション）のため。
+    TAX_CODE = "txcd_10000000"
+
+    Result = Struct.new(:created_products, :updated_products, :created_prices, :replaced_prices, keyword_init: true)
 
     def self.call(...)
       new(...).call
@@ -29,6 +37,7 @@ module Billing
       raise MissingApiKey, "STRIPE_SECRET_KEY が未設定です" if Stripe.api_key.blank?
 
       created_products = 0
+      updated_products = 0
       created_prices = 0
       replaced_prices = 0
 
@@ -38,6 +47,8 @@ module Billing
           plan.update!(stripe_product_id: product.id)
           created_products += 1
           log("product #{plan.name} -> #{product.id}")
+        elsif backfill_tax_code!(plan)
+          updated_products += 1
         end
 
         if plan.stripe_price_id.blank?
@@ -49,10 +60,30 @@ module Billing
         end
       end
 
-      Result.new(created_products:, created_prices:, replaced_prices:)
+      Result.new(created_products:, updated_products:, created_prices:, replaced_prices:)
     end
 
     private
+
+    # 既に作られている商品に税コードを入れ直す。
+    #
+    # Managed Payments が後から既定で有効になり、税コードの無い商品は Checkout Session の
+    # 作成ごと弾かれるようになった（2026-08 に本番で発生）。作成時にしか設定していないと
+    # 既存商品が取り残されるので、実行のたびに確認して揃える。
+    # 商品は消さずに更新するだけなので、Price も購読も影響を受けない。
+    def backfill_tax_code!(plan)
+      product = Stripe::Product.retrieve(plan.stripe_product_id)
+      current = product.tax_code.is_a?(String) ? product.tax_code : product.tax_code&.id
+      return false if current == TAX_CODE
+
+      Stripe::Product.update(plan.stripe_product_id, tax_code: TAX_CODE)
+      log("tax_code #{plan.name} -> #{TAX_CODE}（旧: #{current.inspect}）")
+      true
+    rescue Stripe::InvalidRequestError => e
+      # 消された商品などで落ちても、他のプランの同期は続ける
+      log("tax_code #{plan.name} 失敗: #{e.message}")
+      false
+    end
 
     def create_price!(plan)
       price = Stripe::Price.create(price_params(plan))
@@ -98,6 +129,7 @@ module Billing
     def product_params(plan)
       {
         name: product_name(plan),
+        tax_code: TAX_CODE,
         metadata: { plan_name: plan.name, tier: plan.tier }
       }
     end
