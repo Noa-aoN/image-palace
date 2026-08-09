@@ -81,6 +81,45 @@ RSpec.describe Views::AiEditService do
 
     # 端点を AI に決めさせると配置と食い違い、線がカードを横切る。
     # 座標が決まったあとなら幾何学的に一意なので、こちらで計算する
+    # 「重ねない」と指示しても守られないことがある。座標が出そろえば計算で確実に解ける
+    describe "重なりの解消" do
+      it "重なったカードを離す" do
+        stub_plan("placements" => [ { "item_id" => a.id, "x" => 200, "y" => 200 },
+                                    { "item_id" => b.id, "x" => 210, "y" => 205 } ])
+
+        described_class.call(view: view, instruction: "並べて")
+
+        first = view.view_items.find_by(item_id: a.id)
+        second = view.view_items.find_by(item_id: b.id)
+        gap_x = (first.x - second.x).abs
+        gap_y = (first.y - second.y).abs
+        expect([ gap_x >= described_class::CARD_WIDTH, gap_y >= described_class::CARD_HEIGHT ].any?).to be(true)
+      end
+
+      it "離れているカードは動かさない" do
+        stub_plan("placements" => [ { "item_id" => a.id, "x" => 100, "y" => 100 },
+                                    { "item_id" => b.id, "x" => 900, "y" => 900 } ])
+
+        described_class.call(view: view, instruction: "並べて")
+
+        expect(view.view_items.find_by(item_id: a.id).x).to eq(100)
+        expect(view.view_items.find_by(item_id: b.id).x).to eq(900)
+      end
+
+      # 置き場所を触らない設定では、もとからあるカードを勝手に動かさない
+      it "置き場所を変えない指定なら、足したカードだけを逃がす" do
+        newcomer = card("新入り")
+        view.view_items.find_by(item_id: a.id).update!(x: 300, y: 300)
+        stub_plan("add" => [ newcomer.id ],
+                  "placements" => [ { "item_id" => newcomer.id, "x" => 305, "y" => 305 } ])
+
+        described_class.call(view: view, instruction: "足して", mode: "select", placement: "keep")
+
+        expect(view.view_items.find_by(item_id: a.id).x).to eq(300)
+        expect(view.view_items.find_by(item_id: newcomer.id).x).not_to eq(305)
+      end
+    end
+
     describe "線の端点" do
       it "右にあるカードへは、右から出て左へ入る" do
         stub_plan(
@@ -170,6 +209,8 @@ RSpec.describe Views::AiEditService do
 
       it "大きさを変えない指定なら、幅と高さに触らない" do
         view.view_items.find_by(item_id: a.id).update!(width: 300, height: 360)
+        # 重なりの解消に巻き込まれないよう、もう1枚は離しておく
+        view.view_items.find_by(item_id: b.id).update!(x: 1_500, y: 1_200)
         stub_plan("placements" => [ { "item_id" => a.id, "x" => 100, "y" => 100, "width" => 90, "height" => 100 } ])
 
         described_class.call(view: view, instruction: "並べて", sizing: "keep")

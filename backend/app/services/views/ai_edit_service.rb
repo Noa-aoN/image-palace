@@ -42,6 +42,11 @@ module Views
     # AI が指定できるカードの大きさの範囲（読めなくなる／画面を覆うのを防ぐ）
     MIN_CARD_SIZE = 80
     MAX_CARD_SIZE = 480
+    # カードどうしの最低の隙間。これを下回ったら押しのける
+    MIN_CARD_GAP = 24
+    # 押しのけを繰り返す回数（連鎖して玉突きになるため何度か回す）
+    OVERLAP_PASSES = 6
+
     # 線の太さの範囲
     MIN_EDGE_WIDTH = 1
     MAX_EDGE_WIDTH = 8
@@ -226,6 +231,9 @@ module Views
           width / height は #{MIN_CARD_SIZE}〜#{MAX_CARD_SIZE} の範囲で変えられる。
           **話の中心になるカードは 1.5〜2 倍に大きく**し、補足は既定のままにして、重みを目で分かるようにする。
         - **重ねない**。隣り合うカードは、横は幅+80 以上、縦は高さ+60 以上あける。
+          カードが重なると下のカードが読めなくなる。詰めたいときは大きさを小さくする。
+        - **線がカードの上を通らないようにする**。つなぐ2枚の間に別のカードを挟まない。
+          挟まる配置しか作れないなら、並び順の方を変える。
         - 意味のまとまりが目で分かる配置にすること。
           流れがあるものは左から右（または上から下）へ等間隔に、
           対比は左右に対称に、まとまりは近くに寄せ、別のまとまりとは 200 以上あける。
@@ -401,6 +409,8 @@ module Views
           end
         # そろえるのは AI の判断ではなく決めごと。挙がらなかったカードにも効かせる
         unify_card_sizes! if @view.freeboard? && @size_mode == "uniform"
+        # 重なりは頼んでも守られないことがある。最後にこちらで必ず解く
+        resolve_overlaps!(added_ids) if @view.freeboard?
         connected =
           if !@view.freeboard?
             0
@@ -502,6 +512,86 @@ module Views
 
         @view.view_items.where(item_id: item_id).update_all(attributes)
         true
+      end
+    end
+
+    # カードどうしの重なりを解く。
+    #
+    # 「重ねない」と指示しても守られないことがあり、重なると下のカードが読めない。
+    # 座標が出そろったあとなら計算で確実に解けるので、こちらで押しのける。
+    #
+    # 置き場所を触らない設定のときは、今回足したカードだけを動かす
+    # （もとからあるカードを勝手に動かさない）。
+    def resolve_overlaps!(added_ids)
+      movable = @placement_mode == "arrange" ? nil : added_ids.to_set
+      boxes = @view.view_items.pluck(:item_id, :x, :y, :width, :height).map do |item_id, x, y, width, height|
+        {
+          id: item_id, x: x.to_f, y: y.to_f,
+          w: (width || CARD_WIDTH).to_f, h: (height || CARD_HEIGHT).to_f
+        }
+      end
+      return if boxes.size < 2
+
+      moved = separate!(boxes, movable)
+      return if moved.empty?
+
+      moved.each do |box|
+        @view.view_items.where(item_id: box[:id]).update_all(
+          x: box[:x].clamp(0, BOARD_WIDTH).round,
+          y: box[:y].clamp(0, BOARD_HEIGHT).round,
+          updated_at: Time.current
+        )
+      end
+    end
+
+    # 重なっている組を、重なりの浅い向きへ押しのける。動かした箱を返す
+    def separate!(boxes, movable)
+      moved = {}
+
+      OVERLAP_PASSES.times do
+        collided = false
+
+        boxes.combination(2) do |a, b|
+          overlap_x = (a[:w] + b[:w]) / 2 + MIN_CARD_GAP - ((a[:x] + a[:w] / 2) - (b[:x] + b[:w] / 2)).abs
+          overlap_y = (a[:h] + b[:h]) / 2 + MIN_CARD_GAP - ((a[:y] + a[:h] / 2) - (b[:y] + b[:h] / 2)).abs
+          next if overlap_x <= 0 || overlap_y <= 0
+
+          collided = true
+          # 浅い方向へ逃がす。深い方向へ動かすと余計に遠回りになる
+          if overlap_x < overlap_y
+            shift = overlap_x / 2
+            direction = (a[:x] <= b[:x] ? -1 : 1)
+            push(a, b, :x, shift, direction, movable, moved)
+          else
+            shift = overlap_y / 2
+            direction = (a[:y] <= b[:y] ? -1 : 1)
+            push(a, b, :y, shift, direction, movable, moved)
+          end
+        end
+
+        break unless collided
+      end
+
+      moved.values
+    end
+
+    # 2枚を反対向きに押す。動かせない方がいるときは、動かせる方だけを倍に押す
+    def push(a, b, axis, shift, direction, movable, moved)
+      a_movable = movable.nil? || movable.include?(a[:id])
+      b_movable = movable.nil? || movable.include?(b[:id])
+      return if !a_movable && !b_movable
+
+      if a_movable && b_movable
+        a[axis] += shift * direction
+        b[axis] -= shift * direction
+        moved[a[:id]] = a
+        moved[b[:id]] = b
+      elsif a_movable
+        a[axis] += shift * 2 * direction
+        moved[a[:id]] = a
+      else
+        b[axis] -= shift * 2 * direction
+        moved[b[:id]] = b
       end
     end
 
