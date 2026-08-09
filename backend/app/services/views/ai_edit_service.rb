@@ -39,13 +39,22 @@ module Views
     # 高さは 幅 + 見出しの行(32) で、画像の領域が正方形になるようにしてある
     CARD_WIDTH = 144
     CARD_HEIGHT = 176
+    DEFAULT_CARD_FONT_SIZE = 15
     # AI が指定できるカードの大きさの範囲（読めなくなる／画面を覆うのを防ぐ）
     MIN_CARD_SIZE = 80
     MAX_CARD_SIZE = 480
-    # カードどうしの最低の隙間。これを下回ったら押しのける
-    MIN_CARD_GAP = 24
+    # 盤の端にも余白を残す。カードが端に張り付くと、fitView 後も窮屈に見えるため
+    BOARD_PADDING = 96
+    # カードどうしの最低の隙間。線やラベルを通せる余裕も含めて広めに取る
+    MIN_CARD_GAP = 96
+    # 長い見出しは実カード幅だけで衝突判定すると詰まって見えるため、
+    # おおよその文字幅を「読みやすさに必要な幅」として配置計算に含める
+    CARD_TITLE_HORIZONTAL_PADDING = 32
+    MAX_TITLE_FOOTPRINT_WIDTH = 320
     # 押しのけを繰り返す回数（連鎖して玉突きになるため何度か回す）
-    OVERLAP_PASSES = 6
+    OVERLAP_PASSES = 24
+    # 接続線をカードから離して迂回させる幅。カード間余白の半分を線の通り道に使う
+    EDGE_CARD_CLEARANCE = 40
 
     # 線の太さの範囲
     MIN_EDGE_WIDTH = 1
@@ -73,10 +82,10 @@ module Views
     PLACEMENT_MODES = %w[arrange keep].freeze
     # infer は「指示に書かれていなくても、カードの意味を読んで関係を見つけて結ぶ」
     # restyle は「つなぎ方は変えず、線の文字と見た目だけ整える」
-    EDGE_MODES = %w[rebuild keep infer restyle].freeze
+    EDGE_MODES = %w[rebuild keep infer restyle relabel].freeze
     # uniform は全てのカードを同じ大きさに揃える
     SIZE_MODES = %w[ai uniform keep].freeze
-    # 関係を読み取るときは、意味の抜粋を長めに渡す（60文字では関係の判断に足りない）
+    # 線を扱うときは、意味の抜粋を長めに渡す（60文字では関係やラベルの判断に足りない）
     MEANING_EXCERPT_FOR_INFER = 160
 
     def self.call(view:, instruction:, mode: DEFAULT_MODE, layout: nil, edges: nil, sizing: nil, placement: nil)
@@ -227,13 +236,17 @@ module Views
 
         ## 置き方
         - 座標は x が 0〜#{BOARD_WIDTH}、y が 0〜#{BOARD_HEIGHT}。x,y はカードの左上。
+          ただし盤の四辺には最低 #{BOARD_PADDING} の余白を残し、カードを端へ張り付けない。
         - カードの既定の大きさは 幅#{CARD_WIDTH}・高さ#{CARD_HEIGHT}。
           width / height は #{MIN_CARD_SIZE}〜#{MAX_CARD_SIZE} の範囲で変えられる。
           **話の中心になるカードは 1.5〜2 倍に大きく**し、補足は既定のままにして、重みを目で分かるようにする。
-        - **重ねない**。隣り合うカードは、横は幅+80 以上、縦は高さ+60 以上あける。
+        - **重ねない**。隣り合うカードの間には最低 #{MIN_CARD_GAP} の空白を残す。
+          資料にある「見出し幅」もカードの幅として扱い、長い文字のカード同士を詰めない。
           カードが重なると下のカードが読めなくなる。詰めたいときは大きさを小さくする。
         - **線がカードの上を通らないようにする**。つなぐ2枚の間に別のカードを挟まない。
           挟まる配置しか作れないなら、並び順の方を変える。
+        - 線はできるだけ **水平・垂直の直交線**で結べる配置にする。斜め線が必要になる置き方を避け、
+          同じ向きに流れる複数の線は平行に揃える。線同士にも間隔を残し、1本に重ねない。
         - 意味のまとまりが目で分かる配置にすること。
           流れがあるものは左から右（または上から下）へ等間隔に、
           対比は左右に対称に、まとまりは近くに寄せ、別のまとまりとは 200 以上あける。
@@ -247,6 +260,9 @@ module Views
           - 補助的な関連       … width 1、dashed true、marker_end "none"、color "#999999"
           - 対立・否定の関係   … width 2、dashed false、marker_end "arrow"、color "#c0504d"
         - label は 8 文字程度までの短い語にする（「原因」「例」「対して」など）。長い文は入れない。
+        - label は **source から target へ読んだ関係**を表す具体的な語にする。
+          「関係」「関連」「つながり」のように何も説明していない語は使わない。
+          返す直前に、向きが逆になっていないか、カードの意味と食い違っていないかを全て見直す。
         - **1枚のカードから出る線の数に上限は設けない**。関係があるものは全て結ぶ。
           例: ある分類に下位分類が5つあるなら5本、10あるなら10本とも引く。
           一部だけ引くと図として誤りになる。見た目の混雑を理由に関係を落とさないこと。
@@ -254,6 +270,9 @@ module Views
         - 本数が多いときは、配置で読みやすくする。中心から多数の枝が出る図（系統図など）は
           中心を上または左に置き、枝を扇形に等間隔で広げると交差しない。
           遠回りに交差する線ができるなら、線を減らすのではなく置き方を変える。
+        - **孤立カードを見落とさない**。返す直前に各カードの接続本数を確認し、
+          意味のある関係を持つカードには最低1本の線を引く。
+          本当に関係が判断できないカードだけは無理に結ばず、そのカード名と理由を notes に書く。
 
         #{option_rules}
 
@@ -278,7 +297,7 @@ module Views
 
     # 関係を読み取るときは、意味をもう少し長く見せる。短すぎると関係が判断できない
     def meaning_limit
-      @edge_mode == "infer" ? MEANING_EXCERPT_FOR_INFER : MEANING_EXCERPT
+      @edge_mode == "keep" ? MEANING_EXCERPT : MEANING_EXCERPT_FOR_INFER
     end
 
     # 画面で選んだ方針を規則として足す。指示文に混ぜず、規則の側に置く
@@ -313,6 +332,15 @@ module Views
             というように**意味の違いが目で分かる**ようにする。
           - 読みにくいもの（細すぎ・薄すぎ・同じ見た目の線が並ぶ）は直す。
         RESTYLE
+      when "relabel"
+        rules << <<~RELABEL.strip
+          ## 線（文言だけ整える）
+          - **つなぎ方・線の見た目・折れ点は一切変えない。**
+            いまある線と同じ source / target の組だけを、漏れなく1回ずつ挙げること。
+          - label だけを見直し、source から target への関係を具体的な短い語で表す。
+          - 「関係」「関連」「つながり」のような曖昧な語、意味と逆向きの語、カード名の言い換えだけの語は使わない。
+          - 同じ種類の関係には同じ言葉を使う。ラベルが無い方が正確な線は空文字にする。
+        RELABEL
       when "infer"
         rules << <<~INFER.strip
           ## 線（関係を読み取る）
@@ -376,7 +404,9 @@ module Views
         "- #{view_item.item_id}: #{title}#{note}（現在#{view_item.position || '-'}番目）"
       else
         "- #{view_item.item_id}: #{title}#{note}" \
-          "（x=#{view_item.x.round}, y=#{view_item.y.round}, w=#{(view_item.width || CARD_WIDTH).round}）"
+        "（x=#{view_item.x.round}, y=#{view_item.y.round}, " \
+          "w=#{(view_item.width || CARD_WIDTH).round}, h=#{(view_item.height || CARD_HEIGHT).round}, " \
+          "見出し幅≈#{title_footprint_width(title).round}）"
       end
     end
 
@@ -419,8 +449,14 @@ module Views
           elsif @edge_mode == "restyle"
             # つなぎ方は変えず、文字と見た目だけ当て直す
             restyle_edges!(plan["edges"])
+          elsif @edge_mode == "relabel"
+            # 接続・見た目・折れ点を保ち、線上の文言だけを当て直す
+            relabel_edges!(plan["edges"])
           else
             # 「線はそのまま」を選んだときは触らない。引き直すと手で描いた線が消える
+            # ただし配置を変えた場合、古い端点・折れ点のままではカード上を通るため
+            # 接続・文言・見た目を保ったまま経路だけを新配置へ合わせる
+            reroute_existing_edges! if @placement_mode == "arrange"
             @view.view_edges.count
           end
       end
@@ -524,13 +560,15 @@ module Views
     # （もとからあるカードを勝手に動かさない）。
     def resolve_overlaps!(added_ids)
       movable = @placement_mode == "arrange" ? nil : added_ids.to_set
-      boxes = @view.view_items.pluck(:item_id, :x, :y, :width, :height).map do |item_id, x, y, width, height|
+      boxes = @view.view_items.includes(:item).map do |view_item|
+        width = (view_item.width || CARD_WIDTH).to_f
         {
-          id: item_id, x: x.to_f, y: y.to_f,
-          w: (width || CARD_WIDTH).to_f, h: (height || CARD_HEIGHT).to_f
+          id: view_item.item_id, x: view_item.x.to_f, y: view_item.y.to_f,
+          w: width, h: (view_item.height || CARD_HEIGHT).to_f,
+          layout_w: [ width, title_footprint_width(view_item.item&.title) ].max
         }
       end
-      return if boxes.size < 2
+      return if boxes.empty?
 
       moved = separate!(boxes, movable)
       return if moved.empty?
@@ -548,11 +586,17 @@ module Views
     def separate!(boxes, movable)
       moved = {}
 
+      # まず外周余白へ収める。最後だけ座標を丸めると端で再衝突するため、
+      # 押しのけの各周回でも同じ境界へ戻す
+      boxes.each { |box| constrain_to_board!(box, movable, moved) }
+
       OVERLAP_PASSES.times do
         collided = false
+        before = boxes.to_h { |box| [ box[:id], [ box[:x], box[:y] ] ] }
 
         boxes.combination(2) do |a, b|
-          overlap_x = (a[:w] + b[:w]) / 2 + MIN_CARD_GAP - ((a[:x] + a[:w] / 2) - (b[:x] + b[:w] / 2)).abs
+          overlap_x = (a[:layout_w] + b[:layout_w]) / 2 + MIN_CARD_GAP -
+                      ((a[:x] + a[:w] / 2) - (b[:x] + b[:w] / 2)).abs
           overlap_y = (a[:h] + b[:h]) / 2 + MIN_CARD_GAP - ((a[:y] + a[:h] / 2) - (b[:y] + b[:h] / 2)).abs
           next if overlap_x <= 0 || overlap_y <= 0
 
@@ -569,10 +613,31 @@ module Views
           end
         end
 
+        boxes.each { |box| constrain_to_board!(box, movable, moved) }
+
         break unless collided
+        break if boxes.all? { |box| before[box[:id]] == [ box[:x], box[:y] ] }
       end
 
       moved.values
+    end
+
+    # カード本体だけでなく見出し幅も含め、盤の四辺に余白を残す
+    def constrain_to_board!(box, movable, moved)
+      return unless movable.nil? || movable.include?(box[:id])
+
+      extra_width = [ box[:layout_w] - box[:w], 0 ].max / 2
+      min_x = BOARD_PADDING + extra_width
+      max_x = BOARD_WIDTH - BOARD_PADDING - box[:w] - extra_width
+      min_y = BOARD_PADDING.to_f
+      max_y = BOARD_HEIGHT - BOARD_PADDING - box[:h]
+      next_x = max_x >= min_x ? box[:x].clamp(min_x, max_x) : (BOARD_WIDTH - box[:w]) / 2
+      next_y = max_y >= min_y ? box[:y].clamp(min_y, max_y) : (BOARD_HEIGHT - box[:h]) / 2
+      return if next_x == box[:x] && next_y == box[:y]
+
+      box[:x] = next_x
+      box[:y] = next_y
+      moved[box[:id]] = box
     end
 
     # 2枚を反対向きに押す。動かせない方がいるときは、動かせる方だけを倍に押す
@@ -613,6 +678,25 @@ module Views
       value.to_f.clamp(MIN_CARD_SIZE, MAX_CARD_SIZE).round
     end
 
+    # ブラウザの実測値は取れないため、全角を1文字、半角を約0.58文字として概算する。
+    # ここでカード自体を勝手に拡大はせず、配置時の読みやすい間隔としてだけ使う。
+    def title_footprint_width(title)
+      font_size = @view.settings.to_h["card_font_size"].to_f
+      font_size = DEFAULT_CARD_FONT_SIZE unless font_size.positive?
+      font_size = font_size.clamp(10, 32)
+      units = title.to_s.each_char.sum do |character|
+        if character.match?(/\s/)
+          0.35
+        elsif character.ascii_only?
+          0.58
+        else
+          1.0
+        end
+      end
+      estimated = units * font_size + CARD_TITLE_HORIZONTAL_PADDING
+      estimated.clamp(CARD_WIDTH, MAX_TITLE_FOOTPRINT_WIDTH)
+    end
+
     def apply_edges!(edges)
       on_board = @view.view_items.pluck(:item_id).to_set
       wanted = Array(edges).first(MAX_EDGES).filter_map do |edge|
@@ -630,11 +714,17 @@ module Views
       @view.view_edges.destroy_all
       boxes = placement_boxes
       wanted.each do |edge|
-        source_handle, target_handle = handles_for(boxes[edge[:source]], boxes[edge[:target]])
+        source_box = boxes[edge[:source]]
+        target_box = boxes[edge[:target]]
+        source_handle, target_handle = handles_for(source_box, target_box)
         @view.view_edges.create!(
           source_node_id: edge[:source], target_node_id: edge[:target],
           source_handle: source_handle, target_handle: target_handle,
-          label: edge[:label], style: edge[:style]
+          label: edge[:label], style: edge[:style],
+          points: route_around_cards(
+            source_box, target_box, source_handle, target_handle,
+            boxes.except(edge[:source], edge[:target]).values
+          )
         )
       end
       wanted.size
@@ -668,6 +758,118 @@ module Views
       end
     end
 
+    # source/target の間に別カードがある場合、線へ直交する迂回点を付ける。
+    # フロント側の自動経路だけでは障害物を認識しないため、座標が確定した後に処理する。
+    # 迂回点は水平・垂直の線分だけで構成し、斜め線を作らない。
+    def route_around_cards(source, target, source_handle, target_handle, obstacles)
+      return [] if source.nil? || target.nil? || obstacles.empty?
+
+      start_point = edge_anchor(source, source_handle)
+      end_point = edge_anchor(target, target_handle)
+      horizontal = %w[left right].include?(source_handle)
+      direct_points = if horizontal
+        middle_x = (start_point[:x] + end_point[:x]) / 2
+        [ { "x" => middle_x, "y" => start_point[:y] }, { "x" => middle_x, "y" => end_point[:y] } ]
+      else
+        middle_y = (start_point[:y] + end_point[:y]) / 2
+        [ { "x" => start_point[:x], "y" => middle_y }, { "x" => end_point[:x], "y" => middle_y } ]
+      end
+      return [] if route_collision_count(start_point, direct_points, end_point, obstacles).zero?
+
+      detours = if horizontal
+        obstacles.flat_map do |box|
+          [ box[:y] - EDGE_CARD_CLEARANCE - 1, box[:y] + box[:height] + EDGE_CARD_CLEARANCE + 1 ]
+        end.uniq.map do |y|
+          y = y.clamp(BOARD_PADDING / 2.0, BOARD_HEIGHT - BOARD_PADDING / 2.0)
+          [ { "x" => start_point[:x], "y" => y }, { "x" => end_point[:x], "y" => y } ]
+        end
+      else
+        obstacles.flat_map do |box|
+          [ box[:x] - EDGE_CARD_CLEARANCE - 1, box[:x] + box[:width] + EDGE_CARD_CLEARANCE + 1 ]
+        end.uniq.map do |x|
+          x = x.clamp(BOARD_PADDING / 2.0, BOARD_WIDTH - BOARD_PADDING / 2.0)
+          [ { "x" => x, "y" => start_point[:y] }, { "x" => x, "y" => end_point[:y] } ]
+        end
+      end
+
+      best = detours.min_by do |points|
+        [ route_collision_count(start_point, points, end_point, obstacles), route_length(start_point, points, end_point) ]
+      end
+      compact_route_points(start_point, best, end_point)
+    end
+
+    def edge_anchor(box, handle)
+      case handle
+      when "top" then { x: box[:x] + box[:width] / 2, y: box[:y] }
+      when "right" then { x: box[:x] + box[:width], y: box[:y] + box[:height] / 2 }
+      when "bottom" then { x: box[:x] + box[:width] / 2, y: box[:y] + box[:height] }
+      else { x: box[:x], y: box[:y] + box[:height] / 2 }
+      end
+    end
+
+    def route_collision_count(start_point, points, end_point, obstacles)
+      [ start_point, *points.map(&:symbolize_keys), end_point ].each_cons(2).sum do |from, to|
+        obstacles.count { |box| segment_crosses_box?(from, to, box) }
+      end
+    end
+
+    def segment_crosses_box?(from, to, box)
+      left = box[:x] - EDGE_CARD_CLEARANCE
+      right = box[:x] + box[:width] + EDGE_CARD_CLEARANCE
+      top = box[:y] - EDGE_CARD_CLEARANCE
+      bottom = box[:y] + box[:height] + EDGE_CARD_CLEARANCE
+
+      if from[:x] == to[:x]
+        from[:x].between?(left, right) && ranges_overlap?(from[:y], to[:y], top, bottom)
+      elsif from[:y] == to[:y]
+        from[:y].between?(top, bottom) && ranges_overlap?(from[:x], to[:x], left, right)
+      else
+        # 生成する経路は直交線だけ。想定外の斜線は安全側で衝突扱いにする
+        true
+      end
+    end
+
+    def ranges_overlap?(a, b, min, max)
+      [ a, b ].min <= max && [ a, b ].max >= min
+    end
+
+    def route_length(start_point, points, end_point)
+      [ start_point, *points.map(&:symbolize_keys), end_point ].each_cons(2).sum do |from, to|
+        (from[:x] - to[:x]).abs + (from[:y] - to[:y]).abs
+      end
+    end
+
+    def compact_route_points(start_point, points, end_point)
+      points.each_with_object([]) do |point, compacted|
+        symbolized = point.symbolize_keys
+        previous = compacted.last&.symbolize_keys || start_point
+        next if symbolized == previous || symbolized == end_point
+
+        compacted << { "x" => symbolized[:x].round, "y" => symbolized[:y].round }
+      end
+    end
+
+    # 配置だけを整えた後、既存線の意味と見た目は保って経路だけを引き直す。
+    # 手動折れ点は移動前の座標なので、新しいカード配置ではそのまま使えない。
+    def reroute_existing_edges!
+      boxes = placement_boxes
+      @view.view_edges.find_each do |edge|
+        source_box = boxes[edge.source_node_id]
+        target_box = boxes[edge.target_node_id]
+        next if source_box.nil? || target_box.nil?
+
+        source_handle, target_handle = handles_for(source_box, target_box)
+        edge.update!(
+          source_handle: source_handle,
+          target_handle: target_handle,
+          points: route_around_cards(
+            source_box, target_box, source_handle, target_handle,
+            boxes.except(edge.source_node_id, edge.target_node_id).values
+          )
+        )
+      end
+    end
+
     # つながりは変えず、文字と見た目だけ当て直す。
     # 引き直すと手で描いた線や折れ点が失われるので、既存の行を更新する
     def restyle_edges!(edges)
@@ -683,6 +885,22 @@ module Views
           label: sanitize(edge["label"], limit: 40).presence,
           style: target.style.merge(edge_style(edge["style"]))
         )
+        true
+      end
+    end
+
+    # つながり・style・points は変えず、ラベルだけを更新する。
+    # 文言専用ボタンから使い、見た目まで意図せず変わるのを防ぐ。
+    def relabel_edges!(edges)
+      by_pair = @view.view_edges.index_by { |edge| [ edge.source_node_id, edge.target_node_id ] }
+
+      Array(edges).first(MAX_EDGES).count do |edge|
+        next false unless edge.is_a?(Hash)
+
+        target = by_pair[[ edge["source"].to_s, edge["target"].to_s ]]
+        next false if target.nil?
+
+        target.update!(label: sanitize(edge["label"], limit: 40).presence)
         true
       end
     end

@@ -264,8 +264,8 @@ export default function ViewEditorPage() {
 
       {error && <p className="text-sm text-destructive mb-4">{error}</p>}
 
-      {/* ことばの指示で組み立て直す（デッキ / フリーボード） */}
-      {(view.view_type === 'freeboard' || view.view_type === 'deck') && (
+      {/* キャンバスタイプごとの描画（freeboard / space_map を実装済み） */}
+      {view.view_type === 'freeboard' ? (
         <AiEditPanel
           viewId={view.id}
           viewType={view.view_type}
@@ -273,17 +273,35 @@ export default function ViewEditorPage() {
           canRedo={view.revision?.can_redo ?? false}
           onApplied={(updated) => {
             setView(updated)
-            // 盤は初期値から自前の状態を作るので、作り直させて結果を映す
             setCanvasKey((n) => n + 1)
           }}
-        />
-      )}
-
-      {/* キャンバスタイプごとの描画（freeboard / space_map を実装済み） */}
-      {view.view_type === 'freeboard' ? (
-        <FreeboardCanvas key={canvasKey} viewId={view.id} viewName={view.name} initialItems={view.items ?? []} initialEdges={view.edges ?? []} />
+        >
+          {({ editAction, historyActions }) => (
+            <FreeboardCanvas
+              key={canvasKey}
+              viewId={view.id}
+              viewName={view.name}
+              initialItems={view.items ?? []}
+              initialEdges={view.edges ?? []}
+              aiEditAction={editAction}
+              aiEditHistoryActions={historyActions}
+            />
+          )}
+        </AiEditPanel>
       ) : view.view_type === 'deck' ? (
-        <DeckBoard key={canvasKey} viewId={view.id} initialItems={view.items ?? []} />
+        <>
+          <AiEditPanel
+            viewId={view.id}
+            viewType={view.view_type}
+            canUndo={view.revision?.can_undo ?? false}
+            canRedo={view.revision?.can_redo ?? false}
+            onApplied={(updated) => {
+              setView(updated)
+              setCanvasKey((n) => n + 1)
+            }}
+          />
+          <DeckBoard key={canvasKey} viewId={view.id} initialItems={view.items ?? []} />
+        </>
       ) : view.view_type === 'space_map' ? (
         <SpaceMapCanvas viewId={view.id} space={view.space} initialPoints={view.points ?? []} />
       ) : (

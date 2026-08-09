@@ -35,13 +35,14 @@ RSpec.describe "Api::V1::Views AI編集", type: :request do
   end
 
   it "編集後の内容と、何をしたかを返す" do
-    stub_plan("summary" => "逆順にしました", "order" => [ b.id, a.id ])
+    stub_plan("summary" => "逆順にしました", "notes" => "関係を確認しました", "order" => [ b.id, a.id ])
 
     post "/api/v1/views/#{view.id}/ai_edit",
          params: { edit: { instruction: "逆順にして" } }, headers: headers, as: :json
 
     expect(response).to have_http_status(:success)
     expect(json_response["ai_edit"]["summary"]).to eq("逆順にしました")
+    expect(json_response["ai_edit"]["notes"]).to eq("関係を確認しました")
     expect(json_response["items"].map { |i| i["item_id"] }).to eq([ b.id, a.id ])
   end
 

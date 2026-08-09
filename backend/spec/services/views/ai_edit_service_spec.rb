@@ -96,6 +96,47 @@ RSpec.describe Views::AiEditService do
         expect([ gap_x >= described_class::CARD_WIDTH, gap_y >= described_class::CARD_HEIGHT ].any?).to be(true)
       end
 
+      it "カード間に線や文字を置ける余白を残す" do
+        stub_plan("placements" => [ { "item_id" => a.id, "x" => 200, "y" => 200 },
+                                    { "item_id" => b.id, "x" => 210, "y" => 205 } ])
+
+        described_class.call(view: view, instruction: "余裕を持って並べて")
+
+        first = view.view_items.find_by(item_id: a.id)
+        second = view.view_items.find_by(item_id: b.id)
+        horizontal_gap = [ second.x - (first.x + first.width), first.x - (second.x + second.width) ].max
+        vertical_gap = [ second.y - (first.y + first.height), first.y - (second.y + second.height) ].max
+        expect([ horizontal_gap, vertical_gap ].max).to be >= described_class::MIN_CARD_GAP
+      end
+
+      it "長い見出しの文字幅を配置の間隔に含める" do
+        a.update!(title: "とても長い見出し" * 6)
+        stub_plan("placements" => [ { "item_id" => a.id, "x" => 200, "y" => 200 },
+                                    { "item_id" => b.id, "x" => 450, "y" => 200 } ])
+
+        described_class.call(view: view, instruction: "読みやすく並べて")
+
+        first = view.view_items.find_by(item_id: a.id)
+        second = view.view_items.find_by(item_id: b.id)
+        center_distance = ((first.x + first.width / 2) - (second.x + second.width / 2)).abs
+        required_distance = (described_class::MAX_TITLE_FOOTPRINT_WIDTH + second.width) / 2 +
+                            described_class::MIN_CARD_GAP
+        expect(center_distance).to be >= required_distance
+      end
+
+      it "盤の四辺に外周余白を残す" do
+        view.view_items.find_by(item_id: b.id).destroy!
+        stub_plan("placements" => [ { "item_id" => a.id, "x" => 0, "y" => 0 } ])
+
+        described_class.call(view: view, instruction: "配置して")
+
+        placement = view.view_items.find_by(item_id: a.id)
+        expect(placement.x).to be >= described_class::BOARD_PADDING
+        expect(placement.y).to be >= described_class::BOARD_PADDING
+        expect(placement.x + placement.width).to be <= described_class::BOARD_WIDTH - described_class::BOARD_PADDING
+        expect(placement.y + placement.height).to be <= described_class::BOARD_HEIGHT - described_class::BOARD_PADDING
+      end
+
       it "離れているカードは動かさない" do
         stub_plan("placements" => [ { "item_id" => a.id, "x" => 100, "y" => 100 },
                                     { "item_id" => b.id, "x" => 900, "y" => 900 } ])
@@ -162,6 +203,50 @@ RSpec.describe Views::AiEditService do
         expect(edge.source_handle).to eq("top")
         expect(edge.target_handle).to eq("bottom")
       end
+
+      it "2枚の間に別カードがあるときは、そのカードの外へ線を迂回させる" do
+        blocker = card("途中のカード")
+        view.view_items.create!(item: blocker, x: 0, y: 0)
+        stub_plan(
+          "placements" => [ { "item_id" => a.id, "x" => 100, "y" => 200 },
+                            { "item_id" => blocker.id, "x" => 400, "y" => 200 },
+                            { "item_id" => b.id, "x" => 700, "y" => 200 } ],
+          "edges" => [ { "source" => a.id, "target" => b.id, "label" => "結果" } ]
+        )
+
+        described_class.call(view: view, instruction: "線がカードに重ならないようにつないで")
+
+        edge = view.view_edges.first
+        expect(edge.points).to be_present
+        expect(edge.points.map { |point| point["y"] }.max)
+          .to be < 200 - described_class::EDGE_CARD_CLEARANCE
+      end
+
+      it "配置だけ整えたときも、接続と見た目を保って既存線をカードの外へ引き直す" do
+        blocker = card("途中のカード")
+        view.view_items.create!(item: blocker, x: 1_000, y: 1_000)
+        edge = view.view_edges.create!(
+          source_node_id: a.id, target_node_id: b.id, label: "結果",
+          style: { "width" => 3 }, points: [ { "x" => 999, "y" => 999 } ]
+        )
+        stub_plan(
+          "placements" => [ { "item_id" => a.id, "x" => 100, "y" => 200 },
+                            { "item_id" => blocker.id, "x" => 400, "y" => 200 },
+                            { "item_id" => b.id, "x" => 700, "y" => 200 } ],
+          "edges" => []
+        )
+
+        described_class.call(view: view, instruction: "配置だけ整えて", edges: "keep", placement: "arrange")
+
+        edge.reload
+        expect(edge.label).to eq("結果")
+        expect(edge.style).to eq("width" => 3)
+        expect(edge.source_node_id).to eq(a.id)
+        expect(edge.target_node_id).to eq(b.id)
+        expect(edge.points).not_to eq([ { "x" => 999, "y" => 999 } ])
+        expect(edge.points.map { |point| point["y"] }.max)
+          .to be < 200 - described_class::EDGE_CARD_CLEARANCE
+      end
     end
 
     describe "オプション" do
@@ -196,6 +281,37 @@ RSpec.describe Views::AiEditService do
         expect(edge.style["width"]).to eq(3)
         # 折れ点は残す
         expect(edge.points).to eq([ { "x" => 10, "y" => 20 } ])
+      end
+
+      it "文言だけ整える指定なら、つなぎ方・style・折れ点を変えずに label だけ直す" do
+        edge = view.view_edges.create!(
+          source_node_id: a.id, target_node_id: b.id, label: "関係",
+          style: { "width" => 1, "color" => "#999999" }, points: [ { "x" => 10, "y" => 20 } ]
+        )
+        stub_plan("edges" => [
+          { "source" => a.id, "target" => b.id, "label" => "原因", "style" => { "width" => 8 } },
+          { "source" => b.id, "target" => a.id, "label" => "逆" }
+        ])
+
+        described_class.call(view: view, instruction: "線の文言を直して", edges: "relabel")
+
+        expect(view.view_edges.count).to eq(1)
+        edge.reload
+        expect(edge.label).to eq("原因")
+        expect(edge.style).to eq("width" => 1, "color" => "#999999")
+        expect(edge.points).to eq([ { "x" => 10, "y" => 20 } ])
+      end
+
+      it "文言だけ整える指定では、曖昧な語と逆向きのラベルを避ける規則を足す" do
+        stub_plan({})
+
+        described_class.call(view: view, instruction: "線の文言を直して", edges: "relabel")
+
+        expect(Ai::Chat).to have_received(:call) do |args|
+          system = args[:messages].first[:content]
+          expect(system).to include("つなぎ方・線の見た目・折れ点は一切変えない")
+          expect(system).to include("意味と逆向きの語")
+        end
       end
 
       it "既定では線を引き直す" do
@@ -299,8 +415,25 @@ RSpec.describe Views::AiEditService do
       described_class.call(view: view, instruction: "並べて")
 
       placement = view.view_items.find_by(item_id: a.id)
-      expect(placement.x).to eq(described_class::BOARD_WIDTH)
-      expect(placement.y).to eq(0)
+      expect(placement.x + placement.width).to be <= described_class::BOARD_WIDTH - described_class::BOARD_PADDING
+      expect(placement.y).to be >= described_class::BOARD_PADDING
+    end
+
+
+    it "AI に外周余白と見出し幅を伝える" do
+      stub_plan({})
+
+      described_class.call(view: view, instruction: "読みやすく配置して")
+
+      expect(Ai::Chat).to have_received(:call) do |args|
+        system = args[:messages].first[:content]
+        material = args[:messages].last[:content]
+        expect(system).to include("四辺には最低 #{described_class::BOARD_PADDING} の余白")
+        expect(system).to include("見出し幅")
+        expect(system).to include("水平・垂直の直交線")
+        expect(system).to include("平行に揃える")
+        expect(material).to include("見出し幅≈")
+      end
     end
 
     # 候補は渡していたが「選んで足せ」という規則が無く、AI が何も足さなかった
