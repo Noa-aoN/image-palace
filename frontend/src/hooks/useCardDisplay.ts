@@ -36,18 +36,8 @@ export const MAX_CARDS_PER_PAGE = 100
 
 export const DEFAULT_CARD_DISPLAY: CardDisplay = { fit: 'natural', columns: 5, rows: 5 }
 
-// Tailwind は文字列を静的に読むので、組み立てず対応表から選ぶ
-export const CARD_GRID_CLASSES: Record<number, string> = {
-  2: 'grid-cols-1 sm:grid-cols-2',
-  3: 'grid-cols-2 md:grid-cols-3',
-  4: 'grid-cols-2 md:grid-cols-3 lg:grid-cols-4',
-  5: 'grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5',
-  6: 'grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6',
-  7: 'grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-7',
-  8: 'grid-cols-2 md:grid-cols-4 lg:grid-cols-6 xl:grid-cols-8',
-  9: 'grid-cols-3 md:grid-cols-4 lg:grid-cols-6 xl:grid-cols-9',
-  10: 'grid-cols-3 md:grid-cols-5 lg:grid-cols-7 xl:grid-cols-10',
-}
+// 対応表はスケルトンとも共有する（読み込み中と読み込み後で列数が変わらないように）
+export { CARD_GRID_CLASSES, cardGridClass } from '@/lib/card-grid'
 
 /** 1ページの枚数。行で持つので、列数を変えても行はきれいに埋まる */
 export function cardsPerPage(display: CardDisplay): number {

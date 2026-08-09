@@ -35,3 +35,15 @@ export const POLLING_STATUSES: ReadonlySet<GenerationStatus> = new Set<Generatio
 export function isGenerating(status: GenerationStatus): boolean {
   return POLLING_STATUSES.has(status)
 }
+
+/**
+ * 「作り直し中」か。生成中で、かつ**前の画像がまだ残っている**状態。
+ *
+ * 作り直しは古い画像を消さずに新しい生成を始める（差し替わるまで見られる方が親切なため）。
+ * その結果、状態だけ見ると生成中なのに画面には完成した画像が出ていて、
+ * 押したのに何も起きていないように見えていた。初回生成（画像が無い）とは
+ * 見せ方を分ける必要があるので、両方を見て判定する。
+ */
+export function isRegenerating(status: GenerationStatus, hasImage: boolean): boolean {
+  return hasImage && isGenerating(status)
+}
