@@ -11,9 +11,13 @@ import { PropertyBlock, BlockAction, BlockError } from '@/components/features/it
 import { ItemProperties } from '@/components/features/items/ItemProperties'
 import { ItemImageBar } from '@/components/features/items/ItemImageBar'
 import { GeneratingOverlay } from '@/components/features/items/GeneratingOverlay'
+import {
+  RegeneratingOverlay,
+  REGENERATING_IMAGE_CLASS,
+} from '@/components/features/items/RegeneratingOverlay'
 import { StatusBadge } from '@/components/features/items/StatusBadge'
 import { useItemDetail } from '@/hooks/useItemDetail'
-import { STATUS_LABEL } from '@/lib/item-status'
+import { STATUS_LABEL, isRegenerating } from '@/lib/item-status'
 import { aspectRatioCss } from '@/lib/aspect-ratio'
 
 // カード詳細の本体（画像・タイトル編集・再生成・プロパティ・生成情報）。
@@ -54,6 +58,9 @@ export function ItemDetailBody({ itemId, onDeleted }: { itemId: string; onDelete
       </div>
     )
   }
+
+  // 前の画像が残ったまま生成中＝作り直し中
+  const regenerating = isRegenerating(item.generation_status, Boolean(item.media?.url) && !imgError)
 
   return (
     <div className="space-y-5">
@@ -125,11 +132,12 @@ export function ItemDetailBody({ itemId, onDeleted }: { itemId: string; onDelete
             <img
               src={item.media.url}
               alt={item.title}
-              className="w-full cursor-zoom-in rounded-lg object-cover"
+              className={`w-full cursor-zoom-in rounded-lg object-cover ${regenerating ? REGENERATING_IMAGE_CLASS : ''}`}
               decoding="async"
               onClick={() => setZoomed(true)}
               onError={() => setImgError(true)}
             />
+            {regenerating && <RegeneratingOverlay />}
             <Tooltip label="画像をダウンロード">
               <button
                 type="button"

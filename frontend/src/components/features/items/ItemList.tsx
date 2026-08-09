@@ -16,8 +16,12 @@ import {
 import { Spinner } from '@/components/ui/spinner'
 import { CardGridSkeleton } from '@/components/ui/skeleton'
 import { GeneratingOverlay } from '@/components/features/items/GeneratingOverlay'
+import {
+  RegeneratingOverlay,
+  REGENERATING_IMAGE_CLASS,
+} from '@/components/features/items/RegeneratingOverlay'
 import { CardCreateButton } from '@/components/features/items/CardCreatePanel'
-import { STATUS_LABEL } from '@/lib/item-status'
+import { STATUS_LABEL, isRegenerating } from '@/lib/item-status'
 import { usePendingRefresh } from '@/hooks/usePendingRefresh'
 import { StatusBadge } from '@/components/features/items/StatusBadge'
 import {
@@ -162,6 +166,8 @@ function ItemCard({ item, selectionMode, selected, onToggle, fit, sizes }: ItemC
   const imageUrl = item.media?.thumb_url ?? item.media?.url
   const resolvedImageUrl = imageUrl ?? null
   const hasImageError = resolvedImageUrl !== null && failedImageUrl === resolvedImageUrl
+  // 前の画像が残ったまま生成中＝作り直し中。初回生成（画像が無い）とは見せ方を変える
+  const regenerating = isRegenerating(item.generation_status, resolvedImageUrl !== null && !hasImageError)
 
   // 単語名が枠に入り切らないときだけ、ホバーで全文を出す。
   // 列数を増やせるようにした結果、8〜10列では名前が数文字で切れる。
@@ -238,18 +244,21 @@ function ItemCard({ item, selectionMode, selected, onToggle, fit, sizes }: ItemC
           </span>
         )}
         {resolvedImageUrl && !hasImageError ? (
-          // eslint-disable-next-line @next/next/no-img-element
-          <img
-            src={resolvedImageUrl}
-            alt={item.title}
-            className={`rounded-[2px] shadow-[0_1px_3px_rgba(0,0,0,0.25)] ring-1 ring-black/15 ${
-              fit === 'uniform' ? 'max-h-full max-w-full object-contain' : 'w-full h-full object-cover'
-            }`}
-            loading="lazy"
-            decoding="async"
-            sizes={sizes}
-            onError={() => setFailedImageUrl(resolvedImageUrl)}
-          />
+          <>
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
+              src={resolvedImageUrl}
+              alt={item.title}
+              className={`rounded-[2px] shadow-[0_1px_3px_rgba(0,0,0,0.25)] ring-1 ring-black/15 ${
+                fit === 'uniform' ? 'max-h-full max-w-full object-contain' : 'w-full h-full object-cover'
+              } ${regenerating ? REGENERATING_IMAGE_CLASS : ''}`}
+              loading="lazy"
+              decoding="async"
+              sizes={sizes}
+              onError={() => setFailedImageUrl(resolvedImageUrl)}
+            />
+            {regenerating && <RegeneratingOverlay compact />}
+          </>
         ) : (
           <GeneratingOverlay
             status={item.generation_status}
@@ -795,7 +804,9 @@ export function ItemList({ initialTag = null }: { initialTag?: string | null }) 
     return (
       <div className="space-y-6">
         {filterBar}
-        <CardGridSkeleton withTitle />
+        {/* 読み込み中の格子を本番と揃える。既定の5列8枚で描くと、
+            10列25枚にしている人は一度組み替わる画面を見ることになる */}
+        <CardGridSkeleton withTitle columns={display.columns} count={cardsPerPage(display)} />
       </div>
     )
   }

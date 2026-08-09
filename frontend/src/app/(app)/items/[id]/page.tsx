@@ -17,8 +17,12 @@ import { useRightPanelStore } from '@/stores/rightPanel'
 import { getItemNavigationIds } from '@/lib/api/items'
 import { getViewDetail } from '@/lib/api/views'
 import { GeneratingOverlay } from '@/components/features/items/GeneratingOverlay'
+import {
+  RegeneratingOverlay,
+  REGENERATING_IMAGE_CLASS,
+} from '@/components/features/items/RegeneratingOverlay'
 import { Skeleton } from '@/components/ui/skeleton'
-import { STATUS_LABEL } from '@/lib/item-status'
+import { STATUS_LABEL, isRegenerating } from '@/lib/item-status'
 import { StatusBadge } from '@/components/features/items/StatusBadge'
 import { useItemDetail } from '@/hooks/useItemDetail'
 import { aspectRatioCss } from '@/lib/aspect-ratio'
@@ -109,6 +113,9 @@ export default function ItemDetailPage() {
   }
 
   const navBtnBase = 'flex items-center justify-center rounded-full p-2 text-muted-foreground hover:text-foreground hover:bg-black/8 transition-colors'
+
+  // 前の画像が残ったまま生成中＝作り直し中
+  const regenerating = isRegenerating(item.generation_status, Boolean(item.media?.url) && !imgError)
 
   return (
     <div className="relative flex flex-col min-h-full">
@@ -235,19 +242,20 @@ export default function ItemDetailPage() {
           <div className="relative">
             {item.media?.url && !imgError ? (
               <div
-                className="w-full overflow-hidden rounded-lg bg-muted"
+                className="relative w-full overflow-hidden rounded-lg bg-muted"
                 style={item.media.blur ? { backgroundImage: `url("${item.media.blur}")`, backgroundSize: 'cover', backgroundPosition: 'center' } : undefined}
               >
                 {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img
                   src={item.media.url}
                   alt={item.title}
-                  className="w-full cursor-zoom-in rounded-lg object-cover"
+                  className={`w-full cursor-zoom-in rounded-lg object-cover ${regenerating ? REGENERATING_IMAGE_CLASS : ''}`}
                   decoding="async"
                   fetchPriority="high"
                   onClick={() => setZoomed(true)}
                   onError={() => setImgError(true)}
                 />
+                {regenerating && <RegeneratingOverlay />}
               </div>
             ) : (
               <GeneratingOverlay
