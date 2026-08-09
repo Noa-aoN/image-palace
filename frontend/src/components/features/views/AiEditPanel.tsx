@@ -12,6 +12,7 @@ import type {
   AiEditEdgeMode,
   AiEditLayout,
   AiEditMode,
+  AiEditPlacementMode,
   AiEditSizeMode,
   AiEditSummary,
   CardEdge,
@@ -100,6 +101,7 @@ export function AiEditPanel({
   const [layout, setLayout] = useState<AiEditLayout>('auto')
   const [edgeMode, setEdgeMode] = useState<AiEditEdgeMode>('rebuild')
   const [sizeMode, setSizeMode] = useState<AiEditSizeMode>('ai')
+  const [placementMode, setPlacementMode] = useState<AiEditPlacementMode>('arrange')
   const [createdCount, setCreatedCount] = useState<number | null>(null)
   const [arranged, setArranged] = useState(false)
 
@@ -169,6 +171,7 @@ export function AiEditPanel({
         layout,
         edges: edgeMode,
         sizing: sizeMode,
+        placement: placementMode,
       })
       setResult(updated.ai_edit ?? null)
       onApplied(updated)
@@ -292,17 +295,31 @@ export function AiEditPanel({
             <details className="rounded-lg border border-border px-3 py-2">
               <summary className="cursor-pointer text-xs text-muted-foreground">整え方の指定</summary>
 
-              <div className="mt-3 space-y-3">
+              <div className="mt-3 space-y-4">
+                {/* 配置・線・大きさは対等な3項目。触らないを選べば、他だけを個別に実行できる */}
                 <div>
-                  <p className="mb-1 text-xs text-muted-foreground">並べ方</p>
-                  <div className="flex flex-wrap gap-1.5">
+                  <p className="mb-1 text-xs text-muted-foreground">配置</p>
+                  <div className="flex flex-col gap-1.5">
+                    <Button
+                      size="sm"
+                      variant={placementMode === 'keep' ? 'default' : 'outline'}
+                      disabled={busy !== null}
+                      onClick={() => setPlacementMode('keep')}
+                      className="w-full justify-start"
+                    >
+                      触らない
+                    </Button>
                     {LAYOUTS.map((option) => (
                       <Button
                         key={option.value}
                         size="sm"
-                        variant={layout === option.value ? 'default' : 'outline'}
+                        variant={placementMode === 'arrange' && layout === option.value ? 'default' : 'outline'}
                         disabled={busy !== null}
-                        onClick={() => setLayout(option.value)}
+                        onClick={() => {
+                          setPlacementMode('arrange')
+                          setLayout(option.value)
+                        }}
+                        className="w-full justify-start"
                       >
                         {option.label}
                       </Button>
@@ -339,15 +356,32 @@ export function AiEditPanel({
                   </p>
                 </div>
 
-                <label className="flex items-center gap-2 text-sm">
-                  <input
-                    type="checkbox"
-                    checked={sizeMode === 'keep'}
-                    disabled={busy !== null}
-                    onChange={(e) => setSizeMode(e.target.checked ? 'keep' : 'ai')}
-                  />
-                  カードの大きさを変えない
-                </label>
+                <div>
+                  <p className="mb-1 text-xs text-muted-foreground">カードの大きさ</p>
+                  <div className="flex flex-col gap-1.5">
+                    {[
+                      { value: 'ai' as const, label: 'AIが強弱をつける' },
+                      { value: 'uniform' as const, label: '全部そろえる' },
+                      { value: 'keep' as const, label: '触らない' },
+                    ].map((option) => (
+                      <Button
+                        key={option.value}
+                        size="sm"
+                        variant={sizeMode === option.value ? 'default' : 'outline'}
+                        disabled={busy !== null}
+                        onClick={() => setSizeMode(option.value)}
+                        className="w-full justify-start"
+                      >
+                        {option.label}
+                      </Button>
+                    ))}
+                  </div>
+                </div>
+
+                <p className="text-[11px] text-muted-foreground">
+                  それぞれ「触らない」を選べば、他の項目だけを個別に実行できます
+                  （線だけ整える、大きさだけそろえる、など）。
+                </p>
 
 
               </div>
