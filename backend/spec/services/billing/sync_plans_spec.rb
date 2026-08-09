@@ -5,8 +5,61 @@ RSpec.describe Billing::SyncPlans do
   before do
     Stripe.api_key = "sk_test_dummy"
     Plan.delete_all
+    # 既存商品の税コード確認は毎回走る。個別の例で上書きしない限り「設定済み」として扱う
+    allow(Stripe::Product).to receive(:retrieve)
+      .and_return(Stripe::Product.construct_from(id: "prod_x", tax_code: described_class::TAX_CODE))
   end
   after { Stripe.api_key = nil }
+
+  # Managed Payments が既定で有効になり、税コードの無い商品は Checkout Session の
+  # 作成ごと弾かれるようになった（2026-08 に本番で発生）
+  describe "税コード" do
+    let(:matching_price) do
+      Stripe::Price.construct_from(
+        id: "price_x", active: true, currency: "jpy", unit_amount: 1480, recurring: { interval: "month" }
+      )
+    end
+
+    it "新しく作る商品に税コードを付ける" do
+      create(:plan, :standard)
+      allow(Stripe::Price).to receive(:create).and_return(Stripe::Price.construct_from(id: "price_1"))
+
+      expect(Stripe::Product).to receive(:create)
+        .with(hash_including(tax_code: described_class::TAX_CODE))
+        .and_return(Stripe::Product.construct_from(id: "prod_1"))
+
+      described_class.call
+    end
+
+    it "既にある商品で税コードが無ければ入れ直す" do
+      create(:plan, :standard).update!(stripe_product_id: "prod_x", stripe_price_id: "price_x")
+      allow(Stripe::Price).to receive(:retrieve).and_return(matching_price)
+      allow(Stripe::Product).to receive(:retrieve)
+        .and_return(Stripe::Product.construct_from(id: "prod_x", tax_code: nil))
+
+      expect(Stripe::Product).to receive(:update).with("prod_x", tax_code: described_class::TAX_CODE)
+
+      expect(described_class.call.updated_products).to eq(1)
+    end
+
+    it "既に正しい税コードなら触らない" do
+      create(:plan, :standard).update!(stripe_product_id: "prod_x", stripe_price_id: "price_x")
+      allow(Stripe::Price).to receive(:retrieve).and_return(matching_price)
+
+      expect(Stripe::Product).not_to receive(:update)
+
+      expect(described_class.call.updated_products).to eq(0)
+    end
+
+    # 商品が消えていても、他のプランの同期は続けたい
+    it "税コードの更新に失敗しても止まらない" do
+      create(:plan, :standard).update!(stripe_product_id: "prod_gone", stripe_price_id: "price_x")
+      allow(Stripe::Price).to receive(:retrieve).and_return(matching_price)
+      allow(Stripe::Product).to receive(:retrieve).and_raise(Stripe::InvalidRequestError.new("no such product", nil))
+
+      expect { described_class.call }.not_to raise_error
+    end
+  end
 
   it "raises when the API key is missing" do
     Stripe.api_key = nil
