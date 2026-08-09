@@ -335,6 +335,7 @@ export function AiEditPanel({
                   options={[
                     { value: 'rebuild', label: '指示どおりに引き直す' },
                     { value: 'infer', label: '意味を読んで関係を見つけて引く' },
+                    { value: 'restyle', label: '文字と見た目だけ整える' },
                     { value: 'keep', label: 'いまの線をそのままにする' },
                   ]}
                   value={edgeMode}
@@ -343,9 +344,11 @@ export function AiEditPanel({
                   hint={
                     edgeMode === 'infer'
                       ? 'カードの意味・説明を読み、原因と結果・上位と下位・対比などの関係を見つけて結びます。根拠のない線は引きません。'
-                      : edgeMode === 'keep'
-                        ? '手で描いた線が並べ替えで消えません。'
-                        : '指示にある関係だけを引き直します。'
+                      : edgeMode === 'restyle'
+                        ? 'つなぎ方は変えず、線の文字づかいを揃え、意味の違いが目で分かる太さ・色にします。折れ点も残ります。'
+                        : edgeMode === 'keep'
+                          ? '手で描いた線が並べ替えで消えません。'
+                          : '指示にある関係だけを引き直します。'
                   }
                 />
               </Section>

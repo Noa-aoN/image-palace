@@ -125,12 +125,16 @@ function EditableEdgeComponent(props: EdgeProps) {
               position: 'absolute',
               transform: `translate(-50%, -50%) translate(${labelX}px, ${labelY}px)`,
               pointerEvents: 'none',
-              background: s.label_bg || undefined,
+              // 背景色を指定していなくても、線や他のカードに重なると読めなくなる。
+              // 盤の色に馴染む下地を必ず敷き、細い縁で切り分ける
+              background: s.label_bg || 'var(--board-bg)',
               color: s.label_color || undefined,
               fontSize: s.label_size || 13,
               opacity: s.label_opacity != null ? s.label_opacity / 100 : undefined,
-              padding: s.label_bg ? '2px 6px' : 0,
+              padding: '2px 6px',
               borderRadius: 4,
+              border: s.label_bg ? undefined : '1px solid rgba(0,0,0,0.08)',
+              boxShadow: s.label_bg ? undefined : '0 1px 2px rgba(0,0,0,0.06)',
               lineHeight: 1.3,
               textAlign: 'center',
               writingMode: s.label_vertical ? 'vertical-rl' : undefined,
