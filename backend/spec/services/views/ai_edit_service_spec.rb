@@ -79,6 +79,52 @@ RSpec.describe Views::AiEditService do
       expect(edge.label).to eq("から")
     end
 
+    # 端点を AI に決めさせると配置と食い違い、線がカードを横切る。
+    # 座標が決まったあとなら幾何学的に一意なので、こちらで計算する
+    describe "線の端点" do
+      it "右にあるカードへは、右から出て左へ入る" do
+        stub_plan(
+          "placements" => [ { "item_id" => a.id, "x" => 100, "y" => 200 },
+                            { "item_id" => b.id, "x" => 700, "y" => 200 } ],
+          "edges" => [ { "source" => a.id, "target" => b.id } ]
+        )
+
+        described_class.call(view: view, instruction: "つないで")
+
+        edge = view.view_edges.first
+        expect(edge.source_handle).to eq("right")
+        expect(edge.target_handle).to eq("left")
+      end
+
+      it "下にあるカードへは、下から出て上へ入る" do
+        stub_plan(
+          "placements" => [ { "item_id" => a.id, "x" => 200, "y" => 100 },
+                            { "item_id" => b.id, "x" => 200, "y" => 700 } ],
+          "edges" => [ { "source" => a.id, "target" => b.id } ]
+        )
+
+        described_class.call(view: view, instruction: "つないで")
+
+        edge = view.view_edges.first
+        expect(edge.source_handle).to eq("bottom")
+        expect(edge.target_handle).to eq("top")
+      end
+
+      it "左上にあるカードへは、上から出て下へ入る（離れている向きを優先）" do
+        stub_plan(
+          "placements" => [ { "item_id" => a.id, "x" => 300, "y" => 800 },
+                            { "item_id" => b.id, "x" => 200, "y" => 100 } ],
+          "edges" => [ { "source" => a.id, "target" => b.id } ]
+        )
+
+        described_class.call(view: view, instruction: "つないで")
+
+        edge = view.view_edges.first
+        expect(edge.source_handle).to eq("top")
+        expect(edge.target_handle).to eq("bottom")
+      end
+    end
+
     it "盤の外へ飛ばされた座標は中に収める" do
       stub_plan("placements" => [ { "item_id" => a.id, "x" => 999_999, "y" => -500 } ])
 

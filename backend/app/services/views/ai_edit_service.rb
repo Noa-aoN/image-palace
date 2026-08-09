@@ -207,8 +207,13 @@ module Views
           - 補助的な関連       … width 1、dashed true、marker_end "none"、color "#999999"
           - 対立・否定の関係   … width 2、dashed false、marker_end "arrow"、color "#c0504d"
         - label は 8 文字程度までの短い語にする（「原因」「例」「対して」など）。長い文は入れない。
-        - 線が多すぎると読めなくなる。1枚のカードから出る線は 4 本までを目安にし、
-          遠回りに交差する線は作らない（つなぐ相手を近くに置く）。
+        - **属するものが複数あるときは、その全てに線を引く**。
+          例: 分類の図で、ある分類に5つの下位分類があるなら5本とも引く。
+          一部だけ引くと図として誤りになる。本数の見た目より、関係の正しさを優先する。
+        - 一方で、意味の無い線を足して混雑させない。遠回りに交差する線は作らず、
+          つなぐ相手どうしを近くに置くことで、線の数が多くても読める配置にする。
+          中心から多数の枝が出る図（系統図など）は、中心を上または左に置き、
+          枝を扇形に広げると交差しない。
 
         ## その他
         - remove はボードから外すだけで、カードそのものは消えません。
@@ -391,13 +396,44 @@ module Views
 
       # 挙げられた線が編集後の全てになる。挙がらなかったものは消す
       @view.view_edges.destroy_all
+      boxes = placement_boxes
       wanted.each do |edge|
+        source_handle, target_handle = handles_for(boxes[edge[:source]], boxes[edge[:target]])
         @view.view_edges.create!(
           source_node_id: edge[:source], target_node_id: edge[:target],
+          source_handle: source_handle, target_handle: target_handle,
           label: edge[:label], style: edge[:style]
         )
       end
       wanted.size
+    end
+
+    # 配置後のカードの矩形。端点を決めるのに使う
+    def placement_boxes
+      @view.view_items.pluck(:item_id, :x, :y, :width, :height).to_h do |item_id, x, y, width, height|
+        [ item_id, {
+          x: x.to_f, y: y.to_f,
+          width: (width || CARD_WIDTH).to_f, height: (height || CARD_HEIGHT).to_f
+        } ]
+      end
+    end
+
+    # 線の出口と入口を、実際の位置関係から決める。
+    #
+    # AI に決めさせると、配置と食い違って線がカードを横切る。座標が決まったあとなら
+    # 幾何学的に一意に決まるので、こちらで計算する。
+    # 縦横どちらに離れているかで面を選び、必ず向かい合う面どうしを結ぶ。
+    def handles_for(source, target)
+      return [ nil, nil ] if source.nil? || target.nil?
+
+      dx = (target[:x] + target[:width] / 2) - (source[:x] + source[:width] / 2)
+      dy = (target[:y] + target[:height] / 2) - (source[:y] + source[:height] / 2)
+
+      if dy.abs >= dx.abs
+        dy.positive? ? [ "bottom", "top" ] : [ "top", "bottom" ]
+      else
+        dx.positive? ? [ "right", "left" ] : [ "left", "right" ]
+      end
     end
 
     # 線の見た目。AI の言うことをそのまま入れず、扱える値だけを取り出す。
