@@ -21,7 +21,10 @@ module Views
   class CardProposalService
     class ProposalError < StandardError; end
 
-    DEFAULT_MODEL = "gpt-4o-mini"
+    # 構造の設計は知識の正確さがそのまま図の正しさになる（齧歯目の亜目を挙げ切れるか、
+    # ビーバーを正しい亜目に置けるか）。mini では取りこぼすため、ここだけ上位モデルを使う。
+    # 呼び出しは提案1回きりで、この判断が数十クレジット（実費）の使い道を決める
+    DEFAULT_MODEL = "gpt-4o"
     # 1回に提案する枚数の上限。多すぎると承認の判断ができない
     MAX_COUNT = 20
     # 既定は「おまかせ」。枚数を先に決めると、図として要る階層が枚数に合わせて
@@ -38,7 +41,7 @@ module Views
     Reuse = Struct.new(:id, :title, :reason, keyword_init: true)
     # つながり。承認前に見せ、作成後の配置にも渡す
     Edge = Struct.new(:from, :to, :label, keyword_init: true)
-    Result = Struct.new(:proposals, :reuse, :edges, :plan, keyword_init: true)
+    Result = Struct.new(:proposals, :reuse, :edges, :plan, :truncated, keyword_init: true)
 
     def self.call(view:, instruction:, count: DEFAULT_COUNT)
       new(view:, instruction:, count:).call
@@ -80,9 +83,9 @@ module Views
         kind: "canvas_card_proposal"
       )
 
-      Result.new(proposals: words.map { |word| Proposal.new(title: word) }, reuse: [], edges: [], plan: nil)
+      Result.new(proposals: words.map { |word| Proposal.new(title: word) }, reuse: [], edges: [], plan: nil, truncated: false)
     rescue GenerateWordsService::GenerationError
-      Result.new(proposals: [], reuse: [], edges: [], plan: nil)
+      Result.new(proposals: [], reuse: [], edges: [], plan: nil, truncated: false)
     rescue Ai::Chat::LimitExceeded => e
       raise ProposalError, e.message
     end
@@ -98,7 +101,9 @@ module Views
         reuse: reuse,
         # つながりは、これから作るものと手持ちから載せるものの範囲に限る
         edges: normalize_edges(parsed["edges"], new_cards.map(&:title) + reuse.map(&:title)),
-        plan: parsed["plan"].to_s.strip.presence || @instruction
+        plan: parsed["plan"].to_s.strip.presence || @instruction,
+        # 上限で切ったなら、そう伝える（黙って減らすと図の抜けに気づけない）
+        truncated: truncated?(parsed["cards"], new_cards)
       )
     end
 
@@ -129,14 +134,24 @@ module Views
 
         手順:
         1. 完成図の構造を決める（何を中心に、どういう関係で並ぶ図なのか）。これを plan に必ず書く
-        2. 図の節・要素を挙げる。線でつながる両端が必ず揃うようにする
-        3. すでに持っているカードで使えるものは reuse に入れる（作り直さない）
-        4. 足りないものだけ cards に入れる（これが新しく作られる）
-        5. 節と節のつながりを edges に全て書く。図の骨格はここで決まる
+        2. **階層ごとに、そこに属するものを漏れなく列挙する**（levels）。
+           分類・区分・段階を扱う図では、体系に含まれるものを全て挙げてから次へ進む。
+           ここで抜けると図そのものが誤りになる
+        3. levels を見ながら、図の節になるカードを決める。上位の階層から優先して埋める
+        4. すでに持っているカードで使えるものは reuse に入れる（作り直さない）
+        5. 足りないものだけ cards に入れる（これが新しく作られる）
+        6. 節と節のつながりを edges に全て書く。図の骨格はここで決まる
 
-        例: 「齧歯目の系統図」なら、齧歯目を頂点に、亜目、各群の代表種と枝分かれし、
-        edges は 齧歯目→ネズミ亜目、ネズミ亜目→ハツカネズミ のように親子を全て結ぶ。
-        節だけ挙げてつながりを書かないと、図になりません。
+        例: 「齧歯目の系統図」なら
+        - levels: [{"name": "亜目", "members": ["ネズミ亜目", "リス亜目", "ヤマアラシ亜目",
+          "ビーバー亜目", "ウロコオリス亜目"]}] のように、亜目を全て挙げる
+        - 一部だけ挙げると系統図として誤りになる
+        - edges は 齧歯目→ネズミ亜目、ネズミ亜目→ハツカネズミ のように親子を全て結ぶ
+
+        正確さの規則（守れないなら、その要素は出さない）:
+        - **各要素は正しい親の下に置く**。例: ビーバーはビーバー亜目であってリス亜目ではない
+        - 属する先が曖昧なもの・自信が持てないものは、代表例として挙げない
+        - 返す前に、挙げた階層に兄弟の抜けが無いか確認する
 
         制約:
         - 見出し語は短く（#{MAX_TITLE_LENGTH}文字以内）、1枚1概念
@@ -150,6 +165,7 @@ module Views
 
         JSON で返す:
         {"plan": "完成図がどうなるかの説明（必須）",
+         "levels": [{"name": "階層の名前", "members": ["その階層に属するものを漏れなく"]}],
          "cards": [{"title": "...", "reason": "..."}],
          "reuse": [{"title": "手持ちの見出し語", "reason": "..."}],
          "edges": [{"from": "...", "to": "...", "label": "関係の名前（無ければ空文字）"}]}
@@ -162,7 +178,8 @@ module Views
         "cards は#{@count}件まで。図として過不足のない数にする"
       else
         "cards の数は図の形に合わせて決める（最大#{MAX_COUNT}件）。" \
-          "枚数ありきで階層を削らないこと"
+          "枚数ありきで階層を削らないこと。#{MAX_COUNT}件に収まらないときは、" \
+          "上位の階層を優先し、代表例の方を減らす"
       end
     end
 
@@ -206,6 +223,13 @@ module Views
         seen << key
         Proposal.new(title: title, reason: card["reason"].to_s.strip.presence)
       end.first(@count || MAX_COUNT)
+    end
+
+    # AI が出した数より減っていれば、上限で切っている
+    def truncated?(raw_cards, normalized)
+      return false unless raw_cards.is_a?(Array)
+
+      normalized.size >= (@count || MAX_COUNT) && raw_cards.size > normalized.size
     end
 
     # 手持ちのカード。同じ単語を作り直さないための材料であり、

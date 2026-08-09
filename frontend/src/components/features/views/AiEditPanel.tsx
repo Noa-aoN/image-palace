@@ -76,6 +76,7 @@ export function AiEditPanel({
   // 手持ちから組み込むもの（作らないのでクレジットは要らない）と、図のつながり
   const [reuse, setReuse] = useState<CardReuse[]>([])
   const [edges, setEdges] = useState<CardEdge[]>([])
+  const [limit, setLimit] = useState<{ max: number; truncated: boolean } | null>(null)
   const [createdCount, setCreatedCount] = useState<number | null>(null)
   const [arranged, setArranged] = useState(false)
 
@@ -93,6 +94,7 @@ export function AiEditPanel({
       setPlan(result.plan)
       setReuse(result.reuse)
       setEdges(result.edges)
+      setLimit({ max: result.max_count, truncated: result.truncated })
       setChosen(new Set(result.proposals.map((p) => p.title)))
       setCredits(result.available_credits)
       if (result.proposals.length === 0) setError('足すべきカードは見つかりませんでした。')
@@ -284,7 +286,10 @@ export function AiEditPanel({
               )}
 
               <div className="flex items-baseline justify-between gap-2">
-                <p className="text-sm font-medium">図の部品として作るカード（{proposals.length}件）</p>
+                <p className="text-sm font-medium">
+                  図の部品として作るカード（{proposals.length}件）
+                  {limit && <span className="ml-1.5 text-xs font-normal text-muted-foreground">最大{limit.max}件</span>}
+                </p>
                 <button
                   type="button"
                   className="text-xs text-muted-foreground hover:text-foreground"
@@ -322,6 +327,14 @@ export function AiEditPanel({
                   </li>
                 ))}
               </ul>
+
+              {/* 上限で切ったなら伝える。黙って減らすと図の抜けに気づけない */}
+              {limit?.truncated && (
+                <p className="rounded border border-amber-300/60 bg-amber-50/60 px-2 py-1.5 text-xs">
+                  1回の上限（{limit.max}件）に収まらなかったため、一部を省いています。
+                  作ったあと、続きをもう一度お願いすると足せます。
+                </p>
+              )}
 
               {reuse.length > 0 && (
                 <div className="rounded border border-border/60 bg-background/60 px-2 py-1.5">

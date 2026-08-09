@@ -127,6 +127,10 @@ export interface CardProposalResult {
   edges: CardEdge[]
   /** フリーボードのとき、これから作る完成図の説明 */
   plan: string | null
+  /** 上限で切り詰めたか */
+  truncated: boolean
+  /** 1回に提案できる上限 */
+  max_count: number
   available_credits: number
 }
 

@@ -92,6 +92,44 @@ RSpec.describe "Api::V1::Views カードから作る", type: :request do
         expect(json_response["proposals"].first["reason"]).to eq("最上位の分類")
       end
 
+      # 分類体系の網羅と親子の正しさは知識精度の問題。ここだけ上位モデルを使う
+      it "構造の設計には上位モデルを使う" do
+        allow(Ai::Chat).to receive(:call).and_return(
+          { "choices" => [ { "message" => { "content" => { plan: "図", cards: [] }.to_json } } ] }
+        )
+
+        post "/api/v1/views/#{board.id}/card_proposal",
+          params: { proposal: { instruction: "齧歯目の系統図" } }, headers: headers, as: :json
+
+        expect(Ai::Chat).to have_received(:call).with(hash_including(model: "gpt-4o"))
+      end
+
+      # 上限で黙って減らすと、図の抜けに気づけない
+      it "上限で切ったことを伝える" do
+        cards = Array.new(Views::CardProposalService::MAX_COUNT + 3) { |n| { "title" => "節#{n}" } }
+        allow(Ai::Chat).to receive(:call).and_return(
+          { "choices" => [ { "message" => { "content" => { plan: "図", cards: cards }.to_json } } ] }
+        )
+
+        post "/api/v1/views/#{board.id}/card_proposal",
+          params: { proposal: { instruction: "大きな図" } }, headers: headers, as: :json
+
+        expect(json_response["proposals"].size).to eq(Views::CardProposalService::MAX_COUNT)
+        expect(json_response["truncated"]).to be(true)
+        expect(json_response["max_count"]).to eq(Views::CardProposalService::MAX_COUNT)
+      end
+
+      it "上限に収まっていれば truncated は false" do
+        allow(Ai::Chat).to receive(:call).and_return(
+          { "choices" => [ { "message" => { "content" => { plan: "図", cards: [ { "title" => "齧歯目" } ] }.to_json } } ] }
+        )
+
+        post "/api/v1/views/#{board.id}/card_proposal",
+          params: { proposal: { instruction: "図" } }, headers: headers, as: :json
+
+        expect(json_response["truncated"]).to be(false)
+      end
+
       # 節だけ挙げてもつながりが無ければ図にならない
       it "つながりも一緒に返す" do
         allow(Ai::Chat).to receive(:call).and_return(
