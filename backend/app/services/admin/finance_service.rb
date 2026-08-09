@@ -88,7 +88,8 @@ module Admin
     # ※アバター・カバー・ポイントは記録前のぶんを拾えない（当時の記録が無いため）
     def image_cost
       fx = @costs.value_for("fx_usd_jpy")
-      usages = ImageUsage.between(@from, @to).group(:model, :quality, :kind).count
+      # キャッシュで済んだぶんは API を呼んでいないので原価に数えない
+      usages = ImageUsage.billed.between(@from, @to).group(:model, :quality, :kind).count
       item_counts = merged_item_counts(usages)
 
       rows = item_counts.map { |(model, quality), count| [ [ model, quality, "item" ], count ] }

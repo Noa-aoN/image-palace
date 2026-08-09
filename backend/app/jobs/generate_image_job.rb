@@ -45,6 +45,7 @@ class GenerateImageJob < ApplicationJob
       if cached
         Rails.logger.info "[GenerateImageJob] CACHE HIT prompt_key=#{prompt_key} shared_media_id=#{cached.id}"
         attach_from_shared_media(item, cached)
+        record_cached_usage!(item, cached)
       else
         if !force_generate && SharedMedia.for_prompt(cache_key).exists?
           Rails.logger.warn "[GenerateImageJob] CACHE STALE prompt_key=#{prompt_key}"
@@ -77,6 +78,25 @@ class GenerateImageJob < ApplicationJob
 
   def cached_shared_media(normalized)
     SharedMedia.for_prompt(normalized).detect { |shared| blob_available?(shared.file.blob) }
+  end
+
+  # キャッシュで済んだぶんも1枚として記録する。
+  #
+  # 同じ単語の2人目以降は API を呼ばずに済むが、**クレジットは同じだけ消費している**。
+  # 記録しないと、利用者から見て「減ったのに作った覚えがない」状態になる。
+  # 原価は掛かっていないので cached: true を立て、収支の集計からは外す。
+  # モデル名は実際にその絵を作ったときのものを共有画像から引く。
+  def record_cached_usage!(item, shared_media)
+    metadata = shared_media.metadata || {}
+    ImageUsage.record!(
+      kind: "item",
+      provider: metadata["provider"] || "unknown",
+      model: metadata["model"] || "unknown",
+      size: metadata["size"],
+      quality: metadata["quality"],
+      user_id: item.user_id,
+      cached: true
+    )
   end
 
   def create_shared_media!(item, normalized, result)

@@ -77,6 +77,27 @@ RSpec.describe GenerateImageJob, type: :job do
     end
   end
 
+  describe "キャッシュで済んだときの記録" do
+    # キャッシュヒットでも消費するクレジットは同じ。記録が無いと、利用者から見て
+    # 「減ったのに作った覚えがない」状態になる
+    it "キャッシュで済んでも1枚として記録する" do
+      create(:shared_media, :with_file,
+        user: user,
+        normalized_prompt: NormalizePromptService.call(PromptBuilderService.effective_prompt(item)),
+        metadata: { "provider" => "openai", "model" => "gpt-image-1", "quality" => "medium" })
+
+      expect { described_class.perform_now(item.id) }.to change(ImageUsage, :count).by(1)
+
+      usage = ImageUsage.last
+      expect(usage.kind).to eq("item")
+      expect(usage.user_id).to eq(user.id)
+      expect(usage.model).to eq("gpt-image-1")
+      # API を呼んでいないので原価には数えない
+      expect(usage.cached).to be(true)
+      expect(ImageUsage.billed.count).to eq(0)
+    end
+  end
+
   describe "お知らせ（通知）" do
     it "生成が完了すると完了のお知らせを作る" do
       create(:shared_media, :with_file,
