@@ -1,0 +1,49 @@
+#!/usr/bin/env bash
+# 本番へデプロイし、**全てのマシンが起動しているか**まで確かめる。
+#
+# fly deploy は http_service を持つ app のヘルスチェックしか見ない。worker には
+# チェックが無いため、worker が停止したままでもデプロイは「成功」で終わる。
+# 実際 2026-08-09 にそれが起き、ジョブが33件滞留した（カードが生成待ちで止まった）。
+#
+# standby（`standbys` を持つマシン）は停止しているのが正しい状態なので、対象から外す。
+# standby はホストが物理的に壊れたときだけ引き継ぐもので、実働マシンが止まっても起動しない。
+set -euo pipefail
+
+APP="${FLY_APP:-image-palace-api}"
+
+echo "==> デプロイ: $APP"
+fly deploy --now -a "$APP"
+
+echo "==> マシンの状態を確認"
+# standby ではないのに停止しているマシンを拾う
+stopped=$(fly machine list -a "$APP" --json | python3 -c '
+import json, sys
+
+rows = json.load(sys.stdin)
+for m in rows:
+    config = m.get("config", {})
+    if config.get("standbys"):
+        continue  # standby は停止が正しい
+    if m.get("state") != "started":
+        group = config.get("metadata", {}).get("fly_process_group", "?")
+        print(f"{m[\"id\"]}\t{group}\t{m.get(\"state\")}")
+')
+
+if [ -z "$stopped" ]; then
+  fly status -a "$APP" | grep -E "PROCESS|app |worker " || true
+  echo "==> 全てのマシンが起動しています"
+  exit 0
+fi
+
+echo "!!! 停止しているマシンがあります:"
+echo "$stopped"
+
+echo "==> 起動します"
+echo "$stopped" | while IFS=$'\t' read -r id group state; do
+  [ -z "$id" ] && continue
+  echo "  start $id ($group / $state)"
+  fly machine start "$id" -a "$APP"
+done
+
+echo "==> 起動後の状態"
+fly status -a "$APP" | grep -E "PROCESS|app |worker " || true

@@ -22,6 +22,10 @@ module Views
     MAX_CANDIDATES = 60
     # 1回の指示で動かせる量の上限（暴走しても被害を限る）
     MAX_OPERATIONS = 100
+    # 線だけは別枠にして緩くする。カードと違って外部の費用がかからず、
+    # 中心から多数の枝が出る図では本数が素直に増えるため。
+    # ここは「関係の数」ではなく暴走の歯止めなので、実際に描く図より十分大きく取る
+    MAX_EDGES = 300
     MAX_INSTRUCTION_LENGTH = 500
 
     # 使える札を選ぶところからやるか、いま載っているものだけで組み直すか
@@ -207,8 +211,13 @@ module Views
           - 補助的な関連       … width 1、dashed true、marker_end "none"、color "#999999"
           - 対立・否定の関係   … width 2、dashed false、marker_end "arrow"、color "#c0504d"
         - label は 8 文字程度までの短い語にする（「原因」「例」「対して」など）。長い文は入れない。
-        - 線が多すぎると読めなくなる。1枚のカードから出る線は 4 本までを目安にし、
-          遠回りに交差する線は作らない（つなぐ相手を近くに置く）。
+        - **1枚のカードから出る線の数に上限は設けない**。関係があるものは全て結ぶ。
+          例: ある分類に下位分類が5つあるなら5本、10あるなら10本とも引く。
+          一部だけ引くと図として誤りになる。見た目の混雑を理由に関係を落とさないこと。
+        - 足すのは意味のある関係だけ。無い関係を作ってはいけない（落とさない／作らない、の両方）。
+        - 本数が多いときは、配置で読みやすくする。中心から多数の枝が出る図（系統図など）は
+          中心を上または左に置き、枝を扇形に等間隔で広げると交差しない。
+          遠回りに交差する線ができるなら、線を減らすのではなく置き方を変える。
 
         ## その他
         - remove はボードから外すだけで、カードそのものは消えません。
@@ -378,7 +387,7 @@ module Views
 
     def apply_edges!(edges)
       on_board = @view.view_items.pluck(:item_id).to_set
-      wanted = Array(edges).first(MAX_OPERATIONS).filter_map do |edge|
+      wanted = Array(edges).first(MAX_EDGES).filter_map do |edge|
         next unless edge.is_a?(Hash)
 
         source = edge["source"].to_s
@@ -391,13 +400,44 @@ module Views
 
       # 挙げられた線が編集後の全てになる。挙がらなかったものは消す
       @view.view_edges.destroy_all
+      boxes = placement_boxes
       wanted.each do |edge|
+        source_handle, target_handle = handles_for(boxes[edge[:source]], boxes[edge[:target]])
         @view.view_edges.create!(
           source_node_id: edge[:source], target_node_id: edge[:target],
+          source_handle: source_handle, target_handle: target_handle,
           label: edge[:label], style: edge[:style]
         )
       end
       wanted.size
+    end
+
+    # 配置後のカードの矩形。端点を決めるのに使う
+    def placement_boxes
+      @view.view_items.pluck(:item_id, :x, :y, :width, :height).to_h do |item_id, x, y, width, height|
+        [ item_id, {
+          x: x.to_f, y: y.to_f,
+          width: (width || CARD_WIDTH).to_f, height: (height || CARD_HEIGHT).to_f
+        } ]
+      end
+    end
+
+    # 線の出口と入口を、実際の位置関係から決める。
+    #
+    # AI に決めさせると、配置と食い違って線がカードを横切る。座標が決まったあとなら
+    # 幾何学的に一意に決まるので、こちらで計算する。
+    # 縦横どちらに離れているかで面を選び、必ず向かい合う面どうしを結ぶ。
+    def handles_for(source, target)
+      return [ nil, nil ] if source.nil? || target.nil?
+
+      dx = (target[:x] + target[:width] / 2) - (source[:x] + source[:width] / 2)
+      dy = (target[:y] + target[:height] / 2) - (source[:y] + source[:height] / 2)
+
+      if dy.abs >= dx.abs
+        dy.positive? ? [ "bottom", "top" ] : [ "top", "bottom" ]
+      else
+        dx.positive? ? [ "right", "left" ] : [ "left", "right" ]
+      end
     end
 
     # 線の見た目。AI の言うことをそのまま入れず、扱える値だけを取り出す。
