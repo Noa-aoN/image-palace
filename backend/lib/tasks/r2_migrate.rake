@@ -32,11 +32,20 @@ namespace :r2 do
     puts "-" * 60
 
     copied = skipped = failed = 0
+    # DB に行があるのに実体が無い blob（過去の失敗や削除漏れ）。
+    # これを失敗として扱うと移行が止まるので、別枠で数えて先へ進める
+    orphans = []
     failures = []
 
     ActiveStorage::Blob.find_each(batch_size: R2Migration::BATCH_SIZE) do |blob|
       if destination.exist?(blob.key)
         skipped += 1
+        next
+      end
+
+      # 元に無いものはコピーしようがない。飛ばして記録する
+      unless source.exist?(blob.key)
+        orphans << blob.key
         next
       end
 
@@ -62,6 +71,10 @@ namespace :r2 do
     puts ""
     puts "-" * 60
     puts "コピー: #{copied} / 既存のため飛ばした: #{skipped} / 失敗: #{failed}"
+    if orphans.any?
+      puts "元に実体が無かった blob: #{orphans.size} 件（DB の行だけ残ったもの。コピー対象外）"
+      orphans.first(20).each { |key| puts "  #{key}" }
+    end
     if failures.any?
       puts "失敗した分（もう一度実行すれば再試行されます）:"
       failures.first(20).each { |line| puts "  #{line}" }
@@ -74,12 +87,21 @@ namespace :r2 do
     bucket = args[:bucket].presence or abort("確認するバケット名を渡してください")
     destination = R2Migration.destination_service(bucket)
 
+    source = ActiveStorage::Blob.service
     missing = []
+    orphans = []
     checked = 0
 
     ActiveStorage::Blob.find_each(batch_size: R2Migration::BATCH_SIZE) do |blob|
       checked += 1
-      missing << blob.key unless destination.exist?(blob.key)
+      next if destination.exist?(blob.key)
+
+      # 元にも無いなら、コピー漏れではなく元々存在しない blob。移行の妨げにはしない
+      if source.exist?(blob.key)
+        missing << blob.key
+      else
+        orphans << blob.key
+      end
       print "." if (checked % 50).zero?
     end
 
@@ -87,6 +109,7 @@ namespace :r2 do
     puts "-" * 60
     puts "確認したもの: #{checked} 件"
     puts "コピー漏れ: #{missing.size} 件"
+    puts "元にも実体が無い blob: #{orphans.size} 件（移行の妨げにはなりません）" if orphans.any?
     if missing.any?
       puts "足りないもの（r2:copy をもう一度流してください）:"
       missing.first(20).each { |key| puts "  #{key}" }
