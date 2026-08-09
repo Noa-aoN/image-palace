@@ -179,6 +179,9 @@ module Api
           reuse: result.reuse.map { |row| { id: row.id, title: row.title, reason: row.reason } },
           edges: result.edges.map { |edge| { from: edge.from, to: edge.to, label: edge.label } },
           plan: result.plan,
+          # 上限で切ったかどうか。黙って減らすと図の抜けに気づけない
+          truncated: result.truncated,
+          max_count: Views::CardProposalService::MAX_COUNT,
           available_credits: current_user.available_credits
         }
       rescue Ai::Chat::LimitExceeded => e
