@@ -19,14 +19,13 @@ echo "==> マシンの状態を確認"
 stopped=$(fly machine list -a "$APP" --json | python3 -c '
 import json, sys
 
-rows = json.load(sys.stdin)
-for m in rows:
+for m in json.load(sys.stdin):
     config = m.get("config", {})
     if config.get("standbys"):
-        continue  # standby は停止が正しい
+        continue  # standby は停止が正しい状態
     if m.get("state") != "started":
         group = config.get("metadata", {}).get("fly_process_group", "?")
-        print(f"{m[\"id\"]}\t{group}\t{m.get(\"state\")}")
+        print("\t".join([m["id"], group, str(m.get("state"))]))
 ')
 
 if [ -z "$stopped" ]; then
