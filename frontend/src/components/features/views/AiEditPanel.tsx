@@ -72,7 +72,9 @@ export function AiEditPanel({
   const [proposals, setProposals] = useState<CardProposal[] | null>(null)
   const [chosen, setChosen] = useState<Set<string>>(new Set())
   const [credits, setCredits] = useState<number | null>(null)
+  const [plan, setPlan] = useState<string | null>(null)
   const [createdCount, setCreatedCount] = useState<number | null>(null)
+  const [arranged, setArranged] = useState(false)
 
   // 「カードから作る」は提案を出すだけ。作るのは確認したあと
   const propose = async () => {
@@ -85,6 +87,7 @@ export function AiEditPanel({
     try {
       const result = await proposeCards(viewId, trimmed)
       setProposals(result.proposals)
+      setPlan(result.plan)
       setChosen(new Set(result.proposals.map((p) => p.title)))
       setCredits(result.available_credits)
       if (result.proposals.length === 0) setError('足すべきカードは見つかりませんでした。')
@@ -101,10 +104,13 @@ export function AiEditPanel({
     setBusy('create')
     setError(null)
     try {
-      const updated = await createCardsOnView(viewId, [...chosen])
+      // 指示も一緒に渡す。作っただけでは部品が積み上がるだけなので、図として組み上げてもらう
+      const updated = await createCardsOnView(viewId, [...chosen], instruction.trim())
       onApplied(updated)
       setCreatedCount(updated.created_cards?.count ?? chosen.size)
+      setArranged(updated.created_cards?.arranged ?? false)
       setProposals(null)
+      setPlan(null)
       setChosen(new Set())
     } catch (err: unknown) {
       const e = err as { response?: { data?: { error?: string } } }
@@ -258,8 +264,15 @@ export function AiEditPanel({
           {/* 提案の確認。作ると1枚1クレジット出ていくので、枚数を見せてから決めてもらう */}
           {proposals && proposals.length > 0 && (
             <div className="space-y-2 rounded-lg border border-border bg-muted/30 px-3 py-2">
+              {/* 何を作ろうとしているのかを先に見せる。部品だけ並べても図の姿が分からない */}
+              {plan && (
+                <p className="rounded border-l-2 border-[var(--palace)] bg-background/60 px-2 py-1.5 text-xs leading-relaxed">
+                  {plan}
+                </p>
+              )}
+
               <div className="flex items-baseline justify-between gap-2">
-                <p className="text-sm font-medium">作るカードの案（{proposals.length}件）</p>
+                <p className="text-sm font-medium">図の部品として作るカード（{proposals.length}件）</p>
                 <button
                   type="button"
                   className="text-xs text-muted-foreground hover:text-foreground"
@@ -301,6 +314,7 @@ export function AiEditPanel({
               <p className="text-xs text-muted-foreground">
                 {chosen.size} 枚を作ります（{chosen.size} クレジット使います
                 {credits !== null && `・残高 ${credits}`}）。画像はこのあと順に作られます。
+                {viewType === 'freeboard' && '作成後、指示に沿って配置と線つなぎまで行います。'}
               </p>
 
               <div className="flex items-center gap-2">
@@ -316,7 +330,9 @@ export function AiEditPanel({
           )}
 
           {createdCount !== null && (
-            <p className="text-sm text-muted-foreground">{createdCount} 枚を作ってキャンバスに置きました。</p>
+            <p className="text-sm text-muted-foreground">
+              {createdCount} 枚を作って{arranged ? '図として組み上げました' : 'キャンバスに置きました'}。
+            </p>
           )}
 
           {result && (

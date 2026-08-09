@@ -224,8 +224,16 @@ export async function proposeCards(
 }
 
 // 承認された案だけを実際に作り、キャンバスに載せる
-export async function createCardsOnView(id: string, titles: string[]): Promise<ViewDetail> {
-  const res = await apiClient.post<ViewDetail>(`/api/v1/views/${id}/create_cards`, { titles })
+// instruction を渡すと、作ったあと図として配置・線つなぎまで行う
+export async function createCardsOnView(
+  id: string,
+  titles: string[],
+  instruction?: string
+): Promise<ViewDetail> {
+  const res = await apiClient.post<ViewDetail>(`/api/v1/views/${id}/create_cards`, {
+    titles,
+    ...(instruction ? { instruction } : {}),
+  })
   return res.data
 }
 

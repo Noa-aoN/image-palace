@@ -109,7 +109,8 @@ export interface CardProposal {
 
 export interface CardProposalResult {
   proposals: CardProposal[]
-  notes: string | null
+  /** フリーボードのとき、これから作る完成図の説明 */
+  plan: string | null
   available_credits: number
 }
 
@@ -126,7 +127,7 @@ export interface AiEditSummary {
 
 export interface ViewDetail extends View {
   /** 「カードから作る」で作られたぶん（その応答にだけ入る） */
-  created_cards?: { count: number; titles: string[] }
+  created_cards?: { count: number; titles: string[]; arranged: boolean }
   items?: ViewItemPlacement[] // freeboard
   edges?: ViewEdge[] // freeboard
   space?: { id: string; name: string; space_type: string } | null // space_map
