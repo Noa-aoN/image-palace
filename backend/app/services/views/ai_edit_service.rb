@@ -35,9 +35,10 @@ module Views
     # フリーボードの座標系。だいたいこの範囲に収まるよう AI に伝える
     BOARD_WIDTH = 2400
     BOARD_HEIGHT = 1600
-    # カードの既定の大きさ（フロントの CARD_DEFAULT_W / H と合わせること）
+    # カードの既定の大きさ（フロントの CARD_DEFAULT_W / H と合わせること）。
+    # 高さは 幅 + 見出しの行(32) で、画像の領域が正方形になるようにしてある
     CARD_WIDTH = 144
-    CARD_HEIGHT = 172
+    CARD_HEIGHT = 176
     # AI が指定できるカードの大きさの範囲（読めなくなる／画面を覆うのを防ぐ）
     MIN_CARD_SIZE = 80
     MAX_CARD_SIZE = 480
@@ -66,7 +67,8 @@ module Views
     # その項目だけを個別に実行できる（線だけ整える、大きさだけ揃える、など）
     PLACEMENT_MODES = %w[arrange keep].freeze
     # infer は「指示に書かれていなくても、カードの意味を読んで関係を見つけて結ぶ」
-    EDGE_MODES = %w[rebuild keep infer].freeze
+    # restyle は「つなぎ方は変えず、線の文字と見た目だけ整える」
+    EDGE_MODES = %w[rebuild keep infer restyle].freeze
     # uniform は全てのカードを同じ大きさに揃える
     SIZE_MODES = %w[ai uniform keep].freeze
     # 関係を読み取るときは、意味の抜粋を長めに渡す（60文字では関係の判断に足りない）
@@ -290,6 +292,19 @@ module Views
       case @edge_mode
       when "keep"
         rules << "## 線\n- 線は触らない。edges は空配列で返すこと（いまある線をそのまま残す）。"
+      when "restyle"
+        rules << <<~RESTYLE.strip
+          ## 線（文字と見た目だけ整える）
+          - **つなぎ方は変えない。** いまある線と同じ source / target の組だけを挙げること。
+            線を足したり消したりしない。
+          - label を見直す。関係を言い当てているか、言葉づかいが揃っているかを確かめ、
+            揃っていなければ短く書き直す（8文字程度まで）。同じ種類の関係には同じ語を使う。
+          - 意味と食い違う label は直す。何も言えていない label（「関係」など）は
+            具体的な語にするか、空にする。
+          - style を見直す。主要な流れは太く濃く、補助は細く薄く、対立は色を変える、
+            というように**意味の違いが目で分かる**ようにする。
+          - 読みにくいもの（細すぎ・薄すぎ・同じ見た目の線が並ぶ）は直す。
+        RESTYLE
       when "infer"
         rules << <<~INFER.strip
           ## 線（関係を読み取る）
@@ -387,11 +402,16 @@ module Views
         # そろえるのは AI の判断ではなく決めごと。挙がらなかったカードにも効かせる
         unify_card_sizes! if @view.freeboard? && @size_mode == "uniform"
         connected =
-          if @view.freeboard? && @edge_mode == "rebuild"
+          if !@view.freeboard?
+            0
+          elsif %w[rebuild infer].include?(@edge_mode)
             apply_edges!(plan["edges"])
+          elsif @edge_mode == "restyle"
+            # つなぎ方は変えず、文字と見た目だけ当て直す
+            restyle_edges!(plan["edges"])
           else
             # 「線はそのまま」を選んだときは触らない。引き直すと手で描いた線が消える
-            @view.freeboard? ? @view.view_edges.count : 0
+            @view.view_edges.count
           end
       end
 
@@ -555,6 +575,25 @@ module Views
         dy.positive? ? [ "bottom", "top" ] : [ "top", "bottom" ]
       else
         dx.positive? ? [ "right", "left" ] : [ "left", "right" ]
+      end
+    end
+
+    # つながりは変えず、文字と見た目だけ当て直す。
+    # 引き直すと手で描いた線や折れ点が失われるので、既存の行を更新する
+    def restyle_edges!(edges)
+      by_pair = @view.view_edges.index_by { |edge| [ edge.source_node_id, edge.target_node_id ] }
+
+      Array(edges).first(MAX_EDGES).count do |edge|
+        next false unless edge.is_a?(Hash)
+
+        target = by_pair[[ edge["source"].to_s, edge["target"].to_s ]]
+        next false if target.nil?
+
+        target.update!(
+          label: sanitize(edge["label"], limit: 40).presence,
+          style: target.style.merge(edge_style(edge["style"]))
+        )
+        true
       end
     end
 

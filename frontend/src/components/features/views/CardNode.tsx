@@ -16,11 +16,16 @@ export const BoardActionsContext = createContext<{
   onResizeEnd: () => {},
 })
 
-// カード既定サイズ（width/height 未設定時）
+// 見出しの行は高さを固定する。文字サイズを変えたときに行が伸び縮みすると、
+// 下の画像の領域が押されて正方形でなくなるため
+export const CARD_TITLE_H = 32
+// 見出しの既定の文字サイズ
+export const DEFAULT_CARD_FONT_SIZE = 15
+// カード既定サイズ（width/height 未設定時）。画像を正方形に保つため 幅 + 見出しの行
 export const CARD_DEFAULT_W = 144
-export const CARD_DEFAULT_H = 172
+export const CARD_DEFAULT_H = CARD_DEFAULT_W + CARD_TITLE_H
 const CARD_MIN_W = 96
-const CARD_MIN_H = 112
+const CARD_MIN_H = CARD_MIN_W + CARD_TITLE_H
 
 // 接続点（上下左右）。connectionMode=loose なので type は source 固定で双方向に使える。
 const HANDLES = [
@@ -41,7 +46,8 @@ function CardNodeComponent({ id, data }: NodeProps<CardNodeType>) {
   const { item } = data
   const cardFontSize = useBoardSettingsStore((s) => s.settings.card_font_size)
   // 全景を収める設定のときは切り取らない（縦横比が違っても見えている範囲が揃う）
-  const imageFit = useBoardSettingsStore((s) => s.settings.card_image_fit) ?? 'cover'
+  // 既定は全景。切り取ると、縦横比の違うカードで見えている範囲がまちまちになる
+  const imageFit = useBoardSettingsStore((s) => s.settings.card_image_fit) ?? 'contain'
   const imageUrl = item.media?.thumb_url ?? item.media?.url ?? null
 
   return (
@@ -71,13 +77,14 @@ function CardNodeComponent({ id, data }: NodeProps<CardNodeType>) {
           >
             <X size={13} />
           </button>
+          {/* 高さを固定して、文字サイズを変えても下の画像に影響しないようにする */}
           <div
-            className="shrink-0 truncate px-2 py-1.5 text-xs font-medium"
-            style={cardFontSize ? { fontSize: cardFontSize } : undefined}
+            className="flex shrink-0 items-center overflow-hidden px-2 font-medium leading-none"
+            style={{ height: CARD_TITLE_H, fontSize: cardFontSize ?? DEFAULT_CARD_FONT_SIZE }}
           >
-            {item.title}
+            <span className="truncate">{item.title}</span>
           </div>
-          <div className="flex min-h-0 flex-1 items-center justify-center overflow-hidden bg-muted">
+          <div className="flex aspect-square min-h-0 w-full items-center justify-center overflow-hidden bg-muted">
             {imageUrl ? (
               // eslint-disable-next-line @next/next/no-img-element
               <img

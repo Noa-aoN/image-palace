@@ -137,6 +137,28 @@ RSpec.describe Views::AiEditService do
         expect(view.view_edges.first.label).to eq("手で描いた")
       end
 
+      # 引き直すと手で描いた線や折れ点が失われる。文字と見た目だけ当て直したい場面がある
+      it "文字と見た目だけ整える指定なら、つなぎ方は変えずに label と style を当て直す" do
+        edge = view.view_edges.create!(
+          source_node_id: a.id, target_node_id: b.id, label: "関係",
+          style: { "width" => 1 }, points: [ { "x" => 10, "y" => 20 } ]
+        )
+        stub_plan("edges" => [
+          { "source" => a.id, "target" => b.id, "label" => "原因", "style" => { "width" => 3 } },
+          # いまつながっていない組は無視する（線を足さない）
+          { "source" => b.id, "target" => a.id, "label" => "逆" }
+        ])
+
+        described_class.call(view: view, instruction: "線を整えて", edges: "restyle")
+
+        expect(view.view_edges.count).to eq(1)
+        edge.reload
+        expect(edge.label).to eq("原因")
+        expect(edge.style["width"]).to eq(3)
+        # 折れ点は残す
+        expect(edge.points).to eq([ { "x" => 10, "y" => 20 } ])
+      end
+
       it "既定では線を引き直す" do
         view.view_edges.create!(source_node_id: a.id, target_node_id: b.id, label: "古い線")
         stub_plan("edges" => [])

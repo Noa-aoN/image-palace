@@ -735,7 +735,8 @@ function Canvas({ viewId, viewName, initialItems, initialEdges }: FreeboardCanva
             )}
             {boardSettings.controls !== false && <Controls showInteractive={false} />}
             {/* ミニマップはドラッグ移動・リサイズ可能。位置は固定（右パネル連動なし） */}
-            {boardSettings.minimap !== false && <DraggableMiniMap boardRef={boardRef} />}
+            {/* 既定は非表示。盤を広く使いたい場面が多く、必要な人だけ出せばよい */}
+            {boardSettings.minimap === true && <DraggableMiniMap boardRef={boardRef} />}
           </ReactFlow>
 
           {nodes.length === 0 && (

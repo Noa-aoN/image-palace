@@ -4,6 +4,7 @@ import { Button } from '@/components/ui/button'
 import { updateView } from '@/lib/api/views'
 import { useBoardSettingsStore } from '@/stores/boardSettings'
 import { useRightPanelStore } from '@/stores/rightPanel'
+import { DEFAULT_CARD_FONT_SIZE } from '@/components/features/views/CardNode'
 import { cn } from '@/lib/utils'
 import type { BoardSettings } from '@/types/view'
 
@@ -121,7 +122,7 @@ export function BoardSettingsBody() {
               type="number"
               min={8}
               max={32}
-              value={settings.card_font_size ?? 12}
+              value={settings.card_font_size ?? DEFAULT_CARD_FONT_SIZE}
               onChange={(e) => {
                 const n = Number(e.target.value)
                 if (Number.isFinite(n)) patch({ card_font_size: Math.max(8, Math.min(32, Math.round(n))) })
@@ -169,7 +170,7 @@ export function BoardSettingsBody() {
 
       <section className="space-y-3 border-t border-border pt-4">
         <h3 className="text-xs font-semibold text-muted-foreground">表示</h3>
-        <ToggleRow label="ミニマップ" checked={settings.minimap !== false} onChange={(v) => patch({ minimap: v })} />
+        <ToggleRow label="ミニマップ" checked={settings.minimap === true} onChange={(v) => patch({ minimap: v })} />
         <ToggleRow label="操作パネル" checked={settings.controls !== false} onChange={(v) => patch({ controls: v })} />
       </section>
     </div>
