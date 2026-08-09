@@ -53,6 +53,8 @@
   --foreground: oklch(0.145 0 0);
   --ivory: #F4EFE6;
   --ivory-dark: #ECE5D8;
+  /* フリーボードの既定背景。図形や線を置く面なので、色を持たせず白に寄せる */
+  --board-bg: #FCFBF9;
   --palace: #C6A75E;
   --card: oklch(1 0 0);
   --card-foreground: oklch(0.145 0 0);

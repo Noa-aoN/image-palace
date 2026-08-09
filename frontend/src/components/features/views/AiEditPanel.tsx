@@ -310,15 +310,34 @@ export function AiEditPanel({
                   </div>
                 </div>
 
-                <label className="flex items-center gap-2 text-sm">
-                  <input
-                    type="checkbox"
-                    checked={edgeMode === 'keep'}
-                    disabled={busy !== null}
-                    onChange={(e) => setEdgeMode(e.target.checked ? 'keep' : 'rebuild')}
-                  />
-                  いまの線をそのままにする
-                </label>
+                <div>
+                  <p className="mb-1 text-xs text-muted-foreground">線</p>
+                  <div className="flex flex-col gap-1.5">
+                    {[
+                      { value: 'rebuild' as const, label: '指示どおりに引き直す' },
+                      { value: 'infer' as const, label: '意味を読んで関係を見つけて引く' },
+                      { value: 'keep' as const, label: 'いまの線をそのままにする' },
+                    ].map((option) => (
+                      <Button
+                        key={option.value}
+                        size="sm"
+                        variant={edgeMode === option.value ? 'default' : 'outline'}
+                        disabled={busy !== null}
+                        onClick={() => setEdgeMode(option.value)}
+                        className="w-full justify-start"
+                      >
+                        {option.label}
+                      </Button>
+                    ))}
+                  </div>
+                  <p className="mt-1 text-[11px] text-muted-foreground">
+                    {edgeMode === 'infer'
+                      ? 'カードの意味・説明を読み、原因と結果・上位と下位・対比などの関係を見つけて結びます。根拠のない線は引きません。'
+                      : edgeMode === 'keep'
+                        ? '手で描いた線が並べ替えで消えません。'
+                        : '指示にある関係だけを引き直します。'}
+                  </p>
+                </div>
 
                 <label className="flex items-center gap-2 text-sm">
                   <input
@@ -330,9 +349,7 @@ export function AiEditPanel({
                   カードの大きさを変えない
                 </label>
 
-                <p className="text-[11px] text-muted-foreground">
-                  線をそのままにすると、手で描いた線が並べ替えで消えません。
-                </p>
+
               </div>
             </details>
           )}

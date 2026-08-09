@@ -109,7 +109,7 @@ export type AiEditMode = 'placed_only' | 'select'
 
 /** AI に整えてもらうときの方針（フリーボードのみ） */
 export type AiEditLayout = 'auto' | 'hierarchy' | 'radial' | 'flow' | 'grid'
-export type AiEditEdgeMode = 'rebuild' | 'keep'
+export type AiEditEdgeMode = 'rebuild' | 'keep' | 'infer'
 export type AiEditSizeMode = 'ai' | 'keep'
 
 export interface AiEditOptions {
