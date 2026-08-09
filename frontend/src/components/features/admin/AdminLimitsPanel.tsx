@@ -12,7 +12,7 @@ import type { AdminOverview, AdminProviderCheck } from '@/types/admin'
  * 画面の数字と実態がずれていると、運用の判断がそのままずれる。
  */
 export function AdminLimitsPanel({ overview }: { overview: AdminOverview }) {
-  const { limits, provider_status: status } = overview
+  const { limits, provider_status: status, queue } = overview
   const [check, setCheck] = useState<AdminProviderCheck | null>(null)
   const [checking, setChecking] = useState(false)
 
@@ -82,6 +82,29 @@ export function AdminLimitsPanel({ overview }: { overview: AdminOverview }) {
           残高の数値は OpenAI の API からは取得できないため、実際に1回呼び出して応じるかで判定する。
           残高の確認・補充は OpenAI の請求画面から行う。
         </p>
+      </div>
+
+      {/* ワーカーが止まると、カードが「生成待ち」のまま進まない。気づけるように出す */}
+      <div
+        className={`rounded-xl border p-4 ${
+          queue.stalled ? 'border-destructive/50 bg-destructive/5' : 'border-border bg-card'
+        }`}
+      >
+        <p className="text-sm font-medium">
+          {queue.stalled ? 'ジョブが滞留しています' : 'ジョブの処理'}
+        </p>
+        <p className="mt-1 text-xs text-muted-foreground">
+          待機 {queue.ready} / 処理中 {queue.claimed} / ワーカー {queue.workers}
+          {queue.last_heartbeat_at
+            ? `・最後の心拍 ${new Date(queue.last_heartbeat_at).toLocaleString('ja-JP')}`
+            : '・心拍なし'}
+        </p>
+        {queue.stalled && (
+          <p className="mt-2 text-xs">
+            積まれているのに動かすワーカーがいません。worker マシンが停止している可能性があります
+            （<code>fly machine start &lt;id&gt; -a image-palace-api</code>）。
+          </p>
+        )}
       </div>
 
       <div className="grid gap-3 lg:grid-cols-2">

@@ -87,6 +87,14 @@ export interface AdminOverview {
   }
   /** 今月の収支（概算）。詳細は /admin/finance */
   finance: AdminFinanceSummary
+  /** ジョブの滞留。stalled は「積まれているのに動かす者がいない」状態 */
+  queue: {
+    ready: number
+    claimed: number
+    workers: number
+    last_heartbeat_at: string | null
+    stalled: boolean
+  }
   /** 供給側（OpenAI 等）が止まっていないか */
   provider_status: {
     ongoing: boolean

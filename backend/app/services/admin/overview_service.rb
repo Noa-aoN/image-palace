@@ -29,6 +29,8 @@ module Admin
         ai: ai_summary,
         limits: limits_summary,
         provider_status: provider_status,
+        # ジョブが積まれたまま動いていないと、カードが「生成待ち」で止まり続ける
+        queue: queue_status,
         # 概要にも今月の収支を出す。別リクエストにすると、遠い DB への往復が二重になる
         finance: ::Admin::FinanceService.call(year: @now.year, month: @now.month),
         series: {
@@ -243,6 +245,18 @@ module Admin
           overridden: ENV[env_name].present?
         }
       end
+    end
+
+    def queue_status
+      status = ::Jobs::QueueWatchdog.status(now: @now)
+
+      {
+        ready: status.ready,
+        claimed: status.claimed,
+        workers: status.workers,
+        last_heartbeat_at: status.last_heartbeat_at,
+        stalled: status.stalled
+      }
     end
 
     # 供給側（OpenAI 等）が止まっていないか。
