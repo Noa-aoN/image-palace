@@ -8,7 +8,26 @@ import { Spinner } from '@/components/ui/spinner'
 import { PanelSlotContent } from '@/components/features/panel/PanelSlot'
 import { usePanelForm } from '@/components/features/panel/usePanelForm'
 import { aiEditView, createCardsOnView, proposeCards, redoView, undoView } from '@/lib/api/views'
-import type { AiEditMode, AiEditSummary, CardEdge, CardProposal, CardReuse, ViewDetail } from '@/types/view'
+import type {
+  AiEditEdgeMode,
+  AiEditLayout,
+  AiEditMode,
+  AiEditSizeMode,
+  AiEditSummary,
+  CardEdge,
+  CardProposal,
+  CardReuse,
+  ViewDetail,
+} from '@/types/view'
+
+// 並べ方の指定。おまかせ以外を選ぶと、その形になるよう AI へ規則を足す
+const LAYOUTS: { value: AiEditLayout; label: string }[] = [
+  { value: 'auto', label: 'おまかせ' },
+  { value: 'hierarchy', label: '階層（上→下）' },
+  { value: 'radial', label: '放射（中心から）' },
+  { value: 'flow', label: '流れ（左→右）' },
+  { value: 'grid', label: '格子' },
+]
 
 const PANEL_KEY = 'canvas-ai-edit'
 const MAX_INSTRUCTION = 500
@@ -77,6 +96,10 @@ export function AiEditPanel({
   const [reuse, setReuse] = useState<CardReuse[]>([])
   const [edges, setEdges] = useState<CardEdge[]>([])
   const [limit, setLimit] = useState<{ max: number; truncated: boolean } | null>(null)
+  // 整え方の方針。既定は従来と同じ（おまかせ・線は引き直す・大きさは AI に任せる）
+  const [layout, setLayout] = useState<AiEditLayout>('auto')
+  const [edgeMode, setEdgeMode] = useState<AiEditEdgeMode>('rebuild')
+  const [sizeMode, setSizeMode] = useState<AiEditSizeMode>('ai')
   const [createdCount, setCreatedCount] = useState<number | null>(null)
   const [arranged, setArranged] = useState(false)
 
@@ -142,7 +165,11 @@ export function AiEditPanel({
     setError(null)
     setResult(null)
     try {
-      const updated = await aiEditView(viewId, trimmed, mode as AiEditMode)
+      const updated = await aiEditView(viewId, trimmed, mode as AiEditMode, {
+        layout,
+        edges: edgeMode,
+        sizing: sizeMode,
+      })
       setResult(updated.ai_edit ?? null)
       onApplied(updated)
     } catch (err: unknown) {
@@ -259,6 +286,56 @@ export function AiEditPanel({
               {MODES.find((option) => option.value === mode)?.description}
             </p>
           </div>
+
+          {/* 並べ方・線・大きさの方針。フリーボードにしか効かない */}
+          {viewType === 'freeboard' && mode !== 'create' && (
+            <details className="rounded-lg border border-border px-3 py-2">
+              <summary className="cursor-pointer text-xs text-muted-foreground">整え方の指定</summary>
+
+              <div className="mt-3 space-y-3">
+                <div>
+                  <p className="mb-1 text-xs text-muted-foreground">並べ方</p>
+                  <div className="flex flex-wrap gap-1.5">
+                    {LAYOUTS.map((option) => (
+                      <Button
+                        key={option.value}
+                        size="sm"
+                        variant={layout === option.value ? 'default' : 'outline'}
+                        disabled={busy !== null}
+                        onClick={() => setLayout(option.value)}
+                      >
+                        {option.label}
+                      </Button>
+                    ))}
+                  </div>
+                </div>
+
+                <label className="flex items-center gap-2 text-sm">
+                  <input
+                    type="checkbox"
+                    checked={edgeMode === 'keep'}
+                    disabled={busy !== null}
+                    onChange={(e) => setEdgeMode(e.target.checked ? 'keep' : 'rebuild')}
+                  />
+                  いまの線をそのままにする
+                </label>
+
+                <label className="flex items-center gap-2 text-sm">
+                  <input
+                    type="checkbox"
+                    checked={sizeMode === 'keep'}
+                    disabled={busy !== null}
+                    onChange={(e) => setSizeMode(e.target.checked ? 'keep' : 'ai')}
+                  />
+                  カードの大きさを変えない
+                </label>
+
+                <p className="text-[11px] text-muted-foreground">
+                  線をそのままにすると、手で描いた線が並べ替えで消えません。
+                </p>
+              </div>
+            </details>
+          )}
 
           <Button
             onClick={run}

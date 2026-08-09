@@ -7,6 +7,12 @@ export interface BoardSettings {
   bg_pattern?: 'dots' | 'grid' | 'none'
   pattern_color?: string // 背景模様（ドット/グリッド線）の色
   card_font_size?: number // カードの単語文字サイズ(px)
+  /**
+   * カード内の画像の見せ方。
+   * cover（既定）はカードいっぱいに広げて切り取る。縦横比の違うカードが並ぶと
+   * 見えている範囲がまちまちになるので、揃えたいときは contain（全景を収める）。
+   */
+  card_image_fit?: 'cover' | 'contain'
   minimap?: boolean
   controls?: boolean
 }
@@ -100,6 +106,17 @@ export interface ViewEdge {
 
 // AI編集のモード。placed_only=いまある札だけ / select=手持ちから探して足す
 export type AiEditMode = 'placed_only' | 'select'
+
+/** AI に整えてもらうときの方針（フリーボードのみ） */
+export type AiEditLayout = 'auto' | 'hierarchy' | 'radial' | 'flow' | 'grid'
+export type AiEditEdgeMode = 'rebuild' | 'keep'
+export type AiEditSizeMode = 'ai' | 'keep'
+
+export interface AiEditOptions {
+  layout?: AiEditLayout
+  edges?: AiEditEdgeMode
+  sizing?: AiEditSizeMode
+}
 
 /** 「カードから作る」の提案（まだ作られていない） */
 export interface CardProposal {

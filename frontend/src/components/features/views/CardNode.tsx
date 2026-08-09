@@ -40,6 +40,8 @@ function CardNodeComponent({ id, data }: NodeProps<CardNodeType>) {
   const { onRemove, onResizeEnd } = useContext(BoardActionsContext)
   const { item } = data
   const cardFontSize = useBoardSettingsStore((s) => s.settings.card_font_size)
+  // 全景を収める設定のときは切り取らない（縦横比が違っても見えている範囲が揃う）
+  const imageFit = useBoardSettingsStore((s) => s.settings.card_image_fit) ?? 'cover'
   const imageUrl = item.media?.thumb_url ?? item.media?.url ?? null
 
   return (
@@ -78,7 +80,13 @@ function CardNodeComponent({ id, data }: NodeProps<CardNodeType>) {
           <div className="flex min-h-0 flex-1 items-center justify-center overflow-hidden bg-muted">
             {imageUrl ? (
               // eslint-disable-next-line @next/next/no-img-element
-              <img src={imageUrl} alt={item.title} className="h-full w-full object-cover" draggable={false} loading="lazy" />
+              <img
+                src={imageUrl}
+                alt={item.title}
+                className={`h-full w-full ${imageFit === 'contain' ? 'object-contain' : 'object-cover'}`}
+                draggable={false}
+                loading="lazy"
+              />
             ) : (
               <span className="px-2 text-center text-[11px] text-muted-foreground">{item.title}</span>
             )}

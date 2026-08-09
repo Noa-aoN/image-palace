@@ -1,5 +1,5 @@
 import { apiClient } from './client'
-import type { AiEditMode, CardEdge, CardProposalResult, View, ViewDetail, ViewItemPlacement, ViewEdge, SpaceMapPoint, BoardSettings } from '@/types/view'
+import type { AiEditMode, AiEditOptions, CardEdge, CardProposalResult, View, ViewDetail, ViewItemPlacement, ViewEdge, SpaceMapPoint, BoardSettings } from '@/types/view'
 import type { CoverType } from '@/types/cover'
 
 // freeboard の接続線 API の入力
@@ -203,9 +203,14 @@ export async function generateViewCover(id: string, prompt: string, style?: stri
 
 // ことばの指示でキャンバスを組み立て直す（デッキ / フリーボード）。
 // mode=placed_only はいまある札だけ、select は手持ちから探して足す。
-export async function aiEditView(id: string, instruction: string, mode: AiEditMode): Promise<ViewDetail> {
+export async function aiEditView(
+  id: string,
+  instruction: string,
+  mode: AiEditMode,
+  options?: AiEditOptions
+): Promise<ViewDetail> {
   const res = await apiClient.post<ViewDetail>(`/api/v1/views/${id}/ai_edit`, {
-    edit: { instruction, mode },
+    edit: { instruction, mode, ...(options ?? {}) },
   })
   return res.data
 }

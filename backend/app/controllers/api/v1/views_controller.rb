@@ -142,7 +142,11 @@ module Api
         result = Views::AiEditService.call(
           view: @view,
           instruction: params.dig(:edit, :instruction),
-          mode: params.dig(:edit, :mode)
+          mode: params.dig(:edit, :mode),
+          # 画面で選べる方針（並べ方・線を触るか・大きさを変えるか）
+          layout: params.dig(:edit, :layout),
+          edges: params.dig(:edit, :edges),
+          sizing: params.dig(:edit, :sizing)
         )
         Views::RevisionService.snapshot!(@view.reload, label: "AI調整の後")
         render json: serialize_view_detail(@view.reload).merge(

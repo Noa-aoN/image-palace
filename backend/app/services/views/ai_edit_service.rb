@@ -51,15 +51,34 @@ module Views
 
     Result = Struct.new(:summary, :notes, :added, :removed, :placed, :connected, keyword_init: true)
 
-    def self.call(view:, instruction:, mode: DEFAULT_MODE)
-      new(view:, instruction:, mode:).call
+    # 並べ方の指定。おまかせ以外を選ぶと、その形になるよう指示を足す
+    LAYOUTS = %w[auto hierarchy radial flow grid].freeze
+    LAYOUT_RULES = {
+      "hierarchy" => "上から下への階層にする。親を上、子をその真下に等間隔で並べ、" \
+                     "同じ深さのものは同じ y に揃える。",
+      "radial" => "中心から放射状にする。主題を中央に置き、関係するものを周囲へ等間隔・等距離に配る。",
+      "flow" => "左から右への流れにする。順序のあるものを横一列に等間隔で並べ、" \
+                "枝分かれは上下へ振る。",
+      "grid" => "格子状に並べる。行と列を揃え、まとまりごとに行を分ける。"
+    }.freeze
+
+    # 線とカードの大きさを、AI に触らせるかどうか
+    EDGE_MODES = %w[rebuild keep].freeze
+    SIZE_MODES = %w[ai keep].freeze
+
+    def self.call(view:, instruction:, mode: DEFAULT_MODE, layout: nil, edges: nil, sizing: nil)
+      new(view:, instruction:, mode:, layout:, edges:, sizing:).call
     end
 
-    def initialize(view:, instruction:, mode:)
+    def initialize(view:, instruction:, mode:, layout: nil, edges: nil, sizing: nil)
       @view = view
       @user = view.user
       @instruction = instruction.to_s.strip
       @mode = MODES.include?(mode.to_s) ? mode.to_s : DEFAULT_MODE
+      @layout = LAYOUTS.include?(layout.to_s) ? layout.to_s : "auto"
+      # 既定は従来どおり（線は引き直す・大きさは AI に任せる）
+      @edge_mode = EDGE_MODES.include?(edges.to_s) ? edges.to_s : "rebuild"
+      @size_mode = SIZE_MODES.include?(sizing.to_s) ? sizing.to_s : "ai"
     end
 
     def call
@@ -219,12 +238,27 @@ module Views
           中心を上または左に置き、枝を扇形に等間隔で広げると交差しない。
           遠回りに交差する線ができるなら、線を減らすのではなく置き方を変える。
 
+        #{option_rules}
+
         ## その他
         - remove はボードから外すだけで、カードそのものは消えません。
         - 指示に無いことはしないこと。
         - 内容に事実として疑わしい点や、図にする上で明らかに欠けている観点があれば notes に日本語で書くこと。
           ただし推測で断定しない。確証が持てないことは「確認できない」と書く。
       PROMPT
+    end
+
+    # 画面で選んだ方針を規則として足す。指示文に混ぜず、規則の側に置く
+    def option_rules
+      rules = []
+      rules << "## 並べ方の指定\n- #{LAYOUT_RULES[@layout]}" if LAYOUT_RULES.key?(@layout)
+      if @edge_mode == "keep"
+        rules << "## 線\n- 線は触らない。edges は空配列で返すこと（いまある線をそのまま残す）。"
+      end
+      if @size_mode == "keep"
+        rules << "## 大きさ\n- カードの大きさは変えない。placements に width / height を書かないこと。"
+      end
+      rules.join("\n\n")
     end
 
     # 利用者のデータは <指示> <資料> で囲って渡す。
@@ -294,7 +328,13 @@ module Views
         removed = remove_items!(ids_from(plan["remove"]))
         added = add_items!(ids_from(plan["add"]))
         placed_count = @view.deck? ? apply_order!(ids_from(plan["order"])) : apply_placements!(plan["placements"])
-        connected = @view.freeboard? ? apply_edges!(plan["edges"]) : 0
+        connected =
+          if @view.freeboard? && @edge_mode == "rebuild"
+            apply_edges!(plan["edges"])
+          else
+            # 「線はそのまま」を選んだときは触らない。引き直すと手で描いた線が消える
+            @view.freeboard? ? @view.view_edges.count : 0
+          end
       end
 
       Result.new(summary:, notes:, added:, removed:, placed: placed_count, connected:)
@@ -361,13 +401,18 @@ module Views
         item_id = placement["item_id"].to_s
         next false unless on_board.include?(item_id)
 
-        @view.view_items.where(item_id: item_id).update_all(
+        attributes = {
           x: clamp(placement["x"], BOARD_WIDTH),
           y: clamp(placement["y"], BOARD_HEIGHT),
-          width: card_size(placement["width"], CARD_WIDTH),
-          height: card_size(placement["height"], CARD_HEIGHT),
           updated_at: Time.current
-        )
+        }
+        # 「大きさは変えない」を選んだときは幅・高さに触らない
+        if @size_mode == "ai"
+          attributes[:width] = card_size(placement["width"], CARD_WIDTH)
+          attributes[:height] = card_size(placement["height"], CARD_HEIGHT)
+        end
+
+        @view.view_items.where(item_id: item_id).update_all(attributes)
         true
       end
     end

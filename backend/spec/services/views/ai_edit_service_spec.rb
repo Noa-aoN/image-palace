@@ -125,6 +125,56 @@ RSpec.describe Views::AiEditService do
       end
     end
 
+    describe "オプション" do
+      # 手で描いた線が、並べ替えのたびに消えるのを防ぐ
+      it "線を保つ指定なら、既存の線に触らない" do
+        view.view_edges.create!(source_node_id: a.id, target_node_id: b.id, label: "手で描いた")
+        stub_plan("edges" => [])
+
+        described_class.call(view: view, instruction: "並べて", edges: "keep")
+
+        expect(view.view_edges.count).to eq(1)
+        expect(view.view_edges.first.label).to eq("手で描いた")
+      end
+
+      it "既定では線を引き直す" do
+        view.view_edges.create!(source_node_id: a.id, target_node_id: b.id, label: "古い線")
+        stub_plan("edges" => [])
+
+        described_class.call(view: view, instruction: "並べて")
+
+        expect(view.view_edges.count).to eq(0)
+      end
+
+      it "大きさを変えない指定なら、幅と高さに触らない" do
+        view.view_items.find_by(item_id: a.id).update!(width: 300, height: 360)
+        stub_plan("placements" => [ { "item_id" => a.id, "x" => 100, "y" => 100, "width" => 90, "height" => 100 } ])
+
+        described_class.call(view: view, instruction: "並べて", sizing: "keep")
+
+        placement = view.view_items.find_by(item_id: a.id)
+        expect(placement.width).to eq(300)
+        expect(placement.x).to eq(100)
+      end
+
+      it "並べ方を指定すると、その規則を指示に足す" do
+        stub_plan({})
+
+        described_class.call(view: view, instruction: "並べて", layout: "hierarchy")
+
+        expect(Ai::Chat).to have_received(:call) do |args|
+          expect(args[:messages].first[:content]).to include("上から下への階層")
+        end
+      end
+
+      it "知らない指定は既定に落とす" do
+        stub_plan({})
+
+        expect { described_class.call(view: view, instruction: "並べて", layout: "らせん", edges: "壊す") }
+          .not_to raise_error
+      end
+    end
+
     it "盤の外へ飛ばされた座標は中に収める" do
       stub_plan("placements" => [ { "item_id" => a.id, "x" => 999_999, "y" => -500 } ])
 
