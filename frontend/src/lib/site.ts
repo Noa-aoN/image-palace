@@ -1,8 +1,10 @@
 // サイト全体で共有するメタ情報。layout / robots / sitemap / 構造化データから参照する。
 
-// 本番ドメイン未確定のため Workers のデフォルトURLをフォールバックにする（#103 で確定予定）。
-export const SITE_URL =
-  process.env.NEXT_PUBLIC_SITE_URL ?? 'https://image-palace-frontend.image-palace.workers.dev'
+// 正式ドメイン。NEXT_PUBLIC_SITE_URL は .env.production で与えるが、
+// **フォールバックも正式ドメインにしておく**。ここが旧 workers.dev のままだと、
+// env の設定漏れで canonical / og:url / sitemap が黙って旧URLに戻り、
+// 検索エンジンから見て別サイトの重複コンテンツになる（気づきにくい壊れ方をする）。
+export const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL ?? 'https://imagepalace.app'
 
 export const SITE_NAME = 'ImagePalace'
 
