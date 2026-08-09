@@ -175,7 +175,7 @@ module Api
 
         render json: {
           proposals: result.proposals.map { |proposal| { title: proposal.title, reason: proposal.reason } },
-          notes: result.notes,
+          plan: result.plan,
           available_credits: current_user.available_credits
         }
       rescue Ai::Chat::LimitExceeded => e
@@ -199,13 +199,27 @@ module Api
 
         Views::RevisionService.snapshot!(@view, label: "カード追加の前")
         created = Views::CardCreationService.call(view: @view, titles: titles)
+        # 作っただけでは部品が積み上がっただけ。指示があれば、そのまま図として組み上げる
+        arranged = arrange_after_create(params[:instruction])
         Views::RevisionService.snapshot!(@view.reload, label: "カード追加の後")
 
         render json: serialize_view_detail(@view.reload).merge(
-          created_cards: { count: created.size, titles: created.map(&:title) }
+          created_cards: { count: created.size, titles: created.map(&:title), arranged: arranged }
         )
       rescue Items::CreateService::InsufficientCredits, Items::CreateService::ContentBlocked => e
         render json: { error: e.message }, status: :unprocessable_entity
+      end
+
+      # 作ったカードを図として組み上げる。ここが失敗しても、カードは既に作られているので
+      # 例外にはしない（作成そのものは成功しているため）。
+      def arrange_after_create(instruction)
+        return false if instruction.blank?
+
+        Views::AiEditService.call(view: @view.reload, instruction: instruction.to_s, mode: "placed_only")
+        true
+      rescue StandardError => e
+        Rails.logger.warn "[ViewsController#create_cards] 配置に失敗 view_id=#{@view.id}: #{e.class}: #{e.message}"
+        false
       end
 
       # POST /api/v1/views/:id/undo, /redo
