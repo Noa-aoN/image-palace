@@ -137,6 +137,8 @@ function EditableEdgeComponent(props: EdgeProps) {
               boxShadow: s.label_bg ? undefined : '0 1px 2px rgba(0,0,0,0.06)',
               lineHeight: 1.3,
               textAlign: 'center',
+              maxWidth: 160,
+              overflowWrap: 'anywhere',
               writingMode: s.label_vertical ? 'vertical-rl' : undefined,
               whiteSpace: s.label_vertical ? 'nowrap' : undefined,
             }}

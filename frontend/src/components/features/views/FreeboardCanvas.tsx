@@ -1,6 +1,6 @@
 'use client'
 
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 import {
   Background,
   BackgroundVariant,
@@ -51,6 +51,9 @@ const edgeTypes = { editable: EditableEdge }
 // カードノードの既定サイズ（中央寄せ計算・未指定サイズのフォールバック）
 const CARD_W = CARD_DEFAULT_W
 const CARD_H = CARD_DEFAULT_H
+// 全体表示でカードへ寄りすぎないよう、少し引いた倍率を上限にする。
+// サーバ側の外周余白と合わせて、AI 配置後にも盤面の文脈が見える状態を保つ。
+const BOARD_FIT_VIEW_OPTIONS = { padding: 0.3, maxZoom: 0.9 } as const
 
 function toNode(placement: ViewItemPlacement): CardNodeType {
   return {
@@ -154,9 +157,11 @@ type FreeboardCanvasProps = {
   viewName?: string
   initialItems: ViewItemPlacement[]
   initialEdges: ViewEdge[]
+  aiEditAction?: ReactNode
+  aiEditHistoryActions?: ReactNode
 }
 
-function Canvas({ viewId, viewName, initialItems, initialEdges }: FreeboardCanvasProps) {
+function Canvas({ viewId, viewName, initialItems, initialEdges, aiEditAction, aiEditHistoryActions }: FreeboardCanvasProps) {
   const boardRef = useRef<HTMLDivElement>(null)
   const [nodes, setNodes, onNodesChange] = useNodesState<CardNodeType>(initialItems.map(toNode))
   const [edges, setEdges, onEdgesChange] = useEdgesState<Edge>(initialEdges.map(viewToEdge))
@@ -660,6 +665,7 @@ function Canvas({ viewId, viewName, initialItems, initialEdges }: FreeboardCanva
             <Plus size={15} />
             カードを配置
           </Button>
+          {aiEditAction}
           <Button size="sm" variant="outline" onClick={() => openBoardCards(viewId)} className="flex items-center gap-1">
             <List size={15} />
             配置カード一覧
@@ -682,6 +688,7 @@ function Canvas({ viewId, viewName, initialItems, initialEdges }: FreeboardCanva
             <Download size={15} />
             {exporting ? '書き出し中…' : '画像を保存'}
           </Button>
+          {aiEditHistoryActions}
           <span className="ml-auto text-xs text-muted-foreground">Shift＋クリックで追加選択 / Shift＋ドラッグで範囲選択</span>
         </div>
 
@@ -719,7 +726,7 @@ function Canvas({ viewId, viewName, initialItems, initialEdges }: FreeboardCanva
             connectionMode={ConnectionMode.Loose}
             defaultEdgeOptions={{ type: 'editable' }}
             fitView
-            fitViewOptions={{ padding: 0.3, maxZoom: 1 }}
+            fitViewOptions={BOARD_FIT_VIEW_OPTIONS}
             minZoom={0.2}
             maxZoom={2}
             proOptions={{ hideAttribution: true }}

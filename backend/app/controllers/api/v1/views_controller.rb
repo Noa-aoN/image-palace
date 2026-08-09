@@ -153,6 +153,7 @@ module Api
         render json: serialize_view_detail(@view.reload).merge(
           ai_edit: {
             summary: result.summary,
+            notes: result.notes,
             added: result.added,
             removed: result.removed,
             placed: result.placed,

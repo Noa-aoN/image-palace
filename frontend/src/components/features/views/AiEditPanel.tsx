@@ -32,18 +32,20 @@ const LAYOUTS: { value: AiEditLayout; label: string }[] = [
 
 // どこまで整えるか。ジャンル別に実行できるようにし、選ばなかったものは触らない。
 // 「触らない」を2つ手で選ばせるより、押したボタンで範囲が決まる方が迷わない
-type EditScope = 'all' | 'cards' | 'edges' | 'layout'
+type EditScope = 'all' | 'cards' | 'edges' | 'edge_labels' | 'layout'
 
 // 実行の結果に、どこまでが対象だったかを添える
 const SCOPE_LABELS: Record<EditScope, string> = {
   all: 'カード・線・配置をまとめて整えました',
   cards: 'カードだけ整えました（線と配置はそのまま）',
   edges: '線だけ整えました（カードと配置はそのまま）',
+  edge_labels: '線の文言だけ整えました（つなぎ方・見た目・カード・配置はそのまま）',
   layout: '配置だけ整えました（カードと線はそのまま）',
 }
 
 const PANEL_KEY = 'canvas-ai-edit'
 const MAX_INSTRUCTION = 500
+const DEFAULT_EDGE_LABEL_INSTRUCTION = '線上の文言を、カード同士の関係と向きに合う具体的な短い言葉へ直して'
 
 // 「カードから作る」は新しくカードを作る（＝クレジットを使う）ので、他の2つとは性質が違う。
 // 同じ並びに置きつつ、実行前に必ず枚数の確認を挟む
@@ -86,6 +88,7 @@ export function AiEditPanel({
   canUndo,
   canRedo,
   onApplied,
+  children,
 }: {
   viewId: string
   viewType: string
@@ -93,8 +96,10 @@ export function AiEditPanel({
   canRedo: boolean
   /** 編集後のキャンバス。呼び出し側で描き直す */
   onApplied: (view: ViewDetail) => void
+  /** フリーボードでは操作をキャンバスのツールバー内へ差し込む */
+  children?: (controls: { editAction: ReactNode; historyActions: ReactNode }) => ReactNode
 }) {
-  const panel = usePanelForm(PANEL_KEY, 'AIに整えてもらう')
+  const panel = usePanelForm(PANEL_KEY, 'AIで整える')
   const [instruction, setInstruction] = useState('')
   const [mode, setMode] = useState<EditChoice>('placed_only')
   const [busy, setBusy] = useState<'edit' | 'undo' | 'redo' | 'propose' | 'create' | null>(null)
@@ -183,7 +188,7 @@ export function AiEditPanel({
   const optionsFor = (scope: EditScope) => ({
     layout,
     placement: scope === 'all' || scope === 'layout' ? placementMode : ('keep' as const),
-    edges: scope === 'all' || scope === 'edges' ? edgeMode : ('keep' as const),
+    edges: scope === 'edge_labels' ? ('relabel' as const) : scope === 'all' || scope === 'edges' ? edgeMode : ('keep' as const),
     sizing: scope === 'all' || scope === 'cards' ? sizeMode : ('keep' as const),
   })
 
@@ -193,7 +198,7 @@ export function AiEditPanel({
       if (mode === 'create') return propose('create')
       if (mode === 'select') return propose('select')
     }
-    const trimmed = instruction.trim()
+    const trimmed = instruction.trim() || (scope === 'edge_labels' ? DEFAULT_EDGE_LABEL_INSTRUCTION : '')
     if (!trimmed || busy) return
     setBusy('edit')
     setRunningScope(scope)
@@ -230,47 +235,59 @@ export function AiEditPanel({
     }
   }
 
+  const editAction = (
+    <Button
+      variant="outline"
+      size="sm"
+      onClick={panel.open}
+      className="flex items-center gap-1.5"
+      aria-expanded={panel.isOpen}
+    >
+      <Wand2 size={15} />
+      AIで整える
+    </Button>
+  )
+  const historyActions = (
+    <>
+      <Button
+        variant="ghost"
+        size="sm"
+        onClick={() => step('undo')}
+        disabled={!canUndo || busy !== null}
+        aria-label="戻る"
+        title="戻る"
+        className="h-8 w-8 p-0"
+      >
+        {busy === 'undo' ? <Spinner size={14} /> : <Undo2 size={15} />}
+      </Button>
+      <Button
+        variant="ghost"
+        size="sm"
+        onClick={() => step('redo')}
+        disabled={!canRedo || busy !== null}
+        aria-label="進む"
+        title="進む"
+        className="h-8 w-8 p-0"
+      >
+        {busy === 'redo' ? <Spinner size={14} /> : <Redo2 size={15} />}
+      </Button>
+    </>
+  )
+
   return (
     <>
-      <div className="mb-4 flex flex-wrap items-center gap-2">
-        <Button
-          variant="outline"
-          size="sm"
-          onClick={panel.open}
-          className="flex items-center gap-1.5"
-          aria-expanded={panel.isOpen}
-        >
-          <Wand2 size={15} />
-          AIに整えてもらう
-        </Button>
-
-        <Button
-          variant="ghost"
-          size="sm"
-          onClick={() => step('undo')}
-          disabled={!canUndo || busy !== null}
-          aria-label="AI調整を戻す"
-          title="AI調整を戻す"
-          className="flex items-center gap-1"
-        >
-          {busy === 'undo' ? <Spinner size={14} /> : <Undo2 size={15} />}
-          戻る
-        </Button>
-        <Button
-          variant="ghost"
-          size="sm"
-          onClick={() => step('redo')}
-          disabled={!canRedo || busy !== null}
-          aria-label="AI調整をやり直す"
-          title="AI調整をやり直す"
-          className="flex items-center gap-1"
-        >
-          {busy === 'redo' ? <Spinner size={14} /> : <Redo2 size={15} />}
-          進む
-        </Button>
-
-        {error && !panel.isOpen && <span className="text-sm text-destructive">{error}</span>}
-      </div>
+      {children ? (
+        <>
+          {children({ editAction, historyActions })}
+          {error && !panel.isOpen && <p className="mt-2 text-sm text-destructive">{error}</p>}
+        </>
+      ) : (
+        <div className="mb-4 flex flex-wrap items-center gap-2">
+          {editAction}
+          {historyActions}
+          {error && !panel.isOpen && <span className="text-sm text-destructive">{error}</span>}
+        </div>
+      )}
 
       <PanelSlotContent sectionKey={PANEL_KEY}>
         <div className="space-y-4">
@@ -350,12 +367,20 @@ export function AiEditPanel({
                 title="線"
                 description="どうつなぐか"
                 action={
-                  <RunButton
-                    label="線だけ整える"
-                    busy={runningScope === 'edges'}
-                    disabled={!canRun}
-                    onClick={() => run('edges')}
-                  />
+                  <div className="flex flex-wrap justify-end gap-1.5">
+                    <RunButton
+                      label="文言だけ整える"
+                      busy={runningScope === 'edge_labels'}
+                      disabled={busy !== null}
+                      onClick={() => run('edge_labels')}
+                    />
+                    <RunButton
+                      label="線だけ整える"
+                      busy={runningScope === 'edges'}
+                      disabled={!canRun}
+                      onClick={() => run('edges')}
+                    />
+                  </div>
                 }
               >
                 <Choice

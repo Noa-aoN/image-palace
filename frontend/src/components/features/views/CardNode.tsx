@@ -82,7 +82,7 @@ function CardNodeComponent({ id, data }: NodeProps<CardNodeType>) {
             className="flex shrink-0 items-center overflow-hidden px-2 font-medium leading-none"
             style={{ height: CARD_TITLE_H, fontSize: cardFontSize ?? DEFAULT_CARD_FONT_SIZE }}
           >
-            <span className="truncate">{item.title}</span>
+            <span className="truncate" title={item.title}>{item.title}</span>
           </div>
           <div className="flex aspect-square min-h-0 w-full items-center justify-center overflow-hidden bg-muted">
             {imageUrl ? (
