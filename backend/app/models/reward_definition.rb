@@ -115,6 +115,56 @@ class RewardDefinition < ApplicationRecord
       description: "まとめる力の褒賞。", position: 35,
       metadata: { "motif" => "a small wooden shelf holding rolled scrolls" }, image_key: "73afip2yv4lsxx2ckjiopxybk5b4" },
 
+
+    # ── ここから追加分（絵はまだ用意していない。種類ごとの絵柄で出る） ──
+    # 称号
+    { key: "title_scribe", kind: "title", name: "宮殿の書記官", rarity_level: 3, category: "整理",
+      description: "まとめる術を身につけた人へ。", position: 14,
+      metadata: { "motif" => "a stele with crossed reed pens over a scroll" } },
+    { key: "title_mnemonist", kind: "title", name: "記憶術士", rarity_level: 5, category: "学習",
+      description: "覚える技を修めた人へ。", position: 15,
+      metadata: { "motif" => "a stele with a labyrinth pattern and a small key" } },
+    { key: "title_keeper", kind: "title", name: "書庫の守り手", rarity_level: 6, category: "継続",
+      description: "長く宮殿を守り続けた人へ。", position: 16,
+      metadata: { "motif" => "a stele with a temple door flanked by two torches" } },
+
+    # 勲章
+    { key: "medal_first_shelf", kind: "medal", name: "整理の徽章", rarity_level: 1, category: "整理",
+      description: "はじめてまとめた証。", position: 24,
+      metadata: { "motif" => "a small round badge with a stack of tablets" } },
+    { key: "medal_quiz", kind: "medal", name: "問答の星章", rarity_level: 3, category: "学習",
+      description: "問いに答え続けた証。", position: 25,
+      metadata: { "motif" => "a six-pointed star badge with a question-and-answer scroll" } },
+    { key: "medal_month", kind: "medal", name: "月の徽章", rarity_level: 4, category: "継続",
+      description: "ひと月続けた証。", position: 26,
+      metadata: { "motif" => "a crescent moon badge with a laurel sprig" } },
+    { key: "medal_year", kind: "medal", name: "年輪の勲章", rarity_level: 7, category: "継続",
+      description: "一年ぶん通った証。", position: 27,
+      metadata: { "motif" => "a medal with concentric tree rings and a laurel border" } },
+
+    # 褒賞
+    { key: "treasure_lyre", kind: "treasure", name: "小さな竪琴", rarity_level: 3, category: "創作",
+      description: "調べを奏でる道具。", position: 36,
+      metadata: { "motif" => "a small lyre with strings" } },
+    { key: "treasure_scroll", kind: "treasure", name: "束ねた巻物", rarity_level: 2, category: "整理",
+      description: "しまっておいた言葉たち。", position: 37,
+      metadata: { "motif" => "a bundle of rolled scrolls tied with a cord" } },
+    { key: "treasure_key", kind: "treasure", name: "青銅の鍵", rarity_level: 4, category: "学習",
+      description: "開けた扉のしるし。", position: 38,
+      metadata: { "motif" => "an ornate bronze key with a laurel bow" } },
+    { key: "treasure_lamp", kind: "treasure", name: "燭台", rarity_level: 3, category: "継続",
+      description: "夜も灯し続けた明かり。", position: 39,
+      metadata: { "motif" => "a three-branch oil lamp stand with small flames" } },
+    { key: "treasure_star_map", kind: "treasure", name: "星図", rarity_level: 5, category: "学習",
+      description: "知の並びを写した図。", position: 40,
+      metadata: { "motif" => "a circular star chart engraved on a metal disc" } },
+    { key: "treasure_statuette", kind: "treasure", name: "小さな女神像", rarity_level: 6, category: "創作",
+      description: "宮殿を見守るもの。", position: 41,
+      metadata: { "motif" => "a small standing goddess figurine on a plinth" } },
+    { key: "treasure_trophy", kind: "treasure", name: "月桂のトロフィー", rarity_level: 7, category: "創作",
+      description: "特別な達成のしるし。", position: 42,
+      metadata: { "motif" => "a two-handled trophy cup crowned with a laurel wreath" } },
+
     # ── 表彰（手動付与のみ。条件では配らない） ──
     { key: "honor_beta", kind: "honor", name: "β参加者", rarity_level: 6, category: "公式",
       description: "初期からこの場所を見てくれた人へ。", position: 40,

@@ -53,7 +53,7 @@ export function PalaceFloorplan2D({
         className="pointer-events-none absolute left-1/2 -translate-x-1/2 -translate-y-1/2 whitespace-nowrap text-[10px] font-medium text-muted-foreground"
         style={{ top: pct(10, h) }}
       >
-        宮殿外へ
+        市街へ
       </span>
 
       {/* 床は薄めのままだが、壁・区切り線をはっきり出すため全体の不透明度は上げる（部屋ラベルは SVG 外なので鮮明なまま） */}

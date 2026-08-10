@@ -436,7 +436,7 @@ export function PalaceFloorplan3D({
 
         {/* 裏口の行き先 */}
         <Label at={{ ...project(BACK_EXIT.x, BACK_EXIT.y, 0, yaw), y: project(BACK_EXIT.x, BACK_EXIT.y, WALL_H + 8, yaw).y }}>
-          <span className="whitespace-nowrap text-[10px] font-medium text-muted-foreground">宮殿外へ</span>
+          <span className="whitespace-nowrap text-[10px] font-medium text-muted-foreground">市街へ</span>
         </Label>
       </div>
     </>
