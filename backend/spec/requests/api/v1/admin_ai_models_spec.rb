@@ -101,7 +101,13 @@ RSpec.describe "AIモデルの管理", type: :request do
   end
 
   describe "設定が実際に効くこと" do
-    before { AiModel.registry }
+    # 「使える」の判定は鍵の有無を見る。CI には鍵が無いので、ここで入れておく
+    # （入れないと、用途に合っていても選べないほうの理由で落ちる）
+    before do
+      allow(ENV).to receive(:[]).and_call_original
+      allow(ENV).to receive(:[]).with("OPENAI_API_KEY").and_return("test-key")
+      AiModel.registry
+    end
 
     it "隠したモデルは選択肢から消える" do
       AiModel.find_by(key: "openai").update!(visible: false)
