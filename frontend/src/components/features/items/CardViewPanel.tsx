@@ -1,7 +1,7 @@
 'use client'
 
 import { useState } from 'react'
-import { Eye, EyeOff, GripVertical } from 'lucide-react'
+import { Eye, EyeOff, GripVertical, Minus, Plus } from 'lucide-react'
 import {
   DndContext,
   PointerSensor,
@@ -36,25 +36,34 @@ export interface CardBlock {
 /**
  * このカードの見え方。**この1枚だけ**に効く。
  *
- * 「項目の設定」（種別ぜんぶに効く）と混ぜない。あちらは持つ項目そのもの、
- * こちらは持っているもののうち何をどの順で出すか。
- * 同じ画面に置くと、どこまで効くのか分からなくなる。
+ * 段は2つ。
+ *   ＋ … このカードが持つ項目。並べ替えと、出す/畳むの切替ができる
+ *   −  … このカードでは持たない項目。出さないうえ、AI の穴埋めの対象からも外れる
  *
- * 隠しても中身は消えない。畳んでいるだけなので、いつでも戻せる。
+ * 「持たない」と「畳む」を分けているのは、意味が違うため。
+ * 人物のカードに読み仮名は要らない（＝持たない）が、意味・説明は持っていて
+ * いまは畳んでおきたい、ということがある。どちらも見えないので、
+ * 一段にまとめると区別が付かなくなる。
+ *
+ * 「項目の設定」（種別ぜんぶに効く）とは混ぜない。あちらは項目そのものの定義。
  */
 export function CardViewPanel({
   item,
   blocks,
+  omitted,
   onUpdated,
 }: {
   item: Item
-  /** 既定の並びのブロック一覧（並べ替え適用後） */
+  /** ＋ の段（並べ替え適用後） */
   blocks: CardBlock[]
+  /** − の段（このカードでは持たない項目） */
+  omitted: CardBlock[]
   onUpdated: (item: Item) => void
 }) {
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const hidden = new Set(item.block_view?.hidden ?? [])
+  const omittedKeys = new Set(item.block_view?.omitted ?? [])
   // 4px 動かすまでは並べ替えを始めない。表示の入り切りを押すだけのつもりが
   // 指が滑って並びまで変わる、を防ぐ
   const sensors = useSensors(
@@ -62,11 +71,11 @@ export function CardViewPanel({
     useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates })
   )
 
-  const save = async (nextHidden: string[], nextOrder: string[]) => {
+  const save = async (nextHidden: string[], nextOrder: string[], nextOmitted: string[]) => {
     setBusy(true)
     setError(null)
     try {
-      onUpdated(await updateBlockView(item.id, { hidden: nextHidden, order: nextOrder }))
+      onUpdated(await updateBlockView(item.id, { hidden: nextHidden, order: nextOrder, omitted: nextOmitted }))
     } catch {
       setError('保存できませんでした。もう一度お試しください。')
     } finally {
@@ -74,12 +83,20 @@ export function CardViewPanel({
     }
   }
 
+  const order = blocks.map((b) => b.key)
+
   const toggle = (key: string) => {
-    const next = hidden.has(key)
-      ? [...hidden].filter((k) => k !== key)
-      : [...hidden, key]
-    save(next, blocks.map((b) => b.key))
+    const next = hidden.has(key) ? [...hidden].filter((k) => k !== key) : [...hidden, key]
+    save(next, order, [...omittedKeys])
   }
+
+  // − へ落とす。畳んでいた印も外す（戻したときに、なぜか見えない状態にしない）
+  const omit = (key: string) =>
+    save([...hidden].filter((k) => k !== key), order.filter((k) => k !== key), [...omittedKeys, key])
+
+  // ＋ へ戻す。並びの末尾に付ける（元の位置は覚えていない）
+  const adopt = (key: string) =>
+    save([...hidden], [...order, key], [...omittedKeys].filter((k) => k !== key))
 
   const handleDragEnd = (event: DragEndEvent) => {
     const { active, over } = event
@@ -89,20 +106,24 @@ export function CardViewPanel({
     const to = blocks.findIndex((b) => b.key === over.id)
     if (from < 0 || to < 0) return
 
-    save([...hidden], arrayMove(blocks, from, to).map((b) => b.key))
+    save([...hidden], arrayMove(blocks, from, to).map((b) => b.key), [...omittedKeys])
   }
 
   return (
     <PanelSlotContent sectionKey={CARD_VIEW_PANEL_KEY}>
       <div className="space-y-3">
         <p className="text-xs leading-relaxed text-muted-foreground">
-          このカード1枚だけの見え方です。隠しても中身は消えません。
+          このカード1枚だけの見え方です。<strong className="text-foreground">＋</strong> は持つ項目、
+          <strong className="text-foreground">−</strong> は持たない項目。
+          どちらに置いても中身は消えません。
           <br />
-          どの項目を持つかは「項目の設定」で決めます（そちらは種別ぜんぶに効きます）。
+          項目そのものを増やすのは「項目の設定」です（そちらは種別ぜんぶに効きます）。
         </p>
 
+        <p className="text-xs font-medium">＋ このカードが持つ項目</p>
+
         {blocks.length === 0 ? (
-          <p className="text-sm text-muted-foreground">並べ替えられるものがありません。</p>
+          <p className="text-sm text-muted-foreground">ありません。下の − から戻せます。</p>
         ) : (
           <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
             <SortableContext items={blocks.map((b) => b.key)} strategy={verticalListSortingStrategy}>
@@ -114,11 +135,39 @@ export function CardViewPanel({
                     hidden={hidden.has(block.key)}
                     busy={busy}
                     onToggle={() => toggle(block.key)}
+                    onOmit={() => omit(block.key)}
                   />
                 ))}
               </div>
             </SortableContext>
           </DndContext>
+        )}
+
+        <p className="pt-1 text-xs font-medium">− このカードでは持たない項目</p>
+        {omitted.length === 0 ? (
+          <p className="text-xs text-muted-foreground">ありません。</p>
+        ) : (
+          <div className="space-y-1.5">
+            {omitted.map((block) => (
+              <div
+                key={block.key}
+                className="flex items-center justify-between gap-2 rounded-lg border border-dashed border-border/70 px-3 py-2"
+              >
+                <span className="truncate text-sm text-muted-foreground">{block.label}</span>
+                <Tooltip label="この項目を持つ">
+                  <button
+                    type="button"
+                    onClick={() => adopt(block.key)}
+                    disabled={busy}
+                    aria-label={`${block.label}を持つ`}
+                    className="shrink-0 text-muted-foreground transition-colors hover:text-foreground disabled:opacity-30"
+                  >
+                    <Plus size={15} />
+                  </button>
+                </Tooltip>
+              </div>
+            ))}
+          </div>
         )}
 
         {busy && (
@@ -138,11 +187,13 @@ function SortableRow({
   hidden,
   busy,
   onToggle,
+  onOmit,
 }: {
   block: CardBlock
   hidden: boolean
   busy: boolean
   onToggle: () => void
+  onOmit: () => void
 }) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: block.key })
 
@@ -172,17 +223,30 @@ function SortableRow({
           {block.label}
         </span>
       </div>
-      <Tooltip label={hidden ? '出す' : '隠す'}>
-        <button
-          type="button"
-          onClick={onToggle}
-          disabled={busy}
-          aria-label={hidden ? `${block.label}を出す` : `${block.label}を隠す`}
-          className="shrink-0 text-muted-foreground transition-colors hover:text-foreground disabled:opacity-30"
-        >
-          {hidden ? <EyeOff size={15} /> : <Eye size={15} />}
-        </button>
-      </Tooltip>
+      <div className="flex shrink-0 items-center gap-2 text-muted-foreground">
+        <Tooltip label={hidden ? '出す' : '畳む'}>
+          <button
+            type="button"
+            onClick={onToggle}
+            disabled={busy}
+            aria-label={hidden ? `${block.label}を出す` : `${block.label}を畳む`}
+            className="transition-colors hover:text-foreground disabled:opacity-30"
+          >
+            {hidden ? <EyeOff size={15} /> : <Eye size={15} />}
+          </button>
+        </Tooltip>
+        <Tooltip label="この項目を持たない">
+          <button
+            type="button"
+            onClick={onOmit}
+            disabled={busy}
+            aria-label={`${block.label}を持たない`}
+            className="transition-colors hover:text-foreground disabled:opacity-30"
+          >
+            <Minus size={15} />
+          </button>
+        </Tooltip>
+      </div>
     </div>
   )
 }

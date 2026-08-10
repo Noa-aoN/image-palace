@@ -77,6 +77,10 @@ module Items
     def definitions
       @definitions ||= begin
         all = @user.property_definitions.for_item_type(@item.item_type_id).ordered.to_a
+        # そのカードが「持たない」と決めた項目は埋めない。
+        # 出していないものを黙って書き込むと、あとで出したときに身に覚えのない値が入っている
+        omitted = @item.omitted_block_keys.filter_map { |key| key.delete_prefix("prop:") if key.start_with?("prop:") }
+        all = all.reject { |d| omitted.include?(d.key) }
         @keys ? all.select { |d| @keys.include?(d.key) } : all
       end
     end

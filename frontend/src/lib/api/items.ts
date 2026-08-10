@@ -391,6 +391,8 @@ export async function getItemUsages(id: string): Promise<ItemUsages> {
 export interface BlockView {
   hidden: string[]
   order: string[]
+  /** そのカードでは持たない項目（− のエリア） */
+  omitted: string[]
 }
 
 // 種別の設定（どの項目を持つか）とは効く範囲が違う。これはこの1枚だけ

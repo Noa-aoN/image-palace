@@ -18,7 +18,9 @@ RSpec.describe "Api::V1::Items block_view", type: :request do
       expect(response).to have_http_status(:success)
       expect(item.reload.hidden_block_keys).to eq([ "tags" ])
       expect(item.ordered_block_keys).to eq([ "meanings", "item_type" ])
-      expect(json_response["block_view"]).to eq({ "hidden" => [ "tags" ], "order" => [ "meanings", "item_type" ] })
+      expect(json_response["block_view"]).to eq(
+        { "hidden" => [ "tags" ], "order" => [ "meanings", "item_type" ], "omitted" => [] }
+      )
     end
 
     it "空を渡すと元に戻る" do
@@ -51,6 +53,31 @@ RSpec.describe "Api::V1::Items block_view", type: :request do
       patch "/api/v1/items/#{other.id}/block_view", params: { hidden: [ "tags" ] }, headers: headers
 
       expect(response).to have_http_status(:not_found)
+    end
+  end
+
+  # 「持たない」と「畳む」は意味が違う。どちらも見えないが、
+  # 持たない項目は AI の穴埋めの対象からも外れる
+  describe "持たない項目（− のエリア）" do
+    it "保存して読み返せる" do
+      patch "/api/v1/items/#{item.id}/block_view",
+            params: { hidden: [ "tags" ], order: [ "meanings" ], omitted: [ "examples" ] }, headers: headers
+
+      expect(response).to have_http_status(:success)
+      expect(item.reload.omitted_block_keys).to eq([ "examples" ])
+      expect(response.parsed_body.dig("block_view", "omitted")).to eq([ "examples" ])
+    end
+
+    it "持たない項目は AI の穴埋めから外れる" do
+      item_type = item.item_type
+      user.property_definitions.create!(item_type: item_type, key: "reading", label: "読み方", value_type: "text")
+      user.property_definitions.create!(item_type: item_type, key: "aliases", label: "別名", value_type: "text")
+      item.update!(block_view: { "omitted" => [ "prop:aliases" ] })
+
+      service = Items::FillPropertiesService.new(item: item, user: user)
+      keys = service.send(:definitions).map(&:key)
+
+      expect(keys).to eq([ "reading" ])
     end
   end
 end

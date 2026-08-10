@@ -77,6 +77,12 @@ class Item < ApplicationRecord
     Array((block_view || {})["hidden"])
   end
 
+  # そのカードでは持たない項目。畳んでいる（hidden）のとは意味が違う。
+  # 持たない項目は AI の穴埋めの対象からも外す
+  def omitted_block_keys
+    Array((block_view || {})["omitted"])
+  end
+
   # 並び順の指定。未設定なら空（画面側の既定の並びを使う）
   def ordered_block_keys
     Array((block_view || {})["order"])

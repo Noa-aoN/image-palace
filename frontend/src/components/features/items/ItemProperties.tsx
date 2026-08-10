@@ -21,7 +21,7 @@ import { PropertyBlock, BlockAction, BlockError } from '@/components/features/it
 import { MeaningList } from '@/components/features/items/MeaningList'
 import { ExampleList } from '@/components/features/items/ExampleList'
 import { RelatedItems } from '@/components/features/items/RelatedItems'
-import { ItemPropertyBlocks } from '@/components/features/items/ItemPropertyBlocks'
+import { PropertyToolsBlock, PropertyEntryBlock } from '@/components/features/items/ItemPropertyBlocks'
 import { ItemUsageBlock } from '@/components/features/items/ItemUsageBlock'
 import { ItemReviewBlock } from '@/components/features/items/ItemReviewBlock'
 import { CardViewPanel, applyBlockOrder } from '@/components/features/items/CardViewPanel'
@@ -642,8 +642,33 @@ export function ItemProperties({ item, onUpdated }: ItemPropertiesProps) {
     },
   ]
 
+  // 利用者が定義した項目も、作り付けの項目と同じ一覧に混ぜる。
+  // 混ぜないと、並べ替えも出し入れも作り付けのものにしか効かない
+  const openSettings = () => openSection({ key: PROPERTY_DEFINITIONS_PANEL_KEY, title: '項目の設定' })
+
+  const customBlocks = (item.properties ?? []).map((entry) => ({
+    key: `prop:${entry.key}`,
+    label: entry.label,
+    node: <PropertyEntryBlock item={item} entry={entry} onUpdated={onUpdated} />,
+  }))
+
+  const allBlocks = [
+    ...blocks,
+    ...customBlocks,
+    {
+      // 道具立ては最後。まとめて埋める操作は、項目を見たあとで押すもの
+      key: 'property_tools',
+      label: '項目の道具',
+      node: <PropertyToolsBlock item={item} onUpdated={onUpdated} onOpenSettings={openSettings} />,
+    },
+  ]
+
+  // − に入れたもの（このカードでは持たない）と、＋の中で畳んだもの。
+  // どちらも出さないが、意味が違うので分けて持つ
+  const omittedKeys = new Set(item.block_view?.omitted ?? [])
   const hiddenKeys = new Set(item.block_view?.hidden ?? [])
-  const orderedBlocks = applyBlockOrder(blocks, item.block_view?.order)
+  const adopted = allBlocks.filter((b) => !omittedKeys.has(b.key))
+  const orderedBlocks = applyBlockOrder(adopted, item.block_view?.order)
 
   return (
     <div className="space-y-3">
@@ -651,15 +676,13 @@ export function ItemProperties({ item, onUpdated }: ItemPropertiesProps) {
         <React.Fragment key={b.key}>{b.node}</React.Fragment>
       ))}
 
-      {/* 利用者が定義した項目。作り付けの項目と同じブロックで並ぶ */}
-      <ItemPropertyBlocks
-        item={item}
-        onUpdated={onUpdated}
-        onOpenSettings={() => openSection({ key: PROPERTY_DEFINITIONS_PANEL_KEY, title: '項目の設定' })}
-      />
-
       {/* この1枚だけの見え方。種別ぜんぶに効く「項目の設定」とは分けてある */}
-      <CardViewPanel item={item} blocks={orderedBlocks.map(({ key, label }) => ({ key, label }))} onUpdated={onUpdated} />
+      <CardViewPanel
+        item={item}
+        blocks={orderedBlocks.map(({ key, label }) => ({ key, label }))}
+        omitted={allBlocks.filter((b) => omittedKeys.has(b.key)).map(({ key, label }) => ({ key, label }))}
+        onUpdated={onUpdated}
+      />
 
       {/* 定義（種別ぜんぶに効く）は右パネルで触る。値はカードの各ブロックで */}
       <PropertyDefinitionsPanel
