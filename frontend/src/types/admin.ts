@@ -1,5 +1,10 @@
 // 運営（管理）画面の型。バックエンド /api/v1/admin/* のレスポンスに対応。
 
+// 期間の型は、選ぶ部品（PeriodSelect）と同じものを使う。
+// ここで別に定義すると、片方だけ直したときに食い違う
+export type { AdminPeriod } from '@/components/features/admin/PeriodSelect'
+import type { AdminPeriod } from '@/components/features/admin/PeriodSelect'
+
 export type AdminRole = 'user' | 'admin' | 'owner'
 
 export interface AdminSession {
@@ -55,18 +60,7 @@ export interface AdminOverview {
     next_expiry_at: string | null
   }
   /** いま見ている期間。選べる候補も併せて返る（収支ページと同じ語彙） */
-  period: {
-    key: string
-    label: string
-    from: string
-    to: string
-    days: number
-    options: {
-      rolling: { value: string; label: string }[]
-      months: { value: string; label: string }[]
-      all: { value: string; label: string }
-    }
-  }
+  period: AdminPeriod
   billing: {
     active_subscriptions: number
     /** テストの契約を除いた数。目印を持たない古い行はテスト扱い */
@@ -180,6 +174,7 @@ export interface AdminAiModel {
 
 export interface AdminAiModelsPage {
   models: AdminAiModel[]
+  period: AdminPeriod
   kinds: string[]
   providers: string[]
   purposes: string[]

@@ -79,8 +79,9 @@ export async function getAdminAuditLogList(): Promise<AdminAuditLog[]> {
 
 // ── AIモデルの登録簿 ──────────────────────────────────────────
 
-export async function getAdminAiModels(): Promise<AdminAiModelsPage> {
-  const res = await apiClient.get<AdminAiModelsPage>('/api/v1/admin/ai_models')
+// period は概要ページと同じ語彙（7d / 30d / 90d / 6m / 1y / all / 2026-07）
+export async function getAdminAiModels(params?: { period?: string }): Promise<AdminAiModelsPage> {
+  const res = await apiClient.get<AdminAiModelsPage>('/api/v1/admin/ai_models', { params })
   return res.data
 }
 

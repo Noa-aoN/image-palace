@@ -7,6 +7,7 @@ import { TrendChart } from '@/components/features/shared/TrendChart'
 import { AdminLimitsPanel } from '@/components/features/admin/AdminLimitsPanel'
 import { AdminFinanceSummaryCard } from '@/components/features/admin/AdminFinanceSummaryCard'
 import { tierLabel } from '@/lib/billing'
+import { PeriodSelect } from '@/components/features/admin/PeriodSelect'
 import type { AdminOverview } from '@/types/admin'
 
 /**
@@ -45,42 +46,8 @@ export default function AdminPage() {
   return (
     <div className="space-y-8">
       {/* 期間はここで1回だけ選び、下の数字と折れ線すべてに効かせる。
-          選び方（直近◯日／◯年◯月／全期間）は収支ページと同じ語彙にしてある。
-          ページごとに別の選び方があると、同じ「6月」で違う範囲を見ることになる */}
-      {overview && (
-        <div className="flex flex-wrap items-baseline justify-between gap-3">
-          <p className="text-sm text-muted-foreground">
-            {overview.period.label}（{new Date(overview.period.from).toLocaleDateString('ja-JP')} 〜{' '}
-            {new Date(overview.period.to).toLocaleDateString('ja-JP')}）
-          </p>
-          <label className="text-sm">
-            <span className="mr-2 text-muted-foreground">期間</span>
-            <select
-              value={period}
-              onChange={(e) => setPeriod(e.target.value)}
-              className="rounded-lg border border-border bg-background px-2 py-1"
-            >
-              <optgroup label="直近">
-                {overview.period.options.rolling.map((option) => (
-                  <option key={option.value} value={option.value}>
-                    {option.label}
-                  </option>
-                ))}
-              </optgroup>
-              {overview.period.options.months.length > 0 && (
-                <optgroup label="月ごと">
-                  {overview.period.options.months.map((option) => (
-                    <option key={option.value} value={option.value}>
-                      {option.label}
-                    </option>
-                  ))}
-                </optgroup>
-              )}
-              <option value={overview.period.options.all.value}>{overview.period.options.all.label}</option>
-            </select>
-          </label>
-        </div>
-      )}
+          選び方は収支ページ・モデルページと同じ部品を使う */}
+      {overview && <PeriodSelect period={overview.period} value={period} onChange={setPeriod} />}
 
       {error && <p className="text-sm text-destructive">{error}</p>}
 
