@@ -664,8 +664,15 @@ export function ItemProperties({ item, onUpdated }: ItemPropertiesProps) {
   ]
 
   // − に入れたもの（このカードでは持たない）と、＋の中で畳んだもの。
-  // どちらも出さないが、意味が違うので分けて持つ
-  const omittedKeys = new Set(item.block_view?.omitted ?? [])
+  // どちらも出さないが、意味が違うので分けて持つ。
+  //
+  // まだ一度も触っていないカードに既定のひな型が当たっているときは、
+  // ひな型に無いものを「持たない」に回す（どんなブロックがあるかを知っているのは画面側）
+  const fromPreset = item.block_view?.from_preset === true
+  const presetKeys = new Set(item.block_view?.order ?? [])
+  const omittedKeys = fromPreset
+    ? new Set(allBlocks.map((b) => b.key).filter((key) => !presetKeys.has(key)))
+    : new Set(item.block_view?.omitted ?? [])
   const hiddenKeys = new Set(item.block_view?.hidden ?? [])
   const adopted = allBlocks.filter((b) => !omittedKeys.has(b.key))
   const orderedBlocks = applyBlockOrder(adopted, item.block_view?.order)

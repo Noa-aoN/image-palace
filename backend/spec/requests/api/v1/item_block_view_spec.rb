@@ -19,7 +19,7 @@ RSpec.describe "Api::V1::Items block_view", type: :request do
       expect(item.reload.hidden_block_keys).to eq([ "tags" ])
       expect(item.ordered_block_keys).to eq([ "meanings", "item_type" ])
       expect(json_response["block_view"]).to eq(
-        { "hidden" => [ "tags" ], "order" => [ "meanings", "item_type" ], "omitted" => [] }
+        { "hidden" => [ "tags" ], "order" => [ "meanings", "item_type" ], "omitted" => [], "from_preset" => false }
       )
     end
 
@@ -78,6 +78,43 @@ RSpec.describe "Api::V1::Items block_view", type: :request do
       keys = service.send(:definitions).map(&:key)
 
       expect(keys).to eq([ "reading" ])
+    end
+  end
+
+  # 100枚作れば100回同じ操作、を避けるためのひな型
+  describe "既定のひな型" do
+    it "まだ触っていないカードにはひな型が当たる" do
+      user.create_setting!(
+        card_property_presets: [ { "name" => "単語用", "keys" => %w[meanings examples] } ],
+        default_card_preset: "単語用"
+      )
+
+      get "/api/v1/items/#{item.id}", headers: headers
+
+      view = response.parsed_body["block_view"]
+      expect(view["order"]).to eq(%w[meanings examples])
+      expect(view["from_preset"]).to be(true)
+    end
+
+    # 一度でも触ったカードにひな型を上書きすると、決めた並びが勝手に戻る
+    it "一度でも触ったカードには当てない" do
+      user.create_setting!(
+        card_property_presets: [ { "name" => "単語用", "keys" => %w[meanings] } ],
+        default_card_preset: "単語用"
+      )
+      item.update!(block_view: { "order" => %w[tags] })
+
+      get "/api/v1/items/#{item.id}", headers: headers
+
+      view = response.parsed_body["block_view"]
+      expect(view["order"]).to eq(%w[tags])
+      expect(view["from_preset"]).to be(false)
+    end
+
+    it "ひな型を決めていなければ何も当てない" do
+      get "/api/v1/items/#{item.id}", headers: headers
+
+      expect(response.parsed_body.dig("block_view", "from_preset")).to be(false)
     end
   end
 end

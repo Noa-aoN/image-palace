@@ -548,6 +548,9 @@ module Api
           # 一覧で名前として出す文字列。設定した項目に値があればそれ、無ければ見出し語。
           # どの項目かは利用者ごとの設定で決まる（別名で覚えている人がいるため）
           headline: headline_for(item),
+          # 一覧のカードに、名前と絵のほかに出す項目。解決はサーバー側で行う
+          # （一覧の payload に全項目を積むと重い。見出し語と同じ理由）
+          list_fields: list_fields_for(item),
           generation_status: item.generation_status,
           generation_error: item.generation_error,
           item_type: serialize_item_type(item.item_type),
@@ -570,11 +573,7 @@ module Api
           framing: item.framing,
           image_model: item.image_model,
           prompt_source: item.effective_prompt_source,
-          block_view: {
-            hidden: item.hidden_block_keys,
-            order: item.ordered_block_keys,
-            omitted: item.omitted_block_keys
-          },
+          block_view: block_view_for(item),
           custom_prompt: item.custom_prompt,
           image_description: item.image_description,
           scene_prompt: item.scene_prompt,
@@ -616,6 +615,44 @@ module Api
         return @headline_key if defined?(@headline_key)
 
         @headline_key = current_user.setting&.card_headline_key.presence
+      end
+
+      # このカードの見え方。まだ一度も触っていないカードには、既定のひな型を当てる。
+      #
+      # ひな型に無いものを「持たない」に回すのはサーバー側では決められない
+      # （どんなブロックがあるかを知っているのは画面側）。from_preset を立てて、
+      # 残りを − に回す判断は画面に任せる。
+      def block_view_for(item)
+        base = {
+          hidden: item.hidden_block_keys,
+          order: item.ordered_block_keys,
+          omitted: item.omitted_block_keys
+        }
+        return base.merge(from_preset: false) if base.values.any?(&:present?)
+
+        preset_keys = current_user.setting&.default_preset_keys
+        return base.merge(from_preset: false) if preset_keys.blank?
+
+        base.merge(order: preset_keys, from_preset: true)
+      end
+
+      # 一覧に出す追加項目。値の無いものは返さない（空の行が並ぶだけになる）
+      def list_field_keys
+        @list_field_keys ||= Array(current_user.setting&.card_list_fields)
+      end
+
+      def list_fields_for(item)
+        return [] if list_field_keys.empty?
+
+        list_field_keys.filter_map do |key|
+          entry = item.item_properties.find { |p| p.property_definition&.key == key }
+          value = entry&.typed_value
+          value = value.join("、") if value.is_a?(Array)
+          text = value.to_s.presence
+          next if text.nil?
+
+          { key: key, label: entry.property_definition.label, value: text }
+        end
       end
 
       # 一覧に出す名前。選ばれた項目が空のカードは見出し語に戻る

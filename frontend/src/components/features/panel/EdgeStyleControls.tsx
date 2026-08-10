@@ -3,7 +3,8 @@
 import type { ReactNode } from 'react'
 import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
-import type { ViewEdgeStyle, EdgeMarker } from '@/types/view'
+import type { ViewEdgeStyle, EdgeMarker, EdgeLineStyle, EdgeCurve } from '@/types/view'
+import { resolveLineStyle, DEFAULT_CURVE_RADIUS } from '@/lib/edge-path'
 
 const MARKERS: { label: string; value: EdgeMarker }[] = [
   { label: 'なし', value: 'none' },
@@ -193,11 +194,40 @@ export function EdgeStyleControls({
             options={[
               { label: '実線', value: 'solid' },
               { label: '破線', value: 'dashed' },
+              { label: '点線', value: 'dotted' },
+              { label: '二重', value: 'double' },
             ]}
-            active={s.dashed ? 'dashed' : 'solid'}
-            onSelect={(v) => onChange({ dashed: v === 'dashed' })}
+            active={resolveLineStyle(s)}
+            // 旧データは dashed（真偽値）で持っている。両方を書いて、
+            // 古い画面で開いても線種が消えないようにする
+            onSelect={(v) => onChange({ line_style: v as EdgeLineStyle, dashed: v === 'dashed' })}
           />
         </div>
+        <div className="space-y-1.5">
+          <span className="text-xs text-muted-foreground">折れ点のつなぎ方</span>
+          <Segmented
+            options={[
+              { label: '角ばる', value: 'sharp' },
+              { label: '角を丸める', value: 'round' },
+              { label: 'なめらか', value: 'smooth' },
+            ]}
+            active={s.curve ?? 'sharp'}
+            onSelect={(v) => onChange({ curve: v as EdgeCurve })}
+          />
+          <p className="text-[11px] leading-snug text-muted-foreground">
+            線を掴んで折れ点を足すと効きます（折れ点が無い線は自動でつながります）。
+          </p>
+        </div>
+        {(s.curve ?? 'sharp') === 'round' && (
+          <NumberField
+            label="角の丸み"
+            value={s.curve_radius ?? DEFAULT_CURVE_RADIUS}
+            min={2}
+            max={80}
+            unit="px"
+            onChange={(v) => onChange({ curve_radius: v })}
+          />
+        )}
         <div className="space-y-1.5">
           <span className="text-xs text-muted-foreground">始端</span>
           <Segmented options={MARKERS} active={s.marker_start ?? 'none'} onSelect={(v) => onChange({ marker_start: v })} />

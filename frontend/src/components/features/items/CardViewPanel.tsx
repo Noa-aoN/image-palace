@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { Eye, EyeOff, GripVertical, Minus, Plus } from 'lucide-react'
 import {
   DndContext,
@@ -19,10 +19,14 @@ import {
   sortableKeyboardCoordinates,
 } from '@dnd-kit/sortable'
 import { CSS } from '@dnd-kit/utilities'
+import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
 import { Spinner } from '@/components/ui/spinner'
 import { Tooltip } from '@/components/ui/tooltip'
 import { PanelSlotContent } from '@/components/features/panel/PanelSlot'
 import { updateBlockView } from '@/lib/api/items'
+import { getSettings, updateSettings } from '@/lib/api/settings'
+import type { CardPropertyPreset } from '@/types/settings'
 import type { Item } from '@/types/item'
 
 export const CARD_VIEW_PANEL_KEY = 'item-card-view'
@@ -84,6 +88,7 @@ export function CardViewPanel({
   }
 
   const order = blocks.map((b) => b.key)
+  const allKeys = [...order, ...omitted.map((b) => b.key)]
 
   const toggle = (key: string) => {
     const next = hidden.has(key) ? [...hidden].filter((k) => k !== key) : [...hidden, key]
@@ -97,6 +102,14 @@ export function CardViewPanel({
   // ＋ へ戻す。並びの末尾に付ける（元の位置は覚えていない）
   const adopt = (key: string) =>
     save([...hidden], [...order, key], [...omittedKeys].filter((k) => k !== key))
+
+  // ひな型を当てる。keys にあるものを ＋（その順）、それ以外を − にする。
+  // ひな型に無いキー（あとから増えた項目）は − に落ちる。勝手に出すより、
+  // 出したいときに戻してもらうほうが、当てた結果が読める
+  const applyPreset = (preset: CardPropertyPreset) => {
+    const wanted = preset.keys.filter((key) => allKeys.includes(key))
+    save([...hidden].filter((k) => wanted.includes(k)), wanted, allKeys.filter((k) => !wanted.includes(k)))
+  }
 
   const handleDragEnd = (event: DragEndEvent) => {
     const { active, over } = event
@@ -119,6 +132,8 @@ export function CardViewPanel({
           <br />
           項目そのものを増やすのは「項目の設定」です（そちらは種別ぜんぶに効きます）。
         </p>
+
+        <PresetBar current={order} onApply={applyPreset} disabled={busy} />
 
         <p className="text-xs font-medium">＋ このカードが持つ項目</p>
 
@@ -260,4 +275,105 @@ export function applyBlockOrder<T extends { key: string }>(blocks: T[], order: s
 
   const rank = new Map(order.map((key, index) => [key, index]))
   return [...blocks].sort((a, b) => (rank.get(a.key) ?? Infinity) - (rank.get(b.key) ?? Infinity))
+}
+
+/**
+ * ひな型。いまの並びを名前を付けて覚え、他のカードで呼び出す。
+ *
+ * 100枚作れば100回同じ操作をすることになるので、1枚で決めた形を使い回せるようにする。
+ * 覚えるのは**キーの並びだけ**で、中身（値）は覚えない。値まで持つと、
+ * 当てた瞬間に別のカードの内容が入ってくることになる。
+ */
+function PresetBar({
+  current,
+  onApply,
+  disabled,
+}: {
+  current: string[]
+  onApply: (preset: CardPropertyPreset) => void
+  disabled?: boolean
+}) {
+  const [presets, setPresets] = useState<CardPropertyPreset[] | null>(null)
+  const [naming, setNaming] = useState(false)
+  const [name, setName] = useState('')
+  const [saving, setSaving] = useState(false)
+
+  useEffect(() => {
+    getSettings()
+      .then((s) => setPresets(s.card_property_presets ?? []))
+      .catch(() => setPresets([]))
+  }, [])
+
+  const remember = async () => {
+    const trimmed = name.trim()
+    if (!trimmed || saving) return
+    setSaving(true)
+    try {
+      // 同じ名前は上書きする。増やし続けると選ぶほうが大変になる
+      const next = [...(presets ?? []).filter((p) => p.name !== trimmed), { name: trimmed, keys: current }]
+      const saved = await updateSettings({ card_property_presets: next })
+      setPresets(saved.card_property_presets ?? [])
+      setName('')
+      setNaming(false)
+    } catch {
+      // 失敗しても画面は壊さない。もう一度押せばよい
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  if (presets === null) return null
+
+  return (
+    <div className="space-y-2 rounded-lg border border-border/70 bg-muted/30 px-3 py-2">
+      <div className="flex flex-wrap items-center gap-1.5">
+        <span className="text-xs text-muted-foreground">ひな型</span>
+        {presets.length === 0 ? (
+          <span className="text-xs text-muted-foreground">まだありません</span>
+        ) : (
+          presets.map((preset) => (
+            <button
+              key={preset.name}
+              type="button"
+              onClick={() => onApply(preset)}
+              disabled={disabled}
+              className="rounded-full border border-border px-2.5 py-0.5 text-xs text-muted-foreground transition-colors hover:bg-muted disabled:opacity-50"
+            >
+              {preset.name}
+            </button>
+          ))
+        )}
+      </div>
+
+      {naming ? (
+        <div className="flex gap-1.5">
+          <Input
+            value={name}
+            onChange={(e) => setName(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter') {
+                e.preventDefault()
+                remember()
+              }
+              if (e.key === 'Escape') setNaming(false)
+            }}
+            placeholder="ひな型の名前"
+            autoFocus
+            className="h-7 text-xs"
+          />
+          <Button size="sm" onClick={remember} disabled={saving || !name.trim()} className="h-7 text-xs">
+            {saving ? <Spinner size={12} /> : '覚える'}
+          </Button>
+        </div>
+      ) : (
+        <button
+          type="button"
+          onClick={() => setNaming(true)}
+          className="text-xs text-muted-foreground underline-offset-2 hover:underline"
+        >
+          いまの並びをひな型として覚える
+        </button>
+      )}
+    </div>
+  )
 }

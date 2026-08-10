@@ -86,7 +86,7 @@ function edgeVisuals(style: ViewEdgeStyle | null | undefined) {
     style: {
       stroke: strokeColor,
       strokeWidth: s.width || undefined,
-      strokeDasharray: s.dashed ? '6 4' : undefined,
+      // 破線・点線・二重線は EditableEdge 側で描く（太さに応じて刻みを変えるため）
       opacity: lineOpacity,
     },
   }
@@ -653,7 +653,11 @@ function Canvas({ viewId, viewName, initialItems, initialEdges, aiEditAction, ai
     () => ({ onRemove: handleRemove, onResizeEnd: handleResizeEnd }),
     [handleRemove, handleResizeEnd]
   )
-  const edgeActions = useMemo(() => ({ commitPoints }), [commitPoints])
+  // 二重線は真ん中を盤の色で抜いて描くので、盤の色を線側にも渡す
+  const edgeActions = useMemo(
+    () => ({ commitPoints, boardBg: boardSettings.bg_color || 'var(--board-bg)' }),
+    [commitPoints, boardSettings.bg_color]
+  )
 
   return (
     <BoardActionsContext.Provider value={boardActions}>

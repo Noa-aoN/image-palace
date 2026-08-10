@@ -82,7 +82,13 @@ export interface Item {
    * omitted = そのカードでは持たない項目（− のエリア）
    * hidden  = 持っているが、いまは畳んでいる項目
    */
-  block_view?: { hidden: string[]; order: string[]; omitted?: string[] }
+  block_view?: {
+    hidden: string[]
+    order: string[]
+    omitted?: string[]
+    /** 既定のひな型を当てた結果か。true なら order に無いものは「持たない」扱い */
+    from_preset?: boolean
+  }
   /** 説明のAIファクトチェック結果 */
   fact_check_status?: 'correct' | 'doubtful' | 'incorrect' | null
   fact_check_comment?: string | null
@@ -114,6 +120,8 @@ export interface Item {
   media: ItemMedia | null
   /** 一覧で名前として出す文字列。設定した項目に値があればそれ、無ければ title と同じ */
   headline?: string
+  /** 一覧のカードに、名前と絵のほかに出す項目。値の無いものは入らない */
+  list_fields?: { key: string; label: string; value: string }[]
   /** 絵を作るモデル。null は「おまかせ」＝そのときの既定 */
   image_model?: string | null
   created_at: string

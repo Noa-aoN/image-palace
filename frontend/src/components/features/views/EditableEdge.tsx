@@ -17,10 +17,16 @@ import {
   type EdgeProps,
 } from '@xyflow/react'
 import type { ViewEdgeStyle, EdgePoint } from '@/types/view'
+import { buildEdgePath, dashArrayFor, resolveLineStyle, DEFAULT_CURVE_RADIUS } from '@/lib/edge-path'
 
 // 折れ点の確定保存はボード側（FreeboardCanvas）へ委譲する（data に関数を入れず lint 回避）。
-export const EdgeActionsContext = createContext<{ commitPoints: (edgeId: string, points: EdgePoint[]) => void }>({
+export const EdgeActionsContext = createContext<{
+  commitPoints: (edgeId: string, points: EdgePoint[]) => void
+  /** 二重線の内側に敷く色。盤の色を渡す（線を2本描く代わりに、真ん中を盤の色で抜く） */
+  boardBg: string
+}>({
   commitPoints: () => {},
+  boardBg: 'var(--board-bg)',
 })
 
 type EditableEdgeData = { edgeStyle?: ViewEdgeStyle; label?: string | null; points?: EdgePoint[] }
@@ -33,7 +39,7 @@ function EditableEdgeComponent(props: EdgeProps) {
   const points = d.points ?? []
 
   const { screenToFlowPosition, setEdges } = useReactFlow()
-  const { commitPoints } = useContext(EdgeActionsContext)
+  const { commitPoints, boardBg } = useContext(EdgeActionsContext)
   const latest = useRef<EdgePoint[]>(points)
   const moved = useRef(false)
 
@@ -54,10 +60,24 @@ function EditableEdgeComponent(props: EdgeProps) {
     labelX = lx
     labelY = ly
   } else {
-    edgePath = verts.map((p, i) => `${i === 0 ? 'M' : 'L'} ${p.x} ${p.y}`).join(' ')
+    // 折れ点があるときのつなぎ方は設定で選ぶ（角ばる／角を丸める／なめらか）
+    edgePath = buildEdgePath(verts, s.curve ?? 'sharp', s.curve_radius ?? DEFAULT_CURVE_RADIUS)
     const mid = verts[Math.floor(verts.length / 2)]
     labelX = mid.x
     labelY = mid.y
+  }
+
+  // 線の種類。二重線だけは1本では描けないので、太い線の真ん中を盤の色で抜く
+  const lineStyle = resolveLineStyle(s)
+  const strokeWidth = s.width || 2
+  const dashArray = dashArrayFor(lineStyle, strokeWidth)
+  const doubled = lineStyle === 'double'
+  const baseStyle = {
+    ...style,
+    strokeDasharray: dashArray,
+    strokeLinecap: lineStyle === 'dotted' ? ('round' as const) : undefined,
+    // 二重線は外側を太くする。元の太さのままだと内側を抜いたときに細く見える
+    strokeWidth: doubled ? strokeWidth * 2.2 : strokeWidth,
   }
 
   // 対象 edge の data.points だけを差し替える（他 edge は再描画しない）
@@ -116,7 +136,17 @@ function EditableEdgeComponent(props: EdgeProps) {
           <animate attributeName="stroke-opacity" values="0.1;0.8;0.1" dur="0.8s" repeatCount="indefinite" />
         </path>
       )}
-      <BaseEdge id={id} path={edgePath} markerStart={markerStart} markerEnd={markerEnd} style={style} />
+      <BaseEdge id={id} path={edgePath} markerStart={markerStart} markerEnd={markerEnd} style={baseStyle} />
+      {doubled && (
+        // 真ん中を盤の色で抜いて2本に見せる。矢印は外側の線だけに付ける
+        <path
+          d={edgePath}
+          fill="none"
+          stroke={boardBg}
+          strokeWidth={strokeWidth * 0.8}
+          style={{ pointerEvents: 'none' }}
+        />
+      )}
       <EdgeLabelRenderer>
         {label && (
           <div
