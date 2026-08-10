@@ -232,3 +232,136 @@ export async function updateAdminMonthlyActual(
   )
   return res.data.summary
 }
+
+// ── 獲得物・実績・ミッション ──
+// 3つは別の表だが、運営から見ると「何を配るか」という1つの話なので1つの入口にまとめる
+
+export interface AdminRewardDefinition {
+  id: string
+  key: string
+  kind: string
+  kind_label: string
+  name: string
+  description: string | null
+  rarity_level: number
+  rarity_tier: string
+  category: string | null
+  published: boolean
+  image_path: string | null
+  builtin: boolean
+  /** 何人が持っているか。配りすぎ・配らなすぎに気づくため */
+  owned_count: number
+}
+
+export interface AdminAchievementDefinition {
+  id: string
+  key: string
+  name: string
+  description: string | null
+  category: string | null
+  condition_type: string
+  condition_target: number
+  position: number
+  enabled: boolean
+  published: boolean
+  rewards: unknown[]
+  builtin: boolean
+  completed_count: number
+}
+
+export interface AdminMissionDefinition {
+  id: string
+  key: string
+  name: string
+  description: string | null
+  cadence: string
+  condition_type: string
+  condition_target: number
+  position: number
+  enabled: boolean
+  published: boolean
+  starts_at: string | null
+  ends_at: string | null
+  mission_series_id: string | null
+  series_step: number
+  rewards: unknown[]
+  builtin: boolean
+}
+
+export interface AdminMissionSeries {
+  id: string
+  key: string
+  name: string
+  description: string | null
+  position: number
+  enabled: boolean
+  published: boolean
+  builtin: boolean
+}
+
+export interface AdminRewardsPage {
+  rewards: AdminRewardDefinition[]
+  achievements: AdminAchievementDefinition[]
+  missions: AdminMissionDefinition[]
+  series: AdminMissionSeries[]
+  kinds: string[]
+  rarity_levels: number[]
+  categories: string[]
+  cadences: string[]
+  condition_types: { value: string; label: string }[]
+}
+
+export async function getAdminRewards(): Promise<AdminRewardsPage> {
+  const res = await apiClient.get<AdminRewardsPage>('/api/v1/admin/rewards')
+  return res.data
+}
+
+export async function updateAdminRewardDefinition(
+  id: string,
+  reward: Partial<Pick<AdminRewardDefinition, 'name' | 'description' | 'rarity_level' | 'category' | 'published'>>
+): Promise<AdminRewardDefinition> {
+  const res = await apiClient.patch<{ reward: AdminRewardDefinition }>(
+    `/api/v1/admin/rewards/definitions/${id}`,
+    { reward }
+  )
+  return res.data.reward
+}
+
+export async function updateAdminAchievement(
+  id: string,
+  achievement: Partial<
+    Pick<AdminAchievementDefinition, 'name' | 'description' | 'category' | 'condition_target' | 'enabled' | 'published'>
+  >
+): Promise<AdminAchievementDefinition> {
+  const res = await apiClient.patch<{ achievement: AdminAchievementDefinition }>(
+    `/api/v1/admin/rewards/achievements/${id}`,
+    { achievement }
+  )
+  return res.data.achievement
+}
+
+export async function updateAdminMission(
+  id: string,
+  mission: Partial<
+    Pick<
+      AdminMissionDefinition,
+      'name' | 'description' | 'cadence' | 'condition_target' | 'enabled' | 'published' | 'starts_at' | 'ends_at'
+    >
+  >
+): Promise<AdminMissionDefinition> {
+  const res = await apiClient.patch<{ mission: AdminMissionDefinition }>(
+    `/api/v1/admin/rewards/missions/${id}`,
+    { mission }
+  )
+  return res.data.mission
+}
+
+/** 手で配る。理由は必須（サーバー側でも空を弾く） */
+export async function grantAdminReward(input: {
+  user_id: string
+  reward_key: string
+  reason: string
+}): Promise<{ granted: boolean }> {
+  const res = await apiClient.post<{ granted: boolean }>('/api/v1/admin/rewards/grant', input)
+  return res.data
+}

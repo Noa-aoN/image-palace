@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { Crown, Medal, Sparkles, Trophy, Award, Gem, HelpCircle } from 'lucide-react'
+import { Crown, Medal, Sparkles, Trophy, Award, Gem, HelpCircle, Route } from 'lucide-react'
 import { Spinner } from '@/components/ui/spinner'
 import { PanelSlotContent } from '@/components/features/panel/PanelSlot'
 import { usePanelForm } from '@/components/features/panel/usePanelForm'
@@ -10,11 +10,11 @@ import {
   toggleStar,
   type AchievementsPage,
   type RewardKind,
-  type RewardPreview,
 } from '@/lib/api/achievements'
 import { RewardCard, RewardArt } from './RewardCard'
 import { RewardDetail } from './RewardDetail'
-import { rarityStyle } from './rarity'
+import { RewardPreviews } from './RewardPreviews'
+import { MissionSeriesCard } from './MissionSeriesCard'
 
 /**
  * 栄誉の間。
@@ -187,6 +187,18 @@ export function AchievementsBoard() {
                 {/* もうすぐ獲得＝まだ手に入れていない */}
                 <RewardPreviews rewards={row.rewards} earned={false} />
               </li>
+            ))}
+          </ul>
+        </section>
+      )}
+
+      {/* ── 道のり（シリーズ） ── */}
+      {page.mission_series.length > 0 && (
+        <section className="space-y-3">
+          <SectionTitle icon={<Route size={18} />}>道のり</SectionTitle>
+          <ul className="space-y-2">
+            {page.mission_series.map((series) => (
+              <MissionSeriesCard key={series.key} series={series} />
             ))}
           </ul>
         </section>
@@ -390,46 +402,6 @@ export function AchievementsBoard() {
  * 行の右端へ寄せる。名前や進捗は左から読むもので、報酬は「その先にあるもの」。
  * 同じ列に混ぜると、どこまでが条件でどこからが報酬なのか分からなくなる。
  */
-function RewardPreviews({ rewards, earned }: { rewards: RewardPreview[]; earned: boolean }) {
-  if (rewards.length === 0) return null
-
-  return (
-    <ul className="flex flex-wrap items-center justify-end gap-1.5 pt-0.5">
-      {rewards.map((reward, index) => (
-        <li key={reward.key ?? `credits-${index}`}>
-          {reward.type === 'credits' ? (
-            <span
-              className={`rounded-full bg-muted/60 px-2 py-0.5 text-[11px] ${
-                earned ? 'text-foreground' : 'text-muted-foreground'
-              }`}
-            >
-              {reward.amount} cr
-            </span>
-          ) : (
-            <span
-              className="flex items-center gap-1 rounded-full bg-muted/60 px-2 py-0.5 text-[11px] text-muted-foreground"
-              title={`${reward.name}（${reward.kind_label}）`}
-            >
-              {reward.image_url ? (
-                // eslint-disable-next-line @next/next/no-img-element
-                <img
-                  src={reward.image_url}
-                  alt=""
-                  width={16}
-                  height={16}
-                  loading="lazy"
-                  className={earned ? '' : 'opacity-45 grayscale'}
-                />
-              ) : null}
-              <span className={earned ? rarityStyle(reward.rarity_tier).text : undefined}>{reward.name}</span>
-            </span>
-          )}
-        </li>
-      ))}
-    </ul>
-  )
-}
-
 function SectionTitle({ icon, children }: { icon: React.ReactNode; children: React.ReactNode }) {
   return (
     <h2 className="flex items-center gap-2 text-base font-semibold">

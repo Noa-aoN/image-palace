@@ -54,6 +54,12 @@ Rails.application.routes.draw do
         delete "grant_policies/:key", to: "grant_policies#destroy"
         get "plans", to: "plans#index"
         patch "plans/:id", to: "plans#update"
+        # 獲得物・実績・ミッションは1つの入口で扱う（運営から見ると「何を配るか」の1つの話）
+        get "rewards", to: "rewards#index"
+        patch "rewards/definitions/:id", to: "rewards#update_reward"
+        patch "rewards/achievements/:id", to: "rewards#update_achievement"
+        patch "rewards/missions/:id", to: "rewards#update_mission"
+        post "rewards/grant", to: "rewards#grant"
         get "finance", to: "finances#show"
         put "finance/parameters/:key", to: "finances#update_parameter"
         put "finance/actuals/:year/:month", to: "finances#update_actual"

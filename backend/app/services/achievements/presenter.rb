@@ -31,6 +31,7 @@ module Achievements
         summary: summary,
         upcoming: upcoming,
         missions: missions,
+        mission_series: mission_series,
         rewards: rewards,
         achievements: achievements,
         stats: stat.to_rows,
@@ -133,23 +134,68 @@ module Achievements
       }.sort_by { |row| row[:remaining] }.first(UPCOMING_LIMIT)
     end
 
-    def missions
-      now = Time.current
-      definitions = MissionDefinition.registry.select { |d| d.available?(now) && d.published? }
-      # 1件ずつ引くと、ミッションが増えるほど問い合わせが増える。まとめて引いて突き合わせる
-      states = UserMission.where(user_id: @user.id, mission_definition_id: definitions.map(&:id))
-                          .index_by { |m| [ m.mission_definition_id, m.period_key ] }
+    def mission_rows
+      @mission_rows ||= begin
+        now = Time.current
+        definitions = MissionDefinition.registry.select { |d| d.available?(now) && d.published? }
+        # 1件ずつ引くと、ミッションが増えるほど問い合わせが増える。まとめて引いて突き合わせる
+        states = UserMission.where(user_id: @user.id, mission_definition_id: definitions.map(&:id))
+                            .index_by { |m| [ m.mission_definition_id, m.period_key ] }
 
-      rows = definitions.map do |definition|
-        state = states[[ definition.id, definition.period_key(now) ]]
-        { key: definition.key, name: definition.name, description: definition.description,
-          cadence: definition.cadence, cadence_label: definition.cadence_label,
-          progress: state&.progress.to_i, target: definition.condition_target,
-          completed: state&.completed? || false,
-          rewards: reward_previews(definition.rewards) }
+        definitions.map do |definition|
+          state = states[[ definition.id, definition.period_key(now) ]]
+          { key: definition.key, name: definition.name, description: definition.description,
+            cadence: definition.cadence, cadence_label: definition.cadence_label,
+            progress: state&.progress.to_i, target: definition.condition_target,
+            completed: state&.completed? || false,
+            series_id: definition.mission_series_id, series_step: definition.series_step,
+            rewards: reward_previews(definition.rewards) }
+        end
+      end
+    end
+
+    # 単発のミッション。シリーズの段はここには出さない（series 側に1本でまとめる）
+    def missions
+      limit_missions(mission_rows.reject { |row| row[:series_id] }.map { |row| row.except(:series_id, :series_step) })
+    end
+
+    # シリーズ。**いま挑んでいる1段**を前に出し、道のり全体は畳んだ中に置く。
+    #
+    # 全段を並べると、長い道は「終わらない宿題」に見える。
+    # かといって次の段だけ見せると、先があること自体が伝わらない。
+    # だから「1段＋開けば全段」にする。
+    def mission_series
+      by_series = mission_rows.select { |row| row[:series_id] }.group_by { |row| row[:series_id] }
+      return [] if by_series.empty?
+
+      MissionSeries.registry.filter_map do |series|
+        next unless series.available? && series.published?
+
+        steps = (by_series[series.id] || []).sort_by { |row| row[:series_step] }
+        next if steps.empty?
+
+        current = steps.find { |row| !row[:completed] }
+        { key: series.key, name: series.name, description: series.description,
+          total_steps: steps.size,
+          completed_steps: steps.count { |row| row[:completed] },
+          # 済んだ道は畳んだままでも分かるようにする
+          current: current&.except(:series_id),
+          steps: steps.map { |row| step_row(row, current) } }
+      end
+    end
+
+    # 段の状態。済み／いま／これから。
+    # これからの段も名前は出す。何が待っているか分からない道は歩けない
+    def step_row(row, current)
+      state = if row[:completed]
+                "done"
+      elsif current && row[:key] == current[:key]
+                "current"
+      else
+                "locked"
       end
 
-      limit_missions(rows)
+      row.except(:series_id).merge(state: state)
     end
 
     # 種別ごとに、1つの面に出す数を決める。

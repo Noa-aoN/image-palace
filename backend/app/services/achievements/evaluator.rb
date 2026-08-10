@@ -57,8 +57,14 @@ module Achievements
     end
 
     def evaluate_missions(result)
-      MissionDefinition.registry.each do |definition|
-        next unless definition.available?(@now)
+      definitions = MissionDefinition.registry.select { |d| d.available?(@now) }
+      # シリーズは段の順に見る。前の段が済むまで、次の段は開かない。
+      # 開いていない段の行は作らない（作ると「挑戦中」として数えられてしまう）
+      definitions = definitions.sort_by { |d| [ d.mission_series_id.to_s, d.series_step, d.position ] }
+      opened = completed_steps(definitions)
+
+      definitions.each do |definition|
+        next unless open?(definition, opened)
 
         period = definition.period_key(@now)
         state = UserMission.find_or_create_by!(
@@ -72,6 +78,9 @@ module Achievements
         next unless completed
 
         result.completed_missions << definition
+        # この場で開いた段を覚える。同じ回で次の段まで進めるようにする
+        # （既に条件を満たしている人を、段の数だけ待たせない）
+        opened[definition.mission_series_id] = definition.series_step if definition.mission_series_id
         result.granted_rewards.concat(
           Granter.grant_rewards(
             user: @user, rewards: definition.rewards, source: "mission",
@@ -82,6 +91,25 @@ module Achievements
       end
     rescue ActiveRecord::RecordNotUnique
       nil
+    end
+
+    # シリーズごとに、済んでいる段のいちばん大きいもの
+    def completed_steps(definitions)
+      ids = definitions.filter_map(&:mission_series_id).uniq
+      return {} if ids.empty?
+
+      UserMission.where(user_id: @user.id).where.not(completed_at: nil)
+                 .joins(:mission_definition)
+                 .where(mission_definitions: { mission_series_id: ids })
+                 .group("mission_definitions.mission_series_id")
+                 .maximum("mission_definitions.series_step")
+    end
+
+    # その段は開いているか。単発のミッションは常に開いている
+    def open?(definition, opened)
+      return true if definition.mission_series_id.blank?
+
+      opened[definition.mission_series_id].to_i >= definition.series_step - 1
     end
 
     # 今日ぶん・今週ぶんは、その期間に入ってからの数を見る。

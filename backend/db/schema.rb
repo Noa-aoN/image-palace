@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_08_11_000005) do
+ActiveRecord::Schema[8.1].define(version: 2026_08_11_000006) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
   enable_extension "pg_trgm"
@@ -368,15 +368,30 @@ ActiveRecord::Schema[8.1].define(version: 2026_08_11_000005) do
     t.boolean "enabled", default: true, null: false
     t.datetime "ends_at"
     t.string "key", null: false
+    t.uuid "mission_series_id"
     t.string "name", null: false
     t.text "notify_body"
     t.string "notify_title"
     t.integer "position", default: 0, null: false
     t.boolean "published", default: true, null: false
     t.jsonb "rewards", default: [], null: false
+    t.integer "series_step", default: 0, null: false
     t.datetime "starts_at"
     t.datetime "updated_at", null: false
     t.index ["key"], name: "index_mission_definitions_on_key", unique: true
+    t.index ["mission_series_id"], name: "index_mission_definitions_on_mission_series_id"
+  end
+
+  create_table "mission_series", id: :uuid, default: -> { "gen_random_uuid()" }, force: :cascade do |t|
+    t.datetime "created_at", null: false
+    t.text "description"
+    t.boolean "enabled", default: true, null: false
+    t.string "key", null: false
+    t.string "name", null: false
+    t.integer "position", default: 0, null: false
+    t.boolean "published", default: true, null: false
+    t.datetime "updated_at", null: false
+    t.index ["key"], name: "index_mission_series_on_key", unique: true
   end
 
   create_table "monthly_actuals", id: :uuid, default: -> { "gen_random_uuid()" }, force: :cascade do |t|
@@ -984,6 +999,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_08_11_000005) do
   add_foreign_key "items", "users", on_delete: :cascade
   add_foreign_key "meanings", "items", on_delete: :cascade
   add_foreign_key "medias", "items", on_delete: :cascade
+  add_foreign_key "mission_definitions", "mission_series"
   add_foreign_key "notifications", "users", on_delete: :cascade
   add_foreign_key "posts", "users", column: "author_id", on_delete: :nullify
   add_foreign_key "property_definitions", "item_types"

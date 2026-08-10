@@ -18,6 +18,7 @@ const TABS = [
   { href: '/admin/campaigns', label: 'コード' },
   { href: '/admin/models', label: 'モデル' },
   { href: '/admin/features', label: '機能' },
+  { href: '/admin/rewards', label: '獲得物' },
   { href: '/admin/finance', label: '収支' },
   { href: '/admin/users', label: '利用者' },
   { href: '/admin/posts', label: '読みもの' },
