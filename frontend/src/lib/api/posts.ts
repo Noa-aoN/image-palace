@@ -21,6 +21,11 @@ export async function getAdminPosts(): Promise<AdminPost[]> {
   return res.data.posts
 }
 
+export async function getAdminPost(id: string): Promise<AdminPost> {
+  const res = await apiClient.get<AdminPost>(`/api/v1/admin/posts/${id}`)
+  return res.data
+}
+
 export async function createAdminPost(input: AdminPostInput): Promise<AdminPost> {
   const res = await apiClient.post<AdminPost>('/api/v1/admin/posts', { post: input })
   return res.data

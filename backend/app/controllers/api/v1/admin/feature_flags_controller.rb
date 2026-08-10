@@ -6,7 +6,8 @@ module Api
         def index
           render json: {
             features: FeatureFlag.overview,
-            stages: FeatureFlag::STAGES.map { |stage| { value: stage, label: FeatureFlag::STAGE_LABELS[stage] } }
+            stages: FeatureFlag::STAGES.map { |stage| { value: stage, label: FeatureFlag::STAGE_LABELS[stage] } },
+            groups: FeatureFlag::GROUPS.map { |key, label| { key: key, label: label } }
           }
         end
 

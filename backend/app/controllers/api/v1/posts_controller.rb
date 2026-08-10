@@ -13,6 +13,9 @@ module Api
 
       def show
         post = Post.published.find_by!(slug: params[:id])
+        # 読まれた回数を1つ増やす。increment! は行を読み直さずに済み、
+        # 同時に開かれても数え落とさない
+        Post.where(id: post.id).update_all("views_count = views_count + 1")
         render json: serialize(post, full: true)
       end
 

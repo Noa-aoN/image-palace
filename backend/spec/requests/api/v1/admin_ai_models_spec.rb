@@ -100,6 +100,45 @@ RSpec.describe "AIモデルの管理", type: :request do
     end
   end
 
+  describe "使用率" do
+    before do
+      allow(ENV).to receive(:[]).and_call_original
+      allow(ENV).to receive(:[]).with("OPENAI_API_KEY").and_return("test-key")
+      AiModel.registry
+    end
+
+    it "直近の使用回数と割合を返す" do
+      3.times { ImageUsage.record!(kind: "item", provider: "openai", model: "gpt-image-1") }
+      ImageUsage.record!(kind: "item", provider: "flux", model: "fal-ai/flux/schnell")
+
+      get "/api/v1/admin/ai_models", headers: admin_headers
+
+      openai = response.parsed_body["models"].find { |m| m["key"] == "openai" }
+      expect(openai["used_recently"]).to eq(3)
+      expect(openai["share"]).to eq(0.75)
+    end
+
+    # 0% と書くと、使われていないのか分母が無いのかが分からない
+    it "一度も使われていない種類の割合は空で返す" do
+      get "/api/v1/admin/ai_models", headers: admin_headers
+
+      openai = response.parsed_body["models"].find { |m| m["key"] == "openai" }
+      expect(openai["used_recently"]).to eq(0)
+      expect(openai["share"]).to be_nil
+    end
+
+    it "キャッシュで済んだ回数も分けて返す" do
+      ImageUsage.record!(kind: "item", provider: "openai", model: "gpt-image-1")
+      ImageUsage.record!(kind: "item", provider: "openai", model: "gpt-image-1", cached: true)
+
+      get "/api/v1/admin/ai_models", headers: admin_headers
+
+      openai = response.parsed_body["models"].find { |m| m["key"] == "openai" }
+      expect(openai["used_recently"]).to eq(2)
+      expect(openai["cached_recently"]).to eq(1)
+    end
+  end
+
   describe "設定が実際に効くこと" do
     # 「使える」の判定は鍵の有無を見る。CI には鍵が無いので、ここで入れておく
     # （入れないと、用途に合っていても選べないほうの理由で落ちる）

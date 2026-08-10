@@ -47,6 +47,10 @@ export interface AdminPost {
   pinned: boolean
   published: boolean
   published_at: string | null
+  /** draft（下書き）/ scheduled（予約）/ published（公開）。published だけでは予約が下書きに見える */
+  status: 'draft' | 'scheduled' | 'published'
+  /** 読まれた回数 */
+  views_count: number
   delivered_at: string | null
   author_email: string | null
   updated_at: string

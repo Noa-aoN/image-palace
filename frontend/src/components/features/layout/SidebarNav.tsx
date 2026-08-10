@@ -1,6 +1,6 @@
 'use client'
 
-import { Suspense } from 'react'
+import { Suspense, useEffect } from 'react'
 import Link from 'next/link'
 import { usePathname, useSearchParams } from 'next/navigation'
 import { ChevronDown, ChevronUp } from 'lucide-react'
@@ -8,6 +8,7 @@ import { useUiStore } from '@/stores/ui'
 import { useAdminStore } from '@/stores/admin'
 import { isNavItemActive } from '@/lib/nav-active'
 import { navSectionsFor, type NavNode } from './nav-items'
+import { useFeaturesStore } from '@/stores/features'
 import { useOpenCardCreate } from '@/components/features/items/CardCreatePanel'
 
 interface Props {
@@ -51,6 +52,13 @@ function NavTree({
 }) {
   const openCardCreate = useOpenCardCreate()
   const pathname = usePathname()
+  // 機能の見せ方。運営が段階を変えると、次の読み込みからサイドバーにも効く
+  const stages = useFeaturesStore((s) => s.stages)
+  const paths = useFeaturesStore((s) => s.paths)
+  const loadFeatures = useFeaturesStore((s) => s.load)
+  useEffect(() => {
+    loadFeatures()
+  }, [loadFeatures])
   const collapsedGroups = useUiStore((s) => s.collapsedGroups)
   // 運営だけに「運営」を出す。見た目の出し分けであって守りではない
   const isAdmin = useAdminStore((s) => s.session?.admin ?? false)
@@ -69,6 +77,27 @@ function NavTree({
     whiteSpace: 'nowrap',
     overflow: 'hidden',
   })
+
+  // その項目をどう出すか。設定を読み終わるまでは、いまの見え方を変えない
+  // （読み込みのたびに項目が現れたり消えたりすると、押そうとした先が動く）
+  const stageOf = (href?: string): 'hidden' | 'development' | 'prototype' | 'released' => {
+    if (!href || !stages || !paths) return 'released'
+    const path = href.split('?')[0]
+    const matched = Object.keys(paths)
+      .filter((p) => path === p || path.startsWith(`${p}/`))
+      .sort((a, b) => b.length - a.length)
+    if (matched.length === 0) return 'released'
+    const own = (stages[paths[matched[0]]] ?? 'released') as 'hidden' | 'development' | 'prototype' | 'released'
+    const ancestorHidden = matched.slice(1).some((p) => stages[paths[p]] === 'hidden')
+    return ancestorHidden ? 'hidden' : own
+  }
+
+  // 準備中・プロトタイプは印を付けて出す。隠すものだけ消す
+  const stageBadge = (stage: string) => {
+    if (stage === 'development') return '準備中'
+    if (stage === 'prototype') return '試作'
+    return null
+  }
 
   const renderLink = (node: NavNode, depth = 0) => {
     // パネルで開くものは画面を移らない。見た目はリンクと揃える
@@ -91,6 +120,7 @@ function NavTree({
     }
 
     const href = node.href ?? '#'
+    const badge = stageBadge(stageOf(node.href))
     return (
       <Link
         key={node.label}
@@ -102,11 +132,17 @@ function NavTree({
       >
         <span className="shrink-0">{node.icon}</span>
         {!iconsOnly && <span className="truncate">{node.label}</span>}
+        {!iconsOnly && badge && (
+          <span className="ml-auto shrink-0 rounded-full bg-muted px-1.5 py-0.5 text-[10px] text-muted-foreground">
+            {badge}
+          </span>
+        )}
       </Link>
     )
   }
 
-  const renderNode = (node: NavNode, depth = 0) => {
+  const renderNode = (node: NavNode, depth = 0): React.ReactNode => {
+    if (stageOf(node.href) === 'hidden') return null
     if (!node.children) return renderLink(node, depth)
 
     // 折りたたみ時: 親アイコンのみ（リンクがあればリンク化）。子は隠す。

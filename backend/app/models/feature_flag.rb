@@ -3,31 +3,75 @@
 # 作りかけの機能を、どこまで見せるかの設定。
 #
 # 行が無ければ DEFAULTS の段階で動く。運営が画面から変えたときだけ行ができる。
-# コードから消せない（＝画面が参照している）キーだけをここに並べる。
+#
+# **単位はページ**（サイドバーの1項目）にしてある。
+# 機能ごとの細かいキーにすると、どこを触れば何が消えるのかが運営に分からない。
+# 「サイドバーのこの項目を隠す」と言えるほうが、押す前に結果が読める。
+# ページに紐づかないものだけ、その他としてわずかに持つ。
 class FeatureFlag < ApplicationRecord
   # 見せ方の段階。
   #
-  # hidden      … 入口ごと出さない。存在を知らせたくないとき
-  # development … 「開発中」と出すが触れない。予告として見せたいとき
-  # prototype   … 触れる。ただし「プロトタイプ版」と明示して、粗さを了解してもらう
+  # hidden      … 入口ごと出さない。ページを開いても中身は出ない
+  # development … サイドバーには「準備中」と出るが、中身は出ない
+  # prototype   … 使える。ただし「プロトタイプ版」と明示して、粗さを了解してもらう
   # released    … 普通の機能。印は付けない
   STAGES = %w[hidden development prototype released].freeze
 
   STAGE_LABELS = {
     "hidden" => "表示しない",
-    "development" => "開発中",
+    "development" => "準備中と出す",
     "prototype" => "プロトタイプ版",
     "released" => "公開"
   }.freeze
 
-  # 画面が参照しているキーと既定の段階。
-  # ここに無いキーは保存できない（打ち間違いで効かない設定が増えるのを防ぐ）
+  # サイドバーの分類。画面の並びもこの順にする
+  GROUPS = {
+    "palace" => "宮殿",
+    "outside" => "宮殿外",
+    "ops" => "運営",
+    "other" => "ページ以外"
+  }.freeze
+
+  # 画面が参照しているキーと既定。
+  # path があるものはページ。サイドバーとページ本体の両方がこの段階に従う。
+  #
+  # ここに無いキーは保存できない（打ち間違いで効かない設定が増えるのを防ぐ）。
   DEFAULTS = {
-    # 実績・メダル・称号は出せるようになったが、バッジ・活動記録・公開実績はまだ。
-    # 触れる状態で印を付けて出す
-    "trophy" => { label: "トロフィー・称号", stage: "prototype" },
-    "study_game" => { label: "プレイ（カルタ・神経衰弱）", stage: "prototype" },
-    "material_picture_list" => { label: "ピクチャーリスト", stage: "development" }
+    # ── 宮殿 ──
+    "page.entrance" => { label: "エントランス", group: "palace", path: "/entrance", stage: "released" },
+    "page.atelier" => { label: "アトリエ", group: "palace", path: "/atelier", stage: "released" },
+    "page.library" => { label: "ライブラリ", group: "palace", path: "/library", stage: "released" },
+    "page.items" => { label: "カード一覧", group: "palace", path: "/items", stage: "released" },
+    "page.views" => { label: "キャンバス一覧", group: "palace", path: "/views", stage: "released" },
+    "page.spaces" => { label: "スペース一覧", group: "palace", path: "/spaces", stage: "released" },
+    "page.boxes" => { label: "ボックス一覧", group: "palace", path: "/boxes", stage: "released" },
+    "page.materials" => { label: "マテリアル一覧", group: "palace", path: "/materials", stage: "released" },
+    "page.study" => { label: "スタディ", group: "palace", path: "/study", stage: "released" },
+    "page.study_practice" => { label: "プラクティス", group: "palace", path: "/study/practice", stage: "released" },
+    "page.study_quiz" => { label: "クイズ", group: "palace", path: "/study/quiz", stage: "released" },
+    "page.study_game" => { label: "プレイ", group: "palace", path: "/study/game", stage: "prototype" },
+    "page.study_record" => { label: "レコード", group: "palace", path: "/study/record", stage: "released" },
+    "page.myroom" => { label: "マイルーム", group: "palace", path: "/myroom", stage: "released" },
+    "page.trophy" => { label: "トロフィー", group: "palace", path: "/trophy", stage: "prototype" },
+    "page.settings" => { label: "環境設定", group: "palace", path: "/settings", stage: "released" },
+    "page.billing" => { label: "利用と支払い", group: "palace", path: "/billing", stage: "released" },
+    "page.account" => { label: "アカウント管理", group: "palace", path: "/account", stage: "released" },
+
+    # ── 宮殿外 ──
+    "page.acropolis" => { label: "アクロポリス", group: "outside", path: "/acropolis", stage: "released" },
+    "page.agora" => { label: "アゴラ", group: "outside", path: "/agora", stage: "released" },
+    "page.stadion" => { label: "スタディオン", group: "outside", path: "/stadion", stage: "released" },
+
+    # ── 運営 ──
+    "page.news" => { label: "お知らせ", group: "ops", path: "/news", stage: "released" },
+    "page.guide" => { label: "使い方", group: "ops", path: "/guide", stage: "released" },
+    "page.blog" => { label: "コラム", group: "ops", path: "/blog", stage: "released" },
+
+    # ── ページ以外 ──
+    "material_picture_list" => {
+      label: "ピクチャーリスト", group: "other", path: nil, stage: "development",
+      note: "マテリアルの種類のひとつ。ページではないので個別に持つ"
+    }
   }.freeze
 
   validates :key, presence: true, uniqueness: true, inclusion: { in: DEFAULTS.keys }
@@ -39,7 +83,7 @@ class FeatureFlag < ApplicationRecord
     DEFAULTS.transform_values { |d| d[:stage] }.merge(overrides.slice(*DEFAULTS.keys))
   end
 
-  # 運営画面用。既定との違いが分かる形で返す
+  # 運営画面用。既定との違いが分かる形で、サイドバーの並び順に返す
   def self.overview
     rows = all.index_by(&:key)
     DEFAULTS.map do |key, default|
@@ -47,6 +91,10 @@ class FeatureFlag < ApplicationRecord
       {
         key: key,
         label: default[:label],
+        group: default[:group],
+        group_label: GROUPS[default[:group]],
+        path: default[:path],
+        note: default[:note],
         stage: record&.stage || default[:stage],
         default_stage: default[:stage],
         customized: record.present? && record.stage != default[:stage],
