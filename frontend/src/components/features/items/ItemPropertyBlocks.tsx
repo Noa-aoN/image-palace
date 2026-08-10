@@ -10,7 +10,11 @@ import { getItem } from '@/lib/api/items'
 import type { Item } from '@/types/item'
 
 /**
- * 利用者が定義した項目を、作り付けの項目と同じブロックで並べる。
+ * 項目の道具立て（未記入の数・まとめてAIで埋める・項目の設定への入口）。
+ *
+ * 1件ぶんの器は PropertyEntryBlock。並べるのは ItemProperties 側で、
+ * **作り付けの項目と同じ一覧**に混ぜる。混ぜないと、並べ替えも出し入れも
+ * 作り付けのものにしか効かない（実際そうなっていた）。
  *
  * 読み仮名・別名・発音記号・派生語…と、覚えたいものは分野で変わる。
  * 欄を足し続ける代わりに、項目そのものを定義できるようにしてある
@@ -19,7 +23,7 @@ import type { Item } from '@/types/item'
  * ここで触るのは**このカードの値だけ**。どの項目を持つかは種別ぜんぶに効くので、
  * 入口を分けて右パネルへ置く。1枚のカードの上で全体の設定をさせない。
  */
-export function ItemPropertyBlocks({
+export function PropertyToolsBlock({
   item,
   onUpdated,
   onOpenSettings,
@@ -105,22 +109,11 @@ export function ItemPropertyBlocks({
           )}
         </div>
       </div>
-      {entries.map((entry, index) => (
-        <PropertyEntryBlock
-          key={entry.property_definition_id}
-          item={item}
-          entry={entry}
-          onUpdated={onUpdated}
-          // 入口は1つで足りる。全部のブロックに歯車を出すと、
-          // どれを押しても同じ場所へ行くのに毎回迷う
-          onOpenSettings={index === 0 ? onOpenSettings : undefined}
-        />
-      ))}
     </>
   )
 }
 
-function PropertyEntryBlock({
+export function PropertyEntryBlock({
   item,
   entry,
   onUpdated,

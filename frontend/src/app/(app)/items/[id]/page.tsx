@@ -11,6 +11,7 @@ import { Spinner } from '@/components/ui/spinner'
 import { ItemProperties } from '@/components/features/items/ItemProperties'
 import { ItemImageBar } from '@/components/features/items/ItemImageBar'
 import { CARD_VIEW_PANEL_KEY } from '@/components/features/items/CardViewPanel'
+import { CardInfoButton } from '@/components/features/items/CardInfoPanel'
 import { PropertyBlock, BlockAction } from '@/components/features/items/PropertyBlock'
 import { Tooltip } from '@/components/ui/tooltip'
 import { useRightPanelStore } from '@/stores/rightPanel'
@@ -147,11 +148,11 @@ export default function ItemDetailPage() {
       {/* ── カード詳細コンテンツ ── */}
       <div className="max-w-lg mx-auto w-full px-6 py-12 space-y-6">
 
-        {/* ヘッダー行 */}
-        <div className="flex items-center justify-between">
+        {/* パンくずと操作は行を分ける。同じ行に並べると、題名が長いカードで
+            操作が押し出され、カードごとにボタンの位置が変わる */}
+        <div className="space-y-2">
           <Breadcrumb className="mb-0" items={[{ href: backHref, label: fromViewId ? (fromViewName ?? fromLabel) : 'カード' }, { label: item.title }]} />
-          {/* 「表示」と「削除」はどちらもこのカードへの操作。間を詰めて一組に見せる */}
-          <div className="flex shrink-0 items-center gap-0.5">
+          <div className="flex flex-wrap items-center gap-0.5">
             {/* このカード1枚の見え方（どのブロックを出すか・並び順）。
                 中身は ItemProperties 側が右パネルへ差し込む */}
             <Button
@@ -163,16 +164,18 @@ export default function ItemDetailPage() {
               <LayoutList size={14} />
               表示
             </Button>
+            {/* 学習に使わない情報（作成日・状態・ID）はここへ寄せる */}
+            <CardInfoButton item={item} />
             <Button
-            variant={confirmDelete ? 'destructive' : 'ghost'}
-            size="sm"
-            onClick={handleDelete}
-            disabled={deleting}
-            className="flex items-center gap-1.5 text-sm"
-            onBlur={() => setConfirmDelete(false)}
-          >
-            {deleting ? <Spinner size={14} /> : <Trash2 size={14} />}
-            {deleting ? '削除中...' : confirmDelete ? '本当に削除' : '削除'}
+              variant={confirmDelete ? 'destructive' : 'ghost'}
+              size="sm"
+              onClick={handleDelete}
+              disabled={deleting}
+              className="flex items-center gap-1.5 text-sm"
+              onBlur={() => setConfirmDelete(false)}
+            >
+              {deleting ? <Spinner size={14} /> : <Trash2 size={14} />}
+              {deleting ? '削除中...' : confirmDelete ? '本当に削除' : '削除'}
             </Button>
           </div>
         </div>
@@ -294,22 +297,20 @@ export default function ItemDetailPage() {
               </button>
             )}
           </div>
+
+          {/* 覆いを外すか、カードごと消すか */}
+          {veiled && (
+            <SafeguardBar item={item} onUpdated={applyUpdated} onDeleted={() => router.push(backHref)} />
+          )}
+
+          {/* イメージへの操作は、イメージの枠の中に収める。右パネルと同じ並び */}
+          <ItemImageBar item={item} onUpdated={applyUpdated} />
         </PropertyBlock>
-
-        {/* 画像まわりの情報と操作（生成情報・プロンプト情報・作り直す）。右パネルと同じ並び */}
-        {/* 覆いを外すか、カードごと消すか */}
-        {veiled && (
-          <SafeguardBar item={item} onUpdated={applyUpdated} onDeleted={() => router.push(backHref)} />
-        )}
-
-        <ItemImageBar item={item} onUpdated={applyUpdated} />
 
         {/* プロパティ（種別・意味） */}
         <ItemProperties item={item} onUpdated={applyUpdated} />
 
-        <p className="text-sm text-muted-foreground">
-          作成日: {new Date(item.created_at).toLocaleDateString('ja-JP')}
-        </p>
+
       </div>
 
       {/* 位置インジケーター: ページ最下部・中央 */}

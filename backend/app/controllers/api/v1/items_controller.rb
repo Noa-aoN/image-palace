@@ -192,7 +192,12 @@ module Api
       # 種別の設定（どの項目を持つか）とは効く範囲が違う。あちらは種別ぜんぶ、
       # こちらはこの1枚だけ。同じ画面で混ぜると、どこまで効くのか分からなくなる。
       def update_block_view
-        item.update!(block_view: { "hidden" => block_keys(:hidden), "order" => block_keys(:order) })
+        item.update!(block_view: {
+          "hidden" => block_keys(:hidden),
+          "order" => block_keys(:order),
+          # そのカードでは持たない項目。畳んでいる（hidden）のとは意味が違う
+          "omitted" => block_keys(:omitted)
+        })
         render json: serialize_item(item.reload)
       rescue ActiveRecord::RecordInvalid => e
         render json: { errors: e.record.errors.full_messages }, status: :unprocessable_entity
@@ -565,7 +570,11 @@ module Api
           framing: item.framing,
           image_model: item.image_model,
           prompt_source: item.effective_prompt_source,
-          block_view: { hidden: item.hidden_block_keys, order: item.ordered_block_keys },
+          block_view: {
+            hidden: item.hidden_block_keys,
+            order: item.ordered_block_keys,
+            omitted: item.omitted_block_keys
+          },
           custom_prompt: item.custom_prompt,
           image_description: item.image_description,
           scene_prompt: item.scene_prompt,

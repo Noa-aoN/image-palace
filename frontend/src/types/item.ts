@@ -77,7 +77,12 @@ export interface Item {
   /** その種別で定義されている項目（未入力のものも含む） */
   properties?: ItemPropertyEntry[]
   /** このカードだけの見え方（隠すブロック・並び順） */
-  block_view?: { hidden: string[]; order: string[] }
+  /**
+   * このカード1枚の見え方。
+   * omitted = そのカードでは持たない項目（− のエリア）
+   * hidden  = 持っているが、いまは畳んでいる項目
+   */
+  block_view?: { hidden: string[]; order: string[]; omitted?: string[] }
   /** 説明のAIファクトチェック結果 */
   fact_check_status?: 'correct' | 'doubtful' | 'incorrect' | null
   fact_check_comment?: string | null

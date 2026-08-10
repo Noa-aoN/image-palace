@@ -168,17 +168,19 @@ export function ItemDetailBody({ itemId, onDeleted }: { itemId: string; onDelete
             textClassName="text-sm"
           />
         )}
+
+        {/* 覆いを外すか、カードごと消すか */}
+        {veiled && <SafeguardBar item={item} onUpdated={applyUpdated} onDeleted={onDeleted} />}
+
+        {/* イメージへの操作は、イメージの枠の中に収める */}
+        <ItemImageBar item={item} onUpdated={applyUpdated} />
       </PropertyBlock>
-
-      {/* 覆いを外すか、カードごと消すか */}
-      {veiled && <SafeguardBar item={item} onUpdated={applyUpdated} onDeleted={onDeleted} />}
-
-      {/* 画像まわりの情報と操作（生成情報・プロンプト情報・作り直す） */}
-      <ItemImageBar item={item} onUpdated={applyUpdated} />
 
       {/* プロパティ */}
       <ItemProperties item={item} onUpdated={applyUpdated} />
 
+      {/* 詳細ページは「情報」パネルへ寄せたが、右パネルには置き場所が無い
+          （パネルの中からパネルを開くことになる）。ここは一行のまま残す */}
       <p className="text-sm text-muted-foreground">
         作成日: {new Date(item.created_at).toLocaleDateString('ja-JP')}
       </p>
