@@ -76,7 +76,8 @@ class User < ApplicationRecord
   end
 
   # == クレジット =============================================================
-  # 残高は2バケット制：subscription_credits（月次リセット）+ topup_credits（繰り越し）。
+  # 残高は3つの入れ物：期限付きグラント（credit_grants）+ subscription_credits（当月分）
+  # + topup_credits（期限を持たない古い買い切り）。どれも受け取りから6ヶ月で期限が来る。
   # 履歴は credit_transactions に追記する（監査用の append-only 台帳）。
   class InsufficientCredits < StandardError; end
 
@@ -198,12 +199,21 @@ class User < ApplicationRecord
     free_period_start(now) + 1.month
   end
 
-  # サブスク分を毎月リセットする（旧残分は失効ログを残す）。invoice 支払い時などに呼ぶ。
-  def reset_subscription_credits!(amount, subscription: nil, stripe_event_id: nil, amount_cents: nil, currency: nil)
+  # 月額プランのぶんを当月分に入れ替える。invoice 支払い時などに呼ぶ。
+  #
+  # 使い残しは**失効させず、期限付きの持ち越しに移す**（Catalog::CREDIT_LIFETIME）。
+  # 残高は減らないので、移し替えの台帳記録は残さない（グラント行そのものが記録になる）。
+  #
+  # forfeit: true のときだけ、これまでどおり失効させる。解約がこれにあたる。
+  # 解約後も残るようにすると、契約→受け取り→即解約で使い回せてしまう。
+  def reset_subscription_credits!(amount, subscription: nil, stripe_event_id: nil, amount_cents: nil,
+                                  currency: nil, forfeit: false)
     with_lock do
-      forfeited = subscription_credits
-      if forfeited.positive?
-        record_credit!(kind: "subscription_expire", delta: -forfeited, subscription:)
+      if forfeit
+        forfeited = subscription_credits
+        record_credit!(kind: "subscription_expire", delta: -forfeited, subscription:) if forfeited.positive?
+      else
+        carry_over_subscription_credits!
       end
       update!(subscription_credits: amount)
       # 解約時の失効（amount==0）では 0 デルタの付与ログを残さない。
@@ -227,6 +237,24 @@ class User < ApplicationRecord
       )
       record_credit!(kind: "topup_purchase", delta: amount, stripe_event_id:, amount_cents:, currency:)
     end
+  end
+
+  # 月額プランの使い残しを、期限付きの持ち越しに移す。
+  #
+  # 当月ぶんは subscription_credits に1ヶ月だけ居る。
+  # 残りの寿命を「寿命 − 1ヶ月」にすると、届いた日から数えてちょうど寿命ぶん使えることになる。
+  #
+  # grant_credits! は使わない。あれは残高が増えるときの入口で、台帳に付与を書く。
+  # ここは入れ物を移すだけで残高は変わらないため、書くと増えたように見えてしまう。
+  def carry_over_subscription_credits!
+    leftover = subscription_credits
+    return if leftover <= 0
+
+    credit_grants.create!(
+      kind: "subscription_carryover", amount_points: leftover, remaining_points: leftover,
+      expires_at: Billing::Catalog::CREDIT_LIFETIME.from_now - 1.month
+    )
+    update!(subscription_credits: 0)
   end
 
   # 期限付きグラント（Free引き継ぎ・キャンペーン等）を付与する。

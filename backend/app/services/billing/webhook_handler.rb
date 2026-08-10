@@ -93,7 +93,7 @@ module Billing
       return unless sub
       return if sub.status == "canceled"
 
-      sub.user.reset_subscription_credits!(0, subscription: sub)
+      sub.user.reset_subscription_credits!(0, subscription: sub, forfeit: true)
       sub.update!(status: "canceled", canceled_at: Time.current)
     end
 

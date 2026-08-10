@@ -19,6 +19,7 @@ import { useBillingStore } from '@/stores/billing'
 import {
   tierLabel,
   TIER_NOTES,
+  SUBSCRIPTION_VALIDITY,
   TOPUP_VALIDITY,
   formatYen,
   unitPrice,
@@ -296,10 +297,8 @@ export default function BillingPage() {
                         月 {plan.credits.toLocaleString('ja-JP')} クレジット
                       </p>
                       {/* 期限を書かないと「貯まり続ける」と読まれる。
-                          実際は更新のたびに前月分が失効して入れ替わる（買い切り分は別で繰り越す） */}
-                      <p className="text-xs text-muted-foreground">
-                        毎月入れ替わります（前月分は繰り越しません）
-                      </p>
+                          使い残しは繰り越すが、無期限ではない */}
+                      <p className="text-xs text-muted-foreground">{SUBSCRIPTION_VALIDITY}</p>
                     </div>
                     <Button
                       onClick={() => handleCheckout(plan.name)}

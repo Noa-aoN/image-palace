@@ -1,14 +1,15 @@
 import type { Metadata } from 'next'
 import Link from 'next/link'
-import { BookOpen, ChevronRight } from 'lucide-react'
+import { BookOpen } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { GUIDE_SECTIONS } from '@/lib/guide/sections'
+import { ListRows } from '@/components/features/posts/ListRows'
 
 export const metadata: Metadata = { title: '使い方' }
 
 export default function GuidePage() {
   return (
-    <div className="mx-auto max-w-7xl px-6 py-12">
+    <div className="mx-auto max-w-4xl px-6 py-12">
       <header>
         <h1 className="flex items-center gap-2.5 text-2xl font-semibold">
           <BookOpen size={26} style={{ color: 'var(--palace)' }} />
@@ -19,28 +20,17 @@ export default function GuidePage() {
         </p>
       </header>
 
-      <ul className="mt-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-        {GUIDE_SECTIONS.map((s) => {
-          const Icon = s.icon
-          return (
-            <li key={s.slug}>
-              <Link
-                href={`/guide/${s.slug}`}
-                className="flex h-full items-center gap-4 rounded-xl border border-border bg-card p-5 transition-colors hover:bg-muted"
-              >
-                <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-muted">
-                  <Icon size={20} style={{ color: 'var(--palace)' }} />
-                </span>
-                <div className="min-w-0 flex-1">
-                  <h2 className="text-lg font-semibold leading-snug">{s.title}</h2>
-                  <p className="mt-1 text-sm leading-relaxed text-muted-foreground">{s.excerpt}</p>
-                </div>
-                <ChevronRight size={18} className="shrink-0 text-muted-foreground" aria-hidden="true" />
-              </Link>
-            </li>
-          )
-        })}
-      </ul>
+      {/* 使い方は日付を持たない。題名と要約だけを縦に並べる */}
+      <div className="mt-8">
+        <ListRows
+          items={GUIDE_SECTIONS.map((s) => ({
+            key: s.slug,
+            href: `/guide/${s.slug}`,
+            title: s.title,
+            excerpt: s.excerpt,
+          }))}
+        />
+      </div>
 
       <div className="mt-10 flex flex-wrap gap-3">
         <Link href="/entrance">

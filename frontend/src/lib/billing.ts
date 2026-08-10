@@ -73,7 +73,11 @@ export function discountPercent(rate: number, baseRate: number): number {
 }
 
 /**
- * 買い切りクレジットの有効期間（サーバーの Billing::Catalog::CREDIT_LIFETIME と揃える）。
+ * クレジットの有効期間（サーバーの Billing::Catalog::CREDIT_LIFETIME と揃える）。
  * 期限を出さないと、ある日いきなり減ったように見える。
+ *
+ * 出どころで期間は変えない。月額のぶんも買い切りと同じく6か月持つ。
  */
 export const TOPUP_VALIDITY = '購入から6か月ぶん有効・繰り越します'
+
+export const SUBSCRIPTION_VALIDITY = '受け取りから6か月ぶん有効・使い残しは繰り越します'

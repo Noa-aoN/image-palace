@@ -12,6 +12,7 @@ module Billing
       "topup" => "買い切り",
       "topup_legacy" => "買い切り（期限なし）",
       "subscription" => "プランの当月分",
+      "subscription_carryover" => "プランの持ち越し",
       "free_carryover" => "無料枠の引き継ぎ",
       "campaign" => "キャンペーン",
       "goodwill" => "お詫び・調整"

@@ -65,6 +65,7 @@ class FeatureFlag < ApplicationRecord
     "page.stadion" => { label: "スタディオン", group: "outside", path: "/stadion", stage: "released" },
 
     # ── 運営 ──
+    "page.board" => { label: "掲示板", group: "ops", path: "/board", stage: "released" },
     "page.news" => { label: "お知らせ", group: "ops", path: "/news", stage: "released" },
     "page.guide" => { label: "使い方", group: "ops", path: "/guide", stage: "released" },
     "page.blog" => { label: "コラム", group: "ops", path: "/blog", stage: "released" },
