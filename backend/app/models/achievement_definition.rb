@@ -4,6 +4,10 @@
 class AchievementDefinition < ApplicationRecord
   has_many :user_achievements, dependent: :destroy
 
+  # 実績はすぐ増える。分類が無いと縦に長い1本の列になり、どこを見ればよいか分からない。
+  # 並び順もここで決める（画面ごとに順番を持たない）
+  CATEGORY_ORDER = %w[はじめに 作成 生成 学習 継続 整理 イベント].freeze
+
   validates :key, presence: true, uniqueness: true, format: { with: /\A[a-z][a-z0-9_]*\z/ }
   validates :name, :condition_type, presence: true
   validates :condition_target, numericality: { only_integer: true, greater_than: 0 }
@@ -14,24 +18,24 @@ class AchievementDefinition < ApplicationRecord
 
   # 初期の実績。報酬は RewardDefinition の key を指す
   BUILTINS = [
-    { key: "first_card", name: "はじめてのカード", category: "創作", position: 10,
+    { key: "first_card", name: "はじめてのカード", category: "はじめに", position: 10,
       description: "カードを1枚作る", condition_type: "cards_created", condition_target: 1,
       rewards: [ { "type" => "reward", "key" => "medal_first_card" },
                  { "type" => "reward", "key" => "title_traveler" },
                  { "type" => "reward", "key" => "treasure_seed" } ] },
-    { key: "ten_cards", name: "10枚のカード", category: "創作", position: 11,
+    { key: "ten_cards", name: "10枚のカード", category: "作成", position: 11,
       description: "カードを10枚作る", condition_type: "cards_created", condition_target: 10,
       rewards: [ { "type" => "reward", "key" => "treasure_cup" } ] },
-    { key: "fifty_cards", name: "50枚のカード", category: "創作", position: 12,
+    { key: "fifty_cards", name: "50枚のカード", category: "作成", position: 12,
       description: "カードを50枚作る", condition_type: "cards_created", condition_target: 50,
       rewards: [ { "type" => "reward", "key" => "title_collector" } ] },
-    { key: "hundred_cards", name: "100枚のカード", category: "創作", position: 13,
+    { key: "hundred_cards", name: "100枚のカード", category: "作成", position: 13,
       description: "カードを100枚作る", condition_type: "cards_created", condition_target: 100,
       rewards: [ { "type" => "reward", "key" => "medal_laurel" } ] },
-    { key: "ten_images", name: "10枚の絵", category: "創作", position: 20,
+    { key: "ten_images", name: "10枚の絵", category: "生成", position: 20,
       description: "絵を10枚作る", condition_type: "images_generated", condition_target: 10,
       rewards: [ { "type" => "reward", "key" => "medal_creation_flame" } ] },
-    { key: "thirty_images", name: "30枚の絵", category: "創作", position: 21,
+    { key: "thirty_images", name: "30枚の絵", category: "生成", position: 21,
       description: "絵を30枚作る", condition_type: "images_generated", condition_target: 30,
       rewards: [ { "type" => "reward", "key" => "title_visual_thinker" } ] },
     { key: "ten_reviews", name: "10回の学習", category: "学習", position: 30,

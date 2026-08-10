@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_08_10_000013) do
+ActiveRecord::Schema[8.1].define(version: 2026_08_11_000001) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
   enable_extension "pg_trgm"
@@ -503,7 +503,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_08_10_000013) do
     t.integer "position", default: 0, null: false
     t.boolean "profile_visible", default: true, null: false
     t.boolean "published", default: true, null: false
-    t.string "rarity", default: "common", null: false
+    t.integer "rarity_level", default: 2, null: false
     t.boolean "room_displayable", default: false, null: false
     t.datetime "starts_at"
     t.datetime "updated_at", null: false
