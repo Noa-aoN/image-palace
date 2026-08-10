@@ -171,7 +171,6 @@ module Achievements
         name: definition.name,
         description: definition.description,
         rarity_level: definition.rarity_level,
-        rarity_name: definition.rarity_name,
         rarity_tier: definition.rarity_tier,
         category: definition.category,
         # 未獲得のものに「どうすれば手に入るか」。無いものは手動付与（表彰など）
@@ -199,7 +198,7 @@ module Achievements
 
           { type: "reward", key: definition.key, name: definition.name,
             kind: definition.kind, kind_label: definition.kind_label,
-            rarity_tier: definition.rarity_tier, rarity_name: definition.rarity_name,
+            rarity_tier: definition.rarity_tier,
             image_url: image_url_for(definition) }
         when "credits"
           { type: "credits", amount: entry["amount"].to_i }
@@ -208,13 +207,17 @@ module Achievements
     end
 
     # 画像はあとから差し替えられる。無い間は画面側が種類ごとの絵柄で描く
+    # 獲得物の絵は**どの環境でも同じもの**（定義に付いていて、利用者ごとには作らない）。
+    # 手元に CDN の設定が無くても見えるよう、鍵から引くときは既定の配信元に落とす。
+    # 添付を差し替えた場合は、その環境の CDN 設定に従う
+    PUBLIC_IMAGE_BASE = "https://cdn.imagepalace.app"
+
     def image_url_for(definition)
-      return nil unless definition.image.attached?
+      path = definition.image_path
+      return nil if path.blank?
 
-      cdn_base = ENV["CDN_BASE_URL"]
-      return nil if cdn_base.blank?
-
-      "#{cdn_base}/#{definition.image.blob.key}"
+      base = ENV["CDN_BASE_URL"].presence || PUBLIC_IMAGE_BASE
+      "#{base}/#{path}"
     end
   end
 end

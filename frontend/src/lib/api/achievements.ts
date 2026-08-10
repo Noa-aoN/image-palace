@@ -12,7 +12,6 @@ export interface RewardPreview {
   kind?: RewardKind
   kind_label?: string
   rarity_tier?: RarityTier
-  rarity_name?: string
   image_url?: string | null
   amount?: number
 }
@@ -23,9 +22,9 @@ export interface RewardRow {
   kind_label: string
   name: string
   description: string | null
-  /** 内部は9段階。表示は rarity_tier に丸める */
+  /** 1〜9。印の数で出す。段の名前は画面に出さない（9つ覚えないと上下が分からない） */
   rarity_level: number
-  rarity_name: string
+  /** 色を決める段（9段を5つに丸めたもの） */
   rarity_tier: RarityTier
   category: string | null
   /** 差し替え可能。無い間は種類ごとの絵柄で描く */

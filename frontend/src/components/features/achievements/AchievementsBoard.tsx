@@ -231,7 +231,12 @@ export function AchievementsBoard() {
               <ul className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
                 {group.rows.map((reward) => (
                   <li key={reward.key}>
-                    <RewardCard reward={reward} onOpen={() => setOpenKey(reward.key)}>
+                    <RewardCard
+                      reward={reward}
+                      onOpen={() => setOpenKey(reward.key)}
+                      onToggleFeatured={() => act(reward.key, () => toggleFeatured(reward.key))}
+                      busy={busy === reward.key}
+                    >
                       {reward.owned && reward.equippable && (
                         <Button
                           variant={reward.equipped ? 'default' : 'outline'}
@@ -241,17 +246,6 @@ export function AchievementsBoard() {
                           className="w-full text-xs"
                         >
                           {reward.equipped ? '名乗っている' : '名乗る'}
-                        </Button>
-                      )}
-                      {reward.owned && reward.featurable && (
-                        <Button
-                          variant={reward.featured ? 'default' : 'outline'}
-                          size="sm"
-                          disabled={busy === reward.key}
-                          onClick={() => act(reward.key, () => toggleFeatured(reward.key))}
-                          className="w-full text-xs"
-                        >
-                          {reward.featured ? '掲げている' : '掲げる'}
                         </Button>
                       )}
                     </RewardCard>
@@ -368,7 +362,7 @@ function RewardPreviews({ rewards, earned }: { rewards: RewardPreview[]; earned:
           ) : (
             <span
               className="flex items-center gap-1 rounded-full bg-muted/60 px-2 py-0.5 text-[11px] text-muted-foreground"
-              title={`${reward.name}（${reward.kind_label}・${reward.rarity_name}）`}
+              title={`${reward.name}（${reward.kind_label}）`}
             >
               {reward.image_url ? (
                 // eslint-disable-next-line @next/next/no-img-element
@@ -489,9 +483,7 @@ function RewardKindsHelp() {
           ))}
           <div className="space-y-1 border-t border-border pt-3">
             <dt className="font-medium">レア度</dt>
-            <dd className="text-muted-foreground">
-              印の数が多いほど希少です（石・青銅・大理石・銀・金・瑠璃・星・神聖・ムーサ）。
-            </dd>
+            <dd className="text-muted-foreground">印の数が多いほど希少です（1〜9）。色も段ごとに変わります。</dd>
           </div>
         </dl>
       </PanelSlotContent>

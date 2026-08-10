@@ -20,11 +20,16 @@ import { rarityStyle } from './rarity'
 export function RewardCard({
   reward,
   onOpen,
+  onToggleFeatured,
+  busy,
   children,
 }: {
   reward: RewardRow
   onOpen: () => void
-  /** 装備・掲げるなどの操作。獲得済みのときだけ渡す */
+  /** 代表として掲げる／下ろす。掲げられる獲得物のときだけ効く */
+  onToggleFeatured: () => void
+  busy?: boolean
+  /** 名乗るなど、残りの操作 */
   children?: React.ReactNode
 }) {
   const style = rarityStyle(reward.rarity_tier)
@@ -39,6 +44,26 @@ export function RewardCard({
       }`}
       style={reward.owned && style.glow ? { boxShadow: style.glow } : undefined}
     >
+      {/* 掲げるはボタンではなく星にする。札ごとにボタンが積み上がると、
+          絵より操作のほうが目立ってしまう。掲げているものは常に光らせる */}
+      {reward.owned && reward.featurable && (
+        <button
+          type="button"
+          onClick={onToggleFeatured}
+          disabled={busy}
+          aria-pressed={reward.featured}
+          aria-label={reward.featured ? `${reward.name}を下ろす` : `${reward.name}を掲げる`}
+          title={reward.featured ? '掲げている' : '掲げる'}
+          className={`absolute left-1.5 top-1.5 transition-opacity disabled:opacity-40 ${
+            reward.featured
+              ? 'text-[var(--palace)] opacity-100'
+              : 'text-muted-foreground opacity-0 hover:text-foreground focus-visible:opacity-100 group-hover:opacity-100'
+          }`}
+        >
+          <Star size={15} fill={reward.featured ? 'currentColor' : 'none'} />
+        </button>
+      )}
+
       {/* 詳しい条件は「?」から。札の上に全部書くと縦に伸びて、並べて眺められなくなる */}
       <button
         type="button"
@@ -65,7 +90,7 @@ export function RewardCard({
 
       <div className="space-y-1">
         <p className={`text-sm font-medium ${reward.owned ? '' : 'text-muted-foreground'}`}>{reward.name}</p>
-        <RarityMarks level={reward.rarity_level} name={reward.rarity_name} tierClass={style.text} dim={!reward.owned} />
+        <RarityMarks level={reward.rarity_level} tierClass={style.text} dim={!reward.owned} />
       </div>
 
       {reward.description && (
@@ -138,28 +163,27 @@ export function RewardArt({ reward, size }: { reward: RewardRow; size: number })
 /**
  * レア度の印。数が多いほど上。
  *
- * 名前（石・青銅・…）だけでは、どちらが上か覚えていないと分からない。
- * 数と色の2つで伝える。未獲得のものは印も落として、獲得済みと見分けが付くようにする。
+ * 名前（石・青銅・瑠璃…）は出さない。9つの名前を覚えないと上下が分からないうえ、
+ * 札のなかで場所を取る。**数と色**だけで足りる。
+ * 未獲得のものは印も落として、獲得済みと見分けが付くようにする。
  */
 export function RarityMarks({
   level,
-  name,
   tierClass,
   dim,
 }: {
   level: number
-  name: string
   tierClass: string
   dim?: boolean
 }) {
   return (
-    <p className={`flex items-center justify-center gap-1 text-[11px] ${dim ? 'opacity-60' : ''}`}>
-      <span className="flex items-center" aria-hidden>
-        {Array.from({ length: level }).map((_, i) => (
-          <Star key={i} size={8} className={tierClass} fill="currentColor" strokeWidth={0} />
-        ))}
-      </span>
-      <span className={tierClass}>{name}</span>
+    <p
+      className={`flex items-center justify-center ${dim ? 'opacity-50' : ''}`}
+      aria-label={`レア度 ${level}`}
+    >
+      {Array.from({ length: level }).map((_, i) => (
+        <Star key={i} size={9} className={tierClass} fill="currentColor" strokeWidth={0} aria-hidden />
+      ))}
     </p>
   )
 }

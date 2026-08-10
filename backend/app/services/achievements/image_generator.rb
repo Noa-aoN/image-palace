@@ -83,7 +83,9 @@ module Achievements
         filename: "#{@reward.key}.png",
         content_type: result.content_type.presence || "image/png"
       )
+      # 鍵も控える。他の環境から同じ絵を指せるようにするため
       @reward.update!(
+        image_key: @reward.image.blob.key,
         metadata: @reward.metadata.merge(
           "image_prompt" => prompt,
           "image_model" => result.metadata[:model] || result.metadata["model"],

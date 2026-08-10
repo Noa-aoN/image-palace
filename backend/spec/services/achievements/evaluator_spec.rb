@@ -176,7 +176,6 @@ RSpec.describe Achievements::Evaluator do
       row = Achievements::Presenter.call(user: user)[:rewards].find { |r| r[:key] == "medal_laurel" }
 
       expect(row[:rarity_level]).to eq(8)
-      expect(row[:rarity_name]).to eq("神聖")
       expect(row[:rarity_tier]).to eq("sacred")
     end
   end

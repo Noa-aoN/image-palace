@@ -5,7 +5,7 @@ import { X } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import type { RewardRow } from '@/lib/api/achievements'
 import { rarityStyle } from './rarity'
-import { RewardArt } from './RewardCard'
+import { RewardArt, RarityMarks } from './RewardCard'
 
 /**
  * 獲得物の詳細。
@@ -59,9 +59,9 @@ export function RewardDetail({
             <RewardArt reward={reward} size={56} />
             <div>
               <p className="font-semibold">{reward.name}</p>
-              <p className="text-xs text-muted-foreground">
+              <p className="flex items-center gap-1.5 text-xs text-muted-foreground">
                 {reward.kind_label}
-                <span className={`ml-1 ${style.text}`}>{reward.rarity_name}</span>
+                <RarityMarks level={reward.rarity_level} tierClass={style.text} />
               </p>
             </div>
           </div>
@@ -77,22 +77,29 @@ export function RewardDetail({
 
         {reward.description && <p className="text-sm text-muted-foreground">{reward.description}</p>}
 
+        {/* 並べるのは3つに決める。獲得・分類・条件。
+            持っているかどうかで項目が入れ替わると、見るたびに探すことになる */}
         <dl className="space-y-2 border-t border-border pt-3 text-sm">
-          {reward.owned ? (
-            <Row label="獲得">
-              {reward.granted_at ? new Date(reward.granted_at).toLocaleDateString('ja-JP') : '—'}
-            </Row>
-          ) : (
-            <Row label="手に入れ方">
-              {reward.condition ?? '運営から贈られます'}
-              {reward.target ? (
-                <span className="ml-1 tabular-nums text-muted-foreground">
-                  （{reward.progress} / {reward.target}）
-                </span>
-              ) : null}
-            </Row>
-          )}
-          {reward.category && <Row label="分類">{reward.category}</Row>}
+          <Row label="獲得">
+            {reward.owned ? (
+              reward.granted_at ? (
+                new Date(reward.granted_at).toLocaleDateString('ja-JP')
+              ) : (
+                '獲得済み'
+              )
+            ) : (
+              <span className="text-muted-foreground">まだ</span>
+            )}
+          </Row>
+          <Row label="分類">{reward.category ?? '—'}</Row>
+          <Row label="条件">
+            {reward.condition ?? '運営から贈られます'}
+            {!reward.owned && reward.target ? (
+              <span className="ml-1 tabular-nums text-muted-foreground">
+                （{reward.progress} / {reward.target}）
+              </span>
+            ) : null}
+          </Row>
         </dl>
 
         {reward.owned && (reward.equippable || reward.featurable) && (
