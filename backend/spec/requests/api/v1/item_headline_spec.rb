@@ -82,4 +82,55 @@ RSpec.describe "一覧の見出し語", type: :request do
 
     expect(reads).to eq(1)
   end
+
+  # 名前と絵のほかに出す項目。増やすほど1枚が縦に伸びるので上限を持つ
+  describe "一覧に出す追加項目" do
+    it "設定した項目の値を返す" do
+      definition = define_property(key: "reading", label: "読み方")
+      set_value(definition, "こうごうせい")
+      user.create_setting!(card_list_fields: [ "reading" ])
+
+      get "/api/v1/items", headers: headers
+
+      expect(response.parsed_body["items"].first["list_fields"]).to eq(
+        [ { "key" => "reading", "label" => "読み方", "value" => "こうごうせい" } ]
+      )
+    end
+
+    # 空の行が並ぶだけになる
+    it "値の無い項目は返さない" do
+      item # 一覧に出すカードを作っておく（let は参照するまで作られない）
+      define_property(key: "reading", label: "読み方")
+      user.create_setting!(card_list_fields: [ "reading" ])
+
+      get "/api/v1/items", headers: headers
+
+      expect(response.parsed_body["items"].first["list_fields"]).to eq([])
+    end
+
+    it "複数入る項目はつないで返す" do
+      definition = define_property(key: "aliases", label: "別名", value_type: "list")
+      set_value(definition, [ "炭酸同化", "光合成作用" ])
+      user.create_setting!(card_list_fields: [ "aliases" ])
+
+      get "/api/v1/items", headers: headers
+
+      expect(response.parsed_body["items"].first["list_fields"].first["value"]).to eq("炭酸同化、光合成作用")
+    end
+
+    it "上限を超えたぶんは保存時に切る" do
+      setting = user.create_setting!
+      setting.update!(card_list_fields: %w[a b c d e])
+
+      expect(setting.reload.card_list_fields.size).to eq(Setting::MAX_CARD_LIST_FIELDS)
+    end
+
+    it "設定していなければ空で返す" do
+      item
+
+      get "/api/v1/items", headers: headers
+
+      expect(response.parsed_body["items"].first["list_fields"]).to eq([])
+    end
+  end
 end

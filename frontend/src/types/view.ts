@@ -77,9 +77,21 @@ export interface EdgePoint {
   y: number
 }
 
+/** 線の種類。dashed（旧・真偽値）から移行中で、未指定なら dashed を見る */
+export type EdgeLineStyle = 'solid' | 'dashed' | 'dotted' | 'double'
+
+/** 折れ点のつなぎ方。角ばる／角を丸める／全体をなめらかに */
+export type EdgeCurve = 'sharp' | 'round' | 'smooth'
+
 export interface ViewEdgeStyle {
   color?: string
+  /** @deprecated line_style を使う。既存データのために読み続ける */
   dashed?: boolean
+  line_style?: EdgeLineStyle
+  /** 折れ点があるときのつなぎ方（既定 sharp） */
+  curve?: EdgeCurve
+  /** 角を丸める大きさ(px)。curve='round' のときだけ効く */
+  curve_radius?: number
   width?: number // 線の太さ(px)
   opacity?: number // 線の不透明度(0-100)
   marker_start?: EdgeMarker // 始端の形（既定 none）

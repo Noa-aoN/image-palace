@@ -20,6 +20,15 @@ class Setting < ApplicationRecord
   # ライブラリの棚（大項目）。既定の並び順でもある
   LIBRARY_SECTIONS = %w[cards canvas spaces boxes materials].freeze
 
+  # カードが持つ項目のひな型。1つあたり { "name" =>, "keys" => [...] }
+  MAX_CARD_PRESETS = 20
+  MAX_PRESET_KEYS = 60
+
+  # 一覧のカードに、名前と絵のほかに出す項目の数。
+  # 増やすほど1枚が縦に伸び、一覧として見渡せなくなる。
+  # 名前と絵で2つぶん使っているので、追加はここまで
+  MAX_CARD_LIST_FIELDS = 2
+
   belongs_to :user
 
   validates :user_id, uniqueness: true
@@ -32,6 +41,20 @@ class Setting < ApplicationRecord
   # 知らない名前は捨て、重複は畳み、載っていない棚は末尾へ回す。
   # こうしておけば、棚が増えても既存ユーザーの画面から消えることがない。
   before_validation :normalize_library_order
+  before_validation :normalize_card_property_presets
+  before_validation :normalize_card_list_fields
+
+  # 名前でひな型を引く。無ければ nil
+  def card_preset(name)
+    Array(card_property_presets).find { |preset| preset["name"] == name.to_s }
+  end
+
+  # 新しいカードに当てるひな型。指定が無ければ nil
+  def default_preset_keys
+    return nil if default_card_preset.blank?
+
+    card_preset(default_card_preset)&.dig("keys")
+  end
 
   # 実際に描くべき並び。未設定なら既定の順
   def ordered_library_sections
@@ -44,6 +67,26 @@ class Setting < ApplicationRecord
   end
 
   private
+
+  # 一覧に出す追加項目。上限を超えたぶんは切る
+  def normalize_card_list_fields
+    self.card_list_fields = Array(card_list_fields).map(&:to_s).reject(&:blank?).uniq.first(MAX_CARD_LIST_FIELDS)
+  end
+
+  # 名前とキーだけに絞り、名前の無いもの・重複・多すぎるものを落とす。
+  # 画面から来た形をそのまま入れると、あとで読む側が毎回身構えることになる
+  def normalize_card_property_presets
+    seen = Set.new
+    self.card_property_presets = Array(card_property_presets).filter_map { |raw|
+      next unless raw.is_a?(Hash)
+
+      name = raw["name"].to_s.strip
+      next if name.blank? || !seen.add?(name)
+
+      keys = Array(raw["keys"]).map(&:to_s).uniq.first(MAX_PRESET_KEYS)
+      { "name" => name, "keys" => keys }
+    }.first(MAX_CARD_PRESETS)
+  end
 
   def normalize_library_order
     # 未設定（既定の順のまま）はそのまま空で持つ。既定の順が変わったときに追従できる

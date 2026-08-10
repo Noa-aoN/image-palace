@@ -27,8 +27,11 @@ module Api
           :auto_generate_meanings, :auto_generate_tags, :default_image_style, :default_aspect_ratio,
           :display_style, :shelf_orientation, :onboarded,
           :regenerate_with_meaning, :image_safeguard, :card_headline_key,
-          :diagram_mode, :motion_mode, :word_difficulty,
-          library_order: []
+          :diagram_mode, :motion_mode, :word_difficulty, :default_card_preset,
+          library_order: [],
+          card_list_fields: [],
+          # カードが持つ項目のひな型。[{ name:, keys: [] }]
+          card_property_presets: [ :name, { keys: [] } ]
         )
       end
 
@@ -49,6 +52,10 @@ module Api
           image_safeguard: setting.image_safeguard,
           # 一覧で名前として出す項目。空なら見出し語
           card_headline_key: setting.card_headline_key,
+          card_property_presets: setting.card_property_presets,
+          card_list_fields: setting.card_list_fields,
+          max_card_list_fields: Setting::MAX_CARD_LIST_FIELDS,
+          default_card_preset: setting.default_card_preset,
           diagram_mode: setting.diagram_mode,
           motion_mode: setting.motion_mode,
           locale: setting.locale,

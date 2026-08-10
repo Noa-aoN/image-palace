@@ -42,7 +42,15 @@ export function CardDisplayPanel({
   const panel = usePanelForm(PANEL_KEY, '表示')
   const rowChoices = availableRowChoices(display.columns)
   const perPage = cardsPerPage(display)
-  const { headlineKey, headlineChoices, changeHeadline, savingHeadline } = useHeadlineSetting(panel.isOpen)
+  const {
+    headlineKey,
+    headlineChoices,
+    changeHeadline,
+    savingHeadline,
+    listFields,
+    maxListFields,
+    toggleListField,
+  } = useHeadlineSetting(panel.isOpen)
 
   return (
     <>
@@ -126,6 +134,26 @@ export function CardDisplayPanel({
             </p>
           </div>
 
+          <div className="space-y-2">
+            <Label>名前の下に出す項目</Label>
+            <div className="flex flex-wrap gap-2">
+              {headlineChoices.map((choice) => (
+                <Chip
+                  key={choice.key}
+                  active={listFields.includes(choice.key)}
+                  onClick={() => toggleListField(choice.key)}
+                >
+                  {choice.label}
+                </Chip>
+              ))}
+            </div>
+            <p className="text-xs text-muted-foreground">
+              {headlineChoices.length === 0
+                ? '読み方や別名などの項目を作ると、ここで選べるようになります。'
+                : `最大 ${maxListFields} 件まで。値の入っていないカードには出ません。増やすほど1枚が縦に伸び、一覧として見渡しにくくなります。`}
+            </p>
+          </div>
+
           <p className="rounded-lg bg-muted/40 px-3 py-2 text-xs text-muted-foreground">
             <strong className="text-foreground">
               {display.columns} 列 × {display.rows} 行
@@ -152,6 +180,8 @@ function useHeadlineSetting(isOpen: boolean) {
   const [definitions, setDefinitions] = useState<PropertyDefinition[]>([])
   const [savingHeadline, setSavingHeadline] = useState(false)
   const [loaded, setLoaded] = useState(false)
+  const [listFields, setListFields] = useState<string[]>([])
+  const [maxListFields, setMaxListFields] = useState(2)
 
   useEffect(() => {
     if (!isOpen || loaded) return
@@ -160,6 +190,8 @@ function useHeadlineSetting(isOpen: boolean) {
       .then(([settings, defs]) => {
         if (cancelled) return
         setHeadlineKey(settings.card_headline_key ?? '')
+        setListFields(settings.card_list_fields ?? [])
+        setMaxListFields(settings.max_card_list_fields ?? 2)
         setDefinitions(defs)
         setLoaded(true)
       })
@@ -179,6 +211,22 @@ function useHeadlineSetting(isOpen: boolean) {
       .values()
   )
 
+  // 上限に達したら、いちばん古い指定を落として入れ替える。
+  // 「上限です」と拒むより、押した結果が出るほうが分かりやすい
+  const toggleListField = async (key: string) => {
+    const next = listFields.includes(key)
+      ? listFields.filter((k) => k !== key)
+      : [...listFields, key].slice(-maxListFields)
+    const previous = listFields
+    setListFields(next)
+    try {
+      const saved = await updateSettings({ card_list_fields: next })
+      setListFields(saved.card_list_fields ?? [])
+    } catch {
+      setListFields(previous) // 失敗したら元に戻す
+    }
+  }
+
   const changeHeadline = async (key: string) => {
     if (savingHeadline || key === headlineKey) return
     const previous = headlineKey
@@ -194,7 +242,7 @@ function useHeadlineSetting(isOpen: boolean) {
     }
   }
 
-  return { headlineKey, headlineChoices, changeHeadline, savingHeadline }
+  return { headlineKey, headlineChoices, changeHeadline, savingHeadline, listFields, maxListFields, toggleListField }
 }
 
 function Chip({

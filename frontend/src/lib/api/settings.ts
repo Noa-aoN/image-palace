@@ -20,6 +20,9 @@ export async function updateSettings(
       | 'regenerate_with_meaning'
       | 'image_safeguard'
       | 'card_headline_key'
+      | 'card_property_presets'
+      | 'card_list_fields'
+      | 'default_card_preset'
       | 'diagram_mode'
       | 'motion_mode'
     >

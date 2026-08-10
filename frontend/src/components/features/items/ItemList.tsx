@@ -273,6 +273,19 @@ function ItemCard({ item, selectionMode, selected, onToggle, fit, sizes }: ItemC
           />
         )}
       </div>
+
+      {/* 名前と絵のほかに出す項目。値の無いものはサーバー側で落としてある。
+          1行1項目で、長いものは省略する（1枚が縦に伸びると一覧が見渡せない） */}
+      {(item.list_fields?.length ?? 0) > 0 && (
+        <dl className="space-y-0.5 px-3 py-1.5">
+          {item.list_fields!.map((field) => (
+            <div key={field.key} className="flex gap-1.5 text-[11px] leading-snug">
+              <dt className="shrink-0 text-muted-foreground">{field.label}</dt>
+              <dd className="truncate">{field.value}</dd>
+            </div>
+          ))}
+        </dl>
+      )}
     </>
   )
 
