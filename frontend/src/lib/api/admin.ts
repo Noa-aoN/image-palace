@@ -5,6 +5,8 @@ import type {
   AdminFinancePage,
   AdminFinanceSummary,
   AdminGrantPoliciesPage,
+  AdminAiModel,
+  AdminAiModelsPage,
   AdminCampaignCode,
   AdminCampaignCodesPage,
   AdminFeatureFlag,
@@ -71,6 +73,40 @@ export async function getAdminAuditLogs(params?: {
 export async function getAdminAuditLogList(): Promise<AdminAuditLog[]> {
   const res = await apiClient.get<{ logs: AdminAuditLog[] }>('/api/v1/admin/audit_logs')
   return res.data.logs
+}
+
+// ── AIモデルの登録簿 ──────────────────────────────────────────
+
+export async function getAdminAiModels(): Promise<AdminAiModelsPage> {
+  const res = await apiClient.get<AdminAiModelsPage>('/api/v1/admin/ai_models')
+  return res.data
+}
+
+export async function createAdminAiModel(ai_model: {
+  key: string
+  kind: string
+  provider: string
+  model_id: string
+  label: string
+  credit_points?: number | null
+  unit_cost_usd?: number | null
+  requires_env?: string | null
+}): Promise<AdminAiModel> {
+  const res = await apiClient.post<{ model: AdminAiModel }>('/api/v1/admin/ai_models', { ai_model })
+  return res.data.model
+}
+
+// キーは変えられない（コードとカードが参照しているため）
+export async function updateAdminAiModel(
+  id: string,
+  ai_model: Partial<Omit<AdminAiModel, 'id' | 'key' | 'builtin' | 'available' | 'used_today'>>
+): Promise<AdminAiModel> {
+  const res = await apiClient.patch<{ model: AdminAiModel }>(`/api/v1/admin/ai_models/${id}`, { ai_model })
+  return res.data.model
+}
+
+export async function deleteAdminAiModel(id: string): Promise<void> {
+  await apiClient.delete(`/api/v1/admin/ai_models/${id}`)
 }
 
 // ── 引き換えコード ────────────────────────────────────────────

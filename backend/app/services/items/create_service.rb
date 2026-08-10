@@ -22,7 +22,9 @@ module Items
 
       # 無料枠は当月分を lazy 付与してから残高で判定・消費する。
       @user.ensure_current_period_credits!
-      cost = Billing::CreditCost.call(kind: :item_generation)
+      # 選ばれたモデルの設定で課金する。モデルごとに原価が違うため
+      image_model = @params[:image_model].presence
+      cost = Billing::CreditCost.call(kind: :item_generation, model_key: image_model)
       item = nil
 
       @user.with_lock do
@@ -42,6 +44,7 @@ module Items
                         AspectRatios::DEFAULT),
           custom_prompt: @params[:custom_prompt].presence,
           framing: @params[:framing].presence,
+          image_model: image_model,
           prompt_source: prompt_source
         )
         @user.consume_credits!(cost, item: item)

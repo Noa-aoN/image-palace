@@ -33,8 +33,11 @@ class GenerateImageJob < ApplicationJob
       effective_prompt = PromptBuilderService.effective_prompt(item, include_meaning: use_meaning)
       normalized = NormalizePromptService.call(effective_prompt)
       # provider/model が変わればキャッシュも分ける（既定 openai/gpt-image-1 は後方互換で素のキー）。
+      # 用途や上限で既定に落ちることがあるので、実際に使う key で引く。
+      # 指定どおりの key で引くと、落ちた先の絵を別モデルのキャッシュに書いてしまう
+      model_key = GenerateImageService.usable_key(item.image_model, purpose: "item")
       cache_key = GenerateImageService.namespaced_cache_key(
-        normalized, aspect_ratio: item.aspect_ratio, model_key: item.image_model
+        normalized, aspect_ratio: item.aspect_ratio, model_key: model_key
       )
       # プロンプト全文はユーザー入力（個人情報・機密語句を含み得る）なのでログに残さない。
       # 相関用にハッシュの先頭と長さだけ記録する。
@@ -55,7 +58,7 @@ class GenerateImageJob < ApplicationJob
         Rails.logger.info "[GenerateImageJob] CACHE MISS prompt_key=#{prompt_key}"
         result = GenerateImageService.call(
           prompt: effective_prompt, aspect_ratio: item.aspect_ratio,
-          kind: "item", user_id: item.user_id, model_key: item.image_model
+          kind: "item", user_id: item.user_id, model_key: model_key
         )
         shared_media = create_shared_media!(item, shared_media_key(cache_key, force_generate:), result)
         attach_image_data(

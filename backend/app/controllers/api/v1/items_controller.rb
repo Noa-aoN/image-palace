@@ -448,7 +448,7 @@ module Api
       # 積んでから足りないと分かると、画像だけ作られて課金できない状態になる。
       def charge_for_regeneration!(target)
         current_user.ensure_free_credits!
-        cost = ::Billing::CreditCost.call(kind: :regeneration)
+        cost = ::Billing::CreditCost.call(kind: :regeneration, model_key: target.image_model)
 
         current_user.with_lock do
           raise User::InsufficientCredits if current_user.available_credit_points < cost

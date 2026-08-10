@@ -97,11 +97,19 @@ class CostParameter < ApplicationRecord
       DEFAULTS.dig(key, :default)&.to_f || fallback
     end
 
+    # 画像1枚あたりの原価。
+    #
+    # 品質ごとの指定 → モデルごとの指定 → 登録簿（AiModel）の順に見る。
+    # 登録簿を最後にしているのは、ここで細かく指定した値のほうが確かなため。
+    # 逆に、新しく足したモデルは登録簿にしか値が無いので、そこで拾える。
     def image_unit_usd(model:, quality: nil)
       with_quality = quality.present? ? value_for("image_usd.#{model}.#{quality}", -1) : -1
       return with_quality if with_quality >= 0
 
-      value_for("image_usd.#{model}", 0)
+      by_model = value_for("image_usd.#{model}", -1)
+      return by_model if by_model >= 0
+
+      AiModel.registry.find { |m| m.model_id == model }&.unit_cost_usd.to_f
     end
 
     def infra_monthly_jpy
