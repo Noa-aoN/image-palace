@@ -20,6 +20,7 @@ import type { Tag } from '@/types/tag'
 import { PropertyBlock, BlockAction, BlockError } from '@/components/features/items/PropertyBlock'
 import { MeaningList } from '@/components/features/items/MeaningList'
 import { ExampleList } from '@/components/features/items/ExampleList'
+import { RelatedItems } from '@/components/features/items/RelatedItems'
 import { ItemPropertyBlocks } from '@/components/features/items/ItemPropertyBlocks'
 import { ItemUsageBlock } from '@/components/features/items/ItemUsageBlock'
 import { ItemReviewBlock } from '@/components/features/items/ItemReviewBlock'
@@ -543,6 +544,12 @@ export function ItemProperties({ item, onUpdated }: ItemPropertiesProps) {
           <BlockError message={examplesError} />
         </PropertyBlock>
       ),
+    },
+    {
+      // 関連カード。つながりに向きは無いので、どちらのカードからも同じものが見える
+      key: 'relations',
+      label: '関連カード',
+      node: <RelatedItems item={item} />,
     },
     {
       key: 'tags',

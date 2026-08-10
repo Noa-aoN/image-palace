@@ -178,6 +178,27 @@ export interface RegenerateOptions {
 
 // 再生成。failed・completed どちらからも呼べる。任意で指示を渡すとプロンプトに反映される。
 /**
+ * 関連カード。つながりに向きは無いので、相手の id だけで足し引きする。
+ * どの操作も、そのカードから見た関連カードの一覧を返す。
+ */
+export async function getItemRelations(id: string): Promise<Item[]> {
+  const res = await apiClient.get<{ relations: Item[] }>(`/api/v1/items/${id}/relations`)
+  return res.data.relations
+}
+
+export async function addItemRelation(id: string, toItemId: string): Promise<Item[]> {
+  const res = await apiClient.post<{ relations: Item[] }>(`/api/v1/items/${id}/relations`, {
+    to_item_id: toItemId,
+  })
+  return res.data.relations
+}
+
+export async function removeItemRelation(id: string, relatedItemId: string): Promise<Item[]> {
+  const res = await apiClient.delete<{ relations: Item[] }>(`/api/v1/items/${id}/relations/${relatedItemId}`)
+  return res.data.relations
+}
+
+/**
  * 例文を AI で書く。説明はそのままで、例文だけ書き直せる。
  * meaningId を渡すとその1件だけ、渡さなければ例文の無いものすべて。
  */
