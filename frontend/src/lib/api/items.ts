@@ -177,6 +177,18 @@ export interface RegenerateOptions {
 }
 
 // 再生成。failed・completed どちらからも呼べる。任意で指示を渡すとプロンプトに反映される。
+/**
+ * 例文を AI で書く。説明はそのままで、例文だけ書き直せる。
+ * meaningId を渡すとその1件だけ、渡さなければ例文の無いものすべて。
+ */
+export async function generateExamples(id: string, meaningId?: string): Promise<Item> {
+  const res = await apiClient.post<{ item: Item }>(
+    `/api/v1/items/${id}/examples`,
+    meaningId ? { meaning_id: meaningId } : {}
+  )
+  return res.data.item
+}
+
 /** セーフガードの承認。覆いを外して普通に見られる状態にする */
 export async function approveItemImage(id: string): Promise<Item> {
   const res = await apiClient.post<Item>(`/api/v1/items/${id}/approve_image`)

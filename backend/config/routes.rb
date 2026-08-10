@@ -97,6 +97,7 @@ Rails.application.routes.draw do
           # セーフガードの承認（覆いを外す）
           post :approve_image
           post :meaning
+          post :examples
           post :brief
           post :scene_rewrite
           post :fill_properties

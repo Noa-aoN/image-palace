@@ -109,12 +109,16 @@ export interface FillPropertiesResult {
 
 // 項目ごとではなく1回でまとめて埋める（項目数に費用と待ち時間を比例させない）。
 // 既定は空いている項目だけ。手で書いたものは上書きしない。
+//
+// keys を渡すとその項目だけを書く。1項目を書き直したいとき用で、
+// 呼び出しは1回のままなので「項目ごとに叩く」形にはならない。
 export async function fillItemProperties(
   itemId: string,
-  opts?: { overwrite?: boolean }
+  opts?: { overwrite?: boolean; keys?: string[] }
 ): Promise<FillPropertiesResult> {
   const res = await apiClient.post<FillPropertiesResult>(`/api/v1/items/${itemId}/fill_properties`, {
     overwrite: opts?.overwrite ?? false,
+    ...(opts?.keys ? { keys: opts.keys } : {}),
   })
   return res.data
 }

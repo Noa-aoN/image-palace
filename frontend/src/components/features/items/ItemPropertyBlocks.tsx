@@ -135,6 +135,7 @@ function PropertyEntryBlock({
   const [editing, setEditing] = useState(false)
   const [draft, setDraft] = useState('')
   const [saving, setSaving] = useState(false)
+  const [writing, setWriting] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
   const listValue = isList ? ((entry.value as string[] | null) ?? []) : []
@@ -166,11 +167,42 @@ function PropertyEntryBlock({
     }
   }
 
+  // この項目だけを AI に書かせる。呼び出しは1回なので、
+  // 「項目ごとに叩く」形（費用が項目数に比例する）にはならない
+  const write = async () => {
+    setWriting(true)
+    setError(null)
+    try {
+      const result = await fillItemProperties(item.id, { keys: [entry.key] })
+      onUpdated(await getItem(item.id))
+      if (!result.filled_keys.includes(entry.key)) {
+        // 確かでないものは返さない作りなので、書けないこと自体は異常ではない。
+        // 黙って何も起きないと壊れて見えるので、そう伝える
+        setError('確かなことが分からず、書けませんでした。')
+      }
+    } catch (err: unknown) {
+      const detail = (err as { response?: { data?: { error?: string } } })?.response?.data?.error
+      setError(detail ?? '書けませんでした。時間を置いてお試しください。')
+    } finally {
+      setWriting(false)
+    }
+  }
+
   return (
     <PropertyBlock
       title={entry.label}
+      busy={writing}
       actions={
         <>
+          {!editing && (
+            <BlockAction
+              icon={<Sparkles size={14} />}
+              label={filled ? 'AIで書き直す' : 'AIで書く'}
+              onClick={write}
+              busy={writing}
+              hideLabel={filled}
+            />
+          )}
           {!editing && (
             <BlockAction
               icon={filled ? <Pencil size={14} /> : <Plus size={14} />}
