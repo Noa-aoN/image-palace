@@ -3,7 +3,6 @@ import type { ReactNode } from 'react'
 import Link from 'next/link'
 import { ChevronRight, Layers, HelpCircle, Gamepad2, BarChart3, GraduationCap } from 'lucide-react'
 import { Card, CardContent } from '@/components/ui/card'
-import { FeatureGate } from '@/components/features/shared/FeatureGate'
 
 export const metadata: Metadata = { title: 'スタディ' }
 
@@ -12,8 +11,6 @@ type StudyMode = {
   icon: ReactNode
   label: string
   description: string
-  /** 運営が見せ方を決める機能。段階は管理画面（/admin/features）で切り替える */
-  feature?: string
 }
 
 const STUDY_MODES: StudyMode[] = [
@@ -34,7 +31,6 @@ const STUDY_MODES: StudyMode[] = [
     icon: <Gamepad2 size={20} />,
     label: 'プレイ',
     description: 'カルタや神経衰弱など、ゲームで楽しみながら反復できる学習モードです。',
-    feature: 'study_game',
   },
   {
     href: '/study/record',
@@ -56,21 +52,10 @@ export default function StudyPage() {
       </p>
 
       <div className="mt-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        {STUDY_MODES.map((mode) =>
-          mode.feature ? (
-            // 見せ方を運営が決める機能。段階は /admin/features で切り替える
-            <FeatureGate
-              key={mode.label}
-              feature={mode.feature}
-              title={mode.label}
-              description={mode.description}
-            >
-              <StudyModeCard mode={mode} />
-            </FeatureGate>
-          ) : (
-            <StudyModeCard key={mode.label} mode={mode} />
-          )
-        )}
+        {/* 各ページの段階はサイドバーと PageGate が見る。ここは札を並べるだけ */}
+        {STUDY_MODES.map((mode) => (
+          <StudyModeCard key={mode.label} mode={mode} />
+        ))}
       </div>
     </div>
   )

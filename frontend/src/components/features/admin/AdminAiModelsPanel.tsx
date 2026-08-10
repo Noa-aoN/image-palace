@@ -101,6 +101,7 @@ export function AdminAiModelsPanel() {
       <p className="text-sm text-muted-foreground">
         原価と消費クレジットを並べています。原価の高いモデルを足すときは、
         消費クレジットも一緒に上げてください（上げ忘れると粗利だけ減ります）。
+        使用率は直近 {page.usage_days} 日の実績です。
       </p>
 
       {adding && (
@@ -126,6 +127,7 @@ export function AdminAiModelsPanel() {
                   <th className="py-2 pr-3 text-right">原価</th>
                   <th className="py-2 pr-3 text-right">消費</th>
                   <th className="py-2 pr-3 text-right">1日の上限</th>
+                  <th className="py-2 pr-3">使用率</th>
                   <th className="py-2 pr-3">用途</th>
                   <th className="py-2 pr-3">状態</th>
                   <th className="py-2" />
@@ -176,6 +178,9 @@ export function AdminAiModelsPanel() {
                         />
                       </td>
                       <td className="py-2 pr-3">
+                        <UsageCell model={model} days={page.usage_days} />
+                      </td>
+                      <td className="py-2 pr-3">
                         {kind === 'image' ? (
                           <PurposePicker
                             model={model}
@@ -213,6 +218,41 @@ export function AdminAiModelsPanel() {
 
       {error && <p className="text-sm text-destructive">{error}</p>}
     </section>
+  )
+}
+
+/**
+ * どれくらい使われているか。
+ *
+ * 回数だけだと「よく使われている」かが読み取れないので割合も出す。
+ * まだ一度も使われていない種類は割合を出さない（0% と書くと、使われていないのか
+ * 分母が無いのかが分からない）。
+ */
+function UsageCell({ model, days }: { model: AdminAiModel; days: number }) {
+  if (model.used_recently === 0) {
+    return <span className="text-xs text-muted-foreground">{days}日間なし</span>
+  }
+
+  return (
+    <div className="space-y-1">
+      <div className="flex items-baseline gap-1.5 text-xs">
+        <span className="tabular-nums">{model.used_recently.toLocaleString()} 回</span>
+        {model.share != null && (
+          <span className="text-muted-foreground">{Math.round(model.share * 100)}%</span>
+        )}
+      </div>
+      {model.share != null && (
+        <div className="h-1.5 w-24 overflow-hidden rounded-full bg-muted">
+          <div
+            className="h-full rounded-full"
+            style={{ width: `${model.share * 100}%`, backgroundColor: 'var(--palace)' }}
+          />
+        </div>
+      )}
+      {model.cached_recently ? (
+        <p className="text-[11px] text-muted-foreground">うち {model.cached_recently} 回はキャッシュ</p>
+      ) : null}
+    </div>
   )
 }
 

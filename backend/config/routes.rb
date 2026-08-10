@@ -46,8 +46,9 @@ Rails.application.routes.draw do
         resources :ai_models, only: [ :index, :create, :update, :destroy ]
         resources :campaign_codes, only: [ :index, :create, :update, :destroy ]
         get "feature_flags", to: "feature_flags#index"
-        put "feature_flags/:key", to: "feature_flags#upsert"
-        delete "feature_flags/:key", to: "feature_flags#destroy"
+        # キーに「.」が入る（page.trophy）。制約を付けないと拡張子として切り落とされる
+        put "feature_flags/:key", to: "feature_flags#upsert", constraints: { key: %r{[^/]+} }
+        delete "feature_flags/:key", to: "feature_flags#destroy", constraints: { key: %r{[^/]+} }
         get "grant_policies", to: "grant_policies#index"
         put "grant_policies/:key", to: "grant_policies#upsert"
         delete "grant_policies/:key", to: "grant_policies#destroy"
@@ -56,7 +57,7 @@ Rails.application.routes.draw do
         get "finance", to: "finances#show"
         put "finance/parameters/:key", to: "finances#update_parameter"
         put "finance/actuals/:year/:month", to: "finances#update_actual"
-        resources :posts, only: [ :index, :create, :update, :destroy ] do
+        resources :posts, only: [ :index, :show, :create, :update, :destroy ] do
           member do
             post :deliver
           end

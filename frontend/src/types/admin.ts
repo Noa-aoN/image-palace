@@ -145,6 +145,12 @@ export interface AdminAiModel {
   /** 鍵が入っていて実際に使えるか。enabled とは別 */
   available: boolean
   used_today: number | null
+  /** 直近の使用回数 */
+  used_recently: number
+  /** その種類（画像／文章）の中での割合。分母が0なら null */
+  share: number | null
+  /** そのうちキャッシュで済んだ回数（画像のみ） */
+  cached_recently: number | null
 }
 
 export interface AdminAiModelsPage {
@@ -153,6 +159,8 @@ export interface AdminAiModelsPage {
   providers: string[]
   purposes: string[]
   points_per_credit: number
+  /** 使用状況を数えている日数 */
+  usage_days: number
 }
 
 /** 引き換えコード（運営が発行し、利用者が入力してクレジットを受け取る） */
@@ -187,6 +195,12 @@ export interface AdminCampaignCodesPage {
 export interface AdminFeatureFlag {
   key: string
   label: string
+  /** サイドバーの分類（palace / outside / ops / other） */
+  group: string
+  group_label: string
+  /** ページなら URL。ページ以外は null */
+  path: string | null
+  note: string | null
   stage: string
   default_stage: string
   /** 画面で触った結果か（false ならコード側の既定で動いている） */
@@ -197,6 +211,7 @@ export interface AdminFeatureFlag {
 export interface AdminFeatureFlagsPage {
   features: AdminFeatureFlag[]
   stages: { value: string; label: string }[]
+  groups: { key: string; label: string }[]
 }
 
 export interface AdminGrantPolicy {

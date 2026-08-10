@@ -4,18 +4,15 @@ import { useEffect, useState } from 'react'
 import { FlaskConical, RotateCcw } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Spinner } from '@/components/ui/spinner'
-import {
-  getAdminFeatureFlags,
-  updateAdminFeatureFlag,
-  resetAdminFeatureFlag,
-} from '@/lib/api/admin'
+import { getAdminFeatureFlags, updateAdminFeatureFlag, resetAdminFeatureFlag } from '@/lib/api/admin'
 import type { AdminFeatureFlag } from '@/types/admin'
 
 /**
- * 作りかけの機能を、どこまで見せるかの切り替え。
+ * ページをどこまで見せるかの切り替え。
  *
- * これまでは画面ごとに「準備中」をベタ書きしていたため、外すのにデプロイが要り、
- * 戻すのにもデプロイが要った。ここで切り替えれば、次の読み込みから反映される。
+ * 単位はページ（サイドバーの1項目）にしてある。機能ごとの細かいキーにすると、
+ * どこを触れば何が消えるのかが分からない。**サイドバーと同じ並び**で出すことで、
+ * 押す前に結果が読めるようにする。
  *
  * 段階を4つに分けているのは、「隠す」と「公開」の間が要るため。
  * 予告として見せたいだけの段階と、触ってもらいたいが粗い段階は別物。
@@ -23,6 +20,7 @@ import type { AdminFeatureFlag } from '@/types/admin'
 export function AdminFeaturesPanel() {
   const [features, setFeatures] = useState<AdminFeatureFlag[]>([])
   const [stages, setStages] = useState<{ value: string; label: string }[]>([])
+  const [groups, setGroups] = useState<{ key: string; label: string }[]>([])
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
@@ -32,6 +30,7 @@ export function AdminFeaturesPanel() {
       .then((page) => {
         setFeatures(page.features)
         setStages(page.stages)
+        setGroups(page.groups)
       })
       .catch(() => setError('読み込めませんでした。'))
       .finally(() => setLoading(false))
@@ -65,64 +64,84 @@ export function AdminFeaturesPanel() {
   }
 
   return (
-    <section className="space-y-4 rounded-xl border border-border bg-card p-5">
+    <section className="space-y-5 rounded-xl border border-border bg-card p-5">
       <div className="flex items-center gap-2">
         <FlaskConical size={18} style={{ color: 'var(--palace)' }} />
-        <h2 className="text-lg font-semibold">機能の見せ方</h2>
+        <h2 className="text-lg font-semibold">ページの見せ方</h2>
       </div>
       <p className="text-sm text-muted-foreground">
-        作りかけの機能を、どこまで出すかを決めます。変更はデプロイなしで、次の読み込みから効きます。
+        サイドバーの項目ごとに、どこまで出すかを決めます。変更はデプロイなしで、次の読み込みから効きます。
+        <br />
+        <strong className="text-foreground">「表示しない」はページ本体にも効きます</strong>
+        （URL を直に叩いても開けません）。
       </p>
+
+      <div className="flex flex-wrap gap-3 rounded-lg bg-muted/40 px-3 py-2 text-xs text-muted-foreground">
+        {stages.map((stage) => (
+          <span key={stage.value}>
+            <strong className="text-foreground">{stage.label}</strong>：{STAGE_HELP[stage.value]}
+          </span>
+        ))}
+      </div>
 
       {loading ? (
         <p className="flex items-center gap-2 text-sm text-muted-foreground">
           <Spinner size={14} /> 読み込み中…
         </p>
       ) : (
-        <ul className="space-y-3">
-          {features.map((feature) => (
-            <li key={feature.key} className="space-y-2 border-t border-border pt-3 first:border-0 first:pt-0">
-              <div className="flex flex-wrap items-center justify-between gap-2">
-                <div>
-                  <p className="text-sm font-medium">{feature.label}</p>
-                  <p className="text-xs text-muted-foreground">{feature.key}</p>
-                </div>
-                {feature.customized && (
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => reset(feature.key)}
-                    disabled={saving === feature.key}
-                    className="flex items-center gap-1.5 text-xs"
-                  >
-                    <RotateCcw size={13} />
-                    既定（{stageLabel(stages, feature.default_stage)}）へ戻す
-                  </Button>
-                )}
-              </div>
-              <div className="flex flex-wrap gap-2">
-                {stages.map((stage) => (
-                  <button
-                    key={stage.value}
-                    type="button"
-                    onClick={() => change(feature.key, stage.value)}
-                    disabled={saving === feature.key}
-                    aria-pressed={feature.stage === stage.value}
-                    className={`rounded-full border px-3 py-1 text-sm transition-colors disabled:opacity-60 ${
-                      feature.stage === stage.value
-                        ? 'border-transparent text-white'
-                        : 'border-border text-muted-foreground hover:bg-muted'
-                    }`}
-                    style={feature.stage === stage.value ? { backgroundColor: 'var(--palace)' } : undefined}
-                  >
-                    {stage.label}
-                  </button>
+        groups.map((group) => {
+          const rows = features.filter((f) => f.group === group.key)
+          if (rows.length === 0) return null
+
+          return (
+            <div key={group.key} className="space-y-2">
+              <h3 className="text-sm font-medium">{group.label}</h3>
+              <ul className="divide-y divide-border rounded-lg border border-border">
+                {rows.map((feature) => (
+                  <li key={feature.key} className="flex flex-wrap items-center justify-between gap-3 px-3 py-2.5">
+                    <div className="min-w-0">
+                      <p className="text-sm font-medium">{feature.label}</p>
+                      <p className="truncate text-xs text-muted-foreground">
+                        {feature.path ?? feature.note ?? feature.key}
+                      </p>
+                    </div>
+                    <div className="flex flex-wrap items-center gap-1.5">
+                      {stages.map((stage) => (
+                        <button
+                          key={stage.value}
+                          type="button"
+                          onClick={() => change(feature.key, stage.value)}
+                          disabled={saving === feature.key}
+                          aria-pressed={feature.stage === stage.value}
+                          className={`rounded-full border px-2.5 py-0.5 text-xs transition-colors disabled:opacity-60 ${
+                            feature.stage === stage.value
+                              ? 'border-transparent text-white'
+                              : 'border-border text-muted-foreground hover:bg-muted'
+                          }`}
+                          style={feature.stage === stage.value ? { backgroundColor: 'var(--palace)' } : undefined}
+                        >
+                          {stage.label}
+                        </button>
+                      ))}
+                      {feature.customized && (
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => reset(feature.key)}
+                          disabled={saving === feature.key}
+                          className="flex items-center gap-1 text-xs"
+                          aria-label="既定へ戻す"
+                        >
+                          <RotateCcw size={12} />
+                        </Button>
+                      )}
+                    </div>
+                  </li>
                 ))}
-              </div>
-              <p className="text-xs text-muted-foreground">{STAGE_HELP[feature.stage] ?? ''}</p>
-            </li>
-          ))}
-        </ul>
+              </ul>
+            </div>
+          )
+        })
       )}
 
       {error && <p className="text-sm text-destructive">{error}</p>}
@@ -132,12 +151,8 @@ export function AdminFeaturesPanel() {
 
 // 押した結果どう見えるかを、押す前に分かるようにする
 const STAGE_HELP: Record<string, string> = {
-  hidden: '入口ごと出しません。存在を知らせたくないときに。',
-  development: '「準備中」と出しますが、触れません。予告として見せるときに。',
-  prototype: '触れます。「プロトタイプ版」と印を付けて、粗さを了解してもらいます。',
-  released: '普通の機能として出します。印は付きません。',
-}
-
-function stageLabel(stages: { value: string; label: string }[], value: string): string {
-  return stages.find((s) => s.value === value)?.label ?? value
+  hidden: 'サイドバーから消し、ページも開けない',
+  development: 'サイドバーに「準備中」と出るが、中身は出ない',
+  prototype: '使える。「試作」の印が付く',
+  released: '普通に出す',
 }

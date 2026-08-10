@@ -6,7 +6,12 @@ module Api
     # 出す・出さないを変えるたびにデプロイが要る。
     class FeaturesController < BaseController
       def index
-        render json: { features: FeatureFlag.stages }
+        stages = FeatureFlag.stages
+        render json: {
+          features: stages,
+          # パス → キー。サイドバーとページ本体が、いま開いている場所から段階を引ける
+          paths: FeatureFlag::DEFAULTS.filter_map { |key, d| [ d[:path], key ] if d[:path] }.to_h
+        }
       end
     end
   end

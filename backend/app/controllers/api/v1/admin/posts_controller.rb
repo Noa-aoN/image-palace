@@ -6,11 +6,15 @@ module Api
       # 本文は平文で受け取り、こちらで塊に組み立てる。
       # 書く側に構造化を強いると続かないため。
       class PostsController < BaseController
-        before_action :set_post, only: [ :update, :destroy, :deliver ]
+        before_action :set_post, only: [ :show, :update, :destroy, :deliver ]
 
         def index
           posts = Post.in_category(params[:category]).for_listing.limit(200)
           render json: { posts: posts.map { |post| serialize(post) } }
+        end
+
+        def show
+          render json: serialize(@post)
         end
 
         def create
@@ -93,10 +97,22 @@ module Api
             pinned: post.pinned,
             published: post.published?,
             published_at: post.published_at,
+            # 下書き / 予約 / 公開。published だけだと「予約」が下書きに見える
+            status: post_status(post),
+            views_count: post.views_count,
             delivered_at: post.delivered_at,
             author_email: post.author&.email,
             updated_at: post.updated_at
           }
+        end
+
+        # 公開予定の日時が未来なら「予約」。published? は未来を false にするので、
+        # そのままでは下書きと区別が付かない
+        def post_status(post)
+          return "draft" if post.published_at.blank?
+          return "scheduled" if post.published_at > Time.current
+
+          "published"
         end
 
         def render_error(message)

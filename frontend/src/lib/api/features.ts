@@ -12,7 +12,13 @@ export type FeatureStage = 'hidden' | 'development' | 'prototype' | 'released'
 
 export type FeatureStages = Record<string, FeatureStage>
 
-export async function getFeatureStages(): Promise<FeatureStages> {
-  const res = await apiClient.get<{ features: FeatureStages }>('/api/v1/features')
-  return res.data.features
+export interface FeatureStagesResponse {
+  features: FeatureStages
+  /** パス → キー。いま開いている場所から段階を引くのに使う */
+  paths: Record<string, string>
+}
+
+export async function getFeatureStages(): Promise<FeatureStagesResponse> {
+  const res = await apiClient.get<FeatureStagesResponse>('/api/v1/features')
+  return res.data
 }

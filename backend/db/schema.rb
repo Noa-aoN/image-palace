@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_08_10_000007) do
+ActiveRecord::Schema[8.1].define(version: 2026_08_10_000009) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
   enable_extension "pg_trgm"
@@ -394,6 +394,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_08_10_000007) do
     t.jsonb "tags", default: [], null: false
     t.string "title", null: false
     t.datetime "updated_at", null: false
+    t.integer "views_count", default: 0, null: false
     t.index ["category", "published_at"], name: "index_posts_on_category_and_published_at"
     t.index ["slug"], name: "index_posts_on_slug", unique: true
   end

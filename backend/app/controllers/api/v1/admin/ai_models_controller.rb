@@ -4,9 +4,13 @@ module Api
       # AI モデルの登録簿。登録・有効/無効・既定・表示・原価・消費クレジット・
       # 用途・1日の上限を、1つの表で扱う。
       class AiModelsController < BaseController
+        # 直近の使用状況を数える窓。長すぎると「いま何が使われているか」が薄まる
+        USAGE_WINDOW = 30.days
+
         def index
           render json: {
-            models: AiModel.registry.map { |model| serialize(model) },
+            models: AiModel.registry.map { |model| serialize(model, usage) },
+            usage_days: (USAGE_WINDOW / 1.day).to_i,
             kinds: AiModel::KINDS,
             providers: GenerateImageService::PROVIDERS.keys,
             purposes: AiModel::IMAGE_PURPOSES,
@@ -66,7 +70,33 @@ module Api
           )
         end
 
-        def serialize(model)
+        # モデル名ごとの使用回数。画像と文章をまとめて1回ずつ数える。
+        # 1行ごとに数えるとモデルの数だけ問い合わせが飛ぶ
+        def usage
+          @usage ||= begin
+            since = USAGE_WINDOW.ago
+            images = ImageUsage.since(since).group(:model).count
+            cached = ImageUsage.since(since).where(cached: true).group(:model).count
+            texts = AiUsage.since(since).group(:model).count
+            { images: images, cached: cached, texts: texts,
+              image_total: images.values.sum, text_total: texts.values.sum }
+          end
+        end
+
+        def recent_count(model, stats)
+          model.kind == "image" ? stats[:images][model.model_id].to_i : stats[:texts][model.model_id].to_i
+        end
+
+        # その種類（画像／文章）の中での割合。分母が0なら null
+        # （0% と出すと、使われていないのか分母が無いのかが分からない）
+        def share_of(model, stats)
+          total = model.kind == "image" ? stats[:image_total] : stats[:text_total]
+          return nil if total.zero?
+
+          recent_count(model, stats).fdiv(total).round(3)
+        end
+
+        def serialize(model, stats = usage)
           {
             id: model.id,
             key: model.key,
@@ -89,7 +119,13 @@ module Api
             builtin: model.builtin?,
             # 鍵が入っていないと、有効にしていても実際には使えない
             available: model.available?,
-            used_today: model.kind == "image" ? ImageUsage.where(model: model.model_id, created_at: Time.current.beginning_of_day..).count : nil
+            used_today: model.kind == "image" ? ImageUsage.where(model: model.model_id, created_at: Time.current.beginning_of_day..).count : nil,
+            # 直近の使用回数と、その種類の中での割合。
+            # 割合まで出すのは、回数だけだと「よく使われている」が読み取れないため
+            used_recently: recent_count(model, stats),
+            share: share_of(model, stats),
+            # キャッシュで済んだぶん（API を呼んでいない）。原価の読み方が変わる
+            cached_recently: model.kind == "image" ? stats[:cached][model.model_id].to_i : nil
           }
         end
       end

@@ -4,6 +4,7 @@ import { RightPanel } from '@/components/features/panel/RightPanel'
 import { HubBackground } from '@/components/features/layout/HubBackground'
 import { DisplayStyleOnboarding } from '@/components/features/onboarding/DisplayStyleOnboarding'
 import { CardCreatePanelSlot } from '@/components/features/items/CardCreatePanel'
+import { PageGate } from '@/components/features/shared/PageGate'
 
 export default function AppLayout({ children }: { children: React.ReactNode }) {
   return (
@@ -13,7 +14,11 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
       <HubBackground />
       <Sidebar />
       <main className="flex-1 overflow-y-auto">
-        <AuthGuard>{children}</AuthGuard>
+        {/* サイドバーから消すだけでは、URL を直に叩けば開けてしまう。
+            中身のほうも同じ段階に従わせる */}
+        <AuthGuard>
+          <PageGate>{children}</PageGate>
+        </AuthGuard>
       </main>
       {/* 右パネルはオーバーレイ（絶対配置）。main を押し縮めない。 */}
       <RightPanel />
