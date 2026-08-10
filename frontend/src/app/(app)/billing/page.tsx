@@ -7,6 +7,7 @@ import { CategorySections, type CategorySection } from '@/components/features/my
 import { ComingSoon } from '@/components/features/myroom/ComingSoon'
 import { CreditHistoryPanel } from '@/components/features/billing/CreditHistoryPanel'
 import { AiUsagePanel } from '@/components/features/billing/AiUsagePanel'
+import { RedeemCodePanel } from '@/components/features/billing/RedeemCodePanel'
 import {
   getPlans,
   getBillingSummary,
@@ -245,6 +246,9 @@ export default function BillingPage() {
               )}
             </dl>
           </section>
+
+          {/* 受け取ったコードの行き先。残高のすぐ下に置く */}
+          <RedeemCodePanel onRedeemed={() => useBillingStore.getState().fetchSummary()} />
 
           <AiUsagePanel />
 

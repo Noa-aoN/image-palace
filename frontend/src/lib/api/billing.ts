@@ -56,3 +56,14 @@ export async function getCreditTransactions(
   })
   return res.data
 }
+
+/** 引き換えコードを使う。断られた理由はサーバーの文面をそのまま画面に出す */
+export async function redeemCampaignCode(code: string): Promise<{
+  credits: number
+  label: string
+  expires_at: string | null
+  available_credits: number
+}> {
+  const res = await apiClient.post('/api/v1/campaign_codes/redeem', { code })
+  return res.data
+}

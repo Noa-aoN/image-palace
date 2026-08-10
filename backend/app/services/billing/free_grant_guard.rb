@@ -27,6 +27,9 @@ module Billing
       cap = daily_cap
       return true if cap <= 0
 
+      # 数えるのは**自動で配るぶん**だけ。引き換えコードは運営が意図して配るもので、
+      # ここに混ぜると、大きめのキャンペーンが新規登録のお試し枠を食い潰す。
+      # コードの配りすぎは、コードごとの人数上限で止める
       granted = CreditGrant.where(kind: %w[trial monthly_free], created_at: 24.hours.ago..).sum(:amount_points)
       return true if (granted + amount_points) <= cap * Billing::POINTS_PER_CREDIT
 
