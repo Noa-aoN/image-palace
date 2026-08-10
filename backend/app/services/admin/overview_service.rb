@@ -6,21 +6,29 @@ module Admin
   # 一覧を引いて Ruby 側で数えると、行が増えたぶんだけ重くなる。
   # 数えるものは COUNT / SUM / GROUP BY で DB に数えさせ、返すのは数字だけにする。
   class OverviewService
-    # 折れ線に出す日数
-    SERIES_DAYS = 30
+    # 見られる期間。既定は30日。
+    #
+    # 「直近30日」に固定していると、始めたばかりの週の動きも、四半期の傾きも読めない。
+    # 折れ線の点の数もこれに合わせる（90日ぶんを日ごとに出すと潰れるので、上限を置く）
+    PERIODS = [ 7, 30, 90 ].freeze
+    DEFAULT_PERIOD = 30
+    # 折れ線に出す点の数の上限。これを超える期間はまとめて出す
+    MAX_SERIES_POINTS = 45
 
-    def self.call(now: Time.current)
-      new(now).call
+    def self.call(now: Time.current, days: DEFAULT_PERIOD)
+      new(now, days).call
     end
 
-    def initialize(now)
+    def initialize(now, days = DEFAULT_PERIOD)
       @now = now
-      @since = now - SERIES_DAYS.days
+      @days = PERIODS.include?(days.to_i) ? days.to_i : DEFAULT_PERIOD
+      @since = now - @days.days
     end
 
     def call
       {
         generated_at: @now,
+        period: { days: @days, options: PERIODS },
         users: users_summary,
         content: content_summary,
         generation: generation_summary,
@@ -34,7 +42,7 @@ module Admin
         # 概要にも今月の収支を出す。別リクエストにすると、遠い DB への往復が二重になる
         finance: ::Admin::FinanceService.call(year: @now.year, month: @now.month),
         series: {
-          days: SERIES_DAYS,
+          days: @days,
           new_users: daily_counts(User.all),
           new_items: daily_counts(Item.all)
         },
@@ -86,20 +94,43 @@ module Admin
     end
 
     def billing_summary
-      active = Subscription.where(status: %w[active trialing]).count
+      scope = Subscription.where(status: %w[active trialing])
+      active = scope.count
+      # テストで作った契約を本物と混ぜない。決済側（credit_transactions.livemode）と同じ扱いで、
+      # 目印を持たない古い行は「本番の決済がまだ無かった時期のもの」＝テストとみなす
+      live = scope.where(livemode: true).count
       total = User.count
       consumed = CreditTransaction.where(kind: "consumption", created_at: @since..).sum(:delta)
+      trialing = scope.where(status: "trialing").count
+
       {
         active_subscriptions: active,
+        live_subscriptions: live,
+        test_subscriptions: active - live,
+        # お試し中は、まだお金が入っていない。「有料契約」と一緒に数えると入金を読み違える
+        trialing_subscriptions: trialing,
+        # 今期の終わりで切れるもの。落ち込みを事前に見るため
+        canceling_subscriptions: scope.where(cancel_at_period_end: true).count,
         # 有料に至った割合。母数は登録した全員
         paid_rate: total.positive? ? (active.fdiv(total) * 100).round(1) : 0.0,
-        by_plan: Subscription.where(status: %w[active trialing]).joins(:plan).group("plans.name").count,
+        by_plan: plan_breakdown(scope),
         # 消費は負の値で記録されているので、使ったぶんを正の数にして返す
+        credits_consumed: (-consumed).fdiv(::Billing::POINTS_PER_CREDIT).round(2),
         credits_consumed_last_30d: (-consumed).fdiv(::Billing::POINTS_PER_CREDIT).round(2),
         # 未使用の総量は credit_liability が持つ。ここで別に数え直すと、
         # 同じ画面に同じ名前の違う数字が並ぶ（実際、期限付きグラントを取りこぼしていた）
         outstanding_credits: credit_liability[:total]
       }
+    end
+
+    # プラン別の人数と、その月にいくらになるか。
+    # 人数だけでは「どのプランが売上を支えているか」が分からない
+    def plan_breakdown(scope)
+      # 呼び名（市民・書記官…）は画面側が tier から引く。ここは素の値を返す
+      counts = scope.joins(:plan).group("plans.name", "plans.tier", "plans.price_cents").count
+      counts.map { |(name, tier, price_cents), count|
+        { name: name, tier: tier, count: count, mrr_jpy: price_cents.to_i * count }
+      }.sort_by { |row| -row[:mrr_jpy] }
     end
 
     # 未使用クレジットの総量。
@@ -134,8 +165,14 @@ module Admin
         unlimited: to_credits(old_topup_points + grants["unlimited"].to_i),
         total: to_credits(total_points),
         # 未使用クレジットが**全部使われたら**、これだけ原価が出る（円）。
-        # クレジットの数だけ見ても、いくら抱えているのかは分からない
-        total_cost_jpy: (to_credits(total_points) * ::Billing::Catalog::COST_PER_CREDIT).round,
+        # クレジットの数だけ見ても、いくら抱えているのかは分からない。
+        #
+        # 単価は Catalog::COST_PER_CREDIT（9円）ではなく、**いまの実費**を使う。
+        # あちらは値付けを決めるための安全側の見立てで、実際に出ていく額ではない。
+        # 収支ページと同じ出どころ（既定の画像モデルの単価 × 為替）にして、
+        # 2つの画面が違う原価を言わないようにする
+        total_cost_jpy: (to_credits(total_points) * credit_unit_cost_jpy).round,
+        credit_unit_cost_jpy: credit_unit_cost_jpy.round(2),
         # 内訳（どこに溜まっているか）
         breakdown: {
           subscription: to_credits(subscription_points),
@@ -197,6 +234,18 @@ module Admin
       # 期限付きで積むようになったので、買い切りのグラント残量も数える
       unused = old_topup_points + topup_grant_points
       (unused * row["paid"].to_i.fdiv(points)).round
+    end
+
+    # クレジット1つ（＝画像1枚）の実費（円）。
+    # 既定の画像モデルの単価に為替を掛ける。収支ページの画像原価と同じ出どころ
+    def credit_unit_cost_jpy
+      @credit_unit_cost_jpy ||= begin
+        costs = CostParameter.table
+        model = AiModel.registry.find { |m| m.kind == "image" && m.default_for_kind } ||
+                AiModel.registry.find { |m| m.kind == "image" }
+        usd = model ? costs.image_unit_usd(model: model.model_id) : 0.0
+        usd * costs.value_for("fx_usd_jpy")
+      end
     end
 
     def to_credits(points)
@@ -289,16 +338,20 @@ module Admin
       }
     end
 
-    # 日ごとの件数。作られなかった日も 0 で埋めて、折れ線が途切れないようにする
+    # 日ごとの件数。作られなかった日も 0 で埋めて、折れ線が途切れないようにする。
+    #
+    # 期間が長いときは何日かをまとめる。90日ぶんを1日1点で描くと、
+    # 点が細かすぎて傾きが読めなくなる（読みたいのは日々の上下ではなく傾き）
     def daily_counts(scope)
       counts = scope.where(created_at: @since..)
                     .group(Arel.sql("DATE(created_at)"))
                     .count
                     .transform_keys(&:to_s)
 
-      (0...SERIES_DAYS).map do |offset|
-        date = (@since + offset.days).to_date.to_s
-        { date: date, count: counts[date].to_i }
+      bucket = (@days.to_f / MAX_SERIES_POINTS).ceil
+      (0...@days).each_slice(bucket).map do |offsets|
+        dates = offsets.map { |offset| (@since + offset.days).to_date.to_s }
+        { date: dates.first, count: dates.sum { |date| counts[date].to_i } }
       end
     end
 

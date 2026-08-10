@@ -46,16 +46,29 @@ export interface AdminOverview {
     total: number
     /** 全部使われたら出ていく原価の目安（円）。unused_topup_value とは別物（あちらは預り金） */
     total_cost_jpy: number
+    /** クレジット1つ（＝画像1枚）の実費（円）。収支ページの画像原価と同じ出どころ */
+    credit_unit_cost_jpy: number
     breakdown: { subscription: number; topup: number; grant: number }
     expired_last_30d: number
     /** 買い切りで受け取った額のうち、まだ提供していないぶん（円） */
     unused_topup_value: number
     next_expiry_at: string | null
   }
+  /** いま見ている期間（日数）と、選べる候補 */
+  period: { days: number; options: number[] }
   billing: {
     active_subscriptions: number
+    /** テストの契約を除いた数。目印を持たない古い行はテスト扱い */
+    live_subscriptions: number
+    test_subscriptions: number
+    /** お試し中。まだお金は入っていない */
+    trialing_subscriptions: number
+    /** 今期の終わりで切れるもの */
+    canceling_subscriptions: number
     paid_rate: number
-    by_plan: Record<string, number>
+    by_plan: { name: string; tier: string | null; count: number; mrr_jpy: number }[]
+    /** その期間に使われたクレジット */
+    credits_consumed: number
     credits_consumed_last_30d: number
     outstanding_credits: number
   }

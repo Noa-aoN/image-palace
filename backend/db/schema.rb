@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_08_11_000007) do
+ActiveRecord::Schema[8.1].define(version: 2026_08_11_000008) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
   enable_extension "pg_trgm"
@@ -757,6 +757,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_08_11_000007) do
     t.datetime "created_at", null: false
     t.datetime "current_period_end"
     t.datetime "current_period_start"
+    t.boolean "livemode"
     t.uuid "plan_id", null: false
     t.datetime "started_at", null: false
     t.string "status"
@@ -764,6 +765,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_08_11_000007) do
     t.string "stripe_subscription_id"
     t.datetime "updated_at", null: false
     t.uuid "user_id", null: false
+    t.index ["livemode", "status"], name: "index_subscriptions_on_livemode_and_status"
     t.index ["plan_id"], name: "index_subscriptions_on_plan_id"
     t.index ["stripe_customer_id"], name: "index_subscriptions_on_stripe_customer_id"
     t.index ["stripe_subscription_id"], name: "index_subscriptions_on_stripe_subscription_id", unique: true, where: "(stripe_subscription_id IS NOT NULL)"

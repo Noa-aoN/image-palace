@@ -125,7 +125,7 @@ RSpec.describe "Api::V1::Admin", type: :request do
       expect(json_response["users"]["total"]).to be >= 2
       expect(json_response["content"]["items"]).to eq(1)
       expect(json_response["generation"]["by_status"]["completed"]).to eq(1)
-      expect(json_response["series"]["new_users"].size).to eq(Admin::OverviewService::SERIES_DAYS)
+      expect(json_response["series"]["new_users"].size).to eq(Admin::OverviewService::DEFAULT_PERIOD)
       expect(json_response["billing"]).to have_key("paid_rate")
       expect(json_response["ai"]).to have_key("by_kind")
     end
