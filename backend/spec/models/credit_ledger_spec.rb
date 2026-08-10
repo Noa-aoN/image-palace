@@ -1,6 +1,6 @@
 require "rails_helper"
 
-# User のクレジット台帳ロジック（2バケット制：サブスク分は月次リセット、Top-up は繰り越し）。
+# User のクレジット台帳ロジック（当月分・期限付きグラント・古い買い切りの3つの入れ物）。
 RSpec.describe "User credit ledger", type: :model do
   let(:user) { create(:user, :confirmed) }
 
@@ -17,34 +17,42 @@ RSpec.describe "User credit ledger", type: :model do
   end
 
   describe "#reset_subscription_credits!" do
-    it "resets the subscription bucket and logs expire + grant" do
+    it "使い残しは失効させず、期限付きの持ち越しに移す" do
       user.update!(subscription_credits: 7)
 
       expect {
         user.reset_subscription_credits!(100)
       }.to change { user.reload.subscription_credits }.from(7).to(100)
 
+      carryover = user.credit_grants.find_by(kind: "subscription_carryover")
+      expect(carryover.remaining_points).to eq(7)
+      # 届いた日から数えて6ヶ月ぶん（当月分として1ヶ月すでに居たので、残りは5ヶ月）
+      expect(carryover.expires_at).to be_within(1.day).of(5.months.from_now)
+
+      # 入れ物を移しただけなので、残高も台帳も「増えた・減った」を書かない
       kinds = user.credit_transactions.order(:created_at).pluck(:kind)
-      expect(kinds).to eq(%w[subscription_expire subscription_grant])
-      expect(user.topup_credits).to eq(0)
+      expect(kinds).to eq(%w[subscription_grant])
+      expect(user.available_credit_points).to eq(107)
     end
 
-    it "skips the expire log when there is nothing to forfeit" do
+    it "使い残しが無ければ持ち越しを作らない" do
       expect {
         user.reset_subscription_credits!(50)
       }.to change(CreditTransaction, :count).by(1)
       expect(user.credit_transactions.last.kind).to eq("subscription_grant")
+      expect(user.credit_grants.where(kind: "subscription_carryover")).to be_empty
     end
 
-    it "forfeits without logging a grant when amount is zero (解約時の失効)" do
+    it "forfeit: true では失効させる（解約時。0デルタの付与ログは残さない）" do
       user.update!(subscription_credits: 40)
 
       expect {
-        user.reset_subscription_credits!(0)
+        user.reset_subscription_credits!(0, forfeit: true)
       }.to change { user.reload.subscription_credits }.from(40).to(0)
 
       kinds = user.credit_transactions.order(:created_at).pluck(:kind)
-      expect(kinds).to eq(%w[subscription_expire]) # 0デルタの subscription_grant は残さない
+      expect(kinds).to eq(%w[subscription_expire])
+      expect(user.credit_grants.where(kind: "subscription_carryover")).to be_empty
     end
   end
 

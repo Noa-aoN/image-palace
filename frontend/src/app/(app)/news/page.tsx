@@ -1,9 +1,9 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import Link from 'next/link'
-import { Megaphone, Clock } from 'lucide-react'
+import { Megaphone } from 'lucide-react'
 import { Button } from '@/components/ui/button'
+import { ListRows } from '@/components/features/posts/ListRows'
 import { getPosts } from '@/lib/api/posts'
 import { POST_CATEGORIES, POST_CATEGORY_LABELS, type Post, type PostCategory } from '@/types/post'
 
@@ -32,7 +32,7 @@ export default function NewsPage() {
   }, [category])
 
   return (
-    <div className="mx-auto max-w-7xl px-6 py-12">
+    <div className="mx-auto max-w-4xl px-6 py-12">
       <header>
         <h1 className="flex items-center gap-2.5 text-2xl font-semibold">
           <Megaphone size={26} style={{ color: 'var(--palace)' }} />
@@ -65,35 +65,23 @@ export default function NewsPage() {
         <p className="mt-8 text-sm text-muted-foreground">まだ投稿はありません。</p>
       )}
 
-      <ul className="mt-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-        {posts?.map((post) => (
-          <li key={post.slug}>
-            <Link
-              href={`/news/${post.slug}`}
-              className="flex h-full flex-col rounded-xl border border-border bg-card p-5 transition-colors hover:bg-muted"
-            >
-              <div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
-                <span className="rounded-full border border-border px-2 py-0.5">{post.category_label}</span>
-                {post.published_at && (
-                  <time dateTime={post.published_at}>
-                    {new Date(post.published_at).toLocaleDateString('ja-JP')}
-                  </time>
-                )}
-                {post.reading_minutes && (
-                  <span className="flex items-center gap-1">
-                    <Clock size={12} />約{post.reading_minutes}分
-                  </span>
-                )}
-                {post.pinned && <span className="text-[var(--palace)]">重要</span>}
-              </div>
-              <h2 className="mt-2 font-semibold">{post.title}</h2>
-              {post.excerpt && (
-                <p className="mt-2 line-clamp-3 text-sm text-muted-foreground">{post.excerpt}</p>
-              )}
-            </Link>
-          </li>
-        ))}
-      </ul>
+      {posts && posts.length > 0 && (
+        <div className="mt-8">
+          <ListRows
+            items={posts.map((post) => ({
+              key: post.slug,
+              href: `/news/${post.slug}`,
+              title: post.title,
+              excerpt: post.excerpt,
+              date: post.published_at,
+              readingMinutes: post.reading_minutes,
+              // 種類で絞り込めるので、「すべて」のときだけ種類を出す
+              badge: category === null ? post.category_label : null,
+              pinned: post.pinned,
+            }))}
+          />
+        </div>
+      )}
     </div>
   )
 }
