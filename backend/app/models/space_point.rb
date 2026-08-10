@@ -8,13 +8,14 @@ class SpacePoint < ApplicationRecord
   has_one_attached :thumb
 
   GENERATION_STATUSES = %w[pending processing completed failed].freeze
-  GENERATION_ERROR_KEYS = %w[generation_error generation_error_code].freeze
+  GENERATION_ERROR_KEYS = %w[generation_error generation_error_code generation_failure_kind].freeze
   NAME_MAX_LENGTH = 100
 
   # 多面ルームの面（床・天井・4壁）。room の点はどれか1面に属し、面内 (u,v)∈[0,1] に配置する。
   SURFACES = %w[floor ceiling wall_north wall_east wall_south wall_west].freeze
 
-  store_accessor :metadata, :generation_error, :generation_error_code, :revised_prompt
+  store_accessor :metadata, :generation_error, :generation_error_code, :generation_failure_kind,
+                 :revised_prompt
 
   before_validation :clamp_uv
   before_validation :normalize_rotation
@@ -63,15 +64,22 @@ class SpacePoint < ApplicationRecord
   end
 
   def update_generation_status!(status)
-    update!(generation_status: status, metadata: metadata_without_generation_error)
+    next_metadata = metadata_without_generation_error
+    # 出来上がったら、無料の作り直し回数は0に戻す。
+    # 残したままだと、ずっと後で1回失敗しただけで即クレジットを取ることになる
+    next_metadata = next_metadata.except("free_retries") if status == "completed"
+    update!(generation_status: status, metadata: next_metadata)
   end
 
-  def mark_generation_failed!(message:, code: nil)
+  # kind は失敗の種類（ImageGenerationErrorHandling::FAILURE_KINDS）。
+  # 「もう一度押して直るのか」を、押す前に判断するために残す
+  def mark_generation_failed!(message:, code: nil, kind: nil)
     update!(
       generation_status: "failed",
       metadata: metadata_without_generation_error.merge(
         "generation_error" => message,
-        "generation_error_code" => code
+        "generation_error_code" => code,
+        "generation_failure_kind" => kind
       ).compact
     )
   end

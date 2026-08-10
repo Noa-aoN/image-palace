@@ -40,6 +40,13 @@ module Api
         @point.rotation_z = params[:rotation_z] if params.key?(:rotation_z)
 
         will_generate = name_will_generate?
+        # 押しても必ず同じ結果になる失敗（方針違反・入力から絵を決められない）で、
+        # 名前も変わっていないなら止める。ポイントは作り直しでもクレジットを取るので、
+        # 通すと「必ず失敗すると分かっているもの」に課金することになる
+        if will_generate
+          decision = ::Images::RetryPolicy.decide(target: @point, changed_input: name_changed?)
+          return render json: { error: decision.reason }, status: :unprocessable_entity unless decision.allowed?
+        end
         return render_insufficient_credits if will_generate && insufficient_credits?
 
         @point.name = stripped_name if params.key?(:name)
@@ -105,6 +112,11 @@ module Api
         return false if name.blank?
 
         name != @point.name || @point.generation_status == "failed"
+      end
+
+      # 名前が変わったか（＝別の絵の注文になるか）
+      def name_changed?
+        params.key?(:name) && stripped_name != @point.name
       end
 
       def next_position

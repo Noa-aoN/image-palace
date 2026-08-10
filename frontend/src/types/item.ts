@@ -67,6 +67,11 @@ export interface Item {
   title: string
   generation_status: GenerationStatus
   generation_error?: string | null
+  /**
+   * そのまま作り直して直り得るか。false は「入力を変えないかぎり同じ結果になる」失敗。
+   * 押しても必ず失敗するので、作り直しの導線を出さない
+   */
+  generation_retryable?: boolean
   item_type?: ItemType | null
   /** 代表の1件（日本語優先→並び順の先頭）。複数を扱う画面は meanings を見る */
   meaning?: string | null

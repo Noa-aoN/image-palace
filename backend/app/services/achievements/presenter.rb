@@ -135,18 +135,44 @@ module Achievements
 
     def missions
       now = Time.current
-      MissionDefinition.registry.filter_map do |definition|
-        next unless definition.available?(now) && definition.published?
+      definitions = MissionDefinition.registry.select { |d| d.available?(now) && d.published? }
+      # 1件ずつ引くと、ミッションが増えるほど問い合わせが増える。まとめて引いて突き合わせる
+      states = UserMission.where(user_id: @user.id, mission_definition_id: definitions.map(&:id))
+                          .index_by { |m| [ m.mission_definition_id, m.period_key ] }
 
-        state = UserMission.find_by(
-          user_id: @user.id, mission_definition_id: definition.id, period_key: definition.period_key(now)
-        )
+      rows = definitions.map do |definition|
+        state = states[[ definition.id, definition.period_key(now) ]]
         { key: definition.key, name: definition.name, description: definition.description,
           cadence: definition.cadence, cadence_label: definition.cadence_label,
           progress: state&.progress.to_i, target: definition.condition_target,
           completed: state&.completed? || false,
           rewards: reward_previews(definition.rewards) }
       end
+
+      limit_missions(rows)
+    end
+
+    # 種別ごとに、1つの面に出す数を決める。
+    #
+    # ミッションは増える。増えるたびに面が縦に伸びると、毎日見る場所が毎日重くなる。
+    # 上限をここに置くのは、画面側で切ると「何件あるか」を知らずに切ることになるため。
+    #
+    # 期間限定・イベントは絞らない。終わってしまうものを隠すと、気づく機会がそれきりになる。
+    MISSION_LIMITS = { "onboarding" => 5, "daily" => 3, "weekly" => 3 }.freeze
+
+    # 面に並べる順。MissionDefinition::CADENCES は「取りうる値」の一覧であって、
+    # 見せる順ではない（あちらは daily が先頭）。まず「はじめに」、次に今日・今週の順で出す
+    MISSION_ORDER = %w[onboarding daily weekly limited event].freeze
+
+    def limit_missions(rows)
+      rows.group_by { |row| row[:cadence] }
+          .sort_by { |cadence, _| MISSION_ORDER.index(cadence) || 99 }
+          .flat_map do |cadence, group|
+            # 達成に近い順。済んだものは下へ落とす（遠いものが上に居座ると、毎日同じ顔になる）
+            sorted = group.sort_by { |row| [ row[:completed] ? 1 : 0, row[:target] - row[:progress] ] }
+            limit = MISSION_LIMITS[cadence]
+            limit ? sorted.first(limit) : sorted
+          end
     end
 
     def rewards
