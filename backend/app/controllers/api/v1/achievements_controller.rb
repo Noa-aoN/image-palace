@@ -16,29 +16,16 @@ module Api
         render json: Achievements::Presenter.summary_only(user: current_user)
       end
 
-      # 称号を1つ装備する。key を空で送ると外す
-      def equip
-        reward = find_owned(params[:key])
-        return render_not_owned if reward.nil? && params[:key].present?
-
-        UserReward.where(user_id: current_user.id, equipped: true).update_all(equipped: false)
-        reward&.update!(equipped: true)
-
-        render json: Achievements::Presenter.call(user: current_user)
-      end
-
-      # 代表として掲げる勲章を入れ替える。上限を超えたら古いものから外す
-      def feature
+      # 星の入り切り。**種別ごとの違いはサーバー側で吸収する**。
+      #
+      # 画面から見れば操作は1つ（星を押す）で、称号なら名乗る・勲章なら掲げる・
+      # 褒賞なら飾る、と結果が変わる。画面に分岐を持たせると、種別が増えるたびに
+      # 押す場所が増えていく。
+      def toggle
         reward = find_owned(params[:key])
         return render_not_owned if reward.nil?
 
-        if reward.featured_at.present?
-          reward.update!(featured_at: nil)
-        else
-          reward.update!(featured_at: Time.current)
-          trim_featured!
-        end
-
+        Achievements::Showcase.toggle!(user: current_user, user_reward: reward)
         render json: Achievements::Presenter.call(user: current_user)
       end
 
@@ -53,15 +40,6 @@ module Api
 
       def render_not_owned
         render json: { error: "まだ獲得していません" }, status: :unprocessable_entity
-      end
-
-      # 掲げられる数には上限がある。並べすぎると1つ1つが目に入らない
-      def trim_featured!
-        extra = UserReward.where(user_id: current_user.id)
-                          .where.not(featured_at: nil)
-                          .order(featured_at: :desc)
-                          .offset(Achievements::Presenter::MAX_FEATURED)
-        UserReward.where(id: extra.map(&:id)).update_all(featured_at: nil) if extra.any?
       end
     end
   end

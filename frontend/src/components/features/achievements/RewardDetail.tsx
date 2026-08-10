@@ -1,11 +1,11 @@
 'use client'
 
 import { useEffect } from 'react'
-import { X } from 'lucide-react'
+import { Star, X } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import type { RewardRow } from '@/lib/api/achievements'
 import { rarityStyle } from './rarity'
-import { RewardArt, RarityMarks } from './RewardCard'
+import { RewardArt, RarityMarks, STAR_VERB } from './RewardCard'
 
 /**
  * 獲得物の詳細。
@@ -19,17 +19,16 @@ import { RewardArt, RarityMarks } from './RewardCard'
 export function RewardDetail({
   reward,
   onClose,
-  onEquip,
-  onFeature,
+  onToggleStar,
   busy,
 }: {
   reward: RewardRow
   onClose: () => void
-  onEquip: () => void
-  onFeature: () => void
+  onToggleStar: () => void
   busy: boolean
 }) {
   const style = rarityStyle(reward.rarity_tier)
+  const verb = STAR_VERB[reward.kind]
 
   // 開いている間は背後を動かさない。閉じ方は Escape も用意する
   useEffect(() => {
@@ -102,35 +101,20 @@ export function RewardDetail({
           </Row>
         </dl>
 
-        {reward.owned && (reward.equippable || reward.featurable) && (
-          <div className="flex flex-wrap gap-2 border-t border-border pt-3">
-            {reward.equippable && (
-              <Button
-                variant={reward.equipped ? 'default' : 'outline'}
-                size="sm"
-                disabled={busy}
-                onClick={onEquip}
-                className="text-xs"
-              >
-                {reward.equipped ? '名乗っている' : '名乗る'}
-              </Button>
-            )}
-            {reward.featurable && (
-              <Button
-                variant={reward.featured ? 'default' : 'outline'}
-                size="sm"
-                disabled={busy}
-                onClick={onFeature}
-                className="text-xs"
-              >
-                {reward.featured ? '掲げている' : '掲げる'}
-              </Button>
-            )}
+        {reward.owned && (
+          <div className="space-y-1.5 border-t border-border pt-3">
+            <Button
+              variant={reward.starred ? 'default' : 'outline'}
+              size="sm"
+              disabled={busy}
+              onClick={onToggleStar}
+              className="flex items-center gap-1.5 text-xs"
+            >
+              <Star size={13} fill={reward.starred ? 'currentColor' : 'none'} />
+              {reward.starred ? verb.on : verb.off}
+            </Button>
+            <p className="text-xs text-muted-foreground">{verb.place}</p>
           </div>
-        )}
-
-        {reward.owned && reward.room_displayable && (
-          <p className="text-xs text-muted-foreground">マイルームに飾れるようにする準備をしています。</p>
         )}
       </div>
     </div>

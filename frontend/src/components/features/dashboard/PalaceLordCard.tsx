@@ -92,7 +92,7 @@ export function PalaceLordCard({ tier }: { tier: string | null }) {
                       // eslint-disable-next-line @next/next/no-img-element
                       <img src={honors.title.image_url} alt="" width={18} height={18} loading="lazy" />
                     )}
-                    {honors.title.name}
+                    「{honors.title.name}」
                   </dd>
                 ) : (
                   // 「まだ無い」で終わらせず、次に取れるものを出す

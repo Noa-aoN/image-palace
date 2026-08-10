@@ -4,13 +4,31 @@
 export const CREDIT_UNIT = 'クレジット'
 export const CREDIT_UNIT_SHORT = 'cr'
 
+/**
+ * プランの呼び名。
+ *
+ * 内部の識別名（free / standard / …）と Stripe の商品名はそのまま。ここは**表示だけ**で、
+ * 契約や決済には触れない。名前を変えても既存の契約は動かない。
+ *
+ * 宮殿の世界観に寄せつつ、上下関係が読み取れる言葉にしてある。
+ * 客人 → 市民 → 書記官 → 学匠 → アカデメイア、と役割が重くなる並び。
+ */
 const TIER_LABELS: Record<string, string> = {
-  free: 'フリー',
-  standard: 'スタンダード',
-  pro: 'プロ',
-  creator: 'クリエイター',
-  studio: 'スタジオ',
+  free: '客人',
+  standard: '市民',
+  pro: '書記官',
+  creator: '学匠',
+  studio: 'アカデメイア',
   topup: 'クレジット追加',
+}
+
+/** 呼び名だけでは分かりにくいので、一覧では添え書きを出す */
+export const TIER_NOTES: Record<string, string> = {
+  free: 'まずは試す',
+  standard: '日々の学習に',
+  pro: '本格的に作る',
+  creator: '作品として仕上げる',
+  studio: '規模をもって取り組む',
 }
 
 export function tierLabel(tier: string): string {
