@@ -11,14 +11,17 @@ export const CREDIT_UNIT_SHORT = 'cr'
  * 契約や決済には触れない。名前を変えても既存の契約は動かない。
  *
  * 宮殿の世界観に寄せつつ、上下関係が読み取れる言葉にしてある。
- * 客人 → 市民 → 書記官 → 学匠 → アカデメイア、と役割が重くなる並び。
+ * 市民 → 書記官 → 学匠 → 賢者 → 元老、と役割が重くなる並び。
+ *
+ * **無料でも「客人」にはしない。** 無料の人も自分の宮殿の主人であって、
+ * 招かれた側ではない。いちばん下を市民から始める。
  */
 const TIER_LABELS: Record<string, string> = {
-  free: '客人',
-  standard: '市民',
-  pro: '書記官',
-  creator: '学匠',
-  studio: 'アカデメイア',
+  free: '市民',
+  standard: '書記官',
+  pro: '学匠',
+  creator: '賢者',
+  studio: '元老',
   topup: 'クレジット追加',
 }
 
@@ -68,3 +71,9 @@ export function discountPercent(rate: number, baseRate: number): number {
   const percent = Math.round((1 - rate / baseRate) * 1000) / 10
   return Math.floor(percent)
 }
+
+/**
+ * 買い切りクレジットの有効期間（サーバーの Billing::Catalog::CREDIT_LIFETIME と揃える）。
+ * 期限を出さないと、ある日いきなり減ったように見える。
+ */
+export const TOPUP_VALIDITY = '購入から6か月ぶん有効'

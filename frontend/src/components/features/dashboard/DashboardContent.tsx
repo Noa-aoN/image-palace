@@ -226,10 +226,17 @@ export function DashboardContent() {
               </div>
 
               <div className="border-t pt-3">
-                <p className="flex items-center gap-2 text-sm text-muted-foreground">
-                  <Coins size={18} style={{ color: 'var(--palace)' }} />
-                  残高
-                </p>
+                {/* 内訳は残高の行に置く。別の行に離すと、何の内訳なのかが読み取りにくい */}
+                <div className="flex items-center justify-between gap-2">
+                  <p className="flex items-center gap-2 text-sm text-muted-foreground">
+                    <Coins size={18} style={{ color: 'var(--palace)' }} />
+                    残高
+                  </p>
+                  {/* 敷いたリンクより手前に出す。押してもプラン画面へは飛ばない */}
+                  <span className="relative z-10">
+                    <CreditBreakdownButton />
+                  </span>
+                </div>
                 <p className="mt-1">
                   <span className="text-3xl font-bold tabular-nums">{credits ?? '—'}</span>
                   <span className="ml-1 text-sm text-muted-foreground">{CREDIT_UNIT}（{CREDIT_UNIT_SHORT}）</span>
@@ -261,10 +268,7 @@ export function DashboardContent() {
                   クレジットがありません。プランのアップグレードかクレジット追加で生成を続けられます。
                 </p>
               )}
-              {/* 敷いたリンクより手前に出す。押してもプラン画面へは飛ばない */}
-              <div className="relative z-10 flex justify-end border-t pt-3">
-                <CreditBreakdownButton />
-              </div>
+
             </CardContent>
         </Card>
       </section>

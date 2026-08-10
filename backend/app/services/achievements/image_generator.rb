@@ -40,6 +40,18 @@ module Achievements
       no numbers, no glyphs, no inscriptions, no watermark, no border, no frame.
     STYLE
 
+    # プランの徽章。獲得物と同じ絵柄の決まりで作る。
+    # 別の作り方にすると、並べたときに世界観がばらつく
+    PLAN_SUBJECT = "a circular guild emblem medallion with a laurel border"
+
+    PLAN_MOTIFS = {
+      "free" => [ 2, "a simple clay tablet with a single olive sprig" ],
+      "standard" => [ 3, "a scribe's reed pen crossed with a scroll" ],
+      "pro" => [ 5, "an open codex with a small oil lamp above it" ],
+      "creator" => [ 6, "an owl perched on a stack of scrolls" ],
+      "studio" => [ 7, "a temple facade with columns and a laurel crown" ]
+    }.freeze
+
     def self.call(...)
       new(...).call
     end

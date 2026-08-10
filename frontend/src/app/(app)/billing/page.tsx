@@ -19,6 +19,7 @@ import { useBillingStore } from '@/stores/billing'
 import {
   tierLabel,
   TIER_NOTES,
+  TOPUP_VALIDITY,
   formatYen,
   unitPrice,
   discountPercent,
@@ -274,7 +275,13 @@ export default function BillingPage() {
                 return (
                   <div key={plan.name} className="flex flex-col gap-3 rounded-xl border border-border bg-card p-5">
                     <div>
-                      <p className="text-base font-semibold">{tierLabel(plan.tier)}</p>
+                      <p className="flex items-center gap-2 text-base font-semibold">
+                        {plan.image_url && (
+                          // eslint-disable-next-line @next/next/no-img-element
+                          <img src={plan.image_url} alt="" width={28} height={28} loading="lazy" />
+                        )}
+                        {tierLabel(plan.tier)}
+                      </p>
                       {/* 呼び名だけでは何のプランか分からない。一言だけ添える */}
                       {TIER_NOTES[plan.tier] && (
                         <p className="text-xs text-muted-foreground">{TIER_NOTES[plan.tier]}</p>
@@ -283,7 +290,11 @@ export default function BillingPage() {
                         {formatYen(plan.price)}
                         <span className="text-sm font-normal text-muted-foreground"> / 月</span>
                       </p>
-                      <p className="mt-1 text-sm text-muted-foreground">月 {plan.credits.toLocaleString('ja-JP')} クレジット</p>
+                      <p className="mt-1 text-sm text-muted-foreground">
+                        月 {plan.credits.toLocaleString('ja-JP')} クレジット
+                      </p>
+                      {/* 期限を書かないと「貯まり続ける」と読まれる。実際は毎月入れ替わる */}
+                      <p className="text-xs text-muted-foreground">毎月リセット（繰り越しません）</p>
                     </div>
                     <Button
                       onClick={() => handleCheckout(plan.name)}
@@ -350,6 +361,9 @@ export default function BillingPage() {
                           1枚あたり {formatYen(Math.round(unitPrice(plan) * 10) / 10)}
                           {discount > 0 && <span className="ml-1 text-[var(--palace)]">{discount}% お得</span>}
                         </span>
+                        {/* 買い切りは繰り越すが無期限ではない。期限を出さないと、
+                            ある日いきなり減ったように見える */}
+                        <span className="block text-xs text-muted-foreground">{TOPUP_VALIDITY}</span>
                       </span>
                       <span className="shrink-0 tabular-nums font-semibold">{formatYen(plan.price)}</span>
                     </button>

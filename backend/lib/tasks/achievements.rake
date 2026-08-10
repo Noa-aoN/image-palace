@@ -46,3 +46,29 @@ namespace :achievements do
     end
   end
 end
+
+namespace :plans do
+  desc "プランの徽章を作る（既にあるものは作り直さない）。dry_run=1 で下見だけ"
+  task generate_images: :environment do
+    dry_run = ENV["dry_run"] == "1"
+    targets = Plan.where(kind: "subscription", image_key: nil).order(:price_cents)
+
+    unit_usd = CostParameter.table.image_unit_usd(model: GenerateImageService.descriptor[:model])
+    puts "作る対象: #{targets.size} 件 / 見込み: 約 $#{(targets.size * unit_usd).round(2)}"
+    puts "-" * 60
+
+    if dry_run
+      targets.each { |p| puts "#{p.tier}\n  #{Billing::PlanImageGenerator.new(plan: p).build_prompt.lines.first.strip}" }
+      puts "\n※ 下見のみ。何も作っていません"
+      next
+    end
+
+    targets.each do |plan|
+      Billing::PlanImageGenerator.call(plan: plan)
+      puts "✓ #{plan.tier} #{plan.name}"
+    rescue StandardError => e
+      puts "× #{plan.tier}: #{e.class}: #{e.message}"
+    end
+    puts "残り: #{Plan.where(kind: "subscription", image_key: nil).count} 件"
+  end
+end

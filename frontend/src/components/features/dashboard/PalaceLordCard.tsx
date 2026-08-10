@@ -8,7 +8,7 @@ import { CardImage } from '@/components/ui/card-image'
 import { useAuthStore } from '@/stores/auth'
 import { tierLabel } from '@/lib/billing'
 import { displayNameOf } from '@/lib/display-name'
-import { getAchievementSummary, type AchievementSummary } from '@/lib/api/achievements'
+import { getAchievementSummary, type AchievementSummary, type RewardKind } from '@/lib/api/achievements'
 
 /**
  * 「宮殿の主人」。生成資産（クレジット）の隣に並べる、本人のステータス面。
@@ -66,9 +66,18 @@ export function PalaceLordCard({ tier }: { tier: string | null }) {
                 fallback={<Crown size={20} className="text-muted-foreground/60" />}
               />
               <div className="min-w-0">
+                {/* 称号は名前の上に小さく。名前と同じ大きさで横に並べると、
+                    どちらが本人の名前なのか分からなくなる */}
+                {honors?.title && (
+                  <p className="flex items-center gap-1 truncate text-xs" style={{ color: 'var(--palace)' }}>
+                    {honors.title.image_url && (
+                      // eslint-disable-next-line @next/next/no-img-element
+                      <img src={honors.title.image_url} alt="" width={14} height={14} loading="lazy" />
+                    )}
+                    「{honors.title.name}」
+                  </p>
+                )}
                 <p className="truncate text-lg font-semibold">{displayName}</p>
-                {/* メールアドレスは出さない。行数を保つため、同じ位置に入居日を置く */}
-                <p className="truncate text-xs text-muted-foreground">入居 {movedInOn}</p>
               </div>
             </div>
 
@@ -84,51 +93,51 @@ export function PalaceLordCard({ tier }: { tier: string | null }) {
                   {role === 'admin' ? '管理者' : '主人'}
                 </dd>
               </div>
-              <div className="col-span-2">
-                <dt className="text-xs text-muted-foreground">称号</dt>
-                {honors?.title ? (
-                  <dd className="flex items-center gap-1.5 font-medium">
-                    {honors.title.image_url && (
-                      // eslint-disable-next-line @next/next/no-img-element
-                      <img src={honors.title.image_url} alt="" width={18} height={18} loading="lazy" />
-                    )}
-                    「{honors.title.name}」
-                  </dd>
-                ) : (
-                  // 「まだ無い」で終わらせず、次に取れるものを出す
-                  <dd className="text-xs text-muted-foreground">
-                    {honors?.next_title
-                      ? `${honors.next_title.condition ?? 'もう少し進める'}と「${honors.next_title.name}」`
-                      : '宮殿を育てると授けられます'}
-                  </dd>
-                )}
+              {/* 入居日は「位」と同じ並びに独立して置く。名前の下に埋めると、
+                  本人を指す情報と宮殿の情報が混ざる */}
+              <div>
+                <dt className="text-xs text-muted-foreground">入居</dt>
+                <dd className="font-medium">{movedInOn}</dd>
               </div>
-
-              {(honors?.featured.length ?? 0) > 0 && (
+              {/* 称号が無い人には、次に取れるものを出す */}
+              {!honors?.title && honors?.next_title && (
                 <div className="col-span-2">
-                  <dt className="text-xs text-muted-foreground">勲章</dt>
-                  <dd className="flex flex-wrap items-center gap-1.5 pt-0.5">
-                    {honors!.featured.map((medal) =>
-                      medal.image_url ? (
-                        // eslint-disable-next-line @next/next/no-img-element
-                        <img
-                          key={medal.key}
-                          src={medal.image_url}
-                          alt={medal.name}
-                          title={medal.name}
-                          width={22}
-                          height={22}
-                          loading="lazy"
-                        />
-                      ) : (
-                        <span key={medal.key} className="text-xs">
-                          {medal.name}
-                        </span>
-                      )
-                    )}
+                  <dt className="text-xs text-muted-foreground">称号</dt>
+                  <dd className="text-xs text-muted-foreground">
+                    {honors.next_title.condition ?? 'もう少し進める'}と「{honors.next_title.name}」
                   </dd>
                 </div>
               )}
+              {/* 記名板で星を入れたものを、種別ごとに出す */}
+              {SHOWCASE_KINDS.map(([kind, label]) => {
+                const rows = honors?.showcase?.[kind] ?? []
+                if (rows.length === 0) return null
+                return (
+                  <div key={kind} className="col-span-2">
+                    <dt className="text-xs text-muted-foreground">{label}</dt>
+                    <dd className="flex flex-wrap items-center gap-1.5 pt-0.5">
+                      {rows.map((reward) =>
+                        reward.image_url ? (
+                          // eslint-disable-next-line @next/next/no-img-element
+                          <img
+                            key={reward.key}
+                            src={reward.image_url}
+                            alt={reward.name}
+                            title={reward.name}
+                            width={22}
+                            height={22}
+                            loading="lazy"
+                          />
+                        ) : (
+                          <span key={reward.key} className="text-xs">
+                            {reward.name}
+                          </span>
+                        )
+                      )}
+                    </dd>
+                  </div>
+                )
+              })}
             </dl>
           </CardContent>
         </Card>
@@ -136,3 +145,10 @@ export function PalaceLordCard({ tier }: { tier: string | null }) {
     </section>
   )
 }
+
+// 記名板に出す種別と見出し。称号は名前の上に出すので、ここには含めない
+const SHOWCASE_KINDS: [RewardKind, string][] = [
+  ['medal', '勲章'],
+  ['treasure', '褒賞'],
+  ['honor', '表彰'],
+]
