@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Spinner } from '@/components/ui/spinner'
+import { PeriodSelect } from './PeriodSelect'
 import {
   getAdminAiModels,
   createAdminAiModel,
@@ -29,12 +30,13 @@ export function AdminAiModelsPanel() {
   const [error, setError] = useState<string | null>(null)
   const [busy, setBusy] = useState<string | null>(null)
   const [adding, setAdding] = useState(false)
+  const [period, setPeriod] = useState('30d')
 
   useEffect(() => {
-    getAdminAiModels()
+    getAdminAiModels({ period })
       .then(setPage)
       .catch(() => setError('読み込めませんでした。'))
-  }, [])
+  }, [period])
 
   const replace = (updated: AdminAiModel) =>
     setPage((p) => (p ? { ...p, models: p.models.map((m) => (m.id === updated.id ? updated : m)) } : p))
@@ -101,8 +103,12 @@ export function AdminAiModelsPanel() {
       <p className="text-sm text-muted-foreground">
         原価と消費クレジットを並べています。原価の高いモデルを足すときは、
         消費クレジットも一緒に上げてください（上げ忘れると粗利だけ減ります）。
-        使用率は直近 {page.usage_days} 日の実績です。
+        使用率は下で選んだ期間の実績です。
       </p>
+
+      {/* 期間は概要・収支と同じ部品。「直近30日」に固定していると、
+          入れ替えた直後のモデルが使われているのか判断できない */}
+      <PeriodSelect period={page.period} value={period} onChange={setPeriod} />
 
       {adding && (
         <NewModelForm

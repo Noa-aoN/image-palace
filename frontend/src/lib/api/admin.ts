@@ -28,8 +28,10 @@ export async function getAdminSession(): Promise<AdminSession> {
   return res.data
 }
 
-export async function getAdminOverview(): Promise<AdminOverview> {
-  const res = await apiClient.get<AdminOverview>('/api/v1/admin/overview')
+// period で期間を切り替える（7d / 30d / 90d / 6m / 1y / all / 2026-07）。
+// 知らない値はサーバー側で既定に丸まる
+export async function getAdminOverview(params?: { period?: string }): Promise<AdminOverview> {
+  const res = await apiClient.get<AdminOverview>('/api/v1/admin/overview', { params })
   return res.data
 }
 
@@ -77,8 +79,9 @@ export async function getAdminAuditLogList(): Promise<AdminAuditLog[]> {
 
 // ── AIモデルの登録簿 ──────────────────────────────────────────
 
-export async function getAdminAiModels(): Promise<AdminAiModelsPage> {
-  const res = await apiClient.get<AdminAiModelsPage>('/api/v1/admin/ai_models')
+// period は概要ページと同じ語彙（7d / 30d / 90d / 6m / 1y / all / 2026-07）
+export async function getAdminAiModels(params?: { period?: string }): Promise<AdminAiModelsPage> {
+  const res = await apiClient.get<AdminAiModelsPage>('/api/v1/admin/ai_models', { params })
   return res.data
 }
 

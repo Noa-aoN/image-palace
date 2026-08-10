@@ -4,13 +4,13 @@ module Api
       # AI モデルの登録簿。登録・有効/無効・既定・表示・原価・消費クレジット・
       # 用途・1日の上限を、1つの表で扱う。
       class AiModelsController < BaseController
-        # 直近の使用状況を数える窓。長すぎると「いま何が使われているか」が薄まる
-        USAGE_WINDOW = 30.days
-
         def index
           render json: {
             models: AiModel.registry.map { |model| serialize(model, usage) },
-            usage_days: (USAGE_WINDOW / 1.day).to_i,
+            # 期間の決め方は概要ページと共通（Admin::Period）。
+            # ページごとに別の窓を持つと、同じ「7月」で違う範囲を見ることになる
+            period: period.to_h.merge(options: ::Admin::Period.options),
+            usage_days: period.days,
             kinds: AiModel::KINDS,
             providers: GenerateImageService::PROVIDERS.keys,
             purposes: AiModel::IMAGE_PURPOSES,
@@ -70,14 +70,18 @@ module Api
           )
         end
 
+        def period
+          @period ||= ::Admin::Period.resolve(params[:period])
+        end
+
         # モデル名ごとの使用回数。画像と文章をまとめて1回ずつ数える。
         # 1行ごとに数えるとモデルの数だけ問い合わせが飛ぶ
         def usage
           @usage ||= begin
-            since = USAGE_WINDOW.ago
-            images = ImageUsage.since(since).group(:model).count
-            cached = ImageUsage.since(since).where(cached: true).group(:model).count
-            texts = AiUsage.since(since).group(:model).count
+            range = period.from...period.to
+            images = ImageUsage.where(created_at: range).group(:model).count
+            cached = ImageUsage.where(created_at: range).where(cached: true).group(:model).count
+            texts = AiUsage.where(created_at: range).group(:model).count
             { images: images, cached: cached, texts: texts,
               image_total: images.values.sum, text_total: texts.values.sum }
           end

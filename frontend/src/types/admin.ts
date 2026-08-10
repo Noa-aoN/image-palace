@@ -1,5 +1,10 @@
 // 運営（管理）画面の型。バックエンド /api/v1/admin/* のレスポンスに対応。
 
+// 期間の型は、選ぶ部品（PeriodSelect）と同じものを使う。
+// ここで別に定義すると、片方だけ直したときに食い違う
+export type { AdminPeriod } from '@/components/features/admin/PeriodSelect'
+import type { AdminPeriod } from '@/components/features/admin/PeriodSelect'
+
 export type AdminRole = 'user' | 'admin' | 'owner'
 
 export interface AdminSession {
@@ -19,8 +24,8 @@ export interface AdminOverview {
     total: number
     confirmed: number
     new_last_7d: number
-    new_last_30d: number
-    active_last_30d: number
+    new_in_period: number
+    active_in_period: number
     admins: number
   }
   content: {
@@ -33,7 +38,7 @@ export interface AdminOverview {
   }
   generation: {
     by_status: Record<string, number>
-    items_last_30d: number
+    items_in_period: number
     shared_medias: number
     /** 同じ単語を作り直さずに済んだ割合（%） */
     cache_hit_rate: number
@@ -44,22 +49,36 @@ export interface AdminOverview {
     expiring: number
     unlimited: number
     total: number
+    /** 全部使われたら出ていく原価の目安（円）。unused_topup_value とは別物（あちらは預り金） */
+    total_cost_jpy: number
+    /** クレジット1つ（＝画像1枚）の実費（円）。収支ページの画像原価と同じ出どころ */
+    credit_unit_cost_jpy: number
     breakdown: { subscription: number; topup: number; grant: number }
-    expired_last_30d: number
-    /** 未使用の買い切りぶんを金額に換算した目安（円） */
+    expired_in_period: number
+    /** 買い切りで受け取った額のうち、まだ提供していないぶん（円） */
     unused_topup_value: number
     next_expiry_at: string | null
   }
+  /** いま見ている期間。選べる候補も併せて返る（収支ページと同じ語彙） */
+  period: AdminPeriod
   billing: {
     active_subscriptions: number
+    /** テストの契約を除いた数。目印を持たない古い行はテスト扱い */
+    live_subscriptions: number
+    test_subscriptions: number
+    /** お試し中。まだお金は入っていない */
+    trialing_subscriptions: number
+    /** 今期の終わりで切れるもの */
+    canceling_subscriptions: number
     paid_rate: number
-    by_plan: Record<string, number>
-    credits_consumed_last_30d: number
+    by_plan: { name: string; tier: string | null; count: number; mrr_jpy: number }[]
+    /** その期間に使われたクレジット */
+    credits_consumed: number
     outstanding_credits: number
   }
   ai: {
-    calls_last_30d: number
-    tokens_last_30d: number
+    calls_in_period: number
+    tokens_in_period: number
     by_kind: { kind: string; label: string; count: number; tokens: number }[]
   }
   /** いま効いている上限。値の出どころ（ENV 名）も含む */
@@ -155,6 +174,7 @@ export interface AdminAiModel {
 
 export interface AdminAiModelsPage {
   models: AdminAiModel[]
+  period: AdminPeriod
   kinds: string[]
   providers: string[]
   purposes: string[]
@@ -315,6 +335,10 @@ export interface AdminAuditLog {
 export interface AdminFinanceSummary {
   period: { year: number | null; month: number | null; from: string; to: string }
   revenue: { total: number; by_kind: Record<string, number> }
+  /** テストの決済（売上には入れない）。0 でなければ画面に断りを出す */
+  test_revenue: number
+  /** 「本番」か「テスト」か。いまの Stripe の鍵で決まる */
+  mode: string
   cost: {
     total: number
     stripe_fee: number

@@ -402,6 +402,8 @@ class User < ApplicationRecord
       # 実際に支払われた金額。返金・売上の計算に要る（付与は支払いを伴わないので nil）
       amount_cents:,
       currency:,
+      # テストの決済を売上に混ぜないための目印。支払いを伴わない行は nil のまま
+      livemode: amount_cents.nil? ? nil : Billing::Mode.live?,
       subscription_credits_after: subscription_credits,
       topup_credits_after: topup_credits
     )

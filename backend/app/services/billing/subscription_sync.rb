@@ -29,6 +29,9 @@ module Billing
       subscription.cancel_at_period_end = stripe_subscription.cancel_at_period_end
       subscription.canceled_at = time_at(stripe_subscription.canceled_at)
       subscription.started_at ||= Time.current
+      # テストで作った契約を「有料契約」に数えないための目印。
+      # Stripe 側の値があればそれを、無ければいまの鍵で判断する
+      subscription.livemode = stripe_subscription[:livemode].nil? ? Billing::Mode.live? : stripe_subscription[:livemode]
       subscription.save!
       subscription
     end

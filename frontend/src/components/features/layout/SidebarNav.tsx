@@ -9,7 +9,6 @@ import { useAdminStore } from '@/stores/admin'
 import { isNavItemActive } from '@/lib/nav-active'
 import { navSectionsFor, type NavNode } from './nav-items'
 import { useFeaturesStore } from '@/stores/features'
-import { useOpenCardCreate } from '@/components/features/items/CardCreatePanel'
 
 interface Props {
   // 折りたたみサイドバー（72px）ではアイコンのみ表示し、見出し・子・ラベルを隠す。
@@ -50,7 +49,6 @@ function NavTree({
   /** 現在の絞り込み。null は「まだ読めていない」＝パスだけで判定する */
   currentQuery: string | null
 }) {
-  const openCardCreate = useOpenCardCreate()
   const pathname = usePathname()
   // 機能の見せ方。運営が段階を変えると、次の読み込みからサイドバーにも効く
   const stages = useFeaturesStore((s) => s.stages)
@@ -100,25 +98,6 @@ function NavTree({
   }
 
   const renderLink = (node: NavNode, depth = 0) => {
-    // パネルで開くものは画面を移らない。見た目はリンクと揃える
-    if (node.panel === 'card-create') {
-      return (
-        <button
-          key={node.label}
-          type="button"
-          onClick={() => {
-            openCardCreate()
-            onNavigate?.()
-          }}
-          className={`${linkClass(depth)} w-full text-left`}
-          title={iconsOnly ? node.label : undefined}
-        >
-          <span className="shrink-0">{node.icon}</span>
-          {!iconsOnly && <span className="truncate">{node.label}</span>}
-        </button>
-      )
-    }
-
     const href = node.href ?? '#'
     const badge = stageBadge(stageOf(node.href))
     return (

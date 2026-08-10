@@ -29,7 +29,7 @@ RSpec.describe "Api::V1::Admin 収支", type: :request do
     end
 
     it "開業からの総計を返す" do
-      CreditTransaction.create!(user: member, kind: "topup_purchase", delta: 1000, amount_cents: 1_900)
+      CreditTransaction.create!(user: member, kind: "topup_purchase", delta: 1000, amount_cents: 1_900, livemode: true)
 
       get "/api/v1/admin/finance", headers: admin_headers
 

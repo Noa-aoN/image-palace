@@ -125,7 +125,7 @@ RSpec.describe "Api::V1::Admin", type: :request do
       expect(json_response["users"]["total"]).to be >= 2
       expect(json_response["content"]["items"]).to eq(1)
       expect(json_response["generation"]["by_status"]["completed"]).to eq(1)
-      expect(json_response["series"]["new_users"].size).to eq(Admin::OverviewService::SERIES_DAYS)
+      expect(json_response["series"]["new_users"].size).to eq(Admin::OverviewService::DEFAULT_PERIOD)
       expect(json_response["billing"]).to have_key("paid_rate")
       expect(json_response["ai"]).to have_key("by_kind")
     end
@@ -327,7 +327,7 @@ RSpec.describe "Api::V1::Admin", type: :request do
 
       get "/api/v1/admin/overview", headers: admin_headers
 
-      expect(json_response["credit_liability"]["expired_last_30d"]).to eq(4.0)
+      expect(json_response["credit_liability"]["expired_in_period"]).to eq(4.0)
     end
 
     it "未使用の買い切りぶんを金額に換算する（未提供の額の目安）" do
