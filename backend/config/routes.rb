@@ -90,6 +90,8 @@ Rails.application.routes.draw do
           collection { patch :reorder }
           member { patch :acknowledge }
         end
+        # 関連カード。向きは持たないので、相手のカードの id だけで足し引きする
+        resources :relations, only: [ :index, :create, :destroy ]
         # 項目の値。定義（どの項目を持つか）は property_definitions 側
         put "properties/:property_definition_id", to: "item_properties#upsert", as: :property
         member do
