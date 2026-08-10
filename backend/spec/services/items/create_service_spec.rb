@@ -68,7 +68,9 @@ RSpec.describe Items::CreateService, type: :service do
     it "passes through force_generate to the enqueued job" do
       described_class.call(user: user, params: { title: "富士山", force_generate: true })
 
-      expect(enqueued_jobs.last[:args][1].with_indifferent_access[:force_generate]).to be true
+      # 実績の評価も積むので「最後のジョブ」では拾えない。生成のジョブを名指しする
+      job = enqueued_jobs.find { |j| j[:job].to_s.in?(%w[GenerateBriefJob GenerateImageJob]) }
+      expect(job[:args][1].with_indifferent_access[:force_generate]).to be true
     end
 
     it "スタイルとカスタムプロンプトを保存する" do

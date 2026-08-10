@@ -22,8 +22,9 @@ class GenerateImageService
 
   Result = Struct.new(:image_data, :content_type, :metadata, keyword_init: true)
 
-  def self.call(prompt:, aspect_ratio: AspectRatios::DEFAULT, kind: "unknown", user_id: nil, model_key: nil)
-    new.call(prompt:, aspect_ratio:, kind:, user_id:, model_key:)
+  def self.call(prompt:, aspect_ratio: AspectRatios::DEFAULT, kind: "unknown", user_id: nil, model_key: nil,
+                options: {})
+    new.call(prompt:, aspect_ratio:, kind:, user_id:, model_key:, options:)
   end
 
   # いま選べるモデル。鍵の入っていないもの・止めているもの・隠しているものは出さない。
@@ -111,9 +112,10 @@ class GenerateImageService
 
   # kind は原価集計の記録に使うほか、モデルの用途の判定にも使う。
   # user_id は記録だけ
-  def call(prompt:, aspect_ratio: AspectRatios::DEFAULT, kind: "unknown", user_id: nil, model_key: nil)
+  def call(prompt:, aspect_ratio: AspectRatios::DEFAULT, kind: "unknown", user_id: nil, model_key: nil,
+           options: {})
     key = self.class.usable_key(model_key, purpose: kind)
-    result = self.class.generator_class(key).new.generate(prompt:, aspect_ratio:, kind:, user_id:)
+    result = self.class.generator_class(key).new.generate(prompt:, aspect_ratio:, kind:, user_id:, options:)
     Result.new(
       image_data: result[:image_data],
       content_type: result[:content_type],

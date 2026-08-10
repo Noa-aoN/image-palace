@@ -22,7 +22,10 @@ module ImageGenerators
           prompt: prompt,
           size: AspectRatios.provider_size(aspect_ratio),
           quality: quality,
-          n: 1
+          n: 1,
+          # 背景を抜くのは獲得物の絵など、他の上に重ねるものだけ。
+          # 抜くと PNG で返るので、形式も合わせて指定する
+          **(option(:transparent) ? { background: "transparent", output_format: "png" } : {})
         }
       )
     end

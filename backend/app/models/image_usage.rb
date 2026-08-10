@@ -9,7 +9,7 @@
 # API を呼んでいないので原価には数えない。集計する側がどちらの目的かで使い分けること。
 class ImageUsage < ApplicationRecord
   # 生成の入口。どこで使われているかが分かると、原価の内訳を機能別に見られる
-  KINDS = %w[item avatar cover point unknown].freeze
+  KINDS = %w[item avatar cover point reward unknown].freeze
 
   # 利用者に見せるときのラベル
   LABELS = {

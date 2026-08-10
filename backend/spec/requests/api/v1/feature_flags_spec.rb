@@ -22,16 +22,16 @@ RSpec.describe "機能の見せ方", type: :request do
     it "パスとキーの対応も返す" do
       get "/api/v1/features", headers: headers
 
-      expect(response.parsed_body.dig("paths", "/trophy")).to eq("page.trophy")
+      expect(response.parsed_body.dig("paths", "/achievements")).to eq("page.achievements")
       expect(response.parsed_body.dig("paths", "/study/game")).to eq("page.study_game")
     end
 
     it "設定してあればそちらを返す" do
-      FeatureFlag.create!(key: "page.trophy", stage: "hidden")
+      FeatureFlag.create!(key: "page.achievements", stage: "hidden")
 
       get "/api/v1/features", headers: headers
 
-      expect(response.parsed_body.dig("features", "page.trophy")).to eq("hidden")
+      expect(response.parsed_body.dig("features", "page.achievements")).to eq("hidden")
     end
 
     it "認証が要る" do
@@ -44,20 +44,20 @@ RSpec.describe "機能の見せ方", type: :request do
   describe "PUT /api/v1/admin/feature_flags/:key" do
     it "段階を変えられる" do
       # 既定と違う段階を選ぶ（既定と同じ値だと customized が立たない）
-      target = (FeatureFlag::STAGES - [ FeatureFlag::DEFAULTS["page.trophy"][:stage] ]).first
+      target = (FeatureFlag::STAGES - [ FeatureFlag::DEFAULTS["page.achievements"][:stage] ]).first
 
-      put "/api/v1/admin/feature_flags/page.trophy",
+      put "/api/v1/admin/feature_flags/page.achievements",
           params: { feature: { stage: target } }, headers: admin_headers, as: :json
 
       expect(response).to have_http_status(:ok)
       expect(response.parsed_body.dig("feature", "stage")).to eq(target)
       expect(response.parsed_body.dig("feature", "customized")).to be(true)
-      expect(FeatureFlag.stages["page.trophy"]).to eq(target)
+      expect(FeatureFlag.stages["page.achievements"]).to eq(target)
     end
 
     it "操作を監査ログに残す" do
       expect {
-        put "/api/v1/admin/feature_flags/page.trophy",
+        put "/api/v1/admin/feature_flags/page.achievements",
             params: { feature: { stage: "hidden" } }, headers: admin_headers, as: :json
       }.to change { AdminAuditLog.where(action: "feature_flag_update").count }.by(1)
     end
@@ -71,14 +71,14 @@ RSpec.describe "機能の見せ方", type: :request do
     end
 
     it "知らない段階は受け付けない" do
-      put "/api/v1/admin/feature_flags/page.trophy",
+      put "/api/v1/admin/feature_flags/page.achievements",
           params: { feature: { stage: "someday" } }, headers: admin_headers, as: :json
 
       expect(response).to have_http_status(:unprocessable_entity)
     end
 
     it "運営でなければ触れない" do
-      put "/api/v1/admin/feature_flags/page.trophy",
+      put "/api/v1/admin/feature_flags/page.achievements",
           params: { feature: { stage: "hidden" } }, headers: headers, as: :json
 
       expect(response).to have_http_status(:forbidden)
@@ -87,13 +87,13 @@ RSpec.describe "機能の見せ方", type: :request do
 
   describe "DELETE /api/v1/admin/feature_flags/:key" do
     it "既定へ戻す" do
-      FeatureFlag.create!(key: "page.trophy", stage: "hidden")
+      FeatureFlag.create!(key: "page.achievements", stage: "hidden")
 
-      delete "/api/v1/admin/feature_flags/page.trophy", headers: admin_headers
+      delete "/api/v1/admin/feature_flags/page.achievements", headers: admin_headers
 
       expect(response).to have_http_status(:ok)
-      expect(response.parsed_body.dig("feature", "stage")).to eq(FeatureFlag::DEFAULTS["page.trophy"][:stage])
-      expect(FeatureFlag.where(key: "page.trophy")).to be_empty
+      expect(response.parsed_body.dig("feature", "stage")).to eq(FeatureFlag::DEFAULTS["page.achievements"][:stage])
+      expect(FeatureFlag.where(key: "page.achievements")).to be_empty
     end
   end
 end

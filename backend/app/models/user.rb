@@ -35,6 +35,11 @@ class User < ApplicationRecord
   has_many :spaces, dependent: :destroy
   has_many :space_points, through: :spaces
   has_many :views, dependent: :destroy
+  # アチーブメント（栄誉の間）
+  has_many :user_rewards, dependent: :destroy
+  has_many :user_achievements, dependent: :destroy
+  has_many :user_missions, dependent: :destroy
+  has_one :user_stat, dependent: :destroy
   has_many :tags, dependent: :destroy
   has_many :tag_groups, dependent: :destroy
   has_many :wordlists, dependent: :destroy
