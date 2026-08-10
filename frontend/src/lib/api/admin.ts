@@ -28,8 +28,9 @@ export async function getAdminSession(): Promise<AdminSession> {
   return res.data
 }
 
-// days で期間を切り替える（7 / 30 / 90）。知らない値はサーバー側で既定に丸まる
-export async function getAdminOverview(params?: { days?: number }): Promise<AdminOverview> {
+// period で期間を切り替える（7d / 30d / 90d / 6m / 1y / all / 2026-07）。
+// 知らない値はサーバー側で既定に丸まる
+export async function getAdminOverview(params?: { period?: string }): Promise<AdminOverview> {
   const res = await apiClient.get<AdminOverview>('/api/v1/admin/overview', { params })
   return res.data
 }

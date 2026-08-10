@@ -81,20 +81,34 @@ RSpec.describe Admin::OverviewService do
   end
 
   describe "期間" do
-    it "既定は30日。知らない値は既定に丸める" do
-      expect(described_class.call[:period][:days]).to eq(30)
-      expect(described_class.call(days: 12_345)[:period][:days]).to eq(30)
+    it "既定は直近30日。知らない値は既定に丸める" do
+      expect(described_class.call[:period][:key]).to eq("30d")
+      expect(described_class.call(period: "いつか")[:period][:key]).to eq("30d")
     end
 
-    it "選べる期間に切り替えられる" do
-      expect(described_class.call(days: 7)[:period][:days]).to eq(7)
-      expect(described_class.call(days: 90)[:period][:days]).to eq(90)
+    it "直近・月ごと・全期間に切り替えられる" do
+      expect(described_class.call(period: "7d")[:period][:days]).to eq(7)
+      expect(described_class.call(period: "2026-07")[:period][:label]).to eq("2026年7月")
+      expect(described_class.call(period: "all")[:period][:label]).to eq("全期間")
     end
 
     it "長い期間でも、折れ線の点は増やしすぎない（傾きが読めなくなる）" do
-      points = described_class.call(days: 90)[:series][:new_users].size
+      points = described_class.call(period: "1y")[:series][:new_users].size
 
-      expect(points).to be <= described_class::MAX_SERIES_POINTS
+      expect(points).to be <= Admin::Period::MAX_SERIES_POINTS
+    end
+
+    it "収支も同じ期間で数える（ここだけ今月だと読み違える）" do
+      finance = described_class.call(period: "2026-07")[:finance]
+
+      expect(finance[:period][:year]).to eq(2026)
+      expect(finance[:period][:month]).to eq(7)
+    end
+
+    it "期間の外は数えない" do
+      travel_to(2.months.ago) { create(:user, :confirmed) }
+
+      expect(described_class.call(period: "7d")[:users][:new_in_period]).to eq(0)
     end
   end
 end

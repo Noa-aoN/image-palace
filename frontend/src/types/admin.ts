@@ -19,8 +19,8 @@ export interface AdminOverview {
     total: number
     confirmed: number
     new_last_7d: number
-    new_last_30d: number
-    active_last_30d: number
+    new_in_period: number
+    active_in_period: number
     admins: number
   }
   content: {
@@ -33,7 +33,7 @@ export interface AdminOverview {
   }
   generation: {
     by_status: Record<string, number>
-    items_last_30d: number
+    items_in_period: number
     shared_medias: number
     /** 同じ単語を作り直さずに済んだ割合（%） */
     cache_hit_rate: number
@@ -49,13 +49,24 @@ export interface AdminOverview {
     /** クレジット1つ（＝画像1枚）の実費（円）。収支ページの画像原価と同じ出どころ */
     credit_unit_cost_jpy: number
     breakdown: { subscription: number; topup: number; grant: number }
-    expired_last_30d: number
+    expired_in_period: number
     /** 買い切りで受け取った額のうち、まだ提供していないぶん（円） */
     unused_topup_value: number
     next_expiry_at: string | null
   }
-  /** いま見ている期間（日数）と、選べる候補 */
-  period: { days: number; options: number[] }
+  /** いま見ている期間。選べる候補も併せて返る（収支ページと同じ語彙） */
+  period: {
+    key: string
+    label: string
+    from: string
+    to: string
+    days: number
+    options: {
+      rolling: { value: string; label: string }[]
+      months: { value: string; label: string }[]
+      all: { value: string; label: string }
+    }
+  }
   billing: {
     active_subscriptions: number
     /** テストの契約を除いた数。目印を持たない古い行はテスト扱い */
@@ -69,12 +80,11 @@ export interface AdminOverview {
     by_plan: { name: string; tier: string | null; count: number; mrr_jpy: number }[]
     /** その期間に使われたクレジット */
     credits_consumed: number
-    credits_consumed_last_30d: number
     outstanding_credits: number
   }
   ai: {
-    calls_last_30d: number
-    tokens_last_30d: number
+    calls_in_period: number
+    tokens_in_period: number
     by_kind: { kind: string; label: string; count: number; tokens: number }[]
   }
   /** いま効いている上限。値の出どころ（ENV 名）も含む */

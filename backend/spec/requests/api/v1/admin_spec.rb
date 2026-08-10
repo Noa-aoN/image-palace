@@ -327,7 +327,7 @@ RSpec.describe "Api::V1::Admin", type: :request do
 
       get "/api/v1/admin/overview", headers: admin_headers
 
-      expect(json_response["credit_liability"]["expired_last_30d"]).to eq(4.0)
+      expect(json_response["credit_liability"]["expired_in_period"]).to eq(4.0)
     end
 
     it "未使用の買い切りぶんを金額に換算する（未提供の額の目安）" do

@@ -6,29 +6,26 @@ module Admin
   # 一覧を引いて Ruby 側で数えると、行が増えたぶんだけ重くなる。
   # 数えるものは COUNT / SUM / GROUP BY で DB に数えさせ、返すのは数字だけにする。
   class OverviewService
-    # 見られる期間。既定は30日。
-    #
-    # 「直近30日」に固定していると、始めたばかりの週の動きも、四半期の傾きも読めない。
-    # 折れ線の点の数もこれに合わせる（90日ぶんを日ごとに出すと潰れるので、上限を置く）
-    PERIODS = [ 7, 30, 90 ].freeze
-    DEFAULT_PERIOD = 30
-    # 折れ線に出す点の数の上限。これを超える期間はまとめて出す
-    MAX_SERIES_POINTS = 45
+    # 期間の決め方は Admin::Period に置く。収支ページと同じ語彙にするため
+    # （ページごとに別の選び方があると、同じ「6月」で違う範囲を見ることになる）
+    DEFAULT_PERIOD = Period::ROLLING[Period::DEFAULT]
 
-    def self.call(now: Time.current, days: DEFAULT_PERIOD)
-      new(now, days).call
+    def self.call(now: Time.current, period: Period::DEFAULT)
+      new(now, period).call
     end
 
-    def initialize(now, days = DEFAULT_PERIOD)
+    def initialize(now, period = Period::DEFAULT)
       @now = now
-      @days = PERIODS.include?(days.to_i) ? days.to_i : DEFAULT_PERIOD
-      @since = now - @days.days
+      @period = Period.resolve(period, now: now)
+      @days = @period.days
+      @since = @period.from
+      @until = @period.to
     end
 
     def call
       {
         generated_at: @now,
-        period: { days: @days, options: PERIODS },
+        period: @period.to_h.merge(options: Period.options(now: @now)),
         users: users_summary,
         content: content_summary,
         generation: generation_summary,
@@ -39,8 +36,10 @@ module Admin
         provider_status: provider_status,
         # ジョブが積まれたまま動いていないと、カードが「生成待ち」で止まり続ける
         queue: queue_status,
-        # 概要にも今月の収支を出す。別リクエストにすると、遠い DB への往復が二重になる
-        finance: ::Admin::FinanceService.call(year: @now.year, month: @now.month),
+        # 概要にも収支を出す。別リクエストにすると、遠い DB への往復が二重になる。
+        # 期間は上の選択に合わせる。ここだけ「今月」だと、90日を見ているのに
+        # 収入だけ今月ぶん、という読み違いが起きる
+        finance: finance_summary,
         series: {
           days: @days,
           new_users: daily_counts(User.all),
@@ -57,9 +56,9 @@ module Admin
         total: User.count,
         confirmed: User.where.not(confirmed_at: nil).count,
         new_last_7d: User.where(created_at: (@now - 7.days)..).count,
-        new_last_30d: User.where(created_at: @since..).count,
+        new_in_period: User.where(created_at: @since...@until).count,
         # 直近30日に1枚でもカードを作った人。「使われているか」を見るための数
-        active_last_30d: Item.where(created_at: @since..).distinct.count(:user_id),
+        active_in_period: Item.where(created_at: @since...@until).distinct.count(:user_id),
         # ENV 由来の owner も数える。role だけを見ると「運営メンバー 0」と出てしまう
         admins: User.effective_admins.count
       }
@@ -85,7 +84,7 @@ module Admin
       completed = by_status["completed"].to_i
       {
         by_status: Item::GENERATION_STATUSES.index_with { |status| by_status[status].to_i },
-        items_last_30d: Item.where(created_at: @since..).count,
+        items_in_period: Item.where(created_at: @since...@until).count,
         shared_medias: shared,
         # 同じ単語を作り直さずに済んだ割合。生成した枚数のうち、絵を新たに作らずに済んだぶん
         cache_hit_rate: completed.positive? ? ((completed - shared).fdiv(completed) * 100).round(1) : 0.0,
@@ -100,7 +99,7 @@ module Admin
       # 目印を持たない古い行は「本番の決済がまだ無かった時期のもの」＝テストとみなす
       live = scope.where(livemode: true).count
       total = User.count
-      consumed = CreditTransaction.where(kind: "consumption", created_at: @since..).sum(:delta)
+      consumed = CreditTransaction.where(kind: "consumption", created_at: @since...@until).sum(:delta)
       trialing = scope.where(status: "trialing").count
 
       {
@@ -116,7 +115,6 @@ module Admin
         by_plan: plan_breakdown(scope),
         # 消費は負の値で記録されているので、使ったぶんを正の数にして返す
         credits_consumed: (-consumed).fdiv(::Billing::POINTS_PER_CREDIT).round(2),
-        credits_consumed_last_30d: (-consumed).fdiv(::Billing::POINTS_PER_CREDIT).round(2),
         # 未使用の総量は credit_liability が持つ。ここで別に数え直すと、
         # 同じ画面に同じ名前の違う数字が並ぶ（実際、期限付きグラントを取りこぼしていた）
         outstanding_credits: credit_liability[:total]
@@ -138,6 +136,16 @@ module Admin
     # 受け取ったのにまだ提供していないぶん＝これから原価がかかる約束。
     # 期限の有無で分けて見えないと、いつまでにいくら出ていくのかが読めない。
     # サービスを畳むときの返金額の目安にもなる。
+    # 選んだ期間の収支。月を選んだときは、その月として（インフラ月額を1か月ぶんで）数える
+    def finance_summary
+      if @period.key.match?(Period::MONTH_FORMAT)
+        year, month = @period.key.split("-").map(&:to_i)
+        ::Admin::FinanceService.call(year: year, month: month)
+      else
+        ::Admin::FinanceService.new(from: @since, to: @until).call
+      end
+    end
+
     def credit_liability
       @credit_liability ||= build_credit_liability
     end
@@ -180,8 +188,8 @@ module Admin
           grant: to_credits(grant_points)
         },
         # 直近30日で失効したぶん（使われずに消えた量）
-        expired_last_30d: to_credits(-CreditTransaction.where(kind: %w[subscription_expire grant_expire])
-                                                       .where(created_at: @since..).sum(:delta)),
+        expired_in_period: to_credits(-CreditTransaction.where(kind: %w[subscription_expire grant_expire])
+                                                       .where(created_at: @since...@until).sum(:delta)),
         # 買い切りで**受け取った金額**のうち、まだ提供していないぶんの目安（円）。
         # total_cost_jpy（これから出ていく原価）とは別物。あちらは支出、こちらは預り。
         # 終了を告知するとき、返すべき額の目安になる
@@ -253,14 +261,14 @@ module Admin
     end
 
     def ai_summary
-      rows = AiUsage.since(@since).group(:kind).pluck(
+      rows = AiUsage.where(created_at: @since...@until).group(:kind).pluck(
         Arel.sql("kind"),
         Arel.sql("COUNT(*)"),
         Arel.sql("COALESCE(SUM(prompt_tokens + completion_tokens), 0)")
       )
       {
-        calls_last_30d: rows.sum { |row| row[1] },
-        tokens_last_30d: rows.sum { |row| row[2] },
+        calls_in_period: rows.sum { |row| row[1] },
+        tokens_in_period: rows.sum { |row| row[2] },
         by_kind: rows.map { |kind, count, tokens|
           { kind: kind, label: AiUsage.label_for(kind), count: count, tokens: tokens }
         }.sort_by { |row| -row[:count] }
@@ -343,12 +351,12 @@ module Admin
     # 期間が長いときは何日かをまとめる。90日ぶんを1日1点で描くと、
     # 点が細かすぎて傾きが読めなくなる（読みたいのは日々の上下ではなく傾き）
     def daily_counts(scope)
-      counts = scope.where(created_at: @since..)
+      counts = scope.where(created_at: @since...@until)
                     .group(Arel.sql("DATE(created_at)"))
                     .count
                     .transform_keys(&:to_s)
 
-      bucket = (@days.to_f / MAX_SERIES_POINTS).ceil
+      bucket = @period.bucket_days
       (0...@days).each_slice(bucket).map do |offsets|
         dates = offsets.map { |offset| (@since + offset.days).to_date.to_s }
         { date: dates.first, count: dates.sum { |date| counts[date].to_i } }

@@ -15,16 +15,14 @@ import type { AdminOverview } from '@/types/admin'
  * ここでの出し分けは見た目の話であって、守りではない。
  * 権限の判定はサーバー側で毎リクエスト行われる。
  */
-const PERIOD_LABELS: Record<number, string> = { 7: '7日', 30: '30日', 90: '90日' }
-
 export default function AdminPage() {
   const [overview, setOverview] = useState<AdminOverview | null>(null)
-  const [days, setDays] = useState(30)
+  const [period, setPeriod] = useState('30d')
   const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
     let cancelled = false
-    getAdminOverview({ days })
+    getAdminOverview({ period })
       .then((data) => {
         if (!cancelled) setOverview(data)
       })
@@ -34,7 +32,7 @@ export default function AdminPage() {
     return () => {
       cancelled = true
     }
-  }, [days])
+  }, [period])
 
   if (!overview && !error) {
     return (
@@ -46,25 +44,43 @@ export default function AdminPage() {
 
   return (
     <div className="space-y-8">
-      {/* 「直近30日」に固定していると、始めたばかりの週の動きも四半期の傾きも読めない。
-          期間はここで1回だけ選び、下の数字と折れ線すべてに効かせる */}
-      <div className="flex flex-wrap items-center gap-1.5">
-        <span className="mr-1 text-sm text-muted-foreground">期間</span>
-        {(overview?.period.options ?? [7, 30, 90]).map((option) => (
-          <button
-            key={option}
-            type="button"
-            onClick={() => setDays(option)}
-            className={`rounded-full border px-3 py-1 text-sm transition-colors ${
-              days === option
-                ? 'border-[var(--palace)] text-[var(--palace)]'
-                : 'border-border text-muted-foreground hover:text-foreground'
-            }`}
-          >
-            {PERIOD_LABELS[option] ?? `${option}日`}
-          </button>
-        ))}
-      </div>
+      {/* 期間はここで1回だけ選び、下の数字と折れ線すべてに効かせる。
+          選び方（直近◯日／◯年◯月／全期間）は収支ページと同じ語彙にしてある。
+          ページごとに別の選び方があると、同じ「6月」で違う範囲を見ることになる */}
+      {overview && (
+        <div className="flex flex-wrap items-baseline justify-between gap-3">
+          <p className="text-sm text-muted-foreground">
+            {overview.period.label}（{new Date(overview.period.from).toLocaleDateString('ja-JP')} 〜{' '}
+            {new Date(overview.period.to).toLocaleDateString('ja-JP')}）
+          </p>
+          <label className="text-sm">
+            <span className="mr-2 text-muted-foreground">期間</span>
+            <select
+              value={period}
+              onChange={(e) => setPeriod(e.target.value)}
+              className="rounded-lg border border-border bg-background px-2 py-1"
+            >
+              <optgroup label="直近">
+                {overview.period.options.rolling.map((option) => (
+                  <option key={option.value} value={option.value}>
+                    {option.label}
+                  </option>
+                ))}
+              </optgroup>
+              {overview.period.options.months.length > 0 && (
+                <optgroup label="月ごと">
+                  {overview.period.options.months.map((option) => (
+                    <option key={option.value} value={option.value}>
+                      {option.label}
+                    </option>
+                  ))}
+                </optgroup>
+              )}
+              <option value={overview.period.options.all.value}>{overview.period.options.all.label}</option>
+            </select>
+          </label>
+        </div>
+      )}
 
       {error && <p className="text-sm text-destructive">{error}</p>}
 
@@ -75,14 +91,14 @@ export default function AdminPage() {
             <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
               <Stat label="登録ユーザー" value={overview.users.total} sub={`確認済み ${overview.users.confirmed}`} />
               <Stat
-                label={`直近${overview.period.days}日の新規`}
-                value={overview.users.new_last_30d}
+                label={`${overview.period.label}の新規`}
+                value={overview.users.new_in_period}
                 sub={`7日 ${overview.users.new_last_7d}`}
               />
               <Stat
-                label={`直近${overview.period.days}日に作った人`}
-                value={overview.users.active_last_30d}
-                sub={rate(overview.users.active_last_30d, overview.users.total)}
+                label={`${overview.period.label}に作った人`}
+                value={overview.users.active_in_period}
+                sub={rate(overview.users.active_in_period, overview.users.total)}
               />
               <Stat label="運営メンバー" value={overview.users.admins} />
             </div>
@@ -96,7 +112,7 @@ export default function AdminPage() {
           <section className="space-y-3">
             <h2 className="text-lg font-semibold">生成</h2>
             <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-              <Stat label="カード総数" value={overview.content.items} sub={`${overview.period.days}日 ${overview.generation.items_last_30d}`} />
+              <Stat label="カード総数" value={overview.content.items} sub={`${overview.period.label} ${overview.generation.items_in_period}`} />
               <Stat label="生成成功" value={overview.generation.by_status.completed ?? 0} />
               {/* 失敗は数だけでは多いのか分からない。割合を添える */}
               <Stat
@@ -135,7 +151,7 @@ export default function AdminPage() {
                 }
               />
               <Stat
-                label={`${overview.period.days}日の消費`}
+                label={`${overview.period.label}の消費`}
                 value={`${overview.billing.credits_consumed} cr`}
                 sub={
                   overview.billing.canceling_subscriptions > 0
@@ -145,7 +161,7 @@ export default function AdminPage() {
               />
               {/* ここは「動き」を並べる場所。いまの残高は直下の節が持つ（同じ数を2度出さない） */}
               <Stat
-                label="今月の収入"
+                label={`${overview.period.label}の収入`}
                 value={`¥${overview.finance.revenue.total.toLocaleString()}`}
                 sub={overview.finance.test_revenue > 0 ? `テストの決済は除く` : undefined}
               />
@@ -211,8 +227,8 @@ export default function AdminPage() {
                 sub="期限が付く前の残り"
               />
               <Stat
-                label={`${overview.period.days}日で失効`}
-                value={`${overview.credit_liability.expired_last_30d.toLocaleString()} cr`}
+                label={`${overview.period.label}に失効`}
+                value={`${overview.credit_liability.expired_in_period.toLocaleString()} cr`}
                 sub="使われずに消えたぶん"
               />
             </div>
@@ -230,12 +246,12 @@ export default function AdminPage() {
               <Stat label="タグ" value={overview.content.tags} />
             </div>
 
-            <h3 className="pt-2 text-sm font-medium text-muted-foreground">AI（直近{overview.period.days}日）</h3>
+            <h3 className="pt-2 text-sm font-medium text-muted-foreground">AI（{overview.period.label}）</h3>
             <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
               <Stat
                 label="呼び出し"
-                value={overview.ai.calls_last_30d}
-                sub={`${overview.ai.tokens_last_30d.toLocaleString()} トークン`}
+                value={overview.ai.calls_in_period}
+                sub={`${overview.ai.tokens_in_period.toLocaleString()} トークン`}
               />
             </div>
             {overview.ai.by_kind.length > 0 && (
