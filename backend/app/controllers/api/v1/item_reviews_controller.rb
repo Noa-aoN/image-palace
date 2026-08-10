@@ -14,6 +14,8 @@ module Api
         return render(json: { error: "記録する内容がありません" }, status: :unprocessable_entity) if entries.empty?
 
         ItemReview.insert_all!(entries)
+        # 続けた日数や学習回数の実績を数え直す
+        EvaluateAchievementsJob.perform_later(current_user.id)
         render json: { recorded: entries.size }, status: :created
       end
 

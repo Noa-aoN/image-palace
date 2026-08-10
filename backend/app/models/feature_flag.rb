@@ -52,7 +52,9 @@ class FeatureFlag < ApplicationRecord
     "page.study_game" => { label: "プレイ", group: "palace", path: "/study/game", stage: "prototype" },
     "page.study_record" => { label: "レコード", group: "palace", path: "/study/record", stage: "released" },
     "page.myroom" => { label: "マイルーム", group: "palace", path: "/myroom", stage: "released" },
-    "page.trophy" => { label: "トロフィー", group: "palace", path: "/trophy", stage: "prototype" },
+    "page.achievements" => {
+      label: "アチーブメント", group: "palace", path: "/achievements", stage: "prototype"
+    },
     "page.settings" => { label: "環境設定", group: "palace", path: "/settings", stage: "released" },
     "page.billing" => { label: "利用と支払い", group: "palace", path: "/billing", stage: "released" },
     "page.account" => { label: "アカウント管理", group: "palace", path: "/account", stage: "released" },

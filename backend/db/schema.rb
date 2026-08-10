@@ -10,11 +10,33 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_08_10_000011) do
+ActiveRecord::Schema[8.1].define(version: 2026_08_10_000013) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
   enable_extension "pg_trgm"
   enable_extension "pgcrypto"
+
+  create_table "achievement_definitions", id: :uuid, default: -> { "gen_random_uuid()" }, force: :cascade do |t|
+    t.string "category"
+    t.jsonb "condition_params", default: {}, null: false
+    t.integer "condition_target", default: 1, null: false
+    t.string "condition_type", null: false
+    t.datetime "created_at", null: false
+    t.text "description"
+    t.boolean "enabled", default: true, null: false
+    t.datetime "ends_at"
+    t.string "key", null: false
+    t.boolean "limited", default: false, null: false
+    t.string "name", null: false
+    t.text "notify_body"
+    t.string "notify_title"
+    t.integer "position", default: 0, null: false
+    t.boolean "published", default: true, null: false
+    t.jsonb "rewards", default: [], null: false
+    t.datetime "starts_at"
+    t.datetime "updated_at", null: false
+    t.index ["key"], name: "index_achievement_definitions_on_key", unique: true
+  end
 
   create_table "active_storage_attachments", force: :cascade do |t|
     t.bigint "blob_id", null: false
@@ -336,6 +358,27 @@ ActiveRecord::Schema[8.1].define(version: 2026_08_10_000011) do
     t.index ["item_id"], name: "index_medias_on_item_id"
   end
 
+  create_table "mission_definitions", id: :uuid, default: -> { "gen_random_uuid()" }, force: :cascade do |t|
+    t.string "cadence", default: "onboarding", null: false
+    t.jsonb "condition_params", default: {}, null: false
+    t.integer "condition_target", default: 1, null: false
+    t.string "condition_type", null: false
+    t.datetime "created_at", null: false
+    t.text "description"
+    t.boolean "enabled", default: true, null: false
+    t.datetime "ends_at"
+    t.string "key", null: false
+    t.string "name", null: false
+    t.text "notify_body"
+    t.string "notify_title"
+    t.integer "position", default: 0, null: false
+    t.boolean "published", default: true, null: false
+    t.jsonb "rewards", default: [], null: false
+    t.datetime "starts_at"
+    t.datetime "updated_at", null: false
+    t.index ["key"], name: "index_mission_definitions_on_key", unique: true
+  end
+
   create_table "monthly_actuals", id: :uuid, default: -> { "gen_random_uuid()" }, force: :cascade do |t|
     t.datetime "created_at", null: false
     t.integer "infra_jpy", default: 0, null: false
@@ -440,6 +483,32 @@ ActiveRecord::Schema[8.1].define(version: 2026_08_10_000011) do
     t.index ["user_id", "from_item_id", "to_item_id", "relation_type"], name: "index_relations_on_unique_relation", unique: true
     t.index ["user_id"], name: "index_relations_on_user_id"
     t.check_constraint "from_item_id <> to_item_id", name: "check_no_self_relation"
+  end
+
+  create_table "reward_definitions", id: :uuid, default: -> { "gen_random_uuid()" }, force: :cascade do |t|
+    t.string "category"
+    t.datetime "created_at", null: false
+    t.text "description"
+    t.boolean "enabled", default: true, null: false
+    t.datetime "ends_at"
+    t.boolean "equippable", default: false, null: false
+    t.boolean "featurable", default: false, null: false
+    t.string "key", null: false
+    t.string "kind", null: false
+    t.boolean "limited", default: false, null: false
+    t.jsonb "metadata", default: {}, null: false
+    t.string "name", null: false
+    t.text "notify_body"
+    t.string "notify_title"
+    t.integer "position", default: 0, null: false
+    t.boolean "profile_visible", default: true, null: false
+    t.boolean "published", default: true, null: false
+    t.string "rarity", default: "common", null: false
+    t.boolean "room_displayable", default: false, null: false
+    t.datetime "starts_at"
+    t.datetime "updated_at", null: false
+    t.index ["key"], name: "index_reward_definitions_on_key", unique: true
+    t.index ["kind", "position"], name: "index_reward_definitions_on_kind_and_position"
   end
 
   create_table "settings", primary_key: "user_id", id: :uuid, default: nil, force: :cascade do |t|
@@ -725,6 +794,66 @@ ActiveRecord::Schema[8.1].define(version: 2026_08_10_000011) do
     t.index ["identifier_digest"], name: "index_trial_grant_records_on_identifier_digest", unique: true
   end
 
+  create_table "user_achievements", id: :uuid, default: -> { "gen_random_uuid()" }, force: :cascade do |t|
+    t.uuid "achievement_definition_id", null: false
+    t.datetime "completed_at"
+    t.datetime "created_at", null: false
+    t.integer "progress", default: 0, null: false
+    t.datetime "updated_at", null: false
+    t.uuid "user_id", null: false
+    t.index ["achievement_definition_id"], name: "index_user_achievements_on_achievement_definition_id"
+    t.index ["user_id", "achievement_definition_id"], name: "index_user_achievements_unique", unique: true
+    t.index ["user_id"], name: "index_user_achievements_on_user_id"
+  end
+
+  create_table "user_missions", id: :uuid, default: -> { "gen_random_uuid()" }, force: :cascade do |t|
+    t.datetime "completed_at"
+    t.datetime "created_at", null: false
+    t.uuid "mission_definition_id", null: false
+    t.string "period_key", default: "-", null: false
+    t.integer "progress", default: 0, null: false
+    t.datetime "updated_at", null: false
+    t.uuid "user_id", null: false
+    t.index ["mission_definition_id"], name: "index_user_missions_on_mission_definition_id"
+    t.index ["user_id", "mission_definition_id", "period_key"], name: "index_user_missions_unique", unique: true
+    t.index ["user_id"], name: "index_user_missions_on_user_id"
+  end
+
+  create_table "user_rewards", id: :uuid, default: -> { "gen_random_uuid()" }, force: :cascade do |t|
+    t.datetime "created_at", null: false
+    t.boolean "equipped", default: false, null: false
+    t.datetime "featured_at"
+    t.datetime "granted_at", null: false
+    t.uuid "reward_definition_id", null: false
+    t.boolean "room_placed", default: false, null: false
+    t.string "source", default: "achievement", null: false
+    t.string "source_ref"
+    t.datetime "updated_at", null: false
+    t.uuid "user_id", null: false
+    t.index ["reward_definition_id"], name: "index_user_rewards_on_reward_definition_id"
+    t.index ["user_id", "equipped"], name: "index_user_rewards_on_user_id_and_equipped"
+    t.index ["user_id", "reward_definition_id"], name: "index_user_rewards_on_user_id_and_reward_definition_id", unique: true
+    t.index ["user_id"], name: "index_user_rewards_on_user_id"
+  end
+
+  create_table "user_stats", id: :uuid, default: -> { "gen_random_uuid()" }, force: :cascade do |t|
+    t.integer "achievements_completed", default: 0, null: false
+    t.integer "active_days", default: 0, null: false
+    t.integer "cards_created", default: 0, null: false
+    t.datetime "computed_at"
+    t.integer "containers_created", default: 0, null: false
+    t.datetime "created_at", null: false
+    t.integer "images_generated", default: 0, null: false
+    t.integer "longest_streak", default: 0, null: false
+    t.integer "reviews_correct", default: 0, null: false
+    t.integer "reviews_total", default: 0, null: false
+    t.integer "rewards_earned", default: 0, null: false
+    t.integer "streak_days", default: 0, null: false
+    t.datetime "updated_at", null: false
+    t.uuid "user_id", null: false
+    t.index ["user_id"], name: "index_user_stats_on_user_id", unique: true
+  end
+
   create_table "users", id: :uuid, default: -> { "gen_random_uuid()" }, force: :cascade do |t|
     t.boolean "allow_password_change", default: false, null: false
     t.string "avatar_generation_error"
@@ -879,6 +1008,13 @@ ActiveRecord::Schema[8.1].define(version: 2026_08_10_000011) do
   add_foreign_key "tag_group_items", "tags"
   add_foreign_key "tag_groups", "users"
   add_foreign_key "tags", "users", on_delete: :cascade
+  add_foreign_key "user_achievements", "achievement_definitions"
+  add_foreign_key "user_achievements", "users"
+  add_foreign_key "user_missions", "mission_definitions"
+  add_foreign_key "user_missions", "users"
+  add_foreign_key "user_rewards", "reward_definitions"
+  add_foreign_key "user_rewards", "users"
+  add_foreign_key "user_stats", "users"
   add_foreign_key "view_edges", "views"
   add_foreign_key "view_items", "items", on_delete: :cascade
   add_foreign_key "view_items", "space_points", on_delete: :cascade

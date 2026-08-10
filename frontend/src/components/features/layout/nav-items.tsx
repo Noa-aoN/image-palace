@@ -21,7 +21,7 @@ import {
   CreditCard,
   UserCog,
   Settings,
-  Trophy,
+  Crown,
   House,
   BookOpen,
   Newspaper,
@@ -116,7 +116,7 @@ export const NAV_SECTIONS: NavSection[] = [
         icon: <House size={22} />,
         label: 'マイルーム',
         children: [
-          { href: '/trophy', icon: <Trophy size={20} />, label: 'トロフィー' },
+          { href: '/achievements', icon: <Crown size={20} />, label: 'アチーブメント' },
           { href: '/settings', icon: <Settings size={20} />, label: '環境設定' },
           { href: '/billing', icon: <CreditCard size={20} />, label: '利用と支払い' },
           { href: '/account', icon: <UserCog size={20} />, label: 'アカウント管理' },

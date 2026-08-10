@@ -119,8 +119,10 @@ Rails.application.routes.draw do
       get "features", to: "features#index"
       # 引き換えコードの受け取り
       post "campaign_codes/redeem", to: "campaign_codes#redeem"
-      # 実績・メダル・称号（記録から数え出す）
+      # アチーブメント（栄誉の間）
       get "achievements", to: "achievements#show"
+      post "achievements/equip", to: "achievements#equip"
+      post "achievements/feature", to: "achievements#feature"
       # 学習の記録。1回の学習ぶんをまとめて受ける
       resources :item_reviews, only: [ :create ]
       # カードが持つ項目の定義。種別ごとに利用者が決める

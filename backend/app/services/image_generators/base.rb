@@ -33,8 +33,11 @@ module ImageGenerators
     #
     # kind / user_id は原価集計のための記録に使う（画像が出ることが最優先なので、
     # 記録に失敗しても生成は止めない）。
-    def generate(prompt:, aspect_ratio: AspectRatios::DEFAULT, kind: "unknown", user_id: nil)
+    # options はプロバイダごとの追加指定（透過など）。対応しないプロバイダは黙って無視する。
+    # 「使えないなら落ちる」より「使えないなら普通に作る」ほうが、絵が出ることを優先できる
+    def generate(prompt:, aspect_ratio: AspectRatios::DEFAULT, kind: "unknown", user_id: nil, options: {})
       @aspect_ratio = aspect_ratio
+      @options = options || {}
       raw = with_retry(prompt:) { perform_request(prompt:) }
       normalized = normalize_response(raw)
       metadata = normalized.fetch(:metadata)
@@ -68,8 +71,12 @@ module ImageGenerators
       )
     end
 
-    # 生成に使う縦横比（サブクラスから参照する）
+    # 生成に使う縦横比と追加指定（サブクラスから参照する）
     attr_reader :aspect_ratio
+
+    def option(key)
+      (@options || {})[key]
+    end
 
     # API 呼び出し本体。サブクラスで実装必須。
     def perform_request(prompt:)

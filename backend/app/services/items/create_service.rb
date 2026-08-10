@@ -61,6 +61,10 @@ module Items
       else
         GenerateBriefJob.perform_later(item.id, force_generate: force, research_level: research ? meaning_level : nil)
       end
+
+      # 実績とミッションを数え直す。呼ぶ場所は3つだけに絞ってある
+      # （ここ・学習の記録・アチーブメントのページ）。あちこちに撒くと追えなくなる
+      EvaluateAchievementsJob.perform_later(@user.id)
       # 意味の自動生成: 作成時に generate_meaning が明示指定されればそれを優先し、
       # 指定がなければユーザー設定（auto_generate_meanings）にフォールバックする。
       # 調べてから作る場合は上の連鎖が先に作るので、ここでは積まない（二重生成になる）
