@@ -5,6 +5,8 @@ import type {
   AdminFinancePage,
   AdminFinanceSummary,
   AdminGrantPoliciesPage,
+  AdminCampaignCode,
+  AdminCampaignCodesPage,
   AdminFeatureFlag,
   AdminFeatureFlagsPage,
   AdminGrantPolicy,
@@ -69,6 +71,40 @@ export async function getAdminAuditLogs(params?: {
 export async function getAdminAuditLogList(): Promise<AdminAuditLog[]> {
   const res = await apiClient.get<{ logs: AdminAuditLog[] }>('/api/v1/admin/audit_logs')
   return res.data.logs
+}
+
+// ── 引き換えコード ────────────────────────────────────────────
+
+export async function getAdminCampaignCodes(): Promise<AdminCampaignCodesPage> {
+  const res = await apiClient.get<AdminCampaignCodesPage>('/api/v1/admin/campaign_codes')
+  return res.data
+}
+
+// コードは省略できる。省略すると、読み違えにくい字だけで自動生成される
+export async function createAdminCampaignCode(campaign_code: {
+  label: string
+  amount: number
+  code?: string
+  max_redemptions?: number | null
+  expires_at?: string | null
+  credit_valid_days?: number | null
+  notes?: string | null
+}): Promise<AdminCampaignCode> {
+  const res = await apiClient.post<{ code: AdminCampaignCode }>('/api/v1/admin/campaign_codes', { campaign_code })
+  return res.data.code
+}
+
+// コード文字列そのものは変えられない（配ったあとに変えると、配った先で通らなくなる）
+export async function updateAdminCampaignCode(
+  id: string,
+  campaign_code: Partial<Pick<AdminCampaignCode, 'label' | 'amount' | 'max_redemptions' | 'expires_at' | 'enabled' | 'notes'>>
+): Promise<AdminCampaignCode> {
+  const res = await apiClient.patch<{ code: AdminCampaignCode }>(`/api/v1/admin/campaign_codes/${id}`, { campaign_code })
+  return res.data.code
+}
+
+export async function deleteAdminCampaignCode(id: string): Promise<void> {
+  await apiClient.delete(`/api/v1/admin/campaign_codes/${id}`)
 }
 
 // ── 機能の見せ方 ──────────────────────────────────────────────

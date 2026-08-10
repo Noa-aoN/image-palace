@@ -43,6 +43,7 @@ Rails.application.routes.draw do
         patch "users/:id/role", to: "users#update_role"
         get "audit_logs", to: "audit_logs#index"
         post "provider_check", to: "provider_checks#create"
+        resources :campaign_codes, only: [ :index, :create, :update, :destroy ]
         get "feature_flags", to: "feature_flags#index"
         put "feature_flags/:key", to: "feature_flags#upsert"
         delete "feature_flags/:key", to: "feature_flags#destroy"
@@ -109,6 +110,8 @@ Rails.application.routes.draw do
       resources :item_types, only: [ :index ]
       # 作りかけの機能をどこまで出すか（読み取りは全利用者）
       get "features", to: "features#index"
+      # 引き換えコードの受け取り
+      post "campaign_codes/redeem", to: "campaign_codes#redeem"
       # 学習の記録。1回の学習ぶんをまとめて受ける
       resources :item_reviews, only: [ :create ]
       # カードが持つ項目の定義。種別ごとに利用者が決める

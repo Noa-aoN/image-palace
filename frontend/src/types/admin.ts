@@ -116,6 +116,34 @@ export interface AdminOverview {
 }
 
 /** 付与ポリシー（何を・いくつ・どの条件で配るか） */
+/** 引き換えコード（運営が発行し、利用者が入力してクレジットを受け取る） */
+export interface AdminCampaignCode {
+  id: string
+  code: string
+  label: string
+  reward_type: 'credits' | 'item'
+  amount: number
+  item_kind: string | null
+  starts_at: string | null
+  expires_at: string | null
+  max_redemptions: number | null
+  credit_valid_days: number | null
+  enabled: boolean
+  notes: string | null
+  created_at: string
+  redeemed_count: number
+  granted_credits: number
+  /** 受け取り数 ÷ 上限。上限を決めていなければ null（分母が無い） */
+  redemption_rate: number | null
+  available: boolean
+}
+
+export interface AdminCampaignCodesPage {
+  codes: AdminCampaignCode[]
+  reward_types: string[]
+  suggested_code: string
+}
+
 /** 作りかけの機能を、どこまで見せるか */
 export interface AdminFeatureFlag {
   key: string

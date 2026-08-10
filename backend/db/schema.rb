@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_08_10_000004) do
+ActiveRecord::Schema[8.1].define(version: 2026_08_10_000005) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
   enable_extension "pg_trgm"
@@ -103,6 +103,35 @@ ActiveRecord::Schema[8.1].define(version: 2026_08_10_000004) do
     t.index ["cover_item_id"], name: "index_boxes_on_cover_item_id"
     t.index ["user_id", "created_at"], name: "index_boxes_on_user_id_and_created_at"
     t.index ["user_id"], name: "index_boxes_on_user_id"
+  end
+
+  create_table "campaign_codes", id: :uuid, default: -> { "gen_random_uuid()" }, force: :cascade do |t|
+    t.integer "amount", default: 0, null: false
+    t.string "code", null: false
+    t.datetime "created_at", null: false
+    t.uuid "created_by_id"
+    t.integer "credit_valid_days"
+    t.boolean "enabled", default: true, null: false
+    t.datetime "expires_at"
+    t.string "item_kind"
+    t.string "label", null: false
+    t.integer "max_redemptions"
+    t.text "notes"
+    t.string "reward_type", default: "credits", null: false
+    t.datetime "starts_at"
+    t.datetime "updated_at", null: false
+    t.index ["code"], name: "index_campaign_codes_on_code", unique: true
+    t.index ["created_by_id"], name: "index_campaign_codes_on_created_by_id"
+  end
+
+  create_table "campaign_redemptions", id: :uuid, default: -> { "gen_random_uuid()" }, force: :cascade do |t|
+    t.uuid "campaign_code_id", null: false
+    t.datetime "created_at", null: false
+    t.integer "points", default: 0, null: false
+    t.uuid "user_id", null: false
+    t.index ["campaign_code_id", "user_id"], name: "index_campaign_redemptions_on_campaign_code_id_and_user_id", unique: true
+    t.index ["campaign_code_id"], name: "index_campaign_redemptions_on_campaign_code_id"
+    t.index ["user_id"], name: "index_campaign_redemptions_on_user_id"
   end
 
   create_table "cost_parameters", id: :uuid, default: -> { "gen_random_uuid()" }, force: :cascade do |t|
@@ -779,6 +808,9 @@ ActiveRecord::Schema[8.1].define(version: 2026_08_10_000004) do
   add_foreign_key "box_items", "items", on_delete: :cascade
   add_foreign_key "boxes", "items", column: "cover_item_id", on_delete: :nullify
   add_foreign_key "boxes", "users", on_delete: :cascade
+  add_foreign_key "campaign_codes", "users", column: "created_by_id"
+  add_foreign_key "campaign_redemptions", "campaign_codes"
+  add_foreign_key "campaign_redemptions", "users"
   add_foreign_key "credit_grants", "users"
   add_foreign_key "credit_transactions", "users", on_delete: :cascade
   add_foreign_key "item_properties", "items"
