@@ -26,7 +26,7 @@ module Api
         params.require(:setting).permit(
           :auto_generate_meanings, :auto_generate_tags, :default_image_style, :default_aspect_ratio,
           :display_style, :shelf_orientation, :onboarded,
-          :regenerate_with_meaning, :image_safeguard, :card_headline_key,
+          :regenerate_with_meaning, :image_safeguard, :card_headline_key, :palace_name,
           :diagram_mode, :motion_mode, :word_difficulty, :default_card_preset,
           library_order: [],
           card_list_fields: [],
@@ -52,6 +52,7 @@ module Api
           image_safeguard: setting.image_safeguard,
           # 一覧で名前として出す項目。空なら見出し語
           card_headline_key: setting.card_headline_key,
+          palace_name: setting.palace_name,
           card_property_presets: setting.card_property_presets,
           card_list_fields: setting.card_list_fields,
           max_card_list_fields: Setting::MAX_CARD_LIST_FIELDS,
