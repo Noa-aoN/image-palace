@@ -30,6 +30,7 @@ module Ai
 
     DEFAULT_COST_POINTS = {
       "meaning" => UNIT_COST_POINTS,
+      "examples" => UNIT_COST_POINTS,
       "tags" => UNIT_COST_POINTS,
       "brief" => UNIT_COST_POINTS,
       "scene_rewrite" => UNIT_COST_POINTS,

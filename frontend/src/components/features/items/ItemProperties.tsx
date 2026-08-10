@@ -4,7 +4,15 @@ import React, { useEffect, useState } from 'react'
 import { X, Sparkles, ShieldCheck } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Spinner } from '@/components/ui/spinner'
-import { getItemTypes, updateItem, generateMeaning, generateTags, factCheckItem, isItemSkip } from '@/lib/api/items'
+import {
+  getItemTypes,
+  updateItem,
+  generateMeaning,
+  generateExamples,
+  generateTags,
+  factCheckItem,
+  isItemSkip,
+} from '@/lib/api/items'
 import { MEANING_LEVELS, meaningLevelLabel, DEFAULT_MEANING_LEVEL } from '@/lib/meaning-levels'
 import { getTags } from '@/lib/api/tags'
 import type { Item, ItemType } from '@/types/item'
@@ -285,6 +293,25 @@ export function ItemProperties({ item, onUpdated }: ItemPropertiesProps) {
     }
   }
 
+  const [generatingExamples, setGeneratingExamples] = useState(false)
+  const [examplesError, setExamplesError] = useState<string | null>(null)
+  const hasMeanings = (item.meanings?.length ?? 0) > 0
+
+  // 例文の無いものだけまとめて書く。1件ずつの書き直しは ExampleList 側の行から。
+  // 手で書いた例文をここで上書きしないのは、まとめて押したときの被害が大きいため
+  const handleGenerateExamples = async () => {
+    setGeneratingExamples(true)
+    setExamplesError(null)
+    try {
+      onUpdated(await generateExamples(item.id))
+    } catch (e) {
+      const detail = (e as { response?: { data?: { error?: string } } })?.response?.data?.error
+      setExamplesError(detail ?? '例文を書けませんでした。時間を置いて再度お試しください。')
+    } finally {
+      setGeneratingExamples(false)
+    }
+  }
+
   const [checkingFact, setCheckingFact] = useState(false)
 
   // 説明が事実として正しいかをAIでチェックする（結果は FactCheckResult に反映される）
@@ -498,8 +525,22 @@ export function ItemProperties({ item, onUpdated }: ItemPropertiesProps) {
       key: 'examples',
       label: '例',
       node: (
-        <PropertyBlock title="例">
+        <PropertyBlock
+          title="例"
+          actions={
+            hasMeanings && (
+              <BlockAction
+                icon={<Sparkles size={14} />}
+                label="空いている例をAIで書く"
+                onClick={handleGenerateExamples}
+                busy={generatingExamples}
+                title="例文の無いものだけ書きます。1件ずつの書き直しは各行から"
+              />
+            )
+          }
+        >
           <ExampleList item={item} onUpdated={onUpdated} />
+          <BlockError message={examplesError} />
         </PropertyBlock>
       ),
     },

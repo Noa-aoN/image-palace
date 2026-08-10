@@ -4,7 +4,7 @@ module Api
       include ItemSerialization
 
       before_action :set_item,
-                    only: [ :show, :update, :destroy, :retry, :approve_image, :meaning, :brief, :scene_rewrite,
+                    only: [ :show, :update, :destroy, :retry, :approve_image, :meaning, :examples, :brief, :scene_rewrite,
                             :generate_tags, :fact_check, :fill_properties, :usages, :update_block_view ]
 
       DEFAULT_PER_PAGE = 24
@@ -222,7 +222,9 @@ module Api
         result = Items::FillPropertiesService.call(
           item: item,
           user: current_user,
-          overwrite: ActiveModel::Type::Boolean.new.cast(params[:overwrite]) || false
+          overwrite: ActiveModel::Type::Boolean.new.cast(params[:overwrite]) || false,
+          # 項目を名指しすると、その項目だけを書く（1項目を書き直したいとき）
+          keys: params[:keys].presence
         )
         render json: {
           filled_keys: result.filled_keys,
@@ -285,6 +287,25 @@ module Api
         render json: { error: e.message }, status: :unprocessable_entity
       rescue ActiveRecord::RecordInvalid => e
         render json: { errors: e.record.errors.full_messages }, status: :unprocessable_entity
+      end
+
+      # 例文を AI で書く。説明はそのままで、例文だけ書き直せるようにする。
+      #
+      # overwrite=false（既定）なら例文の無いものだけ。meaning_id を渡すとその1件だけ。
+      def examples
+        result = Items::GenerateExamplesService.call(
+          item: item,
+          overwrite: ActiveModel::Type::Boolean.new.cast(params[:overwrite]) || false,
+          meaning_id: params[:meaning_id].presence
+        )
+        render json: { written_ids: result.written_ids, item: serialize_item(item.reload) }, status: :ok
+      rescue Items::GenerateExamplesService::GenerationError => e
+        render json: { error: e.message }, status: :unprocessable_entity
+      rescue Ai::Chat::LimitExceeded => e
+        render json: { error: e.message }, status: :too_many_requests
+      rescue Faraday::Error => e
+        Rails.logger.warn "[ItemsController#examples] failed item_id=#{item.id}: #{e.class}: #{e.message}"
+        render json: { error: "例文を書けませんでした。時間を置いて再度お試しください。" }, status: :unprocessable_entity
       end
 
       # セーフガードの承認。覆いを外して、普通に見られる状態にする。

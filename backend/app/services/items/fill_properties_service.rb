@@ -51,14 +51,17 @@ module Items
 
     Result = Struct.new(:filled_keys, :skipped_keys, :model, keyword_init: true)
 
-    def self.call(item:, user: nil, overwrite: false)
-      new(item: item, user: user, overwrite: overwrite).call
+    def self.call(item:, user: nil, overwrite: false, keys: nil)
+      new(item: item, user: user, overwrite: overwrite, keys: keys).call
     end
 
-    def initialize(item:, user: nil, overwrite: false)
+    # keys を渡すとその項目だけを対象にする。1項目だけ書き直したいときに使う。
+    # 呼び出しは1回のままなので、項目ごとに叩く形にはならない
+    def initialize(item:, user: nil, overwrite: false, keys: nil)
       @item = item
       @user = user || item.user
       @overwrite = overwrite
+      @keys = Array(keys).map(&:to_s).presence
     end
 
     def call
@@ -72,15 +75,19 @@ module Items
     private
 
     def definitions
-      @definitions ||= @user.property_definitions.for_item_type(@item.item_type_id).ordered.to_a
+      @definitions ||= begin
+        all = @user.property_definitions.for_item_type(@item.item_type_id).ordered.to_a
+        @keys ? all.select { |d| @keys.include?(d.key) } : all
+      end
     end
 
-    # 既定は空いている項目だけ。手で書いたものを黙って上書きしない
+    # 既定は空いている項目だけ。手で書いたものを黙って上書きしない。
+    # ただし項目を名指ししたときは、その項目を書き直したいということなので埋める
     def targets
       @targets ||= begin
         filled = @item.item_properties.includes(:property_definition).reject(&:blank_value?)
         filled_ids = filled.map(&:property_definition_id)
-        @overwrite ? definitions : definitions.reject { |d| filled_ids.include?(d.id) }
+        @overwrite || @keys ? definitions : definitions.reject { |d| filled_ids.include?(d.id) }
       end
     end
 

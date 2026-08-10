@@ -13,6 +13,7 @@ class AiUsage < ApplicationRecord
     "tags" => "タグの生成",
     "fact_check" => "ファクトチェック",
     "brief" => "画像の下ごしらえ",
+    "examples" => "例文の生成",
     "scene_rewrite" => "情景の書き直し",
     "fill_properties" => "プロパティの穴埋め",
     "words_generate" => "単語の生成",
