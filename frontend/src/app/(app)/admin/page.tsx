@@ -74,7 +74,12 @@ export default function AdminPage() {
             <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
               <Stat label="カード総数" value={overview.content.items} sub={`30日 ${overview.generation.items_last_30d}`} />
               <Stat label="生成成功" value={overview.generation.by_status.completed ?? 0} />
-              <Stat label="生成失敗" value={overview.generation.by_status.failed ?? 0} />
+              {/* 失敗は数だけでは多いのか分からない。割合を添える */}
+              <Stat
+                label="生成失敗"
+                value={overview.generation.by_status.failed ?? 0}
+                sub={rate(overview.generation.by_status.failed ?? 0, overview.content.items)}
+              />
               <Stat
                 label="画像キャッシュ率"
                 value={`${overview.generation.cache_hit_rate}%`}
@@ -89,7 +94,12 @@ export default function AdminPage() {
               <Stat label="有料契約" value={overview.billing.active_subscriptions} />
               <Stat label="有料率" value={`${overview.billing.paid_rate}%`} />
               <Stat label="30日の消費" value={`${overview.billing.credits_consumed_last_30d} cr`} />
-              <Stat label="未使用残高" value={`${overview.billing.outstanding_credits} cr`} />
+              {/* ここは「動き」を並べる場所。いまの残高は直下の節が持つ（同じ数を2度出さない） */}
+              <Stat
+                label="今月の収入"
+                value={`¥${overview.finance.revenue.total.toLocaleString()}`}
+                sub={overview.finance.test_revenue > 0 ? `テストの決済は除く` : undefined}
+              />
             </div>
             {Object.keys(overview.billing.by_plan).length > 0 && (
               <p className="text-sm text-muted-foreground">
@@ -105,6 +115,7 @@ export default function AdminPage() {
             <h2 className="text-lg font-semibold">未使用クレジット</h2>
             <p className="text-sm text-muted-foreground">
               受け取ったのに、まだ提供していないぶんです。これから原価がかかる約束にあたります。
+              円は「全部使われたら」の目安で、1クレジットあたりの原価から出しています。
             </p>
             <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
               {/* 出どころで並べる。受け取ったぶん（月額・買い切り）と、
@@ -117,21 +128,27 @@ export default function AdminPage() {
               <Stat
                 label="買い切り"
                 value={`${overview.credit_liability.breakdown.topup.toLocaleString()} cr`}
-                sub={`6か月で失効・未提供 ¥${overview.credit_liability.unused_topup_value.toLocaleString()}`}
+                sub={`受け取り済みで未提供 ¥${overview.credit_liability.unused_topup_value.toLocaleString()}`}
               />
               <Stat
                 label="付与"
                 value={`${overview.credit_liability.breakdown.grant.toLocaleString()} cr`}
                 sub="お試し・繰り越し・キャンペーン"
               />
+              {/* クレジットの数だけでは、いくら抱えているのか分からない。円も併せて出す */}
               <Stat
                 label="合計"
                 value={`${overview.credit_liability.total.toLocaleString()} cr`}
-                sub={
+                sub={`全部使われると 約¥${overview.credit_liability.total_cost_jpy.toLocaleString()}`}
+              />
+              <Stat
+                label="最短の失効"
+                value={
                   overview.credit_liability.next_expiry_at
-                    ? `最短の失効 ${new Date(overview.credit_liability.next_expiry_at).toLocaleDateString('ja-JP')}`
-                    : undefined
+                    ? new Date(overview.credit_liability.next_expiry_at).toLocaleDateString('ja-JP')
+                    : '—'
                 }
+                sub="いちばん早く消えるぶんの期限"
               />
               <Stat
                 label="期限なし（旧仕様）"
@@ -147,19 +164,28 @@ export default function AdminPage() {
           </section>
 
           <section className="space-y-3">
-            <h2 className="text-lg font-semibold">中身</h2>
-            <div className="grid gap-3 sm:grid-cols-3 lg:grid-cols-6">
+            {/* たまっているものだけを並べる。期間の動き（AI の呼び出し）は下に分ける。
+                同じ並びに混ぜると、どれが「いまの量」でどれが「30日ぶん」なのか読めなくなる */}
+            <h2 className="text-lg font-semibold">たまっているもの</h2>
+            <div className="grid gap-3 sm:grid-cols-3 lg:grid-cols-5">
               <Stat label="キャンバス" value={overview.content.views} />
               <Stat label="スペース" value={overview.content.spaces} />
               <Stat label="ボックス" value={overview.content.boxes} />
               <Stat label="ワードリスト" value={overview.content.wordlists} />
               <Stat label="タグ" value={overview.content.tags} />
-              <Stat label="AI呼び出し(30日)" value={overview.ai.calls_last_30d} />
+            </div>
+
+            <h3 className="pt-2 text-sm font-medium text-muted-foreground">AI（直近30日）</h3>
+            <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+              <Stat
+                label="呼び出し"
+                value={overview.ai.calls_last_30d}
+                sub={`${overview.ai.tokens_last_30d.toLocaleString()} トークン`}
+              />
             </div>
             {overview.ai.by_kind.length > 0 && (
               <p className="text-sm text-muted-foreground">
                 内訳: {overview.ai.by_kind.map((row) => `${row.label} ${row.count}`).join(' / ')}
-                （{overview.ai.tokens_last_30d.toLocaleString()} トークン）
               </p>
             )}
           </section>

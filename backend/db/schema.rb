@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_08_11_000006) do
+ActiveRecord::Schema[8.1].define(version: 2026_08_11_000007) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
   enable_extension "pg_trgm"
@@ -209,6 +209,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_08_11_000006) do
     t.string "description"
     t.uuid "item_id"
     t.string "kind", null: false
+    t.boolean "livemode"
     t.uuid "space_point_id"
     t.string "stripe_event_id"
     t.integer "subscription_credits_after"
@@ -216,6 +217,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_08_11_000006) do
     t.integer "topup_credits_after"
     t.datetime "updated_at", null: false
     t.uuid "user_id", null: false
+    t.index ["livemode", "created_at"], name: "index_credit_transactions_on_livemode_and_created_at"
     t.index ["stripe_event_id"], name: "index_credit_transactions_on_stripe_event_id", unique: true, where: "(stripe_event_id IS NOT NULL)"
     t.index ["user_id", "created_at"], name: "index_credit_transactions_on_user_id_and_created_at"
     t.index ["user_id"], name: "index_credit_transactions_on_user_id"

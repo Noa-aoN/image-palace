@@ -96,8 +96,9 @@ module Admin
         by_plan: Subscription.where(status: %w[active trialing]).joins(:plan).group("plans.name").count,
         # 消費は負の値で記録されているので、使ったぶんを正の数にして返す
         credits_consumed_last_30d: (-consumed).fdiv(::Billing::POINTS_PER_CREDIT).round(2),
-        outstanding_credits: (User.sum(:subscription_credits) + User.sum(:topup_credits))
-                             .fdiv(::Billing::POINTS_PER_CREDIT).round(2)
+        # 未使用の総量は credit_liability が持つ。ここで別に数え直すと、
+        # 同じ画面に同じ名前の違う数字が並ぶ（実際、期限付きグラントを取りこぼしていた）
+        outstanding_credits: credit_liability[:total]
       }
     end
 
@@ -107,6 +108,10 @@ module Admin
     # 期限の有無で分けて見えないと、いつまでにいくら出ていくのかが読めない。
     # サービスを畳むときの返金額の目安にもなる。
     def credit_liability
+      @credit_liability ||= build_credit_liability
+    end
+
+    def build_credit_liability
       grants = grant_totals
       users = user_credit_totals
 
@@ -119,13 +124,18 @@ module Admin
       # 付与はこちらが配ったぶん。買い切りを除く
       grant_points = grants["non_topup"].to_i
 
+      total_points = subscription_points + old_topup_points + grants["all"].to_i
+
       {
         # 期限付き: 月額の当月分と、期限付きグラント（繰り越し・ボーナス）
         expiring: to_credits(subscription_points + grants["expiring"].to_i),
         # 期限なし: 期限が付く前の古い買い切りと、期限を付けずに配ったグラント。
         # いまは買い切りも6か月で失効するので、ここは増えない（古い残りが減るだけ）
         unlimited: to_credits(old_topup_points + grants["unlimited"].to_i),
-        total: to_credits(subscription_points + old_topup_points + grants["all"].to_i),
+        total: to_credits(total_points),
+        # 未使用クレジットが**全部使われたら**、これだけ原価が出る（円）。
+        # クレジットの数だけ見ても、いくら抱えているのかは分からない
+        total_cost_jpy: (to_credits(total_points) * ::Billing::Catalog::COST_PER_CREDIT).round,
         # 内訳（どこに溜まっているか）
         breakdown: {
           subscription: to_credits(subscription_points),
@@ -135,8 +145,9 @@ module Admin
         # 直近30日で失効したぶん（使われずに消えた量）
         expired_last_30d: to_credits(-CreditTransaction.where(kind: %w[subscription_expire grant_expire])
                                                        .where(created_at: @since..).sum(:delta)),
-        # 買い切りで受け取った金額のうち、まだ提供していないぶんの目安（円）。
-        # 終了を告知するとき、どれだけの未提供が残っているかの目安になる
+        # 買い切りで**受け取った金額**のうち、まだ提供していないぶんの目安（円）。
+        # total_cost_jpy（これから出ていく原価）とは別物。あちらは支出、こちらは預り。
+        # 終了を告知するとき、返すべき額の目安になる
         unused_topup_value: unused_topup_value(old_topup_points, grants["topup_all"].to_i),
         # 直近で期限が来るもの
         next_expiry_at: grants["next_expiry_at"]

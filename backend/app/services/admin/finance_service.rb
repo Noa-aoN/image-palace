@@ -61,22 +61,36 @@ module Admin
         profit: revenue - estimated_cost,
         margin: revenue.positive? ? ((revenue - estimated_cost).fdiv(revenue) * 100).round(1) : nil,
         actual: actual_comparison(estimated_cost - fee),
+        # テストの決済。売上には入れないが、隠すと「決済したのに 0 円」に見える
+        test_revenue: test_revenue_jpy,
+        mode: ::Billing::Mode.label,
         fx: @costs.value_for("fx_usd_jpy")
       }
     end
 
     private
 
-    # 実際に入ってきたお金（円）。amount_cents は JPY なので円がそのまま入る
+    # 実際に入ってきたお金（円）。amount_cents は JPY なので円がそのまま入る。
+    #
+    # **テストの決済は数えない**。テストも本物と同じ経路で金額まで記録されるので、
+    # 分けないと「今月いくら入ったか」を見ているつもりで、自分で叩いた額を見ることになる。
+    # livemode が nil の古い行は、本番の決済がまだ無かった時期のもの＝テスト扱いにする。
     def revenue_jpy
-      CreditTransaction.where(created_at: @from...@to).where.not(amount_cents: nil).sum(:amount_cents)
+      paid_scope.sum(:amount_cents)
     end
 
     def revenue_by_kind
-      CreditTransaction.where(created_at: @from...@to)
-                       .where.not(amount_cents: nil)
-                       .group(:kind)
-                       .sum(:amount_cents)
+      paid_scope.group(:kind).sum(:amount_cents)
+    end
+
+    def paid_scope
+      CreditTransaction.where(created_at: @from...@to).where.not(amount_cents: nil).where(livemode: true)
+    end
+
+    # 期間内に記録された、テストの決済の額。0 でなければ画面に断りを出す
+    def test_revenue_jpy
+      CreditTransaction.where(created_at: @from...@to).where.not(amount_cents: nil)
+                       .where(livemode: [ false, nil ]).sum(:amount_cents)
     end
 
     # 画像は「枚数 × 1枚あたりの単価」。モデルと品質ごとに単価が違う。

@@ -44,9 +44,11 @@ export interface AdminOverview {
     expiring: number
     unlimited: number
     total: number
+    /** 全部使われたら出ていく原価の目安（円）。unused_topup_value とは別物（あちらは預り金） */
+    total_cost_jpy: number
     breakdown: { subscription: number; topup: number; grant: number }
     expired_last_30d: number
-    /** 未使用の買い切りぶんを金額に換算した目安（円） */
+    /** 買い切りで受け取った額のうち、まだ提供していないぶん（円） */
     unused_topup_value: number
     next_expiry_at: string | null
   }
@@ -315,6 +317,10 @@ export interface AdminAuditLog {
 export interface AdminFinanceSummary {
   period: { year: number | null; month: number | null; from: string; to: string }
   revenue: { total: number; by_kind: Record<string, number> }
+  /** テストの決済（売上には入れない）。0 でなければ画面に断りを出す */
+  test_revenue: number
+  /** 「本番」か「テスト」か。いまの Stripe の鍵で決まる */
+  mode: string
   cost: {
     total: number
     stripe_fee: number

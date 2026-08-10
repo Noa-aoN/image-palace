@@ -18,14 +18,24 @@ RSpec.describe Admin::FinanceService do
 
   describe "収入" do
     it "その月の決済額を合計する" do
-      CreditTransaction.create!(user: user, kind: "topup_purchase", delta: 1000, amount_cents: 1_900)
-      CreditTransaction.create!(user: user, kind: "subscription_grant", delta: 10_000, amount_cents: 1_480)
+      CreditTransaction.create!(user: user, kind: "topup_purchase", delta: 1000, amount_cents: 1_900, livemode: true)
+      CreditTransaction.create!(user: user, kind: "subscription_grant", delta: 10_000, amount_cents: 1_480, livemode: true)
       # 前月分は含めない
       travel_to(now - 1.month) do
-        CreditTransaction.create!(user: user, kind: "topup_purchase", delta: 1000, amount_cents: 9_999)
+        CreditTransaction.create!(user: user, kind: "topup_purchase", delta: 1000, amount_cents: 9_999, livemode: true)
       end
 
       expect(summary[:revenue][:total]).to eq(3_380)
+    end
+
+    it "テスト（サンドボックス）の決済は数えず、別に返す" do
+      CreditTransaction.create!(user: user, kind: "topup_purchase", delta: 1000, amount_cents: 1_900, livemode: true)
+      CreditTransaction.create!(user: user, kind: "topup_purchase", delta: 1000, amount_cents: 5_000, livemode: false)
+      # 目印を付ける前の行も、本番の決済がまだ無かった時期のものなのでテスト扱い
+      CreditTransaction.create!(user: user, kind: "topup_purchase", delta: 1000, amount_cents: 3_000)
+
+      expect(summary[:revenue][:total]).to eq(1_900)
+      expect(summary[:test_revenue]).to eq(8_000)
     end
 
     it "金額の無い明細（付与・消費）は数えない" do
@@ -73,7 +83,7 @@ RSpec.describe Admin::FinanceService do
   describe "決済手数料" do
     it "売上に手数料率を掛ける" do
       CostParameter.create!(key: "stripe_fee_rate", value: 0.036)
-      CreditTransaction.create!(user: user, kind: "topup_purchase", delta: 1000, amount_cents: 10_000)
+      CreditTransaction.create!(user: user, kind: "topup_purchase", delta: 1000, amount_cents: 10_000, livemode: true)
 
       expect(summary[:cost][:stripe_fee]).to eq(360)
     end

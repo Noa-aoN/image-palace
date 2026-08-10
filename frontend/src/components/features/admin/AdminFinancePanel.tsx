@@ -142,8 +142,17 @@ export function AdminFinancePanel() {
           </label>
         </div>
 
+        {/* テストの決済は売上に入れない。ただし黙って落とすと「決済したのに 0 円」に見えるので断る */}
+        {summary.test_revenue > 0 && (
+          <p className="rounded-lg border border-border bg-muted/40 px-3 py-2 text-sm text-muted-foreground">
+            この期間には、テスト（サンドボックス）の決済 {yen(summary.test_revenue)} があります。
+            収入には数えていません。
+            {summary.mode === 'テスト' && <>　いまの決済はテスト用の鍵で動いています。</>}
+          </p>
+        )}
+
         <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-          <Stat label="収入" value={yen(summary.revenue.total)} />
+          <Stat label="収入" value={yen(summary.revenue.total)} sub="本番の決済のみ" />
           <Stat label="支出（概算）" value={yen(summary.cost.total)} />
           <Stat
             label="差引"
