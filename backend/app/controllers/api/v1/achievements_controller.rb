@@ -10,6 +10,12 @@ module Api
         render json: Achievements::Presenter.call(user: current_user)
       end
 
+      # 装備中の称号と代表勲章だけ。エントランスの「宮殿の主人」から呼ぶ。
+      # 評価は走らせない（関係のない画面に数え直しを抱えさせない）
+      def summary
+        render json: Achievements::Presenter.summary_only(user: current_user)
+      end
+
       # 称号を1つ装備する。key を空で送ると外す
       def equip
         reward = find_owned(params[:key])

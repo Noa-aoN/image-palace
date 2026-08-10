@@ -16,6 +16,12 @@ module Achievements
       new(user).call
     end
 
+    # 装備中の称号と代表勲章だけ。エントランスなど、栄誉の間の外から呼ぶ用。
+    # ここで評価まで走らせると、関係のない画面が実績の数え直しを抱えることになる
+    def self.summary_only(user:)
+      new(user).summary
+    end
+
     def initialize(user)
       @user = user
     end
@@ -28,6 +34,7 @@ module Achievements
         rewards: rewards,
         achievements: achievements,
         stats: stat.to_rows,
+        categories: AchievementDefinition::CATEGORY_ORDER,
         max_featured: MAX_FEATURED
       }
     end
@@ -46,17 +53,42 @@ module Achievements
       @states ||= UserAchievement.where(user_id: @user.id).index_by(&:achievement_definition_id)
     end
 
-    def summary
+    public def summary
       equipped = UserReward.joins(:reward_definition).find_by(user_id: @user.id, equipped: true)
       featured = UserReward.where(user_id: @user.id).featured.includes(:reward_definition)
 
       {
         title: equipped && reward_row(equipped.reward_definition),
+        # 称号が無い人に「ありません」とだけ出しても、次に何をすればよいか分からない
+        next_title: equipped ? nil : next_title,
         featured: featured.map { |r| reward_row(r.reward_definition) },
         rewards_earned: stat.rewards_earned,
         achievements_completed: stat.achievements_completed,
         streak_days: stat.streak_days
       }
+    end
+
+    # まだ持っていない称号のうち、いちばん近いもの。
+    # 「称号はまだありません」で終わらせず、次の一歩を出す
+    def next_title
+      candidates = AchievementDefinition.registry.filter_map do |definition|
+        next unless definition.available? && definition.published?
+
+        title_key = Array(definition.rewards).find { |r|
+          r["type"] == "reward" && RewardDefinition.find_by(key: r["key"])&.kind == "title"
+        }&.dig("key")
+        next if title_key.nil?
+
+        title = RewardDefinition.find_by(key: title_key)
+        next if owned.key?(title.id)
+
+        progress = states[definition.id]&.progress.to_i
+        { name: title.name, image_url: image_url_for(title), condition: definition.description,
+          progress: progress, target: definition.condition_target,
+          remaining: [ definition.condition_target - progress, 0 ].max }
+      end
+
+      candidates.min_by { |row| row[:remaining] }
     end
 
     # あと少しで届くもの。残りが少ない順に並べる
@@ -115,15 +147,36 @@ module Achievements
       end
     end
 
+    # その獲得物を配る実績。未獲得のものに「どうすれば手に入るか」を出すために引く。
+    # 実績の数は多くないので、1回だけ組み立てて使い回す
+    def source_for(reward_key)
+      @sources ||= AchievementDefinition.registry.each_with_object({}) do |definition, acc|
+        Array(definition.rewards).each do |entry|
+          next unless entry["type"] == "reward"
+
+          acc[entry["key"]] ||= definition
+        end
+      end
+      @sources[reward_key]
+    end
+
     def reward_row(definition, held = owned[definition.id])
+      source = held ? nil : source_for(definition.key)
+      progress = source && states[source.id]&.progress.to_i
+
       {
         key: definition.key,
         kind: definition.kind,
         kind_label: definition.kind_label,
         name: definition.name,
         description: definition.description,
-        rarity: definition.rarity,
+        rarity_level: definition.rarity_level,
+        rarity_tier: definition.rarity_tier,
         category: definition.category,
+        # 未獲得のものに「どうすれば手に入るか」。無いものは手動付与（表彰など）
+        condition: source&.description,
+        progress: progress,
+        target: source&.condition_target,
         image_url: image_url_for(definition),
         owned: held.present?,
         granted_at: held&.granted_at,
@@ -145,6 +198,7 @@ module Achievements
 
           { type: "reward", key: definition.key, name: definition.name,
             kind: definition.kind, kind_label: definition.kind_label,
+            rarity_tier: definition.rarity_tier,
             image_url: image_url_for(definition) }
         when "credits"
           { type: "credits", amount: entry["amount"].to_i }
@@ -153,13 +207,17 @@ module Achievements
     end
 
     # 画像はあとから差し替えられる。無い間は画面側が種類ごとの絵柄で描く
+    # 獲得物の絵は**どの環境でも同じもの**（定義に付いていて、利用者ごとには作らない）。
+    # 手元に CDN の設定が無くても見えるよう、鍵から引くときは既定の配信元に落とす。
+    # 添付を差し替えた場合は、その環境の CDN 設定に従う
+    PUBLIC_IMAGE_BASE = "https://cdn.imagepalace.app"
+
     def image_url_for(definition)
-      return nil unless definition.image.attached?
+      path = definition.image_path
+      return nil if path.blank?
 
-      cdn_base = ENV["CDN_BASE_URL"]
-      return nil if cdn_base.blank?
-
-      "#{cdn_base}/#{definition.image.blob.key}"
+      base = ENV["CDN_BASE_URL"].presence || PUBLIC_IMAGE_BASE
+      "#{base}/#{path}"
     end
   end
 end

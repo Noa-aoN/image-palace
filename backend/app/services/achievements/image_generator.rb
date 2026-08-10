@@ -21,12 +21,14 @@ module Achievements
       "honor" => "an official award plaque with a wreath and seal"
     }.freeze
 
-    # 希少度で質感を変える。並べたときに序列が伝わるようにする
+    # レア度で質感を変える。並べたときに序列が伝わるようにする。
+    # 名前（石・青銅・大理石…）と素材を揃えてあるので、絵を見れば段が分かる
     RARITY_MATERIALS = {
-      "common" => "terracotta and weathered bronze",
-      "uncommon" => "polished bronze with subtle patina",
-      "rare" => "silver with lapis inlay",
-      "legendary" => "gold with ivory and deep blue enamel"
+      1 => "rough limestone", 2 => "weathered bronze", 3 => "white marble",
+      4 => "polished silver", 5 => "burnished gold",
+      6 => "gold with deep lapis lazuli inlay", 7 => "silver with star-like enamel inlay",
+      8 => "ivory and gold with a faint inner glow",
+      9 => "iridescent alabaster and gold with a soft aura"
     }.freeze
 
     STYLE = <<~STYLE.strip
@@ -65,7 +67,7 @@ module Achievements
     # （「文字を入れるな」と書いても効かない。渡さないのが確実）。
     def build_prompt
       subject = KIND_SUBJECTS.fetch(@reward.kind, KIND_SUBJECTS["treasure"])
-      material = RARITY_MATERIALS.fetch(@reward.rarity, RARITY_MATERIALS["common"])
+      material = RARITY_MATERIALS.fetch(@reward.rarity_level, RARITY_MATERIALS[2])
       motif = @reward.metadata["motif"].presence
 
       [ "#{subject}, made of #{material}.", motif && "Design: #{motif}.", STYLE ].compact.join("\n")
@@ -81,7 +83,9 @@ module Achievements
         filename: "#{@reward.key}.png",
         content_type: result.content_type.presence || "image/png"
       )
+      # 鍵も控える。他の環境から同じ絵を指せるようにするため
       @reward.update!(
+        image_key: @reward.image.blob.key,
         metadata: @reward.metadata.merge(
           "image_prompt" => prompt,
           "image_model" => result.metadata[:model] || result.metadata["model"],

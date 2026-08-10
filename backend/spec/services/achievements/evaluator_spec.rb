@@ -132,4 +132,51 @@ RSpec.describe Achievements::Evaluator do
       expect(stat.rewards_earned).to eq(user.user_rewards.count)
     end
   end
+
+  describe "画面に出す形" do
+    it "称号が無い人には、次に取れる称号を出す" do
+      RewardDefinition.registry
+      described_class.call(user: user)
+
+      summary = Achievements::Presenter.summary_only(user: user)
+
+      expect(summary[:title]).to be_nil
+      expect(summary[:next_title][:name]).to eq("記憶の旅人")
+    end
+
+    it "名乗ると、軽い読み出しにも出る" do
+      make_cards(1)
+      described_class.call(user: user)
+      UserReward.joins(:reward_definition)
+                .find_by(user_id: user.id, reward_definitions: { key: "title_traveler" })
+                .update!(equipped: true)
+
+      summary = Achievements::Presenter.summary_only(user: user)
+
+      expect(summary[:title][:name]).to eq("記憶の旅人")
+      expect(summary[:next_title]).to be_nil
+    end
+
+    # 未獲得のものに「どうすれば手に入るか」が無いと、欲しいと思っても動けない
+    it "未獲得の獲得物に手に入れ方と進捗を添える" do
+      make_cards(3)
+      described_class.call(user: user)
+
+      row = Achievements::Presenter.call(user: user)[:rewards].find { |r| r[:key] == "treasure_cup" }
+
+      expect(row[:owned]).to be(false)
+      expect(row[:condition]).to eq("カードを10枚作る")
+      expect(row[:progress]).to eq(3)
+      expect(row[:target]).to eq(10)
+    end
+
+    it "レア度は段と名前の両方を返す" do
+      RewardDefinition.registry
+
+      row = Achievements::Presenter.call(user: user)[:rewards].find { |r| r[:key] == "medal_laurel" }
+
+      expect(row[:rarity_level]).to eq(8)
+      expect(row[:rarity_tier]).to eq("sacred")
+    end
+  end
 end

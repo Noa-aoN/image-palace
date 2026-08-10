@@ -28,7 +28,11 @@ import { Skeleton } from '@/components/ui/skeleton'
 import { STATUS_LABEL, isRegenerating } from '@/lib/item-status'
 import { StatusBadge } from '@/components/features/items/StatusBadge'
 import { useItemDetail } from '@/hooks/useItemDetail'
+import { useMainAreaBox } from '@/hooks/useMainAreaBox'
 import { aspectRatioCss } from '@/lib/aspect-ratio'
+
+// 本文領域の端から空ける距離。狭めると本文に食い込み、広げると画面外へ出る
+const NAV_INSET = 12
 
 export default function ItemDetailPage() {
   const { id } = useParams<{ id: string }>()
@@ -49,6 +53,8 @@ export default function ItemDetailPage() {
     fromParam ? `/items/${targetId}?${fromParam}` : `/items/${targetId}`
 
   const [allIds, setAllIds] = useState<string[]>([])
+  // ページ送りの矢印は、本文領域の端から一定の間を空け、見えている高さの中央に置く
+  const mainBox = useMainAreaBox()
 
   // 詳細の状態・操作（取得・ポーリング・タイトル編集・削除・拡大）は共通フックに集約。
   const {
@@ -104,7 +110,7 @@ export default function ItemDetailPage() {
 
   if (!item) {
     return (
-      <div className="max-w-lg mx-auto w-full px-6 py-12 space-y-6">
+      <div className="max-w-lg mx-auto w-full px-6 py-12 space-y-7">
         <Skeleton className="h-9 w-32" />
         <Skeleton className="aspect-square w-full rounded-xl" />
         <div className="flex items-center justify-between gap-3">
@@ -125,20 +131,24 @@ export default function ItemDetailPage() {
   return (
     <div className="relative flex flex-col min-h-full">
 
-      {/* ── デスクトップ専用: 絶対配置でページ端 ── */}
-      {prevId && (
+      {/* ── デスクトップ専用: 本文領域の左右端に、見えている高さの中央で置く ──
+          中身の中央（absolute top-1/2）に置くと、長いカードでは矢印が画面外まで
+          下がってしまう。本文領域そのものを測って、その中央に固定する */}
+      {mainBox && prevId && (
         <button
           onClick={() => router.push(itemHref(prevId))}
-          className={`hidden md:flex absolute left-1 top-1/2 -translate-y-1/2 z-10 ${navBtnBase}`}
+          className={`hidden md:flex fixed z-10 -translate-y-1/2 ${navBtnBase}`}
+          style={{ top: mainBox.centerY, left: mainBox.left + NAV_INSET }}
           aria-label="前のカード"
         >
           <ChevronLeft size={28} strokeWidth={1.5} />
         </button>
       )}
-      {nextId && (
+      {mainBox && nextId && (
         <button
           onClick={() => router.push(itemHref(nextId))}
-          className={`hidden md:flex absolute right-1 top-1/2 -translate-y-1/2 z-10 ${navBtnBase}`}
+          className={`hidden md:flex fixed z-10 -translate-y-1/2 ${navBtnBase}`}
+          style={{ top: mainBox.centerY, right: mainBox.right + NAV_INSET }}
           aria-label="次のカード"
         >
           <ChevronRight size={28} strokeWidth={1.5} />
@@ -149,8 +159,9 @@ export default function ItemDetailPage() {
       <div className="max-w-lg mx-auto w-full px-6 py-12 space-y-6">
 
         {/* パンくずと操作は行を分ける。同じ行に並べると、題名が長いカードで
-            操作が押し出され、カードごとにボタンの位置が変わる */}
-        <div className="space-y-2">
+            操作が押し出され、カードごとにボタンの位置が変わる。
+            2行の間は広めに取る。詰めると、パンくずの一部か操作なのかが読み取りにくい */}
+        <div className="space-y-4">
           <Breadcrumb className="mb-0" items={[{ href: backHref, label: fromViewId ? (fromViewName ?? fromLabel) : 'カード' }, { label: item.title }]} />
           <div className="flex flex-wrap items-center gap-0.5">
             {/* このカード1枚の見え方（どのブロックを出すか・並び順）。

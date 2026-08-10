@@ -121,6 +121,7 @@ Rails.application.routes.draw do
       post "campaign_codes/redeem", to: "campaign_codes#redeem"
       # アチーブメント（栄誉の間）
       get "achievements", to: "achievements#show"
+      get "achievements/summary", to: "achievements#summary"
       post "achievements/equip", to: "achievements#equip"
       post "achievements/feature", to: "achievements#feature"
       # 学習の記録。1回の学習ぶんをまとめて受ける
