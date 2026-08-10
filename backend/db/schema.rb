@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_08_10_000006) do
+ActiveRecord::Schema[8.1].define(version: 2026_08_10_000007) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
   enable_extension "pg_trgm"
@@ -54,6 +54,30 @@ ActiveRecord::Schema[8.1].define(version: 2026_08_10_000006) do
     t.string "target_type"
     t.index ["actor_id", "created_at"], name: "index_admin_audit_logs_on_actor_id_and_created_at"
     t.index ["created_at"], name: "index_admin_audit_logs_on_created_at"
+  end
+
+  create_table "ai_models", id: :uuid, default: -> { "gen_random_uuid()" }, force: :cascade do |t|
+    t.datetime "created_at", null: false
+    t.integer "credit_points"
+    t.integer "daily_limit"
+    t.boolean "default_for_kind", default: false, null: false
+    t.text "description"
+    t.boolean "enabled", default: true, null: false
+    t.string "key", null: false
+    t.string "kind", null: false
+    t.string "label", null: false
+    t.string "model_id", null: false
+    t.text "notes"
+    t.decimal "output_cost_usd", precision: 10, scale: 6
+    t.integer "position", default: 0, null: false
+    t.string "provider", null: false
+    t.jsonb "purposes", default: [], null: false
+    t.string "requires_env"
+    t.decimal "unit_cost_usd", precision: 10, scale: 6
+    t.datetime "updated_at", null: false
+    t.boolean "visible", default: true, null: false
+    t.index ["key"], name: "index_ai_models_on_key", unique: true
+    t.index ["kind", "position"], name: "index_ai_models_on_kind_and_position"
   end
 
   create_table "ai_usages", id: :uuid, default: -> { "gen_random_uuid()" }, force: :cascade do |t|

@@ -116,6 +116,45 @@ export interface AdminOverview {
 }
 
 /** 付与ポリシー（何を・いくつ・どの条件で配るか） */
+/** AI モデルの登録簿の1行 */
+export interface AdminAiModel {
+  id: string
+  key: string
+  kind: 'image' | 'text'
+  provider: string
+  model_id: string
+  label: string
+  description: string | null
+  enabled: boolean
+  /** 利用者に選ばせるか */
+  visible: boolean
+  default_for_kind: boolean
+  /** 使ってよい用途。空ならすべて */
+  purposes: string[]
+  /** 1回あたりの消費（ポイント）。null なら既定 */
+  credit_points: number | null
+  /** 原価。画像は USD/枚、文章は入力の USD/1Mトークン */
+  unit_cost_usd: number | null
+  output_cost_usd: number | null
+  daily_limit: number | null
+  requires_env: string | null
+  notes: string | null
+  position: number
+  /** コード側に定義があるもの。消せない */
+  builtin: boolean
+  /** 鍵が入っていて実際に使えるか。enabled とは別 */
+  available: boolean
+  used_today: number | null
+}
+
+export interface AdminAiModelsPage {
+  models: AdminAiModel[]
+  kinds: string[]
+  providers: string[]
+  purposes: string[]
+  points_per_credit: number
+}
+
 /** 引き換えコード（運営が発行し、利用者が入力してクレジットを受け取る） */
 export interface AdminCampaignCode {
   id: string

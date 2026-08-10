@@ -43,6 +43,7 @@ Rails.application.routes.draw do
         patch "users/:id/role", to: "users#update_role"
         get "audit_logs", to: "audit_logs#index"
         post "provider_check", to: "provider_checks#create"
+        resources :ai_models, only: [ :index, :create, :update, :destroy ]
         resources :campaign_codes, only: [ :index, :create, :update, :destroy ]
         get "feature_flags", to: "feature_flags#index"
         put "feature_flags/:key", to: "feature_flags#upsert"
