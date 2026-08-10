@@ -51,6 +51,7 @@ export default function BlogPage() {
       excerpt: p.excerpt,
       date: p.published_at,
       readingMinutes: p.reading_minutes,
+      imageUrl: p.image_url,
     })),
   ].sort((a, b) => ((a.date ?? '') < (b.date ?? '') ? 1 : -1))
 

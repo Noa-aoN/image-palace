@@ -316,6 +316,7 @@ export interface AdminUserStats {
 
 export interface AdminUsersPage {
   users: AdminUser[]
+  period: AdminPeriod
   meta: { page: number; per: number; total_count: number; total_pages: number }
   stats: AdminUserStats
 }

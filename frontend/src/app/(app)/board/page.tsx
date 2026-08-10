@@ -52,7 +52,7 @@ export default function BoardPage() {
       .filter((p) => p.category === 'column')
       .map((p) => ({
         key: `post-${p.slug}`, href: `/news/${p.slug}`, title: p.title,
-        date: p.published_at, readingMinutes: p.reading_minutes,
+        date: p.published_at, readingMinutes: p.reading_minutes, imageUrl: p.image_url,
       })),
   ].sort((a, b) => ((a.date ?? '') < (b.date ?? '') ? 1 : -1))
 
@@ -107,6 +107,7 @@ export default function BoardPage() {
                 title: p.title,
                 date: p.published_at,
                 badge: p.category_label,
+                imageUrl: p.image_url,
               }))}
             />
           )}

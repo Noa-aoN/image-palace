@@ -6,7 +6,10 @@ module Api
       # 本文は平文で受け取り、こちらで塊に組み立てる。
       # 書く側に構造化を強いると続かないため。
       class PostsController < BaseController
-        before_action :set_post, only: [ :show, :update, :destroy, :deliver ]
+        include CoverImageUpload
+        include ItemSerialization
+
+        before_action :set_post, only: [ :show, :update, :destroy, :deliver, :cover, :remove_cover ]
 
         def index
           posts = Post.in_category(params[:category]).for_listing.limit(200)
@@ -57,6 +60,29 @@ module Api
           render json: serialize(@post), status: :accepted
         end
 
+        # 見出し画像を差し替える。
+        #
+        # 信頼できない入力を libvips に渡す唯一の経路なので、既存の
+        # CoverImageUpload をそのまま使う（形式の allowlist → WebP であることの検証）。
+        # ここで独自に読み込むと、その防御が抜ける。
+        def cover
+          file = params[:file]
+          return render_error("画像を選んでください") if file.blank?
+
+          attach_optimized_cover!(@post, file)
+          audit!("post.cover_updated", target: @post, details: { slug: @post.slug })
+          render json: serialize(@post)
+        rescue CoverImageUpload::InvalidCover => e
+          render_error(e.message)
+        end
+
+        def remove_cover
+          @post.cover_image.purge if @post.cover_image.attached?
+          @post.cover_thumb.purge if @post.cover_thumb.attached?
+          audit!("post.cover_removed", target: @post, details: { slug: @post.slug })
+          render json: serialize(@post.reload)
+        end
+
         private
 
         def set_post
@@ -65,7 +91,8 @@ module Api
 
         def post_attributes
           permitted = params.require(:post).permit(
-            :slug, :category, :title, :excerpt, :body_text, :reading_minutes, :pinned, :published
+            :slug, :category, :title, :excerpt, :body_text, :reading_minutes, :pinned, :published,
+            :cover_visible
           )
           attributes = permitted.to_h.symbolize_keys
           body_text = attributes.delete(:body_text)
@@ -102,6 +129,9 @@ module Api
             views_count: post.views_count,
             delivered_at: post.delivered_at,
             author_email: post.author&.email,
+            # 画像を出すかは、添付とは別に持つ。短い連絡では絵を出したくないことがある
+            cover_visible: post.cover_visible,
+            image_url: post.cover_image.attached? ? media_url(post.cover_image.blob) : nil,
             updated_at: post.updated_at
           }
         end

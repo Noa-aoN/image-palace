@@ -71,7 +71,9 @@ class Rack::Attack
   # 画像アップロード（1件最大 10MB を libvips でデコードする高コスト操作）:
   # 1 IP あたり 60 秒間で 20 回まで。全体上限（300req/5分）だけだと
   # 10MB × 300 の転送と libvips のデコードを短時間に強いられるため、個別に絞る。
-  UPLOAD_PATH = %r{\A/api/v1/(boxes|views|spaces)/[^/]+/(cover_image|background_image)\z}
+  # 運営の読みものの見出し画像も同じ経路（libvips を通る）なので、同じ枠で絞る
+  UPLOAD_PATH = %r{\A/api/v1/(boxes|views|spaces)/[^/]+/(cover_image|background_image)\z|
+                   \A/api/v1/admin/posts/[^/]+/cover\z}x
   throttle("image_uploads/ip", limit: 20, period: 60.seconds) do |req|
     req.ip if req.post? && UPLOAD_PATH.match?(req.path)
   end

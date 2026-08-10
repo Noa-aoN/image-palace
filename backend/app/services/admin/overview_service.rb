@@ -56,9 +56,9 @@ module Admin
         total: User.count,
         confirmed: User.where.not(confirmed_at: nil).count,
         new_last_7d: User.where(created_at: (@now - 7.days)..).count,
-        new_in_period: User.where(created_at: @since...@until).count,
+        new_in_period: User.where(created_at: @period.range).count,
         # 直近30日に1枚でもカードを作った人。「使われているか」を見るための数
-        active_in_period: Item.where(created_at: @since...@until).distinct.count(:user_id),
+        active_in_period: Item.where(created_at: @period.range).distinct.count(:user_id),
         # ENV 由来の owner も数える。role だけを見ると「運営メンバー 0」と出てしまう
         admins: User.effective_admins.count
       }
@@ -84,7 +84,7 @@ module Admin
       completed = by_status["completed"].to_i
       {
         by_status: Item::GENERATION_STATUSES.index_with { |status| by_status[status].to_i },
-        items_in_period: Item.where(created_at: @since...@until).count,
+        items_in_period: Item.where(created_at: @period.range).count,
         shared_medias: shared,
         # 同じ単語を作り直さずに済んだ割合。生成した枚数のうち、絵を新たに作らずに済んだぶん
         cache_hit_rate: completed.positive? ? ((completed - shared).fdiv(completed) * 100).round(1) : 0.0,
@@ -99,7 +99,7 @@ module Admin
       # 目印を持たない古い行は「本番の決済がまだ無かった時期のもの」＝テストとみなす
       live = scope.where(livemode: true).count
       total = User.count
-      consumed = CreditTransaction.where(kind: "consumption", created_at: @since...@until).sum(:delta)
+      consumed = CreditTransaction.where(kind: "consumption", created_at: @period.range).sum(:delta)
       trialing = scope.where(status: "trialing").count
 
       {
@@ -189,7 +189,7 @@ module Admin
         },
         # 直近30日で失効したぶん（使われずに消えた量）
         expired_in_period: to_credits(-CreditTransaction.where(kind: %w[subscription_expire grant_expire])
-                                                       .where(created_at: @since...@until).sum(:delta)),
+                                                       .where(created_at: @period.range).sum(:delta)),
         # 買い切りで**受け取った金額**のうち、まだ提供していないぶんの目安（円）。
         # total_cost_jpy（これから出ていく原価）とは別物。あちらは支出、こちらは預り。
         # 終了を告知するとき、返すべき額の目安になる
@@ -261,7 +261,7 @@ module Admin
     end
 
     def ai_summary
-      rows = AiUsage.where(created_at: @since...@until).group(:kind).pluck(
+      rows = AiUsage.where(created_at: @period.range).group(:kind).pluck(
         Arel.sql("kind"),
         Arel.sql("COUNT(*)"),
         Arel.sql("COALESCE(SUM(prompt_tokens + completion_tokens), 0)")
@@ -351,7 +351,7 @@ module Admin
     # 期間が長いときは何日かをまとめる。90日ぶんを1日1点で描くと、
     # 点が細かすぎて傾きが読めなくなる（読みたいのは日々の上下ではなく傾き）
     def daily_counts(scope)
-      counts = scope.where(created_at: @since...@until)
+      counts = scope.where(created_at: @period.range)
                     .group(Arel.sql("DATE(created_at)"))
                     .count
                     .transform_keys(&:to_s)

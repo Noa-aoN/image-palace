@@ -19,6 +19,8 @@ module Api
 
           render json: {
             users: users.map { |user| serialize_user(user, counts[user.id].to_i) },
+            # 期間の決め方は他の運営画面と共通。ここでは「いつ登録した人か」で絞る
+            period: period.to_h.merge(options: ::Admin::Period.options),
             meta: { page: page, per: per, total_count: total, total_pages: (total.to_f / per).ceil },
             # 一覧は「いま誰がいるか」しか分からない。伸びているのかは別に数字で出す
             stats: stats
@@ -87,8 +89,13 @@ module Api
           end
         end
 
+        def period
+          # 既定は全期間。利用者は探しに来る面なので、既定で古い人が消えると使えない
+          @period ||= ::Admin::Period.resolve(params[:period], default: ::Admin::Period::ALL)
+        end
+
         def filtered_users
-          scope = User.all
+          scope = User.where(created_at: period.range)
           query = params[:q].to_s.strip
           scope = scope.where("email ILIKE :q OR name ILIKE :q", q: "%#{query}%") if query.present?
           scope = scope.where(role: params[:role]) if User::ROLES.include?(params[:role].to_s)

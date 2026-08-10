@@ -31,6 +31,8 @@ export interface Post {
   reading_minutes: number | null
   pinned: boolean
   published_at: string | null
+  /** 見出し画像。一覧はサムネ、記事の中は原寸。出さない設定なら null */
+  image_url?: string | null
   /** 詳細でのみ返る */
   body?: PostBlock[]
 }
@@ -56,6 +58,9 @@ export interface AdminPost {
   views_count: number
   delivered_at: string | null
   author_email: string | null
+  /** 添付があっても、これが false なら一覧・記事に出さない */
+  cover_visible: boolean
+  image_url: string | null
   updated_at: string
 }
 
@@ -69,4 +74,5 @@ export interface AdminPostInput {
   reading_minutes?: number | null
   pinned?: boolean
   published?: boolean
+  cover_visible?: boolean
 }
