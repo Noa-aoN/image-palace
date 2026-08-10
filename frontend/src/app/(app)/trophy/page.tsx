@@ -3,6 +3,7 @@
 import { Trophy, Medal, Crown, Activity, Globe } from 'lucide-react'
 import { CategorySections, type CategorySection } from '@/components/features/myroom/CategorySections'
 import { ComingSoon } from '@/components/features/myroom/ComingSoon'
+import { FeatureGate } from '@/components/features/shared/FeatureGate'
 
 type TabKey = 'achievement' | 'badge' | 'title' | 'activity' | 'public'
 
@@ -77,7 +78,14 @@ export default function TrophyPage() {
         </p>
       </div>
 
-      <CategorySections sections={sections} ariaLabel="トロフィーカテゴリ" />
+      {/* 中身はまだどれも準備中。運営が段階を決められるようにしておき、
+          出来たところから prototype → released に上げていく */}
+      <FeatureGate
+        feature="trophy"
+        description="カード作成数や継続日数から、実績・バッジ・称号を出せるようにする予定です。"
+      >
+        <CategorySections sections={sections} ariaLabel="トロフィーカテゴリ" />
+      </FeatureGate>
     </div>
   )
 }

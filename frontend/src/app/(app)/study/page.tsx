@@ -3,6 +3,7 @@ import type { ReactNode } from 'react'
 import Link from 'next/link'
 import { ChevronRight, Layers, HelpCircle, Gamepad2, BarChart3, GraduationCap } from 'lucide-react'
 import { Card, CardContent } from '@/components/ui/card'
+import { FeatureGate } from '@/components/features/shared/FeatureGate'
 
 export const metadata: Metadata = { title: 'スタディ' }
 
@@ -11,7 +12,8 @@ type StudyMode = {
   icon: ReactNode
   label: string
   description: string
-  comingSoon?: boolean
+  /** 運営が見せ方を決める機能。段階は管理画面（/admin/features）で切り替える */
+  feature?: string
 }
 
 const STUDY_MODES: StudyMode[] = [
@@ -32,6 +34,7 @@ const STUDY_MODES: StudyMode[] = [
     icon: <Gamepad2 size={20} />,
     label: 'プレイ',
     description: 'カルタや神経衰弱など、ゲームで楽しみながら反復できる学習モードです。',
+    feature: 'study_game',
   },
   {
     href: '/study/record',
@@ -54,46 +57,63 @@ export default function StudyPage() {
 
       <div className="mt-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         {STUDY_MODES.map((mode) =>
-          mode.comingSoon || !mode.href ? (
-            <Card key={mode.label} className="h-full border-dashed bg-card/60" aria-disabled>
-              <CardContent>
-                <div className="flex items-center justify-between">
-                  <span className="flex items-center gap-2 text-sm font-medium text-muted-foreground">
-                    <span style={{ color: 'var(--palace)' }}>{mode.icon}</span>
-                    {mode.label}
-                  </span>
-                  <span className="rounded-full bg-muted px-2 py-0.5 text-xs text-muted-foreground">準備中</span>
-                </div>
-                <p className="mt-2 text-sm text-muted-foreground">{mode.description}</p>
-              </CardContent>
-            </Card>
-          ) : (
-            <Link
+          mode.feature ? (
+            // 見せ方を運営が決める機能。段階は /admin/features で切り替える
+            <FeatureGate
               key={mode.label}
-              href={mode.href}
-              aria-label={mode.label}
-              className="group block rounded-xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--palace)]"
+              feature={mode.feature}
+              title={mode.label}
+              description={mode.description}
             >
-              <Card className="h-full cursor-pointer transition hover:border-[var(--palace)] hover:shadow-md">
-                <CardContent>
-                  <div className="flex items-center justify-between">
-                    <span className="flex items-center gap-2 text-sm font-medium">
-                      <span style={{ color: 'var(--palace)' }}>{mode.icon}</span>
-                      {mode.label}
-                    </span>
-                    <ChevronRight
-                      size={16}
-                      className="transition-transform group-hover:translate-x-0.5"
-                      style={{ color: 'var(--palace)' }}
-                    />
-                  </div>
-                  <p className="mt-2 text-sm text-muted-foreground">{mode.description}</p>
-                </CardContent>
-              </Card>
-            </Link>
+              <StudyModeCard mode={mode} />
+            </FeatureGate>
+          ) : (
+            <StudyModeCard key={mode.label} mode={mode} />
           )
         )}
       </div>
     </div>
+  )
+}
+
+// 行き先があればリンク、無ければ触れない札として出す
+function StudyModeCard({ mode }: { mode: StudyMode }) {
+  if (!mode.href) {
+    return (
+      <Card className="h-full border-dashed bg-card/60" aria-disabled>
+        <CardContent>
+          <div className="flex items-center gap-2 text-sm font-medium text-muted-foreground">
+            <span style={{ color: 'var(--palace)' }}>{mode.icon}</span>
+            {mode.label}
+          </div>
+          <p className="mt-2 text-sm text-muted-foreground">{mode.description}</p>
+        </CardContent>
+      </Card>
+    )
+  }
+
+  return (
+    <Link
+      href={mode.href}
+      aria-label={mode.label}
+      className="group block rounded-xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--palace)]"
+    >
+      <Card className="h-full cursor-pointer transition hover:border-[var(--palace)] hover:shadow-md">
+        <CardContent>
+          <div className="flex items-center justify-between">
+            <span className="flex items-center gap-2 text-sm font-medium">
+              <span style={{ color: 'var(--palace)' }}>{mode.icon}</span>
+              {mode.label}
+            </span>
+            <ChevronRight
+              size={16}
+              className="transition-transform group-hover:translate-x-0.5"
+              style={{ color: 'var(--palace)' }}
+            />
+          </div>
+          <p className="mt-2 text-sm text-muted-foreground">{mode.description}</p>
+        </CardContent>
+      </Card>
+    </Link>
   )
 }

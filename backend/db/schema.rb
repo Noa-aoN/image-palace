@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_08_10_000003) do
+ActiveRecord::Schema[8.1].define(version: 2026_08_10_000004) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
   enable_extension "pg_trgm"
@@ -144,6 +144,15 @@ ActiveRecord::Schema[8.1].define(version: 2026_08_10_000003) do
     t.index ["stripe_event_id"], name: "index_credit_transactions_on_stripe_event_id", unique: true, where: "(stripe_event_id IS NOT NULL)"
     t.index ["user_id", "created_at"], name: "index_credit_transactions_on_user_id_and_created_at"
     t.index ["user_id"], name: "index_credit_transactions_on_user_id"
+  end
+
+  create_table "feature_flags", id: :uuid, default: -> { "gen_random_uuid()" }, force: :cascade do |t|
+    t.datetime "created_at", null: false
+    t.string "key", null: false
+    t.text "notes"
+    t.string "stage", null: false
+    t.datetime "updated_at", null: false
+    t.index ["key"], name: "index_feature_flags_on_key", unique: true
   end
 
   create_table "grant_policies", id: :uuid, default: -> { "gen_random_uuid()" }, force: :cascade do |t|
