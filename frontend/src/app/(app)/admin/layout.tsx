@@ -55,14 +55,16 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
   }
 
   if (!session.admin) {
-    return <div className="py-24 text-center text-muted-foreground">このページは運営のみが開けます。</div>
+    return <div className="py-24 text-center text-muted-foreground">執務室は運営のみが開けます。</div>
   }
 
   return (
     <div className="mx-auto max-w-6xl space-y-6 px-6 py-10">
       <div className="flex items-center gap-2">
         <ShieldCheck size={22} style={{ color: 'var(--palace)' }} />
-        <h1 className="text-2xl font-semibold">運営</h1>
+        {/* サイドバーの呼び名（執務室）と揃える。入口と行き先で名前が変わると、
+            同じ場所だと分からない */}
+        <h1 className="text-2xl font-semibold">執務室</h1>
         <span className="text-sm text-muted-foreground">{session.owner ? '管理者' : '運営'}</span>
       </div>
 
