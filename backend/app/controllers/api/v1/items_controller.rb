@@ -4,7 +4,7 @@ module Api
       include ItemSerialization
 
       before_action :set_item,
-                    only: [ :show, :update, :destroy, :retry, :meaning, :brief, :scene_rewrite,
+                    only: [ :show, :update, :destroy, :retry, :approve_image, :meaning, :brief, :scene_rewrite,
                             :generate_tags, :fact_check, :fill_properties, :usages, :update_block_view ]
 
       DEFAULT_PER_PAGE = 24
@@ -283,6 +283,18 @@ module Api
         render json: { error: e.message }, status: :unprocessable_entity
       rescue ActiveRecord::RecordInvalid => e
         render json: { errors: e.record.errors.full_messages }, status: :unprocessable_entity
+      end
+
+      # セーフガードの承認。覆いを外して、普通に見られる状態にする。
+      #
+      # 「これでよい」と決めるのは利用者なので、承認は取り消せる必要が無い
+      # （気に入らなければ作り直すか、カードごと消す）。
+      def approve_image
+        media = item.primary_media
+        return render json: { error: "画像がありません" }, status: :unprocessable_entity if media.blank?
+
+        media.update!(needs_approval: false)
+        render json: serialize_item(item.reload), status: :ok
       end
 
       # 意味・説明を AI で生成（同期）。詳細画面の「意味を生成」ボタンや一括操作から呼ばれる。
@@ -578,22 +590,16 @@ module Api
         { id: item_type.id, name: item_type.name, label: item_type.label }
       end
 
-      # ItemSerialization#serialize_media を、生成メタ情報（ⓘ 用）を足して上書きする。
-      # サムネは media_thumb_url が事前生成済み thumb を CDN 直配信し、無ければ variant にフォールバックする。
+      # ItemSerialization#serialize_media に、生成メタ情報（ⓘ 用）を足す。
+      #
+      # 以前はキーを並べ直して丸ごと上書きしていたため、共通側に項目を足しても
+      # ここには出てこなかった（実際に needs_approval を足したときに抜けた）。
+      # 共通の結果に足すだけにして、二度と食い違わないようにする。
       def serialize_media(media)
-        return nil unless media&.file&.attached?
-        return nil unless blob_available?(media.file.blob)
+        base = super
+        return nil if base.nil?
 
-        blob = media.file.blob
-
-        {
-          id: media.id,
-          url: media_url(blob),
-          thumb_url: media_thumb_url(media, blob),
-          blur: media.metadata&.dig("lqip"),
-          media_type: media.media_type,
-          generation_info: media_generation_info(media)
-        }
+        base.merge(generation_info: media_generation_info(media))
       end
 
       # 画像生成時のメタ情報を、ホワイトリストしたキーだけで返す（内部キーは出さない）。

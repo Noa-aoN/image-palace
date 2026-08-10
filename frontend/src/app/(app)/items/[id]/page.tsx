@@ -21,6 +21,8 @@ import {
   RegeneratingOverlay,
   REGENERATING_IMAGE_CLASS,
 } from '@/components/features/items/RegeneratingOverlay'
+import { SafeguardVeil, SAFEGUARD_IMAGE_CLASS } from '@/components/features/items/SafeguardVeil'
+import { SafeguardBar } from '@/components/features/items/SafeguardBar'
 import { Skeleton } from '@/components/ui/skeleton'
 import { STATUS_LABEL, isRegenerating } from '@/lib/item-status'
 import { StatusBadge } from '@/components/features/items/StatusBadge'
@@ -116,6 +118,8 @@ export default function ItemDetailPage() {
 
   // 前の画像が残ったまま生成中＝作り直し中
   const regenerating = isRegenerating(item.generation_status, Boolean(item.media?.url) && !imgError)
+  // セーフガードの承認待ち。作り直し中はそちらの見せ方を優先する
+  const veiled = Boolean(item.media?.needs_approval) && !regenerating
 
   return (
     <div className="relative flex flex-col min-h-full">
@@ -249,13 +253,16 @@ export default function ItemDetailPage() {
                 <img
                   src={item.media.url}
                   alt={item.title}
-                  className={`w-full cursor-zoom-in rounded-lg object-cover ${regenerating ? REGENERATING_IMAGE_CLASS : ''}`}
+                  className={`w-full rounded-lg object-cover ${regenerating ? REGENERATING_IMAGE_CLASS : ''} ${
+                    veiled ? SAFEGUARD_IMAGE_CLASS : 'cursor-zoom-in'
+                  }`}
                   decoding="async"
                   fetchPriority="high"
-                  onClick={() => setZoomed(true)}
+                  onClick={() => !veiled && setZoomed(true)}
                   onError={() => setImgError(true)}
                 />
                 {regenerating && <RegeneratingOverlay />}
+                {veiled && <SafeguardVeil />}
               </div>
             ) : (
               <GeneratingOverlay
@@ -290,6 +297,11 @@ export default function ItemDetailPage() {
         </PropertyBlock>
 
         {/* 画像まわりの情報と操作（生成情報・プロンプト情報・作り直す）。右パネルと同じ並び */}
+        {/* 覆いを外すか、カードごと消すか */}
+        {veiled && (
+          <SafeguardBar item={item} onUpdated={applyUpdated} onDeleted={() => router.push(backHref)} />
+        )}
+
         <ItemImageBar item={item} onUpdated={applyUpdated} />
 
         {/* プロパティ（種別・意味） */}

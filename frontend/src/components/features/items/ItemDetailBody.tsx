@@ -15,6 +15,8 @@ import {
   RegeneratingOverlay,
   REGENERATING_IMAGE_CLASS,
 } from '@/components/features/items/RegeneratingOverlay'
+import { SafeguardVeil, SAFEGUARD_IMAGE_CLASS } from '@/components/features/items/SafeguardVeil'
+import { SafeguardBar } from '@/components/features/items/SafeguardBar'
 import { StatusBadge } from '@/components/features/items/StatusBadge'
 import { useItemDetail } from '@/hooks/useItemDetail'
 import { STATUS_LABEL, isRegenerating } from '@/lib/item-status'
@@ -61,6 +63,8 @@ export function ItemDetailBody({ itemId, onDeleted }: { itemId: string; onDelete
 
   // 前の画像が残ったまま生成中＝作り直し中
   const regenerating = isRegenerating(item.generation_status, Boolean(item.media?.url) && !imgError)
+  // セーフガードの承認待ち。作り直し中はそちらの見せ方を優先する
+  const veiled = Boolean(item.media?.needs_approval) && !regenerating
 
   return (
     <div className="space-y-5">
@@ -132,12 +136,15 @@ export function ItemDetailBody({ itemId, onDeleted }: { itemId: string; onDelete
             <img
               src={item.media.url}
               alt={item.title}
-              className={`w-full cursor-zoom-in rounded-lg object-cover ${regenerating ? REGENERATING_IMAGE_CLASS : ''}`}
+              className={`w-full rounded-lg object-cover ${regenerating ? REGENERATING_IMAGE_CLASS : ''} ${
+                veiled ? SAFEGUARD_IMAGE_CLASS : 'cursor-zoom-in'
+              }`}
               decoding="async"
-              onClick={() => setZoomed(true)}
+              onClick={() => !veiled && setZoomed(true)}
               onError={() => setImgError(true)}
             />
             {regenerating && <RegeneratingOverlay />}
+            {veiled && <SafeguardVeil />}
             <Tooltip label="画像をダウンロード">
               <button
                 type="button"
@@ -162,6 +169,9 @@ export function ItemDetailBody({ itemId, onDeleted }: { itemId: string; onDelete
           />
         )}
       </PropertyBlock>
+
+      {/* 覆いを外すか、カードごと消すか */}
+      {veiled && <SafeguardBar item={item} onUpdated={applyUpdated} onDeleted={onDeleted} />}
 
       {/* 画像まわりの情報と操作（生成情報・プロンプト情報・作り直す） */}
       <ItemImageBar item={item} onUpdated={applyUpdated} />

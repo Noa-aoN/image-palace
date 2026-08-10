@@ -177,6 +177,12 @@ export interface RegenerateOptions {
 }
 
 // 再生成。failed・completed どちらからも呼べる。任意で指示を渡すとプロンプトに反映される。
+/** セーフガードの承認。覆いを外して普通に見られる状態にする */
+export async function approveItemImage(id: string): Promise<Item> {
+  const res = await apiClient.post<Item>(`/api/v1/items/${id}/approve_image`)
+  return res.data
+}
+
 export async function retryItem(id: string, options?: RegenerateOptions): Promise<Item> {
   const payload: Record<string, string | boolean> = {}
   if (options?.customPrompt !== undefined) payload.custom_prompt = options.customPrompt

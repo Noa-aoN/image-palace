@@ -128,7 +128,10 @@ class GenerateImageJob < ApplicationJob
     media.assign_attributes(
       media_type: "image",
       metadata: shared_media.metadata,
-      position: 0
+      position: 0,
+      # 作り直しでは同じ行を使い回すので、毎回入れ直す。
+      # そうしないと、一度承認した枠に新しい絵が覆い無しで入ってしまう
+      needs_approval: safeguard?(item)
     )
     media.save!
 
@@ -166,6 +169,11 @@ class GenerateImageJob < ApplicationJob
 
     # LQIP（data URL）はメタデータに保存し、serializer 経由でフロントのプレースホルダに使う。
     shared_media.update!(metadata: shared_media.metadata.merge("lqip" => optimized.lqip)) if optimized.lqip
+  end
+
+  # 絵を直視しないで済むようにするか。利用者ごとの設定（既定は切）
+  def safeguard?(item)
+    item.user&.setting&.image_safeguard || false
   end
 
   def blob_available?(blob)

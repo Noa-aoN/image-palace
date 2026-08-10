@@ -26,7 +26,7 @@ module Api
         params.require(:setting).permit(
           :auto_generate_meanings, :auto_generate_tags, :default_image_style, :default_aspect_ratio,
           :display_style, :shelf_orientation, :onboarded,
-          :regenerate_with_meaning,
+          :regenerate_with_meaning, :image_safeguard,
           :diagram_mode, :motion_mode, :word_difficulty,
           library_order: []
         )
@@ -46,6 +46,7 @@ module Api
           # 初回の表示スタイル確認を出すかどうかの判断に使う
           onboarded: setting.onboarded_at.present?,
           regenerate_with_meaning: setting.regenerate_with_meaning,
+          image_safeguard: setting.image_safeguard,
           diagram_mode: setting.diagram_mode,
           motion_mode: setting.motion_mode,
           locale: setting.locale,
