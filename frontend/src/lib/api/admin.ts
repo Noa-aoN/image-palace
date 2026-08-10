@@ -5,6 +5,8 @@ import type {
   AdminFinancePage,
   AdminFinanceSummary,
   AdminGrantPoliciesPage,
+  AdminFeatureFlag,
+  AdminFeatureFlagsPage,
   AdminGrantPolicy,
   AdminOverview,
   AdminPlan,
@@ -67,6 +69,28 @@ export async function getAdminAuditLogs(params?: {
 export async function getAdminAuditLogList(): Promise<AdminAuditLog[]> {
   const res = await apiClient.get<{ logs: AdminAuditLog[] }>('/api/v1/admin/audit_logs')
   return res.data.logs
+}
+
+// ── 機能の見せ方 ──────────────────────────────────────────────
+
+export async function getAdminFeatureFlags(): Promise<AdminFeatureFlagsPage> {
+  const res = await apiClient.get<AdminFeatureFlagsPage>('/api/v1/admin/feature_flags')
+  return res.data
+}
+
+// 触ったときに初めて行ができ、以後はそちらが効く
+export async function updateAdminFeatureFlag(
+  key: string,
+  feature: { stage?: string; notes?: string }
+): Promise<AdminFeatureFlag> {
+  const res = await apiClient.put<{ feature: AdminFeatureFlag }>(`/api/v1/admin/feature_flags/${key}`, { feature })
+  return res.data.feature
+}
+
+// 既定へ戻す（行を消す）
+export async function resetAdminFeatureFlag(key: string): Promise<AdminFeatureFlag> {
+  const res = await apiClient.delete<{ feature: AdminFeatureFlag }>(`/api/v1/admin/feature_flags/${key}`)
+  return res.data.feature
 }
 
 // ── 付与の管理 ────────────────────────────────────────────────

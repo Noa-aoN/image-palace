@@ -116,6 +116,22 @@ export interface AdminOverview {
 }
 
 /** 付与ポリシー（何を・いくつ・どの条件で配るか） */
+/** 作りかけの機能を、どこまで見せるか */
+export interface AdminFeatureFlag {
+  key: string
+  label: string
+  stage: string
+  default_stage: string
+  /** 画面で触った結果か（false ならコード側の既定で動いている） */
+  customized: boolean
+  notes: string | null
+}
+
+export interface AdminFeatureFlagsPage {
+  features: AdminFeatureFlag[]
+  stages: { value: string; label: string }[]
+}
+
 export interface AdminGrantPolicy {
   key: string
   label: string
