@@ -10,6 +10,8 @@ class MissionDefinition < ApplicationRecord
   }.freeze
 
   has_many :user_missions, dependent: :destroy
+  # 単発のミッションは series を持たない
+  belongs_to :mission_series, optional: true
 
   validates :key, presence: true, uniqueness: true, format: { with: /\A[a-z][a-z0-9_]*\z/ }
   validates :name, :condition_type, presence: true
@@ -29,7 +31,31 @@ class MissionDefinition < ApplicationRecord
     { key: "start_streak_three", name: "3日続けて使う", cadence: "onboarding", position: 13,
       description: "続けるほど覚えます。", condition_type: "streak_days", condition_target: 3 },
     { key: "daily_one_review", name: "今日カードを1回見返す", cadence: "daily", position: 20,
-      description: "1回でも見返せば達成です。", condition_type: "reviews_total", condition_target: 1 }
+      description: "1回でも見返せば達成です。", condition_type: "reviews_total", condition_target: 1 },
+    # ── シリーズ「宮殿を建てる」──
+    # 段は一度きりなので cadence は onboarding（繰り返さない側）に置く。
+    # series_key は BUILTINS だけの目印で、列ではない（作るときに id へ引き当てる）
+    { key: "palace_ten_cards", name: "カードを10枚そろえる", cadence: "onboarding",
+      series_key: "build_palace", series_step: 1, position: 100,
+      description: "まずは10枚。", condition_type: "cards_created", condition_target: 10,
+      rewards: [ { "type" => "credits", "amount" => 1 } ] },
+    { key: "palace_three_containers", name: "しまう場所を3つ作る", cadence: "onboarding",
+      series_key: "build_palace", series_step: 2, position: 101,
+      description: "ボックス・キャンバス・スペースを合わせて3つ。",
+      condition_type: "containers_created", condition_target: 3,
+      rewards: [ { "type" => "credits", "amount" => 1 } ] },
+    { key: "palace_fifty_reviews", name: "50回見返す", cadence: "onboarding",
+      series_key: "build_palace", series_step: 3, position: 102,
+      description: "作るだけでなく、思い出すところまで。",
+      condition_type: "reviews_total", condition_target: 50,
+      rewards: [ { "type" => "credits", "amount" => 2 } ] },
+    { key: "palace_thirty_streak", name: "30日続ける", cadence: "onboarding",
+      series_key: "build_palace", series_step: 4, position: 103,
+      description: "ここまで来れば、宮殿は住まいになります。",
+      condition_type: "streak_days", condition_target: 30,
+      # 最後の段に見合う品物はまだ用意していない（絵から作る必要がある）。
+      # 当面はクレジットで報い、品ができたら管理画面で差し替える
+      rewards: [ { "type" => "credits", "amount" => 5 } ] }
   ].freeze
 
   BUILTIN_KEYS = BUILTINS.map { |b| b[:key] }.freeze
@@ -43,10 +69,14 @@ class MissionDefinition < ApplicationRecord
     return if @builtins_checked && !Rails.env.local?
 
     existing = where(key: BUILTIN_KEYS).pluck(:key).to_set
+    series_ids = MissionSeries.registry.to_h { |s| [ s.key, s.id ] }
     BUILTINS.each do |attrs|
       next if existing.include?(attrs[:key])
 
-      create!(attrs)
+      # series_key は BUILTINS の中だけの目印。行を作るときに id へ引き当てる
+      row = attrs.except(:series_key)
+      row[:mission_series_id] = series_ids[attrs[:series_key]] if attrs[:series_key]
+      create!(row)
     rescue ActiveRecord::RecordNotUnique
       nil
     end

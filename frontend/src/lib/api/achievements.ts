@@ -64,6 +64,24 @@ export interface MissionRow {
   rewards: RewardPreview[]
 }
 
+/** シリーズの1段。state は済み / いま挑んでいる / これから */
+export interface MissionStep extends MissionRow {
+  series_step: number
+  state: 'done' | 'current' | 'locked'
+}
+
+/** 順に開けていく1本の道 */
+export interface MissionSeries {
+  key: string
+  name: string
+  description: string | null
+  total_steps: number
+  completed_steps: number
+  /** いま挑んでいる段。全段が済んでいれば null */
+  current: MissionRow | null
+  steps: MissionStep[]
+}
+
 export interface AchievementRow {
   key: string
   name: string
@@ -113,6 +131,7 @@ export interface AchievementsPage {
   }
   upcoming: UpcomingRow[]
   missions: MissionRow[]
+  mission_series: MissionSeries[]
   rewards: RewardRow[]
   achievements: AchievementRow[]
   stats: StatRow[]
