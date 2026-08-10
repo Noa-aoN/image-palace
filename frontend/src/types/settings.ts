@@ -21,6 +21,8 @@ export interface UserSettings {
   regenerate_with_meaning: boolean
   /** 生成された絵に覆いを掛けて、承認するまで直視しないで済むようにする。既定 OFF */
   image_safeguard: boolean
+  /** カード一覧で名前として出す項目の識別名。空なら見出し語（title） */
+  card_headline_key: string | null
   /** 図（間取り図・記憶資産など）の表現。既定 "3d" */
   diagram_mode: DiagramMode
   /** アニメーションの扱い。"auto" は端末（OS）の設定に従う。既定 "auto" */

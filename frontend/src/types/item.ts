@@ -107,5 +107,7 @@ export interface Item {
   brief_edited?: boolean
   tags?: ItemTag[]
   media: ItemMedia | null
+  /** 一覧で名前として出す文字列。設定した項目に値があればそれ、無ければ title と同じ */
+  headline?: string
   created_at: string
 }

@@ -1,10 +1,13 @@
 'use client'
 
+import { useEffect, useState } from 'react'
 import { LayoutGrid } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Label } from '@/components/ui/label'
 import { PanelSlotContent } from '@/components/features/panel/PanelSlot'
 import { usePanelForm } from '@/components/features/panel/usePanelForm'
+import { getPropertyDefinitions, type PropertyDefinition } from '@/lib/api/properties'
+import { getSettings, updateSettings } from '@/lib/api/settings'
 import {
   CARD_COLUMN_CHOICES,
   CARD_ROW_CHOICES,
@@ -25,6 +28,9 @@ const PANEL_KEY = 'items-display'
  *
  * 値は端末ごとに覚える（useCardDisplay）。保存ボタンは置かない。
  * 見え方は押した瞬間に結果が見えるので、確定させる操作を挟む意味がない。
+ *
+ * 見出し語だけは例外で、アカウントの設定として保存する。どの項目を名前として出すかは
+ * サーバー側で解決しないと、一覧の payload に全項目を積むことになって重いため。
  */
 export function CardDisplayPanel({
   display,
@@ -36,6 +42,7 @@ export function CardDisplayPanel({
   const panel = usePanelForm(PANEL_KEY, '表示')
   const rowChoices = availableRowChoices(display.columns)
   const perPage = cardsPerPage(display)
+  const { headlineKey, headlineChoices, changeHeadline, savingHeadline } = useHeadlineSetting(panel.isOpen)
 
   return (
     <>
@@ -95,6 +102,30 @@ export function CardDisplayPanel({
             )}
           </div>
 
+          <div className="space-y-2">
+            <Label>名前に出す項目</Label>
+            <div className="flex flex-wrap gap-2">
+              <Chip active={!headlineKey} onClick={() => changeHeadline('')}>
+                見出し語
+              </Chip>
+              {headlineChoices.map((choice) => (
+                <Chip
+                  key={choice.key}
+                  active={headlineKey === choice.key}
+                  onClick={() => changeHeadline(choice.key)}
+                >
+                  {choice.label}
+                </Chip>
+              ))}
+            </div>
+            <p className="text-xs text-muted-foreground">
+              {headlineChoices.length === 0
+                ? '読み方や別名などの項目を作ると、ここで選べるようになります。'
+                : '選んだ項目が空のカードは、見出し語のまま出ます。この設定はアカウント全体に効きます。'}
+              {savingHeadline && ' 保存中…'}
+            </p>
+          </div>
+
           <p className="rounded-lg bg-muted/40 px-3 py-2 text-xs text-muted-foreground">
             <strong className="text-foreground">
               {display.columns} 列 × {display.rows} 行
@@ -105,6 +136,65 @@ export function CardDisplayPanel({
       </PanelSlotContent>
     </>
   )
+}
+
+/**
+ * 名前として出す項目の選択。
+ *
+ * 選択肢は利用者が作った項目から作る。同じ識別名が種別をまたいで存在しうるので
+ * 識別名で畳む（「読み方」を種別ごとに作っていても、選ぶのは1つでよい）。
+ * 文字として出せる型（text / list）だけを候補にする。日付や URL を名前に出しても読めない。
+ *
+ * パネルを開いたときに読む。一覧を出すたびに毎回引く必要はない。
+ */
+function useHeadlineSetting(isOpen: boolean) {
+  const [headlineKey, setHeadlineKey] = useState('')
+  const [definitions, setDefinitions] = useState<PropertyDefinition[]>([])
+  const [savingHeadline, setSavingHeadline] = useState(false)
+  const [loaded, setLoaded] = useState(false)
+
+  useEffect(() => {
+    if (!isOpen || loaded) return
+    let cancelled = false
+    Promise.all([getSettings(), getPropertyDefinitions()])
+      .then(([settings, defs]) => {
+        if (cancelled) return
+        setHeadlineKey(settings.card_headline_key ?? '')
+        setDefinitions(defs)
+        setLoaded(true)
+      })
+      .catch(() => {})
+    return () => {
+      cancelled = true
+    }
+  }, [isOpen, loaded])
+
+  const headlineChoices = Array.from(
+    definitions
+      .filter((d) => d.value_type === 'text' || d.value_type === 'list')
+      .reduce((acc, d) => {
+        if (!acc.has(d.key)) acc.set(d.key, { key: d.key, label: d.label })
+        return acc
+      }, new Map<string, { key: string; label: string }>())
+      .values()
+  )
+
+  const changeHeadline = async (key: string) => {
+    if (savingHeadline || key === headlineKey) return
+    const previous = headlineKey
+    setHeadlineKey(key)
+    setSavingHeadline(true)
+    try {
+      const saved = await updateSettings({ card_headline_key: key })
+      setHeadlineKey(saved.card_headline_key ?? '')
+    } catch {
+      setHeadlineKey(previous) // 失敗したら元に戻す
+    } finally {
+      setSavingHeadline(false)
+    }
+  }
+
+  return { headlineKey, headlineChoices, changeHeadline, savingHeadline }
 }
 
 function Chip({
