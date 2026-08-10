@@ -217,7 +217,7 @@ function ItemCard({ item, selectionMode, selected, onToggle, fit, sizes }: ItemC
           onMouseEnter={showTitleTooltip}
           onMouseLeave={() => setTooltipAlign(null)}
         >
-          {item.title}
+          {item.headline || item.title}
         </span>
         <StatusBadge status={item.generation_status} />
       </div>
@@ -311,7 +311,7 @@ function ItemCard({ item, selectionMode, selected, onToggle, fit, sizes }: ItemC
           role="tooltip"
           className={`pointer-events-none absolute bottom-full z-30 mb-1 w-max max-w-[min(18rem,80vw)] rounded-md bg-foreground px-2 py-1 text-xs leading-snug text-background shadow-md ${TOOLTIP_ALIGN_CLASSES[tooltipAlign]}`}
         >
-          {item.title}
+          {item.headline || item.title}
         </span>
       )}
       {card}

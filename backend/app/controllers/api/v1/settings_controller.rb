@@ -26,7 +26,7 @@ module Api
         params.require(:setting).permit(
           :auto_generate_meanings, :auto_generate_tags, :default_image_style, :default_aspect_ratio,
           :display_style, :shelf_orientation, :onboarded,
-          :regenerate_with_meaning, :image_safeguard,
+          :regenerate_with_meaning, :image_safeguard, :card_headline_key,
           :diagram_mode, :motion_mode, :word_difficulty,
           library_order: []
         )
@@ -47,6 +47,8 @@ module Api
           onboarded: setting.onboarded_at.present?,
           regenerate_with_meaning: setting.regenerate_with_meaning,
           image_safeguard: setting.image_safeguard,
+          # 一覧で名前として出す項目。空なら見出し語
+          card_headline_key: setting.card_headline_key,
           diagram_mode: setting.diagram_mode,
           motion_mode: setting.motion_mode,
           locale: setting.locale,

@@ -19,6 +19,7 @@ export async function updateSettings(
       | 'onboarded'
       | 'regenerate_with_meaning'
       | 'image_safeguard'
+      | 'card_headline_key'
       | 'diagram_mode'
       | 'motion_mode'
     >

@@ -36,7 +36,9 @@ module Api
         total_pages = total_count.zero? ? 0 : (total_count.to_f / per).ceil
 
         items = scope
-                  .includes(:item_type, :meanings, :tags, medias: { file_attachment: :blob })
+                  .includes(:item_type, :meanings, :tags,
+                            { item_properties: :property_definition },
+                            { medias: { file_attachment: :blob } })
                   .limit(per)
                   .offset((page - 1) * per)
 
@@ -516,6 +518,9 @@ module Api
         {
           id: item.id,
           title: item.title,
+          # 一覧で名前として出す文字列。設定した項目に値があればそれ、無ければ見出し語。
+          # どの項目かは利用者ごとの設定で決まる（別名で覚えている人がいるため）
+          headline: headline_for(item),
           generation_status: item.generation_status,
           generation_error: item.generation_error,
           item_type: serialize_item_type(item.item_type),
@@ -555,7 +560,7 @@ module Api
         return [] if item.item_type_id.blank?
 
         values = item.item_properties.index_by(&:property_definition_id)
-        current_user.property_definitions.for_item_type(item.item_type_id).ordered.map do |definition|
+        definitions_for(item.item_type_id).map do |definition|
           {
             property_definition_id: definition.id,
             key: definition.key,
@@ -565,6 +570,31 @@ module Api
             value: values[definition.id]&.typed_value || (definition.list? ? [] : nil)
           }
         end
+      end
+
+      # 種別ごとの項目定義。一覧では1枚ごとに引くと枚数ぶん問い合わせが飛ぶので、
+      # 1リクエストに1回だけ読んで種別で分けておく
+      def definitions_for(item_type_id)
+        @definitions_by_item_type ||= current_user.property_definitions.ordered.group_by(&:item_type_id)
+        @definitions_by_item_type[item_type_id] || []
+      end
+
+      # 設定で選ばれた項目。空なら見出し語をそのまま使う
+      def headline_key
+        return @headline_key if defined?(@headline_key)
+
+        @headline_key = current_user.setting&.card_headline_key.presence
+      end
+
+      # 一覧に出す名前。選ばれた項目が空のカードは見出し語に戻る
+      # （名前の無いカードが並ぶより、元の名前が出ているほうがよい）
+      def headline_for(item)
+        return item.title if headline_key.blank?
+
+        entry = item.item_properties.find { |p| p.property_definition&.key == headline_key }
+        value = entry&.typed_value
+        value = value.first if value.is_a?(Array)
+        value.to_s.presence || item.title
       end
 
       # 意味・説明の1件ぶん。MeaningsController の返す形と揃える
@@ -638,7 +668,9 @@ module Api
 
       def set_item
         @item = current_user.items
-                            .includes(:item_type, :meanings, :tags, medias: { file_attachment: :blob })
+                            .includes(:item_type, :meanings, :tags,
+                                      { item_properties: :property_definition },
+                                      { medias: { file_attachment: :blob } })
                             .find(params[:id])
       end
 
