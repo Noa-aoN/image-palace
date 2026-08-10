@@ -5,10 +5,14 @@ import { Megaphone } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { ListRows } from '@/components/features/posts/ListRows'
 import { getPosts } from '@/lib/api/posts'
-import { POST_CATEGORIES, POST_CATEGORY_LABELS, type Post, type PostCategory } from '@/types/post'
+import { NEWS_CATEGORIES, POST_CATEGORY_LABELS, type Post, type PostCategory } from '@/types/post'
 
 /**
- * 運営からの読みもの（お知らせ・更新情報・コラム）。
+ * お知らせ。**運営からの連絡**（お知らせ・更新情報）だけを並べる。
+ *
+ * 投稿には「コラム」の種別もあるが、それはここではなく /blog に出す。
+ * 読みたい理由が違うものを同じ面に混ぜると、
+ * 障害や仕様変更の連絡が読みものに埋もれて届かなくなる。
  *
  * 中身は運営画面から書ける。ここは読む側なので、公開済みのものだけが並ぶ。
  */
@@ -19,9 +23,9 @@ export default function NewsPage() {
 
   useEffect(() => {
     let cancelled = false
-    getPosts(category ?? undefined)
+    getPosts()
       .then((data) => {
-        if (!cancelled) setPosts(data)
+        if (!cancelled) setPosts(data.filter((p) => NEWS_CATEGORIES.includes(p.category)))
       })
       .catch(() => {
         if (!cancelled) setError(true)
@@ -29,7 +33,9 @@ export default function NewsPage() {
     return () => {
       cancelled = true
     }
-  }, [category])
+  }, [])
+
+  const shown = posts?.filter((p) => category === null || p.category === category) ?? null
 
   return (
     <div className="mx-auto max-w-4xl px-6 py-12">
@@ -38,14 +44,14 @@ export default function NewsPage() {
           <Megaphone size={26} style={{ color: 'var(--palace)' }} />
           お知らせ
         </h1>
-        <p className="mt-2 text-muted-foreground">運営からのお知らせ・更新情報・読みものです。</p>
+        <p className="mt-2 text-muted-foreground">運営からのお知らせ・更新情報です。</p>
       </header>
 
       <div className="mt-6 flex flex-wrap gap-2">
         <Button size="sm" variant={category === null ? 'default' : 'outline'} onClick={() => setCategory(null)}>
           すべて
         </Button>
-        {POST_CATEGORIES.map((c) => (
+        {NEWS_CATEGORIES.map((c) => (
           <Button
             key={c}
             size="sm"
@@ -59,16 +65,13 @@ export default function NewsPage() {
 
       {error && <p className="mt-6 text-sm text-destructive">読み込めませんでした。</p>}
 
-      {posts === null && !error && <p className="mt-8 text-sm text-muted-foreground">読み込み中…</p>}
+      {shown === null && !error && <p className="mt-8 text-sm text-muted-foreground">読み込み中…</p>}
 
-      {posts?.length === 0 && (
-        <p className="mt-8 text-sm text-muted-foreground">まだ投稿はありません。</p>
-      )}
-
-      {posts && posts.length > 0 && (
+      {shown !== null && (
         <div className="mt-8">
           <ListRows
-            items={posts.map((post) => ({
+            empty="まだお知らせはありません。"
+            items={shown.map((post) => ({
               key: post.slug,
               href: `/news/${post.slug}`,
               title: post.title,

@@ -14,6 +14,8 @@ export type Article = {
   date: string // ISO (YYYY-MM-DD)
   readingMinutes: number
   tags: string[]
+  /** 見出し画像の URL。用意できた記事から足していく */
+  image?: string
   body: ArticleBlock[]
   references?: string[]
 }

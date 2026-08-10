@@ -22,6 +22,11 @@ export type GuideSection = {
   title: string
   excerpt: string
   icon: LucideIcon
+  /**
+   * 見出し画像の URL。用意できたものから足していく。
+   * 無いあいだは一覧に画像の枠ごと出さない（空の枠は「読み込み中」に見える）
+   */
+  image?: string
 }
 
 // 一覧・詳細で共有するセクション定義（表示順）。

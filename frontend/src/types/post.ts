@@ -5,6 +5,9 @@ export type PostCategory = 'news' | 'update' | 'column'
 
 export const POST_CATEGORIES: PostCategory[] = ['news', 'update', 'column']
 
+// お知らせの面に出す種別。コラムは読みたい理由が違うので /blog へ回す
+export const NEWS_CATEGORIES: PostCategory[] = ['news', 'update']
+
 export const POST_CATEGORY_LABELS: Record<PostCategory, string> = {
   news: 'お知らせ',
   update: '更新情報',
