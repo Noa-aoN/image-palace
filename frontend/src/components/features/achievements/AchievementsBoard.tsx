@@ -283,8 +283,8 @@ export function AchievementsBoard() {
               <ul
                 className={
                   imageOnly
-                    ? 'grid grid-cols-4 gap-2 sm:grid-cols-6 lg:grid-cols-8'
-                    : 'grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4'
+                    ? 'grid grid-cols-5 gap-2 sm:grid-cols-8 lg:grid-cols-10'
+                    : 'grid grid-cols-3 gap-2.5 sm:grid-cols-4 lg:grid-cols-6'
                 }
               >
                 {group.rows.map((reward) => (

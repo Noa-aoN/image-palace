@@ -126,7 +126,7 @@ export const NAV_SECTIONS: NavSection[] = [
   },
   {
     key: 'outside',
-    title: '宮殿外',
+    title: '市街',
     items: [
       { href: '/acropolis', icon: <Wand2 size={22} />, label: 'アクロポリス' },
       { href: '/agora', icon: <Store size={22} />, label: 'アゴラ' },
@@ -135,21 +135,29 @@ export const NAV_SECTIONS: NavSection[] = [
   },
   {
     key: 'ops',
-    title: '運営',
+    title: '公式',
     items: [
-      { href: '/news', icon: <Megaphone size={22} />, label: 'お知らせ' },
-      { href: '/guide', icon: <BookOpen size={22} />, label: '使い方' },
-      { href: '/blog', icon: <Newspaper size={22} />, label: 'コラム' },
+      {
+        // 読みもの3つは同じ性質（運営から届くもの）なので、1つにまとめて畳む。
+        // 並べたままだと、日々使う項目と同じ重さで場所を取り続ける
+        icon: <Megaphone size={22} />,
+        label: '掲示板',
+        children: [
+          { href: '/news', icon: <Megaphone size={20} />, label: 'お知らせ' },
+          { href: '/guide', icon: <BookOpen size={20} />, label: '使い方' },
+          { href: '/blog', icon: <Newspaper size={20} />, label: 'コラム' },
+        ],
+      },
     ],
   },
 ]
 
-// 運営メンバーにだけ出す項目。既存の「運営」セクションの末尾へ足す。
+// 運営メンバーにだけ出す項目。既存の「公式」セクションの末尾へ足す。
 // ここに出す／出さないは見た目の話で、守りはサーバー側の権限判定が行う。
 export const ADMIN_SECTION_KEY = 'ops'
-export const ADMIN_ITEM: NavNode = { href: '/admin', icon: <ShieldCheck size={22} />, label: '管理' }
+export const ADMIN_ITEM: NavNode = { href: '/admin', icon: <ShieldCheck size={22} />, label: '執務室' }
 
-/** 運営メンバーなら「運営」セクションの末尾に管理を足したものを返す */
+/** 運営メンバーなら「公式」セクションの末尾に執務室を足したものを返す */
 export function navSectionsFor(isAdmin: boolean): NavSection[] {
   if (!isAdmin) return NAV_SECTIONS
 

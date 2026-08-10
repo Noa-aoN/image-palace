@@ -40,7 +40,7 @@ export function RewardCard({
 
   return (
     <div
-      className={`group relative flex flex-col gap-2 rounded-xl border p-3 text-center transition-shadow ${
+      className={`group relative flex flex-col gap-1.5 rounded-xl border p-2.5 text-center transition-shadow ${
         reward.owned ? `bg-card ${style.frame}` : almost ? 'border-[var(--palace)]/40 bg-card' : 'border-dashed border-border/60 bg-card/40'
       }`}
       style={reward.owned && style.glow ? { boxShadow: style.glow } : undefined}
@@ -80,10 +80,10 @@ export function RewardCard({
       <button
         type="button"
         onClick={onOpen}
-        className="relative mx-auto flex h-16 w-16 items-center justify-center rounded-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--palace)]"
+        className="relative mx-auto flex h-14 w-14 items-center justify-center rounded-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--palace)]"
         aria-label={`${reward.name}の詳細`}
       >
-        <RewardArt reward={reward} size={56} />
+        <RewardArt reward={reward} size={52} />
         <span className="pointer-events-none absolute inset-x-[-1rem] bottom-full mb-1 hidden rounded-md bg-foreground px-2 py-1 text-[11px] leading-snug text-background shadow-md group-hover:block">
           {reward.name}
           {!reward.owned && reward.condition && <span className="block opacity-80">{reward.condition}</span>}
@@ -93,13 +93,12 @@ export function RewardCard({
       {!imageOnly && (
         <>
           <div className="space-y-1">
-            <p className={`text-sm font-medium ${reward.owned ? '' : 'text-muted-foreground'}`}>{reward.name}</p>
+            <p className={`text-[13px] font-medium leading-tight ${reward.owned ? '' : 'text-muted-foreground'}`}>
+            {reward.name}
+          </p>
             <RarityMarks level={reward.rarity_level} tierClass={style.text} dim={!reward.owned} />
           </div>
 
-          {reward.description && (
-            <p className="text-[11px] leading-snug text-muted-foreground">{reward.description}</p>
-          )}
         </>
       )}
 

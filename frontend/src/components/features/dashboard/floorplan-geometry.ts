@@ -80,7 +80,7 @@ export const COLUMNS: [number, number, number][] = [
 // 中庭の中心（炉／泉の装飾）。
 export const HEARTH = { x: 180, y: 68 }
 
-// 裏口（外へ抜ける開口）の中心。「宮殿外へ」のラベルを置く。
+// 裏口（外へ抜ける開口）の中心。「市街へ」のラベルを置く。
 export const BACK_EXIT = { x: 180, y: 10 }
 
 // 2D（平面図）の viewBox

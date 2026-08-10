@@ -27,8 +27,8 @@ class FeatureFlag < ApplicationRecord
   # サイドバーの分類。画面の並びもこの順にする
   GROUPS = {
     "palace" => "宮殿",
-    "outside" => "宮殿外",
-    "ops" => "運営",
+    "outside" => "市街",
+    "ops" => "公式",
     "other" => "ページ以外"
   }.freeze
 

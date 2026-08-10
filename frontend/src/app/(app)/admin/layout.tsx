@@ -7,7 +7,7 @@ import { ShieldCheck, Loader2 } from 'lucide-react'
 import { useAdminStore } from '@/stores/admin'
 
 /**
- * 運営（管理）画面の枠。権限の確認とページの出し入れをここでまとめる。
+ * 執務室（運営）の枠。権限の確認とページの出し入れをここでまとめる。
  *
  * ここでの出し分けは見た目の話であって、守りではない。
  * 権限の判定はサーバー側で毎リクエスト行われる。
