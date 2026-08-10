@@ -234,7 +234,7 @@ export default function BillingPage() {
             </div>
             <dl className="grid gap-2 text-sm">
               <div className="flex items-center justify-between gap-4 border-t border-border pt-3">
-                <dt className="text-muted-foreground">現在のプラン</dt>
+                <dt className="text-muted-foreground">いまの位</dt>
                 <dd className="font-medium">
                   {tierLabel(currentTier)}
                   {summary?.subscription?.cancel_at_period_end && '（期末で解約予定）'}
@@ -266,7 +266,9 @@ export default function BillingPage() {
           <section className="space-y-4">
             <div className="flex items-center gap-2">
               <Sparkles size={18} style={{ color: 'var(--palace)' }} />
-              <h2 className="text-lg font-semibold">プラン</h2>
+              {/* 位＝市民・書記官…と呼ぶので、見出しも合わせる。
+                  「プラン」と「市民」が並ぶと、どちらが呼び名なのか分からない */}
+              <h2 className="text-lg font-semibold">位を選ぶ</h2>
             </div>
             <div className="grid gap-3 sm:grid-cols-2">
               {subscriptionPlans.map((plan) => {
@@ -282,7 +284,7 @@ export default function BillingPage() {
                         )}
                         {tierLabel(plan.tier)}
                       </p>
-                      {/* 呼び名だけでは何のプランか分からない。一言だけ添える */}
+                      {/* 呼び名だけでは何の位か分からない。一言だけ添える */}
                       {TIER_NOTES[plan.tier] && (
                         <p className="text-xs text-muted-foreground">{TIER_NOTES[plan.tier]}</p>
                       )}
@@ -302,7 +304,7 @@ export default function BillingPage() {
                       variant={isCurrent ? 'outline' : 'default'}
                       className="mt-auto"
                     >
-                      {isCurrent ? '利用中' : busy ? '移動中…' : 'このプランにする'}
+                      {isCurrent ? 'いまの位' : busy ? '移動中…' : 'この位にする'}
                     </Button>
                   </div>
                 )
@@ -312,9 +314,9 @@ export default function BillingPage() {
 
           {summary?.subscription && (
             <section className="space-y-3 rounded-xl border border-border bg-card p-5">
-              <h2 className="text-lg font-semibold">プラン変更・解約</h2>
+              <h2 className="text-lg font-semibold">位の変更・解約</h2>
               <p className="text-sm text-muted-foreground">
-                プランの変更・解約、契約ステータスの確認は、お支払い管理ページ（Stripe）から行えます。
+                位の変更・解約、契約ステータスの確認は、お支払い管理ページ（Stripe）から行えます。
                 {summary.subscription.cancel_at_period_end && ' 現在、期末での解約が予定されています。'}
               </p>
               <Button variant="outline" onClick={handlePortal} disabled={busyPlan === '__portal__'} className="flex items-center gap-1">
@@ -409,7 +411,7 @@ export default function BillingPage() {
               </Button>
             ) : (
               <p className="text-sm text-muted-foreground">
-                有料プランの契約後に、お支払い管理ページが利用できます。
+                有料の位を契約すると、お支払い管理ページが使えます。
               </p>
             )}
           </section>

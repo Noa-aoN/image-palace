@@ -191,7 +191,7 @@ export function DashboardContent() {
         エントランス
       </h1>
 
-      {/* 宮殿の生成資産（残高・生成可能枚数・プラン）と、宮殿の主人（本人のステータス）を左右に並べる */}
+      {/* 宮殿の生成資産（残高・生成可能枚数・位）と、宮殿の主人（本人のステータス）を左右に並べる */}
       <div className="grid gap-6 lg:grid-cols-2 lg:items-stretch">
       <section className="flex flex-col space-y-3">
         <h2 className="text-sm font-semibold text-muted-foreground">宮殿の生成資産</h2>
@@ -203,7 +203,7 @@ export function DashboardContent() {
         <Card className="group relative h-full flex-1 cursor-pointer transition hover:border-[var(--palace)] hover:shadow-md">
           <Link
             href="/billing"
-            aria-label="プランと利用状況を見る"
+            aria-label="位と利用状況を見る"
             className="absolute inset-0 z-0 rounded-xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--palace)]"
           />
             <CardContent className="space-y-4">
@@ -211,7 +211,7 @@ export function DashboardContent() {
                 <div className="flex items-center justify-between">
                   <p className="flex items-center gap-2 text-sm text-muted-foreground">
                     <CreditCard size={18} style={{ color: 'var(--palace)' }} />
-                    プラン
+                    位
                   </p>
                   <ChevronRight
                     size={18}
@@ -226,21 +226,22 @@ export function DashboardContent() {
               </div>
 
               <div className="border-t pt-3">
-                {/* 内訳は残高の行に置く。別の行に離すと、何の内訳なのかが読み取りにくい */}
-                <div className="flex items-center justify-between gap-2">
-                  <p className="flex items-center gap-2 text-sm text-muted-foreground">
-                    <Coins size={18} style={{ color: 'var(--palace)' }} />
-                    残高
+                <p className="flex items-center gap-2 text-sm text-muted-foreground">
+                  <Coins size={18} style={{ color: 'var(--palace)' }} />
+                  残高
+                </p>
+                {/* 内訳は数字と同じ行の右端。見出しの行に置くと、
+                    何についての内訳なのかが数字から離れる */}
+                <div className="mt-1 flex items-end justify-between gap-2">
+                  <p>
+                    <span className="text-3xl font-bold tabular-nums">{credits ?? '—'}</span>
+                    <span className="ml-1 text-sm text-muted-foreground">{CREDIT_UNIT}（{CREDIT_UNIT_SHORT}）</span>
                   </p>
-                  {/* 敷いたリンクより手前に出す。押してもプラン画面へは飛ばない */}
+                  {/* 敷いたリンクより手前に出す。押しても位の画面へは飛ばない */}
                   <span className="relative z-10">
                     <CreditBreakdownButton />
                   </span>
                 </div>
-                <p className="mt-1">
-                  <span className="text-3xl font-bold tabular-nums">{credits ?? '—'}</span>
-                  <span className="ml-1 text-sm text-muted-foreground">{CREDIT_UNIT}（{CREDIT_UNIT_SHORT}）</span>
-                </p>
               </div>
 
               <div className="space-y-2">
@@ -265,7 +266,7 @@ export function DashboardContent() {
 
               {credits !== null && credits <= 0 && (
                 <p className="text-xs text-destructive">
-                  クレジットがありません。プランのアップグレードかクレジット追加で生成を続けられます。
+                  クレジットがありません。位を上げるか、クレジットを足すと続けられます。
                 </p>
               )}
 

@@ -29,6 +29,8 @@ export interface UserSettings {
   image_safeguard: boolean
   /** カード一覧で名前として出す項目の識別名。空なら見出し語（title） */
   card_headline_key: string | null
+  /** 宮殿の名前。空なら画面側で既定の呼び方に落とす */
+  palace_name: string | null
   /** カードが持つ項目のひな型 */
   card_property_presets: CardPropertyPreset[]
   /** 新しいカードに最初から当てるひな型の名前。空なら当てない */

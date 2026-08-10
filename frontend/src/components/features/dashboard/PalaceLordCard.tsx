@@ -9,6 +9,7 @@ import { useAuthStore } from '@/stores/auth'
 import { tierLabel } from '@/lib/billing'
 import { displayNameOf } from '@/lib/display-name'
 import { getAchievementSummary, type AchievementSummary, type RewardKind } from '@/lib/api/achievements'
+import { getSettings } from '@/lib/api/settings'
 
 /**
  * 「宮殿の主人」。生成資産（クレジット）の隣に並べる、本人のステータス面。
@@ -22,10 +23,14 @@ import { getAchievementSummary, type AchievementSummary, type RewardKind } from 
 export function PalaceLordCard({ tier }: { tier: string | null }) {
   const user = useAuthStore((s) => s.user)
   const [honors, setHonors] = useState<AchievementSummary | null>(null)
+  const [palaceName, setPalaceName] = useState<string | null>(null)
 
   useEffect(() => {
     getAchievementSummary()
       .then(setHonors)
+      .catch(() => {})
+    getSettings()
+      .then((s) => setPalaceName(s.palace_name))
       .catch(() => {})
   }, [])
 
@@ -48,9 +53,11 @@ export function PalaceLordCard({ tier }: { tier: string | null }) {
         <Card className="h-full cursor-pointer transition hover:border-[var(--palace)] hover:shadow-md">
           <CardContent className="space-y-4">
             <div className="flex items-center justify-between">
-              <p className="flex items-center gap-2 text-sm text-muted-foreground">
-                <Crown size={18} style={{ color: 'var(--palace)' }} />
-                主人
+              {/* 宮殿の名前。付けていない人には既定の呼び方を出す。
+                  「自分の宮殿」と言いながら名無しだと、ただの保管庫に見える */}
+              <p className="flex items-center gap-2 truncate text-sm text-muted-foreground">
+                <Crown size={18} className="shrink-0" style={{ color: 'var(--palace)' }} />
+                {palaceName?.trim() || `${displayName}の宮殿`}
               </p>
               <ChevronRight
                 size={18}

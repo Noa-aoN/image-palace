@@ -24,6 +24,9 @@ class Setting < ApplicationRecord
   MAX_CARD_PRESETS = 20
   MAX_PRESET_KEYS = 60
 
+  # 宮殿の名前。長いと画面の見出しが折り返す
+  MAX_PALACE_NAME_LENGTH = 30
+
   # 一覧のカードに、名前と絵のほかに出す項目の数。
   # 増やすほど1枚が縦に伸び、一覧として見渡せなくなる。
   # 名前と絵で2つぶん使っているので、追加はここまで
@@ -32,6 +35,7 @@ class Setting < ApplicationRecord
   belongs_to :user
 
   validates :user_id, uniqueness: true
+  validates :palace_name, length: { maximum: MAX_PALACE_NAME_LENGTH }, allow_blank: true
   validates :diagram_mode, inclusion: { in: DIAGRAM_MODES }
   validates :motion_mode, inclusion: { in: MOTION_MODES }
   # 新規カードのデフォルト画像スタイル。空文字は「おまかせ（指定なし）」を許容する。

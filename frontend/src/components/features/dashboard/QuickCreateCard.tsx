@@ -109,7 +109,7 @@ export function QuickCreateCard() {
           }}
           disabled={submitting}
           rows={2}
-          placeholder="カードにしたい単語や概念を入力（改行・カンマ・読点で複数枚をまとめて作成）"
+          placeholder="単語や概念を入力（改行・カンマで複数枚）"
           aria-label="カードにする単語"
           className="w-full resize-y rounded-lg border border-input bg-background px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
         />
@@ -118,20 +118,24 @@ export function QuickCreateCard() {
             {submitting && <Spinner size={15} />}
             {submitting ? '生成中...' : titles.length > 1 ? `${titles.length}枚を生成` : 'カードを生成'}
           </Button>
-          <p className="text-xs text-muted-foreground">
-            1枚につき1{CREDIT_UNIT_SHORT}消費・スタイルや意味などはデフォルト設定で生成します。
-            <Link href="/items/new" className="ml-1 underline hover:text-foreground">
+          {/* 行き先は常に出す。作ったあとにだけ出していたため、
+              「一覧はどこか」を探すことになっていた */}
+          <div className="ml-auto flex items-center gap-3 text-xs text-muted-foreground">
+            <Link href="/items/new" className="underline hover:text-foreground">
               詳しく設定
             </Link>
-          </p>
+            <Link href="/items" className="underline hover:text-foreground">
+              カード一覧へ
+            </Link>
+          </div>
         </div>
+        {/* 消費の目安は操作の下に1行だけ。ボタンの横に長い説明を置くと、
+            押す前に読むものが増える */}
+        <p className="text-xs text-muted-foreground">1枚 1{CREDIT_UNIT_SHORT}・設定は既定のまま</p>
         {error && <p className="text-sm text-destructive">{error}</p>}
         {doneCount !== null && !error && (
           <p className="text-sm text-muted-foreground">
-            {doneCount}枚の生成を開始しました。
-            <Link href="/items" className="ml-1 font-medium underline" style={{ color: 'var(--palace)' }}>
-              カード一覧で確認 →
-            </Link>
+            {doneCount}枚の生成を始めました。
           </p>
         )}
       </CardContent>

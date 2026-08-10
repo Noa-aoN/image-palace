@@ -54,16 +54,6 @@ const ASSET_TYPES: AssetType[] = [
     relief: true,
   },
   {
-    key: 'box',
-    label: 'ボックス',
-    href: '/boxes',
-    icon: <Box size={15} />,
-    count: (s) => s.boxes_count,
-    pal: { top: '#D9BC7E', left: '#C09A50', right: '#96742F' },
-    shape: { w: 22, d: 22, depth: 12 },
-    lidSeam: true,
-  },
-  {
     key: 'view',
     label: 'キャンバス',
     href: '/views',
@@ -82,6 +72,16 @@ const ASSET_TYPES: AssetType[] = [
     pal: { top: '#CDB176', left: '#B4924C', right: '#8C6C2E' },
     shape: { w: 36, d: 36, depth: 7 },
     roadMark: true,
+  },
+  {
+    key: 'box',
+    label: 'ボックス',
+    href: '/boxes',
+    icon: <Box size={15} />,
+    count: (s) => s.boxes_count,
+    pal: { top: '#D9BC7E', left: '#C09A50', right: '#96742F' },
+    shape: { w: 22, d: 22, depth: 12 },
+    lidSeam: true,
   },
 ]
 
