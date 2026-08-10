@@ -7,7 +7,7 @@ import { ListRows } from '@/components/features/posts/ListRows'
 import { getPosts } from '@/lib/api/posts'
 import { ARTICLES } from '@/lib/blog/articles'
 import { GUIDE_SECTIONS } from '@/lib/guide/sections'
-import type { Post } from '@/types/post'
+import { NEWS_CATEGORIES, type Post } from '@/types/post'
 
 /** 各欄に出す件数。ここを増やすと「一望」ではなく一覧になる */
 const PREVIEW = 5
@@ -39,9 +39,22 @@ export default function BoardPage() {
     }
   }, [])
 
-  const pinned = posts?.filter((p) => p.pinned) ?? []
-  const rest = posts?.filter((p) => !p.pinned) ?? []
-  const articles = [...ARTICLES].sort((a, b) => (a.date < b.date ? 1 : -1))
+  // お知らせ欄には連絡（お知らせ・更新情報）だけを出す。コラムはコラム欄へ回す
+  const news = posts?.filter((p) => NEWS_CATEGORIES.includes(p.category)) ?? []
+  const pinned = news.filter((p) => p.pinned)
+  const rest = news.filter((p) => !p.pinned)
+  const columns = [
+    ...ARTICLES.map((a) => ({
+      key: `article-${a.slug}`, href: `/blog/${a.slug}`, title: a.title,
+      date: a.date as string | null, readingMinutes: a.readingMinutes as number | null,
+    })),
+    ...(posts ?? [])
+      .filter((p) => p.category === 'column')
+      .map((p) => ({
+        key: `post-${p.slug}`, href: `/news/${p.slug}`, title: p.title,
+        date: p.published_at, readingMinutes: p.reading_minutes,
+      })),
+  ].sort((a, b) => ((a.date ?? '') < (b.date ?? '') ? 1 : -1))
 
   return (
     <div className="mx-auto max-w-7xl px-6 py-12">
@@ -111,13 +124,7 @@ export default function BoardPage() {
 
         <Column href="/blog" icon={<Newspaper size={18} />} title="コラム" note="記憶・学習にまつわる読みもの">
           <ListRows
-            items={articles.slice(0, PREVIEW).map((a) => ({
-              key: a.slug,
-              href: `/blog/${a.slug}`,
-              title: a.title,
-              date: a.date,
-              readingMinutes: a.readingMinutes,
-            }))}
+            items={columns.slice(0, PREVIEW)}
           />
         </Column>
       </div>

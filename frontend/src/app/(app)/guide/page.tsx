@@ -28,6 +28,7 @@ export default function GuidePage() {
             href: `/guide/${s.slug}`,
             title: s.title,
             excerpt: s.excerpt,
+            imageUrl: s.image,
           }))}
         />
       </div>
