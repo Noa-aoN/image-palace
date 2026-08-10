@@ -35,13 +35,16 @@ RSpec.describe "機能の見せ方", type: :request do
 
   describe "PUT /api/v1/admin/feature_flags/:key" do
     it "段階を変えられる" do
+      # 既定と違う段階を選ぶ（既定と同じ値だと customized が立たない）
+      target = (FeatureFlag::STAGES - [ FeatureFlag::DEFAULTS["trophy"][:stage] ]).first
+
       put "/api/v1/admin/feature_flags/trophy",
-          params: { feature: { stage: "prototype" } }, headers: admin_headers, as: :json
+          params: { feature: { stage: target } }, headers: admin_headers, as: :json
 
       expect(response).to have_http_status(:ok)
-      expect(response.parsed_body.dig("feature", "stage")).to eq("prototype")
+      expect(response.parsed_body.dig("feature", "stage")).to eq(target)
       expect(response.parsed_body.dig("feature", "customized")).to be(true)
-      expect(FeatureFlag.stages["trophy"]).to eq("prototype")
+      expect(FeatureFlag.stages["trophy"]).to eq(target)
     end
 
     it "操作を監査ログに残す" do

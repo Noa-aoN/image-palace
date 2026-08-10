@@ -23,7 +23,9 @@ class FeatureFlag < ApplicationRecord
   # 画面が参照しているキーと既定の段階。
   # ここに無いキーは保存できない（打ち間違いで効かない設定が増えるのを防ぐ）
   DEFAULTS = {
-    "trophy" => { label: "トロフィー・称号", stage: "development" },
+    # 実績・メダル・称号は出せるようになったが、バッジ・活動記録・公開実績はまだ。
+    # 触れる状態で印を付けて出す
+    "trophy" => { label: "トロフィー・称号", stage: "prototype" },
     "study_game" => { label: "プレイ（カルタ・神経衰弱）", stage: "prototype" },
     "material_picture_list" => { label: "ピクチャーリスト", stage: "development" }
   }.freeze

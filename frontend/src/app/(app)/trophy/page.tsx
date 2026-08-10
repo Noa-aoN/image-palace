@@ -2,6 +2,7 @@
 
 import { Trophy, Medal, Crown, Activity, Globe } from 'lucide-react'
 import { CategorySections, type CategorySection } from '@/components/features/myroom/CategorySections'
+import { AchievementList } from '@/components/features/trophy/AchievementList'
 import { ComingSoon } from '@/components/features/myroom/ComingSoon'
 import { FeatureGate } from '@/components/features/shared/FeatureGate'
 
@@ -12,12 +13,9 @@ const sections: CategorySection<TabKey>[] = [
     key: 'achievement',
     label: '実績',
     icon: <Trophy size={16} />,
-    content: (
-      <ComingSoon
-        description="カード作成数や継続日数などの達成状況を順次対応予定です。"
-        items={['達成済みの実績', '進行中の実績', '次に目指す実績']}
-      />
-    ),
+    // 実績・メダル・称号は同じ計算から出るので、1つの面にまとめて出す。
+    // タブで分けると、金メダルの数と称号の関係が読み取れなくなる
+    content: <AchievementList />,
   },
   {
     key: 'badge',
@@ -25,7 +23,7 @@ const sections: CategorySection<TabKey>[] = [
     icon: <Medal size={16} />,
     content: (
       <ComingSoon
-        description="獲得したバッジのボックス表示は順次対応予定です。"
+        description="部門ごとのメダルは「実績」に出しています。持ち物として飾れるバッジは順次対応予定です。"
         items={['獲得バッジ', 'レアバッジ', '未獲得バッジ']}
       />
     ),
@@ -36,8 +34,8 @@ const sections: CategorySection<TabKey>[] = [
     icon: <Crown size={16} />,
     content: (
       <ComingSoon
-        description="獲得した称号の選択・表示は順次対応予定です。"
-        items={['獲得した称号', '表示する称号の選択']}
+        description="いまの称号は「実績」に出しています。付け替えや公開は順次対応予定です。"
+        items={['称号の付け替え', 'プロフィールへの掲載']}
       />
     ),
   },
@@ -47,8 +45,8 @@ const sections: CategorySection<TabKey>[] = [
     icon: <Activity size={16} />,
     content: (
       <ComingSoon
-        description="日々の学習アクティビティの記録は順次対応予定です。"
-        items={['学習カレンダー', '連続記録', '月間サマリー']}
+        description="日ごとの学習量の振り返りは順次対応予定です。"
+        items={['学習した日', '作った枚数', '続けた日数']}
       />
     ),
   },
