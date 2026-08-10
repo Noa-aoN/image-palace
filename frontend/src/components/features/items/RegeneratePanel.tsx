@@ -8,6 +8,7 @@ import { CREDIT_UNIT_SHORT } from '@/lib/billing'
 import { Label } from '@/components/ui/label'
 import { Spinner } from '@/components/ui/spinner'
 import { previewBrief, retryItem, rewriteScenePrompt, updateItem, type SceneOption } from '@/lib/api/items'
+import { ImageModelPicker } from '@/components/features/items/ImageModelPicker'
 import { PanelSlotContent } from '@/components/features/panel/PanelSlot'
 import { usePanelForm } from '@/components/features/panel/usePanelForm'
 import { getSettings } from '@/lib/api/settings'
@@ -53,6 +54,7 @@ export function RegeneratePanel({ item, onUpdated }: Props) {
   const [style, setStyle] = useState(item.style ?? '')
   const [framing, setFraming] = useState(item.framing ?? '')
   const [useMeaning, setUseMeaning] = useState(false)
+  const [imageModel, setImageModel] = useState(item.image_model ?? '')
   const [retrying, setRetrying] = useState(false)
   // どちらの書き直しが走っているか（null なら止まっている）
   const [rewriting, setRewriting] = useState<'title' | 'meaning' | null>(null)
@@ -134,6 +136,7 @@ export function RegeneratePanel({ item, onUpdated }: Props) {
         style,
         framing,
         useMeaning: showMeaningOption ? useMeaning : false,
+        imageModel,
       })
       onUpdated(updated)
       // 消費したぶんを残高表示へ反映する（ヘッダーと共有）
@@ -305,6 +308,9 @@ export function RegeneratePanel({ item, onUpdated }: Props) {
               {FRAMING_OPTIONS.find((opt) => opt.value === framing)?.note}
             </p>
           </div>
+
+          {/* 作り直しのついでにモデルを変えられる。選べるものが1つなら出ない */}
+          <ImageModelPicker value={imageModel} onChange={setImageModel} disabled={retrying} />
 
           <div className="space-y-2">
             <Label>スタイル（任意）</Label>

@@ -19,6 +19,12 @@ class Item < ApplicationRecord
   # ロード種別スペースのポイントに割り当て。カード削除時はポイントを空にする（nullify）
   has_many :space_points, dependent: :nullify
 
+  # 絵を作るモデルの指定。null は「おまかせ」＝そのときの既定。
+  #
+  # 選べないキー（鍵が外された・古い指定が残っている）は保存時に null へ丸める。
+  # 弾いてしまうと、鍵を1つ外しただけで過去のカードが編集できなくなる。
+  before_validation :normalize_image_model
+
   GENERATION_STATUSES = %w[pending processing completed failed].freeze
   GENERATION_ERROR_KEYS = %w[generation_error generation_error_code].freeze
   MAX_TITLE_LENGTH = 100
@@ -79,6 +85,12 @@ class Item < ApplicationRecord
   # 未指定のカード（旧データ・既定のまま作られたもの）は既定の経路として扱う
   def effective_prompt_source
     prompt_source.presence || DEFAULT_PROMPT_SOURCE
+  end
+
+  def normalize_image_model
+    return if image_model.blank?
+
+    self.image_model = nil unless GenerateImageService.selectable_key?(image_model)
   end
 
   def primary_media

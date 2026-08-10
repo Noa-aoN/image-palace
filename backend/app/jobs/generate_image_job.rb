@@ -33,7 +33,9 @@ class GenerateImageJob < ApplicationJob
       effective_prompt = PromptBuilderService.effective_prompt(item, include_meaning: use_meaning)
       normalized = NormalizePromptService.call(effective_prompt)
       # provider/model が変わればキャッシュも分ける（既定 openai/gpt-image-1 は後方互換で素のキー）。
-      cache_key = GenerateImageService.namespaced_cache_key(normalized, aspect_ratio: item.aspect_ratio)
+      cache_key = GenerateImageService.namespaced_cache_key(
+        normalized, aspect_ratio: item.aspect_ratio, model_key: item.image_model
+      )
       # プロンプト全文はユーザー入力（個人情報・機密語句を含み得る）なのでログに残さない。
       # 相関用にハッシュの先頭と長さだけ記録する。
       prompt_key = Digest::SHA256.hexdigest(cache_key)[0, 8]
@@ -51,7 +53,10 @@ class GenerateImageJob < ApplicationJob
           Rails.logger.warn "[GenerateImageJob] CACHE STALE prompt_key=#{prompt_key}"
         end
         Rails.logger.info "[GenerateImageJob] CACHE MISS prompt_key=#{prompt_key}"
-        result = GenerateImageService.call(prompt: effective_prompt, aspect_ratio: item.aspect_ratio, kind: "item", user_id: item.user_id)
+        result = GenerateImageService.call(
+          prompt: effective_prompt, aspect_ratio: item.aspect_ratio,
+          kind: "item", user_id: item.user_id, model_key: item.image_model
+        )
         shared_media = create_shared_media!(item, shared_media_key(cache_key, force_generate:), result)
         attach_image_data(
           shared_media, result.image_data, result.content_type,

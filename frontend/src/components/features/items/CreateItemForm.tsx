@@ -26,6 +26,7 @@ import {
   DEFAULT_PROMPT_SOURCE,
   CUSTOM_PROMPT_MAX_LENGTH,
 } from '@/lib/item-styles'
+import { ImageModelPicker } from '@/components/features/items/ImageModelPicker'
 import { MEANING_LEVELS, meaningLevelLabel, DEFAULT_MEANING_LEVEL } from '@/lib/meaning-levels'
 import { getWordlists, generateWords } from '@/lib/api/wordlists'
 import type { View } from '@/types/view'
@@ -74,6 +75,7 @@ export function CreateItemForm({
   const [tagsInput, setTagsInput] = useState('')
   const [style, setStyle] = useState('')
   const [framing, setFraming] = useState('')
+  const [imageModel, setImageModel] = useState('')
   const [promptSource, setPromptSource] = useState(DEFAULT_PROMPT_SOURCE)
   // 画像の縦横比。未選択なら保存側でユーザー既定が使われる
   const [aspectRatio, setAspectRatio] = useState<AspectRatioKey | ''>('')
@@ -236,6 +238,7 @@ export function CreateItemForm({
         const item = await createItem(titles[i], forceGenerate, tagNames.length ? tagNames : undefined, {
           style: style || undefined,
           framing: framing || undefined,
+          imageModel: imageModel || undefined,
           promptSource,
           aspectRatio: aspectRatio || undefined,
           customPrompt: customPrompt.trim() || undefined,
@@ -571,6 +574,9 @@ export function CreateItemForm({
           {FRAMING_OPTIONS.find((opt) => opt.value === framing)?.note}
         </p>
       </div>
+      {/* 絵を作るモデル。選べるものが1つしかないときは出ない */}
+      <ImageModelPicker value={imageModel} onChange={setImageModel} disabled={submitting} />
+
       {/* 画像の形（縦横比）。生成・保存・表示に共通で効く */}
       <div className="space-y-2">
         <Label>画像の形</Label>

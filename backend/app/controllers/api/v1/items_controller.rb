@@ -398,7 +398,7 @@ module Api
 
       def item_params
         params.require(:item).permit(
-          :title, :item_type_id, :force_generate, :style, :custom_prompt, :framing, :aspect_ratio,
+          :title, :item_type_id, :force_generate, :style, :custom_prompt, :framing, :aspect_ratio, :image_model,
           :generate_meaning, :generate_meaning_level, :generate_tags, :prompt_source
         )
       end
@@ -411,7 +411,8 @@ module Api
         # prompt_source は作成時の選択で、ここでは受け取らない。
         # 作り直し側には「単語から書き直す」「意味・説明から書き直す」があり、
         # 押した結果が入力欄に見える。黙って経路が変わるより、そちらのほうが分かる。
-        item_param.permit(:custom_prompt, :style, :framing).to_h.symbolize_keys.reject { |_, v| v.nil? }
+        item_param.permit(:custom_prompt, :style, :framing, :image_model)
+                  .to_h.symbolize_keys.reject { |_, v| v.nil? }
       end
 
       # 再生成時に意味・説明を参考にするか（既定 false）。boolean 以外は false に丸める。
@@ -562,6 +563,7 @@ module Api
           properties: serialize_properties(item),
           style: item.style,
           framing: item.framing,
+          image_model: item.image_model,
           prompt_source: item.effective_prompt_source,
           block_view: { hidden: item.hidden_block_keys, order: item.ordered_block_keys },
           custom_prompt: item.custom_prompt,

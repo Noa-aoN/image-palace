@@ -28,6 +28,8 @@ export interface CreateItemOptions {
   promptSource?: string
   /** 画像の縦横比（未指定ならユーザー設定の既定を使う） */
   aspectRatio?: string
+  /** 絵を作るモデル（未指定はおまかせ＝そのときの既定） */
+  imageModel?: string
 }
 
 export async function createItem(
@@ -49,6 +51,7 @@ export async function createItem(
       ...(options?.generateTags !== undefined ? { generate_tags: options.generateTags } : {}),
       ...(options?.promptSource ? { prompt_source: options.promptSource } : {}),
       ...(options?.aspectRatio ? { aspect_ratio: options.aspectRatio } : {}),
+      ...(options?.imageModel ? { image_model: options.imageModel } : {}),
     },
   })
   return res.data
@@ -174,9 +177,23 @@ export interface RegenerateOptions {
   framing?: string
   /** カードの意味・説明をプロンプトの補足に加えるか（既定オフ） */
   useMeaning?: boolean
+  /** 絵を作るモデル（作り直しのついでに変えられる） */
+  imageModel?: string
 }
 
 // 再生成。failed・completed どちらからも呼べる。任意で指示を渡すとプロンプトに反映される。
+/** 絵を作るときに選べるモデル。鍵の入っているものだけ返る */
+export interface ImageModelChoice {
+  key: string
+  label: string
+  description: string
+}
+
+export async function getImageModels(): Promise<ImageModelChoice[]> {
+  const res = await apiClient.get<{ models: ImageModelChoice[] }>('/api/v1/image_models')
+  return res.data.models
+}
+
 /**
  * 関連カード。つながりに向きは無いので、相手の id だけで足し引きする。
  * どの操作も、そのカードから見た関連カードの一覧を返す。
@@ -222,6 +239,7 @@ export async function retryItem(id: string, options?: RegenerateOptions): Promis
   if (options?.style !== undefined) payload.style = options.style
   if (options?.framing !== undefined) payload.framing = options.framing
   if (options?.useMeaning !== undefined) payload.use_meaning = options.useMeaning
+  if (options?.imageModel !== undefined) payload.image_model = options.imageModel
   const res = await apiClient.post<Item>(
     `/api/v1/items/${id}/retry`,
     Object.keys(payload).length ? { item: payload } : undefined
