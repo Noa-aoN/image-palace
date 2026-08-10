@@ -8,6 +8,8 @@ export type BillingPlan = {
   price: number // JPY は最小単位＝円
   currency: string
   credits: number
+  /** プランの徽章。用意していなければ null */
+  image_url?: string | null
 }
 
 export type BillingSummary = {
