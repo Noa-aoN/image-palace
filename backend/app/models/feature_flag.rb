@@ -59,12 +59,12 @@ class FeatureFlag < ApplicationRecord
     "page.billing" => { label: "利用と支払い", group: "palace", path: "/billing", stage: "released" },
     "page.account" => { label: "アカウント管理", group: "palace", path: "/account", stage: "released" },
 
-    # ── 宮殿外 ──
+    # ── 市街 ──
     "page.acropolis" => { label: "アクロポリス", group: "outside", path: "/acropolis", stage: "released" },
     "page.agora" => { label: "アゴラ", group: "outside", path: "/agora", stage: "released" },
     "page.stadion" => { label: "スタディオン", group: "outside", path: "/stadion", stage: "released" },
 
-    # ── 運営 ──
+    # ── 公式 ──
     "page.board" => { label: "掲示板", group: "ops", path: "/board", stage: "released" },
     "page.news" => { label: "お知らせ", group: "ops", path: "/news", stage: "released" },
     "page.guide" => { label: "使い方", group: "ops", path: "/guide", stage: "released" },

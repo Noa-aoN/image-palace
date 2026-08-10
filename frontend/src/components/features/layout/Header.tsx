@@ -183,7 +183,7 @@ export function AppHeader() {
               <DropdownMenuSeparator />
               {adminSession?.admin && (
                 <DropdownMenuItem onClick={() => router.push('/admin')} className="cursor-pointer">
-                  管理（運営）
+                  執務室
                 </DropdownMenuItem>
               )}
               <DropdownMenuItem onClick={() => router.push('/account')} className="cursor-pointer">
