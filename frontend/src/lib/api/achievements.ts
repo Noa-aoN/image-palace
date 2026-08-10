@@ -100,9 +100,16 @@ export interface AchievementsPage {
     showcase: Record<RewardKind, RewardRow[]>
     limits: Record<string, number>
     featured: RewardRow[]
+    /** 種別ごとの「持っている数 / ぜんぶの数」 */
+    counts: Record<RewardKind, { owned: number; total: number }>
     rewards_earned: number
     achievements_completed: number
+    achievements_total: number
     streak_days: number
+    longest_streak: number
+    active_days: number
+    /** 入居からの日数 */
+    days_since_joined: number
   }
   upcoming: UpcomingRow[]
   missions: MissionRow[]

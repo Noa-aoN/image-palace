@@ -69,10 +69,27 @@ module Achievements
         },
         limits: Showcase::LIMITS,
         featured: (by_kind["medal"] || []).map { |r| reward_row(r.reward_definition) },
+        # 積み上げの数字。種別ごとの数まで出すのは、
+        # 「何個持っているか」より「どれを集めているか」のほうが眺めていて楽しいため
+        counts: counts_by_kind,
         rewards_earned: stat.rewards_earned,
         achievements_completed: stat.achievements_completed,
-        streak_days: stat.streak_days
+        achievements_total: AchievementDefinition.registry.count { |d| d.published? },
+        streak_days: stat.streak_days,
+        longest_streak: stat.longest_streak,
+        active_days: stat.active_days,
+        # 入居からの日数。続けている実感は、数より「どれだけ長く居るか」で出る
+        days_since_joined: (Date.current - @user.created_at.to_date).to_i
       }
+    end
+
+    # 種別ごとに「持っている数 / ぜんぶの数」。分母が無いと、集め具合が分からない
+    def counts_by_kind
+      all = RewardDefinition.registry.select { |d| d.published? || owned.key?(d.id) }
+      RewardDefinition::KINDS.to_h do |kind|
+        rows = all.select { |d| d.kind == kind }
+        [ kind, { owned: rows.count { |d| owned.key?(d.id) }, total: rows.size } ]
+      end
     end
 
     # まだ持っていない称号のうち、いちばん近いもの。

@@ -9,9 +9,9 @@ export function Skeleton({ className }: { className?: string }) {
 /**
  * カード一覧の共通スケルトン。
  *
- * columns / count は**呼び出し側の表示設定から渡す**。既定の 5列8枚に固定していると、
- * 10列25枚に設定している人は「5列8枚 → 10列25枚」と一度組み替わる画面を見ることになる。
- * 読み込み中と読み込み後で格子が変わらないことが、この部品の役目。
+ * columns / count / aspectRatio は**呼び出し側の実際の見た目から渡す**。
+ * 既定に固定していると、読み込みが終わった瞬間に格子が組み替わって画面が飛ぶ。
+ * 読み込み中と読み込み後で形が変わらないことが、この部品の役目。
  *
  * withTitle=true でカード下のタイトルバー付き（カード一覧用）。
  */
@@ -19,24 +19,31 @@ export function CardGridSkeleton({
   count = 8,
   withTitle = false,
   columns,
+  aspectRatio = '1 / 1',
 }: {
   count?: number
   withTitle?: boolean
   /** 表示設定の列数。省略時は既定の格子 */
   columns?: number
+  /** 1枚の縦横比。並ぶカードの形に合わせる（CSS の aspect-ratio） */
+  aspectRatio?: string
 }) {
   return (
     <div className={cn('grid gap-4', cardGridClass(columns))}>
       {Array.from({ length: count }).map((_, i) =>
         withTitle ? (
           <div key={i} className="overflow-hidden rounded-xl border border-border">
-            <div className="aspect-square w-full animate-pulse bg-muted" />
+            <div className="w-full animate-pulse bg-muted" style={{ aspectRatio }} />
             <div className="px-3 py-2">
               <div className="h-3 w-3/4 animate-pulse rounded bg-muted" />
             </div>
           </div>
         ) : (
-          <div key={i} className="aspect-square animate-pulse rounded-xl border border-border bg-muted" />
+          <div
+            key={i}
+            className="animate-pulse rounded-xl border border-border bg-muted"
+            style={{ aspectRatio }}
+          />
         )
       )}
     </div>

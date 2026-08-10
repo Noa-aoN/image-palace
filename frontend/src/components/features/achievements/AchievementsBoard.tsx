@@ -81,9 +81,13 @@ export function AchievementsBoard() {
 
   return (
     <div className="space-y-8">
-      {/* ── いまの自分 ── */}
-      <section className="space-y-3 rounded-xl border border-border bg-card p-5">
-        <div className="flex flex-wrap items-center gap-4">
+      {/* ── 記名板とサマリー ──
+          左は「いま何を掲げているか」、右は「どれだけ積み上げたか」。
+          1枚に混ぜると、見せるものと数える数字が同じ面に並んで、どちらも薄くなる */}
+      <div className="grid gap-4 lg:grid-cols-2 lg:items-stretch">
+        <section className="space-y-3 rounded-xl border border-border bg-card p-5">
+          <h2 className="text-sm font-semibold text-muted-foreground">記名板</h2>
+
           <div className="flex items-center gap-2">
             <Crown size={20} style={{ color: 'var(--palace)' }} />
             {/* 称号は鉤括弧で囲む。名前の一部なのか説明なのかが、ひと目で分かる */}
@@ -93,32 +97,75 @@ export function AchievementsBoard() {
               <span className="text-lg font-semibold text-muted-foreground">まだ名乗っていません</span>
             )}
           </div>
-          <div className="flex items-center gap-1.5">
-            {page.summary.featured.map((reward) => (
-              <RewardArt key={reward.key} reward={reward} size={26} />
-            ))}
-          </div>
-        </div>
 
-        {/* 「ありません」で終わらせない。次に何をすれば名乗れるかを出す */}
-        {!page.summary.title && page.summary.next_title && (
-          <p className="rounded-lg bg-muted/40 px-3 py-2 text-sm">
-            {page.summary.next_title.condition ?? 'もう少し進める'}と、称号
-            <strong className="mx-1">「{page.summary.next_title.name}」</strong>
-            を獲得できます
-            {page.summary.next_title.remaining > 0 && (
-              <span className="ml-1 tabular-nums text-muted-foreground">
-                （あと {page.summary.next_title.remaining}）
-              </span>
-            )}
-          </p>
-        )}
-        <dl className="flex flex-wrap gap-x-6 gap-y-1 text-sm text-muted-foreground">
-          <Stat label="獲得" value={page.summary.rewards_earned} unit="個" />
-          <Stat label="達成した実績" value={page.summary.achievements_completed} unit="件" />
-          <Stat label="続いている日数" value={page.summary.streak_days} unit="日" />
-        </dl>
-      </section>
+          {/* 「ありません」で終わらせない。次に何をすれば名乗れるかを出す */}
+          {!page.summary.title && page.summary.next_title && (
+            <p className="rounded-lg bg-muted/40 px-3 py-2 text-sm">
+              {page.summary.next_title.condition ?? 'もう少し進める'}と、称号
+              <strong className="mx-1">「{page.summary.next_title.name}」</strong>
+              を獲得できます
+              {page.summary.next_title.remaining > 0 && (
+                <span className="ml-1 tabular-nums text-muted-foreground">
+                  （あと {page.summary.next_title.remaining}）
+                </span>
+              )}
+            </p>
+          )}
+
+          {/* 星を入れたものを種別ごとに並べる。出す場所が種別で違うので、ここでも分ける */}
+          {(['medal', 'treasure', 'honor'] as const).map((kind) => {
+            const rows = page.summary.showcase[kind] ?? []
+            if (rows.length === 0) return null
+            return (
+              <div key={kind} className="flex items-center gap-2">
+                <span className="w-8 shrink-0 text-xs text-muted-foreground">{rows[0].kind_label}</span>
+                <span className="flex flex-wrap items-center gap-1.5">
+                  {rows.map((reward) => (
+                    <span key={reward.key} title={reward.name}>
+                      <RewardArt reward={reward} size={26} />
+                    </span>
+                  ))}
+                </span>
+              </div>
+            )
+          })}
+
+          {page.summary.rewards_earned === 0 && (
+            <p className="text-xs text-muted-foreground">
+              獲得したものに星を入れると、ここに並びます。
+            </p>
+          )}
+        </section>
+
+        <section className="space-y-3 rounded-xl border border-border bg-card p-5">
+          <h2 className="text-sm font-semibold text-muted-foreground">これまで</h2>
+
+          <dl className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+            {(Object.keys(page.summary.counts) as RewardKind[]).map((kind) => {
+              const c = page.summary.counts[kind]
+              return (
+                <SummaryStat
+                  key={kind}
+                  label={KIND_LABELS[kind]}
+                  value={c.owned}
+                  suffix={` / ${c.total}`}
+                />
+              )
+            })}
+          </dl>
+
+          <dl className="grid grid-cols-2 gap-3 border-t border-border pt-3 sm:grid-cols-4">
+            <SummaryStat
+              label="達成した実績"
+              value={page.summary.achievements_completed}
+              suffix={` / ${page.summary.achievements_total}`}
+            />
+            <SummaryStat label="入居から" value={page.summary.days_since_joined} suffix="日" />
+            <SummaryStat label="学習した日" value={page.summary.active_days} suffix="日" />
+            <SummaryStat label="続いている" value={page.summary.streak_days} suffix="日" />
+          </dl>
+        </section>
+      </div>
 
       {/* ── もうすぐ獲得 ── */}
       {page.upcoming.length > 0 && (
@@ -392,17 +439,6 @@ function SectionTitle({ icon, children }: { icon: React.ReactNode; children: Rea
   )
 }
 
-function Stat({ label, value, unit }: { label: string; value: number; unit: string }) {
-  return (
-    <div className="flex items-baseline gap-1">
-      <dt>{label}</dt>
-      <dd className="font-medium tabular-nums text-foreground">
-        {value.toLocaleString()}
-        {unit}
-      </dd>
-    </div>
-  )
-}
 
 function Bar({ value, max }: { value: number; max: number }) {
   const ratio = max > 0 ? Math.min(1, value / max) : 0
@@ -518,3 +554,22 @@ const KIND_HELP = [
     description: '運営が選んで贈るもの。条件では手に入りません。',
   },
 ]
+
+const KIND_LABELS: Record<RewardKind, string> = {
+  title: '称号',
+  medal: '勲章',
+  treasure: '褒賞',
+  honor: '表彰',
+}
+
+function SummaryStat({ label, value, suffix }: { label: string; value: number; suffix?: string }) {
+  return (
+    <div>
+      <dt className="text-[11px] text-muted-foreground">{label}</dt>
+      <dd className="text-lg font-semibold tabular-nums">
+        {value.toLocaleString()}
+        {suffix && <span className="text-xs font-normal text-muted-foreground">{suffix}</span>}
+      </dd>
+    </div>
+  )
+}

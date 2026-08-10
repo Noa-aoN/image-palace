@@ -119,15 +119,20 @@ export function DashboardContent() {
   // 読み込み中はスケルトンを表示する。新規ユーザー判定（total_count===0）の前に出すことで、
   // 「統計(…) → ようこそ画面」へ切り替わるレイアウトシフトを防ぐ。
   if (summary === null) {
+    // 幅も並びも本番と揃える。以前は max-w-2xl の小さな箱を並べていたため、
+    // 読み込みが終わった瞬間に max-w-7xl の2段組みへ飛んでいた
     return (
-      <div className="max-w-2xl mx-auto px-6 py-12 space-y-8">
-        <div className="h-7 w-40 rounded bg-muted animate-pulse" />
-        <div className="grid grid-cols-2 gap-4">
-          <div className="h-24 rounded-xl bg-muted animate-pulse" />
-          <div className="h-24 rounded-xl bg-muted animate-pulse" />
+      <div className="max-w-7xl mx-auto px-6 py-12 space-y-8">
+        <div className="h-8 w-56 rounded bg-muted animate-pulse" />
+        <div className="grid gap-6 lg:grid-cols-2 lg:items-stretch">
+          <div className="h-56 rounded-xl bg-muted animate-pulse" />
+          <div className="h-56 rounded-xl bg-muted animate-pulse" />
         </div>
-        <div className="h-28 rounded-xl bg-muted animate-pulse" />
-        <div className="h-10 w-48 rounded bg-muted animate-pulse" />
+        <div className="h-64 rounded-xl bg-muted animate-pulse" />
+        <div className="grid gap-6 lg:grid-cols-2 lg:items-stretch">
+          <div className="h-48 rounded-xl bg-muted animate-pulse" />
+          <div className="h-48 rounded-xl bg-muted animate-pulse" />
+        </div>
       </div>
     )
   }

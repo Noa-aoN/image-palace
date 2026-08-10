@@ -823,8 +823,15 @@ export function ItemList({ initialTag = null }: { initialTag?: string | null }) 
       <div className="space-y-6">
         {filterBar}
         {/* 読み込み中の格子を本番と揃える。既定の5列8枚で描くと、
-            10列25枚にしている人は一度組み替わる画面を見ることになる */}
-        <CardGridSkeleton withTitle columns={display.columns} count={cardsPerPage(display)} />
+            10列25枚にしている人は一度組み替わる画面を見ることになる。
+            形も揃える。「そろえる」なら正方形、「実寸」は枚ごとに違うので
+            既定の比で置く（全部の比を先に知る術は無い） */}
+        <CardGridSkeleton
+          withTitle
+          columns={display.columns}
+          count={cardsPerPage(display)}
+          aspectRatio={display.fit === 'uniform' ? '1 / 1' : aspectRatioCss(undefined)}
+        />
       </div>
     )
   }
