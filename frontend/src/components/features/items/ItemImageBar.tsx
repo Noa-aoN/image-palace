@@ -6,15 +6,14 @@ import { RegeneratePanel } from '@/components/features/items/RegeneratePanel'
 import type { Item } from '@/types/item'
 
 /**
- * 画像のすぐ下に置く一行。
+ * イメージの操作列。**イメージのプロパティ枠の中**、画像のすぐ下に置く。
  *
- * 画像まわりの情報と操作は、置き場所が増えると散らばる。実際
- * 詳細ページでは「生成情報」だけが右に浮き、「画像を作り直す」は別の行に落ち、
- * 「プロンプト情報」は出てすらいなかった。同じものを2箇所で組み立てていたため。
- * 組み立てはここ1箇所にして、詳細ページと右パネルで同じ並びにする。
+ * 以前は枠の外に出ていたため、どのプロパティに対する操作なのかが曖昧だった。
+ * 生成情報もプロンプト情報も作り直しも、すべて「この絵」への操作なので、
+ * 絵と同じ枠に収める。
  *
- * 並びは「見るだけのもの」を左、「するもの」を右。
- *   [生成情報 ⓘ] [プロンプト情報 ⓘ] ……… [作り直す]
+ * 並びは中央寄せで等間隔。左右に振り分けると、項目が2つのときと3つのときで
+ * 位置が動き、押す場所を覚えられない。
  *
  * 画像を見る面積を削らないよう一行に収める。横スクロールには逃がさない
  * （隠れたものは無いのと同じなので）。入りきらない幅では折り返す。
@@ -23,11 +22,9 @@ export function ItemImageBar({ item, onUpdated }: { item: Item; onUpdated: (item
   const canRegenerate = item.generation_status === 'failed' || item.generation_status === 'completed'
 
   return (
-    <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-2">
-      <div className="flex items-center gap-4">
-        <GenerationInfo item={item} />
-        <PromptInfo item={item} onUpdated={onUpdated} />
-      </div>
+    <div className="flex flex-wrap items-center justify-center gap-x-6 gap-y-2 border-t border-border/60 pt-2.5">
+      <GenerationInfo item={item} />
+      <PromptInfo item={item} onUpdated={onUpdated} />
       {canRegenerate && <RegeneratePanel item={item} onUpdated={onUpdated} />}
     </div>
   )
