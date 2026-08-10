@@ -32,6 +32,26 @@ module ImageGenerationErrorHandling
     credit_balance_exhausted insufficient_quota
   ].freeze
 
+  # 失敗の種類。**もう一度押して直るのか**を、押す前に判断するために残す。
+  #
+  #   content_policy … 入力が方針に触れた。同じ入力なら必ず同じ結果になる
+  #   invalid_input  … 入力から絵を決められない。これも同じ入力なら同じ結果
+  #   quota          … 供給側の枯渇。こちらの入力とは無関係で、利用者には直せない
+  #   temporary      … 通信・混雑など。時間を置けば直り得る
+  #
+  # 上2つは「作り直す」ではなく「入力を変える」しか道が無い。
+  # 押せてしまうと、必ず失敗する呼び出しに毎回お金がかかる。
+  FAILURE_KINDS = %w[content_policy invalid_input quota temporary].freeze
+
+  def failure_kind(error)
+    return "quota" if quota_error?(error)
+    return "content_policy" if content_policy_violation?(error)
+    return "invalid_input" if error.is_a?(Faraday::BadRequestError) ||
+                              error.is_a?(ImageGenerators::NonRetryableError)
+
+    "temporary"
+  end
+
   private
 
   # リトライしても回復しないエラー（即 failed にする）。

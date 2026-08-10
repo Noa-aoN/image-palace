@@ -272,17 +272,31 @@ module Api
 
         was_completed = current_item.generation_status == "completed"
         instructions = regeneration_instructions
+        use_meaning = regeneration_use_meaning?
         apply_regeneration_instructions!(current_item, instructions)
 
-        # 意味・説明を参考にするオプション（既定オフ）。プロンプトが変わるため再生成扱いにする。
-        use_meaning = regeneration_use_meaning?
+        # 語や指示が変われば、それは別の絵の注文。失敗の種類による縛りも回数の勘定も引き継がない。
+        # 判定は「指示が渡されたか」ではなく、**実際に注文する文字列が変わったか**で行う
+        # （画面は指示欄が空でも custom_prompt: "" を送り、単語や情景は別の口から変わるため）
+        changed_input = ::Images::RetryPolicy.input_changed?(current_item, include_meaning: use_meaning)
+
+        # 失敗からの作り直しは、押して直るものか・何度目かを見てから通す。
+        # 無料であることと、何度でも押せることは別（Images::RetryPolicy に理由を置いた）
+        decision = ::Images::RetryPolicy.decide(target: current_item, changed_input: changed_input)
+        unless was_completed || decision.allowed?
+          return render json: { error: decision.reason }, status: :unprocessable_entity
+        end
 
         # 出来上がったものを作り直すときはクレジットを使う。新しい画像を1枚作るので、
-        # 原価は初回とまったく同じ。失敗からの作り直しは無料（渡せていないものに課金しない）。
-        charge_for_regeneration!(current_item) if was_completed
+        # 原価は初回とまったく同じ。失敗からの作り直しは、無料の回数を使い切るまでは無料。
+        charge_for_regeneration!(current_item) if was_completed || decision.charge?
+        unless was_completed
+          ::Images::RetryPolicy.count_free_retry!(current_item, reset: changed_input || decision.charge?)
+        end
 
-        # completed の再生成や指示の変更時はキャッシュを使わず新しい画像を生成する
-        force = was_completed || instructions.present? || use_meaning
+        # completed の作り直しは、同じ絵を返しても意味が無いのでキャッシュを使わない。
+        # 失敗からの作り直しは使う。注文が同じなら、既にある絵で足りる（呼ばずに済む）
+        force = was_completed
         current_item.update_generation_status!("pending")
         enqueue_generation(current_item, force_generate: force, use_meaning: use_meaning)
         render json: serialize_item(current_item.reload), status: :accepted
@@ -553,6 +567,9 @@ module Api
           list_fields: list_fields_for(item),
           generation_status: item.generation_status,
           generation_error: item.generation_error,
+          # 押して直る失敗かどうか。画面は、直らないものに「作り直す」を出さない
+          generation_retryable: item.generation_status != "failed" ||
+            ::Images::RetryPolicy.retryable?(item),
           item_type: serialize_item_type(item.item_type),
           # 代表の1件は据え置き（既にこれを読んでいる画面を後退させない）。
           # 複数を扱う画面は meanings のほうを見る

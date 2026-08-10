@@ -508,8 +508,9 @@ RSpec.describe "Api::V1::Items", type: :request do
         item_type: item_type,
         generation_status: "failed",
         metadata: {
-          "generation_error" => "入力が曖昧なため画像を生成できませんでした。別の単語や具体的な表現でお試しください。",
-          "generation_error_code" => "Faraday::BadRequestError"
+          "generation_error" => "通信が不安定だったため画像を生成できませんでした。時間を置いて再試行してください。",
+          "generation_error_code" => "Faraday::TimeoutError",
+          "generation_failure_kind" => "temporary"
         }
       )
 
@@ -522,6 +523,94 @@ RSpec.describe "Api::V1::Items", type: :request do
       expect(item.generation_error).to be_nil
       expect(item.generation_error_code).to be_nil
       expect(json_response["generation_error"]).to be_nil
+    end
+
+    # 前に何を注文したかは指紋で残る。同じ注文かどうかはこれで見る
+    def mark_ordered!(item)
+      item.update!(metadata: item.metadata.merge(
+        "prompt_fingerprint" => Images::PromptFingerprint.call(item).digest
+      ))
+    end
+
+    it "入力に因る失敗は、入力を変えないと作り直せない" do
+      item = user.items.create!(
+        title: "aaaaaaa", item_type: item_type, generation_status: "failed",
+        metadata: { "generation_error" => "入力が曖昧なため画像を生成できませんでした。",
+                    "generation_error_code" => "Faraday::BadRequestError",
+                    "generation_failure_kind" => "invalid_input" }
+      )
+      mark_ordered!(item)
+
+      expect {
+        post "/api/v1/items/#{item.id}/retry", headers: headers, as: :json
+      }.not_to have_enqueued_job
+
+      expect(response).to have_http_status(:unprocessable_content)
+      expect(json_response["error"]).to include("単語をより具体的に")
+      expect(item.reload.generation_status).to eq("failed")
+    end
+
+    it "入力に因る失敗でも、指示を添えれば作り直せる" do
+      item = user.items.create!(
+        title: "aaaaaaa", item_type: item_type, generation_status: "failed",
+        metadata: { "generation_error_code" => "Faraday::BadRequestError",
+                    "generation_failure_kind" => "content_policy" }
+      )
+      mark_ordered!(item)
+
+      expect {
+        post "/api/v1/items/#{item.id}/retry",
+          params: { item: { custom_prompt: "図解として描いて" } }, headers: headers, as: :json
+      }.to have_enqueued_job(GenerateBriefJob)
+
+      expect(response).to have_http_status(:accepted)
+    end
+
+    it "この仕組みより前に失敗した（指紋の無い）カードは、判断がつかないので通す" do
+      item = user.items.create!(
+        title: "aaaaaaa", item_type: item_type, generation_status: "failed",
+        metadata: { "generation_error_code" => "Faraday::BadRequestError",
+                    "generation_failure_kind" => "invalid_input" }
+      )
+
+      expect {
+        post "/api/v1/items/#{item.id}/retry", headers: headers, as: :json
+      }.to have_enqueued_job(GenerateBriefJob)
+
+      expect(response).to have_http_status(:accepted)
+    end
+
+    it "無料の作り直しを使い切ると、以降はクレジットを使う" do
+      item = user.items.create!(
+        title: "富士山", item_type: item_type, generation_status: "failed",
+        metadata: { "generation_failure_kind" => "temporary",
+                    "free_retries" => Images::RetryPolicy::FREE_RETRY_LIMIT }
+      )
+      mark_ordered!(item)
+      user.update!(subscription_credits: 10_000)
+
+      expect {
+        post "/api/v1/items/#{item.id}/retry", headers: headers, as: :json
+      }.to change { user.reload.available_credit_points }
+
+      expect(response).to have_http_status(:accepted)
+      # 取ったあとは数え直す（次の失敗からまた無料の回数が使える）
+      expect(item.reload.metadata["free_retries"]).to eq(0)
+    end
+
+    it "無料の回数の内なら、クレジットは減らない" do
+      item = user.items.create!(
+        title: "富士山", item_type: item_type, generation_status: "failed",
+        metadata: { "generation_failure_kind" => "temporary" }
+      )
+      mark_ordered!(item)
+      user.update!(subscription_credits: 10_000)
+
+      expect {
+        post "/api/v1/items/#{item.id}/retry", headers: headers, as: :json
+      }.not_to(change { user.reload.available_credit_points })
+
+      expect(item.reload.metadata["free_retries"]).to eq(1)
     end
 
     it "生成成功済み（completed）でもキャッシュを使わず再生成できる" do

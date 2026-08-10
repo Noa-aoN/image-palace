@@ -26,7 +26,7 @@ class Item < ApplicationRecord
   before_validation :normalize_image_model
 
   GENERATION_STATUSES = %w[pending processing completed failed].freeze
-  GENERATION_ERROR_KEYS = %w[generation_error generation_error_code].freeze
+  GENERATION_ERROR_KEYS = %w[generation_error generation_error_code generation_failure_kind].freeze
   MAX_TITLE_LENGTH = 100
   # 画像の下ごしらえ（説明文・情景プロンプト）の状態。none は未使用・無効時
   BRIEF_STATUSES = %w[none pending processing completed failed].freeze
@@ -43,7 +43,8 @@ class Item < ApplicationRecord
   PROMPT_SOURCES = %w[word brief research].freeze
   DEFAULT_PROMPT_SOURCE = "brief"
 
-  store_accessor :metadata, :generation_error, :generation_error_code, :style, :custom_prompt, :framing,
+  store_accessor :metadata, :generation_error, :generation_error_code, :generation_failure_kind,
+                 :style, :custom_prompt, :framing,
                  :prompt_source, :block_view
 
   # カード1枚ごとの見え方（どのブロックを出すか・並び順）。
@@ -128,15 +129,22 @@ class Item < ApplicationRecord
   end
 
   def update_generation_status!(status)
-    update!(generation_status: status, metadata: metadata_without_generation_error)
+    next_metadata = metadata_without_generation_error
+    # 出来上がったら、無料の作り直し回数は0に戻す。
+    # 残したままだと、ずっと後で1回失敗しただけで即クレジットを取ることになる
+    next_metadata = next_metadata.except("free_retries") if status == "completed"
+    update!(generation_status: status, metadata: next_metadata)
   end
 
-  def mark_generation_failed!(message:, code: nil)
+  # kind は失敗の種類（ImageGenerationErrorHandling::FAILURE_KINDS）。
+  # 「もう一度押して直るのか」を、押す前に判断するために残す
+  def mark_generation_failed!(message:, code: nil, kind: nil)
     update!(
       generation_status: "failed",
       metadata: metadata_without_generation_error.merge(
         "generation_error" => message,
-        "generation_error_code" => code
+        "generation_error_code" => code,
+        "generation_failure_kind" => kind
       ).compact
     )
   end

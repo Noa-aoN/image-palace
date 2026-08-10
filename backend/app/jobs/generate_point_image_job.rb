@@ -140,7 +140,8 @@ class GeneratePointImageJob < ApplicationJob
 
     point.mark_generation_failed!(
       message: user_facing_error_message(error),
-      code: error.class.name
+      code: error.class.name,
+      kind: failure_kind(error)
     )
   end
 end

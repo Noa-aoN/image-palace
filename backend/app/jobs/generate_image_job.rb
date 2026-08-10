@@ -28,20 +28,18 @@ class GenerateImageJob < ApplicationJob
       end
 
       item.update_generation_status!("processing")
-      # スタイル・カスタム指示を反映した有効プロンプト。キャッシュキーと生成の両方に使う。
+      # スタイル・カスタム指示を反映した有効プロンプトと、そのキャッシュキー。
       # use_meaning が true なら意味・説明文も補足として加える（再生成オプション）。
-      effective_prompt = PromptBuilderService.effective_prompt(item, include_meaning: use_meaning)
-      normalized = NormalizePromptService.call(effective_prompt)
       # provider/model が変わればキャッシュも分ける（既定 openai/gpt-image-1 は後方互換で素のキー）。
-      # 用途や上限で既定に落ちることがあるので、実際に使う key で引く。
-      # 指定どおりの key で引くと、落ちた先の絵を別モデルのキャッシュに書いてしまう
-      model_key = GenerateImageService.usable_key(item.image_model, purpose: "item")
-      cache_key = GenerateImageService.namespaced_cache_key(
-        normalized, aspect_ratio: item.aspect_ratio, model_key: model_key
-      )
+      fingerprint = Images::PromptFingerprint.call(item, include_meaning: use_meaning)
+      effective_prompt = fingerprint.prompt
+      model_key = fingerprint.model_key
+      cache_key = fingerprint.cache_key
+      # 何を注文したかを残す。失敗したあと「入力を変えたか」を突き合わせるのに使う
+      item.update!(metadata: item.metadata.merge("prompt_fingerprint" => fingerprint.digest))
       # プロンプト全文はユーザー入力（個人情報・機密語句を含み得る）なのでログに残さない。
       # 相関用にハッシュの先頭と長さだけ記録する。
-      prompt_key = Digest::SHA256.hexdigest(cache_key)[0, 8]
+      prompt_key = fingerprint.digest[0, 8]
       Rails.logger.info "[GenerateImageJob] START item_id=#{item.id} prompt_key=#{prompt_key} prompt_len=#{effective_prompt.length}"
 
       lock_shared_media_cache!(cache_key) unless force_generate
@@ -200,7 +198,8 @@ class GenerateImageJob < ApplicationJob
     message = user_facing_error_message(error)
     item.mark_generation_failed!(
       message: message,
-      code: error.class.name
+      code: error.class.name,
+      kind: failure_kind(error)
     )
     notify_failed!(item, message)
   end

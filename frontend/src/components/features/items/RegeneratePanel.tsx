@@ -67,6 +67,17 @@ export function RegeneratePanel({ item, onUpdated }: Props) {
   const available = useBillingStore((s) => s.summary?.available_credits) ?? null
   // 失敗からの作り直しは無料。出来上がったものの作り直しだけ1クレジット
   const costsCredit = !isFailed
+  // 入力を変えないかぎり同じ結果になる失敗（方針違反・入力から絵を決められない）。
+  // 押しても必ず失敗するので、そのままでは進ませない
+  const inputBound = isFailed && item.generation_retryable === false
+  // 何かを直したか。直せば別の注文になるので、そこで初めて進める
+  const edited =
+    scenePrompt !== (item.scene_prompt ?? '') ||
+    customPrompt !== (item.custom_prompt ?? '') ||
+    style !== (item.style ?? '') ||
+    framing !== (item.framing ?? '') ||
+    imageModel !== (item.image_model ?? '')
+  const blocked = inputBound && !edited
   const insufficient = costsCredit && available !== null && available < 1
   // 「意味・説明を参考にする」の初期値はユーザー設定（既定 OFF）に従う。ユーザーが触ったら以後は上書きしない。
   const meaningTouched = useRef(false)
@@ -169,6 +180,12 @@ export function RegeneratePanel({ item, onUpdated }: Props) {
         <div className="space-y-4">
           {isFailed && item.generation_error && (
             <p className="text-sm leading-6 text-destructive">{item.generation_error}</p>
+          )}
+
+          {blocked && (
+            <p className="text-xs leading-relaxed text-muted-foreground">
+              このままでは同じ結果になります。単語を具体的にするか、下の「画像への指示」を変えてからお試しください。
+            </p>
           )}
 
           <p className="text-xs leading-relaxed text-muted-foreground">
@@ -359,7 +376,7 @@ export function RegeneratePanel({ item, onUpdated }: Props) {
 
           <Button
             onClick={handleRegenerate}
-            disabled={retrying || insufficient}
+            disabled={retrying || insufficient || blocked}
             className="flex w-full items-center justify-center gap-2"
           >
             {retrying ? <Spinner size={15} /> : <RefreshCw size={15} />}
