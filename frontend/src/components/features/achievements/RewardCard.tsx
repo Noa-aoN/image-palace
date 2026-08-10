@@ -20,19 +20,20 @@ import { rarityStyle } from './rarity'
 export function RewardCard({
   reward,
   onOpen,
-  onToggleFeatured,
+  onToggleStar,
   busy,
-  children,
+  imageOnly,
 }: {
   reward: RewardRow
   onOpen: () => void
-  /** 代表として掲げる／下ろす。掲げられる獲得物のときだけ効く */
-  onToggleFeatured: () => void
+  /** 星の入り切り。称号なら名乗る、勲章なら掲げる、褒賞なら飾る */
+  onToggleStar: () => void
   busy?: boolean
-  /** 名乗るなど、残りの操作 */
-  children?: React.ReactNode
+  /** 絵だけ並べる。名前や説明はホバー（狭い画面では押して詳細）で見る */
+  imageOnly?: boolean
 }) {
   const style = rarityStyle(reward.rarity_tier)
+  const verb = STAR_VERB[reward.kind]
   const ratio =
     reward.target && reward.target > 0 ? Math.min(1, (reward.progress ?? 0) / reward.target) : null
   const almost = !reward.owned && ratio !== null && ratio >= 0.5
@@ -44,23 +45,24 @@ export function RewardCard({
       }`}
       style={reward.owned && style.glow ? { boxShadow: style.glow } : undefined}
     >
-      {/* 掲げるはボタンではなく星にする。札ごとにボタンが積み上がると、
-          絵より操作のほうが目立ってしまう。掲げているものは常に光らせる */}
-      {reward.owned && reward.featurable && (
+      {/* 操作は星ひとつ。称号なら名乗る、勲章なら掲げる、褒賞なら飾る、と
+          結果だけが変わる。種別ごとにボタンを並べると、絵より操作が目立ってしまう。
+          入れているものは常に光らせる（ホバーしないと分からない状態にしない） */}
+      {reward.owned && (
         <button
           type="button"
-          onClick={onToggleFeatured}
+          onClick={onToggleStar}
           disabled={busy}
-          aria-pressed={reward.featured}
-          aria-label={reward.featured ? `${reward.name}を下ろす` : `${reward.name}を掲げる`}
-          title={reward.featured ? '掲げている' : '掲げる'}
-          className={`absolute left-1.5 top-1.5 transition-opacity disabled:opacity-40 ${
-            reward.featured
+          aria-pressed={reward.starred}
+          aria-label={`${reward.name}を${reward.starred ? verb.on : verb.off}`}
+          title={reward.starred ? verb.on : `${verb.off}（${verb.place}）`}
+          className={`absolute left-1.5 top-1.5 z-10 transition-opacity disabled:opacity-40 ${
+            reward.starred
               ? 'text-[var(--palace)] opacity-100'
               : 'text-muted-foreground opacity-0 hover:text-foreground focus-visible:opacity-100 group-hover:opacity-100'
           }`}
         >
-          <Star size={15} fill={reward.featured ? 'currentColor' : 'none'} />
+          <Star size={15} fill={reward.starred ? 'currentColor' : 'none'} />
         </button>
       )}
 
@@ -88,17 +90,21 @@ export function RewardCard({
         </span>
       </button>
 
-      <div className="space-y-1">
-        <p className={`text-sm font-medium ${reward.owned ? '' : 'text-muted-foreground'}`}>{reward.name}</p>
-        <RarityMarks level={reward.rarity_level} tierClass={style.text} dim={!reward.owned} />
-      </div>
+      {!imageOnly && (
+        <>
+          <div className="space-y-1">
+            <p className={`text-sm font-medium ${reward.owned ? '' : 'text-muted-foreground'}`}>{reward.name}</p>
+            <RarityMarks level={reward.rarity_level} tierClass={style.text} dim={!reward.owned} />
+          </div>
 
-      {reward.description && (
-        <p className="text-[11px] leading-snug text-muted-foreground">{reward.description}</p>
+          {reward.description && (
+            <p className="text-[11px] leading-snug text-muted-foreground">{reward.description}</p>
+          )}
+        </>
       )}
 
       {/* もうすぐ取れるものだけ進捗を出す。全部に出すと、遠いものまで急かして見える */}
-      {almost && (
+      {almost && !imageOnly && (
         <div className="space-y-1">
           <div className="h-1.5 overflow-hidden rounded-full bg-muted">
             <div
@@ -112,9 +118,17 @@ export function RewardCard({
         </div>
       )}
 
-      {children}
     </div>
   )
+}
+
+
+/** 星を入れたときに何が起きるか。種別で言い方が変わる */
+export const STAR_VERB: Record<RewardKind, { on: string; off: string; place: string }> = {
+  title: { on: '名乗っている', off: '名乗る', place: 'ステータスに出ます' },
+  medal: { on: '掲げている', off: '掲げる', place: 'ステータスに並びます' },
+  treasure: { on: '飾っている', off: '飾る', place: 'マイルームに飾ります' },
+  honor: { on: '見せている', off: '見せる', place: 'プロフィールに出ます' },
 }
 
 // 画像を入れるまでは種類ごとの絵柄で描く（あとから差し替えられる）

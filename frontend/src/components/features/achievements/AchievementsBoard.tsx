@@ -3,13 +3,11 @@
 import { useEffect, useState } from 'react'
 import { Crown, Medal, Sparkles, Trophy, Award, Gem, HelpCircle } from 'lucide-react'
 import { Spinner } from '@/components/ui/spinner'
-import { Button } from '@/components/ui/button'
 import { PanelSlotContent } from '@/components/features/panel/PanelSlot'
 import { usePanelForm } from '@/components/features/panel/usePanelForm'
 import {
   getAchievements,
-  equipTitle,
-  toggleFeatured,
+  toggleStar,
   type AchievementsPage,
   type RewardKind,
   type RewardPreview,
@@ -37,6 +35,8 @@ export function AchievementsBoard() {
   const [ownFilter, setOwnFilter] = useState<'all' | 'owned' | 'locked'>('all')
   // 押した札の詳細。狭い画面ではホバーが無いので、これが唯一の説明になる
   const [openKey, setOpenKey] = useState<string | null>(null)
+  // 絵だけ並べる。名前と説明を省くと、集めたものを眺める面になる
+  const [imageOnly, setImageOnly] = useState(false)
 
   useEffect(() => {
     getAchievements()
@@ -86,8 +86,9 @@ export function AchievementsBoard() {
         <div className="flex flex-wrap items-center gap-4">
           <div className="flex items-center gap-2">
             <Crown size={20} style={{ color: 'var(--palace)' }} />
+            {/* 称号は鉤括弧で囲む。名前の一部なのか説明なのかが、ひと目で分かる */}
             {page.summary.title ? (
-              <span className="text-lg font-semibold">{page.summary.title.name}</span>
+              <span className="text-lg font-semibold">「{page.summary.title.name}」</span>
             ) : (
               <span className="text-lg font-semibold text-muted-foreground">まだ名乗っていません</span>
             )}
@@ -202,7 +203,11 @@ export function AchievementsBoard() {
           ))}
 
           {/* 状態は別の軸なので、行の反対側へ寄せる */}
-          <div className="ml-auto flex gap-1.5">
+          <div className="ml-auto flex items-center gap-1.5">
+            <Chip active={imageOnly} onClick={() => setImageOnly((v) => !v)} subtle>
+              絵だけ
+            </Chip>
+            <span className="mx-0.5 h-4 w-px bg-border" aria-hidden />
             {(
               [
                 ['all', 'すべて'],
@@ -228,27 +233,22 @@ export function AchievementsBoard() {
                   {group.rows.filter((r) => r.owned).length} / {group.rows.length}
                 </span>
               </h3>
-              <ul className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
+              <ul
+                className={
+                  imageOnly
+                    ? 'grid grid-cols-4 gap-2 sm:grid-cols-6 lg:grid-cols-8'
+                    : 'grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4'
+                }
+              >
                 {group.rows.map((reward) => (
                   <li key={reward.key}>
                     <RewardCard
                       reward={reward}
                       onOpen={() => setOpenKey(reward.key)}
-                      onToggleFeatured={() => act(reward.key, () => toggleFeatured(reward.key))}
+                      onToggleStar={() => act(reward.key, () => toggleStar(reward.key))}
                       busy={busy === reward.key}
-                    >
-                      {reward.owned && reward.equippable && (
-                        <Button
-                          variant={reward.equipped ? 'default' : 'outline'}
-                          size="sm"
-                          disabled={busy === reward.key}
-                          onClick={() => act(reward.key, () => equipTitle(reward.equipped ? '' : reward.key))}
-                          className="w-full text-xs"
-                        >
-                          {reward.equipped ? '名乗っている' : '名乗る'}
-                        </Button>
-                      )}
-                    </RewardCard>
+                      imageOnly={imageOnly}
+                    />
                   </li>
                 ))}
               </ul>
@@ -307,8 +307,7 @@ export function AchievementsBoard() {
             reward={reward}
             busy={busy === reward.key}
             onClose={() => setOpenKey(null)}
-            onEquip={() => act(reward.key, () => equipTitle(reward.equipped ? '' : reward.key))}
-            onFeature={() => act(reward.key, () => toggleFeatured(reward.key))}
+            onToggleStar={() => act(reward.key, () => toggleStar(reward.key))}
           />
         )
       })()}

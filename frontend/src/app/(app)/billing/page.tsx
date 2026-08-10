@@ -18,6 +18,7 @@ import {
 import { useBillingStore } from '@/stores/billing'
 import {
   tierLabel,
+  TIER_NOTES,
   formatYen,
   unitPrice,
   discountPercent,
@@ -274,6 +275,10 @@ export default function BillingPage() {
                   <div key={plan.name} className="flex flex-col gap-3 rounded-xl border border-border bg-card p-5">
                     <div>
                       <p className="text-base font-semibold">{tierLabel(plan.tier)}</p>
+                      {/* 呼び名だけでは何のプランか分からない。一言だけ添える */}
+                      {TIER_NOTES[plan.tier] && (
+                        <p className="text-xs text-muted-foreground">{TIER_NOTES[plan.tier]}</p>
+                      )}
                       <p className="mt-1 text-2xl font-bold">
                         {formatYen(plan.price)}
                         <span className="text-sm font-normal text-muted-foreground"> / 月</span>

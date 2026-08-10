@@ -54,14 +54,21 @@ module Achievements
     end
 
     public def summary
-      equipped = UserReward.joins(:reward_definition).find_by(user_id: @user.id, equipped: true)
-      featured = UserReward.where(user_id: @user.id).featured.includes(:reward_definition)
+      starred = UserReward.where(user_id: @user.id).featured.includes(:reward_definition)
+      by_kind = starred.group_by { |r| r.reward_definition.kind }
+      title = by_kind["title"]&.first
 
       {
-        title: equipped && reward_row(equipped.reward_definition),
+        title: title && reward_row(title.reward_definition),
         # 称号が無い人に「ありません」とだけ出しても、次に何をすればよいか分からない
-        next_title: equipped ? nil : next_title,
-        featured: featured.map { |r| reward_row(r.reward_definition) },
+        next_title: title ? nil : next_title,
+        # 星を入れたものを種別ごとに返す。出す場所が種別で違うため
+        #   称号=名乗る / 勲章=掲げる / 褒賞=飾る / 表彰=プロフィール
+        showcase: RewardDefinition::KINDS.to_h { |kind|
+          [ kind, (by_kind[kind] || []).map { |r| reward_row(r.reward_definition) } ]
+        },
+        limits: Showcase::LIMITS,
+        featured: (by_kind["medal"] || []).map { |r| reward_row(r.reward_definition) },
         rewards_earned: stat.rewards_earned,
         achievements_completed: stat.achievements_completed,
         streak_days: stat.streak_days
@@ -180,8 +187,8 @@ module Achievements
         image_url: image_url_for(definition),
         owned: held.present?,
         granted_at: held&.granted_at,
-        equipped: held&.equipped || false,
-        featured: held&.featured_at.present?,
+        # 星の入り切り。種別ごとの持ち方の違いは、ここで1つに畳む
+        starred: held ? Showcase.starred?(held) : false,
         equippable: definition.equippable,
         featurable: definition.featurable,
         room_displayable: definition.room_displayable

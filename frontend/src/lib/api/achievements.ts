@@ -35,8 +35,8 @@ export interface RewardRow {
   target: number | null
   owned: boolean
   granted_at: string | null
-  equipped: boolean
-  featured: boolean
+  /** 星が入っているか。種別ごとの持ち方の違いはサーバー側で畳んである */
+  starred: boolean
   equippable: boolean
   featurable: boolean
   room_displayable: boolean
@@ -96,6 +96,9 @@ export interface AchievementsPage {
   summary: {
     title: RewardRow | null
     next_title: NextTitle | null
+    /** 星を入れたもの。種別ごとに出す場所が違う */
+    showcase: Record<RewardKind, RewardRow[]>
+    limits: Record<string, number>
     featured: RewardRow[]
     rewards_earned: number
     achievements_completed: number
@@ -127,14 +130,13 @@ export async function getAchievements(): Promise<AchievementsPage> {
   return res.data
 }
 
-/** 称号を1つ装備する。key を空にすると外す */
-export async function equipTitle(key: string): Promise<AchievementsPage> {
-  const res = await apiClient.post<AchievementsPage>('/api/v1/achievements/equip', { key })
-  return res.data
-}
-
-/** 代表勲章として掲げる／下ろす */
-export async function toggleFeatured(key: string): Promise<AchievementsPage> {
-  const res = await apiClient.post<AchievementsPage>('/api/v1/achievements/feature', { key })
+/**
+ * 星の入り切り。
+ *
+ * 称号なら名乗る、勲章なら掲げる、褒賞なら飾る、と結果は変わるが、
+ * 操作は1つ。種別ごとの違いはサーバー側で吸収する。
+ */
+export async function toggleStar(key: string): Promise<AchievementsPage> {
+  const res = await apiClient.post<AchievementsPage>('/api/v1/achievements/toggle', { key })
   return res.data
 }

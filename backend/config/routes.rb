@@ -122,8 +122,8 @@ Rails.application.routes.draw do
       # アチーブメント（栄誉の間）
       get "achievements", to: "achievements#show"
       get "achievements/summary", to: "achievements#summary"
-      post "achievements/equip", to: "achievements#equip"
-      post "achievements/feature", to: "achievements#feature"
+      # 星の入り切り。種別ごとの違いはサーバー側で吸収する
+      post "achievements/toggle", to: "achievements#toggle"
       # 学習の記録。1回の学習ぶんをまとめて受ける
       resources :item_reviews, only: [ :create ]
       # カードが持つ項目の定義。種別ごとに利用者が決める

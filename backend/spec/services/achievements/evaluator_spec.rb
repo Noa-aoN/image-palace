@@ -144,17 +144,34 @@ RSpec.describe Achievements::Evaluator do
       expect(summary[:next_title][:name]).to eq("記憶の旅人")
     end
 
-    it "名乗ると、軽い読み出しにも出る" do
+    # 星の入り切りは1つの操作。種別ごとの持ち方の違いはサーバー側で畳む
+    it "星を入れると、軽い読み出しにも出る" do
       make_cards(1)
       described_class.call(user: user)
-      UserReward.joins(:reward_definition)
-                .find_by(user_id: user.id, reward_definitions: { key: "title_traveler" })
-                .update!(equipped: true)
+      held = UserReward.joins(:reward_definition)
+                       .find_by(user_id: user.id, reward_definitions: { key: "title_traveler" })
+      Achievements::Showcase.toggle!(user: user, user_reward: held)
 
       summary = Achievements::Presenter.summary_only(user: user)
 
       expect(summary[:title][:name]).to eq("記憶の旅人")
       expect(summary[:next_title]).to be_nil
+      expect(summary[:showcase]["title"].map { |r| r[:key] }).to eq([ "title_traveler" ])
+    end
+
+    # 並べすぎると1つ1つが目に入らない。上限に達したら古いものと入れ替える
+    it "掲げる数は種別ごとの上限で打ち切る" do
+      RewardDefinition.registry
+      medals = RewardDefinition.of_kind("medal").ordered.to_a
+      medals.each { |m| UserReward.create!(user: user, reward_definition: m, granted_at: Time.current) }
+      medals.each_with_index do |m, i|
+        held = UserReward.find_by(user_id: user.id, reward_definition_id: m.id)
+        travel_to(Time.current + i.minutes) { Achievements::Showcase.toggle!(user: user, user_reward: held) }
+      end
+
+      starred = Achievements::Presenter.summary_only(user: user)[:showcase]["medal"]
+
+      expect(starred.size).to eq(Achievements::Showcase::LIMITS["medal"])
     end
 
     # 未獲得のものに「どうすれば手に入るか」が無いと、欲しいと思っても動けない
@@ -170,13 +187,16 @@ RSpec.describe Achievements::Evaluator do
       expect(row[:target]).to eq(10)
     end
 
-    it "レア度は段と名前の両方を返す" do
+    # 序盤で高い段を配ると、続けた人に渡すものが無くなる
+    it "レア度は到達の遠さに合わせてある" do
       RewardDefinition.registry
 
-      row = Achievements::Presenter.call(user: user)[:rewards].find { |r| r[:key] == "medal_laurel" }
+      rows = Achievements::Presenter.call(user: user)[:rewards].index_by { |r| r[:key] }
 
-      expect(row[:rarity_level]).to eq(8)
-      expect(row[:rarity_tier]).to eq("sacred")
+      expect(rows["title_traveler"][:rarity_level]).to eq(1)
+      expect(rows["medal_laurel"][:rarity_level]).to eq(5)
+      # 8・9 は空けておく（長く続けた人と、特別な表彰のため）
+      expect(rows.values.map { |r| r[:rarity_level] }.max).to be <= 7
     end
   end
 end

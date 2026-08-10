@@ -23,6 +23,22 @@ class RewardDefinition < ApplicationRecord
     6 => "瑠璃", 7 => "星", 8 => "神聖", 9 => "ムーサ"
   }.freeze
 
+  # 段の目安。**到達の遠さ**に対応させる。
+  #
+  #   1〜2 … 初日から数日で届く
+  #   3〜4 … 数週間
+  #   5   … 数ヶ月
+  #   6   … 半年〜1年
+  #   7   … 年単位
+  #   8〜9 … いまは使わない。長く続けた人・特別な表彰のために空けておく
+  #
+  # 序盤で高い段を配ると、あとから出すものが無くなる。
+  # 上を空けておくのは、続けた人に渡すものを残すため。
+  RARITY_GUIDE = {
+    1 => "初日", 2 => "数日", 3 => "数週間", 4 => "1〜2か月", 5 => "数か月",
+    6 => "半年〜1年", 7 => "年単位", 8 => "（未使用）", 9 => "（未使用）"
+  }.freeze
+
   # 画面で使う5つの段。枠の見た目はこちらで決める
   RARITY_TIERS = {
     1 => "stone", 2 => "stone", 3 => "stone",
@@ -52,50 +68,50 @@ class RewardDefinition < ApplicationRecord
   # （カードの公開機能が無いため、公開系は入れていない）
   BUILTINS = [
     # ── 称号 ──
-    { key: "title_traveler", kind: "title", name: "記憶の旅人", rarity_level: 2, category: "学習",
+    { key: "title_traveler", kind: "title", name: "記憶の旅人", rarity_level: 1, category: "学習",
       description: "はじめの一歩を踏み出した人へ。", position: 10,
       metadata: { "motif" => "a traveler's marble stele with a small laurel sprig and a winding road relief" }, image_key: "o18zg7f5u2w1m2gapa2eu4kaxz66" },
     { key: "title_apprentice", kind: "title", name: "見習い学匠", rarity_level: 2, category: "学習",
       description: "繰り返し見返すことを覚えた人へ。", position: 11,
       metadata: { "motif" => "an apprentice scholar's stele with an open wax tablet and stylus relief" }, image_key: "g4lcfsvq5lgomp4keve06askrvbz" },
-    { key: "title_collector", kind: "title", name: "知識の蒐集家", rarity_level: 4, category: "創作",
+    { key: "title_collector", kind: "title", name: "知識の蒐集家", rarity_level: 3, category: "創作",
       description: "多くのカードを集めた人へ。", position: 12,
       metadata: { "motif" => "a collector's stele with rows of small amphora relief and a laurel border" }, image_key: "b7mo8qbmozxpb7elpzqt9osoql9k" },
-    { key: "title_visual_thinker", kind: "title", name: "視覚思考家", rarity_level: 6, category: "創作",
+    { key: "title_visual_thinker", kind: "title", name: "視覚思考家", rarity_level: 4, category: "創作",
       description: "絵で考えることを身につけた人へ。", position: 13,
       metadata: { "motif" => "a stele with an eye motif surrounded by geometric constellation lines" }, image_key: "bp2ryglac07hq39s4euu9qj8j2dj" },
 
     # ── 勲章 ──
-    { key: "medal_first_card", kind: "medal", name: "初回作成の徽章", rarity_level: 2, category: "創作",
+    { key: "medal_first_card", kind: "medal", name: "初回作成の徽章", rarity_level: 1, category: "創作",
       description: "はじめてカードを作った証。", position: 20,
       metadata: { "motif" => "an eight-pointed star badge with a single small amphora at the center" }, image_key: "ssqpdgzifoxylf6b5569h4zse5wz" },
-    { key: "medal_creation_flame", kind: "medal", name: "創作の火章", rarity_level: 4, category: "創作",
+    { key: "medal_creation_flame", kind: "medal", name: "創作の火章", rarity_level: 2, category: "創作",
       description: "絵を作り続けた証。", position: 21,
       metadata: { "motif" => "a round medal with a stylized flame in an oil lamp at the center" }, image_key: "vtwfgst6kayf78q26ujxkoa70uae" },
-    { key: "medal_streak_star", kind: "medal", name: "7日継続の星章", rarity_level: 4, category: "継続",
+    { key: "medal_streak_star", kind: "medal", name: "7日継続の星章", rarity_level: 3, category: "継続",
       description: "7日続けた証。", position: 22,
       metadata: { "motif" => "a seven-pointed star badge with a laurel ring at the center" }, image_key: "m3th0qst3q3etdhtq9b7epqno1t5" },
-    { key: "medal_laurel", kind: "medal", name: "蒐集の月桂冠", rarity_level: 8, category: "創作",
+    { key: "medal_laurel", kind: "medal", name: "蒐集の月桂冠", rarity_level: 5, category: "創作",
       description: "100枚のカードを積み上げた証。", position: 23,
       metadata: { "motif" => "a full laurel wreath crown shaped as a circular medal" }, image_key: "xni91sd8u68mlyc4aju1p1lkh3pm" },
 
     # ── 褒賞 ──
-    { key: "treasure_seed", kind: "treasure", name: "記憶の種", rarity_level: 2, category: "学習",
+    { key: "treasure_seed", kind: "treasure", name: "記憶の種", rarity_level: 1, category: "学習",
       description: "すべてはここから。", position: 30,
       metadata: { "motif" => "a small clay pot holding a single sprouting seed" }, image_key: "ur6et8kagnnjhzr66l6av0oplwe3" },
     { key: "treasure_tablet", kind: "treasure", name: "小さな石板", rarity_level: 2, category: "学習",
       description: "積み重ねた学習の記録。", position: 31,
       metadata: { "motif" => "a small stone tablet with faint carved grid lines" }, image_key: "4htwy3acujtos3t2zw3mi72r7wyu" },
-    { key: "treasure_cup", kind: "treasure", name: "青銅の小杯", rarity_level: 4, category: "創作",
+    { key: "treasure_cup", kind: "treasure", name: "青銅の小杯", rarity_level: 2, category: "創作",
       description: "10枚のカードを作った褒賞。", position: 32,
       metadata: { "motif" => "a small two-handled bronze drinking cup (kylix)" }, image_key: "ytajhw0ret812b87m0gzrdd19wq9" },
-    { key: "treasure_book", kind: "treasure", name: "学匠の書籍", rarity_level: 4, category: "学習",
+    { key: "treasure_book", kind: "treasure", name: "学匠の書籍", rarity_level: 3, category: "学習",
       description: "正しく答え続けた褒賞。", position: 33,
       metadata: { "motif" => "a bound codex with a leather strap and a laurel emblem" }, image_key: "idln7pibyinzknsuu51or5rc2bhw" },
-    { key: "treasure_laurel_pot", kind: "treasure", name: "月桂樹の鉢植え", rarity_level: 6, category: "継続",
+    { key: "treasure_laurel_pot", kind: "treasure", name: "月桂樹の鉢植え", rarity_level: 4, category: "継続",
       description: "長く続けた人の部屋に。", position: 34,
       metadata: { "motif" => "a terracotta pot with a young laurel tree" }, image_key: "n1vzsrdej830hkyb3nut6cnx0us3" },
-    { key: "treasure_shelf", kind: "treasure", name: "小さな本棚", rarity_level: 4, category: "整理",
+    { key: "treasure_shelf", kind: "treasure", name: "小さな本棚", rarity_level: 3, category: "整理",
       description: "まとめる力の褒賞。", position: 35,
       metadata: { "motif" => "a small wooden shelf holding rolled scrolls" }, image_key: "73afip2yv4lsxx2ckjiopxybk5b4" },
 
@@ -103,10 +119,10 @@ class RewardDefinition < ApplicationRecord
     { key: "honor_beta", kind: "honor", name: "β参加者", rarity_level: 6, category: "公式",
       description: "初期からこの場所を見てくれた人へ。", position: 40,
       metadata: { "motif" => "an award plaque with an olive branch and a small owl" }, image_key: "10izs68me4efp3u34nnxs4sgse1n" },
-    { key: "honor_supporter", kind: "honor", name: "初期支援者", rarity_level: 8, category: "公式",
+    { key: "honor_supporter", kind: "honor", name: "初期支援者", rarity_level: 7, category: "公式",
       description: "早くから支えてくれた人へ。", position: 41,
       metadata: { "motif" => "an award plaque with a torch and a laurel wreath" }, image_key: "iuo8g39z6sh1e2l7c52c9fsk2n1m" },
-    { key: "honor_featured", kind: "honor", name: "公式推薦", rarity_level: 8, category: "公式",
+    { key: "honor_featured", kind: "honor", name: "公式推薦", rarity_level: 7, category: "公式",
       description: "運営が選んだ作り手へ。", position: 42,
       metadata: { "motif" => "an award plaque with a sunburst and a laurel wreath" }, image_key: "cmvez4cmbf1xkb6kajm7cfzni332" }
   ].freeze
