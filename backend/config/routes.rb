@@ -111,6 +111,8 @@ Rails.application.routes.draw do
         end
       end
       resources :item_types, only: [ :index ]
+      # 絵を作るときに選べるモデル（鍵のあるものだけ）
+      get "image_models", to: "image_models#index"
       # 作りかけの機能をどこまで出すか（読み取りは全利用者）
       get "features", to: "features#index"
       # 引き換えコードの受け取り

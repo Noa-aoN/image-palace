@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_08_10_000005) do
+ActiveRecord::Schema[8.1].define(version: 2026_08_10_000006) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
   enable_extension "pg_trgm"
@@ -262,6 +262,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_08_10_000005) do
     t.datetime "created_at", null: false
     t.string "generation_status", default: "pending", null: false
     t.text "image_description"
+    t.string "image_model"
     t.uuid "item_type_id", null: false
     t.jsonb "metadata", default: {}, null: false
     t.text "scene_prompt"
