@@ -145,7 +145,7 @@ class Rack::Attack
   # こちらの負担は軽いが、外（Wikimedia）へ投げる口なので、
   # 相手の迷惑になる叩き方をこちらで止める。キャッシュが効くぶんは通る
   throttle("wikipedia/ip", limit: 30, period: 60.seconds) do |req|
-    req.ip if req.get? && req.path == "/api/v1/wikipedia/summary"
+    req.ip if req.get? && req.path.in?([ "/api/v1/wikipedia/summary", "/api/v1/wikipedia/search" ])
   end
 
   # 引き換えコードの入力。

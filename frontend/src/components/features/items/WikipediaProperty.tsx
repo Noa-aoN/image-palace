@@ -4,7 +4,11 @@ import { useCallback, useState } from 'react'
 import { ExternalLink, RefreshCw } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Spinner } from '@/components/ui/spinner'
-import { fetchWikipediaSummary } from '@/lib/api/wikipedia'
+import {
+  fetchWikipediaSummary,
+  searchWikipediaCandidates,
+  type WikipediaCandidate,
+} from '@/lib/api/wikipedia'
 import { hasMoreBelow } from '@/lib/scroll-affordance'
 import type { WikipediaValue } from '@/lib/api/properties'
 
@@ -40,6 +44,10 @@ export function WikipediaProperty({
 }) {
   const [busy, setBusy] = useState(false)
   const [message, setMessage] = useState<string | null>(null)
+  // 題が一致しなかったときの候補。**選ぶまで保存しない**。
+  // 一番上を勝手に採ると、同名の別人・別作品が黙ってカードに入る
+  const [candidates, setCandidates] = useState<WikipediaCandidate[] | null>(null)
+  const [candidateLanguage, setCandidateLanguage] = useState<string | null>(null)
   // 続きがあるあいだだけ下端をぼかす（読み終わったら消す）
   const [more, setMore] = useState(false)
   // 中身が入った時点でも測る。開いた直後に判定できないと、
@@ -48,18 +56,28 @@ export function WikipediaProperty({
     if (node) setMore(hasMoreBelow(node))
   }, [])
 
-  const lookup = async () => {
+  // 近い記事を並べる。ここでは保存しない
+  const offerCandidates = async (forTerm: string) => {
+    const found = await searchWikipediaCandidates(forTerm, languageCode)
+    setCandidates(found.candidates)
+    setCandidateLanguage(found.language_code)
+    setMessage(found.message)
+  }
+
+  const lookup = async (forTerm: string = term) => {
     setBusy(true)
     setMessage(null)
+    setCandidates(null)
     try {
-      const result = await fetchWikipediaSummary(term, languageCode)
+      const result = await fetchWikipediaSummary(forTerm, languageCode)
       if (!result.found) {
-        // 引けないのは異常ではない。カードの読み書きは止めない
-        setMessage(result.message ?? 'いま引けませんでした')
+        // 記事が無いのは異常ではない。黙って諦めず、近い記事を出す
+        await offerCandidates(forTerm)
         return
       }
       if (result.disambiguation) {
-        setMessage('複数の意味がある語でした。見出し語をより具体的にするとうまく引けます。')
+        // 曖昧さ回避のページは中身が一覧なので、そのまま出しても意味が取れない
+        await offerCandidates(forTerm)
         return
       }
       onSaved(result.summary)
@@ -70,11 +88,60 @@ export function WikipediaProperty({
     }
   }
 
+  // 候補から1件選ぶ。**ここで初めて保存する**
+  const choose = async (candidate: WikipediaCandidate) => {
+    setBusy(true)
+    setMessage(null)
+    try {
+      const result = await fetchWikipediaSummary(candidate.title, candidateLanguage ?? languageCode)
+      if (!result.found || result.disambiguation) {
+        setMessage('その記事は引けませんでした。別の候補を試してください。')
+        return
+      }
+      setCandidates(null)
+      onSaved(result.summary)
+    } catch {
+      setMessage('いま引けませんでした')
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  const candidateList = candidates?.length ? (
+    <div className="space-y-2 rounded-lg border border-border bg-card p-3">
+      <p className="text-xs text-muted-foreground">
+        同じ題の記事がありませんでした。近いものから選んでください（{candidateLanguage} 版）
+      </p>
+      <ul className="space-y-1.5">
+        {candidates.map((c) => (
+          <li key={c.title} className="flex items-center gap-2.5">
+            {c.thumbnail_url ? (
+              // eslint-disable-next-line @next/next/no-img-element -- Wikimedia の画像。こちらに保存しない
+              <img src={c.thumbnail_url} alt="" className="h-9 w-9 shrink-0 rounded border border-border object-cover" />
+            ) : (
+              <span className="h-9 w-9 shrink-0 rounded border border-dashed border-border" />
+            )}
+            <span className="min-w-0 flex-1">
+              <span className="block truncate text-sm font-medium">{c.title}</span>
+              {/* 題だけでは同名の別人・別作品を見分けられない。説明文が本体 */}
+              {c.description && (
+                <span className="block truncate text-xs text-muted-foreground">{c.description}</span>
+              )}
+            </span>
+            <Button size="sm" variant="outline" disabled={busy} onClick={() => choose(c)} className="shrink-0 text-xs">
+              この記事を選ぶ
+            </Button>
+          </li>
+        ))}
+      </ul>
+    </div>
+  ) : null
+
   if (!value) {
     return (
       <div className="space-y-2">
         {editable ? (
-          <Button variant="outline" size="sm" onClick={lookup} disabled={busy} className="flex items-center gap-1.5">
+          <Button variant="outline" size="sm" onClick={() => lookup()} disabled={busy} className="flex items-center gap-1.5">
             {busy ? <Spinner size={13} /> : <RefreshCw size={13} />}
             「{term}」を Wikipedia で調べる
           </Button>
@@ -82,6 +149,7 @@ export function WikipediaProperty({
           <p className="text-sm text-muted-foreground">未設定</p>
         )}
         {message && <p className="text-xs text-muted-foreground">{message}</p>}
+        {candidateList}
       </div>
     )
   }
@@ -153,7 +221,7 @@ export function WikipediaProperty({
         {editable && (
           <button
             type="button"
-            onClick={lookup}
+            onClick={() => lookup()}
             disabled={busy}
             className="flex items-center gap-1 hover:text-foreground disabled:opacity-50"
           >
@@ -164,6 +232,7 @@ export function WikipediaProperty({
       </p>
 
       {message && <p className="text-xs text-muted-foreground">{message}</p>}
+      {candidateList}
     </div>
   )
 }

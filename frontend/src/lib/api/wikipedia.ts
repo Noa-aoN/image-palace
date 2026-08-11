@@ -26,3 +26,35 @@ export async function fetchWikipediaSummary(term: string, languageCode?: string)
   })
   return res.data
 }
+
+/**
+ * 題が一致しなかったときの候補。
+ *
+ * **選ぶのは利用者。** ここで返るのは候補だけで、保存はしない。
+ * 1件を選んだあと、その題で改めて `fetchWikipediaSummary` を呼んで保存する。
+ * 一番上を勝手に採ると、同名の別人・別作品が黙ってカードに入る。
+ */
+export type WikipediaCandidate = {
+  title: string
+  /** 一行の肩書き。題だけでは同名の別物を見分けられないので、これが本体 */
+  description?: string
+  thumbnail_url?: string
+}
+
+export type WikipediaSearch = {
+  candidates: WikipediaCandidate[]
+  language_code: string
+  /** どれも語をかすっていない。候補は出すが、言い直しを勧める */
+  weak: boolean
+  message: string | null
+}
+
+export async function searchWikipediaCandidates(
+  term: string,
+  languageCode?: string
+): Promise<WikipediaSearch> {
+  const res = await apiClient.get<WikipediaSearch>('/api/v1/wikipedia/search', {
+    params: { q: term, ...(languageCode ? { language_code: languageCode } : {}) },
+  })
+  return res.data
+}
