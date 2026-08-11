@@ -135,6 +135,15 @@ class Rack::Attack
     req.ip if req.post? && req.path.match?(%r{\A/api/v1/items/[^/]+/scene_rewrite\z})
   end
 
+  # 引き換えコードの入力。
+  #
+  # コードは 4〜32 文字の英数字で、短いものは総当たりで当てられる。
+  # 当てられるとクレジットがそのまま出ていくので、試せる回数を絞る。
+  # 手で打つぶんには足りる回数にしてある（打ち間違いの数回は通る）。
+  throttle("code_redeem/ip", limit: 10, period: 10.minutes) do |req|
+    req.ip if req.post? && req.path == "/api/v1/campaign_codes/redeem"
+  end
+
   # 供給側の疎通確認（OpenAI へ実際に1回投げる）。運営しか叩けないが、連打で外へ投げ続けないよう抑える
   throttle("admin_provider_check/ip", limit: 10, period: 5.minutes) do |req|
     req.ip if req.post? && req.path == "/api/v1/admin/provider_check"

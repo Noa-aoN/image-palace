@@ -9,6 +9,7 @@ import { Spinner } from '@/components/ui/spinner'
 import { generateWords } from '@/lib/api/wordlists'
 import { createItem } from '@/lib/api/items'
 import { STYLE_OPTIONS } from '@/lib/item-styles'
+import { RedeemCodePanel } from '@/components/features/billing/RedeemCodePanel'
 import { useBillingStore } from '@/stores/billing'
 import { useSettingsStore } from '@/stores/settings'
 import {
@@ -271,6 +272,19 @@ export default function AcropolisPage() {
           </div>
         </div>
       )}
+
+      {/* 引き換え所。
+          もともと「利用と支払い」の中にあったが、そこは支払いを済ませに行く面で、
+          配られたコードを持っている人が最初に開く場所ではない。
+          市街に来た人がそのまま引き換えられるよう、ここにも同じ入口を置く。
+          入口は2つでも、扱っているのは同じ1つの仕組み（Billing::RedeemCampaignCode）。 */}
+      <section className="mt-10">
+        <RedeemCodePanel
+          onRedeemed={() => useBillingStore.getState().fetchSummary()}
+          title="引き換え所"
+          note="配られたコードをここで引き換えられます。受け取ったぶんは残高に足されます。"
+        />
+      </section>
 
       {/* 神託の履歴 */}
       {history.length > 0 && (

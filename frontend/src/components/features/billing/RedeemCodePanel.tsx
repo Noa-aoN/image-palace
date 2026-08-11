@@ -17,7 +17,16 @@ import { CREDIT_UNIT } from '@/lib/billing'
  * 断られた理由はそのまま出す。受け取り済みなのか、期限切れなのか、
  * 打ち間違いなのかが分からないと、同じことを何度も試すことになる。
  */
-export function RedeemCodePanel({ onRedeemed }: { onRedeemed?: () => void }) {
+export function RedeemCodePanel({
+  onRedeemed,
+  title = 'コードを使う',
+  note = '受け取ったコードを入力すると、クレジットが残高に足されます。',
+}: {
+  onRedeemed?: () => void
+  /** 置く場所によって呼び名を変える（アクロポリスでは「引き換え所」） */
+  title?: string
+  note?: string
+}) {
   const [code, setCode] = useState('')
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -45,11 +54,9 @@ export function RedeemCodePanel({ onRedeemed }: { onRedeemed?: () => void }) {
     <section className="space-y-3 rounded-xl border border-border bg-card p-5">
       <div className="flex items-center gap-2">
         <Ticket size={18} style={{ color: 'var(--palace)' }} />
-        <h2 className="text-lg font-semibold">コードを使う</h2>
+        <h2 className="text-lg font-semibold">{title}</h2>
       </div>
-      <p className="text-sm text-muted-foreground">
-        受け取ったコードを入力すると、クレジットが残高に足されます。
-      </p>
+      <p className="text-sm text-muted-foreground">{note}</p>
 
       <div className="flex flex-wrap gap-2">
         <Input

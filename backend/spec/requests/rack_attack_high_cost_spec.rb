@@ -7,6 +7,23 @@ RSpec.describe "Rack::Attack throttling for high-cost endpoints", type: :request
 
   # スロットルは period 秒ごとの離散バケットでカウントするため、リクエスト列が
   # バケット境界をまたぐとカウントが分割されてフレークする。freeze_time で 1 バケットに固定する。
+  # コードは短い英数字なので、総当たりで当てられる。当てられるとクレジットが出ていく
+  describe "引き換えコードのスロットル（総当たり対策）" do
+    it "10 回を超えると 429 を返す" do
+      freeze_time do
+        11.times { post "/api/v1/campaign_codes/redeem", params: { code: "AAAAAAAA" }, headers: headers }
+      end
+      expect(response).to have_http_status(:too_many_requests)
+    end
+
+    it "打ち間違いの数回は通る" do
+      freeze_time do
+        3.times { post "/api/v1/campaign_codes/redeem", params: { code: "AAAAAAAA" }, headers: headers }
+      end
+      expect(response).not_to have_http_status(:too_many_requests)
+    end
+  end
+
   describe "意味生成のスロットル（OpenAI コスト）" do
     before { allow(GenerateMeaningService).to receive(:call) }
 
