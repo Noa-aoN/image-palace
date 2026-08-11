@@ -160,43 +160,52 @@ export async function fillItemProperties(
  */
 export const PROPERTY_PRESETS: {
   group: string
-  items: { key: string; label: string; value_type: PropertyValueType }[]
+  /** description は「何を入れる項目か」の一行。名前だけでは分からないものがある
+      （「分類」に何を書くのか、「例」は例文なのか用例なのか） */
+  items: { key: string; label: string; value_type: PropertyValueType; description: string }[]
 }[] = [
   {
     group: 'ことば',
     items: [
-      { key: 'reading', label: '読み仮名', value_type: 'text' },
-      { key: 'aliases', label: '別名・異表記', value_type: 'list' },
-      { key: 'pronunciation', label: '発音記号', value_type: 'text' },
-      { key: 'part_of_speech', label: '品詞', value_type: 'text' },
-      { key: 'derivatives', label: '派生語', value_type: 'list' },
-      { key: 'examples', label: '例', value_type: 'list' },
-      { key: 'etymology', label: '語源', value_type: 'longtext' },
+      { key: 'reading', label: '読み仮名', value_type: 'text', description: 'その語の読み。複数の読みがあれば全部。' },
+      { key: 'aliases', label: '別名・異表記', value_type: 'list', description: '同じものを指す別の呼び名や書き方。' },
+      { key: 'pronunciation', label: '発音記号', value_type: 'text', description: '発音記号（IPA など）。' },
+      { key: 'part_of_speech', label: '品詞', value_type: 'text', description: '名詞・動詞など、その語の働き。' },
+      { key: 'derivatives', label: '派生語', value_type: 'list', description: 'その語から作られた語、関係の深い語。' },
+      { key: 'examples', label: '例', value_type: 'list', description: 'その語を使った短い文や、具体的な例。' },
+      { key: 'etymology', label: '語源', value_type: 'longtext', description: 'どこから来た語か。成り立ちの説明。' },
     ],
   },
   {
     group: 'ものごと',
     items: [
-      { key: 'category', label: '分類', value_type: 'text' },
-      { key: 'formula', label: '式・公式', value_type: 'text' },
-      { key: 'year', label: '年', value_type: 'number' },
-      { key: 'date', label: '日付', value_type: 'date' },
-      { key: 'source', label: '出典', value_type: 'url' },
-      { key: 'caution', label: '注意点', value_type: 'longtext' },
+      { key: 'category', label: '分類', value_type: 'text', description: 'それが何の仲間か（動物・化合物・王朝など）。' },
+      { key: 'formula', label: '式・公式', value_type: 'text', description: '数式・化学式など、記号で書ける形。' },
+      { key: 'year', label: '年', value_type: 'number', description: '起きた年・作られた年。数字だけ。' },
+      { key: 'date', label: '日付', value_type: 'date', description: '年月日まで決まっているとき。' },
+      { key: 'source', label: '出典', value_type: 'url', description: '確かめた先の URL。' },
+      { key: 'caution', label: '注意点', value_type: 'longtext', description: '取り違えやすい点、覚え間違えやすい点。' },
     ],
   },
   {
     group: '覚えかた',
     items: [
-      { key: 'mnemonic', label: '語呂合わせ', value_type: 'longtext' },
-      { key: 'note', label: 'メモ', value_type: 'longtext' },
+      { key: 'mnemonic', label: '語呂合わせ', value_type: 'longtext', description: '思い出すための語呂・こじつけ。' },
+      { key: 'note', label: 'メモ', value_type: 'longtext', description: '自分のための覚書。決まった形はない。' },
     ],
   },
   {
     // 引いてくる項目。手で書くものとは性質が違うので群を分ける。
     // ここに無いと、型の一覧から「Wikipedia」を選ぶまで存在に気づけない
     group: '調べる',
-    items: [{ key: 'wikipedia', label: 'Wikipedia', value_type: 'wikipedia' }],
+    items: [
+      {
+        key: 'wikipedia',
+        label: 'Wikipedia',
+        value_type: 'wikipedia',
+        description: 'Wikipedia の記事の冒頭を引いてくる。手で書かず、押して取り込む。',
+      },
+    ],
   },
 ]
 

@@ -132,4 +132,37 @@ RSpec.describe Items::FillPropertiesService do
 
     expect { described_class.call(item: item, user: user) }.to raise_error(described_class::FillError)
   end
+
+  # 読みが複数ある語で一つだけ選ぶと、覚え違いの元になる。
+  # 「行」を「ぎょう」とだけ覚えると「こう」が出てこない
+  describe "正解が複数あるとき" do
+    it "一行の項目でも並べて返せる（「、」区切りをそのまま保存する）" do
+      definition = define!(key: "reading", value_type: "text")
+      stub_chat({ reading: "ぎょう、こう、あん" })
+
+      described_class.call(item: item, user: user)
+
+      expect(definition.item_properties.first.typed_value).to eq("ぎょう、こう、あん")
+    end
+
+    it "配列の項目は要素のまま保存する" do
+      definition = define!(key: "aliases", value_type: "list")
+      stub_chat({ aliases: %w[異名1 異名2] })
+
+      described_class.call(item: item, user: user)
+
+      expect(definition.item_properties.first.typed_value).to eq(%w[異名1 異名2])
+    end
+
+    it "一つに絞らないよう指示している" do
+      define!(key: "reading", value_type: "text")
+      client = stub_chat({ reading: "ぎょう" })
+
+      described_class.call(item: item, user: user)
+
+      expect(client).to have_received(:chat) do |parameters:|
+        expect(parameters[:messages].first[:content]).to include("どれか一つに絞らず全部返す")
+      end
+    end
+  end
 end

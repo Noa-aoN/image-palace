@@ -184,11 +184,12 @@ export default function ItemDetailPage() {
             Tailwind v4 の space-y-* は :where() で当たるため詳細度が 0 で、
             子に付いた mb-* に負けて効かない（mb-0 のままだと空きが消える）。
 
-            -mx-2 は、ghost ボタンの左右の余白を打ち消して文字の頭を
-            パンくずの「カード」と縦に揃えるため（揃っていないと行がずれて見える） */}
+            右端に寄せるのは、これがカードの中身ではなく、カードに対する操作だから。
+            左端に置くと見出し語と同じ列に並び、読むものと押すものが混ざる。
+            -mr-2 は ghost ボタンの右余白を打ち消して、右端を本文の縁に揃えるため */}
         <div>
           <Breadcrumb className="mb-3" items={[{ href: backHref, label: fromViewId ? (fromViewName ?? fromLabel) : 'カード' }, { label: item.title }]} />
-          <div className="-mx-2 -mb-1 flex flex-wrap items-center gap-0.5">
+          <div className="-mr-2 -mb-1 flex flex-wrap items-center justify-end gap-0.5">
             {/* このカード1枚の見え方（どのブロックを出すか・並び順）。
                 中身は ItemProperties 側が右パネルへ差し込む */}
             <Button

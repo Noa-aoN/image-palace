@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { ChevronDown, Eye, EyeOff, GripVertical, Minus, Plus, Sparkles } from 'lucide-react'
+import { ChevronDown, Eye, EyeOff, GripVertical, HelpCircle, Minus, Plus, Sparkles } from 'lucide-react'
 import {
   DndContext,
   PointerSensor,
@@ -619,11 +619,24 @@ function AddableProperties({
 
   if (candidates.length === 0) return null
 
-  const add = async (preset: { key: string; label: string; value_type: PropertyValueType }) => {
+  const add = async (preset: {
+    key: string
+    label: string
+    value_type: PropertyValueType
+    description: string
+  }) => {
     setBusy(preset.key)
     setError(null)
     try {
-      await createPropertyDefinition({ item_type_id: itemTypeId, ...preset })
+      // 説明も一緒に持たせる。作ったあと「これは何を入れる項目だったか」を
+      // 思い出せるようにしておく（一覧では ? に出る）
+      await createPropertyDefinition({
+        item_type_id: itemTypeId,
+        key: preset.key,
+        label: preset.label,
+        value_type: preset.value_type,
+        description: preset.description,
+      })
       onUpdated(await getItem(item.id))
     } catch {
       setError('足せませんでした。同じ識別名の項目が既にあるかもしれません。')
@@ -638,21 +651,38 @@ function AddableProperties({
       <p className="text-xs text-muted-foreground">
         押すと「{item.item_type?.label}」の項目として作られます（この種別のカード全部に出ます）。
       </p>
-      <div className="flex flex-wrap gap-1.5">
+      {/* 1行に1つ並べる。丸い札を折り返すと、数が増えたときに見出しの列に見えて
+          「押せるもの」に見えなくなる。上の採用済みの行と同じ形にして、
+          同じ性質のものだと分かるようにする */}
+      <ul className="space-y-1">
         {candidates.map((preset) => (
-          <button
+          <li
             key={preset.key}
-            type="button"
-            onClick={() => add(preset)}
-            disabled={busy !== null}
-            title={PROPERTY_VALUE_TYPE_LABELS[preset.value_type]}
-            className="flex items-center gap-1 rounded-full border border-dashed border-border px-2.5 py-0.5 text-xs text-muted-foreground transition-colors hover:bg-muted disabled:opacity-40"
+            className="flex items-center gap-2 rounded-lg border border-dashed border-border/70 px-3 py-1.5"
           >
-            {busy === preset.key ? <Spinner size={11} /> : <Plus size={11} />}
-            {preset.label}
-          </button>
+            <span className="min-w-0 flex-1 truncate text-xs">{preset.label}</span>
+            {/* 名前だけでは何を入れる項目か分からないものがある（「分類」「例」など）。
+                説明は常時出さずに畳む。並べたときに縦へ伸びすぎるため */}
+            <Tooltip label={preset.description}>
+              <span className="shrink-0 text-muted-foreground" aria-label={`${preset.label}の説明`}>
+                <HelpCircle size={13} />
+              </span>
+            </Tooltip>
+            <span className="shrink-0 text-[11px] text-muted-foreground">
+              {PROPERTY_VALUE_TYPE_LABELS[preset.value_type]}
+            </span>
+            <button
+              type="button"
+              onClick={() => add(preset)}
+              disabled={busy !== null}
+              className="flex shrink-0 items-center gap-1 rounded-full border border-border px-2 py-0.5 text-xs text-muted-foreground transition-colors hover:bg-muted disabled:opacity-40"
+            >
+              {busy === preset.key ? <Spinner size={11} /> : <Plus size={11} />}
+              作る
+            </button>
+          </li>
         ))}
-      </div>
+      </ul>
       {error && <p className="text-xs text-destructive">{error}</p>}
     </div>
   )
