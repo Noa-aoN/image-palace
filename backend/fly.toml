@@ -20,6 +20,15 @@ primary_region = 'nrt'
   JOB_CONCURRENCY = '1'
   # libvips の信頼できないローダ（SVG/PDF 等）を無効化する。CVE-2026-66066 緩和策
   VIPS_BLOCK_UNTRUSTED = '1'
+  # Wikipedia を引くときに名乗る連絡先。
+  #
+  # 秘密ではない。全リクエストのヘッダーに平文で載せて送るもので、隠す対象ではない。
+  # Wikimedia は誰が叩いているか分かる User-Agent を求めており、
+  # 連絡先の無いものは弾かれる。
+  #
+  # ここに書くと git に残るので、公開してよい値にすること。
+  # 個人のアドレスを使いたい場合だけ fly secrets へ移す。
+  WIKIPEDIA_CONTACT = 'https://imagepalace.app'
 
 [processes]
   app = 'bundle exec rails server -b 0.0.0.0 -p 8080'

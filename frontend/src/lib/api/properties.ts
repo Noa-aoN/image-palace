@@ -192,6 +192,12 @@ export const PROPERTY_PRESETS: {
       { key: 'note', label: 'メモ', value_type: 'longtext' },
     ],
   },
+  {
+    // 引いてくる項目。手で書くものとは性質が違うので群を分ける。
+    // ここに無いと、型の一覧から「Wikipedia」を選ぶまで存在に気づけない
+    group: '調べる',
+    items: [{ key: 'wikipedia', label: 'Wikipedia', value_type: 'wikipedia' }],
+  },
 ]
 
 /** 名前から識別名を下書きする。英字が拾えなければ空にして、利用者に決めてもらう */

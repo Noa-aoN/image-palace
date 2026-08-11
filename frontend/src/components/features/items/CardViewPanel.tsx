@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { Eye, EyeOff, GripVertical, Minus, Plus } from 'lucide-react'
+import { ChevronDown, Eye, EyeOff, GripVertical, Minus, Plus } from 'lucide-react'
 import {
   DndContext,
   PointerSensor,
@@ -319,6 +319,12 @@ function PresetBar({
   const [naming, setNaming] = useState(false)
   const [name, setName] = useState('')
   const [saving, setSaving] = useState(false)
+  // 触っているひな型（更新・削除の対象）。開いたまま次を押せると、
+  // どれに対する操作なのか分からなくなるので1つだけ持つ
+  const [editing, setEditing] = useState<string | null>(null)
+  // 消したものを1つだけ覚えておく。押し間違いは必ず起きるし、
+  // 並びを作り直すのは手間なので、その場で戻せるようにする
+  const [undo, setUndo] = useState<CardPropertyPreset | null>(null)
 
   useEffect(() => {
     getSettings()
@@ -344,6 +350,51 @@ function PresetBar({
     }
   }
 
+  // 名前は変えず、いまの並びで中身だけ入れ替える。
+  // 「覚え直す」ために消して作り直すのは、名前を打ち直す手間が要る
+  const update = async (target: CardPropertyPreset) => {
+    setSaving(true)
+    try {
+      const next = (presets ?? []).map((p) => (p.name === target.name ? { ...p, keys: current } : p))
+      const saved = await updateSettings({ card_property_presets: next })
+      setPresets(saved.card_property_presets ?? [])
+      setEditing(null)
+    } catch {
+      // 失敗しても画面は壊さない
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  const remove = async (target: CardPropertyPreset) => {
+    setSaving(true)
+    try {
+      const next = (presets ?? []).filter((p) => p.name !== target.name)
+      const saved = await updateSettings({ card_property_presets: next })
+      setPresets(saved.card_property_presets ?? [])
+      setUndo(target)
+      setEditing(null)
+    } catch {
+      // 失敗しても画面は壊さない
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  const restore = async () => {
+    if (!undo) return
+    setSaving(true)
+    try {
+      const saved = await updateSettings({ card_property_presets: [ ...(presets ?? []), undo ] })
+      setPresets(saved.card_property_presets ?? [])
+      setUndo(null)
+    } catch {
+      // 失敗しても画面は壊さない
+    } finally {
+      setSaving(false)
+    }
+  }
+
   if (presets === null) return null
 
   return (
@@ -354,18 +405,69 @@ function PresetBar({
           <span className="text-xs text-muted-foreground">まだありません</span>
         ) : (
           presets.map((preset) => (
-            <button
-              key={preset.name}
-              type="button"
-              onClick={() => onApply(preset)}
-              disabled={disabled}
-              className="rounded-full border border-border px-2.5 py-0.5 text-xs text-muted-foreground transition-colors hover:bg-muted disabled:opacity-50"
-            >
-              {preset.name}
-            </button>
+            <span key={preset.name} className="flex items-center">
+              <button
+                type="button"
+                onClick={() => onApply(preset)}
+                disabled={disabled}
+                className="rounded-l-full border border-r-0 border-border px-2.5 py-0.5 text-xs text-muted-foreground transition-colors hover:bg-muted disabled:opacity-50"
+              >
+                {preset.name}
+              </button>
+              {/* 直す口は押した先に置く。並べて出すと、当てるつもりが消すことになる */}
+              <button
+                type="button"
+                onClick={() => setEditing(editing === preset.name ? null : preset.name)}
+                disabled={disabled}
+                aria-label={`${preset.name} を直す`}
+                className="rounded-r-full border border-border px-1.5 py-0.5 text-muted-foreground transition-colors hover:bg-muted disabled:opacity-50"
+              >
+                <ChevronDown size={12} />
+              </button>
+            </span>
           ))
         )}
       </div>
+
+      {/* 直す口。当てる（上の札）とは分けて、押した1つだけに出す */}
+      {editing && (
+        <div className="flex flex-wrap items-center gap-2 rounded-lg border border-border bg-background px-2.5 py-1.5">
+          <span className="text-xs font-medium">{editing}</span>
+          <button
+            type="button"
+            onClick={() => update(presets.find((p) => p.name === editing)!)}
+            disabled={saving}
+            className="text-xs text-muted-foreground hover:text-foreground disabled:opacity-50"
+          >
+            いまの並びで更新
+          </button>
+          <button
+            type="button"
+            onClick={() => remove(presets.find((p) => p.name === editing)!)}
+            disabled={saving}
+            className="text-xs text-destructive hover:underline disabled:opacity-50"
+          >
+            削除
+          </button>
+          <button
+            type="button"
+            onClick={() => setEditing(null)}
+            className="ml-auto text-xs text-muted-foreground hover:underline"
+          >
+            閉じる
+          </button>
+        </div>
+      )}
+
+      {/* 消したものは1つだけ戻せる。押し間違いは必ず起きるし、並びを作り直すのは手間 */}
+      {undo && (
+        <div className="flex items-center gap-2 text-xs text-muted-foreground">
+          <span>「{undo.name}」を削除しました</span>
+          <button type="button" onClick={restore} disabled={saving} className="hover:underline disabled:opacity-50">
+            元に戻す
+          </button>
+        </div>
+      )}
 
       {naming ? (
         <div className="flex gap-1.5">
