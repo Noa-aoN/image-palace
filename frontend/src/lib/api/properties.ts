@@ -29,15 +29,27 @@ export const PROPERTY_VALUE_TYPE_NOTES: Partial<Record<PropertyValueType, string
   wikipedia: '見出し語で Wikipedia を引き、冒頭と記事リンクを出します',
 }
 
-/** Wikipedia の項目に入る値。記事の全文は持たない */
+/**
+ * Wikipedia の項目に入る値。記事の全文は持たない。
+ *
+ * 鍵に wikipedia_ を付けるのは、カードの項目に混ぜて置いたときに
+ * どこから来た値かが名前だけで分かるようにするため。
+ *
+ * language_code は、いま画面に選択を出していなくても必ず持つ。
+ * あとから多言語に広げるとき、保存済みの値がどの言語のものか分からないと、
+ * 全部「たぶん日本語」として扱うしかなくなる。
+ */
 export interface WikipediaValue {
-  title: string
-  url: string | null
-  extract: string | null
-  thumbnail_url: string | null
-  lang: string
+  wikipedia_page_id?: number
+  wikipedia_title: string
+  wikipedia_description?: string | null
+  wikipedia_url: string | null
+  wikipedia_extract: string | null
+  wikipedia_thumbnail_url: string | null
+  wikipedia_language_code: string
+  wikipedia_fetched_at?: string
+  /** 曖昧さ回避かどうかを画面が知るためだけの値。保存の対象ではない */
   type?: string
-  fetched_at?: string
 }
 
 export interface PropertyDefinition {

@@ -25,6 +25,7 @@ import { Spinner } from '@/components/ui/spinner'
 import { Tooltip } from '@/components/ui/tooltip'
 import {
   PROPERTY_VALUE_TYPES,
+  PROPERTY_VALUE_TYPE_NOTES,
   PROPERTY_VALUE_TYPE_LABELS,
   PROPERTY_PRESETS,
   suggestPropertyKey,
@@ -227,6 +228,11 @@ export function CardPropertiesEditor({
                 )
               })}
             </div>
+            {/* 型によっては、選んだ瞬間に何が起きるのかが名前から読み取れない。
+                「Wikipedia」は手で書く欄ではなく、引いてきた結果が入る欄なので、そう書く */}
+            {PROPERTY_VALUE_TYPE_NOTES[valueType] && (
+              <p className="text-xs text-muted-foreground">{PROPERTY_VALUE_TYPE_NOTES[valueType]}</p>
+            )}
           </div>
           <div className="flex gap-2">
             <Button

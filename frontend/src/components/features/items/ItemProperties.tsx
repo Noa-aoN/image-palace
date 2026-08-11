@@ -30,7 +30,20 @@ import {
   PROPERTY_DEFINITIONS_PANEL_KEY,
 } from '@/components/features/items/PropertyDefinitionsPanel'
 import { useRightPanelStore } from '@/stores/rightPanel'
-import { getItem, acknowledgeFactCheck } from '@/lib/api/items'
+import { useSettingsStore } from '@/stores/settings'
+import { cardDetailGridClass, useCardDetailColumns } from '@/hooks/useCardDetailColumns'
+import { getItem, acknowledgeFactCheck, updateBlockView } from '@/lib/api/items'
+import {
+  DndContext,
+  KeyboardSensor,
+  PointerSensor,
+  closestCenter,
+  useSensor,
+  useSensors,
+  type DragEndEvent,
+} from '@dnd-kit/core'
+import { SortableContext, arrayMove, rectSortingStrategy, sortableKeyboardCoordinates, useSortable } from '@dnd-kit/sortable'
+import { CSS } from '@dnd-kit/utilities'
 
 type ItemPropertiesProps = {
   item: Item
@@ -223,6 +236,9 @@ function FactCheckResult({
  * 種別は選択即保存、意味はインライン編集で保存する。
  */
 export function ItemProperties({ item, onUpdated }: ItemPropertiesProps) {
+  // 既定はアカウントの設定。この端末で選んでいればそちらが勝つ
+  const defaultColumns = useSettingsStore((s) => s.settings?.card_detail_columns) ?? 1
+  const { columns, change: changeColumns } = useCardDetailColumns(defaultColumns)
   const openSection = useRightPanelStore((s) => s.openSection)
   const [itemTypes, setItemTypes] = useState<ItemType[]>([])
   const [savingType, setSavingType] = useState(false)
@@ -671,22 +687,73 @@ export function ItemProperties({ item, onUpdated }: ItemPropertiesProps) {
   const fromPreset = item.block_view?.from_preset === true
   const presetKeys = new Set(item.block_view?.order ?? [])
   const omittedKeys = fromPreset
-    ? new Set(allBlocks.map((b) => b.key).filter((key) => !presetKeys.has(key)))
+    ? new Set(
+        allBlocks
+          .map((b) => b.key)
+          // 種別に足した項目は、ひな型を当てたカードでも必ず出す。
+          // ひな型は「作り付けのどれを出すか」を決めたもので、
+          // そのあとに定義した項目まで「持たない」に回すのは決めた覚えのない扱い。
+          // 実際、Wikipedia の項目を足しても既存のカードに出てこなかった
+          .filter((key) => !presetKeys.has(key) && !key.startsWith('prop:'))
+      )
     : new Set(item.block_view?.omitted ?? [])
   const hiddenKeys = new Set(item.block_view?.hidden ?? [])
   const adopted = allBlocks.filter((b) => !omittedKeys.has(b.key))
   const orderedBlocks = applyBlockOrder(adopted, item.block_view?.order)
+  const visibleBlocks = orderedBlocks.filter((b) => !hiddenKeys.has(b.key))
+
+  // 4px 動かすまでは並べ替えを始めない。項目の中のボタンを押すだけのつもりが
+  // 指が滑って並びまで変わる、を防ぐ（「表示」パネルと同じ決まり）
+  const blockSensors = useSensors(
+    useSensor(PointerSensor, { activationConstraint: { distance: 4 } }),
+    useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates })
+  )
+
+  const handleBlockDragEnd = async (event: DragEndEvent) => {
+    const { active, over } = event
+    if (!over || active.id === over.id) return
+
+    const from = orderedBlocks.findIndex((b) => b.key === active.id)
+    const to = orderedBlocks.findIndex((b) => b.key === over.id)
+    if (from < 0 || to < 0) return
+
+    const nextOrder = arrayMove(orderedBlocks, from, to).map((b) => b.key)
+    try {
+      onUpdated(
+        await updateBlockView(item.id, {
+          hidden: [...hiddenKeys],
+          order: nextOrder,
+          omitted: [...omittedKeys],
+        })
+      )
+    } catch {
+      // 並べ替えが保存できなくても、いま見ているものは壊さない。次に開けば元の並び
+    }
+  }
 
   return (
     <div className="space-y-3">
-      {orderedBlocks.filter((b) => !hiddenKeys.has(b.key)).map((b) => (
-        <React.Fragment key={b.key}>{b.node}</React.Fragment>
-      ))}
+      {/* 列数はこの端末で覚える。既定はアカウントの設定から来る。
+          並べ替えはここでも「表示」パネルでもできる。書き先は同じ block_view.order
+          なので、どちらで動かしても両方に効く（片方だけ古い、が起きない） */}
+      <DndContext sensors={blockSensors} collisionDetection={closestCenter} onDragEnd={handleBlockDragEnd}>
+        <SortableContext items={visibleBlocks.map((b) => b.key)} strategy={rectSortingStrategy}>
+          <div className={cardDetailGridClass(columns)}>
+            {visibleBlocks.map((b) => (
+              <SortableBlock key={b.key} id={b.key}>
+                {b.node}
+              </SortableBlock>
+            ))}
+          </div>
+        </SortableContext>
+      </DndContext>
 
       {/* この1枚だけの見え方。種別ぜんぶに効く「項目の設定」とは分けてある */}
       <CardViewPanel
         item={item}
         blocks={orderedBlocks.map(({ key, label }) => ({ key, label }))}
+        columns={columns}
+        onColumnsChange={changeColumns}
         omitted={allBlocks.filter((b) => omittedKeys.has(b.key)).map(({ key, label }) => ({ key, label }))}
         onUpdated={onUpdated}
       />
@@ -696,6 +763,28 @@ export function ItemProperties({ item, onUpdated }: ItemPropertiesProps) {
         itemType={item.item_type}
         onChanged={async () => onUpdated(await getItem(item.id))}
       />
+    </div>
+  )
+}
+
+/**
+ * 並べ替えられる項目の器。
+ *
+ * つまみは出さない。項目そのものを掴んで動かせるほうが早く、
+ * つまみを置くと項目ごとに余白が要る。中のボタンを押すだけのときは、
+ * 4px 動かすまで並べ替えが始まらないので邪魔にならない。
+ */
+function SortableBlock({ id, children }: { id: string; children: React.ReactNode }) {
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id })
+
+  return (
+    <div
+      ref={setNodeRef}
+      style={{ transform: CSS.Transform.toString(transform), transition, opacity: isDragging ? 0.6 : 1 }}
+      {...attributes}
+      {...listeners}
+    >
+      {children}
     </div>
   )
 }

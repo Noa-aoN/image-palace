@@ -55,9 +55,14 @@ export function CardViewPanel({
   item,
   blocks,
   omitted,
+  columns,
+  onColumnsChange,
   onUpdated,
 }: {
   item: Item
+  /** いまの列数（この端末で覚える） */
+  columns: number
+  onColumnsChange: (next: number) => void
   /** ＋ の段（並べ替え適用後） */
   blocks: CardBlock[]
   /** − の段（このカードでは持たない項目） */
@@ -125,13 +130,30 @@ export function CardViewPanel({
   return (
     <PanelSlotContent sectionKey={CARD_VIEW_PANEL_KEY}>
       <div className="space-y-3">
-        <p className="text-xs leading-relaxed text-muted-foreground">
-          このカード1枚だけの見え方です。<strong className="text-foreground">＋</strong> は持つ項目、
-          <strong className="text-foreground">−</strong> は持たない項目。
-          どちらに置いても中身は消えません。
-          <br />
-          項目そのものを増やすのは「項目の設定」です（そちらは種別ぜんぶに効きます）。
-        </p>
+        {/* 説明は置かない。＋ と − の段に見出しが付いていて、押せば結果が見える。
+            開くたびに同じ文を読ませるほうが、面積も注意も食う */}
+
+        {/* 列数はこの端末で覚える。項目の少ないカードは1列、多いカードは2列、と
+            カードによって変えたくなる。既定は環境設定（アカウント）に持つ */}
+        <div className="space-y-1.5">
+          <p className="text-xs font-medium">列の数</p>
+          <div className="flex gap-1.5">
+            {[ 1, 2, 3 ].map((count) => (
+              <button
+                key={count}
+                type="button"
+                onClick={() => onColumnsChange(count)}
+                className={`rounded-lg border px-3 py-1 text-sm transition-colors ${
+                  columns === count
+                    ? 'border-[var(--palace)] text-[var(--palace)]'
+                    : 'border-border text-muted-foreground hover:text-foreground'
+                }`}
+              >
+                {count}
+              </button>
+            ))}
+          </div>
+        </div>
 
         <PresetBar current={order} onApply={applyPreset} disabled={busy} />
 

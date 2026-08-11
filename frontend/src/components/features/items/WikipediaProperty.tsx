@@ -22,12 +22,15 @@ import type { WikipediaValue } from '@/lib/api/properties'
 export function WikipediaProperty({
   value,
   term,
+  languageCode,
   onSaved,
   editable,
 }: {
   value: WikipediaValue | null
   /** 引く語。既定は見出し語 */
   term: string
+  /** 引く言語。渡さなければサーバーが決める（利用者の表示言語 → ブラウザ → ja） */
+  languageCode?: string
   onSaved: (next: WikipediaValue) => void
   editable: boolean
 }) {
@@ -38,7 +41,7 @@ export function WikipediaProperty({
     setBusy(true)
     setMessage(null)
     try {
-      const result = await fetchWikipediaSummary(term)
+      const result = await fetchWikipediaSummary(term, languageCode)
       if (!result.found) {
         // 引けないのは異常ではない。カードの読み書きは止めない
         setMessage(result.message ?? 'いま引けませんでした')
@@ -75,27 +78,34 @@ export function WikipediaProperty({
   return (
     <div className="space-y-2">
       <div className="flex gap-3">
-        {value.thumbnail_url && (
+        {value.wikipedia_thumbnail_url && (
           // eslint-disable-next-line @next/next/no-img-element -- Wikimedia の画像。こちらに保存しない
           <img
-            src={value.thumbnail_url}
+            src={value.wikipedia_thumbnail_url}
             alt=""
             className="h-16 w-16 shrink-0 rounded-lg border border-border object-cover"
           />
         )}
         <div className="min-w-0 space-y-1">
-          <p className="text-sm font-medium">{value.title}</p>
-          {value.extract && (
-            <p className="whitespace-pre-wrap text-sm leading-relaxed text-foreground">{value.extract}</p>
+          <p className="text-sm font-medium">
+            {value.wikipedia_title}
+            {value.wikipedia_description && (
+              <span className="ml-2 text-xs font-normal text-muted-foreground">
+                {value.wikipedia_description}
+              </span>
+            )}
+          </p>
+          {value.wikipedia_extract && (
+            <p className="whitespace-pre-wrap text-sm leading-relaxed text-foreground">{value.wikipedia_extract}</p>
           )}
         </div>
       </div>
 
       {/* 出どころとライセンス。CC BY-SA なので、これが読めない形で出さない */}
       <p className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-muted-foreground">
-        {value.url && (
+        {value.wikipedia_url && (
           <a
-            href={value.url}
+            href={value.wikipedia_url}
             target="_blank"
             rel="noopener noreferrer"
             className="flex items-center gap-1 underline-offset-2 hover:underline"

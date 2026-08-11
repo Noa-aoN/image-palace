@@ -14,7 +14,6 @@ module Wikipedia
   # **落ちても壊さない。** ここで例外を投げると、カードを開くことも直すこともできなくなる。
   # 引けなかったときは nil を返し、呼び出し側は保存済みの値か「いま引けません」を出す。
   class SummaryFetcher
-    BASE_URL = "https://ja.wikipedia.org"
     SUMMARY_PATH = "/api/rest_v1/page/summary/"
 
     # 保存する冒頭の長さ。これ以上は記事へ渡す（長文は保存しない方針）
@@ -35,25 +34,38 @@ module Wikipedia
       "ImagePalace/1.0 (#{contact})"
     end
 
-    Result = Struct.new(:title, :url, :extract, :thumbnail_url, :lang, :type, :fetched_at, keyword_init: true) do
+    # 保存する形。鍵に wikipedia_ を付けるのは、カードの項目に混ぜて置いたときに
+    # どこから来た値かが名前だけで分かるようにするため
+    Result = Struct.new(
+      :page_id, :title, :description, :url, :extract, :thumbnail_url, :language_code, :type, :fetched_at,
+      keyword_init: true
+    ) do
       # 曖昧さ回避のページ。中身は一覧なので、そのまま出しても意味が取れない
       def disambiguation? = type == "disambiguation"
 
       def to_h
         {
-          "title" => title, "url" => url, "extract" => extract,
-          "thumbnail_url" => thumbnail_url, "lang" => lang,
-          "type" => type, "fetched_at" => fetched_at&.iso8601
+          "wikipedia_page_id" => page_id,
+          "wikipedia_title" => title,
+          "wikipedia_description" => description,
+          "wikipedia_url" => url,
+          "wikipedia_extract" => extract,
+          "wikipedia_thumbnail_url" => thumbnail_url,
+          "wikipedia_language_code" => language_code,
+          "wikipedia_fetched_at" => fetched_at&.iso8601,
+          # 種別は保存の対象ではないが、曖昧さ回避かどうかを画面が知るために返す
+          "type" => type
         }.compact
       end
     end
 
-    def self.call(term)
-      new(term).call
+    def self.call(term, language_code: nil)
+      new(term, language_code: language_code).call
     end
 
-    def initialize(term)
+    def initialize(term, language_code: nil)
       @term = term.to_s.strip
+      @language_code = Language.normalize(language_code) || Language::DEFAULT
     end
 
     def call
@@ -70,9 +82,11 @@ module Wikipedia
 
     private
 
-    # 語ごとに1つ。大文字小文字と前後の空白だけ揃える（記事名の正規化は Wikipedia 側に任せる）
+    # 語と言語ごとに1つ。大文字小文字と前後の空白だけ揃える
+    # （記事名の正規化は Wikipedia 側に任せる）。
+    # 言語を鍵に混ぜないと、日本語版で引いた値が英語版の求めに返ってしまう
     def cache_key
-      "wikipedia:summary:ja:#{Digest::SHA256.hexdigest(@term.downcase)}"
+      "wikipedia:summary:#{@language_code}:#{Digest::SHA256.hexdigest(@term.downcase)}"
     end
 
     def fetch
@@ -92,19 +106,23 @@ module Wikipedia
       return nil if body["title"].blank?
 
       Result.new(
+        # 記事の id。題名が変わっても同じ記事を辿れる
+        page_id: body["pageid"],
         title: body["title"],
+        # 一行の肩書き（「マケドニア王国の国王」など）。冒頭より短く、一覧向き
+        description: body["description"],
         url: body.dig("content_urls", "desktop", "page"),
         extract: body["extract"].to_s.strip.first(MAX_EXTRACT_LENGTH).presence,
         # 画像は URL だけ持つ。ファイルは保存しない（記事本文とは別のライセンスが付くため）
         thumbnail_url: body.dig("thumbnail", "source"),
-        lang: "ja",
+        language_code: @language_code,
         type: body["type"],
         fetched_at: Time.current
       )
     end
 
     def connection
-      @connection ||= Faraday.new(url: BASE_URL) do |f|
+      @connection ||= Faraday.new(url: Language.base_url(@language_code)) do |f|
         f.response :json
         f.response :raise_error
         f.options.open_timeout = OPEN_TIMEOUT

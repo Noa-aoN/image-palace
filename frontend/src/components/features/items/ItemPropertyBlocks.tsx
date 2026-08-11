@@ -348,7 +348,7 @@ function parseWikipedia(raw: string): WikipediaValue | null {
   if (!raw) return null
   try {
     const parsed = JSON.parse(raw) as WikipediaValue
-    return parsed && typeof parsed.title === 'string' ? parsed : null
+    return parsed && typeof parsed.wikipedia_title === 'string' ? parsed : null
   } catch {
     return null
   }

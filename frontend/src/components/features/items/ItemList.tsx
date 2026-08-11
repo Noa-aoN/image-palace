@@ -3,11 +3,12 @@
 import { startTransition, useEffect, useEffectEvent, useRef, useState, useCallback, type ReactNode } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
-import { ChevronLeft, ChevronRight, Search, X, Trash2, Check, CircleCheck, Circle, Tag as TagIcon, ShieldCheck, FileText, ChevronDown, Image as ImageIcon } from 'lucide-react'
+import { ChevronLeft, ChevronRight, Search, X, Trash2, Check, CircleCheck, Circle, Tag as TagIcon, Pin, ShieldCheck, FileText, ChevronDown, Image as ImageIcon } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import {
   DropdownMenu,
   DropdownMenuContent,
+  DropdownMenuGroup,
   DropdownMenuItem,
   DropdownMenuLabel,
   DropdownMenuSeparator,
@@ -347,6 +348,10 @@ export function ItemList({ initialTag = null }: { initialTag?: string | null }) 
   const [loading, setLoading] = useState(() => useItemsStore.getState().items.length === 0)
   const [error, setError] = useState<string | null>(null)
   const [tags, setTags] = useState<Tag[]>([])
+  // タグを引き終えたか。引き終える前は「タグが無い」と区別が付かないので、
+  // これを見て場所だけ先に空けておく（あとから現れると行が組み替わる）
+  const [tagsLoaded, setTagsLoaded] = useState(false)
+  const [tagQuery, setTagQuery] = useState('')
   // タグは複数選べる。選ぶほど狭くなる（サーバー側はすべてを持つものだけを返す）
   const [activeTags, setActiveTags] = useState<string[]>(initialTag ? [ initialTag ] : [])
   const [sortKey, setSortKey] = useState('created_at:desc')
@@ -594,6 +599,9 @@ export function ItemList({ initialTag = null }: { initialTag?: string | null }) 
         if (!cancelled) setTags(data)
       })
       .catch(() => {})
+      .finally(() => {
+        if (!cancelled) setTagsLoaded(true)
+      })
     return () => {
       cancelled = true
     }
@@ -624,6 +632,21 @@ export function ItemList({ initialTag = null }: { initialTag?: string | null }) 
       requestInFlightRef.current = false
     }
   })
+
+  // 留めたものを上に。タグ一覧で留めた並びを、絞り込みでも同じ扱いにする
+  // （片方だけ並びが違うと、留めた意味が半分になる）
+  const tagGroups = (() => {
+    const keyword = tagQuery.trim().toLowerCase()
+    const matched = keyword ? tags.filter((t) => t.name.toLowerCase().includes(keyword)) : tags
+    const pinned = matched.filter((t) => t.pinned)
+    const rest = matched.filter((t) => !t.pinned)
+
+    return [
+      { key: 'pinned', label: '留めたタグ', rows: pinned },
+      // 留めたものが無ければ見出しも出さない（1つしか無い群に見出しは要らない）
+      { key: 'rest', label: pinned.length > 0 ? 'そのほか' : null, rows: rest },
+    ].filter((group) => group.rows.length > 0)
+  })()
 
   const toggleTag = (tagId: string) => {
     setLoading(true)
@@ -694,18 +717,26 @@ export function ItemList({ initialTag = null }: { initialTag?: string | null }) 
     }
   }
 
-  const chipBase = 'rounded-full px-3 py-1 text-sm whitespace-nowrap transition-colors border'
   // タグの絞り込みは、検索や種別と同じ「絞り込み操作群」として1行に収める。
   // タグだけ大きな帯にすると、並んでいるカードを見る面積が毎回削られる。
   // 中身は右パネルで開き、選んでいるものだけを一覧の上に札で残す。
+  // 引き終える前から場所を取っておく。
+  //
+  // 「タグがあれば出す」だけにすると、タグを引き終えた瞬間にボタンが現れ、
+  // 隣の検索欄（flex-1）が縮んで行が組み替わる。読み込みの間だけ画面が動くのは、
+  // 押そうとしたものが動くということなので、押し間違いのもとになる。
+  //
+  // 引き終えて1件も無ければ、そこで初めて畳む（それ以上は動かない）。
   const tagFilterButton =
-    tags.length > 0 ? (
+    !tagsLoaded || tags.length > 0 ? (
       <Button
         variant="outline"
-        size="sm"
         onClick={() => tagPanel.open()}
         aria-expanded={tagPanel.isOpen}
-        className="shrink-0"
+        disabled={!tagsLoaded}
+        // 検索欄・プルダウンと同じ高さ（h-9）に揃える。
+        // 1つだけ背が違うと、同じ絞り込みの操作なのに別のものに見える
+        className="h-9 shrink-0 px-3 text-sm"
       >
         <TagIcon size={14} className="mr-1" />
         タグで絞り込む{activeTags.length > 0 && `（${activeTags.length}）`}
@@ -715,8 +746,20 @@ export function ItemList({ initialTag = null }: { initialTag?: string | null }) 
   const tagPanelContent = (
     <PanelSlotContent sectionKey={TAG_FILTER_PANEL_KEY}>
       <div className="space-y-3">
+        {/* 探す窓を一番上に置く。タグが増えると、目で追うより打ったほうが早い */}
+        <div className="relative">
+          <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
+          <input
+            value={tagQuery}
+            onChange={(e) => setTagQuery(e.target.value)}
+            placeholder="タグを探す"
+            aria-label="タグを探す"
+            className="h-9 w-full rounded-lg border border-input bg-background pl-8 pr-3 text-sm placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+          />
+        </div>
+
         <div className="flex items-baseline justify-between gap-3">
-          <p className="text-sm text-muted-foreground">
+          <p className="text-xs text-muted-foreground">
             選ぶほど狭くなります。選んだタグをすべて持つカードだけが残ります。
           </p>
           {activeTags.length > 0 && (
@@ -725,26 +768,53 @@ export function ItemList({ initialTag = null }: { initialTag?: string | null }) 
             </button>
           )}
         </div>
-        <div className="flex flex-wrap gap-1.5">
-          {tags.map((tag) => {
-            const active = activeTags.includes(tag.id)
-            return (
-              <button
-                key={tag.id}
-                type="button"
-                onClick={() => toggleTag(tag.id)}
-                className={
-                  active
-                    ? `${chipBase} border-transparent text-white`
-                    : `${chipBase} border-border text-muted-foreground hover:bg-muted`
-                }
-                style={active ? { backgroundColor: 'var(--palace)' } : undefined}
-              >
-                {tag.name}（{tag.item_count}）
-              </button>
-            )
-          })}
-        </div>
+
+        {/* 札を流し込むのではなく、1行1件で並べる。
+            札だと名前の長さで行がばらけ、数も右端に揃わないので、
+            「どれが多いか」を目で比べられない。
+            留めたものは上にまとめる（タグ一覧で留めた並びと同じ扱いにする） */}
+        {tagGroups.map((group) => (
+          <div key={group.key} className="space-y-1">
+            {group.label && (
+              <p className="flex items-center gap-1 text-xs font-medium text-muted-foreground">
+                {group.key === 'pinned' && <Pin size={11} style={{ color: 'var(--palace)' }} />}
+                {group.label}
+              </p>
+            )}
+            <ul className="divide-y divide-border border-y border-border">
+              {group.rows.map((tag) => {
+                const active = activeTags.includes(tag.id)
+                return (
+                  <li key={tag.id}>
+                    <button
+                      type="button"
+                      onClick={() => toggleTag(tag.id)}
+                      aria-pressed={active}
+                      className="flex w-full items-center gap-2 px-1 py-1.5 text-left text-sm transition-colors hover:bg-muted/60"
+                    >
+                      <span
+                        className={`flex h-4 w-4 shrink-0 items-center justify-center rounded border ${
+                          active ? 'border-transparent' : 'border-border'
+                        }`}
+                        style={active ? { backgroundColor: 'var(--palace)' } : undefined}
+                      >
+                        {active && <Check size={11} className="text-white" />}
+                      </span>
+                      <span className="min-w-0 flex-1 truncate">{tag.name}</span>
+                      <span className="shrink-0 tabular-nums text-xs text-muted-foreground">{tag.item_count}</span>
+                    </button>
+                  </li>
+                )
+              })}
+            </ul>
+          </div>
+        ))}
+
+        {tagGroups.length === 0 && (
+          <p className="py-4 text-sm text-muted-foreground">
+            {tagQuery ? '見つかりませんでした。' : 'まだタグがありません。'}
+          </p>
+        )}
       </div>
     </PanelSlotContent>
   )
@@ -777,7 +847,7 @@ export function ItemList({ initialTag = null }: { initialTag?: string | null }) 
     ) : null
 
   const searchBox = (
-    <div className="relative min-w-[200px] flex-1">
+    <div className="relative min-w-[200px] flex-1 basis-64">
       <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
       <input
         value={query}
@@ -1009,10 +1079,14 @@ export function ItemList({ initialTag = null }: { initialTag?: string | null }) 
               </DropdownMenuItem>
             </BulkMenu>
 
-            <Button variant="outline" size="sm" onClick={handleFactCheck} disabled={bulkBusy || selectedIds.size === 0}
-              className="flex shrink-0 items-center gap-1.5" title="説明が事実として正しいかAIでチェックし、訂正案を出します">
-              <ShieldCheck size={14} />説明のAIチェック
-            </Button>
+            {/* 他の一括操作（タグ・説明・画像）と同じ形にする。
+                チェックの対象はこれから増えるので、最初からメニューにしておく */}
+            <BulkMenu label="AIチェック" icon={<ShieldCheck size={14} />} disabled={bulkBusy || selectedIds.size === 0}>
+              <DropdownMenuLabel>選択 {selectedIds.size} 件をチェック</DropdownMenuLabel>
+              <DropdownMenuItem onSelect={handleFactCheck}>
+                意味・説明が正しいか
+              </DropdownMenuItem>
+            </BulkMenu>
             <span className="mx-1 h-5 w-px shrink-0 bg-border" aria-hidden />
             <Button
               variant={confirmBulkDelete ? 'destructive' : 'outline'}
@@ -1187,7 +1261,10 @@ function BulkMenu({
         <ChevronDown size={13} className="text-muted-foreground" />
       </DropdownMenuTrigger>
       <DropdownMenuContent align="start" className="w-56">
-        {children}
+        {/* 見出し（DropdownMenuLabel）は群の中でしか使えない。
+            包まずに置くと Base UI が MenuGroupContext を見つけられず落ちる。
+            中身は必ずここに包む */}
+        <DropdownMenuGroup>{children}</DropdownMenuGroup>
       </DropdownMenuContent>
     </DropdownMenu>
   )

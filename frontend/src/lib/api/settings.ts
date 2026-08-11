@@ -20,6 +20,7 @@ export async function updateSettings(
       | 'regenerate_with_meaning'
       | 'image_safeguard'
       | 'card_headline_key'
+      | 'card_detail_columns'
       | 'palace_name'
       | 'card_property_presets'
       | 'card_list_fields'

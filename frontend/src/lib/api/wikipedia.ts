@@ -12,10 +12,17 @@ import type { WikipediaValue } from './properties'
  * こちらの不具合ではないので、画面を壊さずに伝える。
  */
 export type WikipediaLookup =
-  | { found: true; summary: WikipediaValue; disambiguation: boolean }
-  | { found: false; message: string }
+  | { found: true; summary: WikipediaValue; language_code: string; disambiguation: boolean }
+  | { found: false; language_code: string; message: string }
 
-export async function fetchWikipediaSummary(term: string): Promise<WikipediaLookup> {
-  const res = await apiClient.get<WikipediaLookup>('/api/v1/wikipedia/summary', { params: { q: term } })
+/**
+ * languageCode を渡さなければ、サーバーが
+ * 「利用者の表示言語 → ブラウザの言語 → ja」の順に決める。
+ * いまは画面に選択を出していないが、渡せる形にはしておく。
+ */
+export async function fetchWikipediaSummary(term: string, languageCode?: string): Promise<WikipediaLookup> {
+  const res = await apiClient.get<WikipediaLookup>('/api/v1/wikipedia/summary', {
+    params: { q: term, ...(languageCode ? { language_code: languageCode } : {}) },
+  })
   return res.data
 }
