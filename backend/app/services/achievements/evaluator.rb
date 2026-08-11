@@ -30,14 +30,35 @@ module Achievements
 
     private
 
+    # 同じ数を、1回の評価のあいだに何度も数え直さない。
+    #
+    # 条件の種類は8つしかないのに、定義は何十個もある。素直に書くと
+    # 「作ったカードの枚数」を定義の数だけ数えることになる。DB は隣の部屋に無いので
+    # （nrt から Neon まで片道70ms）、数え直しがそのまま待ち時間になる。
+    # 実測では評価ひと回りで 144 本・約17秒かかっていた。
+    #
+    # 評価のあいだに数が変わることはある（別の窓でカードを作るなど）が、
+    # 次に開いたときに拾える。冪等なので取りこぼしにはならない
+    def count_for(type)
+      @counts ||= {}
+      @counts.fetch(type.to_s) { |k| @counts[k] = Conditions.value_for(k, @user) }
+    end
+
+    # 期間で切った数も同じ。「今日ぶん」は種類と起点が同じなら同じ数
+    def period_count_for(type, since)
+      @period_counts ||= {}
+      @period_counts.fetch([ type.to_s, since ]) { |k| @period_counts[k] = PeriodCounts.value_for(type, @user, since) }
+    end
+
     def evaluate_achievements(result)
-      AchievementDefinition.registry.each do |definition|
-        next unless definition.available?(@now)
+      definitions = AchievementDefinition.registry.select { |d| d.available?(@now) }
+      states = achievement_states(definitions)
 
-        state = UserAchievement.find_or_create_by!(user: @user, achievement_definition: definition)
-        next if state.completed? # 一度達成したものは触らない
+      definitions.each do |definition|
+        state = states[definition.id]
+        next if state.nil? || state.completed? # 一度達成したものは触らない
 
-        value = Conditions.value_for(definition.condition_type, @user)
+        value = count_for(definition.condition_type)
         completed = value >= definition.condition_target
         state.update!(progress: value, completed_at: completed ? @now : nil)
         next unless completed
@@ -56,6 +77,47 @@ module Achievements
       nil
     end
 
+    # その人の実績の行を、まとめて読む（無ければまとめて作る）。
+    #
+    # 定義ごとに find_or_create_by! を呼ぶと、達成済みで何もしない実績にも
+    # 1往復かかる。行は必ず作る（進み具合を持つのは行のほう）ので、
+    # 「読んで、足りないぶんだけ作って、もう一度読む」の3往復で済ませる
+    def achievement_states(definitions)
+      existing = UserAchievement.where(user_id: @user.id, achievement_definition_id: definitions.map(&:id))
+                                .index_by(&:achievement_definition_id)
+      missing = definitions.reject { |d| existing.key?(d.id) }
+      return existing if missing.empty?
+
+      UserAchievement.insert_all(
+        missing.map do |d|
+          { user_id: @user.id, achievement_definition_id: d.id, progress: 0,
+            created_at: @now, updated_at: @now }
+        end,
+        unique_by: %i[user_id achievement_definition_id]
+      )
+      UserAchievement.where(user_id: @user.id, achievement_definition_id: definitions.map(&:id))
+                     .index_by(&:achievement_definition_id)
+    end
+
+    # ミッションも同じ。ただし期間ごとに行が分かれるので、鍵は定義と期間の組
+    def mission_states(pairs)
+      keys = pairs.map(&:first).map(&:id)
+      existing = UserMission.where(user_id: @user.id, mission_definition_id: keys)
+                            .index_by { |m| [ m.mission_definition_id, m.period_key ] }
+      missing = pairs.reject { |d, period| existing.key?([ d.id, period ]) }
+      return existing if missing.empty?
+
+      UserMission.insert_all(
+        missing.map do |d, period|
+          { user_id: @user.id, mission_definition_id: d.id, period_key: period, progress: 0,
+            created_at: @now, updated_at: @now }
+        end,
+        unique_by: %i[user_id mission_definition_id period_key]
+      )
+      UserMission.where(user_id: @user.id, mission_definition_id: keys)
+                 .index_by { |m| [ m.mission_definition_id, m.period_key ] }
+    end
+
     def evaluate_missions(result)
       definitions = MissionDefinition.registry.select { |d| d.available?(@now) }
       # シリーズは段の順に見る。前の段が済むまで、次の段は開かない。
@@ -63,13 +125,16 @@ module Achievements
       definitions = definitions.sort_by { |d| [ d.mission_series_id.to_s, d.series_step, d.position ] }
       opened = completed_steps(definitions)
 
+      # 開いている段だけ行を作る。開いていない段まで作ると「挑戦中」として数えられる。
+      # ただし、この回で段が開くこともあるので、開いた先の行はその場で作る
+      states = mission_states(definitions.select { |d| open?(d, opened) }.map { |d| [ d, d.period_key(@now) ] })
+
       definitions.each do |definition|
         next unless open?(definition, opened)
 
         period = definition.period_key(@now)
-        state = UserMission.find_or_create_by!(
-          user: @user, mission_definition: definition, period_key: period
-        )
+        state = states[[ definition.id, period ]] ||
+                UserMission.find_or_create_by!(user: @user, mission_definition: definition, period_key: period)
         next if state.completed?
 
         value = mission_value(definition)
@@ -116,9 +181,9 @@ module Achievements
     # 通算の数で判定すると、既に条件を満たしている人は初日に全部達成してしまう
     def mission_value(definition)
       since = definition.counted_since(@now)
-      return Conditions.value_for(definition.condition_type, @user) if since.nil?
+      return count_for(definition.condition_type) if since.nil?
 
-      PeriodCounts.value_for(definition.condition_type, @user, since)
+      period_count_for(definition.condition_type, since)
     end
 
     def notify_achievement(definition)
