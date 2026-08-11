@@ -87,4 +87,75 @@ RSpec.describe "Wikipedia の引き当て", type: :request do
 
     expect(response).to have_http_status(:unauthorized)
   end
+
+  describe "GET /api/v1/wikipedia/search" do
+    def stub_search(candidates)
+      allow(Wikipedia::CandidateSearch).to receive(:call).and_return(
+        Wikipedia::CandidateSearch::Result.new(
+          candidates: candidates.map { |c| Wikipedia::CandidateSearch::Candidate.new(**c) },
+          language_code: "en"
+        )
+      )
+    end
+
+    it "題・説明文・画像を返す" do
+      stub_search([
+        { title: "Mycenaean Greece", description: "Late Bronze Age Greek civilization",
+          thumbnail_url: "https://upload.wikimedia.org/t.jpg" }
+      ])
+
+      get "/api/v1/wikipedia/search", params: { q: "Mycenaean Greece", language_code: "en" }, headers: headers
+
+      expect(response).to have_http_status(:ok)
+      first = response.parsed_body["candidates"].first
+      expect(first["title"]).to eq("Mycenaean Greece")
+      expect(first["description"]).to eq("Late Bronze Age Greek civilization")
+      expect(first["thumbnail_url"]).to eq("https://upload.wikimedia.org/t.jpg")
+      expect(response.parsed_body["language_code"]).to eq("en")
+    end
+
+    # 一番上を勝手に採ると、同名の別人・別作品が黙って card に入る
+    it "候補を返すだけで、カードには何も保存しない" do
+      stub_search([ { title: "Mycenaean Greece", description: "x", thumbnail_url: nil } ])
+
+      expect { get "/api/v1/wikipedia/search", params: { q: "Mycenaean" }, headers: headers }
+        .not_to change(ItemProperty, :count)
+    end
+
+    it "語をかすっていれば weak にしない" do
+      stub_search([ { title: "Mycenaean Greece", description: "x", thumbnail_url: nil } ])
+
+      get "/api/v1/wikipedia/search", params: { q: "Mycenaean", language_code: "en" }, headers: headers
+
+      expect(response.parsed_body["weak"]).to be(false)
+      expect(response.parsed_body["message"]).to be_nil
+    end
+
+    # 候補は消さない。表記が違うだけの正解を捨てないため
+    it "どれも語を含まなければ、候補は出しつつ言い直しを勧める" do
+      stub_search([ { title: "全然ちがう記事", description: "x", thumbnail_url: nil } ])
+
+      get "/api/v1/wikipedia/search", params: { q: "光合成" }, headers: headers
+
+      expect(response.parsed_body["weak"]).to be(true)
+      expect(response.parsed_body["candidates"].size).to eq(1)
+      expect(response.parsed_body["message"]).to include("より具体的な語")
+    end
+
+    it "候補が無ければ、別の語を勧める" do
+      stub_search([])
+
+      get "/api/v1/wikipedia/search", params: { q: "存在しない語" }, headers: headers
+
+      expect(response.parsed_body["weak"]).to be(true)
+      expect(response.parsed_body["candidates"]).to eq([])
+      expect(response.parsed_body["message"]).to include("別の語")
+    end
+
+    it "認証が要る" do
+      get "/api/v1/wikipedia/search", params: { q: "何か" }
+
+      expect(response).to have_http_status(:unauthorized)
+    end
+  end
 end

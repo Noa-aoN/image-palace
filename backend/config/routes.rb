@@ -131,6 +131,8 @@ Rails.application.routes.draw do
       # 引き換えコードの受け取り
       # Wikipedia の要約。フロントから直接叩かず、ここを通す
       get "wikipedia/summary", to: "wikipedia#summary"
+      # 題が一致しなかったときの候補。選ぶのは利用者なので、ここでは保存しない
+      get "wikipedia/search", to: "wikipedia#search"
       get "campaign_codes", to: "campaign_codes#index"
       post "campaign_codes/redeem", to: "campaign_codes#redeem"
       # アチーブメント（栄誉の間）

@@ -25,7 +25,32 @@ module Api
         }, status: :ok
       end
 
+      # 題が一致しなかったときに、近い記事を並べる。
+      #
+      # **ここでは保存しない。** 返すのは候補だけで、画面が1件を選んだあと
+      # 改めて summary を引いて保存する。一番上を勝手に採ると、同名の別人・
+      # 別作品が黙って card に入る。
+      def search
+        result = ::Wikipedia::CandidateSearch.call(params[:q], language_code: language_code)
+        weak = result.weak?(params[:q])
+
+        render json: {
+          candidates: result.candidates.map(&:to_h),
+          language_code: result.language_code,
+          weak: weak,
+          message: weak_message(result)
+        }, status: :ok
+      end
+
       private
+
+      # 「弱い」ことを隠さない。候補は出したうえで、言い直しを勧める
+      def weak_message(result)
+        return "見つかりませんでした。別の語で試してください。" if result.candidates.empty?
+        return nil unless result.weak?(params[:q])
+
+        "近い記事が見つかりませんでした。より具体的な語で検索してください。"
+      end
 
       # どの言語版を引くか。上から順に見て、最初に引ける言語を使う。
       #
