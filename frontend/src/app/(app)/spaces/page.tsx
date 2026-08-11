@@ -3,16 +3,22 @@
 import { Suspense, useEffect, useState } from 'react'
 import Link from 'next/link'
 import { useSearchParams } from 'next/navigation'
-import { Plus, Route, DoorOpen, Frame } from 'lucide-react'
+import { CircleCheck, Plus, Route, DoorOpen, Frame } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { readPageCache, writePageCache } from '@/lib/page-cache'
 import { PanelSlotContent } from '@/components/features/panel/PanelSlot'
 import { usePanelForm } from '@/components/features/panel/usePanelForm'
 import { CardGridSkeleton } from '@/components/ui/skeleton'
-import { getSpaces } from '@/lib/api/spaces'
+import { cardGridClass } from '@/lib/card-grid'
+import { deleteSpace, getSpaces } from '@/lib/api/spaces'
 import { spaceTypeLabel } from '@/lib/space-types'
 import { CreateSpaceForm } from '@/components/features/spaces/CreateSpaceForm'
 import { EntityCover } from '@/components/features/shared/EntityCover'
+import { EntityDisplayPanel } from '@/components/features/shared/EntityDisplayPanel'
+import { EntitySelectionBar } from '@/components/features/shared/EntitySelectionBar'
+import { EntityTile } from '@/components/features/shared/EntityTile'
+import { sortEntities, useEntityListDisplay } from '@/hooks/useEntityListDisplay'
+import { useEntitySelection } from '@/hooks/useEntitySelection'
 import type { Space } from '@/types/space'
 
 // カバー画像が無いスペースのフォールバック（ルーム=部屋 / ロード=道アイコン）
@@ -42,6 +48,8 @@ function SpacesPageInner() {
   const [loading, setLoading] = useState(!cached)
   const [error, setError] = useState<string | null>(null)
 
+  const { display, change } = useEntityListDisplay('spaces')
+
   // 画面の内容をそのままキャッシュへ写す。作成・削除で state を触った結果も
   // ここを通るので、キャッシュだけ古いという食い違いが起きない。
   useEffect(() => {
@@ -70,6 +78,32 @@ function SpacesPageInner() {
   }, [])
 
   const visibleSpaces = typeFilter ? spaces.filter((s) => s.space_type === typeFilter) : spaces
+  // スペースは一覧の時点で中身の数を持たないので、並べ替えは「新しい順 / 名前順」だけ
+  const rows = sortEntities(visibleSpaces, display.sort, { name: (s) => s.name, count: () => 0 })
+  const selection = useEntitySelection(rows)
+
+  const removeSelected = async () => {
+    const { done, failed } = await selection.run(deleteSpace)
+    setSpaces((current) => current.filter((space) => !done.includes(space.id)))
+    if (failed > 0) setError(`${failed}件を削除できませんでした`)
+  }
+
+  // 押せるものは一覧の上の操作列に集める。並びはカード一覧と同じ [選択][表示][作成]
+  const actions = (
+    <>
+      <EntityDisplayPanel
+        panelKey="spaces"
+        display={display}
+        onChange={change}
+        metaLabel="種別"
+        sorts={['recent', 'name']}
+      />
+      <Button size="sm" variant="outline" onClick={() => createForm.open()} className="flex items-center gap-1.5">
+        <Plus size={16} />
+        作成
+      </Button>
+    </>
+  )
   const heading = typeFilter ? `${spaceTypeLabel(typeFilter)}一覧` : 'スペース一覧'
 
   return (
@@ -104,7 +138,7 @@ function SpacesPageInner() {
       </PanelSlotContent>
 
       {loading ? (
-        <CardGridSkeleton />
+        <CardGridSkeleton columns={display.columns} />
       ) : error ? (
         <p className="text-destructive text-sm">{error}</p>
       ) : visibleSpaces.length === 0 ? (
@@ -116,28 +150,41 @@ function SpacesPageInner() {
         </div>
       ) : (
         <div className="space-y-4">
-          <div className="flex justify-end">
-            <Button size="sm" variant="outline" onClick={() => createForm.open()} className="flex items-center gap-1.5">
-              <Plus size={16} />
-              作成
-            </Button>
-          </div>
-          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
-          {visibleSpaces.map((space) => (
-            <Link
-              key={space.id}
-              href={`/spaces/${space.id}`}
-              className="flex flex-col rounded-xl border border-border overflow-hidden bg-card hover:shadow-md transition-shadow"
-            >
-              <div className="px-4 py-3 flex items-center justify-between gap-2">
-                <span className="font-medium truncate">{space.name}</span>
-                <span className="shrink-0 text-xs text-muted-foreground">{spaceTypeLabel(space.space_type)}</span>
-              </div>
-              <div className="w-full aspect-square bg-muted overflow-hidden">
-                <EntityCover cover={space} fallback={<SpaceCoverFallback spaceType={space.space_type} />} />
-              </div>
-            </Link>
-          ))}
+          {selection.selecting ? (
+            <EntitySelectionBar
+              total={rows.length}
+              selected={selection.selected.size}
+              busy={selection.busy}
+              onToggleAll={selection.toggleAll}
+              onDelete={removeSelected}
+              onCancel={selection.exit}
+              right={actions}
+            />
+          ) : (
+            <div className="flex justify-end gap-2">
+              <Button size="sm" variant="outline" onClick={selection.start}>
+                <CircleCheck size={14} className="mr-1" />
+                選択
+              </Button>
+              {actions}
+            </div>
+          )}
+
+          <div className={`grid gap-4 ${cardGridClass(display.columns)}`}>
+            {rows.map((space) => (
+              <EntityTile
+                key={space.id}
+                href={`/spaces/${space.id}`}
+                name={space.name}
+                meta={display.showMeta ? spaceTypeLabel(space.space_type) : null}
+                cover={
+                  <EntityCover cover={space} fallback={<SpaceCoverFallback spaceType={space.space_type} />} />
+                }
+                selecting={selection.selecting}
+                selected={selection.selected.has(space.id)}
+                onSelect={() => selection.toggle(space.id)}
+              />
+            ))}
           </div>
         </div>
       )}
