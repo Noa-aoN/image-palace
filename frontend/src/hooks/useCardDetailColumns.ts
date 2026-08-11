@@ -51,6 +51,8 @@ export function useCardDetailColumns(fallback = 1) {
  * 決めた数はあくまで広い画面での話で、携帯で2列に並べても読めない。
  */
 export function cardDetailGridClass(columns: number): string {
+  // 間隔は札どうしで揃える（詳細ページの space-y-3 と同じ 12px）。
+  // ここだけ広いと、同じ並びの札なのに群があるように見える
   if (columns >= 3) return 'grid gap-3 md:grid-cols-2 xl:grid-cols-3'
   if (columns === 2) return 'grid gap-3 md:grid-cols-2'
   return 'space-y-3'

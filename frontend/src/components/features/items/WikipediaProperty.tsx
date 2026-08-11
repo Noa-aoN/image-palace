@@ -95,8 +95,13 @@ export function WikipediaProperty({
               </span>
             )}
           </p>
+          {/* 冒頭は 500 字まで保存してある。札の高さで切ると読み切れないので、
+              入り切らないぶんはここで送れるようにする。
+              札そのものを伸ばさないのは、下の項目が押し出されるため */}
           {value.wikipedia_extract && (
-            <p className="whitespace-pre-wrap text-sm leading-relaxed text-foreground">{value.wikipedia_extract}</p>
+            <p className="max-h-56 overflow-y-auto whitespace-pre-wrap pr-1 text-sm leading-relaxed text-foreground">
+              {value.wikipedia_extract}
+            </p>
           )}
         </div>
       </div>

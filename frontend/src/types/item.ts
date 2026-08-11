@@ -91,6 +91,8 @@ export interface Item {
     hidden: string[]
     order: string[]
     omitted?: string[]
+    /** 札ごとの幅（何列ぶんを占めるか）。書いていないものは1列 */
+    spans?: Record<string, number>
     /** 既定のひな型を当てた結果か。true なら order に無いものは「持たない」扱い */
     from_preset?: boolean
   }

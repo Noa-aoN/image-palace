@@ -145,16 +145,22 @@ export function CardPropertiesEditor({
       {error && <p className="text-xs text-destructive">{error}</p>}
 
       {!adding ? (
-        <div className="space-y-2 border-t border-border/60 pt-3">
-          <button
-            type="button"
-            onClick={() => setAdding(true)}
-            className="flex items-center gap-1 text-xs text-muted-foreground transition-colors hover:text-foreground"
-          >
-            <Plus size={14} />
-            項目を追加
-          </button>
-          <p className="text-xs text-muted-foreground">よく使う項目から選ぶ</p>
+        <div className="space-y-3 border-t border-border/60 pt-3">
+          {/* 足し方は2つある。用意したものから選ぶのと、自分で決めるの。
+              並べて出さないと、字だけのリンク（自分で決める）が
+              札の群れに埋もれて、選ぶ道しかないように見える */}
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <p className="text-xs font-medium">よく使う項目から選ぶ</p>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setAdding(true)}
+              className="flex h-7 items-center gap-1 px-2.5 text-xs"
+            >
+              <Plus size={13} />
+              自分で決めて足す
+            </Button>
+          </div>
           {PROPERTY_PRESETS.map((preset) => (
             <div key={preset.group} className="space-y-1">
               <p className="text-[11px] text-muted-foreground">{preset.group}</p>

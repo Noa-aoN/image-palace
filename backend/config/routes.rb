@@ -114,6 +114,8 @@ Rails.application.routes.draw do
           post :brief
           post :scene_rewrite
           post :fill_properties
+          # このカードに持たせるとよい項目を選ばせる（選ぶだけ。保存はしない）
+          post :suggest_properties
           get :usages
           patch :block_view, action: :update_block_view
           get "reviews/summary", to: "item_reviews#summary"

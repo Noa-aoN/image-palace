@@ -73,7 +73,7 @@ RSpec.describe Images::SceneRewriteService do
     expect(OpenAI::Client).not_to receive(:new)
 
     expect { described_class.call(item: item, user: user) }
-      .to raise_error(described_class::RewriteError, /意味・説明がありません/)
+      .to raise_error(described_class::RewriteError, /もとになる内容がありません/)
   end
 
   # ここは「説明から起こし直す」ための口。下書きを見せると出来上がりが引きずられ、
@@ -147,5 +147,55 @@ RSpec.describe Images::SceneRewriteService do
 
     expect(result.options.first.scene_prompt.length).to eq(described_class::MAX_SCENE_PROMPT_LENGTH)
     expect(result.options.first.label.length).to eq(described_class::MAX_LABEL_LENGTH)
+  end
+
+  describe "項目を指定して書き直す" do
+    let(:item_type) { item.item_type }
+
+    def define_property(key, label, value_type: "text")
+      user.property_definitions.create!(item_type: item_type, key: key, label: label, value_type: value_type)
+    end
+
+    # 意味・説明だけが根拠とは限らない。Wikipedia の冒頭のほうが絵の手がかりになることもある
+    it "指定した項目だけを根拠にする" do
+      add_meaning("説明のほう")
+      note = define_property("note", "メモ")
+      item.item_properties.create!(property_definition: note, typed_value: "赤い屋根の家")
+      client = stub_chat({ options: [ { label: "案", scene_prompt: "a red roof house" } ] }.to_json)
+
+      described_class.call(item: item, user: user, property_keys: [ "note" ])
+
+      expect(client).to have_received(:chat) do |parameters:|
+        content = parameters[:messages].last[:content]
+        expect(content).to include("赤い屋根の家")
+        expect(content).not_to include("説明のほう")
+      end
+    end
+
+    # 機械向けの鍵は絵の役に立たない。読める部分だけを渡す
+    it "Wikipedia の値からは題名と冒頭だけを取り出す" do
+      wiki = define_property("wikipedia", "Wikipedia", value_type: "wikipedia")
+      item.item_properties.create!(
+        property_definition: wiki,
+        typed_value: { "wikipedia_title" => "アレクサンドロス3世", "wikipedia_extract" => "マケドニアの王",
+                       "wikipedia_url" => "https://example.com" }.to_json
+      )
+      client = stub_chat({ options: [ { label: "案", scene_prompt: "a king" } ] }.to_json)
+
+      described_class.call(item: item, user: user, property_keys: [ "wikipedia" ])
+
+      expect(client).to have_received(:chat) do |parameters:|
+        content = parameters[:messages].last[:content]
+        expect(content).to include("マケドニアの王")
+        expect(content).not_to include("https://example.com")
+      end
+    end
+
+    it "指定した項目が空なら断る" do
+      define_property("note", "メモ")
+
+      expect { described_class.call(item: item, user: user, property_keys: [ "note" ]) }
+        .to raise_error(described_class::RewriteError, /もとになる内容がありません/)
+    end
   end
 end

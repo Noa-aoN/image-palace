@@ -1,6 +1,6 @@
 'use client'
 
-import React, { useEffect, useState } from 'react'
+import React, { useEffect, useRef, useState } from 'react'
 import { X, Sparkles, ShieldCheck } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Spinner } from '@/components/ui/spinner'
@@ -44,6 +44,7 @@ import {
 } from '@dnd-kit/core'
 import { SortableContext, arrayMove, rectSortingStrategy, sortableKeyboardCoordinates, useSortable } from '@dnd-kit/sortable'
 import { CSS } from '@dnd-kit/utilities'
+import { GripVertical } from 'lucide-react'
 
 type ItemPropertiesProps = {
   item: Item
@@ -709,6 +710,32 @@ export function ItemProperties({ item, onUpdated }: ItemPropertiesProps) {
     useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates })
   )
 
+  // 札ごとの幅。1列のときは変えられない（並べる先が無い）
+  const spans = item.block_view?.spans ?? {}
+
+  const changeSpan = async (key: string, next: number) => {
+    const clamped = Math.max(1, Math.min(next, columns))
+    if ((spans[key] ?? 1) === clamped) return
+
+    // 1（既定）は書かない。全部の札を書き出すと、項目が増えるほど保存が肥る
+    const nextSpans = { ...spans }
+    if (clamped > 1) nextSpans[key] = clamped
+    else delete nextSpans[key]
+
+    try {
+      onUpdated(
+        await updateBlockView(item.id, {
+          hidden: [...hiddenKeys],
+          order: orderedBlocks.map((b) => b.key),
+          omitted: [...omittedKeys],
+          spans: nextSpans,
+        })
+      )
+    } catch {
+      // 幅が保存できなくても、いま見ているものは壊さない
+    }
+  }
+
   const handleBlockDragEnd = async (event: DragEndEvent) => {
     const { active, over } = event
     if (!over || active.id === over.id) return
@@ -740,7 +767,13 @@ export function ItemProperties({ item, onUpdated }: ItemPropertiesProps) {
         <SortableContext items={visibleBlocks.map((b) => b.key)} strategy={rectSortingStrategy}>
           <div className={cardDetailGridClass(columns)}>
             {visibleBlocks.map((b) => (
-              <SortableBlock key={b.key} id={b.key}>
+              <SortableBlock
+                key={b.key}
+                id={b.key}
+                span={Math.min(spans[b.key] ?? 1, columns)}
+                columns={columns}
+                onSpanChange={(next) => changeSpan(b.key, next)}
+              >
                 {b.node}
               </SortableBlock>
             ))}
@@ -767,6 +800,13 @@ export function ItemProperties({ item, onUpdated }: ItemPropertiesProps) {
   )
 }
 
+/** 幅に対応する格子の指定。静的な文字列で書く（Tailwind は組み立てた名前を拾えない） */
+const SPAN_CLASSES: Record<number, string> = {
+  1: '',
+  2: 'md:col-span-2',
+  3: 'md:col-span-2 xl:col-span-3',
+}
+
 /**
  * 並べ替えられる項目の器。
  *
@@ -774,17 +814,80 @@ export function ItemProperties({ item, onUpdated }: ItemPropertiesProps) {
  * つまみを置くと項目ごとに余白が要る。中のボタンを押すだけのときは、
  * 4px 動かすまで並べ替えが始まらないので邪魔にならない。
  */
-function SortableBlock({ id, children }: { id: string; children: React.ReactNode }) {
+function SortableBlock({
+  id,
+  span,
+  columns,
+  onSpanChange,
+  children,
+}: {
+  id: string
+  span: number
+  columns: number
+  onSpanChange: (next: number) => void
+  children: React.ReactNode
+}) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id })
+  const boxRef = useRef<HTMLDivElement | null>(null)
+
+  /**
+   * 右下のつまみを引いて幅を変える。
+   *
+   * 自由な幅にはしない。列に嵌める（1列ぶん・2列ぶん…）ので、
+   * どこで放しても並びが崩れない。自由な幅だと、札ごとに端が揃わず、
+   * 揃えるために全部を手で直すことになる。
+   */
+  const startResize = (event: React.PointerEvent) => {
+    if (columns <= 1) return
+    event.preventDefault()
+    event.stopPropagation()
+
+    const box = boxRef.current
+    if (!box) return
+    const left = box.getBoundingClientRect().left
+    // いまの幅から、1列ぶんの幅を割り出す
+    const cell = box.getBoundingClientRect().width / span
+
+    const move = (e: PointerEvent) => {
+      const next = Math.round((e.clientX - left) / cell)
+      onSpanChange(Math.max(1, Math.min(next, columns)))
+    }
+    const end = () => {
+      window.removeEventListener('pointermove', move)
+      window.removeEventListener('pointerup', end)
+    }
+    window.addEventListener('pointermove', move)
+    window.addEventListener('pointerup', end)
+  }
 
   return (
     <div
-      ref={setNodeRef}
+      ref={(node) => {
+        setNodeRef(node)
+        boxRef.current = node
+      }}
       style={{ transform: CSS.Transform.toString(transform), transition, opacity: isDragging ? 0.6 : 1 }}
+      className={`group/block relative ${SPAN_CLASSES[span] ?? ''}`}
       {...attributes}
       {...listeners}
     >
       {children}
+
+      {/* つまみは常には出さない。触ったときだけ出れば足りるし、
+          札ごとに常時出ていると、読むときに邪魔になる */}
+      {columns > 1 && (
+        <span
+          onPointerDown={startResize}
+          role="separator"
+          aria-label="幅を変える"
+          aria-valuenow={span}
+          aria-valuemin={1}
+          aria-valuemax={columns}
+          className="absolute bottom-1 right-1 hidden h-4 w-4 cursor-ew-resize items-center justify-center rounded text-muted-foreground opacity-0 transition-opacity group-hover/block:flex group-hover/block:opacity-100"
+        >
+          <GripVertical size={12} />
+        </span>
+      )}
     </div>
   )
 }
