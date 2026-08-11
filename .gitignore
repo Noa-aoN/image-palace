@@ -20,7 +20,15 @@ skills-lock.json
 node_modules/
 
 # コンテンツ生成・ドキュメント
-docs/
+#
+# `docs/` ではなく `docs/*` と書く。ディレクトリごと除外すると、
+# 中のファイルを個別に復活させられなくなる（親が除外されていると
+# 否定パターンが効かない）。
+#
+# 既定は「入れない」。共有してよいと確かめたものだけ、下で名指しする
+docs/*
+!docs/performance-history.md
+!docs/performance-tips.md
 
 # Cloudflare Workers ビルド成果物
 frontend/.open-next/
