@@ -21,7 +21,12 @@ import { PropertyBlock, BlockAction, BlockError } from '@/components/features/it
 import { MeaningList } from '@/components/features/items/MeaningList'
 import { ExampleList } from '@/components/features/items/ExampleList'
 import { RelatedItems } from '@/components/features/items/RelatedItems'
-import { PropertyToolsBlock, PropertyEntryBlock } from '@/components/features/items/ItemPropertyBlocks'
+import {
+  PropertyToolsBlock,
+  PropertyEntryBlock,
+  PROPERTY_TOOLS_KEY,
+} from '@/components/features/items/ItemPropertyBlocks'
+import { omittedKeysForPreset } from '@/lib/block-visibility'
 import { ItemUsageBlock } from '@/components/features/items/ItemUsageBlock'
 import { ItemReviewBlock } from '@/components/features/items/ItemReviewBlock'
 import { CardViewPanel, applyBlockOrder } from '@/components/features/items/CardViewPanel'
@@ -674,7 +679,7 @@ export function ItemProperties({ item, onUpdated }: ItemPropertiesProps) {
     ...customBlocks,
     {
       // 道具立ては最後。まとめて埋める操作は、項目を見たあとで押すもの
-      key: 'property_tools',
+      key: PROPERTY_TOOLS_KEY,
       label: '項目の道具',
       node: <PropertyToolsBlock item={item} onUpdated={onUpdated} onOpenSettings={openSettings} />,
     },
@@ -688,15 +693,7 @@ export function ItemProperties({ item, onUpdated }: ItemPropertiesProps) {
   const fromPreset = item.block_view?.from_preset === true
   const presetKeys = new Set(item.block_view?.order ?? [])
   const omittedKeys = fromPreset
-    ? new Set(
-        allBlocks
-          .map((b) => b.key)
-          // 種別に足した項目は、ひな型を当てたカードでも必ず出す。
-          // ひな型は「作り付けのどれを出すか」を決めたもので、
-          // そのあとに定義した項目まで「持たない」に回すのは決めた覚えのない扱い。
-          // 実際、Wikipedia の項目を足しても既存のカードに出てこなかった
-          .filter((key) => !presetKeys.has(key) && !key.startsWith('prop:'))
-      )
+    ? omittedKeysForPreset(allBlocks.map((b) => b.key), presetKeys)
     : new Set(item.block_view?.omitted ?? [])
   const hiddenKeys = new Set(item.block_view?.hidden ?? [])
   const adopted = allBlocks.filter((b) => !omittedKeys.has(b.key))
