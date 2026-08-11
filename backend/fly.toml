@@ -4,7 +4,12 @@
 #
 
 app = 'image-palace-api'
-primary_region = 'nrt'
+# DB（Neon）が ap-southeast-1＝シンガポールにあり、Neon に東京は無い。
+# 東京から DB を引くと片道70ms かかり、往復の本数がそのまま待ち時間になっていた
+# （カード一覧11本で約770ms）。DB を動かす代わりに、こちらが DB の隣へ寄る。
+# 実測: DB往復 70.2ms(nrt) → 2.4ms(sin)。
+# Neon が東京を出したら nrt へ戻してよい
+primary_region = 'sin'
 
 [build]
   dockerfile = 'Dockerfile'
