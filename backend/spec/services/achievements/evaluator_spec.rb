@@ -13,6 +13,44 @@ RSpec.describe Achievements::Evaluator do
                        mode: "quiz", result: result, reviewed_at: at)
   end
 
+  # 定義が増えても問い合わせが増えないことを見張る。
+  #
+  # 定義ごとに数え直していたころは、本番で 144 本・約17秒かかっていた
+  # （DB は片道70ms のところにある）。同じ数を数え直さない・行はまとめて読む、
+  # のどちらが壊れてもここで落ちる
+  describe "問い合わせの本数" do
+    def count_queries
+      n = 0
+      sub = ActiveSupport::Notifications.subscribe("sql.active_record") do |*, payload|
+        n += 1 unless payload[:name].to_s.match?(/SCHEMA|TRANSACTION/)
+      end
+      yield
+      n
+    ensure
+      ActiveSupport::Notifications.unsubscribe(sub)
+    end
+
+    it "実績の定義を増やしても本数は変わらない" do
+      make_cards(1)
+      described_class.call(user: user) # 行を作る回は数えない
+
+      before = count_queries { described_class.call(user: user) }
+
+      base = AchievementDefinition.registry.first
+      5.times do |i|
+        AchievementDefinition.create!(
+          key: "extra_#{i}", name: "追加#{i}", condition_type: "cards_created",
+          condition_target: 999, published: true, category: base.category, position: 900 + i
+        )
+      end
+      described_class.call(user: user) # 増えたぶんの行を作る
+
+      after = count_queries { described_class.call(user: user) }
+
+      expect(after).to eq(before)
+    end
+  end
+
   describe "実績" do
     it "条件を満たすと達成になり、報酬が配られる" do
       make_cards(1)
