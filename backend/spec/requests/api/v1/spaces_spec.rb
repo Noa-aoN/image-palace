@@ -12,6 +12,21 @@ RSpec.describe "Api::V1::Spaces", type: :request do
   end
 
   describe "GET /api/v1/spaces" do
+    # 数える対象が種別で違う（ルーム=ボックス / ロード=ポイント）。
+    # 1つの列にまとめられないので、両方をまとめて数えて振り分けている
+    it "中身の数を、種別に応じて返す" do
+      room = user.spaces.create!(name: "部屋", space_type: "room")
+      road = user.spaces.create!(name: "道", space_type: "road")
+      2.times { |i| room.space_boxes.create!(box: user.boxes.create!(name: "箱#{i}"), position: i + 1) }
+      3.times { |i| road.space_points.create!(position: i + 1) }
+
+      get "/api/v1/spaces", headers: headers, as: :json
+
+      counts = json_response.fetch("spaces").to_h { |s| [ s["name"], s["entry_count"] ] }
+      expect(counts["部屋"]).to eq(2)
+      expect(counts["道"]).to eq(3)
+    end
+
     it "returns the user's spaces ordered by created_at desc" do
       older = user.spaces.create!(name: "古い", created_at: 2.days.ago)
       newer = user.spaces.create!(name: "新しい", created_at: 1.day.ago)

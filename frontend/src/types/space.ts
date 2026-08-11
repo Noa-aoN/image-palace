@@ -36,6 +36,8 @@ export interface Space {
   cover_images: CoverImage[]
   cover_image: CoverImage | null
   created_at: string
+  /** 中身の数（ルーム=ボックス / ロード=ポイント）。一覧でのみ返る */
+  entry_count?: number
 }
 
 // room 種別: 並べるボックスの軽量表現

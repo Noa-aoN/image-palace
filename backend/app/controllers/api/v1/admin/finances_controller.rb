@@ -5,22 +5,50 @@ module Api
       class FinancesController < BaseController
         def show
           now = Time.zone.now
-          year = params[:year].presence&.to_i || now.year
-          month = params[:month].presence&.to_i || now.month
+          # 期間の決め方は他の運営画面と共通（Admin::Period）。
+          # ここだけ独自の選び方だと、同じ「7月」で違う範囲を見ることになる。
+          # 既定は今月（締めた月の実績を見に来る面なので、直近◯日ではない）
+          period = ::Admin::Period.resolve(requested_period(now), now: now, default: current_month_key(now))
           # 単価はどの集計でも同じものを見る。1回だけ読む
           costs = CostParameter.table
 
           render json: {
-            summary: ::Admin::FinanceService.call(year: year, month: month, costs: costs),
+            summary: summary_for(period, costs),
+            period: period.to_h.merge(options: ::Admin::Period.options(now: now)),
             # 開業から今までの積み上げ
             totals: ::Admin::FinanceService.totals,
-            # 月選択に出す候補（データがある範囲）
+            # 月選択に出す候補（データがある範囲）。period.options.months と同じものだが、
+            # 既にこれを見ている画面があるので残す
             available_months: available_months,
             # 直近12か月の推移（概算の粗利）
             trend: ::Admin::FinanceTrendService.call(now: now, costs: costs),
             parameters: CostParameter.overview,
             groups: CostParameter::GROUPS
           }
+        end
+
+        # 月を選んだときは「その月」として数える（インフラ月額を1か月ぶんで掛ける）。
+        # 直近◯日や全期間のときは、日付の範囲をそのまま渡す
+        def summary_for(period, costs)
+          if period.key.match?(::Admin::Period::MONTH_FORMAT)
+            year, month = period.key.split("-").map(&:to_i)
+            ::Admin::FinanceService.call(year: year, month: month, costs: costs)
+          else
+            ::Admin::FinanceService.new(from: period.from, to: period.to, costs: costs).call
+          end
+        end
+
+        def current_month_key(now)
+          format("%04d-%02d", now.year, now.month)
+        end
+
+        # period を優先しつつ、以前の year / month も受ける。
+        # 画面を先に壊さないため（切り替え終わったら消してよい）
+        def requested_period(now)
+          return params[:period] if params[:period].present?
+          return nil if params[:year].blank? || params[:month].blank?
+
+          format("%04d-%02d", params[:year].to_i, params[:month].to_i)
         end
 
         # 単価の変更（キーごとに作成/更新）

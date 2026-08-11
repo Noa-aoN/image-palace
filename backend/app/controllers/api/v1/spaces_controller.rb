@@ -19,7 +19,19 @@ module Api
         spaces = filter_by_name(spaces)
         spaces, next_cursor = paginate_list(spaces)
 
-        render json: { spaces: spaces.map { |s| serialize_space(s) }, next_cursor: next_cursor }
+        # 中身の数。ルームは並べたボックス、ロードは順路のポイントを数える
+        # （種別で数える対象が違うので、1つの列にまとめられない）
+        ids = spaces.map(&:id)
+        boxes = SpaceBox.where(space_id: ids).group(:space_id).count
+        points = SpacePoint.where(space_id: ids).group(:space_id).count
+
+        render json: {
+          spaces: spaces.map { |s|
+            count = s.space_type == "road" ? points[s.id].to_i : boxes[s.id].to_i
+            serialize_space(s).merge(entry_count: count)
+          },
+          next_cursor: next_cursor
+        }
       end
 
       def show

@@ -23,6 +23,21 @@ RSpec.describe "Api::V1::Views", type: :request do
       expect(names).to contain_exactly("関係図", "タイムライン")
     end
 
+    # 一覧で「中身が多い順」に並べるのに要る。1件ずつ数えると件数ぶん問い合わせが飛ぶので、
+    # まとめて数えているところが壊れていないかを見る
+    it "置いてあるカードの数を返す" do
+      item_type = ItemType.find_or_create_by!(name: "term") { |t| t.label = "単語" }
+      full = user.views.create!(name: "たくさん")
+      user.views.create!(name: "からっぽ")
+      2.times { |i| full.view_items.create!(item: user.items.create!(title: "語#{i}", item_type: item_type)) }
+
+      get "/api/v1/views", headers: headers, as: :json
+
+      counts = json_response.fetch("views").to_h { |v| [ v["name"], v["item_count"] ] }
+      expect(counts["たくさん"]).to eq(2)
+      expect(counts["からっぽ"]).to eq(0)
+    end
+
     it "does not return other users views" do
       user.views.create!(name: "自分")
       other = create(:user, :confirmed)
