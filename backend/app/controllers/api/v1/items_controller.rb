@@ -23,7 +23,7 @@ module Api
         elsif Item::GENERATION_STATUSES.include?(params[:status])
           scope = scope.where(generation_status: params[:status])
         end
-        scope = scope.joins(:item_tags).where(item_tags: { tag_id: params[:tag_id] }) if params[:tag_id].present?
+        scope = filter_by_tags(scope)
         if params[:q].present?
           like = "%#{ActiveRecord::Base.sanitize_sql_like(params[:q].strip)}%"
           scope = scope.where("items.title ILIKE ?", like)
@@ -52,6 +52,10 @@ module Api
           }
         }
       end
+
+      # 一度に指定できるタグの数。増やしても絞り込みは細くなる一方で、
+      # 組み合わせの数だけ「0件」に近づく。打ち止めを置いて重い問い合わせを防ぐ
+      MAX_TAG_FILTERS = 10
 
       SUGGEST_LIMIT = 8
 
@@ -177,7 +181,12 @@ module Api
       # 意味・ジャンルが分かれる語では候補が複数返る。どれを選ぶかは利用者が決める。
       def scene_rewrite
         result = Images::SceneRewriteService.call(item: item, user: current_user)
-        render json: { options: result.options.map { |o| { label: o.label, scene_prompt: o.scene_prompt } } }, status: :ok
+        render json: {
+          options: result.options.map { |o| { label: o.label, scene_prompt: o.scene_prompt } },
+          # 何を根拠に書き直したか。画面はこれを説明文として保存し、
+          # 「プロンプト情報」の説明文と情景を同じ出どころに揃える
+          description: result.description
+        }, status: :ok
       rescue Images::SceneRewriteService::RewriteError => e
         render json: { error: e.message }, status: :unprocessable_entity
       rescue Ai::Chat::LimitExceeded => e
@@ -395,6 +404,23 @@ module Api
       end
 
       # 並び替え句を組み立てる。カラム・方向は許可リストからのみ採用し、安定化のため created_at を副キーにする
+      # タグでの絞り込み。複数を指定したら**すべてを持つもの**だけを残す。
+      #
+      # 「絞り込み」なので、増やすほど狭くなるのが読みどおり（どれかを持つ、だと逆に広がる）。
+      # 外側の scope に group を掛けると件数の数え方まで変わるので、
+      # 当てはまる id を副問い合わせで出して where で当てる
+      def filter_by_tags(scope)
+        ids = Array(params[:tag_ids]).presence || Array(params[:tag_id]).presence
+        ids = ids.to_a.map(&:to_s).reject(&:blank?).uniq.first(MAX_TAG_FILTERS) if ids
+        return scope if ids.blank?
+
+        matching = current_user.items.joins(:item_tags).where(item_tags: { tag_id: ids })
+                               .group("items.id")
+                               .having("COUNT(DISTINCT item_tags.tag_id) = ?", ids.size)
+                               .select("items.id")
+        scope.where(id: matching)
+      end
+
       def sort_clause
         column = SORTABLE_COLUMNS.fetch(params[:sort], "items.created_at")
         direction = SORT_DIRECTIONS.include?(params[:direction]) ? params[:direction] : "desc"

@@ -63,6 +63,8 @@ export function RegeneratePanel({ item, onUpdated }: Props) {
   const [beforeRewrite, setBeforeRewrite] = useState<string | null>(null)
   // 意味・ジャンルが分かれる語で返る候補。1件だけならそのまま入れるので、ここには残らない
   const [sceneOptions, setSceneOptions] = useState<SceneOption[]>([])
+  // 書き直しの根拠になった説明文。作り直しのときに指示と一緒に保存する
+  const [pendingDescription, setPendingDescription] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
   const available = useBillingStore((s) => s.summary?.available_credits) ?? null
   // 失敗からの作り直しは無料。出来上がったものの作り直しだけ1クレジット
@@ -101,10 +103,16 @@ export function RegeneratePanel({ item, onUpdated }: Props) {
   // 書き直した指示を入力欄に入れる。まだ保存も作り直しもしない。
   // 「書き直す」なので既存の指示は置き換わる。足したままでは効かないのが今回の主旨だから。
   // ただし手で書いたものが一発で消えるので、直前の内容を控えて戻せるようにする。
-  const applyScene = (next: string) => {
+  // 書き直した指示を入力欄へ。
+  //
+  // 説明文（description）も一緒に預かる。作り直しのときに指示と並べて保存し、
+  // 「プロンプト情報」の説明文と情景が同じ出どころになるようにする。
+  // 片方だけ新しいと、絵を見て「なぜこうなったか」を辿れなくなる。
+  const applyScene = (next: string, description?: string | null) => {
     setBeforeRewrite(scenePrompt)
     setScenePrompt(next)
     setSceneOptions([])
+    if (description) setPendingDescription(description)
   }
 
   // AI に指示を書き直させる。もとにするものが2つある。
@@ -120,11 +128,16 @@ export function RegeneratePanel({ item, onUpdated }: Props) {
     setSceneOptions([])
     try {
       if (source === 'title') {
-        applyScene((await previewBrief(item.id)).scene_prompt)
+        const brief = await previewBrief(item.id)
+        applyScene(brief.scene_prompt, brief.image_description)
       } else {
-        const options = await rewriteScenePrompt(item.id)
-        if (options.length === 1) applyScene(options[0].scene_prompt)
-        else setSceneOptions(options)
+        const { options, description } = await rewriteScenePrompt(item.id)
+        if (options.length === 1) applyScene(options[0].scene_prompt, description)
+        else {
+          setSceneOptions(options)
+          // 候補が複数あるときは、選んだ時点で同じ説明文を添える
+          setPendingDescription(description)
+        }
       }
     } catch (err: unknown) {
       const axiosErr = err as { response?: { data?: { error?: string } } }
@@ -138,9 +151,17 @@ export function RegeneratePanel({ item, onUpdated }: Props) {
     setRetrying(true)
     setError(null)
     try {
-      // 指示を直していたら先に保存する。直してから作り直すまでを1回で終える
-      if (scenePrompt !== (item.scene_prompt ?? '')) {
-        onUpdated(await updateItem(item.id, { scene_prompt: scenePrompt }))
+      // 指示を直していたら先に保存する。直してから作り直すまでを1回で終える。
+      // 書き直しの根拠になった説明文も一緒に保存し、プロンプト情報を揃える
+      const sceneChanged = scenePrompt !== (item.scene_prompt ?? '')
+      const descriptionChanged = Boolean(pendingDescription) && pendingDescription !== (item.image_description ?? '')
+      if (sceneChanged || descriptionChanged) {
+        onUpdated(
+          await updateItem(item.id, {
+            ...(sceneChanged ? { scene_prompt: scenePrompt } : {}),
+            ...(descriptionChanged ? { image_description: pendingDescription! } : {}),
+          })
+        )
       }
       const updated = await retryItem(item.id, {
         customPrompt: customPrompt.trim(),
@@ -201,32 +222,33 @@ export function RegeneratePanel({ item, onUpdated }: Props) {
 
           {/* 思った絵にならないとき、いちばん効くのがここ。直してそのまま作り直せるようにする */}
           <div className="space-y-2">
-            <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-2">
-              <Label htmlFor="regen-scene">画像への指示</Label>
-              {/* AI に書かせる入口はここだけに集める。見るだけの「プロンプト情報」には置かない */}
-              <div className="flex items-center gap-4">
-                <button
-                  type="button"
-                  onClick={() => handleRewrite('title')}
+            <Label htmlFor="regen-scene">画像への指示</Label>
+
+            {/* AI に書かせる入口はここだけに集める（見るだけの「プロンプト情報」には置かない）。
+                字だけのリンクだと、思った絵にならないときいちばん効く操作が
+                見出しの脇に埋もれる。押せるものとして枠を付け、横並びに置く。
+
+                2つは根拠が違う。単語からは語だけを見て起こし直し、
+                意味・説明からは、このカードに書いてある説明だけを見て起こし直す。 */}
+            <div className="grid gap-2 sm:grid-cols-2">
+              <RewriteButton
+                busy={rewriting === 'title'}
+                disabled={retrying || Boolean(rewriting)}
+                onClick={() => handleRewrite('title')}
+                title="単語から書き直す"
+                note="語だけを見て起こし直します"
+              />
+              {hasMeaning && (
+                <RewriteButton
+                  busy={rewriting === 'meaning'}
                   disabled={retrying || Boolean(rewriting)}
-                  className="flex items-center gap-1 text-xs text-muted-foreground transition-colors hover:text-foreground disabled:opacity-50"
-                >
-                  {rewriting === 'title' ? <Spinner size={12} /> : <Sparkles size={12} />}
-                  単語から書き直す
-                </button>
-                {hasMeaning && (
-                  <button
-                    type="button"
-                    onClick={() => handleRewrite('meaning')}
-                    disabled={retrying || Boolean(rewriting)}
-                    className="flex items-center gap-1 text-xs text-muted-foreground transition-colors hover:text-foreground disabled:opacity-50"
-                  >
-                    {rewriting === 'meaning' ? <Spinner size={12} /> : <Sparkles size={12} />}
-                    意味・説明から書き直す
-                  </button>
-                )}
-              </div>
+                  onClick={() => handleRewrite('meaning')}
+                  title="意味・説明から書き直す"
+                  note="このカードの説明だけを根拠にします"
+                />
+              )}
             </div>
+
             <textarea
               id="regen-scene"
               value={scenePrompt}
@@ -390,5 +412,43 @@ export function RegeneratePanel({ item, onUpdated }: Props) {
         </div>
       </PanelSlotContent>
     </>
+  )
+}
+
+/**
+ * 指示を書き直させるボタン。
+ *
+ * 字だけのリンクだと、思った絵にならないときいちばん効く操作が見出しの脇に埋もれる。
+ * 押せるものとして枠を持たせ、何を根拠に書き直すのかを一行添える。
+ * 2つの違いは根拠だけなので、そこを読ませないと選びようがない。
+ */
+function RewriteButton({
+  busy,
+  disabled,
+  onClick,
+  title,
+  note,
+}: {
+  busy: boolean
+  disabled: boolean
+  onClick: () => void
+  title: string
+  note: string
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      disabled={disabled}
+      className="flex items-start gap-2 rounded-lg border border-border bg-card px-3 py-2 text-left transition-colors hover:border-[var(--palace)]/50 hover:bg-muted/50 disabled:opacity-50"
+    >
+      <span className="mt-0.5 shrink-0" style={{ color: 'var(--palace)' }}>
+        {busy ? <Spinner size={13} /> : <Sparkles size={13} />}
+      </span>
+      <span className="min-w-0">
+        <span className="block text-sm font-medium">{title}</span>
+        <span className="block text-xs text-muted-foreground">{note}</span>
+      </span>
+    </button>
   )
 }

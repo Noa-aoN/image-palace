@@ -51,6 +51,8 @@ import {
   type CardFit,
 } from '@/hooks/useCardDisplay'
 import { CardDisplayPanel } from '@/components/features/items/CardDisplayPanel'
+import { PanelSlotContent } from '@/components/features/panel/PanelSlot'
+import { usePanelForm } from '@/components/features/panel/usePanelForm'
 
 // 一括AI操作の per-item 結果（完了後の確認ダイアログ用）
 type BulkResultEntry = {
@@ -332,7 +334,10 @@ function ItemCard({ item, selectionMode, selected, onToggle, fit, sizes }: ItemC
   )
 }
 
+const TAG_FILTER_PANEL_KEY = 'items-tag-filter'
+
 export function ItemList({ initialTag = null }: { initialTag?: string | null }) {
+  const tagPanel = usePanelForm(TAG_FILTER_PANEL_KEY, 'タグで絞り込む')
   const router = useRouter()
   const items = useItemsStore((state) => state.items)
   const setItems = useItemsStore((state) => state.setItems)
@@ -342,7 +347,8 @@ export function ItemList({ initialTag = null }: { initialTag?: string | null }) 
   const [loading, setLoading] = useState(() => useItemsStore.getState().items.length === 0)
   const [error, setError] = useState<string | null>(null)
   const [tags, setTags] = useState<Tag[]>([])
-  const [activeTag, setActiveTag] = useState<string | null>(initialTag)
+  // タグは複数選べる。選ぶほど狭くなる（サーバー側はすべてを持つものだけを返す）
+  const [activeTags, setActiveTags] = useState<string[]>(initialTag ? [ initialTag ] : [])
   const [sortKey, setSortKey] = useState('created_at:desc')
   const [statusFilter, setStatusFilter] = useState('')
   const [query, setQuery] = useState('')
@@ -601,7 +607,7 @@ export function ItemList({ initialTag = null }: { initialTag?: string | null }) 
     try {
       const [sort, direction] = sortKey.split(':')
       const { items: fetched, meta } = await getItemsPage(targetPage, cardsPerPage(display), {
-        tagId: activeTag ?? undefined,
+        tagIds: activeTags,
         query: appliedQuery || undefined,
         sort,
         direction,
@@ -619,10 +625,18 @@ export function ItemList({ initialTag = null }: { initialTag?: string | null }) 
     }
   })
 
-  const selectTag = (tagId: string | null) => {
-    if (tagId === activeTag) return
+  const toggleTag = (tagId: string) => {
     setLoading(true)
-    setActiveTag(tagId)
+    setActiveTags((current) =>
+      current.includes(tagId) ? current.filter((id) => id !== tagId) : [ ...current, tagId ]
+    )
+    setPage(1)
+  }
+
+  const clearTags = () => {
+    if (activeTags.length === 0) return
+    setLoading(true)
+    setActiveTags([])
     setPage(1)
   }
 
@@ -659,7 +673,8 @@ export function ItemList({ initialTag = null }: { initialTag?: string | null }) 
     return () => {
       cancelled = true
     }
-  }, [page, activeTag, appliedQuery, sortKey, statusFilter, refreshToken, display.columns, display.rows])
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- 取得の引き金だけを並べる
+  }, [page, activeTags.join(','), appliedQuery, sortKey, statusFilter, refreshToken, display.columns, display.rows])
 
   /*
     生成中のカードがある間だけ取り直す。
@@ -680,30 +695,86 @@ export function ItemList({ initialTag = null }: { initialTag?: string | null }) 
   }
 
   const chipBase = 'rounded-full px-3 py-1 text-sm whitespace-nowrap transition-colors border'
-  const tagFilter = tags.length > 0 ? (
-    <div className="flex gap-2 overflow-x-auto pb-1">
-      <button
-        onClick={() => selectTag(null)}
-        className={activeTag === null ? `${chipBase} border-transparent text-white` : `${chipBase} border-border text-muted-foreground hover:bg-muted`}
-        style={activeTag === null ? { backgroundColor: 'var(--palace)' } : undefined}
+  // タグの絞り込みは、検索や種別と同じ「絞り込み操作群」として1行に収める。
+  // タグだけ大きな帯にすると、並んでいるカードを見る面積が毎回削られる。
+  // 中身は右パネルで開き、選んでいるものだけを一覧の上に札で残す。
+  const tagFilterButton =
+    tags.length > 0 ? (
+      <Button
+        variant="outline"
+        size="sm"
+        onClick={() => tagPanel.open()}
+        aria-expanded={tagPanel.isOpen}
+        className="shrink-0"
       >
-        すべて
-      </button>
-      {tags.map((tag) => {
-        const active = activeTag === tag.id
-        return (
-          <button
-            key={tag.id}
-            onClick={() => selectTag(tag.id)}
-            className={active ? `${chipBase} border-transparent text-white` : `${chipBase} border-border text-muted-foreground hover:bg-muted`}
-            style={active ? { backgroundColor: 'var(--palace)' } : undefined}
-          >
-            {tag.name}（{tag.item_count}）
-          </button>
-        )
-      })}
-    </div>
-  ) : null
+        <TagIcon size={14} className="mr-1" />
+        タグで絞り込む{activeTags.length > 0 && `（${activeTags.length}）`}
+      </Button>
+    ) : null
+
+  const tagPanelContent = (
+    <PanelSlotContent sectionKey={TAG_FILTER_PANEL_KEY}>
+      <div className="space-y-3">
+        <div className="flex items-baseline justify-between gap-3">
+          <p className="text-sm text-muted-foreground">
+            選ぶほど狭くなります。選んだタグをすべて持つカードだけが残ります。
+          </p>
+          {activeTags.length > 0 && (
+            <button type="button" onClick={clearTags} className="shrink-0 text-xs text-muted-foreground hover:underline">
+              すべて解除
+            </button>
+          )}
+        </div>
+        <div className="flex flex-wrap gap-1.5">
+          {tags.map((tag) => {
+            const active = activeTags.includes(tag.id)
+            return (
+              <button
+                key={tag.id}
+                type="button"
+                onClick={() => toggleTag(tag.id)}
+                className={
+                  active
+                    ? `${chipBase} border-transparent text-white`
+                    : `${chipBase} border-border text-muted-foreground hover:bg-muted`
+                }
+                style={active ? { backgroundColor: 'var(--palace)' } : undefined}
+              >
+                {tag.name}（{tag.item_count}）
+              </button>
+            )
+          })}
+        </div>
+      </div>
+    </PanelSlotContent>
+  )
+
+  // 選んでいるタグは一覧の上に残す。パネルを閉じたあと、
+  // 何で絞っているのか分からないまま「カードが少ない」と見えるのを防ぐ
+  const activeTagChips =
+    activeTags.length > 0 ? (
+      <div className="flex flex-wrap items-center gap-1.5">
+        {activeTags.map((id) => {
+          const tag = tags.find((t) => t.id === id)
+          return (
+            <button
+              key={id}
+              type="button"
+              onClick={() => toggleTag(id)}
+              className="flex items-center gap-1 rounded-full border border-transparent px-3 py-1 text-xs text-white"
+              style={{ backgroundColor: 'var(--palace)' }}
+              aria-label={`${tag?.name ?? 'タグ'} の絞り込みを外す`}
+            >
+              {tag?.name ?? 'タグ'}
+              <X size={12} />
+            </button>
+          )
+        })}
+        <button type="button" onClick={clearTags} className="text-xs text-muted-foreground hover:underline">
+          すべて解除
+        </button>
+      </div>
+    ) : null
 
   const searchBox = (
     <div className="relative min-w-[200px] flex-1">
@@ -787,12 +858,16 @@ export function ItemList({ initialTag = null }: { initialTag?: string | null }) 
 
   const filterBar = (
     <div className="space-y-3">
-      {/* 検索バー（伸縮）＋ソート/絞り込みプルダウンを1行に収める。狭い幅では折り返す。 */}
+      {/* 検索・種別・タグは同じ「絞り込み操作群」。1行に収める。
+          タグを別行の帯にすると、絞り込みの一部なのに独立した機能に見えるうえ、
+          カードを見る面積が毎回削られる。狭い画面でだけ折り返す */}
       <div className="flex flex-wrap items-center gap-2">
         {searchBox}
         {sortFilterControls}
+        {tagFilterButton}
       </div>
-      {tagFilter}
+      {activeTagChips}
+      {tagPanelContent}
     </div>
   )
 
@@ -841,7 +916,7 @@ export function ItemList({ initialTag = null }: { initialTag?: string | null }) 
   }
 
   if (items.length === 0) {
-    if (activeTag || appliedQuery || statusFilter) {
+    if (activeTags.length > 0 || appliedQuery || statusFilter) {
       return (
         <div className="space-y-6">
           {filterBar}

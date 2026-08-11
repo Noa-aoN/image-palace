@@ -161,14 +161,18 @@ export default function ItemDetailPage() {
         {/* パンくずと操作は行を分ける。同じ行に並べると、題名が長いカードで
             操作が押し出され、カードごとにボタンの位置が変わる。
 
-            上下の空きは同じにする（ここも下の見出し語も space-y-6）。
+            上下の空きは同じにする（下の見出し語までが space-y-6 なので、こちらも 6）。
             上だけ詰めると、操作がパンくずにぶら下がって見え、
             パンくずの一部なのか押せるものなのかが読み取りにくい。
 
+            空きはパンくず自身の mb で持つ。親の space-y には任せない。
+            Tailwind v4 の space-y-* は :where() で当たるため詳細度が 0 で、
+            子に付いた mb-* に負けて効かない（mb-0 のままだと空きが消える）。
+
             -mx-2 は、ghost ボタンの左右の余白を打ち消して文字の頭を
             パンくずの「カード」と縦に揃えるため（揃っていないと行がずれて見える） */}
-        <div className="space-y-6">
-          <Breadcrumb className="mb-0" items={[{ href: backHref, label: fromViewId ? (fromViewName ?? fromLabel) : 'カード' }, { label: item.title }]} />
+        <div>
+          <Breadcrumb className="mb-6" items={[{ href: backHref, label: fromViewId ? (fromViewName ?? fromLabel) : 'カード' }, { label: item.title }]} />
           <div className="-mx-2 flex flex-wrap items-center gap-0.5">
             {/* このカード1枚の見え方（どのブロックを出すか・並び順）。
                 中身は ItemProperties 側が右パネルへ差し込む */}

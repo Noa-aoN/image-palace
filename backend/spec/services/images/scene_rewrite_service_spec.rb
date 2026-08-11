@@ -76,7 +76,9 @@ RSpec.describe Images::SceneRewriteService do
       .to raise_error(described_class::RewriteError, /意味・説明がありません/)
   end
 
-  it "意味・説明と、いまの情景・補足指示を材料として渡す" do
+  # ここは「説明から起こし直す」ための口。下書きを見せると出来上がりが引きずられ、
+  # 言い回しが少し変わるだけで「書き直した」ことにならない（実際そう報告があった）
+  it "渡すのは単語と説明だけ。いまの情景・補足指示は渡さない" do
     add_meaning("諦めた選択肢の価値")
     item.update!(scene_prompt: "an old draft scene", custom_prompt: "もっと写実的に")
     client = stub_chat({ options: [ { label: "案", scene_prompt: "a rewritten scene" } ] }.to_json)
@@ -86,10 +88,20 @@ RSpec.describe Images::SceneRewriteService do
     expect(client).to have_received(:chat) do |parameters:|
       content = parameters[:messages].last[:content]
       expect(content).to include("諦めた選択肢の価値")
-      expect(content).to include("an old draft scene")
-      expect(content).to include("もっと写実的に")
+      expect(content).not_to include("an old draft scene")
+      expect(content).not_to include("もっと写実的に")
       expect(parameters[:response_format]).to eq({ type: "json_object" })
     end
+  end
+
+  # 画面はこれを説明文として保存し、プロンプト情報の説明文と情景を同じ出どころに揃える
+  it "何を根拠に書き直したかを返す" do
+    add_meaning("諦めた選択肢の価値")
+    stub_chat({ options: [ { label: "案", scene_prompt: "a rewritten scene" } ] }.to_json)
+
+    result = described_class.call(item: item, user: user)
+
+    expect(result.description).to eq("諦めた選択肢の価値")
   end
 
   it "結果は保存しない（利用者が確かめてから作り直すため）" do
