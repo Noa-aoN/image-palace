@@ -1,16 +1,21 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import Link from 'next/link'
-import { Plus, Box as BoxIcon } from 'lucide-react'
+import { CircleCheck, Plus, Box as BoxIcon } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { readPageCache, writePageCache } from '@/lib/page-cache'
 import { PanelSlotContent } from '@/components/features/panel/PanelSlot'
 import { usePanelForm } from '@/components/features/panel/usePanelForm'
 import { CardGridSkeleton } from '@/components/ui/skeleton'
-import { getBoxes } from '@/lib/api/boxes'
+import { cardGridClass } from '@/lib/card-grid'
+import { deleteBox, getBoxes } from '@/lib/api/boxes'
 import { CreateBoxForm } from '@/components/features/boxes/CreateBoxForm'
 import { EntityCover } from '@/components/features/shared/EntityCover'
+import { EntityDisplayPanel } from '@/components/features/shared/EntityDisplayPanel'
+import { EntitySelectionBar } from '@/components/features/shared/EntitySelectionBar'
+import { EntityTile } from '@/components/features/shared/EntityTile'
+import { sortEntities, useEntityListDisplay } from '@/hooks/useEntityListDisplay'
+import { useEntitySelection } from '@/hooks/useEntitySelection'
 import type { Box } from '@/types/box'
 
 const CACHE_KEY = 'boxes-list'
@@ -24,6 +29,10 @@ export default function BoxesPage() {
   // 描くものが既にあるなら、読み込み中の表示は出さない
   const [loading, setLoading] = useState(!cached)
   const [error, setError] = useState<string | null>(null)
+
+  const { display, change } = useEntityListDisplay('boxes')
+  const rows = sortEntities(boxes, display.sort, { name: (b) => b.name, count: (b) => b.entry_count })
+  const selection = useEntitySelection(rows)
 
   // 画面の内容をそのままキャッシュへ写す。作成・削除で state を触った結果も
   // ここを通るので、キャッシュだけ古いという食い違いが起きない。
@@ -52,6 +61,23 @@ export default function BoxesPage() {
     }
   }, [])
 
+  const removeSelected = async () => {
+    const { done, failed } = await selection.run(deleteBox)
+    setBoxes((current) => current.filter((box) => !done.includes(box.id)))
+    if (failed > 0) setError(`${failed}件を削除できませんでした`)
+  }
+
+  // 押せるものは一覧の上の操作列に集める。並びはカード一覧と同じ [選択][表示][作成]
+  const actions = (
+    <>
+      <EntityDisplayPanel panelKey="boxes" display={display} onChange={change} metaLabel="カードの数" />
+      <Button size="sm" variant="outline" onClick={() => createForm.open()} className="flex items-center gap-1.5">
+        <Plus size={16} />
+        作成
+      </Button>
+    </>
+  )
+
   return (
     <div className="max-w-7xl mx-auto px-6 py-12">
       {/* 見出しは「ここが何の一覧か」だけ。押せるものは一覧の上の操作列に集める */}
@@ -76,7 +102,7 @@ export default function BoxesPage() {
       </PanelSlotContent>
 
       {loading ? (
-        <CardGridSkeleton />
+        <CardGridSkeleton columns={display.columns} />
       ) : error ? (
         <p className="text-destructive text-sm">{error}</p>
       ) : boxes.length === 0 ? (
@@ -84,32 +110,43 @@ export default function BoxesPage() {
           <p className="text-muted-foreground">
             まだボックスがありません。カードをテーマごとにまとめてみましょう。
           </p>
-                      <Button onClick={() => createForm.open()}>最初のボックスを作成</Button>
+          <Button onClick={() => createForm.open()}>最初のボックスを作成</Button>
         </div>
       ) : (
         <div className="space-y-4">
-          <div className="flex justify-end">
-            <Button size="sm" variant="outline" onClick={() => createForm.open()} className="flex items-center gap-1.5">
-              <Plus size={16} />
-              作成
-            </Button>
-          </div>
-          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
-          {boxes.map((box) => (
-            <Link
-              key={box.id}
-              href={`/boxes/${box.id}`}
-              className="flex flex-col rounded-xl border border-border overflow-hidden bg-card hover:shadow-md transition-shadow"
-            >
-              <div className="px-4 py-3 flex items-center justify-between gap-2">
-                <span className="font-medium truncate">{box.name}</span>
-                <span className="text-xs text-muted-foreground shrink-0">{box.entry_count} 件</span>
-              </div>
-              <div className="w-full aspect-square bg-muted overflow-hidden">
-                <EntityCover cover={box} />
-              </div>
-            </Link>
-          ))}
+          {selection.selecting ? (
+            <EntitySelectionBar
+              total={rows.length}
+              selected={selection.selected.size}
+              busy={selection.busy}
+              onToggleAll={selection.toggleAll}
+              onDelete={removeSelected}
+              onCancel={selection.exit}
+              right={actions}
+            />
+          ) : (
+            <div className="flex justify-end gap-2">
+              <Button size="sm" variant="outline" onClick={selection.start}>
+                <CircleCheck size={14} className="mr-1" />
+                選択
+              </Button>
+              {actions}
+            </div>
+          )}
+
+          <div className={`grid gap-4 ${cardGridClass(display.columns)}`}>
+            {rows.map((box) => (
+              <EntityTile
+                key={box.id}
+                href={`/boxes/${box.id}`}
+                name={box.name}
+                meta={display.showMeta ? `${box.entry_count} 件` : null}
+                cover={<EntityCover cover={box} />}
+                selecting={selection.selecting}
+                selected={selection.selected.has(box.id)}
+                onSelect={() => selection.toggle(box.id)}
+              />
+            ))}
           </div>
         </div>
       )}
