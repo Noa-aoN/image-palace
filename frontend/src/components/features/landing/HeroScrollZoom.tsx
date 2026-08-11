@@ -19,7 +19,7 @@ export function HeroScrollZoom() {
       >
         {/* 背景画像（ズーム対象・最背面） */}
         {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img src="/hero-palace.jpg?v=2" alt="" aria-hidden fetchPriority="high" decoding="async" className="hero-zoom" />
+        <img src="/hero-palace.webp?v=2" alt="" aria-hidden fetchPriority="high" decoding="async" className="hero-zoom" />
         {/* 宮殿の扉オーバーレイ：focal point に重ねズームで拡大→スクロールで観音開き・奥から光。
             扉は厚みエッジ付きの3Dパネル。開くほどフレア（光条）が扉の奥から輝く */}
         <div aria-hidden className="hero-doors">
@@ -28,18 +28,18 @@ export function HeroScrollZoom() {
               （鏡像・暗め）のテクスチャとして使い、厚みのある板として開閉する */}
           <div className="hero-door-panel hero-door-panel--left">
             {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src="/hero-door-left.png?v=2" alt="" decoding="async" className="hero-door-face hero-door-face--front hero-door-face--left" />
+            <img src="/hero-door-left.webp?v=2" alt="" decoding="async" className="hero-door-face hero-door-face--front hero-door-face--left" />
             {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src="/hero-door-left.png?v=2" alt="" decoding="async" className="hero-door-face hero-door-face--back hero-door-face--left" />
+            <img src="/hero-door-left.webp?v=2" alt="" decoding="async" className="hero-door-face hero-door-face--back hero-door-face--left" />
             <span className="hero-door-edge hero-door-edge--seam-left" />
             <span className="hero-door-edge hero-door-edge--top" />
             <span className="hero-door-edge hero-door-edge--bottom" />
           </div>
           <div className="hero-door-panel hero-door-panel--right">
             {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src="/hero-door-right.png?v=2" alt="" decoding="async" className="hero-door-face hero-door-face--front hero-door-face--right" />
+            <img src="/hero-door-right.webp?v=2" alt="" decoding="async" className="hero-door-face hero-door-face--front hero-door-face--right" />
             {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src="/hero-door-right.png?v=2" alt="" decoding="async" className="hero-door-face hero-door-face--back hero-door-face--right" />
+            <img src="/hero-door-right.webp?v=2" alt="" decoding="async" className="hero-door-face hero-door-face--back hero-door-face--right" />
             <span className="hero-door-edge hero-door-edge--seam-right" />
             <span className="hero-door-edge hero-door-edge--top" />
             <span className="hero-door-edge hero-door-edge--bottom" />
@@ -60,42 +60,42 @@ export function HeroScrollZoom() {
         <div aria-hidden className="hero-clouds" />
         {/* 飛び回る渡鴉（ズームでフェード） */}
         {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img src="/hero-raven.png" alt="" aria-hidden decoding="async" className="hero-raven" />
+        <img src="/hero-raven.webp" alt="" aria-hidden decoding="async" className="hero-raven" />
         {/* 下部の植物周りを舞う蝶々（外=スクロールで左右へ画面外／中=飛行経路／内=羽ばたき） */}
         <div aria-hidden className="hero-butterfly hero-butterfly--1">
           <div className="hero-butterfly__path">
             {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src="/hero-butterfly-orange.png" alt="" decoding="async" className="hero-butterfly__wing" />
+            <img src="/hero-butterfly-orange.webp" alt="" decoding="async" className="hero-butterfly__wing" />
           </div>
         </div>
         <div aria-hidden className="hero-butterfly hero-butterfly--2">
           <div className="hero-butterfly__path">
             {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src="/hero-butterfly-pink.png" alt="" decoding="async" className="hero-butterfly__wing" />
+            <img src="/hero-butterfly-pink.webp" alt="" decoding="async" className="hero-butterfly__wing" />
           </div>
         </div>
         <div aria-hidden className="hero-butterfly hero-butterfly--3">
           <div className="hero-butterfly__path">
             {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src="/hero-butterfly-blue.png" alt="" decoding="async" className="hero-butterfly__wing" />
+            <img src="/hero-butterfly-blue.webp" alt="" decoding="async" className="hero-butterfly__wing" />
           </div>
         </div>
         <div aria-hidden className="hero-butterfly hero-butterfly--4">
           <div className="hero-butterfly__path">
             {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src="/hero-butterfly-green.png" alt="" decoding="async" className="hero-butterfly__wing" />
+            <img src="/hero-butterfly-green.webp" alt="" decoding="async" className="hero-butterfly__wing" />
           </div>
         </div>
         <div aria-hidden className="hero-butterfly hero-butterfly--5">
           <div className="hero-butterfly__path">
             {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src="/hero-butterfly-white.png" alt="" decoding="async" className="hero-butterfly__wing" />
+            <img src="/hero-butterfly-white.webp" alt="" decoding="async" className="hero-butterfly__wing" />
           </div>
         </div>
         <div aria-hidden className="hero-butterfly hero-butterfly--6">
           <div className="hero-butterfly__path">
             {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src="/hero-butterfly-black.png" alt="" decoding="async" className="hero-butterfly__wing" />
+            <img src="/hero-butterfly-black.webp" alt="" decoding="async" className="hero-butterfly__wing" />
           </div>
         </div>
         {/* 下部のぼかし */}

@@ -60,7 +60,7 @@ class View < ApplicationRecord
                      .select("view_items.*, ROW_NUMBER() OVER (PARTITION BY view_id ORDER BY created_at) AS rn")
     rows = ViewItem.from("(#{ranked.to_sql}) AS view_items")
                    .where("rn <= ?", limit)
-                   .includes(item: { medias: { file_attachment: :blob } })
+                   .includes(item: Item::MEDIA_INCLUDES)
                    .to_a
     grouped = rows.group_by(&:view_id)
     views.each { |v| v.preloaded_cover_items = (grouped[v.id] || []).filter_map(&:item) }
@@ -76,7 +76,7 @@ class View < ApplicationRecord
     return @preloaded_cover_items.first(limit) if @preloaded_cover_items
 
     view_items
-      .includes(item: { medias: { file_attachment: :blob } })
+      .includes(item: Item::MEDIA_INCLUDES)
       .order(:created_at)
       .limit(limit)
       .filter_map(&:item)

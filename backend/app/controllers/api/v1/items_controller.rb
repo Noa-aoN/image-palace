@@ -39,7 +39,7 @@ module Api
         items = scope
                   .includes(:item_type, :meanings, :tags,
                             { item_properties: :property_definition },
-                            { medias: { file_attachment: :blob } })
+                            MEDIA_INCLUDES)
                   .limit(per)
                   .offset((page - 1) * per)
 
@@ -649,7 +649,7 @@ module Api
           fact_check_claims: item.primary_meaning&.fact_check_claims || [],
           fact_checked_at: item.primary_meaning&.fact_checked_at,
           fact_check_acknowledged_at: item.primary_meaning&.fact_check_acknowledged_at,
-          meanings: item.meanings.ordered.map { |m| serialize_meaning_entry(m) },
+          meanings: item.sorted_meanings.map { |m| serialize_meaning_entry(m) },
           properties: serialize_properties(item),
           style: item.style,
           framing: item.framing,
@@ -822,7 +822,7 @@ module Api
         @item = current_user.items
                             .includes(:item_type, :meanings, :tags,
                                       { item_properties: :property_definition },
-                                      { medias: { file_attachment: :blob } })
+                                      MEDIA_INCLUDES)
                             .find(params[:id])
       end
 

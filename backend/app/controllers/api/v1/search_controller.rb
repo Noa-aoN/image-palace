@@ -24,13 +24,13 @@ module Api
           items: current_user.items
                               .where("items.title ILIKE ?", like)
                               .order(created_at: :desc).limit(LIMIT)
-                              .includes(:item_type, medias: { file_attachment: :blob })
+                              .includes(:item_type, MEDIA_INCLUDES)
                               .map { |i| serialize_item(i) },
           # デッキは view_type='deck' のキャンバスへ統合済み
           decks: current_user.views.where(view_type: "deck")
                              .where("name ILIKE ?", like)
                              .order(created_at: :desc).limit(LIMIT)
-                             .includes(view_items: { item: { medias: { file_attachment: :blob } } })
+                             .includes(view_items: { item: MEDIA_INCLUDES })
                              .map { |v| serialize_deck_view(v) },
           boxes: current_user.boxes
                                    .where("name ILIKE ?", like)

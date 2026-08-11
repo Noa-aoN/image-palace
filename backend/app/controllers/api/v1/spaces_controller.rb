@@ -169,7 +169,7 @@ module Api
       #   詳細表示はポイントベースに統一する（設計: docs/decisions/space-mapping-design.md）。
       def serialize_space_detail(space)
         points = space.space_points.ordered.includes(
-          { item: [ :item_type, { medias: { file_attachment: :blob } } ] },
+          { item: [ :item_type, MEDIA_INCLUDES ] },
           { image_attachment: :blob }
         )
         serialize_space(space).merge(points: points.map { |p| serialize_point(p) })
