@@ -30,6 +30,34 @@ RSpec.describe Wikipedia::SummaryFetcher do
 
   before { Rails.cache.clear }
 
+  # `CGI.escape` は空白を `+` にする。URL の道筋に置くと別の題を探しに行き、
+  # 空白を含む語が丸ごと引けなくなる（日本語版では出ないので気づきにくい）
+  describe "記事名の組み立て" do
+    it "空白は %20 にする（+ にしない）" do
+      connection = stub_request_with(payload: body)
+
+      described_class.call("Mycenaean Greece")
+
+      expect(connection).to have_received(:get).with("/api/rest_v1/page/summary/Mycenaean%20Greece")
+    end
+
+    it "日本語はそのまま百分率符号にする" do
+      connection = stub_request_with(payload: body)
+
+      described_class.call("光合成")
+
+      expect(connection).to have_received(:get).with(%r{\A/api/rest_v1/page/summary/%E5%85%89})
+    end
+
+    it "斜線を含む題も道筋を壊さない" do
+      connection = stub_request_with(payload: body)
+
+      described_class.call("AC/DC")
+
+      expect(connection).to have_received(:get).with("/api/rest_v1/page/summary/AC%2FDC")
+    end
+  end
+
   describe "取れたとき" do
     before { stub_request_with(payload: body) }
 
