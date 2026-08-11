@@ -19,7 +19,33 @@ module Achievements
 
     # 途切れていない日数
     def current(user, now = Time.current)
+      current_from(dates(user), now)
+    end
+
+    # これまででいちばん長く続いた日数
+    def longest(user)
+      longest_from(dates(user))
+    end
+
+    # 学習した日の数（連続でなくてよい）
+    def active_days(user)
+      dates(user).size
+    end
+
+    # 3つまとめて。日付の一覧を1回引くだけで全部出せる。
+    #
+    # current / longest / active_days をそれぞれ呼ぶと、同じ
+    # `DISTINCT DATE(reviewed_at)` を3回引くことになる。DB は片道70ms のところにある
+    def summary(user, now = Time.current)
       list = dates(user)
+      {
+        current: current_from(list, now),
+        longest: longest_from(list),
+        active_days: list.size
+      }
+    end
+
+    def current_from(list, now = Time.current)
       return 0 if list.empty?
 
       today = now.to_date
@@ -29,23 +55,17 @@ module Achievements
       list.each_with_index.take_while { |date, index| date == cursor - index }.size
     end
 
-    # これまででいちばん長く続いた日数
-    def longest(user)
-      list = dates(user).reverse
-      return 0 if list.empty?
+    def longest_from(list)
+      ascending = list.reverse
+      return 0 if ascending.empty?
 
       best = 1
       run = 1
-      list.each_cons(2) do |a, b|
+      ascending.each_cons(2) do |a, b|
         run = b == a + 1 ? run + 1 : 1
         best = [ best, run ].max
       end
       best
-    end
-
-    # 学習した日の数（連続でなくてよい）
-    def active_days(user)
-      dates(user).size
     end
   end
 end
