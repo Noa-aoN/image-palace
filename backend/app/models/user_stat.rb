@@ -36,18 +36,24 @@ class UserStat < ApplicationRecord
   }.freeze
 
   # 数え直して書き戻す
-  def self.recompute!(user)
+  # counts に既に数えたものを渡せる。実績の評価はその直前に同じ数を数えており、
+  # 渡さないとここで全部数え直すことになる（DB は片道70ms のところにある）。
+  # 渡された鍵だけを使い、足りないぶんはここで数える
+  def self.recompute!(user, counts: {}, streak: nil)
+    counted = ->(key) { counts.fetch(key) { Achievements::Conditions.value_for(key, user) } }
+    streak ||= Achievements::Streak.summary(user)
+
     stat = find_or_initialize_by(user: user)
     stat.assign_attributes(
-      cards_created: Achievements::Conditions.value_for("cards_created", user),
-      images_generated: Achievements::Conditions.value_for("images_generated", user),
-      containers_created: Achievements::Conditions.value_for("containers_created", user),
-      reviews_total: Achievements::Conditions.value_for("reviews_total", user),
-      reviews_correct: Achievements::Conditions.value_for("reviews_correct", user),
-      streak_days: Achievements::Streak.current(user),
-      longest_streak: Achievements::Streak.longest(user),
-      active_days: Achievements::Streak.active_days(user),
-      rewards_earned: UserReward.where(user_id: user.id).count,
+      cards_created: counted.call("cards_created"),
+      images_generated: counted.call("images_generated"),
+      containers_created: counted.call("containers_created"),
+      reviews_total: counted.call("reviews_total"),
+      reviews_correct: counted.call("reviews_correct"),
+      streak_days: streak[:current],
+      longest_streak: streak[:longest],
+      active_days: streak[:active_days],
+      rewards_earned: counted.call("rewards_earned"),
       achievements_completed: UserAchievement.where(user_id: user.id).completed.count,
       computed_at: Time.current
     )

@@ -24,7 +24,8 @@ module Achievements
       result = Result.new(completed_achievements: [], completed_missions: [], granted_rewards: [])
       evaluate_achievements(result)
       evaluate_missions(result)
-      UserStat.recompute!(@user)
+      # 評価のあいだに数えたものを渡す。渡さないと同じ数をもう一度数える
+      UserStat.recompute!(@user, counts: @counts || {}, streak: @streak)
       result
     end
 
@@ -41,7 +42,18 @@ module Achievements
     # 次に開いたときに拾える。冪等なので取りこぼしにはならない
     def count_for(type)
       @counts ||= {}
-      @counts.fetch(type.to_s) { |k| @counts[k] = Conditions.value_for(k, @user) }
+      @counts.fetch(type.to_s) do |key|
+        # 続いている日数・学習した日数は、同じ日付の一覧から出る。別々に数えない
+        @counts[key] = case key
+        when "streak_days" then streak[:current]
+        when "active_days" then streak[:active_days]
+        else Conditions.value_for(key, @user)
+        end
+      end
+    end
+
+    def streak
+      @streak ||= Streak.summary(@user, @now)
     end
 
     # 期間で切った数も同じ。「今日ぶん」は種類と起点が同じなら同じ数
