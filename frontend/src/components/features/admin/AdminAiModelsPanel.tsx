@@ -14,6 +14,8 @@ import {
   deleteAdminAiModel,
 } from '@/lib/api/admin'
 import type { AdminAiModel, AdminAiModelsPage } from '@/types/admin'
+import { useCanOperate } from '@/hooks/useAdminPermissions'
+import { ReadOnlyNotice } from '@/components/features/admin/ReadOnlyNotice'
 
 /**
  * AI モデルの登録簿。
@@ -26,6 +28,7 @@ import type { AdminAiModel, AdminAiModelsPage } from '@/types/admin'
  * 状態の列で分けて出す。ここが分からないと「有効なのに出てこない」と見える。
  */
 export function AdminAiModelsPanel() {
+  const canWrite = useCanOperate()
   const [page, setPage] = useState<AdminAiModelsPage | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [busy, setBusy] = useState<string | null>(null)
@@ -90,6 +93,10 @@ export function AdminAiModelsPanel() {
 
   return (
     <section className="space-y-5 rounded-xl border border-border bg-card p-5">
+      {!canWrite && <ReadOnlyNotice what="モデル登録簿の変更" />}
+      {/* 書き込みの釦はまとめて囲って止める。1つずつ disabled を書くと、
+          あとから釦を足したときに付け忘れる（付け忘れると押せてしまう） */}
+      <fieldset disabled={!canWrite} className="contents">
       <div className="flex flex-wrap items-center justify-between gap-2">
         <div className="flex items-center gap-2">
           <Cpu size={18} style={{ color: 'var(--palace)' }} />
@@ -223,6 +230,7 @@ export function AdminAiModelsPanel() {
       ))}
 
       {error && <p className="text-sm text-destructive">{error}</p>}
+      </fieldset>
     </section>
   )
 }

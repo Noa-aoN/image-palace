@@ -6,6 +6,8 @@ import { Button } from '@/components/ui/button'
 import { Spinner } from '@/components/ui/spinner'
 import { getAdminFeatureFlags, updateAdminFeatureFlag, resetAdminFeatureFlag } from '@/lib/api/admin'
 import type { AdminFeatureFlag } from '@/types/admin'
+import { useCanOperate } from '@/hooks/useAdminPermissions'
+import { ReadOnlyNotice } from '@/components/features/admin/ReadOnlyNotice'
 
 /**
  * ページをどこまで見せるかの切り替え。
@@ -18,6 +20,7 @@ import type { AdminFeatureFlag } from '@/types/admin'
  * 予告として見せたいだけの段階と、触ってもらいたいが粗い段階は別物。
  */
 export function AdminFeaturesPanel() {
+  const canWrite = useCanOperate()
   const [features, setFeatures] = useState<AdminFeatureFlag[]>([])
   const [stages, setStages] = useState<{ value: string; label: string }[]>([])
   const [groups, setGroups] = useState<{ key: string; label: string }[]>([])
@@ -84,6 +87,8 @@ export function AdminFeaturesPanel() {
         ))}
       </div>
 
+      {!canWrite && <ReadOnlyNotice what="公開段階の変更" />}
+
       {loading ? (
         <p className="flex items-center gap-2 text-sm text-muted-foreground">
           <Spinner size={14} /> 読み込み中…
@@ -96,6 +101,9 @@ export function AdminFeaturesPanel() {
           return (
             <div key={group.key} className="space-y-2">
               <h3 className="text-sm font-medium">{group.label}</h3>
+              {/* 書き込みの釦はまとめて囲って止める。1つずつ disabled を書くと、
+                  あとから釦を足したときに付け忘れる（付け忘れると押せてしまう） */}
+              <fieldset disabled={!canWrite} className="contents">
               <ul className="divide-y divide-border rounded-lg border border-border">
                 {rows.map((feature) => (
                   <li key={feature.key} className="flex flex-wrap items-center justify-between gap-3 px-3 py-2.5">
@@ -139,6 +147,7 @@ export function AdminFeaturesPanel() {
                   </li>
                 ))}
               </ul>
+              </fieldset>
             </div>
           )
         })

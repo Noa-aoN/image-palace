@@ -13,6 +13,8 @@ import {
   deleteAdminCampaignCode,
 } from '@/lib/api/admin'
 import type { AdminCampaignCode } from '@/types/admin'
+import { useCanOperate } from '@/hooks/useAdminPermissions'
+import { ReadOnlyNotice } from '@/components/features/admin/ReadOnlyNotice'
 
 /**
  * 引き換えコードの発行と成績。
@@ -24,6 +26,7 @@ import type { AdminCampaignCode } from '@/types/admin'
  * 配布を止めたいときは無効にする。
  */
 export function AdminCampaignCodesPanel() {
+  const canWrite = useCanOperate()
   const [codes, setCodes] = useState<AdminCampaignCode[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -94,6 +97,10 @@ export function AdminCampaignCodesPanel() {
 
   return (
     <section className="space-y-5 rounded-xl border border-border bg-card p-5">
+      {!canWrite && <ReadOnlyNotice what="コードの発行と停止" />}
+      {/* 書き込みの釦はまとめて囲って止める。1つずつ disabled を書くと、
+          あとから釦を足したときに付け忘れる（付け忘れると押せてしまう） */}
+      <fieldset disabled={!canWrite} className="contents">
       <div className="flex items-center gap-2">
         <Ticket size={18} style={{ color: 'var(--palace)' }} />
         <h2 className="text-lg font-semibold">引き換えコード</h2>
@@ -233,6 +240,7 @@ export function AdminCampaignCodesPanel() {
       )}
 
       {error && <p className="text-sm text-destructive">{error}</p>}
+      </fieldset>
     </section>
   )
 }

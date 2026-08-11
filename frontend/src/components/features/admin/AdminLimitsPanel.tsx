@@ -4,6 +4,7 @@ import { useState } from 'react'
 import { AlertTriangle, CheckCircle2, Loader2 } from 'lucide-react'
 import { checkAdminProvider } from '@/lib/api/admin'
 import type { AdminOverview, AdminProviderCheck } from '@/types/admin'
+import { useCanOperate } from '@/hooks/useAdminPermissions'
 
 /**
  * 「いま何枚まで作れる設定なのか」と「供給側が止まっていないか」をまとめて見る。
@@ -12,6 +13,7 @@ import type { AdminOverview, AdminProviderCheck } from '@/types/admin'
  * 画面の数字と実態がずれていると、運用の判断がそのままずれる。
  */
 export function AdminLimitsPanel({ overview }: { overview: AdminOverview }) {
+  const canWrite = useCanOperate()
   const { limits, provider_status: status, queue } = overview
   const [check, setCheck] = useState<AdminProviderCheck | null>(null)
   const [checking, setChecking] = useState(false)

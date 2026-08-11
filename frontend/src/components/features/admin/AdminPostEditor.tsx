@@ -11,6 +11,8 @@ import { Spinner } from '@/components/ui/spinner'
 import { AdminPostCover } from './AdminPostCover'
 import { createAdminPost, getAdminPost, updateAdminPost } from '@/lib/api/posts'
 import { POST_CATEGORIES, POST_CATEGORY_LABELS, type AdminPost, type PostCategory } from '@/types/post'
+import { useCanOperate } from '@/hooks/useAdminPermissions'
+import { ReadOnlyNotice } from '@/components/features/admin/ReadOnlyNotice'
 
 type Draft = {
   slug: string
@@ -46,6 +48,7 @@ const EMPTY: Draft = {
  * 約束事にしている。書く側に構造化を強いると続かない。
  */
 export function AdminPostEditor({ postId }: { postId?: string }) {
+  const canWrite = useCanOperate()
   const router = useRouter()
   const [draft, setDraft] = useState<Draft>(EMPTY)
   const [post, setPost] = useState<AdminPost | null>(null)
@@ -128,6 +131,10 @@ export function AdminPostEditor({ postId }: { postId?: string }) {
 
   return (
     <div className="space-y-5">
+      {!canWrite && <ReadOnlyNotice what="読みものの編集・配信" />}
+      {/* 書き込みの部品はまとめて囲って止める。1つずつ disabled を書くと、
+          あとから入力欄や釦を足したときに付け忘れる */}
+      <fieldset disabled={!canWrite} className="contents">
       <div className="flex flex-wrap items-center justify-between gap-2">
         <Link href="/admin/posts" className="flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground">
           <ArrowLeft size={14} />
@@ -231,6 +238,7 @@ export function AdminPostEditor({ postId }: { postId?: string }) {
 
         {error && <p className="text-sm text-destructive">{error}</p>}
       </section>
+      </fieldset>
     </div>
   )
 }
