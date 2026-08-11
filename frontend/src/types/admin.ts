@@ -5,10 +5,19 @@
 export type { AdminPeriod } from '@/components/features/admin/PeriodSelect'
 import type { AdminPeriod } from '@/components/features/admin/PeriodSelect'
 
-export type AdminRole = 'user' | 'admin' | 'owner'
+/**
+ * 役割は4段階。**上位は下位を含む。**
+ *   user     … 一般。/admin には入れない
+ *   support  … 閲覧・調査。見るだけ
+ *   operator … 通常運用。配信・付与・設定変更
+ *   admin    … 最上位。権限・お金・セキュリティ
+ */
+export type AdminRole = 'user' | 'support' | 'operator' | 'admin'
 
 export interface AdminSession {
+  /** 運営の入口に入れるか（support 以上） */
   admin: boolean
+  /** 権限・お金を触れるか（admin のみ）。名前は据え置き（画面側の参照が多いため） */
   owner: boolean
   role: AdminRole
 }
