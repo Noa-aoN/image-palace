@@ -51,6 +51,14 @@ import { SortableContext, arrayMove, rectSortingStrategy, sortableKeyboardCoordi
 import { CSS } from '@dnd-kit/utilities'
 import { GripVertical } from 'lucide-react'
 
+/** 指定した鍵の札の直後へ挿す。見つからなければ先頭に置く */
+function insertAfter<T extends { key: string }>(list: T[], afterKey: string, block: T): T[] {
+  const at = list.findIndex((b) => b.key === afterKey)
+  if (at < 0) return [ block, ...list ]
+
+  return [ ...list.slice(0, at + 1), block, ...list.slice(at + 1) ]
+}
+
 type ItemPropertiesProps = {
   item: Item
   /** 更新後のItemを親（詳細画面・ストア）へ反映する */
@@ -674,16 +682,24 @@ export function ItemProperties({ item, onUpdated }: ItemPropertiesProps) {
     node: <PropertyEntryBlock item={item} entry={entry} onUpdated={onUpdated} />,
   }))
 
-  const allBlocks = [
-    ...blocks,
-    ...customBlocks,
-    {
-      // 道具立ては最後。まとめて埋める操作は、項目を見たあとで押すもの
-      key: PROPERTY_TOOLS_KEY,
-      label: '項目の道具',
-      node: <PropertyToolsBlock item={item} onUpdated={onUpdated} onOpenSettings={openSettings} />,
-    },
-  ]
+  const toolsBlock = {
+    key: PROPERTY_TOOLS_KEY,
+    label: '項目の道具',
+    node: <PropertyToolsBlock item={item} onUpdated={onUpdated} onOpenSettings={openSettings} />,
+  }
+
+  // 道具立ては最後。まとめて埋める操作は、項目を見たあとで押すもの。
+  //
+  // ただし**項目が1つも無いときだけは先に出す**。0件のときは「見たあと」が
+  // 存在せず、最後に置くと画面の末尾までたどり着いた人にしか見えない。
+  // 実際、本番では所有者以外の全員が0件のままだった。
+  // ここは道具ではなく、機能があることを知らせる場所になる
+  const hasProperties = customBlocks.length > 0
+  // 0件のときは種別のすぐ下に置く。位置ではなく鍵で挿すのは、
+  // 作り付けの並びを変えたときに黙ってずれないようにするため
+  const allBlocks = hasProperties
+    ? [ ...blocks, ...customBlocks, toolsBlock ]
+    : insertAfter(blocks, 'item_type', toolsBlock)
 
   // − に入れたもの（このカードでは持たない）と、＋の中で畳んだもの。
   // どちらも出さないが、意味が違うので分けて持つ。
