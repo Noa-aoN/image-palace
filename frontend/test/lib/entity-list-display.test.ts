@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { sortEntities } from '@/hooks/useEntityListDisplay'
+import { groupEntities, sortEntities } from '@/hooks/useEntityListDisplay'
 
 type Row = { id: string; name: string; count: number }
 
@@ -29,5 +29,43 @@ describe('sortEntities', () => {
     sortEntities(rows, 'name', read)
 
     expect(rows.map((r) => r.id)).toEqual(before)
+  })
+})
+
+type Typed = { id: string; type: string }
+
+const label = (type: string) => ({ deck: 'デッキ', freeboard: 'フリーボード' })[type] ?? type
+
+describe('groupEntities', () => {
+  const typed: Typed[] = [
+    { id: '1', type: 'freeboard' },
+    { id: '2', type: 'deck' },
+    { id: '3', type: 'freeboard' },
+  ]
+  const read = { type: (r: Typed) => r.type, label }
+
+  it('決めた順に棚を並べる（一覧に出てきた順ではない）', () => {
+    const groups = groupEntities(typed, ['deck', 'freeboard'], read)
+
+    expect(groups.map((g) => g.type)).toEqual(['deck', 'freeboard'])
+    expect(groups.map((g) => g.label)).toEqual(['デッキ', 'フリーボード'])
+  })
+
+  it('中身が0の種別は棚ごと出さない（あるはずのものが無いように見える）', () => {
+    const groups = groupEntities(typed, ['deck', 'freeboard', 'timeline'], read)
+
+    expect(groups.map((g) => g.type)).not.toContain('timeline')
+  })
+
+  it('知らない種別は後ろに回す（落とさない）', () => {
+    const groups = groupEntities([...typed, { id: '4', type: 'unknown' }], ['deck', 'freeboard'], read)
+
+    expect(groups.at(-1)?.type).toEqual('unknown')
+  })
+
+  it('棚の中の並びは、渡された順のまま', () => {
+    const groups = groupEntities(typed, ['freeboard'], read)
+
+    expect(groups[0].rows.map((r) => r.id)).toEqual(['1', '3'])
   })
 })

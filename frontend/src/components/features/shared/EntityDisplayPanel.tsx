@@ -7,7 +7,9 @@ import { PanelSlotContent } from '@/components/features/panel/PanelSlot'
 import { usePanelForm } from '@/components/features/panel/usePanelForm'
 import {
   ENTITY_COLUMN_CHOICES,
+  ENTITY_GROUPING_LABELS,
   ENTITY_SORT_LABELS,
+  type EntityGrouping,
   type EntityListDisplay,
   type EntitySort,
 } from '@/hooks/useEntityListDisplay'
@@ -28,6 +30,7 @@ export function EntityDisplayPanel({
   onChange,
   metaLabel,
   sorts = ['recent', 'name', 'size'],
+  groupable = false,
 }: {
   /** 一覧ごとに分ける。まとめると別の一覧の設定まで動く */
   panelKey: string
@@ -37,6 +40,8 @@ export function EntityDisplayPanel({
   metaLabel: string
   /** 選べる並び順。件数を持たない一覧では「中身が多い順」を出さない */
   sorts?: EntitySort[]
+  /** 種別を持つ一覧（キャンバス・スペース）だけ、まとめ方を選べるようにする */
+  groupable?: boolean
 }) {
   const panel = usePanelForm(`${panelKey}-display`, '表示')
 
@@ -79,6 +84,25 @@ export function EntityDisplayPanel({
               ))}
             </div>
           </div>
+
+          {groupable && (
+            <div className="space-y-2">
+              <Label>まとめ方</Label>
+              <div className="flex flex-wrap gap-1.5">
+                {(Object.keys(ENTITY_GROUPING_LABELS) as EntityGrouping[]).map((grouping) => (
+                  <Choice
+                    key={grouping}
+                    active={display.grouping === grouping}
+                    onClick={() => onChange({ grouping })}
+                    label={ENTITY_GROUPING_LABELS[grouping]}
+                  />
+                ))}
+              </div>
+              <p className="text-xs text-muted-foreground">
+                種別ごとに分けると、探すときに種別を読まずに済みます。数が少ないうちは、まとめたほうが詰まって見えます。
+              </p>
+            </div>
+          )}
 
           <div className="space-y-2">
             <Label>札に出すもの</Label>

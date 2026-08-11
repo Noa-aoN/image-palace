@@ -14,9 +14,20 @@ import { useCallback, useSyncExternalStore } from 'react'
  */
 export type EntitySort = 'recent' | 'name' | 'size'
 
+/**
+ * まとめ方。
+ *   flat  … 全部を1つの棚に並べる
+ *   type  … 種別ごとに棚を分ける（フリーボード / デッキ / ルーム / ロード）
+ *
+ * 種別が混ざったまま並ぶと、探すときに毎回「これはどれだったか」を読むことになる。
+ * 一方、数が少ないうちは分けるほうが隙間だらけになる。だから選べるようにする。
+ */
+export type EntityGrouping = 'flat' | 'type'
+
 export interface EntityListDisplay {
   columns: number
   sort: EntitySort
+  grouping: EntityGrouping
   /** 札の右に添える一言（件数・種別）を出すか */
   showMeta: boolean
 }
@@ -29,7 +40,17 @@ export const ENTITY_SORT_LABELS: Record<EntitySort, string> = {
   size: '中身が多い順',
 }
 
-export const DEFAULT_ENTITY_DISPLAY: EntityListDisplay = { columns: 5, sort: 'recent', showMeta: true }
+export const ENTITY_GROUPING_LABELS: Record<EntityGrouping, string> = {
+  flat: 'まとめて並べる',
+  type: '種別ごとに分ける',
+}
+
+export const DEFAULT_ENTITY_DISPLAY: EntityListDisplay = {
+  columns: 5,
+  sort: 'recent',
+  grouping: 'flat',
+  showMeta: true,
+}
 
 const listeners = new Set<() => void>()
 
@@ -48,6 +69,10 @@ function read(key: string): EntityListDisplay {
         ? (parsed.columns as number)
         : DEFAULT_ENTITY_DISPLAY.columns,
       sort: parsed.sort && parsed.sort in ENTITY_SORT_LABELS ? parsed.sort : DEFAULT_ENTITY_DISPLAY.sort,
+      grouping:
+        parsed.grouping && parsed.grouping in ENTITY_GROUPING_LABELS
+          ? parsed.grouping
+          : DEFAULT_ENTITY_DISPLAY.grouping,
       showMeta: typeof parsed.showMeta === 'boolean' ? parsed.showMeta : DEFAULT_ENTITY_DISPLAY.showMeta,
     }
   } catch {
@@ -67,6 +92,7 @@ function snapshot(key: string): EntityListDisplay {
     current &&
     current.columns === next.columns &&
     current.sort === next.sort &&
+    current.grouping === next.grouping &&
     current.showMeta === next.showMeta
   ) {
     return current
@@ -104,6 +130,36 @@ export function useEntityListDisplay(key: string) {
   )
 
   return { display, change }
+}
+
+/**
+ * 種別ごとに分ける。並び順は各棚の中でも保たれる（呼ぶ前に並べ替えておく）。
+ *
+ * 棚の順番は、渡した種別の一覧（order）に従う。中身が0の種別は棚ごと出さない
+ * （空の棚が並ぶと、あるはずのものが無いように見える）。
+ */
+export function groupEntities<T>(
+  rows: T[],
+  order: string[],
+  read: { type: (row: T) => string; label: (type: string) => string }
+): { type: string; label: string; rows: T[] }[] {
+  const buckets = new Map<string, T[]>()
+  rows.forEach((row) => {
+    const type = read.type(row)
+    const bucket = buckets.get(type)
+    if (bucket) bucket.push(row)
+    else buckets.set(type, [ row ])
+  })
+
+  // 一覧に出てきた種別のうち、順番が決まっているものを先に、知らないものは後ろへ
+  const known = order.filter((type) => buckets.has(type))
+  const unknown = [...buckets.keys()].filter((type) => !order.includes(type))
+
+  return [...known, ...unknown].map((type) => ({
+    type,
+    label: read.label(type),
+    rows: buckets.get(type) ?? [],
+  }))
 }
 
 /** 並び順を適用する。名前と件数の取り出し方だけ呼び出し側から渡す */

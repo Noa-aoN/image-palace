@@ -11,13 +11,13 @@ import { usePanelForm } from '@/components/features/panel/usePanelForm'
 import { CardGridSkeleton } from '@/components/ui/skeleton'
 import { cardGridClass } from '@/lib/card-grid'
 import { deleteSpace, getSpaces } from '@/lib/api/spaces'
-import { spaceTypeLabel } from '@/lib/space-types'
+import { SPACE_TYPES, spaceTypeLabel } from '@/lib/space-types'
 import { CreateSpaceForm } from '@/components/features/spaces/CreateSpaceForm'
 import { EntityCover } from '@/components/features/shared/EntityCover'
 import { EntityDisplayPanel } from '@/components/features/shared/EntityDisplayPanel'
 import { EntitySelectionBar } from '@/components/features/shared/EntitySelectionBar'
 import { EntityTile } from '@/components/features/shared/EntityTile'
-import { sortEntities, useEntityListDisplay } from '@/hooks/useEntityListDisplay'
+import { groupEntities, sortEntities, useEntityListDisplay } from '@/hooks/useEntityListDisplay'
 import { useEntitySelection } from '@/hooks/useEntitySelection'
 import type { Space } from '@/types/space'
 
@@ -88,6 +88,20 @@ function SpacesPageInner() {
     if (failed > 0) setError(`${failed}件を削除できませんでした`)
   }
 
+  // 札は1か所で作る。まとめて並べても種別ごとに分けても、同じものが出るようにする
+  const tile = (space: Space) => (
+    <EntityTile
+      key={space.id}
+      href={`/spaces/${space.id}`}
+      name={space.name}
+      meta={display.showMeta ? spaceTypeLabel(space.space_type) : null}
+      cover={<EntityCover cover={space} fallback={<SpaceCoverFallback spaceType={space.space_type} />} />}
+      selecting={selection.selecting}
+      selected={selection.selected.has(space.id)}
+      onSelect={() => selection.toggle(space.id)}
+    />
+  )
+
   // 押せるものは一覧の上の操作列に集める。並びはカード一覧と同じ [選択][表示][作成]
   const actions = (
     <>
@@ -97,6 +111,7 @@ function SpacesPageInner() {
         onChange={change}
         metaLabel="種別"
         sorts={['recent', 'name']}
+        groupable
       />
       <Button size="sm" variant="outline" onClick={() => createForm.open()} className="flex items-center gap-1.5">
         <Plus size={16} />
@@ -170,22 +185,22 @@ function SpacesPageInner() {
             </div>
           )}
 
-          <div className={`grid gap-4 ${cardGridClass(display.columns)}`}>
-            {rows.map((space) => (
-              <EntityTile
-                key={space.id}
-                href={`/spaces/${space.id}`}
-                name={space.name}
-                meta={display.showMeta ? spaceTypeLabel(space.space_type) : null}
-                cover={
-                  <EntityCover cover={space} fallback={<SpaceCoverFallback spaceType={space.space_type} />} />
-                }
-                selecting={selection.selecting}
-                selected={selection.selected.has(space.id)}
-                onSelect={() => selection.toggle(space.id)}
-              />
-            ))}
-          </div>
+          {/* 種別ごとに分けるときも、札そのものは同じもの。棚の見出しが増えるだけ */}
+          {display.grouping === 'type' && !typeFilter ? (
+            groupEntities(rows, [...SPACE_TYPES], { type: (s) => s.space_type, label: spaceTypeLabel }).map(
+              (group) => (
+                <section key={group.type} className="space-y-2">
+                  <h2 className="flex items-baseline gap-2 text-sm font-medium text-muted-foreground">
+                    {group.label}
+                    <span className="text-xs">{group.rows.length}</span>
+                  </h2>
+                  <div className={`grid gap-4 ${cardGridClass(display.columns)}`}>{group.rows.map(tile)}</div>
+                </section>
+              )
+            )
+          ) : (
+            <div className={`grid gap-4 ${cardGridClass(display.columns)}`}>{rows.map(tile)}</div>
+          )}
         </div>
       )}
     </div>
