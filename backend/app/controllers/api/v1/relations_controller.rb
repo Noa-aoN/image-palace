@@ -56,8 +56,8 @@ module Api
         relations = Relation.for_user(current_user)
                             .touching(@item.id)
                             .includes(
-                              from_item: [ :item_type, { medias: { file_attachment: :blob } } ],
-                              to_item: [ :item_type, { medias: { file_attachment: :blob } } ]
+                              from_item: [ :item_type, MEDIA_INCLUDES ],
+                              to_item: [ :item_type, MEDIA_INCLUDES ]
                             )
                             .order(created_at: :asc)
 

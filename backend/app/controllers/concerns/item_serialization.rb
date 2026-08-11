@@ -1,6 +1,9 @@
 module ItemSerialization
   extend ActiveSupport::Concern
 
+  # 一覧で毎回書くには長いので、コントローラからも短い名前で引けるようにする
+  MEDIA_INCLUDES = Item::MEDIA_INCLUDES
+
   # アイテムの JSON 表現。コレクション一覧・詳細でカードのサムネイルを返すために利用する。
   # ItemsController と同等のメディア URL 解決を行う（将来的に共通化したい）。
   def serialize_item(item)

@@ -1,0 +1,25 @@
+# Cloudflare Workers の静的配信ヘッダー。
+#
+# 既定は全ファイル `public, max-age=0, must-revalidate` で、
+# ブラウザは毎回「変わってない？」と聞きに行く。
+# カード一覧なら JS だけで 25 本あり、開くたび 25 往復を捨てていた。
+#
+# ここで足しているのは寿命だけ。中身の配り方は変えていない。
+
+# ビルド成果物。名前に中身のハッシュが入っているので、
+# 中身が変われば URL も変わる。古い URL が古い中身を返すのは正しい
+/_next/static/*
+  cache-control: public, max-age=31536000, immutable
+
+# 自前で置いた画像・フォント。名前は変わらないので immutable にはできない。
+# 差し替えたい時は `?v=` を付ける運用（すでにトップの絵がそうしている）
+/*.jpg
+  cache-control: public, max-age=604800
+/*.png
+  cache-control: public, max-age=604800
+/*.webp
+  cache-control: public, max-age=604800
+/*.svg
+  cache-control: public, max-age=604800
+/*.woff2
+  cache-control: public, max-age=31536000, immutable

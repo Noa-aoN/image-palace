@@ -45,7 +45,7 @@ module Api
 
       def export_items
         current_user.items
-                    .includes(:item_type, :meanings, :tags, medias: { file_attachment: :blob })
+                    .includes(:item_type, :meanings, :tags, MEDIA_INCLUDES)
                     .order(:created_at)
                     .map do |item|
           {

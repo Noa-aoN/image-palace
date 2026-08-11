@@ -19,7 +19,9 @@ module Api
                                   # cover/cover_cards は先頭数件しか使わない。
                                   # box_entries を全件 preload すると中身の数に比例して重くなるため、
                                   # 必要数の取得はモデル側（cover_item_candidates）に任せる。
-                                  .includes(:cover_item)
+                                  # 表紙に選んだカードは絵まで読む。ここで読まないと
+                                  # 箱1つにつき数往復増える（DB は片道70ms）
+                                  .includes(cover_item: Item::MEDIA_INCLUDES)
                                   .with_attached_cover_image
                                   .with_attached_cover_thumb
 

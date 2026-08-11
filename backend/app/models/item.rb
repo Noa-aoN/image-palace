@@ -1,4 +1,11 @@
 class Item < ApplicationRecord
+  # カードの絵を出すのに要る添付一式。一覧で `includes(Item::MEDIA_INCLUDES)` と書く。
+  #
+  # thumb を入れ忘れると、1枚ごとに「サムネある？」「その実体は？」と2往復ずつ聞きに行く。
+  # DB は隣の部屋には無い（nrt から Neon まで片道70ms）ので、24枚並べるだけで数秒が消える。
+  # file だけ読んで安心しないこと
+  MEDIA_INCLUDES = { medias: [ { file_attachment: :blob }, { thumb_attachment: :blob } ] }.freeze
+
   # カード画像の縦横比（定義は AspectRatios に集約）
   validates :aspect_ratio, inclusion: { in: AspectRatios::KEYS }
   belongs_to :user
@@ -118,12 +125,23 @@ class Item < ApplicationRecord
   # 表示・編集用の代表的な意味（日本語を優先）。
   # 複数持てるようになったので、同じ言語が並んだときは position の先頭を代表にする。
   #
-  # 並べ替えはメモリ上で行う。`meanings.ordered` のようにスコープを挟むと Relation になり、
-  # まだ保存していないカード（build して meanings.build した状態）で組み立てた中身が
-  # 見えなくなる。プロンプト組み立てはその状態でも通るので、ここで落とせない。
   def primary_meaning
-    sorted = meanings.to_a.sort_by { |m| [ m.position || Float::INFINITY, m.created_at || Time.zone.at(0) ] }
-    sorted.find { |m| m.language_code == "ja" } || sorted.first
+    sorted_meanings.find { |m| m.language_code == "ja" } || sorted_meanings.first
+  end
+
+  # 意味を、読む順に並べて返す。
+  #
+  # 並べ替えはメモリ上で行う。`meanings.ordered` のようにスコープを挟むと二重に効く。
+  # ひとつは、まだ保存していないカード（build して meanings.build した状態）で
+  # 組み立てた中身が見えなくなること。プロンプト組み立てはその状態でも通る。
+  # もうひとつは、`includes` で読んであっても問い合わせが1本増えること。
+  # 一覧は1ページ24枚なので、そのまま24往復になる。DB は隣の部屋には無く
+  # （nrt から Neon まで片道70ms）、これが一覧の待ち時間の半分近くを占めていた。
+  #
+  # 覚えさせない（メモ化しない）。作ってすぐ読む道筋があり、覚えると
+  # 足したばかりの意味が見えなくなる。並べ替える相手は数件なので安い
+  def sorted_meanings
+    meanings.to_a.sort_by { |m| [ m.position || Float::INFINITY, m.created_at || Time.zone.at(0) ] }
   end
 
   # ユーザーが説明文・情景プロンプトを手で直したか。直したものは自動生成で上書きしない

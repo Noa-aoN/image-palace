@@ -40,10 +40,10 @@ class Box < ApplicationRecord
     entries = rows.filter_map(&:entry)
     items = entries.grep(Item)
     views = entries.grep(View)
-    preload(items, { medias: { file_attachment: :blob } })
+    preload(items, Item::MEDIA_INCLUDES)
     if views.any?
       View.preload_cover_items(views)
-      preload(views.filter_map(&:cover_item), { medias: { file_attachment: :blob } })
+      preload(views.filter_map(&:cover_item), Item::MEDIA_INCLUDES)
     end
 
     grouped = rows.group_by(&:box_id)

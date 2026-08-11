@@ -17,7 +17,7 @@ module Api
         # view_items を全件 preload すると配置カードの数に比例して重くなるため、
         # 必要数の取得はモデル側（cover_item_candidates）に任せる。
         views = current_user.views.recent
-                            .includes(cover_item: { medias: { file_attachment: :blob } })
+                            .includes(cover_item: MEDIA_INCLUDES)
                             .with_attached_cover_image.with_attached_cover_thumb
 
         views = filter_by_name(views)
@@ -329,8 +329,8 @@ module Api
       def set_view
         # 詳細でも serialize_view が cover_cards（view_items）を走査するため preload する
         @view = current_user.views.includes(
-          view_items: { item: { medias: { file_attachment: :blob } } },
-          cover_item: { medias: { file_attachment: :blob } }
+          view_items: { item: MEDIA_INCLUDES },
+          cover_item: MEDIA_INCLUDES
         ).find(params[:id])
       end
 
@@ -398,7 +398,7 @@ module Api
         # deck は position 順、freeboard は重なり順
         order = view.deck? ? Arel.sql("position ASC NULLS LAST, created_at ASC") : Arel.sql("z_index, created_at")
         placements = view.view_items
-                         .includes(item: [ :item_type, { medias: { file_attachment: :blob } } ])
+                         .includes(item: [ :item_type, MEDIA_INCLUDES ])
                          .order(order)
         base = serialize_view(view)
                .merge(items: placements.map { |vi| serialize_placement(vi) })
@@ -415,10 +415,10 @@ module Api
         return base.merge(space: nil, points: []) unless space
 
         points = space.space_points.ordered
-                      .includes(image_attachment: :blob, item: { medias: { file_attachment: :blob } })
+                      .includes(image_attachment: :blob, item: MEDIA_INCLUDES)
         placed = view.view_items
                      .where.not(space_point_id: nil)
-                     .includes(item: [ :item_type, { medias: { file_attachment: :blob } } ])
+                     .includes(item: [ :item_type, MEDIA_INCLUDES ])
                      .index_by(&:space_point_id)
 
         base.merge(
