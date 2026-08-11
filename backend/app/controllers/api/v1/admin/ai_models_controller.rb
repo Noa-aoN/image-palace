@@ -4,6 +4,8 @@ module Api
       # AI モデルの登録簿。登録・有効/無効・既定・表示・原価・消費クレジット・
       # 用途・1日の上限を、1つの表で扱う。
       class AiModelsController < BaseController
+        # 登録簿の書き換えは通常運用の範囲
+        before_action -> { require_role!(:operator) }, only: [ :create, :update, :destroy ]
         def index
           render json: {
             models: AiModel.registry.map { |model| serialize(model, usage) },

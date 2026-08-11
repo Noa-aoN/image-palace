@@ -8,6 +8,9 @@ module Api
       #
       # 手で配る操作（手動付与）は**重要操作**として扱う。理由を必須にし、監査ログに必ず残す。
       class RewardsController < BaseController
+        # 配るもの・配る操作は通常運用の範囲
+        before_action -> { require_role!(:operator) },
+                      only: [ :update_reward, :update_achievement, :update_mission, :grant ]
         def index
           render json: {
             rewards: RewardDefinition.registry.map { |d| serialize_reward(d) },

@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
+import { ROLE_LABELS } from '@/lib/admin-roles'
 import { ShieldCheck, Loader2 } from 'lucide-react'
 import { useAdminStore } from '@/stores/admin'
 
@@ -66,7 +67,8 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
         {/* サイドバーの呼び名（執務室）と揃える。入口と行き先で名前が変わると、
             同じ場所だと分からない */}
         <h1 className="text-2xl font-semibold">執務室</h1>
-        <span className="text-sm text-muted-foreground">{session.owner ? '管理者' : '運営'}</span>
+        {/* 4段階あるので「管理者か否か」では足りない。いまの段階をそのまま出す */}
+        <span className="text-sm text-muted-foreground">{ROLE_LABELS[session.role]}</span>
       </div>
 
       <nav className="flex flex-wrap gap-1 border-b border-border">

@@ -3,6 +3,8 @@ module Api
     module Admin
       # 支出入の概算。単価の設定と、請求実額の入力もここで受ける。
       class FinancesController < BaseController
+        # 原価・単価の想定値。粗利の下限判定に使われるので、最上位だけが触れる
+        before_action -> { require_role!(:admin) }, only: [ :update_parameter, :update_actual ]
         def show
           now = Time.zone.now
           # 期間の決め方は他の運営画面と共通（Admin::Period）。

@@ -3,6 +3,8 @@ module Api
     module Admin
       # 作りかけの機能を、どこまで見せるかの設定。
       class FeatureFlagsController < BaseController
+        # 公開段階の切り替えは通常運用の範囲
+        before_action -> { require_role!(:operator) }, only: [ :upsert, :destroy ]
         def index
           render json: {
             features: FeatureFlag.overview,
