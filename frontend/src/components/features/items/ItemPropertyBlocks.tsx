@@ -25,6 +25,15 @@ import type { WikipediaValue } from '@/lib/api/properties'
  * ここで触るのは**このカードの値だけ**。どの項目を持つかは種別ぜんぶに効くので、
  * 入口を分けて右パネルへ置く。1枚のカードの上で全体の設定をさせない。
  */
+/**
+ * 項目の道具の並び順キー。
+ *
+ * これはカードの**中身ではなく道具**（項目を足す・AI で埋める入口）。
+ * ひな型は「どの中身を出すか」を決めるものなので、ここは畳まない。
+ * 畳むと、ひな型を当てた瞬間に項目を足す方法が画面から消える。
+ */
+export const PROPERTY_TOOLS_KEY = 'property_tools'
+
 export function PropertyToolsBlock({
   item,
   onUpdated,
