@@ -36,49 +36,50 @@ export function CoverGenerator({
 
   return (
     <div className="space-y-2 rounded-lg border border-border/70 bg-muted/30 p-3">
-      <p className="text-sm font-medium">AIで作る</p>
-      <div className="flex flex-col gap-2 sm:flex-row sm:items-end">
-        <div className="flex-1">
-          <label htmlFor="cover-prompt" className="mb-1 block text-xs text-muted-foreground">
-            どんな絵にするか
-          </label>
-          <Input
-            id="cover-prompt"
-            value={prompt}
-            onChange={(e) => setPrompt(e.target.value)}
-            placeholder="例: 朝もやの中の石造りの門"
-            maxLength={MAX_PROMPT}
-            disabled={generating}
-          />
-        </div>
-        <div className="w-32">
-          <label htmlFor="cover-style" className="mb-1 block text-xs text-muted-foreground">
-            スタイル
-          </label>
-          <select
-            id="cover-style"
-            value={style}
-            onChange={(e) => setStyle(e.target.value)}
-            disabled={generating}
-            className="h-9 w-full rounded-lg border border-input bg-background px-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-          >
-            {STYLE_OPTIONS.filter((o) => o.value).map((opt) => (
-              <option key={opt.value} value={opt.value}>
-                {opt.label}
-              </option>
-            ))}
-          </select>
-        </div>
-        <Button
-          size="sm"
-          onClick={() => onGenerate(prompt.trim(), style)}
-          disabled={generating || insufficient || !prompt.trim()}
-          className="flex items-center justify-center gap-1.5 sm:w-28"
+      {/* 上から順に「何を書くか → 書く → どんな見た目か → 作る」。
+          横に並べると入力欄が細くなり、書いた文が読めないまま押すことになる */}
+      <label htmlFor="cover-prompt" className="block text-sm font-medium">
+        どんな絵にするか
+      </label>
+      <Input
+        id="cover-prompt"
+        value={prompt}
+        onChange={(e) => setPrompt(e.target.value)}
+        placeholder="例: 朝もやの中の石造りの門"
+        maxLength={MAX_PROMPT}
+        disabled={generating}
+        className="w-full"
+      />
+
+      <div>
+        <label htmlFor="cover-style" className="mb-1 block text-xs text-muted-foreground">
+          スタイル
+        </label>
+        {/* 幅は選択肢がそのまま入るぶんだけ取る。切れると何を選んでいるか読めない */}
+        <select
+          id="cover-style"
+          value={style}
+          onChange={(e) => setStyle(e.target.value)}
+          disabled={generating}
+          className="h-9 w-full rounded-lg border border-input bg-background px-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring sm:w-48"
         >
-          {generating ? <Spinner size={14} /> : <Sparkles size={14} />}
-          {generating ? '生成中…' : '生成する'}
-        </Button>
+          {STYLE_OPTIONS.filter((o) => o.value).map((opt) => (
+            <option key={opt.value} value={opt.value}>
+              {opt.label}
+            </option>
+          ))}
+        </select>
       </div>
+
+      <Button
+        size="sm"
+        onClick={() => onGenerate(prompt.trim(), style)}
+        disabled={generating || insufficient || !prompt.trim()}
+        className="flex items-center justify-center gap-1.5"
+      >
+        {generating ? <Spinner size={14} /> : <Sparkles size={14} />}
+        {generating ? '生成中…' : '生成する'}
+      </Button>
 
       <p className="text-xs text-muted-foreground">
         生成には1クレジット消費します{available != null ? `（残り ${available} cr）` : ''}。

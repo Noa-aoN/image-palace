@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { groupEntities, sortEntities } from '@/hooks/useEntityListDisplay'
+import { groupEntities, sortEntities, DEFAULT_ENTITY_DISPLAY } from '@/hooks/useEntityListDisplay'
 
 type Row = { id: string; name: string; count: number }
 
@@ -67,5 +67,19 @@ describe('groupEntities', () => {
     const groups = groupEntities(typed, ['freeboard'], read)
 
     expect(groups[0].rows.map((r) => r.id)).toEqual(['1', '3'])
+  })
+})
+
+// 既定は端末に何も覚えていない人が最初に見る並び。
+// 変えるときは「まとめて並べたほうが探しやすいか」を考えてから変える
+describe('既定の見せ方', () => {
+  it('種別ごとに分ける', () => {
+    expect(DEFAULT_ENTITY_DISPLAY.grouping).toBe('type')
+  })
+
+  it('新しい順・5列・付帯情報あり', () => {
+    expect(DEFAULT_ENTITY_DISPLAY.sort).toBe('recent')
+    expect(DEFAULT_ENTITY_DISPLAY.columns).toBe(5)
+    expect(DEFAULT_ENTITY_DISPLAY.showMeta).toBe(true)
   })
 })

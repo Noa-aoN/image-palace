@@ -48,7 +48,10 @@ export const ENTITY_GROUPING_LABELS: Record<EntityGrouping, string> = {
 export const DEFAULT_ENTITY_DISPLAY: EntityListDisplay = {
   columns: 5,
   sort: 'recent',
-  grouping: 'flat',
+  // 既定は種別ごと。キャンバスもスペースも、種類によって使い道が違う
+  // （デッキとボード、部屋と道）。まとめて並べると、探しているものが
+  // 別の種類のものに埋もれる。まとめたい人は「まとめて並べる」に変えられる
+  grouping: 'type',
   showMeta: true,
 }
 
