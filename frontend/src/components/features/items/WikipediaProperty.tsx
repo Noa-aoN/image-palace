@@ -167,10 +167,21 @@ export function WikipediaProperty({
   if (!value) {
     return (
       <div className="space-y-2">
+        {/* 見出し語がそのまま入るので、長い語だと札の幅を越える。
+            札の幅で切って、全文は title で読めるようにする
+            （切るのは語のほうだけ。「Wikipedia で調べる」が消えると何の釦か分からない） */}
         {editable ? (
-          <Button variant="outline" size="sm" onClick={() => lookup()} disabled={busy} className="flex items-center gap-1.5">
-            {busy ? <Spinner size={13} /> : <RefreshCw size={13} />}
-            「{term}」を Wikipedia で調べる
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => lookup()}
+            disabled={busy}
+            title={`「${term}」を Wikipedia で調べる`}
+            className="flex max-w-full items-center gap-1.5"
+          >
+            {busy ? <Spinner size={13} /> : <RefreshCw size={13} className="shrink-0" />}
+            <span className="min-w-0 truncate">「{term}」</span>
+            <span className="shrink-0">を Wikipedia で調べる</span>
           </Button>
         ) : (
           <p className="text-sm text-muted-foreground">未設定</p>
