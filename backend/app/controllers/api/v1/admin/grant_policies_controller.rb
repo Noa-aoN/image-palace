@@ -3,6 +3,8 @@ module Api
     module Admin
       # 付与ポリシー（何を・いくつ・どの条件で配るか）の確認と設定。
       class GrantPoliciesController < BaseController
+        # 付与ポリシーは通常運用の範囲
+        before_action -> { require_role!(:operator) }, only: [ :upsert, :destroy ]
         def index
           render json: {
             policies: GrantPolicy.overview,

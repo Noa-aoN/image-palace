@@ -3,6 +3,8 @@ module Api
     module Admin
       # 引き換えコードの発行と成績。
       class CampaignCodesController < BaseController
+        # コード発行は通常運用の範囲
+        before_action -> { require_role!(:operator) }, only: [ :create, :update, :destroy ]
         def index
           codes = CampaignCode.recent.to_a
           counts = CampaignRedemption.where(campaign_code_id: codes.map(&:id))

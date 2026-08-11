@@ -6,6 +6,9 @@ module Api
       # 本文は平文で受け取り、こちらで塊に組み立てる。
       # 書く側に構造化を強いると続かないため。
       class PostsController < BaseController
+        # 読みものの作成・配信は通常運用の範囲
+        before_action -> { require_role!(:operator) },
+                      only: [ :create, :update, :destroy, :deliver, :cover, :remove_cover ]
         include CoverImageUpload
         include ItemSerialization
 

@@ -7,6 +7,8 @@ module Api
       # 作り直すことになり既存の契約者にも影響が及ぶため、ここからは触らせない
       # （Billing::Catalog の方針に合わせている）。
       class PlansController < BaseController
+        # プランは stripe_price_id を含む＝課金の根幹。最上位だけが触れる
+        before_action -> { require_role!(:admin) }, only: [ :update ]
         def index
           render json: {
             plans: Plan.order(:price_cents).map { |plan| serialize(plan) },

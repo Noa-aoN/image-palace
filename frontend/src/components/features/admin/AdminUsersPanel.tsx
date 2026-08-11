@@ -7,13 +7,7 @@ import { Input } from '@/components/ui/input'
 import { getAdminUsers, updateAdminUserRole } from '@/lib/api/admin'
 import { PeriodSelect } from './PeriodSelect'
 import type { AdminRole, AdminUser, AdminUserStats, AdminUsersPage } from '@/types/admin'
-
-const ROLE_LABELS: Record<AdminRole, string> = {
-  user: '一般',
-  support: 'サポート（閲覧のみ）',
-  operator: '運営',
-  admin: '運営の管理者',
-}
+import { ROLE_LABELS } from '@/lib/admin-roles'
 
 // 弱い順に並べる。付け外しの選択肢として、上げ下げの向きが見て分かるように
 const ROLES: AdminRole[] = ['user', 'support', 'operator', 'admin']
