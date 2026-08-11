@@ -52,8 +52,12 @@ export function useCardDetailColumns(fallback = 1) {
  */
 export function cardDetailGridClass(columns: number): string {
   // 間隔は札どうしで揃える（詳細ページの space-y-3 と同じ 12px）。
-  // ここだけ広いと、同じ並びの札なのに群があるように見える
-  if (columns >= 3) return 'grid gap-3 md:grid-cols-2 xl:grid-cols-3'
-  if (columns === 2) return 'grid gap-3 md:grid-cols-2'
+  // ここだけ広いと、同じ並びの札なのに群があるように見える。
+  //
+  // items-start は、札を中身の高さのままにするため。既定（stretch）だと
+  // 同じ行でいちばん高い札に合わせて全部が伸び、短い項目の下に空の面ができる。
+  // 「読み仮名」の札が「語源」と同じ高さになるのは、詰まって見えない
+  if (columns >= 3) return 'grid items-start gap-3 md:grid-cols-2 xl:grid-cols-3'
+  if (columns === 2) return 'grid items-start gap-3 md:grid-cols-2'
   return 'space-y-3'
 }
