@@ -387,6 +387,8 @@ export interface AdminCostParameter {
 
 export interface AdminFinancePage {
   summary: AdminFinanceSummary
+  /** いま見ている期間。選び方は他の運営画面と共通 */
+  period: AdminPeriod
   /** 開業からの積み上げ。months は稼働月数（インフラ月額を掛けた数） */
   totals: AdminFinanceSummary & { months: number }
   available_months: { year: number; month: number }[]

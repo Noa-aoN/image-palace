@@ -55,7 +55,44 @@ class MissionDefinition < ApplicationRecord
       condition_type: "streak_days", condition_target: 30,
       # 最後の段に見合う品物はまだ用意していない（絵から作る必要がある）。
       # 当面はクレジットで報い、品ができたら管理画面で差し替える
-      rewards: [ { "type" => "credits", "amount" => 5 } ] }
+      rewards: [ { "type" => "credits", "amount" => 5 } ] },
+    # ── シリーズ「記憶を鍛える」──
+    # 作る側（宮殿を建てる）と対になる、思い出す側の道
+    { key: "memory_first_review", name: "はじめて見返す", cadence: "onboarding",
+      series_key: "train_memory", series_step: 1, position: 110,
+      description: "作ったカードを1回見返します。", condition_type: "reviews_total", condition_target: 1,
+      rewards: [ { "type" => "credits", "amount" => 1 } ] },
+    { key: "memory_hundred_reviews", name: "100回見返す", cadence: "onboarding",
+      series_key: "train_memory", series_step: 2, position: 111,
+      description: "回数が増えるほど、思い出すのが速くなります。",
+      condition_type: "reviews_total", condition_target: 100,
+      rewards: [ { "type" => "credits", "amount" => 2 } ] },
+    { key: "memory_three_hundred_correct", name: "300問正解する", cadence: "onboarding",
+      series_key: "train_memory", series_step: 3, position: 112,
+      description: "見返すだけでなく、当てられるところまで。",
+      condition_type: "reviews_correct", condition_target: 300,
+      rewards: [ { "type" => "credits", "amount" => 3 } ] },
+    { key: "memory_thousand_reviews", name: "1000回見返す", cadence: "onboarding",
+      series_key: "train_memory", series_step: 4, position: 113,
+      description: "ここまで来ると、覚えたことは自分のものになっています。",
+      condition_type: "reviews_total", condition_target: 1_000,
+      rewards: [ { "type" => "credits", "amount" => 10 } ] },
+    # ── シリーズ「通い続ける」──
+    # 続けた日数だけが積み上がる。作った量でも正解数でも埋められない道
+    { key: "visit_seven_days", name: "7日続ける", cadence: "onboarding",
+      series_key: "keep_visiting", series_step: 1, position: 120,
+      description: "まずは1週間。", condition_type: "streak_days", condition_target: 7,
+      rewards: [ { "type" => "credits", "amount" => 1 } ] },
+    { key: "visit_thirty_active", name: "30日おとずれる", cadence: "onboarding",
+      series_key: "keep_visiting", series_step: 2, position: 121,
+      description: "続けて来なくても構いません。来た日を数えます。",
+      condition_type: "active_days", condition_target: 30,
+      rewards: [ { "type" => "credits", "amount" => 3 } ] },
+    { key: "visit_hundred_days", name: "100日続ける", cadence: "onboarding",
+      series_key: "keep_visiting", series_step: 3, position: 122,
+      description: "宮殿に住んでいると言える日数です。",
+      condition_type: "streak_days", condition_target: 100,
+      rewards: [ { "type" => "credits", "amount" => 10 } ] }
   ].freeze
 
   BUILTIN_KEYS = BUILTINS.map { |b| b[:key] }.freeze

@@ -212,7 +212,9 @@ export async function updateAdminPlan(
 
 // ── 支出入 ──────────────────────────────────────────────────
 
-export async function getAdminFinance(params?: { year?: number; month?: number }): Promise<AdminFinancePage> {
+// period は他の運営画面と同じ語彙（7d / 30d / 90d / 6m / 1y / all / 2026-07）。
+// 既定は今月（締めた月の実績を見に来る面なので、直近◯日ではない）
+export async function getAdminFinance(params?: { period?: string }): Promise<AdminFinancePage> {
   const res = await apiClient.get<AdminFinancePage>('/api/v1/admin/finance', { params })
   return res.data
 }

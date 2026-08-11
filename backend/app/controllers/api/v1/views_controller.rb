@@ -24,7 +24,13 @@ module Api
         views = views.where(view_type: params[:type]) if View::VIEW_TYPES.include?(params[:type].to_s)
         views, next_cursor = paginate_list(views)
         View.preload_cover_items(views)
-        render json: { views: views.map { |v| serialize_view(v) }, next_cursor: next_cursor }
+        # 置いてあるカードの数。一覧で「中身が多い順」に並べるのに要る。
+        # 1件ずつ数えると件数ぶん問い合わせが飛ぶので、まとめて1回で数える
+        counts = ViewItem.where(view_id: views.map(&:id)).group(:view_id).count
+        render json: {
+          views: views.map { |v| serialize_view(v).merge(item_count: counts[v.id].to_i) },
+          next_cursor: next_cursor
+        }
       end
 
       def show

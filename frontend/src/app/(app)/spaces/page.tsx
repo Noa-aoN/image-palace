@@ -78,8 +78,10 @@ function SpacesPageInner() {
   }, [])
 
   const visibleSpaces = typeFilter ? spaces.filter((s) => s.space_type === typeFilter) : spaces
-  // スペースは一覧の時点で中身の数を持たないので、並べ替えは「新しい順 / 名前順」だけ
-  const rows = sortEntities(visibleSpaces, display.sort, { name: (s) => s.name, count: () => 0 })
+  const rows = sortEntities(visibleSpaces, display.sort, {
+    name: (s) => s.name,
+    count: (s) => s.entry_count ?? 0,
+  })
   const selection = useEntitySelection(rows)
 
   const removeSelected = async () => {
@@ -94,7 +96,13 @@ function SpacesPageInner() {
       key={space.id}
       href={`/spaces/${space.id}`}
       name={space.name}
-      meta={display.showMeta ? spaceTypeLabel(space.space_type) : null}
+      meta={
+        display.showMeta
+          ? [spaceTypeLabel(space.space_type), space.entry_count != null ? `${space.entry_count}件` : null]
+              .filter(Boolean)
+              .join('・')
+          : null
+      }
       cover={<EntityCover cover={space} fallback={<SpaceCoverFallback spaceType={space.space_type} />} />}
       selecting={selection.selecting}
       selected={selection.selected.has(space.id)}
@@ -109,8 +117,7 @@ function SpacesPageInner() {
         panelKey="spaces"
         display={display}
         onChange={change}
-        metaLabel="種別"
-        sorts={['recent', 'name']}
+        metaLabel="種別と中身の数"
         groupable
       />
       <Button size="sm" variant="outline" onClick={() => createForm.open()} className="flex items-center gap-1.5">

@@ -32,6 +32,8 @@ export interface View {
   cover_image: CoverImage | null
   settings?: BoardSettings // freeboard のボード設定
   background_image?: { url: string } | null // freeboard の背景画像
+  /** 置いてあるカードの数。一覧でのみ返る */
+  item_count?: number
   created_at: string
 }
 

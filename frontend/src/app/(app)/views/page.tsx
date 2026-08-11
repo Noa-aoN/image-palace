@@ -66,8 +66,10 @@ function ViewsPageInner() {
 
   const visibleViews = typeFilter ? views.filter((v) => v.view_type === typeFilter) : views
   const heading = typeFilter ? `${viewTypeLabel(typeFilter)}一覧` : 'キャンバス一覧'
-  // キャンバスは中身の数を持たないので、並べ替えは「新しい順 / 名前順」だけ
-  const rows = sortEntities(visibleViews, display.sort, { name: (v) => v.name, count: () => 0 })
+  const rows = sortEntities(visibleViews, display.sort, {
+    name: (v) => v.name,
+    count: (v) => v.item_count ?? 0,
+  })
   const selection = useEntitySelection(rows)
 
   const removeSelected = async () => {
@@ -82,7 +84,13 @@ function ViewsPageInner() {
       key={view.id}
       href={`/views/${view.id}`}
       name={view.name}
-      meta={display.showMeta ? viewTypeLabel(view.view_type) : null}
+      meta={
+        display.showMeta
+          ? [viewTypeLabel(view.view_type), view.item_count != null ? `${view.item_count}枚` : null]
+              .filter(Boolean)
+              .join('・')
+          : null
+      }
       cover={<EntityCover cover={view} />}
       selecting={selection.selecting}
       selected={selection.selected.has(view.id)}
@@ -97,8 +105,7 @@ function ViewsPageInner() {
         panelKey="views"
         display={display}
         onChange={change}
-        metaLabel="種別"
-        sorts={['recent', 'name']}
+        metaLabel="種別と枚数"
         groupable
       />
       <Button size="sm" variant="outline" onClick={() => createForm.open()} className="flex items-center gap-1.5">
