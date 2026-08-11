@@ -40,6 +40,19 @@ export async function deleteAdminPost(id: string): Promise<void> {
   await apiClient.delete(`/api/v1/admin/posts/${id}`)
 }
 
+// 見出し画像。保存とは別に、その場で差し替える
+export async function uploadAdminPostCover(id: string, file: File): Promise<AdminPost> {
+  const form = new FormData()
+  form.append('file', file)
+  const res = await apiClient.post<AdminPost>(`/api/v1/admin/posts/${id}/cover`, form)
+  return res.data
+}
+
+export async function removeAdminPostCover(id: string): Promise<AdminPost> {
+  const res = await apiClient.delete<AdminPost>(`/api/v1/admin/posts/${id}/cover`)
+  return res.data
+}
+
 // お知らせとして全員に届ける（公開済み・未配信のみ）
 export async function deliverAdminPost(id: string): Promise<AdminPost> {
   const res = await apiClient.post<AdminPost>(`/api/v1/admin/posts/${id}/deliver`)

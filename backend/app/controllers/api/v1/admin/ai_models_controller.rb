@@ -78,7 +78,7 @@ module Api
         # 1行ごとに数えるとモデルの数だけ問い合わせが飛ぶ
         def usage
           @usage ||= begin
-            range = period.from...period.to
+            range = period.range
             images = ImageUsage.where(created_at: range).group(:model).count
             cached = ImageUsage.where(created_at: range).where(cached: true).group(:model).count
             texts = AiUsage.where(created_at: range).group(:model).count

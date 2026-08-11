@@ -27,8 +27,10 @@ module Admin
 
     attr_reader :key, :from, :to, :label
 
-    def self.resolve(value, now: Time.current)
-      new(value, now)
+    # default は、値が無い／知らない値のときに落ちる先。
+    # 監査ログのように「探しに来る面」は全期間を既定にする
+    def self.resolve(value, now: Time.current, default: DEFAULT)
+      new(value, now, default)
     end
 
     # 画面に出す選択肢。月の一覧は、いちばん古い記録から今月まで
@@ -60,10 +62,20 @@ module Admin
       months.reverse
     end
 
-    def initialize(value, now)
+    def initialize(value, now, default = DEFAULT)
       @now = now
+      @default = default
       @key = normalize(value)
       @from, @to, @label = resolve_range
+    end
+
+    # 絞り込みに使う範囲。
+    #
+    # 全期間のときは**下限を置かない**。from を「最初の利用者の登録日」にしてあるのは
+    # 折れ線の起点と表示のためで、これを絞り込みに使うと、それより古い記録
+    # （移行で入れたもの、利用者より先に立った運営の操作など）が落ちる。
+    def range
+      @key == ALL ? (..@to) : (@from...@to)
     end
 
     # 直近◯日か（画面のラベルで「30日の消費」のように使う）
@@ -90,7 +102,7 @@ module Admin
       key = value.to_s.strip
       return key if ROLLING.key?(key) || key == ALL || key.match?(MONTH_FORMAT)
 
-      DEFAULT
+      @default
     end
 
     def resolve_range

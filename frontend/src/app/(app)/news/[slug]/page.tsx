@@ -57,6 +57,16 @@ export default function NewsDetailPage() {
             </div>
             <h1 className="mt-3 text-2xl font-semibold">{post.title}</h1>
             {post.excerpt && <p className="mt-3 text-muted-foreground">{post.excerpt}</p>}
+
+            {/* 見出し画像。無ければ枠ごと出さない（空の枠は「読み込み中」に見える） */}
+            {post.image_url && (
+              // eslint-disable-next-line @next/next/no-img-element -- 外部CDNの画像。最適化は経由させない
+              <img
+                src={post.image_url}
+                alt=""
+                className="mt-5 w-full rounded-xl border border-border object-cover"
+              />
+            )}
           </header>
 
           <div className="mt-8 space-y-4">

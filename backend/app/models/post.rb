@@ -17,6 +17,11 @@ class Post < ApplicationRecord
 
   belongs_to :author, class_name: "User", optional: true
 
+  # 見出し画像。一覧の行頭と、記事の先頭に出す。
+  # サムネを別に持つのは、一覧で原寸を並べると読み込みが重くなるため（ボックスと同じ作り）
+  has_one_attached :cover_image
+  has_one_attached :cover_thumb
+
   validates :slug, presence: true, uniqueness: true, format: { with: SLUG_FORMAT }
   validates :category, inclusion: { in: CATEGORIES }
   validates :title, presence: true, length: { maximum: TITLE_MAX_LENGTH }
@@ -26,6 +31,24 @@ class Post < ApplicationRecord
   scope :in_category, ->(category) { CATEGORIES.include?(category.to_s) ? where(category: category) : all }
   # 留めたものを先頭に、あとは新しい順
   scope :for_listing, -> { order(pinned: :desc, published_at: :desc, created_at: :desc) }
+
+  # 記事の中に出す画像の実体。URL の組み立ては配信元を知っている側（コントローラ）に任せる。
+  # 出さない設定のときは nil を返す（画面は枠ごと出さない）。
+  #
+  # 名前に display / list と付けるのは、`cover_thumb_blob` が
+  # has_one_attached :cover_thumb の生成する関連と衝突するため（上書きすると無限再帰する）
+  def cover_display_blob
+    return nil unless cover_visible? && cover_image.attached?
+
+    cover_image.blob
+  end
+
+  # 一覧に出す画像。原寸を並べると読み込みが重いので、あればサムネを使う
+  def cover_list_blob
+    return nil unless cover_visible?
+
+    cover_thumb.attached? ? cover_thumb.blob : cover_display_blob
+  end
 
   def published?
     published_at.present? && published_at <= Time.current

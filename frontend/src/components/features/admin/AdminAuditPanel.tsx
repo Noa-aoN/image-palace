@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import { getAdminAuditLogs } from '@/lib/api/admin'
+import { PeriodSelect, type AdminPeriod } from './PeriodSelect'
 import type { AdminAuditLog } from '@/types/admin'
 
 /**
@@ -16,16 +17,20 @@ export function AdminAuditPanel() {
   const [actors, setActors] = useState<string[]>([])
   const [action, setAction] = useState('')
   const [actor, setActor] = useState('')
+  // 既定は全期間。ここは探しに来る面なので、既定で古い記録が消えると使えない
+  const [period, setPeriod] = useState('all')
+  const [periodInfo, setPeriodInfo] = useState<AdminPeriod | null>(null)
 
   useEffect(() => {
     let cancelled = false
-    getAdminAuditLogs({ action_name: action || undefined, actor: actor || undefined })
+    getAdminAuditLogs({ action_name: action || undefined, actor: actor || undefined, period })
       .then((page) => {
         if (cancelled) return
         setLogs(page.logs)
         // 選択肢は絞り込みの影響を受けない（全体から拾う）
         setActions(page.actions)
         setActors(page.actors)
+        setPeriodInfo(page.period)
       })
       .catch(() => {
         if (!cancelled) setLogs([])
@@ -33,10 +38,12 @@ export function AdminAuditPanel() {
     return () => {
       cancelled = true
     }
-  }, [action, actor])
+  }, [action, actor, period])
 
   return (
     <section className="space-y-3">
+      {periodInfo && <PeriodSelect period={periodInfo} value={period} onChange={setPeriod} />}
+
       <div className="flex flex-wrap items-center justify-between gap-3">
         <h2 className="text-lg font-semibold">管理操作の記録</h2>
         {/* 操作の種類が増えたので、種類と実行者で絞れるようにする */}

@@ -8,6 +8,7 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Spinner } from '@/components/ui/spinner'
+import { AdminPostCover } from './AdminPostCover'
 import { createAdminPost, getAdminPost, updateAdminPost } from '@/lib/api/posts'
 import { POST_CATEGORIES, POST_CATEGORY_LABELS, type AdminPost, type PostCategory } from '@/types/post'
 
@@ -20,6 +21,7 @@ type Draft = {
   tags: string
   pinned: boolean
   published: boolean
+  cover_visible: boolean
 }
 
 const EMPTY: Draft = {
@@ -31,6 +33,7 @@ const EMPTY: Draft = {
   tags: '',
   pinned: false,
   published: false,
+  cover_visible: true,
 }
 
 /**
@@ -65,6 +68,7 @@ export function AdminPostEditor({ postId }: { postId?: string }) {
           tags: loaded.tags.join(', '),
           pinned: loaded.pinned,
           published: loaded.published,
+          cover_visible: loaded.cover_visible,
         })
       })
       .catch(() => setError('読み込めませんでした。'))
@@ -84,6 +88,7 @@ export function AdminPostEditor({ postId }: { postId?: string }) {
       tags: draft.tags.split(',').map((t) => t.trim()).filter(Boolean),
       pinned: draft.pinned,
       published: draft.published,
+      cover_visible: draft.cover_visible,
     }
     try {
       if (postId) {
@@ -205,6 +210,17 @@ export function AdminPostEditor({ postId }: { postId?: string }) {
             </Button>
           </div>
         </div>
+
+        {/* 画像は保存を待たずにその場で差し替わる。作成直後（post が無い間）は出さない
+            ── 付ける先の行がまだ無いため */}
+        {post && (
+          <AdminPostCover
+            post={post}
+            visible={draft.cover_visible}
+            onVisibleChange={(cover_visible) => setDraft({ ...draft, cover_visible })}
+            onChanged={setPost}
+          />
+        )}
 
         {post && (
           <p className="text-xs text-muted-foreground">

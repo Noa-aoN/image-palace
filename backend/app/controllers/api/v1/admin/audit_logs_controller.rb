@@ -11,6 +11,8 @@ module Api
 
           render json: {
             logs: logs.map { |log| serialize(log) },
+            # 期間の決め方は概要・モデル画面と共通。「いつの操作を見ているか」を揃える
+            period: period.to_h.merge(options: ::Admin::Period.options),
             # 絞り込みの選択肢。操作の種類が増えたので、一覧から拾って出す
             actions: AdminAuditLog.distinct.order(:action).pluck(:action),
             actors: AdminAuditLog.where.not(actor_email: nil).distinct.order(:actor_email).pluck(:actor_email)
@@ -19,8 +21,13 @@ module Api
 
         private
 
+        def period
+          # 既定は全期間。ここは探しに来る面なので、既定で古い記録が消えると使えない
+          @period ||= ::Admin::Period.resolve(params[:period], default: ::Admin::Period::ALL)
+        end
+
         def filtered
-          scope = AdminAuditLog.all
+          scope = AdminAuditLog.where(created_at: period.range)
           scope = scope.where(action: params[:action_name]) if params[:action_name].present?
           scope = scope.where(actor_email: params[:actor]) if params[:actor].present?
           scope

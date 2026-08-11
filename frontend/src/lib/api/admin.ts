@@ -20,6 +20,7 @@ import type {
   AdminSession,
   AdminUser,
   AdminUsersPage,
+  AdminPeriod,
 } from '@/types/admin'
 
 // いま入っている人の運営権限。一般ユーザーが呼んでもエラーにはならない
@@ -46,6 +47,8 @@ export async function getAdminUsers(params: {
   q?: string
   role?: string
   page?: number
+  /** 登録日で絞る。既定は全期間（探しに来る面なので、古い人を落とさない） */
+  period?: string
 }): Promise<AdminUsersPage> {
   const res = await apiClient.get<AdminUsersPage>('/api/v1/admin/users', { params })
   return res.data
@@ -62,11 +65,14 @@ export interface AdminAuditLogsPage {
   /** 絞り込みの選択肢（記録に出てくる種類・実行者） */
   actions: string[]
   actors: string[]
+  period: AdminPeriod
 }
 
 export async function getAdminAuditLogs(params?: {
   action_name?: string
   actor?: string
+  /** 記録された日で絞る。既定は全期間 */
+  period?: string
 }): Promise<AdminAuditLogsPage> {
   const res = await apiClient.get<AdminAuditLogsPage>('/api/v1/admin/audit_logs', { params })
   return res.data

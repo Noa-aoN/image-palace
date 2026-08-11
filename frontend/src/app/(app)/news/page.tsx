@@ -81,6 +81,7 @@ export default function NewsPage() {
               // 種類で絞り込めるので、「すべて」のときだけ種類を出す
               badge: category === null ? post.category_label : null,
               pinned: post.pinned,
+              imageUrl: post.image_url,
             }))}
           />
         </div>

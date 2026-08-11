@@ -66,6 +66,9 @@ Rails.application.routes.draw do
         resources :posts, only: [ :index, :show, :create, :update, :destroy ] do
           member do
             post :deliver
+            # 見出し画像。差し替えと取り外し
+            post :cover
+            delete :cover, action: :remove_cover
           end
         end
       end

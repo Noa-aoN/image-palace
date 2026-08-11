@@ -5,6 +5,7 @@ import { Search, Loader2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { getAdminUsers, updateAdminUserRole } from '@/lib/api/admin'
+import { PeriodSelect } from './PeriodSelect'
 import type { AdminRole, AdminUser, AdminUserStats, AdminUsersPage } from '@/types/admin'
 
 const ROLE_LABELS: Record<AdminRole, string> = {
@@ -32,16 +33,22 @@ export function AdminUsersPanel({ canChangeRole }: { canChangeRole: boolean }) {
   const [confirming, setConfirming] = useState<{ id: string; role: AdminRole } | null>(null)
   const [error, setError] = useState<string | null>(null)
 
-  const load = useCallback(async (q: string, pageNumber = 1) => {
-    setLoading(true)
-    try {
-      setPage(await getAdminUsers({ q: q || undefined, page: pageNumber }))
-    } catch {
-      setError('一覧を取得できませんでした')
-    } finally {
-      setLoading(false)
-    }
-  }, [])
+  // 既定は全期間。ここは探しに来る面なので、既定で古い人が落ちると使えない
+  const [period, setPeriod] = useState('all')
+
+  const load = useCallback(
+    async (q: string, pageNumber = 1, range = period) => {
+      setLoading(true)
+      try {
+        setPage(await getAdminUsers({ q: q || undefined, page: pageNumber, period: range }))
+      } catch {
+        setError('一覧を取得できませんでした')
+      } finally {
+        setLoading(false)
+      }
+    },
+    [period]
+  )
 
   useEffect(() => {
     load(submittedQuery)
@@ -67,6 +74,9 @@ export function AdminUsersPanel({ canChangeRole }: { canChangeRole: boolean }) {
   return (
     <section className="space-y-3">
       <h2 className="text-lg font-semibold">利用者</h2>
+
+      {/* 期間は「いつ登録した人か」で絞る。伸びの数字（下）は全体のまま */}
+      {page?.period && <PeriodSelect period={page.period} value={period} onChange={setPeriod} />}
 
       {/* 一覧は「いま誰がいるか」しか分からない。伸びているかは数字と推移で見る */}
       {page?.stats && <UserStats stats={page.stats} />}

@@ -48,6 +48,26 @@ RSpec.describe Admin::Period do
     end
   end
 
+  describe "絞り込みの範囲" do
+    it "全期間は下限を置かない（それより古い記録を落とさない）" do
+      period = described_class.resolve("all", now: now)
+
+      expect(period.range.begin).to be_nil
+      expect(period.range).to cover(Time.zone.local(2020, 1, 1))
+    end
+
+    it "直近・月ごとは、その範囲だけ" do
+      period = described_class.resolve("2026-07", now: now)
+
+      expect(period.range).to cover(Time.zone.local(2026, 7, 15))
+      expect(period.range).not_to cover(Time.zone.local(2026, 8, 1))
+    end
+
+    it "既定は引数で変えられる（探しに来る面は全期間にする）" do
+      expect(described_class.resolve(nil, now: now, default: described_class::ALL).key).to eq("all")
+    end
+  end
+
   describe "折れ線の点" do
     it "短い期間は1日1点" do
       expect(described_class.resolve("7d", now: now).bucket_days).to eq(1)
