@@ -7,6 +7,8 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { getAdminUsers, grantAdminReward, type AdminRewardDefinition } from '@/lib/api/admin'
 import type { AdminUser } from '@/types/admin'
+import { useCanOperate } from '@/hooks/useAdminPermissions'
+import { ReadOnlyNotice } from '@/components/features/admin/ReadOnlyNotice'
 
 /**
  * 手で配る。表彰など、条件では表せないものに使う。
@@ -20,6 +22,7 @@ import type { AdminUser } from '@/types/admin'
  * あとから見て理由の分からない付与は、調べようがない。
  */
 export function AdminRewardGrant({ rewards }: { rewards: AdminRewardDefinition[] }) {
+  const canWrite = useCanOperate()
   const [query, setQuery] = useState('')
   const [candidates, setCandidates] = useState<AdminUser[] | null>(null)
   const [target, setTarget] = useState<AdminUser | null>(null)
@@ -72,6 +75,10 @@ export function AdminRewardGrant({ rewards }: { rewards: AdminRewardDefinition[]
 
   return (
     <section className="space-y-3 rounded-xl border border-border bg-card p-4">
+      {!canWrite && <ReadOnlyNotice what="手で配る操作" />}
+      {/* 書き込みの釦はまとめて囲って止める。1つずつ disabled を書くと、
+          あとから釦を足したときに付け忘れる（付け忘れると押せてしまう） */}
+      <fieldset disabled={!canWrite} className="contents">
       <h3 className="flex items-center gap-2 font-medium">
         <Gift size={16} style={{ color: 'var(--palace)' }} />
         手で配る
@@ -166,6 +173,7 @@ export function AdminRewardGrant({ rewards }: { rewards: AdminRewardDefinition[]
 
       {message && <p className="text-sm" style={{ color: 'var(--palace)' }}>{message}</p>}
       {error && <p className="text-sm text-destructive">{error}</p>}
+      </fieldset>
     </section>
   )
 }

@@ -8,6 +8,8 @@ import {
   updateAdminGrantPolicy,
 } from '@/lib/api/admin'
 import type { AdminGrantPolicy } from '@/types/admin'
+import { useCanOperate } from '@/hooks/useAdminPermissions'
+import { ReadOnlyNotice } from '@/components/features/admin/ReadOnlyNotice'
 
 const ITEM_KIND_LABELS: Record<string, string> = {
   box: 'ボックス',
@@ -24,6 +26,7 @@ const ITEM_KIND_LABELS: Record<string, string> = {
  * 変えたあとで「既定へ戻す」を押せば、また定数の値に従う。
  */
 export function AdminGrantsPanel() {
+  const canWrite = useCanOperate()
   const [policies, setPolicies] = useState<AdminGrantPolicy[]>([])
   const [itemKinds, setItemKinds] = useState<string[]>([])
   const [readyKinds, setReadyKinds] = useState<string[]>([])
@@ -88,6 +91,10 @@ export function AdminGrantsPanel() {
 
   return (
     <section className="space-y-3">
+      {!canWrite && <ReadOnlyNotice what="付与ポリシーの変更" />}
+      {/* 書き込みの釦はまとめて囲って止める。1つずつ disabled を書くと、
+          あとから釦を足したときに付け忘れる（付け忘れると押せてしまう） */}
+      <fieldset disabled={!canWrite} className="contents">
       <div>
         <h2 className="text-lg font-semibold">付与ポリシー</h2>
         <p className="mt-1 text-sm text-muted-foreground">
@@ -194,6 +201,7 @@ export function AdminGrantsPanel() {
         （配られていないことに気づけなくなるため、サーバー側でも弾いている）。
         機能ができたら <code>GrantPolicy::READY_ITEM_KINDS</code> にその種類を足すと有効にできる。
       </p>
+      </fieldset>
     </section>
   )
 }

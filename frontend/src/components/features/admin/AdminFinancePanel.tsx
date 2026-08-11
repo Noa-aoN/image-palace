@@ -9,6 +9,8 @@ import {
   updateAdminMonthlyActual,
 } from '@/lib/api/admin'
 import type { AdminCostParameter, AdminFinancePage, AdminFinanceSummary } from '@/types/admin'
+import { useCanAdminister } from '@/hooks/useAdminPermissions'
+import { ReadOnlyNotice } from '@/components/features/admin/ReadOnlyNotice'
 
 const GROUP_LABELS: Record<string, string> = {
   exchange: '為替',
@@ -29,6 +31,7 @@ const yen = (value: number) => `¥${Math.round(value).toLocaleString()}`
  * 単価を直せるようにしてある。
  */
 export function AdminFinancePanel() {
+  const canWrite = useCanAdminister()
   const [page, setPage] = useState<AdminFinancePage | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [savingKey, setSavingKey] = useState<string | null>(null)
@@ -105,6 +108,10 @@ export function AdminFinancePanel() {
 
   return (
     <div className="space-y-8">
+      {!canWrite && <ReadOnlyNotice what="単価・実額の変更" need="運営の管理者" />}
+      {/* 書き込みの釦はまとめて囲って止める。1つずつ disabled を書くと、
+          あとから釦を足したときに付け忘れる（付け忘れると押せてしまう） */}
+      <fieldset disabled={!canWrite} className="contents">
       {error && <p className="text-sm text-destructive">{error}</p>}
 
       <section className="space-y-3">
@@ -249,6 +256,7 @@ export function AdminFinancePanel() {
           )
         )}
       </section>
+      </fieldset>
     </div>
   )
 }

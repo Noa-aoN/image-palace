@@ -12,6 +12,8 @@ import {
   updateAdminRewardDefinition,
   type AdminRewardsPage,
 } from '@/lib/api/admin'
+import { useCanOperate } from '@/hooks/useAdminPermissions'
+import { ReadOnlyNotice } from '@/components/features/admin/ReadOnlyNotice'
 
 type Tab = 'rewards' | 'achievements' | 'missions'
 
@@ -32,6 +34,7 @@ const TABS: { value: Tab; label: string; note: string }[] = [
  * 数えられない条件を保存できてしまう）。
  */
 export function AdminRewardsPanel() {
+  const canWrite = useCanOperate()
   const [page, setPage] = useState<AdminRewardsPage | null>(null)
   const [tab, setTab] = useState<Tab>('rewards')
   const [error, setError] = useState<string | null>(null)
@@ -115,6 +118,13 @@ export function AdminRewardsPanel() {
           </Button>
         ))}
       </div>
+
+      {!canWrite && <ReadOnlyNotice what="公開の切り替えと手で配る操作" />}
+
+      {/* 切替（タブ）は止めない。見るだけの人も行き来できるようにする。
+          止めるのは書き込みだけ。1つずつ disabled を書くと、
+          あとから釦を足したときに付け忘れる */}
+      <fieldset disabled={!canWrite} className="contents">
 
       {tab === 'rewards' && (
         <Table head={['獲得物', '種別', 'レア度', '持っている人', '公開']}>
@@ -253,6 +263,7 @@ export function AdminRewardsPanel() {
       <p className="text-xs text-muted-foreground">
         期間限定を終えるときは、定義を消さずに「有効」を外してください。消すと、達成した記録の行き先が無くなります。
       </p>
+      </fieldset>
     </section>
   )
 }

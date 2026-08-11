@@ -4,6 +4,8 @@ import { useEffect, useState } from 'react'
 import { Loader2 } from 'lucide-react'
 import { getAdminPlans, updateAdminPlan } from '@/lib/api/admin'
 import type { AdminPlan } from '@/types/admin'
+import { useCanAdminister } from '@/hooks/useAdminPermissions'
+import { ReadOnlyNotice } from '@/components/features/admin/ReadOnlyNotice'
 
 /**
  * プラン（ユーザー種類）ごとの付与クレジット。
@@ -13,6 +15,7 @@ import type { AdminPlan } from '@/types/admin'
  * 付与を増やしすぎると原価割れするので、粗利の下限はサーバー側で検証している。
  */
 export function AdminPlansPanel() {
+  const canWrite = useCanAdminister()
   const [plans, setPlans] = useState<AdminPlan[]>([])
   const [minMargin, setMinMargin] = useState(0)
   const [costPerCredit, setCostPerCredit] = useState(0)
@@ -68,6 +71,10 @@ export function AdminPlansPanel() {
 
   return (
     <section className="space-y-3">
+      {!canWrite && <ReadOnlyNotice what="プランの変更" need="運営の管理者" />}
+      {/* 書き込みの釦はまとめて囲って止める。1つずつ disabled を書くと、
+          あとから釦を足したときに付け忘れる（付け忘れると押せてしまう） */}
+      <fieldset disabled={!canWrite} className="contents">
       <div>
         <h2 className="text-lg font-semibold">ユーザー種類ごとのクレジット</h2>
         <p className="mt-1 text-sm text-muted-foreground">
@@ -135,6 +142,7 @@ export function AdminPlansPanel() {
       <p className="text-xs text-muted-foreground">
         価格はここから変えられない。変えると Stripe の Price を作り直すことになり、既存の契約者に影響が及ぶため。
       </p>
+      </fieldset>
     </section>
   )
 }

@@ -7,6 +7,8 @@ import { Button } from '@/components/ui/button'
 import { Spinner } from '@/components/ui/spinner'
 import { getAdminPosts, deleteAdminPost, deliverAdminPost, updateAdminPost } from '@/lib/api/posts'
 import { POST_CATEGORIES, POST_CATEGORY_LABELS, type AdminPost, type PostCategory } from '@/types/post'
+import { useCanOperate } from '@/hooks/useAdminPermissions'
+import { ReadOnlyNotice } from '@/components/features/admin/ReadOnlyNotice'
 
 /**
  * 読みものの一覧。
@@ -18,6 +20,7 @@ import { POST_CATEGORIES, POST_CATEGORY_LABELS, type AdminPost, type PostCategor
  * 配信は取り返しがつかない（人数分のお知らせが積まれる）ので、2度押しで確定させる。
  */
 export function AdminPostsList() {
+  const canWrite = useCanOperate()
   const [posts, setPosts] = useState<AdminPost[] | null>(null)
   const [category, setCategory] = useState<PostCategory | 'all'>('all')
   const [busy, setBusy] = useState<string | null>(null)
@@ -80,12 +83,16 @@ export function AdminPostsList() {
           <Newspaper size={18} style={{ color: 'var(--palace)' }} />
           <h2 className="text-lg font-semibold">読みもの</h2>
         </div>
-        <Link href="/admin/posts/new">
-          <Button size="sm" className="flex items-center gap-1.5">
-            <Plus size={14} />
-            新しく書く
-          </Button>
-        </Link>
+        {/* 行き先そのものは fieldset で止まらない（Link は入力部品ではない）。
+            出さないことで止める */}
+        {canWrite && (
+          <Link href="/admin/posts/new">
+            <Button size="sm" className="flex items-center gap-1.5">
+              <Plus size={14} />
+              新しく書く
+            </Button>
+          </Link>
+        )}
       </div>
 
       <div className="flex flex-wrap gap-1.5">
@@ -98,6 +105,11 @@ export function AdminPostsList() {
           </Chip>
         ))}
       </div>
+
+      {!canWrite && <ReadOnlyNotice what="読みものの作成・配信" />}
+
+      {/* 絞り込み（種類の切替）は止めない。見るだけの人も行き来できるようにする */}
+      <fieldset disabled={!canWrite} className="contents">
 
       {posts === null ? (
         <p className="flex items-center gap-2 text-sm text-muted-foreground">
@@ -195,6 +207,7 @@ export function AdminPostsList() {
       )}
 
       {error && <p className="text-sm text-destructive">{error}</p>}
+      </fieldset>
     </section>
   )
 }
