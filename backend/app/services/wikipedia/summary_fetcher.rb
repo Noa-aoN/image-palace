@@ -90,7 +90,7 @@ module Wikipedia
     end
 
     def fetch
-      response = connection.get(SUMMARY_PATH + CGI.escape(@term))
+      response = connection.get(SUMMARY_PATH + encoded_term)
       build(response.body)
     rescue Faraday::ResourceNotFound
       # 記事が無いのは異常ではない。「見つからなかった」として静かに返す
@@ -99,6 +99,13 @@ module Wikipedia
       # 落ちている・遅い・返事が読めない。どれもカードの読み書きを止める理由にはならない
       Rails.logger.warn "[Wikipedia] FETCH FAILED term_len=#{@term.length} #{e.class}: #{e.message}"
       nil
+    end
+
+    # 記事名は URL の**道筋**に置く。`CGI.escape` は空白を `+` にするので、
+    # ここでは使えない（`Mycenaean+Greece` という別の題を探しに行ってしまう）。
+    # 空白を含む語は英語版に多く、日本語版では出ないので気づきにくい
+    def encoded_term
+      ERB::Util.url_encode(@term)
     end
 
     def build(body)
