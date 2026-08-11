@@ -189,7 +189,10 @@ export default function AcropolisPage() {
             disabled={busy}
           />
         </div>
-        <div className="w-28">
+        {/* 選択肢がそのまま入る幅を取る。「おすすめ（写真）」が切れると、
+            いま何を選んでいるのか読めない。狭めるのはジャンル側（自由入力なので、
+            少し短くても書ける） */}
+        <div className="sm:w-40">
           <label htmlFor="style" className="mb-1 block text-sm font-medium">スタイル</label>
           <select
             id="style"

@@ -1,16 +1,26 @@
 'use client'
 
-import { useRef } from 'react'
-import { GalleryHorizontal, LayoutGrid, ImageUp, Loader2 } from 'lucide-react'
+import { useRef, useState } from 'react'
+import { GalleryHorizontal, LayoutGrid, ImageUp, Loader2, Sparkles } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { CoverGenerator } from '@/components/features/shared/CoverGenerator'
 import type { CoverType } from '@/types/cover'
 
+/**
+ * カバーの決め方。**「どうやって絵を用意するか」で4つに割る。**
+ *
+ * 以前は「カスタム画像」の1つにアップロードと生成が同居していて、
+ * 選んだ先でもう一度選ぶ形になっていた。どちらも custom を作る道筋なので
+ * 中では同じだが、選ぶ人にとっては別の作業。ここで並べる。
+ */
 const OPTIONS = [
   { type: 'first_card', label: '先頭', icon: <GalleryHorizontal size={14} /> },
   { type: 'collage', label: 'コラージュ', icon: <LayoutGrid size={14} /> },
-  { type: 'custom', label: 'カスタム画像', icon: <ImageUp size={14} /> },
+  { type: 'upload', label: 'アップロード', icon: <ImageUp size={14} /> },
+  { type: 'generate', label: '画像を生成', icon: <Sparkles size={14} /> },
 ] as const
+
+type CoverChoice = (typeof OPTIONS)[number]['type']
 
 /**
  * カバー（ヘッダー）設定パネル（デッキ踏襲・共通）。
@@ -41,6 +51,14 @@ export function CoverSettings({
   generateError?: string | null
 }) {
   const fileRef = useRef<HTMLInputElement>(null)
+  // 「アップロード」と「画像を生成」は、どちらも custom を作る道筋。
+  // どちらを選んだかは保存されないので、画面のあいだだけ覚えておく
+  const [choice, setChoice] = useState<CoverChoice>(coverType === 'custom' ? 'upload' : coverType)
+
+  const select = (next: CoverChoice) => {
+    setChoice(next)
+    onSelectType(next === 'upload' || next === 'generate' ? 'custom' : next)
+  }
 
   return (
     <div className="space-y-3 rounded-xl border border-border bg-card p-4">
@@ -50,9 +68,9 @@ export function CoverSettings({
           <Button
             key={o.type}
             size="sm"
-            variant={coverType === o.type ? 'default' : 'outline'}
-            disabled={busy}
-            onClick={() => onSelectType(o.type)}
+            variant={choice === o.type ? 'default' : 'outline'}
+            disabled={busy || (o.type === 'generate' && !onGenerate)}
+            onClick={() => select(o.type)}
             className="flex items-center gap-1.5"
           >
             {o.icon}
@@ -61,7 +79,7 @@ export function CoverSettings({
         ))}
       </div>
       {helpText && <p className="text-xs text-muted-foreground">{helpText}</p>}
-      {coverType === 'custom' && (
+      {choice === 'upload' && (
         <div className="flex items-center gap-2">
           <input
             ref={fileRef}
@@ -86,7 +104,7 @@ export function CoverSettings({
           )}
         </div>
       )}
-      {coverType === 'custom' && onGenerate && (
+      {choice === 'generate' && onGenerate && (
         <CoverGenerator generating={generating} error={generateError} onGenerate={onGenerate} />
       )}
     </div>

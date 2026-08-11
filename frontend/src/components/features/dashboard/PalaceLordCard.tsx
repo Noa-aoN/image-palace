@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import Link from 'next/link'
-import { ChevronRight, Crown, ShieldCheck } from 'lucide-react'
+import { ChevronRight, Crown } from 'lucide-react'
 import { Card, CardContent } from '@/components/ui/card'
 import { CardImage } from '@/components/ui/card-image'
 import { useAuthStore } from '@/stores/auth'
@@ -34,7 +34,8 @@ export function PalaceLordCard({ tier }: { tier: string | null }) {
       .catch(() => {})
   }, [])
 
-  const role = user?.role
+  // 勲章は名前の右に絵だけで出す（項目行に混ぜると、増えるたびに縦へ伸びる）
+  const medals = honors?.showcase?.medal ?? []
   const displayName = displayNameOf(user)
   const avatar = user?.avatar_thumb_url ?? user?.avatar_url ?? null
   // 入居日＝アカウントを開いた日。取得前でも行の高さが変わらないよう「—」を置く
@@ -84,7 +85,30 @@ export function PalaceLordCard({ tier }: { tier: string | null }) {
                     「{honors.title.name}」
                   </p>
                 )}
-                <p className="truncate text-lg font-semibold">{displayName}</p>
+                {/* 勲章は名前の右に、絵だけを並べる。
+                    項目行（位・入居…）に混ぜると、増えるたびに縦へ伸びていく。
+                    横に流せば、数が増えても札の高さは変わらない */}
+                <div className="flex min-w-0 items-center gap-1.5">
+                  <p className="truncate text-lg font-semibold">{displayName}</p>
+                  {medals.length > 0 && (
+                    <span className="flex shrink-0 items-center gap-1">
+                      {medals.map((reward) =>
+                        reward.image_url ? (
+                          // eslint-disable-next-line @next/next/no-img-element
+                          <img
+                            key={reward.key}
+                            src={reward.image_url}
+                            alt={reward.name}
+                            title={reward.name}
+                            width={20}
+                            height={20}
+                            loading="lazy"
+                          />
+                        ) : null
+                      )}
+                    </span>
+                  )}
+                </div>
               </div>
             </div>
 
@@ -92,13 +116,6 @@ export function PalaceLordCard({ tier }: { tier: string | null }) {
               <div>
                 <dt className="text-xs text-muted-foreground">位</dt>
                 <dd className="font-medium">{tier ? tierLabel(tier) : '—'}</dd>
-              </div>
-              <div>
-                <dt className="text-xs text-muted-foreground">権限</dt>
-                <dd className="flex items-center gap-1 font-medium">
-                  {role === 'admin' && <ShieldCheck size={14} style={{ color: 'var(--palace)' }} />}
-                  {role === 'admin' ? '管理者' : '主人'}
-                </dd>
               </div>
               {/* 入居日は「位」と同じ並びに独立して置く。名前の下に埋めると、
                   本人を指す情報と宮殿の情報が混ざる */}
@@ -155,7 +172,7 @@ export function PalaceLordCard({ tier }: { tier: string | null }) {
 
 // 記名板に出す種別と見出し。称号は名前の上に出すので、ここには含めない
 const SHOWCASE_KINDS: [RewardKind, string][] = [
-  ['medal', '勲章'],
+  // 勲章は名前の右に絵だけで出すので、ここには含めない
   ['treasure', '褒賞'],
   ['honor', '表彰'],
 ]
