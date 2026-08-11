@@ -317,12 +317,29 @@ export interface SceneOption {
 // description は書き直しの根拠にした説明文で、画面はこれも一緒に保存する
 // （根拠と「プロンプト情報」の表示がずれると、なぜこの絵になったのかを辿れない）
 export async function rewriteScenePrompt(
-  id: string
+  id: string,
+  /** 根拠にする項目。渡さなければ意味・説明を根拠にする */
+  propertyKeys?: string[]
 ): Promise<{ options: SceneOption[]; description: string | null }> {
   const res = await apiClient.post<{ options: SceneOption[]; description: string | null }>(
-    `/api/v1/items/${id}/scene_rewrite`
+    `/api/v1/items/${id}/scene_rewrite`,
+    propertyKeys?.length ? { property_keys: propertyKeys } : undefined
   )
   return res.data
+}
+
+/**
+ * このカードに持たせるとよい項目を AI に選ばせる。
+ *
+ * 選ぶだけで保存はしない。当てるかどうかは画面が決める
+ * （押した瞬間に並びが変わると、元に戻せない）。
+ * availableKeys に無い識別名は、サーバー側で落とされる。
+ */
+export async function suggestItemProperties(id: string, availableKeys: string[]): Promise<string[]> {
+  const res = await apiClient.post<{ keys: string[] }>(`/api/v1/items/${id}/suggest_properties`, {
+    available_keys: availableKeys,
+  })
+  return res.data.keys
 }
 
 // AI による説明（meaning）のファクトチェック（同期）。説明が無いカードはスキップ。
@@ -404,6 +421,8 @@ export interface BlockView {
   order: string[]
   /** そのカードでは持たない項目（− のエリア） */
   omitted: string[]
+  /** 札ごとの幅（何列ぶん）。1 は書かない（既定なので、書くと項目の数だけ肥る） */
+  spans?: Record<string, number>
 }
 
 // 種別の設定（どの項目を持つか）とは効く範囲が違う。これはこの1枚だけ

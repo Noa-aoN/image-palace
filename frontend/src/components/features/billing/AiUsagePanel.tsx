@@ -149,7 +149,7 @@ export function AiUsagePanel() {
           <h2 className="text-lg font-semibold">AIの利用状況</h2>
         </div>
         <p className="text-sm text-muted-foreground">
-          文章の生成（意味・タグ・ファクトチェックなど）で AI を使った回数です。1回 0.01 cr。
+          文章の生成（意味・タグ・AIチェックなど）で AI を使った回数です。1回 0.01 cr。
         </p>
 
         {!usage ? (

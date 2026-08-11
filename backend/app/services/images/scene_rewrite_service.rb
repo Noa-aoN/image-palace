@@ -95,17 +95,18 @@ module Images
     # 根拠と表示がずれると、絵を見て「なぜこうなったか」を辿れなくなる
     Result = Struct.new(:options, :model, :description, keyword_init: true)
 
-    def self.call(item:, user: nil)
-      new(item: item, user: user).call
+    def self.call(item:, user: nil, property_keys: nil)
+      new(item: item, user: user, property_keys: property_keys).call
     end
 
-    def initialize(item:, user: nil)
+    def initialize(item:, user: nil, property_keys: nil)
       @item = item
       @user = user || item.user
+      @property_keys = Array(property_keys).map(&:to_s).reject(&:blank?).uniq
     end
 
     def call
-      raise RewriteError, "このカードには意味・説明がありません" if meaning.blank?
+      raise RewriteError, "書き直すもとになる内容がありません" if source_text.blank?
 
       moderate!
       parse(request)
@@ -117,10 +118,64 @@ module Images
       @meaning ||= @item.primary_meaning&.definition.to_s.strip.first(MEANING_EXCERPT)
     end
 
+    # 項目を指定されたら、そちらを根拠にする。
+    #
+    # 意味・説明だけが根拠とは限らない。Wikipedia の冒頭や、自分で書いたメモのほうが
+    # 絵の手がかりになることがある。どれを見て書き直すかは利用者が決める。
+    def selected_properties
+      return [] if @property_keys.empty?
+
+      definitions = @item.user.property_definitions
+                         .where(item_type_id: @item.item_type_id, key: @property_keys)
+                         .index_by(&:id)
+      return [] if definitions.empty?
+
+      @item.item_properties.filter_map do |property|
+        definition = definitions[property.property_definition_id]
+        next if definition.nil?
+
+        text = property_text(property)
+        next if text.blank?
+
+        "#{definition.label}: #{text}"
+      end
+    end
+
+    # 項目の値を1行の文字列にする。
+    #
+    # Wikipedia の値は JSON の文字列で入っている。そのまま渡すと URL や鍵まで
+    # 混ざって、絵の役に立たないどころか主題を薄める。読める部分だけを取り出す。
+    def property_text(property)
+      value = property.typed_value
+      text =
+        case value
+        when Array then value.join("、")
+        else readable_value(value.to_s)
+        end
+
+      text.strip.first(MEANING_EXCERPT)
+    end
+
+    # JSON の文字列なら、中の読める部分（題名と冒頭）だけにする。
+    # JSON でなければそのまま
+    def readable_value(raw)
+      parsed = JSON.parse(raw)
+      return raw unless parsed.is_a?(Hash)
+
+      [ parsed["wikipedia_title"], parsed["wikipedia_extract"] ].compact_blank.join("。").presence || raw
+    rescue JSON::ParserError
+      raw
+    end
+
+    # 書き直しのもと。項目を指定されたらそれだけ、無ければ意味・説明
+    def source_text
+      @source_text ||= @property_keys.any? ? selected_properties.join("\n") : meaning
+    end
+
     # OpenAI へ渡るユーザー入力は必ず検査する（作成・再生成と同じ基準）。
     # 説明文は AI が書いたものでも、あとから手で直せるのでここを素通りさせない。
     def moderate!
-      [ meaning, @item.custom_prompt, @item.scene_prompt ].each do |text|
+      [ source_text, @item.custom_prompt, @item.scene_prompt ].each do |text|
         next if text.blank?
 
         result = Moderation::PromptModerator.call(text)
@@ -142,7 +197,7 @@ module Images
     # ここは「説明から起こし直す」ための口なので、下書きは見せない。
     # 補足指示は画像生成のときに別途足されるので、ここで混ぜる必要も無い。
     def user_message
-      [ "<単語>\n#{@item.title}", "<説明>\n#{meaning}" ].join("\n\n")
+      [ "<単語>\n#{@item.title}", "<説明>\n#{source_text}" ].join("\n\n")
     end
 
     def request
@@ -165,7 +220,7 @@ module Images
       options = Array(JSON.parse(content)["options"]).filter_map { |raw| build_option(raw) }.first(MAX_OPTIONS)
       raise RewriteError, "画像への指示を書き直せませんでした" if options.empty?
 
-      Result.new(options: options, model: model, description: meaning)
+      Result.new(options: options, model: model, description: source_text)
     rescue JSON::ParserError => e
       raise RewriteError, "書き直しの解析に失敗しました: #{e.message}"
     end

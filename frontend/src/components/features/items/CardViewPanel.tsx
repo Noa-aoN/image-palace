@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { Eye, EyeOff, GripVertical, Minus, Plus } from 'lucide-react'
+import { ChevronDown, Eye, EyeOff, GripVertical, Minus, Plus, Sparkles } from 'lucide-react'
 import {
   DndContext,
   PointerSensor,
@@ -24,8 +24,15 @@ import { Input } from '@/components/ui/input'
 import { Spinner } from '@/components/ui/spinner'
 import { Tooltip } from '@/components/ui/tooltip'
 import { PanelSlotContent } from '@/components/features/panel/PanelSlot'
-import { updateBlockView } from '@/lib/api/items'
+import { updateBlockView, suggestItemProperties } from '@/lib/api/items'
 import { getSettings, updateSettings } from '@/lib/api/settings'
+import {
+  PROPERTY_PRESETS,
+  PROPERTY_VALUE_TYPE_LABELS,
+  createPropertyDefinition,
+  type PropertyValueType,
+} from '@/lib/api/properties'
+import { getItem } from '@/lib/api/items'
 import type { CardPropertyPreset } from '@/types/settings'
 import type { Item } from '@/types/item'
 
@@ -55,9 +62,14 @@ export function CardViewPanel({
   item,
   blocks,
   omitted,
+  columns,
+  onColumnsChange,
   onUpdated,
 }: {
   item: Item
+  /** いまの列数（この端末で覚える） */
+  columns: number
+  onColumnsChange: (next: number) => void
   /** ＋ の段（並べ替え適用後） */
   blocks: CardBlock[]
   /** − の段（このカードでは持たない項目） */
@@ -66,6 +78,10 @@ export function CardViewPanel({
 }) {
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [suggesting, setSuggesting] = useState(false)
+  const [suggestError, setSuggestError] = useState<string | null>(null)
+  // AI に選ばせる前の並び。1回だけ戻せるようにする
+  const [beforeSuggest, setBeforeSuggest] = useState<{ order: string[]; omitted: string[] } | null>(null)
   const hidden = new Set(item.block_view?.hidden ?? [])
   const omittedKeys = new Set(item.block_view?.omitted ?? [])
   // 4px 動かすまでは並べ替えを始めない。表示の入り切りを押すだけのつもりが
@@ -89,6 +105,11 @@ export function CardViewPanel({
 
   const order = blocks.map((b) => b.key)
   const allKeys = [...order, ...omitted.map((b) => b.key)]
+  // このカードに出ている項目の識別名（prop:xxx から xxx を取り出す）。
+  // 既にあるものを「足せる」として出さないため
+  const allAdoptedKeys = new Set(
+    allKeys.filter((key) => key.startsWith('prop:')).map((key) => key.slice('prop:'.length))
+  )
 
   const toggle = (key: string) => {
     const next = hidden.has(key) ? [...hidden].filter((k) => k !== key) : [...hidden, key]
@@ -111,6 +132,28 @@ export function CardViewPanel({
     save([...hidden].filter((k) => wanted.includes(k)), wanted, allKeys.filter((k) => !wanted.includes(k)))
   }
 
+  // AI に選ばせる。渡すのは「いま定義されている項目」だけで、
+  // 新しい項目は作らせない（種別の定義が AI の思いつきで増えるのを避ける）
+  const suggest = async () => {
+    setSuggesting(true)
+    setSuggestError(null)
+    try {
+      const keys = await suggestItemProperties(item.id, allKeys)
+      const wanted = keys.filter((key) => allKeys.includes(key))
+      if (wanted.length === 0) {
+        setSuggestError('選べませんでした')
+        return
+      }
+      setBeforeSuggest({ order, omitted: [...omittedKeys] })
+      await save([...hidden].filter((k) => wanted.includes(k)), wanted, allKeys.filter((k) => !wanted.includes(k)))
+    } catch (err: unknown) {
+      const detail = (err as { response?: { data?: { error?: string } } })?.response?.data?.error
+      setSuggestError(detail ?? '選べませんでした。時間を置いてお試しください。')
+    } finally {
+      setSuggesting(false)
+    }
+  }
+
   const handleDragEnd = (event: DragEndEvent) => {
     const { active, over } = event
     if (!over || active.id === over.id) return
@@ -125,15 +168,59 @@ export function CardViewPanel({
   return (
     <PanelSlotContent sectionKey={CARD_VIEW_PANEL_KEY}>
       <div className="space-y-3">
-        <p className="text-xs leading-relaxed text-muted-foreground">
-          このカード1枚だけの見え方です。<strong className="text-foreground">＋</strong> は持つ項目、
-          <strong className="text-foreground">−</strong> は持たない項目。
-          どちらに置いても中身は消えません。
-          <br />
-          項目そのものを増やすのは「項目の設定」です（そちらは種別ぜんぶに効きます）。
-        </p>
+        {/* 説明は置かない。＋ と − の段に見出しが付いていて、押せば結果が見える。
+            開くたびに同じ文を読ませるほうが、面積も注意も食う */}
 
-        <PresetBar current={order} onApply={applyPreset} disabled={busy} />
+        {/* 列数はこの端末で覚える。項目の少ないカードは1列、多いカードは2列、と
+            カードによって変えたくなる。既定は環境設定（アカウント）に持つ */}
+        <div className="space-y-1.5">
+          <p className="text-xs font-medium">列の数</p>
+          <div className="flex gap-1.5">
+            {[ 1, 2, 3 ].map((count) => (
+              <button
+                key={count}
+                type="button"
+                onClick={() => onColumnsChange(count)}
+                className={`rounded-lg border px-3 py-1 text-sm transition-colors ${
+                  columns === count
+                    ? 'border-[var(--palace)] text-[var(--palace)]'
+                    : 'border-border text-muted-foreground hover:text-foreground'
+                }`}
+              >
+                {count}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        <PresetBar
+          current={order}
+          onApply={applyPreset}
+          disabled={busy}
+          onSuggest={suggest}
+          suggesting={suggesting}
+        />
+
+        {/* 当てたあとに戻せるようにする。AI の結果は当たり外れがあるので、
+            見て違えば1回で戻せないと、押すのが怖い操作になる */}
+        {beforeSuggest && (
+          <div className="flex items-center gap-2 text-xs text-muted-foreground">
+            <span>AI が選んだ並びに変えました</span>
+            <button
+              type="button"
+              onClick={() => {
+                const previous = beforeSuggest
+                setBeforeSuggest(null)
+                save([...hidden], previous.order, previous.omitted)
+              }}
+              disabled={busy}
+              className="hover:underline disabled:opacity-50"
+            >
+              元に戻す
+            </button>
+          </div>
+        )}
+        {suggestError && <p className="text-xs text-destructive">{suggestError}</p>}
 
         <p className="text-xs font-medium">＋ このカードが持つ項目</p>
 
@@ -184,6 +271,11 @@ export function CardViewPanel({
             ))}
           </div>
         )}
+
+        {/* まだ作っていない項目も、ここから足せるようにする。
+            「持たない」に出るのは既に定義したものだけなので、
+            Wikipedia のような新しい項目は、環境設定まで行かないと存在に気づけなかった */}
+        <AddableProperties item={item} adoptedKeys={allAdoptedKeys} onUpdated={onUpdated} />
 
         {busy && (
           <p className="flex items-center gap-2 text-xs text-muted-foreground">
@@ -288,15 +380,26 @@ function PresetBar({
   current,
   onApply,
   disabled,
+  onSuggest,
+  suggesting,
 }: {
   current: string[]
   onApply: (preset: CardPropertyPreset) => void
   disabled?: boolean
+  /** AI に選ばせる。ひな型と同じ「並びをまとめて当てる」操作なので、ここに置く */
+  onSuggest: () => void
+  suggesting: boolean
 }) {
   const [presets, setPresets] = useState<CardPropertyPreset[] | null>(null)
   const [naming, setNaming] = useState(false)
   const [name, setName] = useState('')
   const [saving, setSaving] = useState(false)
+  // 触っているひな型（更新・削除の対象）。開いたまま次を押せると、
+  // どれに対する操作なのか分からなくなるので1つだけ持つ
+  const [editing, setEditing] = useState<string | null>(null)
+  // 消したものを1つだけ覚えておく。押し間違いは必ず起きるし、
+  // 並びを作り直すのは手間なので、その場で戻せるようにする
+  const [undo, setUndo] = useState<CardPropertyPreset | null>(null)
 
   useEffect(() => {
     getSettings()
@@ -322,6 +425,51 @@ function PresetBar({
     }
   }
 
+  // 名前は変えず、いまの並びで中身だけ入れ替える。
+  // 「覚え直す」ために消して作り直すのは、名前を打ち直す手間が要る
+  const update = async (target: CardPropertyPreset) => {
+    setSaving(true)
+    try {
+      const next = (presets ?? []).map((p) => (p.name === target.name ? { ...p, keys: current } : p))
+      const saved = await updateSettings({ card_property_presets: next })
+      setPresets(saved.card_property_presets ?? [])
+      setEditing(null)
+    } catch {
+      // 失敗しても画面は壊さない
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  const remove = async (target: CardPropertyPreset) => {
+    setSaving(true)
+    try {
+      const next = (presets ?? []).filter((p) => p.name !== target.name)
+      const saved = await updateSettings({ card_property_presets: next })
+      setPresets(saved.card_property_presets ?? [])
+      setUndo(target)
+      setEditing(null)
+    } catch {
+      // 失敗しても画面は壊さない
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  const restore = async () => {
+    if (!undo) return
+    setSaving(true)
+    try {
+      const saved = await updateSettings({ card_property_presets: [ ...(presets ?? []), undo ] })
+      setPresets(saved.card_property_presets ?? [])
+      setUndo(null)
+    } catch {
+      // 失敗しても画面は壊さない
+    } finally {
+      setSaving(false)
+    }
+  }
+
   if (presets === null) return null
 
   return (
@@ -332,18 +480,80 @@ function PresetBar({
           <span className="text-xs text-muted-foreground">まだありません</span>
         ) : (
           presets.map((preset) => (
-            <button
-              key={preset.name}
-              type="button"
-              onClick={() => onApply(preset)}
-              disabled={disabled}
-              className="rounded-full border border-border px-2.5 py-0.5 text-xs text-muted-foreground transition-colors hover:bg-muted disabled:opacity-50"
-            >
-              {preset.name}
-            </button>
+            <span key={preset.name} className="flex items-center">
+              <button
+                type="button"
+                onClick={() => onApply(preset)}
+                disabled={disabled}
+                className="rounded-l-full border border-r-0 border-border px-2.5 py-0.5 text-xs text-muted-foreground transition-colors hover:bg-muted disabled:opacity-50"
+              >
+                {preset.name}
+              </button>
+              {/* 直す口は押した先に置く。並べて出すと、当てるつもりが消すことになる */}
+              <button
+                type="button"
+                onClick={() => setEditing(editing === preset.name ? null : preset.name)}
+                disabled={disabled}
+                aria-label={`${preset.name} を直す`}
+                className="rounded-r-full border border-border px-1.5 py-0.5 text-muted-foreground transition-colors hover:bg-muted disabled:opacity-50"
+              >
+                <ChevronDown size={12} />
+              </button>
+            </span>
           ))
         )}
       </div>
+
+      {/* 直す口。当てる（上の札）とは分けて、押した1つだけに出す */}
+      {editing && (
+        <div className="flex flex-wrap items-center gap-2 rounded-lg border border-border bg-background px-2.5 py-1.5">
+          <span className="text-xs font-medium">{editing}</span>
+          <button
+            type="button"
+            onClick={() => update(presets.find((p) => p.name === editing)!)}
+            disabled={saving}
+            className="text-xs text-muted-foreground hover:text-foreground disabled:opacity-50"
+          >
+            いまの並びで更新
+          </button>
+          <button
+            type="button"
+            onClick={() => remove(presets.find((p) => p.name === editing)!)}
+            disabled={saving}
+            className="text-xs text-destructive hover:underline disabled:opacity-50"
+          >
+            削除
+          </button>
+          <button
+            type="button"
+            onClick={() => setEditing(null)}
+            className="ml-auto text-xs text-muted-foreground hover:underline"
+          >
+            閉じる
+          </button>
+        </div>
+      )}
+
+      {/* 消したものは1つだけ戻せる。押し間違いは必ず起きるし、並びを作り直すのは手間 */}
+      {undo && (
+        <div className="flex items-center gap-2 text-xs text-muted-foreground">
+          <span>「{undo.name}」を削除しました</span>
+          <button type="button" onClick={restore} disabled={saving} className="hover:underline disabled:opacity-50">
+            元に戻す
+          </button>
+        </div>
+      )}
+
+      {/* AI に選ばせるのも「並びをまとめて当てる」操作。ひな型と同じ場所に置く */}
+      <button
+        type="button"
+        onClick={onSuggest}
+        disabled={disabled || suggesting}
+        className="flex items-center gap-1 text-xs text-muted-foreground transition-colors hover:text-foreground disabled:opacity-50"
+      >
+        {suggesting ? <Spinner size={11} /> : <Sparkles size={11} />}
+        このカードに合う項目をAIに選ばせる
+      </button>
 
       {naming ? (
         <div className="flex gap-1.5">
@@ -374,6 +584,76 @@ function PresetBar({
           いまの並びをひな型として覚える
         </button>
       )}
+    </div>
+  )
+}
+
+/**
+ * まだ作っていない項目を、ここから足す。
+ *
+ * 「− 持たない項目」に出るのは**既に定義した**ものだけ。
+ * だから新しく用意した項目（Wikipedia など）は、環境設定の「カードの項目」まで
+ * 行かないと存在に気づけなかった。実際そこで詰まった。
+ *
+ * ここで押すと、その種別に項目を作ってこのカードに出す。
+ * 種別ぜんぶに効く操作なので、そうと分かるように書いておく。
+ */
+function AddableProperties({
+  item,
+  adoptedKeys,
+  onUpdated,
+}: {
+  item: Item
+  adoptedKeys: Set<string>
+  onUpdated: (item: Item) => void
+}) {
+  const [busy, setBusy] = useState<string | null>(null)
+  const [error, setError] = useState<string | null>(null)
+  const itemTypeId = item.item_type?.id
+
+  if (!itemTypeId) return null
+
+  const candidates = PROPERTY_PRESETS.flatMap((group) =>
+    group.items.filter((preset) => !adoptedKeys.has(preset.key)).map((preset) => ({ ...group, ...preset }))
+  )
+
+  if (candidates.length === 0) return null
+
+  const add = async (preset: { key: string; label: string; value_type: PropertyValueType }) => {
+    setBusy(preset.key)
+    setError(null)
+    try {
+      await createPropertyDefinition({ item_type_id: itemTypeId, ...preset })
+      onUpdated(await getItem(item.id))
+    } catch {
+      setError('足せませんでした。同じ識別名の項目が既にあるかもしれません。')
+    } finally {
+      setBusy(null)
+    }
+  }
+
+  return (
+    <div className="space-y-1.5 pt-1">
+      <p className="text-xs font-medium">＋ まだ無い項目を作る</p>
+      <p className="text-xs text-muted-foreground">
+        押すと「{item.item_type?.label}」の項目として作られます（この種別のカード全部に出ます）。
+      </p>
+      <div className="flex flex-wrap gap-1.5">
+        {candidates.map((preset) => (
+          <button
+            key={preset.key}
+            type="button"
+            onClick={() => add(preset)}
+            disabled={busy !== null}
+            title={PROPERTY_VALUE_TYPE_LABELS[preset.value_type]}
+            className="flex items-center gap-1 rounded-full border border-dashed border-border px-2.5 py-0.5 text-xs text-muted-foreground transition-colors hover:bg-muted disabled:opacity-40"
+          >
+            {busy === preset.key ? <Spinner size={11} /> : <Plus size={11} />}
+            {preset.label}
+          </button>
+        ))}
+      </div>
+      {error && <p className="text-xs text-destructive">{error}</p>}
     </div>
   )
 }

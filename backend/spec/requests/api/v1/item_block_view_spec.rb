@@ -19,7 +19,8 @@ RSpec.describe "Api::V1::Items block_view", type: :request do
       expect(item.reload.hidden_block_keys).to eq([ "tags" ])
       expect(item.ordered_block_keys).to eq([ "meanings", "item_type" ])
       expect(json_response["block_view"]).to eq(
-        { "hidden" => [ "tags" ], "order" => [ "meanings", "item_type" ], "omitted" => [], "from_preset" => false }
+        { "hidden" => [ "tags" ], "order" => [ "meanings", "item_type" ], "omitted" => [],
+          "spans" => {}, "from_preset" => false }
       )
     end
 
@@ -115,6 +116,26 @@ RSpec.describe "Api::V1::Items block_view", type: :request do
       get "/api/v1/items/#{item.id}", headers: headers
 
       expect(response.parsed_body.dig("block_view", "from_preset")).to be(false)
+    end
+  end
+
+  describe "札の幅" do
+    # 列数は端末ごとの設定だが、どの札を広く見せたいかはカードの性質で決まる。
+    # 説明の長いカードは説明を2列に、といった具合に、カード側に持たせる
+    it "1より大きい幅だけを保存する（既定の1は書かない）" do
+      patch "/api/v1/items/#{item.id}/block_view",
+        params: { hidden: [], order: [ "meanings" ], omitted: [], spans: { "meanings" => 2, "tags" => 1 } },
+        headers: headers, as: :json
+
+      expect(json_response.dig("block_view", "spans")).to eq({ "meanings" => 2 })
+    end
+
+    it "範囲の外は受けない" do
+      patch "/api/v1/items/#{item.id}/block_view",
+        params: { hidden: [], order: [ "meanings" ], omitted: [], spans: { "meanings" => 9 } },
+        headers: headers, as: :json
+
+      expect(json_response.dig("block_view", "spans")).to eq({})
     end
   end
 end

@@ -57,7 +57,11 @@ export function RegeneratePanel({ item, onUpdated }: Props) {
   const [imageModel, setImageModel] = useState(item.image_model ?? '')
   const [retrying, setRetrying] = useState(false)
   // どちらの書き直しが走っているか（null なら止まっている）
-  const [rewriting, setRewriting] = useState<'title' | 'meaning' | null>(null)
+  const [rewriting, setRewriting] = useState<'title' | 'meaning' | 'property' | null>(null)
+  // 根拠にする項目。意味・説明だけが手がかりとは限らない
+  // （Wikipedia の冒頭や自分のメモのほうが絵になることがある）
+  const [pickingProperties, setPickingProperties] = useState(false)
+  const [selectedProperties, setSelectedProperties] = useState<string[]>([])
   const [rewriteError, setRewriteError] = useState<string | null>(null)
   // 書き直す前の指示。置き換えは一瞬で終わるが、手で書いたものが消えるので戻せるようにする
   const [beforeRewrite, setBeforeRewrite] = useState<string | null>(null)
@@ -122,7 +126,12 @@ export function RegeneratePanel({ item, onUpdated }: Props) {
   //
   // meaning のほうは、絵がまるで変わるほど意味・ジャンルが分かれる語（アポロ＝神／宇宙計画 など）で
   // 候補が複数返る。どちらの絵が欲しいかは説明文からは決まらないので、黙って選ばず選んでもらう。
-  const handleRewrite = async (source: 'title' | 'meaning') => {
+  // 中身のある項目だけを選ばせる。空の項目を選んでも書き直せない
+  const filledProperties = (item.properties ?? []).filter((entry) =>
+    Array.isArray(entry.value) ? entry.value.length > 0 : entry.value != null && entry.value !== ''
+  )
+
+  const handleRewrite = async (source: 'title' | 'meaning' | 'property') => {
     setRewriting(source)
     setRewriteError(null)
     setSceneOptions([])
@@ -131,7 +140,10 @@ export function RegeneratePanel({ item, onUpdated }: Props) {
         const brief = await previewBrief(item.id)
         applyScene(brief.scene_prompt, brief.image_description)
       } else {
-        const { options, description } = await rewriteScenePrompt(item.id)
+        const { options, description } = await rewriteScenePrompt(
+          item.id,
+          source === 'property' ? selectedProperties : undefined
+        )
         if (options.length === 1) applyScene(options[0].scene_prompt, description)
         else {
           setSceneOptions(options)
@@ -230,7 +242,9 @@ export function RegeneratePanel({ item, onUpdated }: Props) {
 
                 2つは根拠が違う。単語からは語だけを見て起こし直し、
                 意味・説明からは、このカードに書いてある説明だけを見て起こし直す。 */}
-            <div className="grid gap-2 sm:grid-cols-2">
+            {/* 横長の札を縦に積む。3つを横に並べると1つが狭くなり、
+                根拠の説明（選ぶのに要る一行）が読めなくなる */}
+            <div className="space-y-1.5">
               <RewriteButton
                 busy={rewriting === 'title'}
                 disabled={retrying || Boolean(rewriting)}
@@ -247,7 +261,62 @@ export function RegeneratePanel({ item, onUpdated }: Props) {
                   note="このカードの説明だけを根拠にします"
                 />
               )}
+              {filledProperties.length > 0 && (
+                <RewriteButton
+                  busy={rewriting === 'property'}
+                  disabled={retrying || Boolean(rewriting)}
+                  onClick={() => setPickingProperties((v) => !v)}
+                  title="特定の項目から書き直す"
+                  note={
+                    selectedProperties.length > 0
+                      ? `${selectedProperties.length} 個の項目を根拠にします`
+                      : 'Wikipedia やメモなど、選んだ項目を根拠にします'
+                  }
+                />
+              )}
             </div>
+
+            {/* 選ぶ口は押した先に出す。並べて出すと、根拠を選ぶ前に押せてしまう */}
+            {pickingProperties && (
+              <div className="space-y-2 rounded-lg border border-border bg-card p-3">
+                <p className="text-xs text-muted-foreground">根拠にする項目を選びます（複数可）</p>
+                <div className="flex flex-wrap gap-1.5">
+                  {filledProperties.map((entry) => {
+                    const active = selectedProperties.includes(entry.key)
+                    return (
+                      <button
+                        key={entry.key}
+                        type="button"
+                        onClick={() =>
+                          setSelectedProperties((current) =>
+                            current.includes(entry.key)
+                              ? current.filter((k) => k !== entry.key)
+                              : [...current, entry.key]
+                          )
+                        }
+                        className={`rounded-full border px-2.5 py-0.5 text-xs transition-colors ${
+                          active
+                            ? 'border-transparent text-white'
+                            : 'border-border text-muted-foreground hover:bg-muted'
+                        }`}
+                        style={active ? { backgroundColor: 'var(--palace)' } : undefined}
+                      >
+                        {entry.label}
+                      </button>
+                    )
+                  })}
+                </div>
+                <Button
+                  size="sm"
+                  disabled={selectedProperties.length === 0 || Boolean(rewriting)}
+                  onClick={() => handleRewrite('property')}
+                  className="flex items-center gap-1.5 text-xs"
+                >
+                  {rewriting === 'property' ? <Spinner size={12} /> : <Sparkles size={12} />}
+                  この項目から書き直す
+                </Button>
+              </div>
+            )}
 
             <textarea
               id="regen-scene"

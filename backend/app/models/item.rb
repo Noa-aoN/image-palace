@@ -89,6 +89,13 @@ class Item < ApplicationRecord
     Array((block_view || {})["order"])
   end
 
+  # 札ごとの幅（何列ぶんを占めるか）。決めていないものは1列。
+  # 列数そのものは端末ごとの設定なので、ここには持たない
+  def block_spans
+    spans = (block_view || {})["spans"]
+    spans.is_a?(Hash) ? spans : {}
+  end
+
   # 未指定のカード（旧データ・既定のまま作られたもの）は既定の経路として扱う
   def effective_prompt_source
     prompt_source.presence || DEFAULT_PROMPT_SOURCE

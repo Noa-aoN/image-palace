@@ -130,9 +130,22 @@ class Rack::Attack
     req.ip if req.post? && req.path.match?(%r{\A/api/v1/items/[^/]+/fill_properties\z})
   end
 
+  # 項目の選定（OpenAI Chat 呼び出し）
+  throttle("item_suggest_properties/ip", limit: 20, period: 60.seconds) do |req|
+    req.ip if req.post? && req.path.match?(%r{\A/api/v1/items/[^/]+/suggest_properties\z})
+  end
+
   # 意味・説明からの情景の書き直し（OpenAI Chat 呼び出し）
   throttle("item_scene_rewrite/ip", limit: 20, period: 60.seconds) do |req|
     req.ip if req.post? && req.path.match?(%r{\A/api/v1/items/[^/]+/scene_rewrite\z})
+  end
+
+  # Wikipedia の引き当て。
+  #
+  # こちらの負担は軽いが、外（Wikimedia）へ投げる口なので、
+  # 相手の迷惑になる叩き方をこちらで止める。キャッシュが効くぶんは通る
+  throttle("wikipedia/ip", limit: 30, period: 60.seconds) do |req|
+    req.ip if req.get? && req.path == "/api/v1/wikipedia/summary"
   end
 
   # 引き換えコードの入力。

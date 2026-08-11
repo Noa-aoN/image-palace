@@ -26,6 +26,7 @@ export default function SettingsPage() {
   const [autoTags, setAutoTags] = useState<boolean | null>(null)
   const [regenWithMeaning, setRegenWithMeaning] = useState<boolean | null>(null)
   const [imageSafeguard, setImageSafeguard] = useState<boolean | null>(null)
+  const [cardDetailColumns, setCardDetailColumns] = useState(1)
   const [palaceName, setPalaceName] = useState('')
   const [savingPalaceName, setSavingPalaceName] = useState(false)
   const [savingSettings, setSavingSettings] = useState(false)
@@ -42,6 +43,17 @@ export default function SettingsPage() {
   const [savingShelf, setSavingShelf] = useState(false)
   // 生成ステータスバッジの表示（クライアント保持の表示設定）
   const showStatusBadges = useUiStore((s) => s.showStatusBadges)
+  const changeCardDetailColumns = async (next: number) => {
+    if (next === cardDetailColumns || savingSettings) return
+    setSavingSettings(true)
+    try {
+      const s = await updateSettings({ card_detail_columns: next })
+      setCardDetailColumns(s.card_detail_columns)
+    } finally {
+      setSavingSettings(false)
+    }
+  }
+
   const toggleStatusBadges = useUiStore((s) => s.toggleStatusBadges)
   // 図の 2D/3D とアニメーション（アカウントの設定。図のコンポーネントも同じストアを見る）
   const diagramMode = useSettingsStore((s) => s.settings?.diagram_mode ?? null)
@@ -62,6 +74,7 @@ export default function SettingsPage() {
         setAutoTags(s.auto_generate_tags)
         setRegenWithMeaning(s.regenerate_with_meaning)
         setImageSafeguard(s.image_safeguard)
+        setCardDetailColumns(s.card_detail_columns ?? 1)
         setPalaceName(s.palace_name ?? '')
         setDefaultStyle(s.default_image_style)
         setDefaultAspect(s.default_aspect_ratio)
@@ -595,6 +608,33 @@ export default function SettingsPage() {
                 disabled={false}
                 onClick={toggleStatusBadges}
               />
+            </div>
+
+            {/* ここで決めるのは既定。1枚ごとの列数はカード詳細の「表示」で変えられる
+                （項目の少ないカードは1列、多いカードは2列、と使い分けたくなる） */}
+            <div className="border-t border-border pt-3">
+              <p className="text-sm font-medium">カード詳細の列の数</p>
+              <p className="mt-1 text-sm text-muted-foreground">
+                項目を何列に並べるかの既定です。狭い画面では自動で1列に戻ります。
+                1枚ごとの列数は、カード詳細の「表示」から変えられます。
+              </p>
+              <div className="mt-2 flex gap-1.5">
+                {[ 1, 2, 3 ].map((count) => (
+                  <button
+                    key={count}
+                    type="button"
+                    onClick={() => changeCardDetailColumns(count)}
+                    disabled={savingSettings}
+                    className={`rounded-lg border px-3 py-1 text-sm transition-colors disabled:opacity-50 ${
+                      cardDetailColumns === count
+                        ? 'border-[var(--palace)] text-[var(--palace)]'
+                        : 'border-border text-muted-foreground hover:text-foreground'
+                    }`}
+                  >
+                    {count}
+                  </button>
+                ))}
+              </div>
             </div>
           </section>
 

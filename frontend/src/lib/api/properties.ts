@@ -10,7 +10,7 @@ import { apiClient } from './client'
  * 定義の組み合わせで表す。翻訳は意味・説明、関連カードは relations、
  * 画像は medias が既に持っているので、ここでは扱わない（二重管理を避ける）。
  */
-export const PROPERTY_VALUE_TYPES = ['text', 'longtext', 'list', 'number', 'date', 'url'] as const
+export const PROPERTY_VALUE_TYPES = ['text', 'longtext', 'list', 'number', 'date', 'url', 'wikipedia'] as const
 
 export type PropertyValueType = (typeof PROPERTY_VALUE_TYPES)[number]
 
@@ -21,6 +21,35 @@ export const PROPERTY_VALUE_TYPE_LABELS: Record<PropertyValueType, string> = {
   number: '数',
   date: '日付',
   url: 'リンク',
+  wikipedia: 'Wikipedia',
+}
+
+/** 型ごとの一言。選ぶときに何が起きるのかを読ませる */
+export const PROPERTY_VALUE_TYPE_NOTES: Partial<Record<PropertyValueType, string>> = {
+  wikipedia: '見出し語で Wikipedia を引き、冒頭と記事リンクを出します',
+}
+
+/**
+ * Wikipedia の項目に入る値。記事の全文は持たない。
+ *
+ * 鍵に wikipedia_ を付けるのは、カードの項目に混ぜて置いたときに
+ * どこから来た値かが名前だけで分かるようにするため。
+ *
+ * language_code は、いま画面に選択を出していなくても必ず持つ。
+ * あとから多言語に広げるとき、保存済みの値がどの言語のものか分からないと、
+ * 全部「たぶん日本語」として扱うしかなくなる。
+ */
+export interface WikipediaValue {
+  wikipedia_page_id?: number
+  wikipedia_title: string
+  wikipedia_description?: string | null
+  wikipedia_url: string | null
+  wikipedia_extract: string | null
+  wikipedia_thumbnail_url: string | null
+  wikipedia_language_code: string
+  wikipedia_fetched_at?: string
+  /** 曖昧さ回避かどうかを画面が知るためだけの値。保存の対象ではない */
+  type?: string
 }
 
 export interface PropertyDefinition {
@@ -162,6 +191,12 @@ export const PROPERTY_PRESETS: {
       { key: 'mnemonic', label: '語呂合わせ', value_type: 'longtext' },
       { key: 'note', label: 'メモ', value_type: 'longtext' },
     ],
+  },
+  {
+    // 引いてくる項目。手で書くものとは性質が違うので群を分ける。
+    // ここに無いと、型の一覧から「Wikipedia」を選ぶまで存在に気づけない
+    group: '調べる',
+    items: [{ key: 'wikipedia', label: 'Wikipedia', value_type: 'wikipedia' }],
   },
 ]
 

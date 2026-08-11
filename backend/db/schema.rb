@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_08_11_000009) do
+ActiveRecord::Schema[8.1].define(version: 2026_08_11_000010) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
   enable_extension "pg_trgm"
@@ -534,6 +534,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_08_11_000009) do
   create_table "settings", primary_key: "user_id", id: :uuid, default: nil, force: :cascade do |t|
     t.boolean "auto_generate_meanings", default: true, null: false
     t.boolean "auto_generate_tags", default: true, null: false
+    t.integer "card_detail_columns", default: 1, null: false
     t.string "card_headline_key"
     t.jsonb "card_list_fields", default: [], null: false
     t.jsonb "card_property_presets", default: [], null: false

@@ -8,6 +8,8 @@ import { PropertyBlock, BlockAction, BlockEmpty, BlockError } from '@/components
 import { setItemProperty, fillItemProperties, type ItemPropertyEntry } from '@/lib/api/properties'
 import { getItem } from '@/lib/api/items'
 import type { Item } from '@/types/item'
+import { WikipediaProperty } from './WikipediaProperty'
+import type { WikipediaValue } from '@/lib/api/properties'
 
 /**
  * 項目の道具立て（未記入の数・まとめてAIで埋める・項目の設定への入口）。
@@ -125,6 +127,8 @@ export function PropertyEntryBlock({
   onOpenSettings?: () => void
 }) {
   const isList = entry.value_type === 'list'
+  // Wikipedia は手で書く項目ではない。引いてきた結果をそのまま持つ
+  const isWikipedia = entry.value_type === 'wikipedia'
   const [editing, setEditing] = useState(false)
   const [draft, setDraft] = useState('')
   const [saving, setSaving] = useState(false)
@@ -187,7 +191,9 @@ export function PropertyEntryBlock({
       busy={writing}
       actions={
         <>
-          {!editing && (
+          {/* Wikipedia は引いてきた結果を持つ項目。
+              手で書く・AI に書かせる口は出さない（出どころが混ざる） */}
+          {!editing && !isWikipedia && (
             <BlockAction
               icon={<Sparkles size={14} />}
               label={filled ? 'AIで書き直す' : 'AIで書く'}
@@ -196,7 +202,7 @@ export function PropertyEntryBlock({
               hideLabel={filled}
             />
           )}
-          {!editing && (
+          {!editing && !isWikipedia && (
             <BlockAction
               icon={filled ? <Pencil size={14} /> : <Plus size={14} />}
               label={filled ? '編集' : '書く'}
@@ -216,7 +222,17 @@ export function PropertyEntryBlock({
         </>
       }
     >
-      {editing ? (
+      {isWikipedia ? (
+        <WikipediaProperty
+          value={parseWikipedia(scalarValue)}
+          term={item.title}
+          editable
+          onSaved={async (next) => {
+            await setItemProperty(item.id, entry.property_definition_id, JSON.stringify(next))
+            onUpdated(await getItem(item.id))
+          }}
+        />
+      ) : editing ? (
         <div className="space-y-2">
           {isList || entry.value_type === 'longtext' ? (
             <textarea
@@ -300,6 +316,12 @@ function PropertyValue({
     )
   }
 
+  if (entry.value_type === 'wikipedia') {
+    // 器（PropertyValue）は値を出すだけの場所なので、引き直しの操作は持たせない。
+    // 押せるものは編集の側（PropertyEntryBlock）に置く
+    return <WikipediaProperty value={parseWikipedia(scalarValue)} term="" onSaved={() => {}} editable={false} />
+  }
+
   if (entry.value_type === 'url') {
     return (
       <a
@@ -314,4 +336,20 @@ function PropertyValue({
   }
 
   return <p className="whitespace-pre-wrap text-sm leading-relaxed text-foreground">{scalarValue}</p>
+}
+
+/**
+ * 保存してある Wikipedia の値を読む。
+ *
+ * 壊れた値が入っていても画面は出す（未設定として扱う）。
+ * 外から来た JSON なので、形が変わっていても落ちないようにしておく。
+ */
+function parseWikipedia(raw: string): WikipediaValue | null {
+  if (!raw) return null
+  try {
+    const parsed = JSON.parse(raw) as WikipediaValue
+    return parsed && typeof parsed.wikipedia_title === 'string' ? parsed : null
+  } catch {
+    return null
+  }
 }

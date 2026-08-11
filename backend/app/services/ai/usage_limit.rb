@@ -34,6 +34,7 @@ module Ai
       "tags" => UNIT_COST_POINTS,
       "brief" => UNIT_COST_POINTS,
       "scene_rewrite" => UNIT_COST_POINTS,
+      "suggest_properties" => UNIT_COST_POINTS,
       "fill_properties" => UNIT_COST_POINTS,
       "fact_check" => UNIT_COST_POINTS,
       "words_generate" => UNIT_COST_POINTS,

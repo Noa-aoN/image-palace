@@ -11,10 +11,11 @@ class AiUsage < ApplicationRecord
   KINDS = {
     "meaning" => "意味・説明の生成",
     "tags" => "タグの生成",
-    "fact_check" => "ファクトチェック",
+    "fact_check" => "AIチェック",
     "brief" => "画像の下ごしらえ",
     "examples" => "例文の生成",
     "scene_rewrite" => "情景の書き直し",
+    "suggest_properties" => "項目の選定",
     "fill_properties" => "プロパティの穴埋め",
     "words_generate" => "単語の生成",
     "words_check" => "単語の確認",

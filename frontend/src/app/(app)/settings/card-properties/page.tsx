@@ -5,6 +5,7 @@ import { Boxes } from 'lucide-react'
 import { Breadcrumb } from '@/components/ui/breadcrumb'
 import { Skeleton } from '@/components/ui/skeleton'
 import { CardPropertiesEditor } from '@/components/features/settings/CardPropertiesEditor'
+import { PropertyOverview } from '@/components/features/settings/PropertyOverview'
 import { getItemTypes } from '@/lib/api/items'
 import { getPropertyDefinitions, type PropertyDefinition } from '@/lib/api/properties'
 import type { ItemType } from '@/types/item'
@@ -64,6 +65,10 @@ export default function CardPropertiesPage() {
         </div>
       ) : (
         <div className="mt-8 space-y-6">
+          {/* まず「何を作ったか」を一望する。種別ごとの欄だけだと、
+              同じ項目をどの種別に入れたのかを1つずつ開いて確かめることになる */}
+          <PropertyOverview definitions={definitions} itemTypes={itemTypes} />
+
           {itemTypes.map((type) => (
             <CardPropertiesEditor
               key={type.id}

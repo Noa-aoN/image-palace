@@ -1,4 +1,9 @@
 class Setting < ApplicationRecord
+  # カード詳細の列数。3列より多いと1列が細くなりすぎて、
+  # 説明のような長い項目が読めなくなる
+  CARD_DETAIL_COLUMN_RANGE = (1..3).freeze
+  validates :card_detail_columns, inclusion: { in: CARD_DETAIL_COLUMN_RANGE }
+
   # 一覧の見せ方（simple / palace）
   DISPLAY_STYLES = %w[simple palace].freeze
   validates :display_style, inclusion: { in: DISPLAY_STYLES }

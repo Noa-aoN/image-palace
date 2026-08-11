@@ -5,7 +5,8 @@ module Api
 
       before_action :set_item,
                     only: [ :show, :update, :destroy, :retry, :approve_image, :meaning, :examples, :brief, :scene_rewrite,
-                            :generate_tags, :fact_check, :fill_properties, :usages, :update_block_view ]
+                            :generate_tags, :fact_check, :fill_properties, :usages, :update_block_view,
+                            :suggest_properties ]
 
       DEFAULT_PER_PAGE = 24
       MAX_PER_PAGE = 100
@@ -180,7 +181,9 @@ module Api
       #
       # 意味・ジャンルが分かれる語では候補が複数返る。どれを選ぶかは利用者が決める。
       def scene_rewrite
-        result = Images::SceneRewriteService.call(item: item, user: current_user)
+        result = Images::SceneRewriteService.call(
+          item: item, user: current_user, property_keys: params[:property_keys]
+        )
         render json: {
           options: result.options.map { |o| { label: o.label, scene_prompt: o.scene_prompt } },
           # 何を根拠に書き直したか。画面はこれを説明文として保存し、
@@ -205,7 +208,9 @@ module Api
           "hidden" => block_keys(:hidden),
           "order" => block_keys(:order),
           # そのカードでは持たない項目。畳んでいる（hidden）のとは意味が違う
-          "omitted" => block_keys(:omitted)
+          "omitted" => block_keys(:omitted),
+          # 札ごとの幅（何列ぶん）。1〜3の外は受けない
+          "spans" => block_spans_param
         })
         render json: serialize_item(item.reload)
       rescue ActiveRecord::RecordInvalid => e
@@ -317,6 +322,24 @@ module Api
         render json: { errors: e.record.errors.full_messages }, status: :unprocessable_entity
       end
 
+      # このカードに持たせるとよい項目を AI に選ばせる。
+      #
+      # 選ぶだけで、保存はしない。当てるかどうかは画面（「表示」）が決める。
+      # ここで保存すると、押した瞬間に並びが変わって元に戻せなくなる。
+      def suggest_properties
+        result = Cards::SuggestPropertiesService.call(
+          item: item, available_keys: params[:available_keys], user: current_user
+        )
+        render json: { keys: result.keys }, status: :ok
+      rescue Cards::SuggestPropertiesService::SuggestError => e
+        render json: { error: e.message }, status: :unprocessable_entity
+      rescue Ai::Chat::LimitExceeded => e
+        render json: { error: e.message }, status: :too_many_requests
+      rescue KeyError, Faraday::Error => e
+        Rails.logger.warn "[ItemsController#suggest_properties] failed item_id=#{item.id}: #{e.class}: #{e.message}"
+        render json: { error: "選べませんでした。時間を置いて再度お試しください。" }, status: :unprocessable_entity
+      end
+
       # 例文を AI で書く。説明はそのままで、例文だけ書き直せるようにする。
       #
       # overwrite=false（既定）なら例文の無いものだけ。meaning_id を渡すとその1件だけ。
@@ -393,7 +416,7 @@ module Api
         render json: { error: e.message }, status: :too_many_requests
       rescue GenerateFactCheckService::GenerationError, KeyError, Faraday::Error => e
         Rails.logger.warn "[ItemsController#fact_check] failed item_id=#{item.id}: #{e.class}: #{e.message}"
-        render json: { error: "ファクトチェックに失敗しました。時間を置いて再度お試しください。" }, status: :unprocessable_entity
+        render json: { error: "AIチェックに失敗しました。時間を置いて再度お試しください。" }, status: :unprocessable_entity
       end
 
       private
@@ -500,6 +523,22 @@ module Api
 
           current_user.consume_credits!(cost, item: target)
         end
+      end
+
+      # 札ごとの幅。知らないキーや範囲外は落とす。
+      # 1（既定）は書かない。全部の札を書き出すと、項目が増えるほど metadata が肥る
+      BLOCK_SPAN_RANGE = (1..3).freeze
+
+      def block_spans_param
+        raw = params[:spans]
+        return {} unless raw.respond_to?(:each_pair)
+
+        raw.to_unsafe_h.each_with_object({}) do |(key, value), acc|
+          span = value.to_i
+          next unless BLOCK_SPAN_RANGE.include?(span) && span > 1
+
+          acc[key.to_s.first(Item::MAX_BLOCK_KEY_LENGTH)] = span
+        end.first(Item::MAX_BLOCK_KEYS).to_h
       end
 
       # 画面から来たキーを整える。長さも件数も抑えて、metadata が肥らないようにする
@@ -669,7 +708,8 @@ module Api
         base = {
           hidden: item.hidden_block_keys,
           order: item.ordered_block_keys,
-          omitted: item.omitted_block_keys
+          omitted: item.omitted_block_keys,
+          spans: item.block_spans
         }
         return base.merge(from_preset: false) if base.values.any?(&:present?)
 

@@ -16,7 +16,9 @@ class PropertyDefinition < ApplicationRecord
   belongs_to :item_type
   has_many :item_properties, dependent: :destroy
 
-  VALUE_TYPES = %w[text longtext list number date url].freeze
+  # wikipedia は「調べた結果」を持つ型。url で代用しない。
+  # url だと手で貼ったリンクにしかならず、冒頭も出典表記も持てない
+  VALUE_TYPES = %w[text longtext list number date url wikipedia].freeze
 
   MAX_KEY_LENGTH = 40
   MAX_LABEL_LENGTH = 40

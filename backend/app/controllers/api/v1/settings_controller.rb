@@ -27,6 +27,7 @@ module Api
           :auto_generate_meanings, :auto_generate_tags, :default_image_style, :default_aspect_ratio,
           :display_style, :shelf_orientation, :onboarded,
           :regenerate_with_meaning, :image_safeguard, :card_headline_key, :palace_name,
+          :card_detail_columns,
           :diagram_mode, :motion_mode, :word_difficulty, :default_card_preset,
           library_order: [],
           card_list_fields: [],
@@ -52,6 +53,8 @@ module Api
           image_safeguard: setting.image_safeguard,
           # 一覧で名前として出す項目。空なら見出し語
           card_headline_key: setting.card_headline_key,
+          # カード詳細で項目を何列に並べるかの既定。1枚ずつの指定はカード側が持つ
+          card_detail_columns: setting.card_detail_columns,
           palace_name: setting.palace_name,
           card_property_presets: setting.card_property_presets,
           card_list_fields: setting.card_list_fields,
