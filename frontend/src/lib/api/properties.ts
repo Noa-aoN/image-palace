@@ -209,6 +209,34 @@ export const PROPERTY_PRESETS: {
   },
 ]
 
+/**
+ * 項目が1つも無いときに、まず出す7件。
+ *
+ * プリセットは全19件あるが、最初から全部出すと「どれから始めるか」が仕事になる。
+ * 覚えるのに効くもの・単語カードで埋まりやすいものだけに絞る
+ * （本番の219枚中218枚が「単語」種別）。残りは「ほかの項目を見る」から。
+ *
+ * Wikipedia を先頭に置くのは、これだけ性質が違うため。
+ * 他は枠を作るだけだが、Wikipedia は押せば中身まで入る。
+ */
+export const COMMON_PROPERTY_KEYS = [
+  'wikipedia',
+  'reading',
+  'aliases',
+  'etymology',
+  'pronunciation',
+  'examples',
+  'derivatives',
+] as const
+
+/** よく使う7件を、プリセットの定義（型・説明つき）で引く */
+export function commonPropertyPresets() {
+  const all = PROPERTY_PRESETS.flatMap((group) => group.items)
+  return COMMON_PROPERTY_KEYS.map((key) => all.find((p) => p.key === key)).filter(
+    (p): p is NonNullable<typeof p> => p != null
+  )
+}
+
 /** 名前から識別名を下書きする。英字が拾えなければ空にして、利用者に決めてもらう */
 export function suggestPropertyKey(label: string): string {
   const ascii = label

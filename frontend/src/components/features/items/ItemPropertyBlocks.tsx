@@ -1,11 +1,18 @@
 'use client'
 
 import { useState } from 'react'
-import { Check, Pencil, Plus, RefreshCw, Settings2, Sparkles, X } from 'lucide-react'
+import { BookOpen, Check, Pencil, Plus, RefreshCw, Settings2, Sparkles, X } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Spinner } from '@/components/ui/spinner'
 import { PropertyBlock, BlockAction, BlockEmpty, BlockError } from '@/components/features/items/PropertyBlock'
-import { setItemProperty, fillItemProperties, type ItemPropertyEntry } from '@/lib/api/properties'
+import {
+  setItemProperty,
+  fillItemProperties,
+  createPropertyDefinition,
+  commonPropertyPresets,
+  PROPERTY_PRESETS,
+  type ItemPropertyEntry,
+} from '@/lib/api/properties'
 import { getItem } from '@/lib/api/items'
 import type { Item } from '@/types/item'
 import { WikipediaProperty } from './WikipediaProperty'
@@ -33,6 +40,116 @@ import type { WikipediaValue } from '@/lib/api/properties'
  * 畳むと、ひな型を当てた瞬間に項目を足す方法が画面から消える。
  */
 export const PROPERTY_TOOLS_KEY = 'property_tools'
+
+/**
+ * 項目がまだ1つも無いときの案内。
+ *
+ * ここが実質の入口になる。項目は利用者ごとに一から作る作りなので、
+ * **何もしなければ一生 0 件のまま**。実際、本番では所有者以外の全員が 0 件だった。
+ *
+ * 「項目を設定」へ送るだけにしていたときは、誰も辿り着かなかった。
+ * だから、ここで作れるようにする。設定画面は細かく決めたい人の場所として残す。
+ */
+function PropertyEmptyState({
+  item,
+  onUpdated,
+  onOpenSettings,
+}: {
+  item: Item
+  onUpdated: (item: Item) => void
+  onOpenSettings: () => void
+}) {
+  const [busy, setBusy] = useState<string | null>(null)
+  const [error, setError] = useState<string | null>(null)
+  const itemTypeId = item.item_type?.id
+  const typeLabel = item.item_type?.label
+
+  if (!itemTypeId || !typeLabel) {
+    return (
+      <PropertyBlock title="情報欄">
+        <BlockEmpty>種別を選ぶと、その種別の項目を足せます。</BlockEmpty>
+      </PropertyBlock>
+    )
+  }
+
+  const add = async (preset: (typeof PROPERTY_PRESETS)[number]['items'][number]) => {
+    setBusy(preset.key)
+    setError(null)
+    try {
+      await createPropertyDefinition({
+        item_type_id: itemTypeId,
+        key: preset.key,
+        label: preset.label,
+        value_type: preset.value_type,
+        description: preset.description,
+      })
+      onUpdated(await getItem(item.id))
+    } catch {
+      setError('足せませんでした。同じ識別名の項目が既にあるかもしれません。')
+    } finally {
+      setBusy(null)
+    }
+  }
+
+  const [wikipedia, ...others] = commonPropertyPresets()
+
+  return (
+    <PropertyBlock
+      title="情報欄を追加できます"
+      actions={<BlockAction icon={<Settings2 size={14} />} label="細かく決める" onClick={onOpenSettings} />}
+    >
+      <div className="space-y-3">
+        <p className="text-sm text-muted-foreground">
+          Wikipedia の解説、読み仮名、語源、発音、例文などを、このカードに持たせられます。
+          {/* 押す前に知らせる。218枚に一度に反映されるので、知らないと驚きになる */}
+          <span className="text-foreground">
+            {' '}足した項目は「{typeLabel}」のカード全部に出ます。
+          </span>
+        </p>
+
+        {/* Wikipedia だけ主ボタンにする。他は枠を作るだけだが、
+            これは押せば中身まで入る。同じ見た目で並べると、その差が伝わらない */}
+        {wikipedia && (
+          <Button
+            size="sm"
+            onClick={() => add(wikipedia)}
+            disabled={busy !== null}
+            className="flex items-center gap-1.5"
+          >
+            {busy === wikipedia.key ? <Spinner size={13} /> : <BookOpen size={13} />}
+            Wikipedia で調べる
+          </Button>
+        )}
+
+        <div className="flex flex-wrap gap-1.5">
+          {others.map((preset) => (
+            <button
+              key={preset.key}
+              type="button"
+              onClick={() => add(preset)}
+              disabled={busy !== null}
+              title={preset.description}
+              className="flex items-center gap-1 rounded-full border border-border px-2.5 py-1 text-xs text-muted-foreground transition-colors hover:bg-muted disabled:opacity-40"
+            >
+              {busy === preset.key ? <Spinner size={11} /> : <Plus size={11} />}
+              {preset.label}
+            </button>
+          ))}
+          {/* 残り12件はここから。最初から19件出すと、どれから始めるかが仕事になる */}
+          <button
+            type="button"
+            onClick={onOpenSettings}
+            className="rounded-full border border-dashed border-border px-2.5 py-1 text-xs text-muted-foreground transition-colors hover:bg-muted"
+          >
+            ほかの項目を見る
+          </button>
+        </div>
+
+        <BlockError message={error} />
+      </div>
+    </PropertyBlock>
+  )
+}
 
 export function PropertyToolsBlock({
   item,
@@ -74,18 +191,7 @@ export function PropertyToolsBlock({
 
   // 定義が1つも無いときは、入口だけ出す。空のブロックを並べても意味がない
   if (entries.length === 0) {
-    return (
-      <PropertyBlock
-        title="項目"
-        actions={<BlockAction icon={<Settings2 size={14} />} label="項目を設定" onClick={onOpenSettings} />}
-      >
-        <BlockEmpty>
-          {item.item_type
-            ? `「${item.item_type.label}」に項目はまだありません。読み仮名・別名・発音記号など、覚えるのに要るものを足せます。`
-            : '種別を選ぶと、その種別の項目を足せます。'}
-        </BlockEmpty>
-      </PropertyBlock>
-    )
+    return <PropertyEmptyState item={item} onUpdated={onUpdated} onOpenSettings={onOpenSettings} />
   }
 
   const emptyCount = entries.filter((e) =>
