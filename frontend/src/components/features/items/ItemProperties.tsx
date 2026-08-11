@@ -150,7 +150,7 @@ function FactCheckResult({
     return (
       <div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
         <span>
-          ファクトチェック: 確認済み（
+          AIチェック: 確認済み（
           {new Date(item.fact_check_acknowledged_at).toLocaleDateString('ja-JP')}）
         </span>
         {onAcknowledge && (
@@ -171,7 +171,7 @@ function FactCheckResult({
   return (
     <div className="rounded-md border border-border bg-muted/30 px-2.5 py-2">
       <span className={`inline-block rounded-full px-2 py-0.5 text-xs font-medium ${badge.className}`}>
-        ファクトチェック: {badge.label}
+        AIチェック: {badge.label}
       </span>
       {item.fact_check_comment && (
         <p className="mt-1.5 text-xs leading-relaxed text-muted-foreground whitespace-pre-wrap">{item.fact_check_comment}</p>

@@ -11,6 +11,8 @@ import { Spinner } from '@/components/ui/spinner'
 import { ItemProperties } from '@/components/features/items/ItemProperties'
 import { ItemImageBar } from '@/components/features/items/ItemImageBar'
 import { CARD_VIEW_PANEL_KEY } from '@/components/features/items/CardViewPanel'
+import { useSettingsStore } from '@/stores/settings'
+import { useCardDetailColumns } from '@/hooks/useCardDetailColumns'
 import { CardInfoButton } from '@/components/features/items/CardInfoPanel'
 import { PropertyBlock, BlockAction } from '@/components/features/items/PropertyBlock'
 import { Tooltip } from '@/components/ui/tooltip'
@@ -36,6 +38,9 @@ const NAV_INSET = 12
 
 export default function ItemDetailPage() {
   const { id } = useParams<{ id: string }>()
+  // 幅は列数で決める。列を増やしたのは並べて見たいからなので、そのときは広げる
+  const defaultColumns = useSettingsStore((s) => s.settings?.card_detail_columns) ?? 1
+  const { columns: detailColumns } = useCardDetailColumns(defaultColumns)
   const router = useRouter()
   const openSection = useRightPanelStore((s) => s.openSection)
   const searchParams = useSearchParams()
@@ -110,7 +115,7 @@ export default function ItemDetailPage() {
 
   if (!item) {
     return (
-      <div className="max-w-lg mx-auto w-full px-6 py-12 space-y-7">
+      <div className={`mx-auto w-full px-6 py-12 space-y-7 ${detailColumns >= 2 ? 'max-w-6xl' : 'max-w-lg'}`}>
         <Skeleton className="h-9 w-32" />
         <Skeleton className="aspect-square w-full rounded-xl" />
         <div className="flex items-center justify-between gap-3">
@@ -156,7 +161,10 @@ export default function ItemDetailPage() {
       )}
 
       {/* ── カード詳細コンテンツ ── */}
-      <div className="max-w-lg mx-auto w-full px-6 py-12 space-y-6">
+      {/* 1列のときは読みやすい幅（max-w-lg）で中央に。
+          2列以上を選んだのは並べて見たいからなので、そのときは本文の幅いっぱいに広げる。
+          狭いままだと、列を増やしても1列が細くなるだけで何も得しない */}
+      <div className={`mx-auto w-full px-6 py-12 space-y-6 ${detailColumns >= 2 ? 'max-w-6xl' : 'max-w-lg'}`}>
 
         {/* パンくずと操作は行を分ける。同じ行に並べると、題名が長いカードで
             操作が押し出され、カードごとにボタンの位置が変わる。

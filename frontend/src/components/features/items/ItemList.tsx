@@ -161,9 +161,11 @@ type ItemCardProps = {
   fit: CardFit
   /** 列数から作った表示幅の申告。列を増やしたのに大きい画像を落とさないため */
   sizes: string
+  /** いま一括処理の順番が回っているカード。どれを触っているかを見せる */
+  working: boolean
 }
 
-function ItemCard({ item, selectionMode, selected, onToggle, fit, sizes }: ItemCardProps) {
+function ItemCard({ item, selectionMode, selected, onToggle, fit, sizes, working }: ItemCardProps) {
   const router = useRouter()
   const [failedImageUrl, setFailedImageUrl] = useState<string | null>(null)
   const warmedRef = useRef(false)
@@ -211,12 +213,21 @@ function ItemCard({ item, selectionMode, selected, onToggle, fit, sizes }: ItemC
 
   const inner = (
     <>
+      {/* いま順番が回っているカードは、そうと分かるようにする。
+          上の進捗（3/12）だけだと、どれを触っているのか分からず、
+          並んでいるカードのどこかが変わるのを待つことになる。
+          見え方は大きく変えない。薄い覆いと小さな輪だけ */}
+      {working && (
+        <span className="pointer-events-none absolute inset-0 z-10 flex items-center justify-center rounded-xl bg-background/50">
+          <Spinner size={18} />
+        </span>
+      )}
       {/* テキストを上・画像を下に配置 */}
       <div className="px-3 py-2 flex items-center justify-between gap-2">
         {/* ファクトチェックで「正しい」以外なら単語名に色を付けて気づけるようにする */}
         <span
           className={`text-sm font-medium truncate ${factCheckTitleClass(item)}`}
-          title={needsFactCheckAttention(item) ? 'ファクトチェックで要確認' : undefined}
+          title={needsFactCheckAttention(item) ? 'AIチェックで要確認' : undefined}
           onMouseEnter={showTitleTooltip}
           onMouseLeave={() => setTooltipAlign(null)}
         >
@@ -307,7 +318,7 @@ function ItemCard({ item, selectionMode, selected, onToggle, fit, sizes }: ItemC
   ) : (
     <Link
       href={`/items/${item.id}`}
-      className="flex flex-col rounded-xl border border-border overflow-hidden bg-card hover:shadow-md transition-shadow"
+      className="relative flex flex-col rounded-xl border border-border overflow-hidden bg-card hover:shadow-md transition-shadow"
       prefetch
       onMouseEnter={warmupDetail}
       onFocus={warmupDetail}
@@ -385,6 +396,9 @@ export function ItemList({ initialTag = null }: { initialTag?: string | null }) 
   const [refreshToken, setRefreshToken] = useState(0)
   // 一括AI操作（タグ再設定・付与・ファクトチェック・説明付与）の進捗とサマリ
   const [bulkAction, setBulkAction] = useState<{ label: string; done: number; total: number } | null>(null)
+  // いま処理しているカード。上の進捗だけだと「どれが対象か」が分からず、
+  // 並んでいるカードのどこかが変わるのを待つことになる
+  const [bulkCurrentId, setBulkCurrentId] = useState<string | null>(null)
   const [bulkSummary, setBulkSummary] = useState<string | null>(null)
   // 完了後に確認できる per-item 結果
   const [bulkResults, setBulkResults] = useState<{ kind: BulkKind; entries: BulkResultEntry[] } | null>(null)
@@ -445,6 +459,7 @@ export function ItemList({ initialTag = null }: { initialTag?: string | null }) 
     let failed = 0
     for (let i = 0; i < ids.length; i++) {
       if (cancelBulkRef.current) break
+      setBulkCurrentId(ids[i])
       let attempt = 0
       // レート制限（429）は待って再試行し、取りこぼさない
       for (;;) {
@@ -477,6 +492,7 @@ export function ItemList({ initialTag = null }: { initialTag?: string | null }) 
       setBulkAction({ label, done: i + 1, total: ids.length })
     }
 
+    setBulkCurrentId(null)
     setBulkAction(null)
     const parts = [`${processed}件処理`]
     if (skipped) parts.push(`${skipped}件スキップ`)
@@ -1199,6 +1215,7 @@ export function ItemList({ initialTag = null }: { initialTag?: string | null }) 
             onToggle={toggleSelect}
             fit={display.fit}
             sizes={cardImageSizes(display.columns)}
+            working={bulkCurrentId === item.id}
           />
         ))}
       </div>

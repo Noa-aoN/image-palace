@@ -176,7 +176,7 @@ export function MeaningList({
                     <span
                       className="rounded-full px-2 py-0.5 text-[11px]"
                       style={{ backgroundColor: 'rgba(198,167,94,0.15)', color: '#7a6432' }}
-                      title="画像生成・ファクトチェック・一覧の表示はこの1件を使います"
+                      title="画像生成・AIチェック・一覧の表示はこの1件を使います"
                     >
                       代表
                     </span>

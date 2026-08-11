@@ -39,7 +39,7 @@ class AiModel < ApplicationRecord
     },
     {
       key: "gpt-4o", kind: "text", provider: "openai", model_id: "gpt-4o",
-      label: "文章（重い）", description: "ファクトチェックなど、確かさが要る場面に使います。",
+      label: "文章（重い）", description: "AIチェックなど、確かさが要る場面に使います。",
       requires_env: "OPENAI_API_KEY", credit_points: 1, unit_cost_usd: 2.5, output_cost_usd: 10.0,
       position: 4
     }

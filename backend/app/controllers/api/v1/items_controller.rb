@@ -393,7 +393,7 @@ module Api
         render json: { error: e.message }, status: :too_many_requests
       rescue GenerateFactCheckService::GenerationError, KeyError, Faraday::Error => e
         Rails.logger.warn "[ItemsController#fact_check] failed item_id=#{item.id}: #{e.class}: #{e.message}"
-        render json: { error: "ファクトチェックに失敗しました。時間を置いて再度お試しください。" }, status: :unprocessable_entity
+        render json: { error: "AIチェックに失敗しました。時間を置いて再度お試しください。" }, status: :unprocessable_entity
       end
 
       private
