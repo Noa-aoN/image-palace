@@ -54,10 +54,12 @@ function PropertyEmptyState({
   item,
   onUpdated,
   onOpenSettings,
+  onCreated,
 }: {
   item: Item
   onUpdated: (item: Item) => void
   onOpenSettings: () => void
+  onCreated?: (key: string) => void
 }) {
   const [busy, setBusy] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
@@ -83,6 +85,9 @@ function PropertyEmptyState({
         value_type: preset.value_type,
         description: preset.description,
       })
+      // 先に知らせてから中身を差し替える。順が逆だと、札が出たあとに
+      // 「作った直後」の合図が届き、調べ始めが1拍遅れる
+      onCreated?.(preset.key)
       onUpdated(await getItem(item.id))
     } catch {
       setError('足せませんでした。同じ識別名の項目が既にあるかもしれません。')
@@ -108,7 +113,8 @@ function PropertyEmptyState({
         </p>
 
         {/* Wikipedia だけ主ボタンにする。他は枠を作るだけだが、
-            これは押せば中身まで入る。同じ見た目で並べると、その差が伝わらない */}
+            これは押せば**そのまま調べて中身まで入る**。
+            同じ見た目で並べると、その差が伝わらない */}
         {wikipedia && (
           <Button
             size="sm"
@@ -155,11 +161,14 @@ export function PropertyToolsBlock({
   item,
   onUpdated,
   onOpenSettings,
+  onCreated,
 }: {
   item: Item
   onUpdated: (item: Item) => void
   /** 項目の定義（種別ぜんぶに効く）を開く */
   onOpenSettings: () => void
+  /** いま作った項目の識別名。作った直後だけ効かせたい振る舞いに使う */
+  onCreated?: (key: string) => void
 }) {
   const entries = item.properties ?? []
   const [filling, setFilling] = useState(false)
@@ -191,7 +200,14 @@ export function PropertyToolsBlock({
 
   // 定義が1つも無いときは、入口だけ出す。空のブロックを並べても意味がない
   if (entries.length === 0) {
-    return <PropertyEmptyState item={item} onUpdated={onUpdated} onOpenSettings={onOpenSettings} />
+    return (
+      <PropertyEmptyState
+        item={item}
+        onUpdated={onUpdated}
+        onOpenSettings={onOpenSettings}
+        onCreated={onCreated}
+      />
+    )
   }
 
   const emptyCount = entries.filter((e) =>
@@ -235,11 +251,14 @@ export function PropertyEntryBlock({
   entry,
   onUpdated,
   onOpenSettings,
+  autoLookup = false,
 }: {
   item: Item
   entry: ItemPropertyEntry
   onUpdated: (item: Item) => void
   onOpenSettings?: () => void
+  /** 作った直後だけ true。Wikipedia を押さずとも調べ始める */
+  autoLookup?: boolean
 }) {
   const isList = entry.value_type === 'list'
   // Wikipedia は手で書く項目ではない。引いてきた結果をそのまま持つ
@@ -342,6 +361,7 @@ export function PropertyEntryBlock({
           value={parseWikipedia(scalarValue)}
           term={item.title}
           editable
+          autoLookup={autoLookup}
           onSaved={async (next) => {
             await setItemProperty(item.id, entry.property_definition_id, JSON.stringify(next))
             onUpdated(await getItem(item.id))

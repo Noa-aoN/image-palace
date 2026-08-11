@@ -672,6 +672,11 @@ export function ItemProperties({ item, onUpdated }: ItemPropertiesProps) {
     },
   ]
 
+  // いま足したばかりの項目。Wikipedia を足したときだけ、押さずとも調べ始める。
+  // 既にあるものには効かせない（カードを開くたびに引き直したら、
+  // 手で選んだ記事が黙って別のものに変わる）
+  const [justCreatedKey, setJustCreatedKey] = useState<string | null>(null)
+
   // 利用者が定義した項目も、作り付けの項目と同じ一覧に混ぜる。
   // 混ぜないと、並べ替えも出し入れも作り付けのものにしか効かない
   const openSettings = () => openSection({ key: PROPERTY_DEFINITIONS_PANEL_KEY, title: '項目の設定' })
@@ -679,13 +684,27 @@ export function ItemProperties({ item, onUpdated }: ItemPropertiesProps) {
   const customBlocks = (item.properties ?? []).map((entry) => ({
     key: `prop:${entry.key}`,
     label: entry.label,
-    node: <PropertyEntryBlock item={item} entry={entry} onUpdated={onUpdated} />,
+    node: (
+      <PropertyEntryBlock
+        item={item}
+        entry={entry}
+        onUpdated={onUpdated}
+        autoLookup={justCreatedKey === entry.key}
+      />
+    ),
   }))
 
   const toolsBlock = {
     key: PROPERTY_TOOLS_KEY,
     label: '項目の道具',
-    node: <PropertyToolsBlock item={item} onUpdated={onUpdated} onOpenSettings={openSettings} />,
+    node: (
+      <PropertyToolsBlock
+        item={item}
+        onUpdated={onUpdated}
+        onOpenSettings={openSettings}
+        onCreated={setJustCreatedKey}
+      />
+    ),
   }
 
   // 道具立ては最後。まとめて埋める操作は、項目を見たあとで押すもの。

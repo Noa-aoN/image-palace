@@ -1,6 +1,6 @@
 'use client'
 
-import { useCallback, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { ExternalLink, RefreshCw } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Spinner } from '@/components/ui/spinner'
@@ -10,6 +10,7 @@ import {
   type WikipediaCandidate,
 } from '@/lib/api/wikipedia'
 import { hasMoreBelow } from '@/lib/scroll-affordance'
+import { shouldAutoLookup } from '@/lib/wikipedia-auto-lookup'
 import type { WikipediaValue } from '@/lib/api/properties'
 
 /** 下端をぼかす幅。ちょうど1行ぶんにして、隠れているのが「次の行」だと分かるようにする */
@@ -33,6 +34,7 @@ export function WikipediaProperty({
   languageCode,
   onSaved,
   editable,
+  autoLookup = false,
 }: {
   value: WikipediaValue | null
   /** 引く語。既定は見出し語 */
@@ -41,6 +43,17 @@ export function WikipediaProperty({
   languageCode?: string
   onSaved: (next: WikipediaValue) => void
   editable: boolean
+  /**
+   * 作った直後に、押さずとも調べ始める。
+   *
+   * 足した瞬間に空の枠が出るだけだと、もう一度「調べる」を押させることになる。
+   * Wikipedia は他の項目と違い、押せば中身まで入るのが値打ちなので、
+   * そこまで一息で進める。
+   *
+   * **既に値のあるものには効かない。** カードを開くたびに引き直したら、
+   * 手で選んだ記事が黙って別のものに変わる
+   */
+  autoLookup?: boolean
 }) {
   const [busy, setBusy] = useState(false)
   const [message, setMessage] = useState<string | null>(null)
@@ -63,6 +76,9 @@ export function WikipediaProperty({
     setCandidateLanguage(found.language_code)
     setMessage(found.message)
   }
+
+  // 一度きり。再描画のたびに走ると、候補を選んでいる最中に引き直してしまう
+  const autoStarted = useRef(false)
 
   const lookup = async (forTerm: string = term) => {
     setBusy(true)
@@ -106,6 +122,17 @@ export function WikipediaProperty({
       setBusy(false)
     }
   }
+
+  useEffect(() => {
+    if (!shouldAutoLookup({ justCreated: autoLookup, hasValue: value != null, alreadyStarted: autoStarted.current })) {
+      return
+    }
+
+    autoStarted.current = true
+    void lookup()
+    // lookup は毎回作り直されるので依存に入れない（入れると走り続ける）
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [autoLookup, value])
 
   const candidateList = candidates?.length ? (
     <div className="space-y-2 rounded-lg border border-border bg-card p-3">
