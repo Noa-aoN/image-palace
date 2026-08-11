@@ -1,11 +1,15 @@
 'use client'
 
-import { useState } from 'react'
+import { useCallback, useState } from 'react'
 import { ExternalLink, RefreshCw } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Spinner } from '@/components/ui/spinner'
 import { fetchWikipediaSummary } from '@/lib/api/wikipedia'
+import { hasMoreBelow } from '@/lib/scroll-affordance'
 import type { WikipediaValue } from '@/lib/api/properties'
+
+/** 下端をぼかす幅。ちょうど1行ぶんにして、隠れているのが「次の行」だと分かるようにする */
+const FADE = 'linear-gradient(to bottom, black calc(100% - 1.5rem), transparent)'
 
 /**
  * Wikipedia で調べた結果。
@@ -36,6 +40,13 @@ export function WikipediaProperty({
 }) {
   const [busy, setBusy] = useState(false)
   const [message, setMessage] = useState<string | null>(null)
+  // 続きがあるあいだだけ下端をぼかす（読み終わったら消す）
+  const [more, setMore] = useState(false)
+  // 中身が入った時点でも測る。開いた直後に判定できないと、
+  // 一度触るまでぼかしが出ない
+  const extractRef = useCallback((node: HTMLDivElement | null) => {
+    if (node) setMore(hasMoreBelow(node))
+  }, [])
 
   const lookup = async () => {
     setBusy(true)
@@ -77,34 +88,42 @@ export function WikipediaProperty({
 
   return (
     <div className="space-y-2">
+      {/* 見出し（絵と題）。ここは送らない。何の記事かは、本文のどこを読んでいても見えている */}
       <div className="flex gap-3">
         {value.wikipedia_thumbnail_url && (
           // eslint-disable-next-line @next/next/no-img-element -- Wikimedia の画像。こちらに保存しない
           <img
             src={value.wikipedia_thumbnail_url}
             alt=""
-            className="h-16 w-16 shrink-0 rounded-lg border border-border object-cover"
+            className="h-14 w-14 shrink-0 rounded-lg border border-border object-cover sm:h-16 sm:w-16"
           />
         )}
-        <div className="min-w-0 space-y-1">
-          <p className="text-sm font-medium">
-            {value.wikipedia_title}
-            {value.wikipedia_description && (
-              <span className="ml-2 text-xs font-normal text-muted-foreground">
-                {value.wikipedia_description}
-              </span>
-            )}
-          </p>
-          {/* 冒頭は 500 字まで保存してある。札の高さで切ると読み切れないので、
-              入り切らないぶんはここで送れるようにする。
-              札そのものを伸ばさないのは、下の項目が押し出されるため */}
-          {value.wikipedia_extract && (
-            <p className="max-h-56 overflow-y-auto whitespace-pre-wrap pr-1 text-sm leading-relaxed text-foreground">
-              {value.wikipedia_extract}
-            </p>
+        <p className="min-w-0 self-center text-sm font-medium">
+          {value.wikipedia_title}
+          {value.wikipedia_description && (
+            <span className="ml-2 text-xs font-normal text-muted-foreground">
+              {value.wikipedia_description}
+            </span>
           )}
-        </div>
+        </p>
       </div>
+
+      {/* 冒頭は 500 字まで保存してある。札の高さで切ると読み切れないので、
+          入り切らないぶんはここで送れるようにする。
+          札そのものを伸ばさないのは、下の項目が押し出されるため。
+
+          絵の横ではなく下に敷くのは、狭い画面で1行が数語になってしまうため。
+          横に置くと、絵のぶんだけ本文が細くなる */}
+      {value.wikipedia_extract && (
+        <div
+          ref={extractRef}
+          onScroll={(e) => setMore(hasMoreBelow(e.currentTarget))}
+          style={more ? { maskImage: FADE, WebkitMaskImage: FADE } : undefined}
+          className="max-h-44 overflow-y-auto whitespace-pre-wrap rounded-lg bg-background/60 px-3 py-2 text-sm leading-relaxed text-foreground sm:max-h-56"
+        >
+          {value.wikipedia_extract}
+        </div>
+      )}
 
       {/* 出どころとライセンス。CC BY-SA なので、これが読めない形で出さない */}
       <p className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-muted-foreground">
