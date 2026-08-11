@@ -32,6 +32,9 @@ function formatDate(ts: number): string {
   return new Date(ts).toLocaleString('ja-JP', { month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit' })
 }
 
+/** 受けた神託の履歴に出す件数。これ以上は「もっと見る」で開く */
+const HISTORY_LIMIT = 10
+
 export default function AcropolisPage() {
   const [genre, setGenre] = useState('')
   const [count, setCount] = useState(1)
@@ -52,6 +55,9 @@ export default function AcropolisPage() {
   const history = useAcropolisStore((s) => s.history)
   const addRecord = useAcropolisStore((s) => s.addRecord)
   const clearHistory = useAcropolisStore((s) => s.clearHistory)
+  // 履歴は畳んでおく。全部並べると、下にあるコードの神託が押し出される
+  const [historyExpanded, setHistoryExpanded] = useState(false)
+  const shownHistory = historyExpanded ? history : history.slice(0, HISTORY_LIMIT)
   // アニメーション可否（設定 off / reduced-motion で false）。false のときは素の表示にする。
   const anim = useMotion()
 
@@ -156,8 +162,21 @@ export default function AcropolisPage() {
         アクロポリス
       </h1>
       <p className="mt-2 text-muted-foreground">
-        ジャンルを指定するか、空欄のまま完全ランダムで神託を受け、気に入ったら受け取ってカード化します。
+        神託を受け取る場所。言葉をもらうか、配られたコードを引き換えるか、どちらもここで行います。
       </p>
+
+      {/* 2つの神託をカードで分ける。
+          言葉をもらうのと、コードを引き換えるのは、来た理由が別。
+          地続きに並べると、コードを持ってきた人がジャンル欄から読み始めることになる。
+          それぞれの履歴も、そのカードの中に納める（どちらの記録かを探さなくて済む） */}
+      <section className="mt-6 space-y-4 rounded-xl border border-border bg-card p-5">
+        <div className="flex items-center gap-2">
+          <Wand2 size={18} style={{ color: 'var(--palace)' }} />
+          <h2 className="text-lg font-semibold">言葉の神託</h2>
+        </div>
+        <p className="text-sm text-muted-foreground">
+          ジャンルを指定するか、空欄のまま完全ランダムで神託を受け、気に入ったら受け取ってカード化します。
+        </p>
 
       <div className="mt-6 flex flex-col gap-3 sm:flex-row sm:items-end">
         <div className="flex-1">
@@ -273,59 +292,74 @@ export default function AcropolisPage() {
         </div>
       )}
 
-      {/* 引き換え所。
-          もともと「利用と支払い」の中にあったが、そこは支払いを済ませに行く面で、
-          配られたコードを持っている人が最初に開く場所ではない。
-          市街に来た人がそのまま引き換えられるよう、ここにも同じ入口を置く。
-          入口は2つでも、扱っているのは同じ1つの仕組み（Billing::RedeemCampaignCode）。 */}
-      <section className="mt-10">
-        <RedeemCodePanel
-          onRedeemed={() => useBillingStore.getState().fetchSummary()}
-          title="引き換え所"
-          note="配られたコードをここで引き換えられます。受け取ったぶんは残高に足されます。"
-        />
-      </section>
-
-      {/* 神託の履歴 */}
+      {/* 言葉の神託の履歴は、そのカードの中に納める。
+          別の節にすると、どちらの神託の記録なのかを探すことになる。
+          出すのは10件まで。全部並べると、下にあるコードの神託が押し出される */}
       {history.length > 0 && (
-        <section className="mt-10 space-y-3">
+        <div className="space-y-2 border-t border-border pt-4">
           <div className="flex items-center justify-between">
-            <h2 className="text-sm font-semibold text-muted-foreground">神託の履歴</h2>
+            <p className="text-xs font-medium text-muted-foreground">受けた神託</p>
             <button type="button" onClick={clearHistory} className="text-xs text-muted-foreground hover:underline">
               履歴をクリア
             </button>
           </div>
-          <ul className="divide-y overflow-hidden rounded-xl border border-border bg-card">
-            {history.map((rec) => (
-              <li key={rec.id} className="px-4 py-3">
-                <div className="flex items-center justify-between gap-2">
-                  <span className={`rounded-full px-2 py-0.5 text-xs font-medium ${rec.status === 'received' ? 'bg-green-100 text-green-700' : 'bg-muted text-muted-foreground'}`}>
-                    {rec.status === 'received' ? '受け取り' : 'キャンセル'}
-                  </span>
-                  <span className="text-xs text-muted-foreground">{formatDate(rec.createdAt)} ・ {styleLabel(rec.style)}</span>
-                </div>
-                <div className="mt-2 flex flex-wrap gap-2">
+          <ul className="divide-y divide-border">
+            {shownHistory.map((rec) => (
+              <li key={rec.id} className="flex flex-wrap items-baseline gap-x-2 gap-y-1 py-1.5 text-sm">
+                <span
+                  className={`shrink-0 rounded-full px-2 py-0.5 text-[11px] font-medium ${rec.status === 'received' ? 'bg-green-100 text-green-700' : 'bg-muted text-muted-foreground'}`}
+                >
+                  {rec.status === 'received' ? '受け取り' : 'キャンセル'}
+                </span>
+                <span className="flex min-w-0 flex-1 flex-wrap gap-1.5">
                   {rec.words.map((word, i) =>
                     rec.status === 'received' && rec.cardIds[i] ? (
                       <Link
                         key={`${rec.id}-${i}`}
                         href={`/items/${rec.cardIds[i]}`}
-                        className="rounded-full border border-border px-3 py-1 text-sm hover:bg-black/5"
+                        className="rounded-full border border-border px-2 py-0.5 text-xs hover:bg-black/5"
                       >
                         {word}
                       </Link>
                     ) : (
-                      <span key={`${rec.id}-${i}`} className="rounded-full border border-border px-3 py-1 text-sm text-muted-foreground">
+                      <span key={`${rec.id}-${i}`} className="rounded-full border border-border px-2 py-0.5 text-xs text-muted-foreground">
                         {word}
                       </span>
                     )
                   )}
-                </div>
+                </span>
+                <span className="shrink-0 text-xs text-muted-foreground">
+                  {formatDate(rec.createdAt)}・{styleLabel(rec.style)}
+                </span>
               </li>
             ))}
           </ul>
-        </section>
+          {history.length > HISTORY_LIMIT && (
+            <button
+              type="button"
+              onClick={() => setHistoryExpanded((v) => !v)}
+              className="text-xs text-muted-foreground hover:underline"
+            >
+              {historyExpanded ? '折りたたむ' : `もっと見る（残り ${history.length - HISTORY_LIMIT} 件）`}
+            </button>
+          )}
+        </div>
       )}
+      </section>
+
+      {/* コードの神託。
+          もともと受け取り口は「利用と支払い」の中だけにあったが、そこは支払いを
+          済ませに行く面で、コードを持ってきた人が最初に開く場所ではない。
+          入口は2つでも、扱っているのは同じ1つの仕組み（Billing::RedeemCampaignCode）。 */}
+      <section className="mt-6">
+        <RedeemCodePanel
+          onRedeemed={() => useBillingStore.getState().fetchSummary()}
+          title="コードの神託"
+          note="配られたコードをここで引き換えられます。受け取ったぶんは残高に足されます。"
+          withHistory
+        />
+      </section>
+
       </div>
     </div>
   )

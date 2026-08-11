@@ -160,10 +160,16 @@ export default function ItemDetailPage() {
 
         {/* パンくずと操作は行を分ける。同じ行に並べると、題名が長いカードで
             操作が押し出され、カードごとにボタンの位置が変わる。
-            2行の間は広めに取る。詰めると、パンくずの一部か操作なのかが読み取りにくい */}
-        <div className="space-y-4">
+
+            上下の空きは同じにする（ここも下の見出し語も space-y-6）。
+            上だけ詰めると、操作がパンくずにぶら下がって見え、
+            パンくずの一部なのか押せるものなのかが読み取りにくい。
+
+            -mx-2 は、ghost ボタンの左右の余白を打ち消して文字の頭を
+            パンくずの「カード」と縦に揃えるため（揃っていないと行がずれて見える） */}
+        <div className="space-y-6">
           <Breadcrumb className="mb-0" items={[{ href: backHref, label: fromViewId ? (fromViewName ?? fromLabel) : 'カード' }, { label: item.title }]} />
-          <div className="flex flex-wrap items-center gap-0.5">
+          <div className="-mx-2 flex flex-wrap items-center gap-0.5">
             {/* このカード1枚の見え方（どのブロックを出すか・並び順）。
                 中身は ItemProperties 側が右パネルへ差し込む */}
             <Button

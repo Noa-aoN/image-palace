@@ -11,6 +11,41 @@ RSpec.describe "引き換えコード", type: :request do
     CampaignCode.create!({ code: "SPRING24", label: "春の配布", amount: 5 }.merge(attrs))
   end
 
+  describe "GET /api/v1/campaign_codes" do
+    # 引き換えは「押したら残高が増える」だけなので、記録が見えないと
+    # 受け取ったのか打ち間違えたのかを後から確かめられない
+    it "引き換えた記録を新しい順に返す" do
+      user.grant_credits!(300, kind: "campaign", metadata: { "campaign_code" => "OLD" })
+      user.grant_credits!(500, kind: "campaign", metadata: { "campaign_code" => "NEW" })
+      # 引き換え以外の付与は混ぜない
+      user.grant_credits!(100, kind: "trial")
+
+      get "/api/v1/campaign_codes", headers: headers, as: :json
+
+      rows = response.parsed_body.fetch("redemptions")
+      expect(rows.map { |r| r["code"] }).to eq(%w[NEW OLD])
+      expect(rows.first["credits"]).to eq(5.0)
+      expect(response.parsed_body["has_more"]).to be(false)
+    end
+
+    it "件数を超えたら、次があることを伝える" do
+      12.times { |i| user.grant_credits!(100, kind: "campaign", metadata: { "campaign_code" => "C#{i}" }) }
+
+      get "/api/v1/campaign_codes", headers: headers, as: :json
+
+      expect(response.parsed_body["redemptions"].size).to eq(Api::V1::CampaignCodesController::HISTORY_LIMIT)
+      expect(response.parsed_body["has_more"]).to be(true)
+    end
+
+    it "他の人の記録は返さない" do
+      create(:user, :confirmed).grant_credits!(100, kind: "campaign", metadata: { "campaign_code" => "OTHER" })
+
+      get "/api/v1/campaign_codes", headers: headers, as: :json
+
+      expect(response.parsed_body["redemptions"]).to be_empty
+    end
+  end
+
   describe "POST /api/v1/campaign_codes/redeem" do
     it "クレジットを受け取れる" do
       code = make_code
