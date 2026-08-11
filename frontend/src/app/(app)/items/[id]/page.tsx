@@ -136,27 +136,31 @@ export default function ItemDetailPage() {
   return (
     <div className="relative flex flex-col min-h-full">
 
-      {/* ── デスクトップ専用: 本文領域の左右端に、見えている高さの中央で置く ──
+      {/* ── ページ送り: 本文領域の左右端に、見えている高さの中央で置く ──
           中身の中央（absolute top-1/2）に置くと、長いカードでは矢印が画面外まで
-          下がってしまう。本文領域そのものを測って、その中央に固定する */}
+          下がってしまう。本文領域そのものを測って、その中央に固定する。
+
+          幅が狭いときも同じ場所に置く。以前は画像の上に重ねていたが、
+          そうすると送る場所が画面幅で変わり、押す位置を覚え直すことになる。
+          狭いときは中身の上に乗るので、下の字が読めるよう地を敷く */}
       {mainBox && prevId && (
         <button
           onClick={() => router.push(itemHref(prevId))}
-          className={`hidden md:flex fixed z-10 -translate-y-1/2 ${navBtnBase}`}
+          className={`fixed z-10 flex -translate-y-1/2 bg-background/70 backdrop-blur-sm md:bg-transparent md:backdrop-blur-none ${navBtnBase}`}
           style={{ top: mainBox.centerY, left: mainBox.left + NAV_INSET }}
           aria-label="前のカード"
         >
-          <ChevronLeft size={28} strokeWidth={1.5} />
+          <ChevronLeft className="size-6 md:size-7" strokeWidth={1.5} />
         </button>
       )}
       {mainBox && nextId && (
         <button
           onClick={() => router.push(itemHref(nextId))}
-          className={`hidden md:flex fixed z-10 -translate-y-1/2 ${navBtnBase}`}
+          className={`fixed z-10 flex -translate-y-1/2 bg-background/70 backdrop-blur-sm md:bg-transparent md:backdrop-blur-none ${navBtnBase}`}
           style={{ top: mainBox.centerY, right: mainBox.right + NAV_INSET }}
           aria-label="次のカード"
         >
-          <ChevronRight size={28} strokeWidth={1.5} />
+          <ChevronRight className="size-6 md:size-7" strokeWidth={1.5} />
         </button>
       )}
 
@@ -309,25 +313,6 @@ export default function ItemDetailPage() {
               />
             )}
 
-            {/* 前後のカードへ。画面が広いときは画像の外に出す余地が無いので、常に重ねる */}
-            {prevId && (
-              <button
-                onClick={() => router.push(itemHref(prevId))}
-                className={`${navBtnBase} absolute left-2 top-1/2 -translate-y-1/2 bg-background/70 backdrop-blur-sm md:hidden`}
-                aria-label="前のカード"
-              >
-                <ChevronLeft size={22} strokeWidth={1.5} />
-              </button>
-            )}
-            {nextId && (
-              <button
-                onClick={() => router.push(itemHref(nextId))}
-                className={`${navBtnBase} absolute right-2 top-1/2 -translate-y-1/2 bg-background/70 backdrop-blur-sm md:hidden`}
-                aria-label="次のカード"
-              >
-                <ChevronRight size={22} strokeWidth={1.5} />
-              </button>
-            )}
           </div>
 
           {/* 覆いを外すか、カードごと消すか */}
