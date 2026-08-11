@@ -66,8 +66,11 @@ RSpec.describe "一覧の見出し語", type: :request do
 
   # 1枚ごとに項目定義を引くと、枚数ぶん問い合わせが飛ぶ。
   # 全体の本数を数えると他の変更に巻き込まれて壊れやすいので、
-  # 「項目定義を何回読んだか」だけを見る
-  it "項目定義は枚数によらず1回しか読まない" do
+  # 「項目定義を何回読んだか」だけを見る。
+  #
+  # 1回すら引かないこともある。どのカードも値を持たなければ、
+  # 引く相手が無いので eager load ごと省かれる。見たいのは上限なので、それでよい
+  it "項目定義は枚数によらず高々1回しか読まない" do
     define_property(key: "reading", label: "読み方")
     user.create_setting!(card_headline_key: "reading")
     5.times { |i| create(:item, user: user, item_type: item_type, title: "語#{i}") }
@@ -80,7 +83,7 @@ RSpec.describe "一覧の見出し語", type: :request do
       get "/api/v1/items", headers: headers
     end
 
-    expect(reads).to eq(1)
+    expect(reads).to be <= 1
   end
 
   # 名前と絵のほかに出す項目。増やすほど1枚が縦に伸びるので上限を持つ

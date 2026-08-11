@@ -44,7 +44,7 @@ module Api
                   .offset((page - 1) * per)
 
         render json: {
-          items: items.map { |i| serialize_item(repair_item_if_media_missing(i)) },
+          items: items.map { |i| serialize_list_item(repair_item_if_media_missing(i)) },
           meta: {
             page: page,
             per: per,
@@ -618,6 +618,37 @@ module Api
           current_user.tags.find_or_create_by!(name: name)
         end
         target.tags = tags
+      end
+
+      # 一覧に出す分だけ。詳細と同じ中身を返さない。
+      #
+      # 一覧が読むのはここにある12項目だけで、残り（項目の定義一式・意味の全件・
+      # 画像への指示・ファクトチェックの根拠）は1枚も表示していない。
+      # それでも積んでいたので、24枚で33KB を運んでいた。Wikipedia の項目が
+      # 増えてからは、抜粋の長さがそのまま一覧の重さになっていた。
+      #
+      # カードを開いた先は `getItem()` で取り直すので、ここで削っても詳細は欠けない
+      def serialize_list_item(item)
+        {
+          id: item.id,
+          title: item.title,
+          headline: headline_for(item),
+          list_fields: list_fields_for(item),
+          aspect_ratio: item.aspect_ratio,
+          generation_status: item.generation_status,
+          generation_error: item.generation_error,
+          generation_retryable: item.generation_status != "failed" ||
+            ::Images::RetryPolicy.retryable?(item),
+          item_type: serialize_item_type(item.item_type),
+          meaning: item.primary_meaning&.definition,
+          # 一覧では警告色を出すかどうかだけに使う。根拠（claims 等）は詳細で読む
+          fact_check_status: item.primary_meaning&.fact_check_status,
+          fact_check_comment: item.primary_meaning&.fact_check_comment,
+          fact_check_acknowledged_at: item.primary_meaning&.fact_check_acknowledged_at,
+          tags: item.tags.map { |t| { id: t.id, name: t.name } },
+          media: serialize_media(item.primary_media),
+          created_at: item.created_at
+        }
       end
 
       def serialize_item(item)
