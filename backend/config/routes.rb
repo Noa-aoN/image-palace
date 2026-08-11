@@ -127,6 +127,8 @@ Rails.application.routes.draw do
       # 作りかけの機能をどこまで出すか（読み取りは全利用者）
       get "features", to: "features#index"
       # 引き換えコードの受け取り
+      # Wikipedia の要約。フロントから直接叩かず、ここを通す
+      get "wikipedia/summary", to: "wikipedia#summary"
       get "campaign_codes", to: "campaign_codes#index"
       post "campaign_codes/redeem", to: "campaign_codes#redeem"
       # アチーブメント（栄誉の間）

@@ -10,7 +10,7 @@ import { apiClient } from './client'
  * 定義の組み合わせで表す。翻訳は意味・説明、関連カードは relations、
  * 画像は medias が既に持っているので、ここでは扱わない（二重管理を避ける）。
  */
-export const PROPERTY_VALUE_TYPES = ['text', 'longtext', 'list', 'number', 'date', 'url'] as const
+export const PROPERTY_VALUE_TYPES = ['text', 'longtext', 'list', 'number', 'date', 'url', 'wikipedia'] as const
 
 export type PropertyValueType = (typeof PROPERTY_VALUE_TYPES)[number]
 
@@ -21,6 +21,23 @@ export const PROPERTY_VALUE_TYPE_LABELS: Record<PropertyValueType, string> = {
   number: '数',
   date: '日付',
   url: 'リンク',
+  wikipedia: 'Wikipedia',
+}
+
+/** 型ごとの一言。選ぶときに何が起きるのかを読ませる */
+export const PROPERTY_VALUE_TYPE_NOTES: Partial<Record<PropertyValueType, string>> = {
+  wikipedia: '見出し語で Wikipedia を引き、冒頭と記事リンクを出します',
+}
+
+/** Wikipedia の項目に入る値。記事の全文は持たない */
+export interface WikipediaValue {
+  title: string
+  url: string | null
+  extract: string | null
+  thumbnail_url: string | null
+  lang: string
+  type?: string
+  fetched_at?: string
 }
 
 export interface PropertyDefinition {
