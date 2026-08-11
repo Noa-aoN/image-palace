@@ -8,14 +8,23 @@ class User < ApplicationRecord
   include DeviseTokenAuth::Concerns::User
 
   # == 役割 ==================================================================
-  # user: 一般 / admin: 運営（閲覧・コンテンツ管理） / owner: 運営の管理者（権限の付け外し・譲渡）
+  #   user     … 一般。/admin には入れない
+  #   support  … 閲覧・調査。見るだけで、配ったり変えたりはできない
+  #   operator … 通常運用。読みもの配信・コード発行・付与・設定変更
+  #   admin    … 最上位。権限・お金・セキュリティを触れる唯一の段階
+  #
+  # **上位は下位を含む。** 機能ごとに許可の一覧を持たせると、機能が増えるたびに
+  # 全段階を見直すことになる。順位で比べる（at_least?）。
   #
   # 権限の在り処は DB にする。将来チームが増えても、譲渡することになっても、
   # 環境変数を触らずに人を足したり移したりできるようにするため。
   #
   # ENV の ADMIN_EMAILS は「最初のひとり」を作るための入口であり、
-  # 締め出されたときの逃げ道でもある。ここに書いたアドレスは常に owner として扱う。
-  ROLES = %w[user admin owner].freeze
+  # **締め出されたときの逃げ道**でもある。ここに書いた確認済みのアドレスは、
+  # DB の role が何であっても admin として扱う。ここを塞いではいけない
+  # （実際、いまの運営はこの経路だけで権限を持っている）。
+  ROLES = %w[user support operator admin].freeze
+  ROLE_RANK = { "user" => 0, "support" => 1, "operator" => 2, "admin" => 3 }.freeze
   validates :role, inclusion: { in: ROLES }
 
   # == バリデーション =========================================================
@@ -334,34 +343,60 @@ class User < ApplicationRecord
   # == 役割の判定 =============================================================
   # 環境変数の入口は「確認済みのアドレス」にだけ効かせる。
   # 未確認のうちから権限を持てると、アドレスを騙るだけで入れてしまうため。
-  def bootstrap_owner?
+  def bootstrap_admin?
     return false if confirmed_at.blank? || email.blank?
 
-    self.class.bootstrap_owner_emails.include?(email.to_s.downcase)
+    self.class.bootstrap_admin_emails.include?(email.to_s.downcase)
   end
 
-  def owner?
-    role == "owner" || bootstrap_owner?
-  end
-
-  def admin?
-    role == "admin" || owner?
-  end
-
-  # 表示・記録用の実効役割（環境変数由来の owner もそう見せる）
+  # 表示・記録用の実効役割（環境変数由来の admin もそう見せる）
   def effective_role
-    owner? ? "owner" : role
+    bootstrap_admin? ? "admin" : role
   end
 
-  def self.bootstrap_owner_emails
+  def role_rank
+    ROLE_RANK.fetch(effective_role, 0)
+  end
+
+  # その段階以上か。上位は下位を含む
+  def at_least?(role_name)
+    role_rank >= ROLE_RANK.fetch(role_name.to_s)
+  end
+
+  # 運営の入口に入れるか（support 以上）
+  def admin?
+    at_least?("support")
+  end
+
+  # 権限・お金・セキュリティを触れるか
+  def owner?
+    at_least?("admin")
+  end
+
+  # 最上位が居なくなる変更か。
+  #
+  # 誰も admin でなくなると、権限を戻せる人が画面から消える。
+  # ENV の逃げ道は残るが、それは非常口であって日常の扉ではない
+  # （設定を触れる人が別に居るとは限らない）。
+  #
+  # 自分自身の降格も同じ理由で塞ぐ。「自分を降ろす」は、
+  # 権限を持つ最後の1人がうっかり押せてしまう操作。
+  def self.last_admin?(user)
+    return false unless user.at_least?("admin")
+
+    effective_admins.select { |candidate| candidate.at_least?("admin") }
+                    .none? { |candidate| candidate.id != user.id }
+  end
+
+  def self.bootstrap_admin_emails
     ENV.fetch("ADMIN_EMAILS", "").split(",").map { |email| email.strip.downcase }.reject(&:blank?)
   end
 
-  # 実効的に運営権限を持つ人。role だけを見ると、ENV 由来の owner が数から漏れる
+  # 実効的に運営権限を持つ人。role だけを見ると、ENV 由来の admin が数から漏れる
   # （管理画面の「運営メンバー」が 0 と出ていた）
   scope :effective_admins, lambda {
-    emails = bootstrap_owner_emails
-    scope = where(role: %w[admin owner])
+    emails = bootstrap_admin_emails
+    scope = where(role: %w[support operator admin])
     return scope if emails.empty?
 
     scope.or(where(confirmed_at: ..Time.current).where("LOWER(email) IN (?)", emails))

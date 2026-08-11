@@ -27,14 +27,18 @@ module Api
           }
         end
 
-        # 役割を変える（owner のみ）。譲渡もここで行う。
+        # 役割を変える（admin のみ）。譲渡もここで行う。
         def update_role
           user = User.find(params[:id])
           role = params[:role].to_s
           return render_error("知らない役割です") unless User::ROLES.include?(role)
           return render_error("自分の役割は変えられません") if user.id == current_user.id
-          if user.bootstrap_owner?
+          if user.bootstrap_admin?
             return render_error("環境変数で運営の管理者に指定されているため、画面からは変えられません")
+          end
+          # 最上位が居なくなる変更は通さない。権限を戻せる人が画面から消える
+          if User.last_admin?(user) && User::ROLE_RANK.fetch(role) < User::ROLE_RANK.fetch("admin")
+            return render_error("最後の管理者は降格できません。先に別の人を管理者にしてください。")
           end
 
           previous = user.role
@@ -116,7 +120,7 @@ module Api
             name: user.name,
             role: user.effective_role,
             # 環境変数由来の owner は画面から変えられないので、その旨を伝える
-            role_locked: user.bootstrap_owner?,
+            role_locked: user.bootstrap_admin?,
             confirmed: user.confirmed_at.present?,
             provider: user.provider,
             items: item_count,

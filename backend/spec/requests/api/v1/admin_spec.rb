@@ -3,9 +3,10 @@ require "rails_helper"
 RSpec.describe "Api::V1::Admin", type: :request do
   let(:member) { create(:user, :confirmed) }
   let(:member_headers) { auth_headers_for(member) }
-  let(:admin) { create(:user, :confirmed, role: "admin") }
+  # 運営ではあるが最上位ではない人。旧 admin（閲覧・コンテンツ管理）の中身は operator へ移った
+  let(:admin) { create(:user, :confirmed, role: "operator") }
   let(:admin_headers) { auth_headers_for(admin) }
-  let(:owner) { create(:user, :confirmed, role: "owner") }
+  let(:owner) { create(:user, :confirmed, role: "admin") }
   let(:owner_headers) { auth_headers_for(owner) }
 
   describe "入れる人の切り分け" do
@@ -67,7 +68,7 @@ RSpec.describe "Api::V1::Admin", type: :request do
       get "/api/v1/admin/session", headers: member_headers
 
       expect(json_response["owner"]).to be(true)
-      expect(json_response["role"]).to eq("owner")
+      expect(json_response["role"]).to eq("admin")
     end
 
     it "未確認のアドレスには効かせない（アドレスを騙るだけで入れないように）" do
@@ -153,7 +154,7 @@ RSpec.describe "Api::V1::Admin", type: :request do
 
     # role だけを見ると ENV 由来の owner が漏れ、「運営メンバー 0」と出ていた
     it "環境変数で運営になっている人も運営メンバーに数える" do
-      allow(User).to receive(:bootstrap_owner_emails).and_return([ member.email.downcase ])
+      allow(User).to receive(:bootstrap_admin_emails).and_return([ member.email.downcase ])
 
       get "/api/v1/admin/overview", headers: admin_headers
 
@@ -390,9 +391,10 @@ RSpec.describe "Api::V1::Admin", type: :request do
 
     it "役割で絞り込める" do
       admin
-      get "/api/v1/admin/users", params: { role: "admin" }, headers: admin_headers
+      member
+      get "/api/v1/admin/users", params: { role: "operator" }, headers: admin_headers
 
-      expect(json_response["users"].map { |u| u["role"] }.uniq).to eq([ "admin" ])
+      expect(json_response["users"].map { |u| u["role"] }.uniq).to eq([ "operator" ])
     end
 
     it "秘密は返さない" do
@@ -409,14 +411,14 @@ RSpec.describe "Api::V1::Admin", type: :request do
       expect(response).to have_http_status(:forbidden)
     end
 
-    it "運営（owner ではない）にも 403" do
+    it "運営でも、最上位でなければ 403" do
       patch "/api/v1/admin/users/#{member.id}/role", params: { role: "admin" }, headers: admin_headers
 
       expect(response).to have_http_status(:forbidden)
       expect(member.reload.role).to eq("user")
     end
 
-    it "owner は役割を変えられ、記録が残る" do
+    it "最上位は役割を変えられ、記録が残る" do
       expect {
         patch "/api/v1/admin/users/#{member.id}/role", params: { role: "admin" }, headers: owner_headers
       }.to change(AdminAuditLog, :count).by(1)
@@ -431,17 +433,17 @@ RSpec.describe "Api::V1::Admin", type: :request do
       expect(log.details["to"]).to eq("admin")
     end
 
-    it "譲渡（owner への引き上げ）ができる" do
-      patch "/api/v1/admin/users/#{member.id}/role", params: { role: "owner" }, headers: owner_headers
+    it "譲渡（最上位への引き上げ）ができる" do
+      patch "/api/v1/admin/users/#{member.id}/role", params: { role: "admin" }, headers: owner_headers
 
-      expect(member.reload.role).to eq("owner")
+      expect(member.reload.role).to eq("admin")
     end
 
     it "自分の役割は変えられない（締め出しを防ぐ）" do
       patch "/api/v1/admin/users/#{owner.id}/role", params: { role: "user" }, headers: owner_headers
 
       expect(response).to have_http_status(:unprocessable_entity)
-      expect(owner.reload.role).to eq("owner")
+      expect(owner.reload.role).to eq("admin")
     end
 
     it "知らない役割は受け付けない" do

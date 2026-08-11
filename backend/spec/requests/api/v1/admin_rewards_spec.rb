@@ -4,7 +4,7 @@ require "rails_helper"
 RSpec.describe "獲得物の管理", type: :request do
   let(:user) { create(:user, :confirmed) }
   let(:headers) { auth_headers_for(user) }
-  let(:admin) { create(:user, :confirmed, role: "owner") }
+  let(:admin) { create(:user, :confirmed, role: "admin") }
   let(:admin_headers) { auth_headers_for(admin) }
 
   describe "GET /api/v1/admin/rewards" do

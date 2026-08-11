@@ -10,11 +10,13 @@ import type { AdminRole, AdminUser, AdminUserStats, AdminUsersPage } from '@/typ
 
 const ROLE_LABELS: Record<AdminRole, string> = {
   user: '一般',
-  admin: '運営',
-  owner: '運営の管理者',
+  support: 'サポート（閲覧のみ）',
+  operator: '運営',
+  admin: '運営の管理者',
 }
 
-const ROLES: AdminRole[] = ['user', 'admin', 'owner']
+// 弱い順に並べる。付け外しの選択肢として、上げ下げの向きが見て分かるように
+const ROLES: AdminRole[] = ['user', 'support', 'operator', 'admin']
 
 /**
  * 利用者の一覧と、役割の付け外し。
