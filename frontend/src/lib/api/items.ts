@@ -71,6 +71,8 @@ export interface ItemsPage {
 
 export interface ItemsPageOptions {
   tagId?: string
+  /** 複数のタグ。指定したものを**すべて**持つカードだけに絞る */
+  tagIds?: string[]
   query?: string
   sort?: string
   direction?: string
@@ -78,8 +80,10 @@ export interface ItemsPageOptions {
 }
 
 export async function getItemsPage(page: number, per: number, opts: ItemsPageOptions = {}): Promise<ItemsPage> {
-  const params: Record<string, string | number> = { page, per }
-  if (opts.tagId) params.tag_id = opts.tagId
+  const params: Record<string, string | number | string[]> = { page, per }
+  // 複数のタグは「すべてを持つもの」に絞られる（サーバー側で AND）
+  if (opts.tagIds?.length) params.tag_ids = opts.tagIds
+  else if (opts.tagId) params.tag_id = opts.tagId
   if (opts.query && opts.query.trim()) params.q = opts.query.trim()
   if (opts.sort) params.sort = opts.sort
   if (opts.direction) params.direction = opts.direction
@@ -309,9 +313,16 @@ export interface SceneOption {
 // 意味・説明をもとに情景（画像への指示）を書き直す（同期）。
 // 保存はしない。書き直した文だけを返すので、呼び出し側が入力欄に入れて確認させる。
 // 絵がまるで変わるほど意味・ジャンルが分かれる語では候補が複数返る（最大3件）。
-export async function rewriteScenePrompt(id: string): Promise<SceneOption[]> {
-  const res = await apiClient.post<{ options: SceneOption[] }>(`/api/v1/items/${id}/scene_rewrite`)
-  return res.data.options
+// 意味・説明から指示を書き直す。
+// description は書き直しの根拠にした説明文で、画面はこれも一緒に保存する
+// （根拠と「プロンプト情報」の表示がずれると、なぜこの絵になったのかを辿れない）
+export async function rewriteScenePrompt(
+  id: string
+): Promise<{ options: SceneOption[]; description: string | null }> {
+  const res = await apiClient.post<{ options: SceneOption[]; description: string | null }>(
+    `/api/v1/items/${id}/scene_rewrite`
+  )
+  return res.data
 }
 
 // AI による説明（meaning）のファクトチェック（同期）。説明が無いカードはスキップ。

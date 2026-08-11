@@ -15,7 +15,7 @@ import { useAdminStore } from '@/stores/admin'
 const TABS = [
   { href: '/admin', label: '概要' },
   { href: '/admin/grants', label: '付与' },
-  { href: '/admin/campaigns', label: 'コード' },
+  { href: '/admin/campaigns', label: 'キャンペーン' },
   { href: '/admin/models', label: 'モデル' },
   { href: '/admin/features', label: '機能' },
   { href: '/admin/rewards', label: '獲得物' },

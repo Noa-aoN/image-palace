@@ -1,11 +1,11 @@
 'use client'
 
-import { useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import { Ticket } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Spinner } from '@/components/ui/spinner'
-import { redeemCampaignCode } from '@/lib/api/billing'
+import { getCodeRedemptions, redeemCampaignCode, type CodeRedemption } from '@/lib/api/billing'
 import { CREDIT_UNIT } from '@/lib/billing'
 
 /**
@@ -17,11 +17,45 @@ import { CREDIT_UNIT } from '@/lib/billing'
  * 断られた理由はそのまま出す。受け取り済みなのか、期限切れなのか、
  * 打ち間違いなのかが分からないと、同じことを何度も試すことになる。
  */
-export function RedeemCodePanel({ onRedeemed }: { onRedeemed?: () => void }) {
+export function RedeemCodePanel({
+  onRedeemed,
+  title = 'コードを使う',
+  note = '受け取ったコードを入力すると、クレジットが残高に足されます。',
+  withHistory = false,
+}: {
+  onRedeemed?: () => void
+  /** 置く場所によって呼び名を変える（アクロポリスでは「引き換え所」） */
+  title?: string
+  note?: string
+  /** これまでに引き換えたものを下に並べるか */
+  withHistory?: boolean
+}) {
   const [code, setCode] = useState('')
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [done, setDone] = useState<string | null>(null)
+  const [history, setHistory] = useState<CodeRedemption[] | null>(null)
+  const [hasMore, setHasMore] = useState(false)
+  const [expanded, setExpanded] = useState(false)
+
+  // 履歴は開いた面でだけ引く。引き換えたら取り直す（受け取った結果がその場で並ぶ）
+  const loadHistory = useCallback(
+    async (limit?: number) => {
+      if (!withHistory) return
+      try {
+        const page = await getCodeRedemptions(limit)
+        setHistory(page.redemptions)
+        setHasMore(page.has_more)
+      } catch {
+        setHistory([])
+      }
+    },
+    [withHistory]
+  )
+
+  useEffect(() => {
+    loadHistory()
+  }, [loadHistory])
 
   const submit = async () => {
     const trimmed = code.trim()
@@ -34,6 +68,7 @@ export function RedeemCodePanel({ onRedeemed }: { onRedeemed?: () => void }) {
       setDone(`${result.label}：${result.credits} ${CREDIT_UNIT} を受け取りました。`)
       setCode('')
       onRedeemed?.()
+      loadHistory(expanded ? 100 : undefined)
     } catch (e) {
       setError(errorMessage(e))
     } finally {
@@ -45,11 +80,9 @@ export function RedeemCodePanel({ onRedeemed }: { onRedeemed?: () => void }) {
     <section className="space-y-3 rounded-xl border border-border bg-card p-5">
       <div className="flex items-center gap-2">
         <Ticket size={18} style={{ color: 'var(--palace)' }} />
-        <h2 className="text-lg font-semibold">コードを使う</h2>
+        <h2 className="text-lg font-semibold">{title}</h2>
       </div>
-      <p className="text-sm text-muted-foreground">
-        受け取ったコードを入力すると、クレジットが残高に足されます。
-      </p>
+      <p className="text-sm text-muted-foreground">{note}</p>
 
       <div className="flex flex-wrap gap-2">
         <Input
@@ -75,6 +108,42 @@ export function RedeemCodePanel({ onRedeemed }: { onRedeemed?: () => void }) {
 
       {done && <p className="text-sm font-medium" style={{ color: 'var(--palace)' }}>{done}</p>}
       {error && <p className="text-sm text-destructive">{error}</p>}
+
+      {/* 引き換えた記録。1件1行で並べる。
+          期限や残りまで札にすると縦に伸びて、履歴を見るために画面を送ることになる */}
+      {withHistory && history && history.length > 0 && (
+        <div className="space-y-2 border-t border-border pt-3">
+          <p className="text-xs font-medium text-muted-foreground">引き換えた記録</p>
+          <ul className="divide-y divide-border">
+            {history.map((row) => (
+              <li key={row.id} className="flex items-baseline justify-between gap-3 py-1.5 text-sm">
+                <span className="truncate font-mono text-xs">{row.code ?? '—'}</span>
+                <span className="flex shrink-0 items-baseline gap-3 text-xs text-muted-foreground">
+                  <span className="tabular-nums">
+                    {row.credits} {CREDIT_UNIT}
+                    {row.remaining_credits < row.credits && `（残 ${row.remaining_credits}）`}
+                  </span>
+                  <time dateTime={row.redeemed_at} className="tabular-nums">
+                    {new Date(row.redeemed_at).toLocaleDateString('ja-JP')}
+                  </time>
+                </span>
+              </li>
+            ))}
+          </ul>
+          {hasMore && !expanded && (
+            <button
+              type="button"
+              onClick={() => {
+                setExpanded(true)
+                loadHistory(100)
+              }}
+              className="text-xs text-muted-foreground hover:underline"
+            >
+              もっと見る
+            </button>
+          )}
+        </div>
+      )}
     </section>
   )
 }

@@ -31,15 +31,23 @@ export function EntityTile({
   selected: boolean
   onSelect: () => void
 }) {
+  // 名前と添え書きは行を分ける。
+  //
+  // 同じ行に並べると、添え書きのぶんだけ名前が削られる。
+  // 名前は探すための手がかりなので、そこを削ると一覧の役に立たなくなる。
+  //
+  // それでも入り切らないものはあるので、title で全文を出す。
+  // 省略された名前を確かめるために、いちいち開かせない。
   const body = (
-    <>
-      <div className="flex items-center justify-between gap-2 px-4 py-3">
-        <span className="truncate font-medium">{name}</span>
-        {meta && <span className="shrink-0 text-xs text-muted-foreground">{meta}</span>}
-      </div>
-      <div className="aspect-square w-full overflow-hidden bg-muted">{cover}</div>
-    </>
+    <div className="px-4 py-3">
+      <p className="truncate font-medium" title={name}>
+        {name}
+      </p>
+      {meta && <p className="mt-0.5 truncate text-xs text-muted-foreground">{meta}</p>}
+    </div>
   )
+
+  const figure = <div className="aspect-square w-full overflow-hidden bg-muted">{cover}</div>
 
   const frame = `relative flex flex-col overflow-hidden rounded-xl border bg-card transition-shadow ${
     selected ? 'border-[var(--palace)] shadow-md' : 'border-border hover:shadow-md'
@@ -49,6 +57,7 @@ export function EntityTile({
     return (
       <Link href={href} className={frame}>
         {body}
+        {figure}
       </Link>
     )
   }
@@ -56,6 +65,7 @@ export function EntityTile({
   return (
     <div className={frame}>
       {body}
+      {figure}
 
       <button
         type="button"

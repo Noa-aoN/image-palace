@@ -57,6 +57,24 @@ export async function getCreditTransactions(
   return res.data
 }
 
+/** これまでに引き換えたもの。押しても記録が見えないと、受け取ったか確かめられない */
+export interface CodeRedemption {
+  id: string
+  code: string | null
+  credits: number
+  remaining_credits: number
+  expires_at: string | null
+  redeemed_at: string
+}
+
+export async function getCodeRedemptions(limit?: number): Promise<{
+  redemptions: CodeRedemption[]
+  has_more: boolean
+}> {
+  const res = await apiClient.get('/api/v1/campaign_codes', { params: limit ? { limit } : undefined })
+  return res.data
+}
+
 /** 引き換えコードを使う。断られた理由はサーバーの文面をそのまま画面に出す */
 export async function redeemCampaignCode(code: string): Promise<{
   credits: number
