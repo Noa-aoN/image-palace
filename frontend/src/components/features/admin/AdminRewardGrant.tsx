@@ -1,7 +1,7 @@
 'use client'
 
 import { useState } from 'react'
-import { Gift, ShieldAlert } from 'lucide-react'
+import { ShieldAlert } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -9,6 +9,7 @@ import { getAdminUsers, grantAdminReward, type AdminRewardDefinition } from '@/l
 import type { AdminUser } from '@/types/admin'
 import { useCanOperate } from '@/hooks/useAdminPermissions'
 import { ReadOnlyNotice } from '@/components/features/admin/ReadOnlyNotice'
+import { PanelSlotContent } from '@/components/features/panel/PanelSlot'
 
 /**
  * 手で配る。表彰など、条件では表せないものに使う。
@@ -21,6 +22,14 @@ import { ReadOnlyNotice } from '@/components/features/admin/ReadOnlyNotice'
  * 誰に・何を・いつ・なぜ、が揃って初めて記録として使える。
  * あとから見て理由の分からない付与は、調べようがない。
  */
+/**
+ * 手で配る口。
+ *
+ * 常に画面の下に開いていると、見に来ただけの人にも配る操作が見えている。
+ * 必要なときだけ右パネルで開く
+ */
+export const REWARD_GRANT_PANEL_KEY = 'admin-reward-grant'
+
 export function AdminRewardGrant({ rewards }: { rewards: AdminRewardDefinition[] }) {
   const canWrite = useCanOperate()
   const [query, setQuery] = useState('')
@@ -74,15 +83,12 @@ export function AdminRewardGrant({ rewards }: { rewards: AdminRewardDefinition[]
   }
 
   return (
-    <section className="space-y-3 rounded-xl border border-border bg-card p-4">
+    <PanelSlotContent sectionKey={REWARD_GRANT_PANEL_KEY}>
+      <div className="space-y-3">
       {!canWrite && <ReadOnlyNotice what="手で配る操作" />}
       {/* 書き込みの釦はまとめて囲って止める。1つずつ disabled を書くと、
           あとから釦を足したときに付け忘れる（付け忘れると押せてしまう） */}
       <fieldset disabled={!canWrite} className="contents">
-      <h3 className="flex items-center gap-2 font-medium">
-        <Gift size={16} style={{ color: 'var(--palace)' }} />
-        手で配る
-      </h3>
 
       <div className="space-y-1.5">
         <Label htmlFor="grant-user">相手を探す</Label>
@@ -174,6 +180,7 @@ export function AdminRewardGrant({ rewards }: { rewards: AdminRewardDefinition[]
       {message && <p className="text-sm" style={{ color: 'var(--palace)' }}>{message}</p>}
       {error && <p className="text-sm text-destructive">{error}</p>}
       </fieldset>
-    </section>
+      </div>
+    </PanelSlotContent>
   )
 }

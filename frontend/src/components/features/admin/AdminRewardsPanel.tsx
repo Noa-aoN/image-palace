@@ -3,7 +3,6 @@
 import { useEffect, useState } from 'react'
 import { Spinner } from '@/components/ui/spinner'
 import { Button } from '@/components/ui/button'
-import { Input } from '@/components/ui/input'
 import { AdminRewardGrant } from './AdminRewardGrant'
 import {
   getAdminRewards,
@@ -12,6 +11,22 @@ import {
   updateAdminRewardDefinition,
   type AdminRewardsPage,
 } from '@/lib/api/admin'
+import { Gift, Pencil } from 'lucide-react'
+import { useRightPanelStore } from '@/stores/rightPanel'
+import {
+  groupByOrder,
+  groupAchievements,
+  REWARD_KIND_ORDER,
+  REWARD_KIND_LABELS,
+  MISSION_CADENCE_ORDER,
+  MISSION_CADENCE_LABELS,
+} from '@/lib/admin-rewards-grouping'
+import {
+  AdminRewardEditPanel,
+  REWARD_EDIT_PANEL_KEY,
+  type EditTarget,
+} from '@/components/features/admin/AdminRewardEditPanel'
+import { REWARD_GRANT_PANEL_KEY } from '@/components/features/admin/AdminRewardGrant'
 import { useCanOperate } from '@/hooks/useAdminPermissions'
 import { ReadOnlyNotice } from '@/components/features/admin/ReadOnlyNotice'
 
@@ -39,6 +54,14 @@ export function AdminRewardsPanel() {
   const [tab, setTab] = useState<Tab>('rewards')
   const [error, setError] = useState<string | null>(null)
   const [busy, setBusy] = useState<string | null>(null)
+  // いま直しているもの。一覧は見る場所、右パネルが直す場所
+  const [editing, setEditing] = useState<EditTarget | null>(null)
+  const openSection = useRightPanelStore((s) => s.openSection)
+
+  const openEdit = (target: EditTarget) => {
+    setEditing(target)
+    openSection({ key: REWARD_EDIT_PANEL_KEY, title: '編集' })
+  }
 
   useEffect(() => {
     getAdminRewards()
@@ -126,138 +149,91 @@ export function AdminRewardsPanel() {
           あとから釦を足したときに付け忘れる */}
       <fieldset disabled={!canWrite} className="contents">
 
-      {tab === 'rewards' && (
-        <Table head={['獲得物', '種別', 'レア度', '持っている人', '公開']}>
-          {page.rewards.map((reward) => (
-            <tr key={reward.id} className="border-t border-border">
-              <Td>
-                <span className="font-medium">{reward.name}</span>
-                <span className="block text-xs text-muted-foreground">{reward.key}</span>
-              </Td>
-              <Td>{reward.kind_label}</Td>
-              <Td>
-                <select
-                  value={reward.rarity_level}
-                  disabled={busy === reward.id}
-                  onChange={(e) => saveReward(reward.id, { rarity_level: Number(e.target.value) })}
-                  className="rounded-md border border-border bg-background px-2 py-1 text-sm"
-                >
-                  {page.rarity_levels.map((level) => (
-                    <option key={level} value={level}>
-                      {level}
-                    </option>
-                  ))}
-                </select>
-              </Td>
-              <Td className="tabular-nums">{reward.owned_count}</Td>
-              <Td>
-                <Toggle
-                  on={reward.published}
-                  busy={busy === reward.id}
-                  onChange={(published) => saveReward(reward.id, { published })}
-                />
-              </Td>
-            </tr>
-          ))}
-        </Table>
-      )}
+      {tab === 'rewards' &&
+        groupByOrder(page.rewards, (r) => r.kind, REWARD_KIND_ORDER, REWARD_KIND_LABELS).map((group) => (
+          <Group key={group.key} label={group.label} count={group.rows.length}>
+            {group.rows.map((reward) => (
+              <Row key={reward.id} onOpen={() => openEdit({ type: 'reward', row: reward })}>
+                <RowMain name={reward.name} sub={reward.key} />
+                <RowMeta>
+                  <span>{reward.rarity_tier}</span>
+                  <span className="tabular-nums">{reward.owned_count} 人</span>
+                  <PublishedMark on={reward.published} />
+                </RowMeta>
+              </Row>
+            ))}
+          </Group>
+        ))}
 
-      {tab === 'achievements' && (
-        <Table head={['実績', '条件', '達成した人', '有効', '公開']}>
-          {page.achievements.map((achievement) => (
-            <tr key={achievement.id} className="border-t border-border">
-              <Td>
-                <span className="font-medium">{achievement.name}</span>
-                <span className="block text-xs text-muted-foreground">{achievement.category ?? '—'}</span>
-              </Td>
-              <Td>
-                <span className="text-xs text-muted-foreground">
-                  {conditionLabel(achievement.condition_type)}
-                </span>
-                <NumberField
-                  value={achievement.condition_target}
-                  busy={busy === achievement.id}
-                  onSave={(condition_target) => saveAchievement(achievement.id, { condition_target })}
-                />
-              </Td>
-              <Td className="tabular-nums">{achievement.completed_count}</Td>
-              <Td>
-                <Toggle
-                  on={achievement.enabled}
-                  busy={busy === achievement.id}
-                  onChange={(enabled) => saveAchievement(achievement.id, { enabled })}
-                />
-              </Td>
-              <Td>
-                <Toggle
-                  on={achievement.published}
-                  busy={busy === achievement.id}
-                  onChange={(published) => saveAchievement(achievement.id, { published })}
-                />
-              </Td>
-            </tr>
-          ))}
-        </Table>
-      )}
+      {tab === 'achievements' &&
+        groupAchievements(page.achievements).map((group) => (
+          <Group key={group.key} label={group.label} count={group.rows.length}>
+            {group.rows.map((achievement) => (
+              <Row key={achievement.id} onOpen={() => openEdit({ type: 'achievement', row: achievement })}>
+                <RowMain name={achievement.name} sub={`${conditionLabel(achievement.condition_type)} ${achievement.condition_target}`} />
+                <RowMeta>
+                  <span className="tabular-nums">{achievement.completed_count} 人</span>
+                  {!achievement.enabled && <span className="text-muted-foreground">無効</span>}
+                  <PublishedMark on={achievement.published} />
+                </RowMeta>
+              </Row>
+            ))}
+          </Group>
+        ))}
 
-      {tab === 'missions' && (
-        <Table head={['ミッション', '区分', '条件', '期間', '有効']}>
-          {page.missions.map((mission) => (
-            <tr key={mission.id} className="border-t border-border">
-              <Td>
-                <span className="font-medium">{mission.name}</span>
-                {mission.mission_series_id && (
-                  <span className="block text-xs" style={{ color: 'var(--palace)' }}>
-                    {seriesName(mission.mission_series_id)} 第{mission.series_step}段
-                  </span>
-                )}
-              </Td>
-              <Td>
-                <select
-                  value={mission.cadence}
-                  disabled={busy === mission.id}
-                  onChange={(e) => saveMission(mission.id, { cadence: e.target.value })}
-                  className="rounded-md border border-border bg-background px-2 py-1 text-sm"
-                >
-                  {page.cadences.map((cadence) => (
-                    <option key={cadence} value={cadence}>
-                      {cadence}
-                    </option>
-                  ))}
-                </select>
-              </Td>
-              <Td>
-                <span className="text-xs text-muted-foreground">{conditionLabel(mission.condition_type)}</span>
-                <NumberField
-                  value={mission.condition_target}
-                  busy={busy === mission.id}
-                  onSave={(condition_target) => saveMission(mission.id, { condition_target })}
+      {tab === 'missions' &&
+        groupByOrder(page.missions, (m) => m.cadence, MISSION_CADENCE_ORDER, MISSION_CADENCE_LABELS).map((group) => (
+          <Group key={group.key} label={group.label} count={group.rows.length}>
+            {group.rows.map((mission) => (
+              <Row key={mission.id} onOpen={() => openEdit({ type: 'mission', row: mission })}>
+                <RowMain
+                  name={mission.name}
+                  sub={`${conditionLabel(mission.condition_type)} ${mission.condition_target}`}
+                  note={
+                    mission.mission_series_id
+                      ? `${seriesName(mission.mission_series_id)} 第${mission.series_step}段`
+                      : undefined
+                  }
                 />
-              </Td>
-              <Td className="text-xs text-muted-foreground">
-                {mission.starts_at || mission.ends_at ? (
-                  <>
-                    {mission.starts_at ? new Date(mission.starts_at).toLocaleDateString('ja-JP') : '—'}
-                    {' 〜 '}
-                    {mission.ends_at ? new Date(mission.ends_at).toLocaleDateString('ja-JP') : '—'}
-                  </>
-                ) : (
-                  '常時'
-                )}
-              </Td>
-              <Td>
-                <Toggle
-                  on={mission.enabled}
-                  busy={busy === mission.id}
-                  onChange={(enabled) => saveMission(mission.id, { enabled })}
-                />
-              </Td>
-            </tr>
-          ))}
-        </Table>
-      )}
+                <RowMeta>
+                  {(mission.starts_at || mission.ends_at) && (
+                    <span>
+                      {mission.starts_at ? new Date(mission.starts_at).toLocaleDateString('ja-JP') : '—'}
+                      {' 〜 '}
+                      {mission.ends_at ? new Date(mission.ends_at).toLocaleDateString('ja-JP') : '—'}
+                    </span>
+                  )}
+                  {!mission.enabled && <span className="text-muted-foreground">無効</span>}
+                  <PublishedMark on={mission.published} />
+                </RowMeta>
+              </Row>
+            ))}
+          </Group>
+        ))}
+
+      {/* 常に画面の下に開いていると、見に来ただけの人にも配る操作が見えている。
+          必要なときだけ開く */}
+      <div className="pt-1">
+        <Button
+          size="sm"
+          variant="outline"
+          onClick={() => openSection({ key: REWARD_GRANT_PANEL_KEY, title: '手で配る' })}
+          className="flex items-center gap-1.5"
+        >
+          <Gift size={14} />
+          手で配る
+        </Button>
+      </div>
 
       <AdminRewardGrant rewards={page.rewards} />
+      <AdminRewardEditPanel
+        target={editing}
+        series={page.series}
+        busy={busy !== null}
+        onSaveReward={saveReward}
+        onSaveAchievement={saveAchievement}
+        onSaveMission={saveMission}
+      />
 
       {/* 期間が終わったら消さずに「無効」にする。消すと user_missions の履歴が浮く */}
       <p className="text-xs text-muted-foreground">
@@ -268,84 +244,61 @@ export function AdminRewardsPanel() {
   )
 }
 
-function Table({ head, children }: { head: string[]; children: React.ReactNode }) {
+/**
+ * 種別ごとの束。見出し＋余白＋薄い線で切る。
+ * 二重線まで引くと、管理画面のわりに飾りが強くなる
+ */
+function Group({ label, count, children }: { label: string; count: number; children: React.ReactNode }) {
   return (
-    <div className="overflow-x-auto rounded-xl border border-border">
-      <table className="w-full min-w-[40rem] text-sm">
-        <thead>
-          <tr className="text-left text-xs text-muted-foreground">
-            {head.map((h) => (
-              <th key={h} className="px-3 py-2 font-medium">
-                {h}
-              </th>
-            ))}
-          </tr>
-        </thead>
-        <tbody>{children}</tbody>
-      </table>
+    <div className="space-y-1 pt-2">
+      <div className="flex items-baseline gap-2 border-b border-border/70 pb-1">
+        <h3 className="text-sm font-semibold">{label}</h3>
+        <span className="text-xs text-muted-foreground">{count}</span>
+      </div>
+      <ul className="divide-y divide-border/60">{children}</ul>
     </div>
   )
 }
 
-function Td({ children, className = '' }: { children: React.ReactNode; className?: string }) {
-  return <td className={`px-3 py-2 align-top ${className}`}>{children}</td>
-}
-
-function Toggle({
-  on,
-  busy,
-  onChange,
-}: {
-  on: boolean
-  busy: boolean
-  onChange: (next: boolean) => void
-}) {
+/** 1件。行ごと押せる（どこを押しても開く。小さな鉛筆を狙わせない） */
+function Row({ onOpen, children }: { onOpen: () => void; children: React.ReactNode }) {
   return (
-    <button
-      type="button"
-      disabled={busy}
-      onClick={() => onChange(!on)}
-      className={`rounded-full border px-2.5 py-0.5 text-xs transition-colors disabled:opacity-50 ${
-        on ? 'border-[var(--palace)] text-[var(--palace)]' : 'border-border text-muted-foreground'
-      }`}
-    >
-      {on ? 'オン' : 'オフ'}
-    </button>
+    <li>
+      <button
+        type="button"
+        onClick={onOpen}
+        className="flex w-full flex-wrap items-center justify-between gap-x-4 gap-y-1 px-1 py-2 text-left transition-colors hover:bg-muted/50"
+      >
+        {children}
+        <Pencil size={13} className="shrink-0 text-muted-foreground" />
+      </button>
+    </li>
   )
 }
 
-/** 数だけを直す欄。押すまで保存しない（打っている途中で保存すると、途中の数で保存される） */
-function NumberField({
-  value,
-  busy,
-  onSave,
-}: {
-  value: number
-  busy: boolean
-  onSave: (next: number) => void
-}) {
-  const [draft, setDraft] = useState(String(value))
-  const changed = draft !== String(value)
-
+function RowMain({ name, sub, note }: { name: string; sub?: string; note?: string }) {
   return (
-    <span className="mt-0.5 flex items-center gap-1.5">
-      <Input
-        value={draft}
-        inputMode="numeric"
-        onChange={(e) => setDraft(e.target.value)}
-        className="h-7 w-24 text-sm"
-      />
-      {changed && (
-        <Button
-          size="sm"
-          variant="outline"
-          disabled={busy || !/^\d+$/.test(draft) || Number(draft) < 1}
-          onClick={() => onSave(Number(draft))}
-          className="h-7 px-2 text-xs"
-        >
-          保存
-        </Button>
+    <span className="min-w-0 flex-1">
+      <span className="block truncate text-sm font-medium">{name}</span>
+      {sub && <span className="block truncate text-xs text-muted-foreground">{sub}</span>}
+      {note && (
+        <span className="block truncate text-xs" style={{ color: 'var(--palace)' }}>
+          {note}
+        </span>
       )}
     </span>
+  )
+}
+
+function RowMeta({ children }: { children: React.ReactNode }) {
+  return <span className="flex shrink-0 items-center gap-3 text-xs text-muted-foreground">{children}</span>
+}
+
+/** 公開しているかは、切り替えではなく状態として見せる（切り替えは右パネルで） */
+function PublishedMark({ on }: { on: boolean }) {
+  return on ? (
+    <span className="text-muted-foreground">公開</span>
+  ) : (
+    <span className="rounded bg-muted px-1.5 py-0.5">非公開</span>
   )
 }
