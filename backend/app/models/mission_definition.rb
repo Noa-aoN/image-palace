@@ -15,6 +15,9 @@ class MissionDefinition < ApplicationRecord
 
   validates :key, presence: true, uniqueness: true, format: { with: /\A[a-z][a-z0-9_]*\z/ }
   validates :name, :condition_type, presence: true
+  # 知らない条件はいつまでも達成にならない（数える手立てが無い）。作る時点で弾く。
+  # 既にある行は触らない
+  validate :condition_type_must_be_known, on: :create
   validates :cadence, inclusion: { in: CADENCES }
   validates :condition_target, numericality: { only_integer: true, greater_than: 0 }
 
@@ -150,5 +153,14 @@ class MissionDefinition < ApplicationRecord
     when "daily" then now.beginning_of_day
     when "weekly" then now.beginning_of_week
     end
+  end
+
+  private
+
+  def condition_type_must_be_known
+    return if condition_type.blank?
+    return if ::Achievements::Conditions.known?(condition_type)
+
+    errors.add(:condition_type, "は数える手立てがありません（#{condition_type}）")
   end
 end

@@ -124,4 +124,150 @@ RSpec.describe "獲得物の管理", type: :request do
       expect(response).to have_http_status(:forbidden)
     end
   end
+
+  # 「定義を作る」と「ユーザーへ配る」は別のこと。
+  # ここで増えるのは**何があるか**であって、誰かの持ち物ではない。
+  describe "定義を作る" do
+    describe "POST /api/v1/admin/rewards/definitions" do
+      let(:params) do
+        { reward: { key: "medal_new_thing", kind: "medal", name: "新しい勲章",
+                    description: "手で作ったもの", rarity_level: 3 } }
+      end
+
+      it "作れて、一覧に載り、監査ログに残る" do
+        expect {
+          post "/api/v1/admin/rewards/definitions", params: params, headers: admin_headers, as: :json
+        }.to change(RewardDefinition, :count).by(1)
+
+        expect(response).to have_http_status(:created)
+        expect(json_response["reward"]["key"]).to eq("medal_new_thing")
+
+        get "/api/v1/admin/rewards", headers: admin_headers
+        expect(json_response["rewards"].map { |r| r["key"] }).to include("medal_new_thing")
+
+        log = AdminAuditLog.find_by(action: "reward_definition_create")
+        expect(log.details["key"]).to eq("medal_new_thing")
+      end
+
+      # 誰の持ち物も増えない。ここを混ぜると「作ったつもりが配っていた」になる
+      it "誰にも配られない" do
+        expect {
+          post "/api/v1/admin/rewards/definitions", params: params, headers: admin_headers, as: :json
+        }.not_to change(UserReward, :count)
+      end
+
+      it "同じ鍵は二度作れない（組み込みの上書きを防ぐ）" do
+        post "/api/v1/admin/rewards/definitions", params: params, headers: admin_headers, as: :json
+
+        expect {
+          post "/api/v1/admin/rewards/definitions", params: params, headers: admin_headers, as: :json
+        }.not_to change(RewardDefinition, :count)
+
+        expect(response).to have_http_status(:unprocessable_entity)
+        expect(json_response["errors"].join).to include("既に存在します").or include("taken")
+      end
+
+      it "知らない種別は断る" do
+        post "/api/v1/admin/rewards/definitions",
+          params: { reward: { key: "x_thing", kind: "unknown_kind", name: "あ" } },
+          headers: admin_headers, as: :json
+
+        expect(response).to have_http_status(:unprocessable_entity)
+      end
+
+      it "運営でなければ作れない" do
+        expect {
+          post "/api/v1/admin/rewards/definitions", params: params, headers: headers, as: :json
+        }.not_to change(RewardDefinition, :count)
+
+        expect(response).to have_http_status(:forbidden)
+      end
+    end
+
+    describe "POST /api/v1/admin/rewards/achievements" do
+      it "条件つきで作れる" do
+        expect {
+          post "/api/v1/admin/rewards/achievements",
+            params: { achievement: { key: "made_here", name: "ここで作った実績",
+                                     condition_type: "cards_created", condition_target: 3,
+                                     category: "作成" } },
+            headers: admin_headers, as: :json
+        }.to change(AchievementDefinition, :count).by(1)
+
+        expect(response).to have_http_status(:created)
+        expect(json_response["achievement"]["condition_target"]).to eq(3)
+      end
+
+      # 数える手立てが無い条件は、いつまでも達成にならない。作る時点で気づけるようにする
+      it "数えられない条件は断る" do
+        expect {
+          post "/api/v1/admin/rewards/achievements",
+            params: { achievement: { key: "impossible", name: "無理", condition_type: "does_not_exist" } },
+            headers: admin_headers, as: :json
+        }.not_to change(AchievementDefinition, :count)
+
+        expect(response).to have_http_status(:unprocessable_entity)
+        expect(json_response["errors"].join).to include("数える手立てがありません")
+      end
+
+      it "無い獲得物を報酬に指定したら断る" do
+        post "/api/v1/admin/rewards/achievements",
+          params: { achievement: { key: "bad_reward", name: "あ", condition_type: "cards_created",
+                                   rewards: [ { type: "reward", key: "no_such_reward" } ] } },
+          headers: admin_headers, as: :json
+
+        expect(response).to have_http_status(:unprocessable_entity)
+      end
+    end
+
+    describe "POST /api/v1/admin/rewards/missions" do
+      it "作れて、一覧に載る" do
+        expect {
+          post "/api/v1/admin/rewards/missions",
+            params: { mission: { key: "daily_made", name: "手で作った日課",
+                                 condition_type: "cards_created", condition_target: 1,
+                                 cadence: "daily" } },
+            headers: admin_headers, as: :json
+        }.to change(MissionDefinition, :count).by(1)
+
+        expect(response).to have_http_status(:created)
+
+        get "/api/v1/admin/rewards", headers: admin_headers
+        expect(json_response["missions"].map { |m| m["key"] }).to include("daily_made")
+      end
+
+      it "知らない周期は断る" do
+        post "/api/v1/admin/rewards/missions",
+          params: { mission: { key: "odd_cadence", name: "あ", condition_type: "cards_created",
+                               cadence: "hourly" } },
+          headers: admin_headers, as: :json
+
+        expect(response).to have_http_status(:unprocessable_entity)
+      end
+
+      # 画面から作るミッションは、たいてい連なりに属さない単発のもの。
+      # 連なり（series）を必須にしていないことを、ここで押さえる
+      it "連なりに属さない単発でも、一覧に出て達成できる" do
+        post "/api/v1/admin/rewards/missions",
+          params: { mission: { key: "standalone", name: "単発の課題",
+                               condition_type: "cards_created", condition_target: 1,
+                               cadence: "onboarding" } },
+          headers: admin_headers, as: :json
+        expect(response).to have_http_status(:created)
+
+        definition = MissionDefinition.find_by(key: "standalone")
+        expect(definition.mission_series_id).to be_nil
+
+        # 利用者の一覧に出る（連なりの前提が無くても開いている）
+        item_type = ItemType.find_or_create_by!(name: "term") { |it| it.label = "単語" }
+        user.items.create!(title: "あ", item_type: item_type, generation_status: "completed")
+        ::Achievements::Evaluator.call(user: user)
+
+        get "/api/v1/achievements", headers: headers
+        listed = json_response["missions"].find { |m| m["key"] == "standalone" }
+        expect(listed).to be_present
+        expect(listed["completed"]).to be(true)
+      end
+    end
+  end
 end
