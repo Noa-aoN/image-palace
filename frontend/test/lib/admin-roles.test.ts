@@ -6,6 +6,7 @@ const as = (role: AdminSession['role']): AdminSession => ({
   role,
   admin: role !== 'user',
   owner: role === 'admin',
+  strong_auth: { required: false, satisfied: false, prepared: false, methods: [] },
 })
 
 // 画面の出し分けは守りではないが、サーバーと食い違うと
