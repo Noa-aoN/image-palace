@@ -96,4 +96,24 @@ RSpec.describe "機能の見せ方", type: :request do
       expect(FeatureFlag.where(key: "page.achievements")).to be_empty
     end
   end
+
+  # 「使えない」だけが伝わるのがいちばん困る。壊れているのか、これから来るのかが
+  # 分からないと、待ってよいのかも判断できない
+  describe "準備中の理由" do
+    it "運営が書いた一言を、利用者にも返す" do
+      FeatureFlag.create!(key: FeatureFlag::DEFAULTS.keys.first, stage: "development",
+                          notes: "画像の作り直しを進めています。今月中に開けます。")
+
+      get "/api/v1/features", headers: auth_headers_for(create(:user, :confirmed))
+
+      expect(json_response["notes"][FeatureFlag::DEFAULTS.keys.first.to_s])
+        .to eq("画像の作り直しを進めています。今月中に開けます。")
+    end
+
+    it "書かれていないものは返さない（空の吹き出しを出さないため）" do
+      get "/api/v1/features", headers: auth_headers_for(create(:user, :confirmed))
+
+      expect(json_response["notes"]).to eq({})
+    end
+  end
 end

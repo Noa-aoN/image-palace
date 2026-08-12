@@ -86,6 +86,15 @@ class FeatureFlag < ApplicationRecord
     DEFAULTS.transform_values { |d| d[:stage] }.merge(overrides.slice(*DEFAULTS.keys))
   end
 
+  # 「なぜ準備中か」を利用者にも伝えるための一言。
+  #
+  # **「使えない」だけが伝わるのが、いちばん困る。** 壊れているのか、
+  # これから来るのかが分からないと、待ってよいのかも判断できない。
+  # 運営が書いたものだけを返す（既定の note は運営向けの覚え書きなので出さない）。
+  def self.public_notes
+    where.not(notes: [ nil, "" ]).pluck(:key, :notes).to_h.slice(*DEFAULTS.keys)
+  end
+
   # 運営画面用。既定との違いが分かる形で、サイドバーの並び順に返す
   def self.overview
     rows = all.index_by(&:key)

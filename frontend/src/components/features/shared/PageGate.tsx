@@ -3,7 +3,7 @@
 import type { ReactNode } from 'react'
 import { usePathname } from 'next/navigation'
 import { Clock, EyeOff } from 'lucide-react'
-import { usePathStage } from '@/stores/features'
+import { usePathStage, usePathStageNote } from '@/stores/features'
 import { PrototypeBadge } from '@/components/features/shared/FeatureGate'
 
 /**
@@ -17,13 +17,15 @@ import { PrototypeBadge } from '@/components/features/shared/FeatureGate'
 export function PageGate({ children }: { children: ReactNode }) {
   const pathname = usePathname()
   const stage = usePathStage(pathname)
+  // なぜ準備中か。運営が書いていれば、その一言を添える
+  const note = usePathStageNote(pathname)
 
   if (stage === undefined) return null
 
   if (stage === 'hidden') {
     return (
       <Notice icon={<EyeOff size={20} />} title="このページは公開されていません">
-        いまは開けないようにしています。
+        {note ?? 'いまは開けないようにしています。'}
       </Notice>
     )
   }
@@ -31,7 +33,9 @@ export function PageGate({ children }: { children: ReactNode }) {
   if (stage === 'development') {
     return (
       <Notice icon={<Clock size={20} />} title="準備中です">
-        作っている最中です。もう少しお待ちください。
+        {/* 「使えない」だけだと、壊れているのか これから来るのかが分からない。
+            運営が書いていれば、その一言をそのまま出す */}
+        {note ?? '作っている最中です。もう少しお待ちください。'}
       </Notice>
     )
   }

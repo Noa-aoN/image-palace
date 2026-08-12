@@ -9,6 +9,8 @@ module Api
         stages = FeatureFlag.stages
         render json: {
           features: stages,
+          # なぜ準備中かの一言。書かれているものだけ返す
+          notes: FeatureFlag.public_notes,
           # パス → キー。サイドバーとページ本体が、いま開いている場所から段階を引ける
           paths: FeatureFlag::DEFAULTS.filter_map { |key, d| [ d[:path], key ] if d[:path] }.to_h
         }

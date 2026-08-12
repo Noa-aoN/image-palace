@@ -16,6 +16,13 @@ export interface FeatureStagesResponse {
   features: FeatureStages
   /** パス → キー。いま開いている場所から段階を引くのに使う */
   paths: Record<string, string>
+  /**
+   * なぜ準備中かの一言。運営が書いたものだけ入る。
+   *
+   * **「使えない」だけが伝わるのがいちばん困る。** 壊れているのか、
+   * これから来るのかが分からないと、待ってよいのかも判断できない
+   */
+  notes: Record<string, string>
 }
 
 export async function getFeatureStages(): Promise<FeatureStagesResponse> {
