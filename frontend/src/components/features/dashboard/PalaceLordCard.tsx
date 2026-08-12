@@ -5,6 +5,8 @@ import Link from 'next/link'
 import { ChevronRight, Crown } from 'lucide-react'
 import { Card, CardContent } from '@/components/ui/card'
 import { CardImage } from '@/components/ui/card-image'
+import { HelpPopover } from '@/components/ui/help-popover'
+import { rewardKindHelp } from '@/lib/reward-kinds'
 import { useAuthStore } from '@/stores/auth'
 import { tierLabel } from '@/lib/billing'
 import { displayNameOf } from '@/lib/display-name'
@@ -76,13 +78,16 @@ export function PalaceLordCard({ tier }: { tier: string | null }) {
               <div className="min-w-0">
                 {/* 称号は名前の上に小さく。名前と同じ大きさで横に並べると、
                     どちらが本人の名前なのか分からなくなる */}
+                {/* 称号は鉤括弧で囲む。**与えられた名前**なので、地の文と同じ見た目だと
+                    本人が入力した文字列と区別がつかない（記名板と同じ扱いに揃える）。
+                    絵は出さない。ここは名乗りであって、品物を見せる場ではない
+                    （品物としての姿は栄誉の間で見る） */}
                 {honors?.title && (
-                  <p className="flex items-center gap-1 truncate text-xs" style={{ color: 'var(--palace)' }}>
-                    {honors.title.image_url && (
-                      // eslint-disable-next-line @next/next/no-img-element
-                      <img src={honors.title.image_url} alt="" width={14} height={14} loading="lazy" />
-                    )}
-                    「{honors.title.name}」
+                  <p className="flex min-w-0 items-center gap-1 text-xs" style={{ color: 'var(--palace)' }}>
+                    <span className="truncate">「{honors.title.name}」</span>
+                    {/* 手に入れた人ほど「これは何か」を知りたい。
+                        栄誉の間の ? と同じ説明を、ここからも開けるようにする */}
+                    <RewardKindHelpButton kind="title" />
                   </p>
                 )}
                 {/* 勲章は名前の右に、絵だけを並べる。
@@ -90,8 +95,12 @@ export function PalaceLordCard({ tier }: { tier: string | null }) {
                     横に流せば、数が増えても札の高さは変わらない */}
                 <div className="flex min-w-0 items-center gap-1.5">
                   <p className="truncate text-lg font-semibold">{displayName}</p>
+                  {/* 勲章は名前から離す。くっついていると、名前の続きに見える。
+                      何の並びなのかが分かるよう、見出しも添える */}
                   {medals.length > 0 && (
-                    <span className="flex shrink-0 items-center gap-1">
+                    <span className="ml-2 flex shrink-0 items-center gap-1 border-l border-border pl-2">
+                      <span className="text-[11px] text-muted-foreground">勲章</span>
+                      <RewardKindHelpButton kind="medal" />
                       {medals.map((reward) =>
                         reward.image_url ? (
                           // eslint-disable-next-line @next/next/no-img-element
@@ -173,6 +182,23 @@ export function PalaceLordCard({ tier }: { tier: string | null }) {
 // 記名板に出す種別と見出し。称号は名前の上に出すので、ここには含めない
 const SHOWCASE_KINDS: [RewardKind, string][] = [
   // 勲章は名前の右に絵だけで出すので、ここには含めない
-  ['treasure', '褒賞'],
+  ['treasure', '宝物'],
   ['honor', '表彰'],
 ]
+
+/**
+ * 種類の説明を開く小さな釦。
+ *
+ * 説明そのものは `lib/reward-kinds` が持つ（栄誉の間の `?` と同じもの）。
+ * ここで文言を書くと、同じ語の説明が画面ごとに食い違う。
+ */
+function RewardKindHelpButton({ kind }: { kind: 'title' | 'medal' | 'treasure' | 'honor' }) {
+  const help = rewardKindHelp(kind)
+  if (!help) return null
+
+  return (
+    <HelpPopover label={`${help.label}について`} title={`${help.label}（${help.verb}）`}>
+      <p className="text-sm">{help.description}</p>
+    </HelpPopover>
+  )
+}

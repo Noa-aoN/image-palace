@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react'
 import { Crown, Medal, Sparkles, Trophy, Award, Gem, HelpCircle, Route } from 'lucide-react'
 import { Spinner } from '@/components/ui/spinner'
 import { PanelSlotContent } from '@/components/features/panel/PanelSlot'
+import { REWARD_KIND_HELP } from '@/lib/reward-kinds'
 import { usePanelForm } from '@/components/features/panel/usePanelForm'
 import {
   getAchievements,
@@ -252,7 +253,7 @@ export function AchievementsBoard() {
               ['all', 'すべて'],
               ['title', '称号'],
               ['medal', '勲章'],
-              ['treasure', '褒賞'],
+              ['treasure', '宝物'],
               ['honor', '表彰'],
             ] as const
           ).map(([value, label]) => (
@@ -458,7 +459,7 @@ function Chip({
 /**
  * 種別の意味。
  *
- * 称号・勲章・褒賞・表彰は似ているが役割が違う。毎回説明を並べると邪魔なので、
+ * 称号・勲章・宝物・表彰は似ているが役割が違う。毎回説明を並べると邪魔なので、
  * 押したときだけ右パネルで出す。今後、種類が増えてもここに足せる。
  */
 function RewardKindsHelp() {
@@ -478,7 +479,7 @@ function RewardKindsHelp() {
 
       <PanelSlotContent sectionKey={REWARD_KINDS_PANEL_KEY}>
         <dl className="space-y-4 text-sm">
-          {KIND_HELP.map((entry) => (
+          {REWARD_KIND_HELP.map((entry) => (
             <div key={entry.label} className="space-y-1">
               <dt className="flex items-center gap-2 font-medium">
                 <span style={{ color: 'var(--palace)' }}>{entry.icon}</span>
@@ -500,37 +501,11 @@ function RewardKindsHelp() {
 
 const REWARD_KINDS_PANEL_KEY = 'achievement-reward-kinds'
 
-const KIND_HELP = [
-  {
-    label: '称号',
-    verb: '名乗るもの',
-    icon: <Crown size={16} />,
-    description: '1つだけ選んで名乗れます。エントランスの「宮殿の主人」にも出ます。',
-  },
-  {
-    label: '勲章',
-    verb: '掲げるもの',
-    icon: <Medal size={16} />,
-    description: '功績のしるし。いくつか選んで並べて掲げられます。',
-  },
-  {
-    label: '褒賞',
-    verb: '飾るもの',
-    icon: <Gem size={16} />,
-    description: '手に入れた品。マイルームに飾れるようにする準備をしています。',
-  },
-  {
-    label: '表彰',
-    verb: '選ばれたこと',
-    icon: <Award size={16} />,
-    description: '運営が選んで贈るもの。条件では手に入りません。',
-  },
-]
 
 const KIND_LABELS: Record<RewardKind, string> = {
   title: '称号',
   medal: '勲章',
-  treasure: '褒賞',
+  treasure: '宝物',
   honor: '表彰',
 }
 
