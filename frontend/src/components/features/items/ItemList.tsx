@@ -2,6 +2,7 @@
 
 import { startTransition, useEffect, useEffectEvent, useRef, useState, useCallback, type ReactNode } from 'react'
 import Link from 'next/link'
+import { EMPTY_VALUE_MARK } from '@/lib/card-list-layout'
 import { useRouter } from 'next/navigation'
 import { ChevronLeft, ChevronRight, Search, X, Trash2, Check, CircleCheck, Circle, Tag as TagIcon, Pin, ShieldCheck, FileText, ChevronDown, Image as ImageIcon } from 'lucide-react'
 import { Button } from '@/components/ui/button'
@@ -288,16 +289,27 @@ function ItemCard({ item, selectionMode, selected, onToggle, fit, sizes, working
         )}
       </div>
 
-      {/* 名前と絵のほかに出す項目。値の無いものはサーバー側で落としてある。
+      {/* 名前と絵のほかに出す項目。**出す指定なら、値が無くても「-」で出す。**
+          落としてしまうと、出るカードと出ないカードが混ざり、法則が読めない。
           1行1項目で、長いものは省略する（1枚が縦に伸びると一覧が見渡せない） */}
       {(item.list_fields?.length ?? 0) > 0 && (
         <dl className="space-y-0.5 px-3 py-1.5">
-          {item.list_fields!.map((field) => (
-            <div key={field.key} className="flex gap-1.5 text-[11px] leading-snug">
-              <dt className="shrink-0 text-muted-foreground">{field.label}</dt>
-              <dd className="truncate">{field.value}</dd>
-            </div>
-          ))}
+          {item.list_fields!.map((field) => {
+            const empty = !field.value?.trim()
+            return (
+              <div key={field.key} className="flex gap-1.5 text-[11px] leading-snug">
+                <dt className="shrink-0 text-muted-foreground">{field.label}</dt>
+                {/* 意味・説明だけは長い。3行までに丸める（それ以上は一覧を圧迫する） */}
+                <dd
+                  className={`${field.key === 'meaning' ? 'line-clamp-3' : 'truncate'} ${
+                    empty ? 'text-muted-foreground/60' : ''
+                  }`}
+                >
+                  {empty ? EMPTY_VALUE_MARK : field.value}
+                </dd>
+              </div>
+            )
+          })}
         </dl>
       )}
     </>

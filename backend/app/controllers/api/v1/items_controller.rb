@@ -633,7 +633,7 @@ module Api
           id: item.id,
           title: item.title,
           headline: headline_for(item),
-          list_fields: list_fields_for(item),
+          list_fields: card_list_fields_for(item),
           aspect_ratio: item.aspect_ratio,
           generation_status: item.generation_status,
           generation_error: item.generation_error,
@@ -660,7 +660,7 @@ module Api
           headline: headline_for(item),
           # 一覧のカードに、名前と絵のほかに出す項目。解決はサーバー側で行う
           # （一覧の payload に全項目を積むと重い。見出し語と同じ理由）
-          list_fields: list_fields_for(item),
+          list_fields: card_list_fields_for(item),
           generation_status: item.generation_status,
           generation_error: item.generation_error,
           # 押して直る失敗かどうか。画面は、直らないものに「作り直す」を出さない
@@ -769,15 +769,65 @@ module Api
         end
       end
 
-      # 一覧に出す名前。選ばれた項目が空のカードは見出し語に戻る
-      # （名前の無いカードが並ぶより、元の名前が出ているほうがよい）
+      # 一覧に出す名前。
+      #
+      # **選ばれた項目が空でも見出し語へ戻さない。** 戻すと、設定した人には
+      # 「効いていない」と映る（実際に効いているのに、値が無いだけ）。
+      # 値が無いことは、値が無いと分かる形で見せる（画面が「-」を出す）。
       def headline_for(item)
         return item.title if headline_key.blank?
 
-        entry = item.item_properties.find { |p| p.property_definition&.key == headline_key }
+        # 名前は1つ。複数入る項目（別名など）を選んでいても、つないで長くしない
+        property_value_for(item, headline_key, multiple: :first)
+      end
+
+      # 一覧の各カードに出す項目。**順序と表示の有無は設定が持つ**。
+      #
+      # 出す指定の項目は、値が無くても行ごと返す（value: nil）。
+      # 返さないと、あるカードには出てあるカードには出ない、という
+      # 法則の読めない並びになる。**出さない指定の項目は、そもそも返さない。**
+      def card_list_fields_for(item)
+        card_list_layout.filter_map do |row|
+          key = row["key"].to_s
+          next unless row["visible"]
+          # 名前と絵は、カードの形そのものとして別に描かれる
+          next if key == "title" || key == "image"
+
+          if key == "meaning"
+            { key: key, label: "意味・説明", value: meaning_summary_for(item) }
+          else
+            { key: key, label: property_labels[key] || key, value: property_value_for(item, key) }
+          end
+        end
+      end
+
+      def card_list_layout
+        @card_list_layout ||= (current_user.setting&.card_list_layout_entries || [])
+      end
+
+      # 項目の呼び名。**カード側からは引かない。**
+      # 値の無いカードには項目の行そのものが無く、そこから呼び名を取ると
+      # 「値が無いときだけ識別名が出る」というちぐはぐな見え方になる。
+      # 1回だけまとめて引く（件数に比例して増やさない）
+      def property_labels
+        @property_labels ||= PropertyDefinition.where(user: current_user).pluck(:key, :label).to_h
+      end
+
+      # 項目の値を文字にする。
+      #
+      # 複数入る項目の扱いは置き場所で変える。
+      #   名前（headline）… 先頭だけ。つなぐと名前として長すぎる
+      #   名前の下の項目  … 読点でつなぐ（既存の見せ方）
+      def property_value_for(item, key, multiple: :join)
+        entry = item.item_properties.find { |p| p.property_definition&.key == key }
         value = entry&.typed_value
-        value = value.first if value.is_a?(Array)
-        value.to_s.presence || item.title
+        value = multiple == :first ? value.first : value.join("、") if value.is_a?(Array)
+        value.to_s.presence
+      end
+
+      # 意味・説明は一覧を圧迫するので、先頭のものだけを短く出す（画面側で3行に丸める）
+      def meaning_summary_for(item)
+        item.meanings.min_by(&:position)&.definition.presence
       end
 
       # 意味・説明の1件ぶん。MeaningsController の返す形と揃える

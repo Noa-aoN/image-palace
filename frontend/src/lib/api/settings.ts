@@ -24,6 +24,7 @@ export async function updateSettings(
       | 'palace_name'
       | 'card_property_presets'
       | 'card_list_fields'
+      | 'card_list_layout'
       | 'default_card_preset'
       | 'diagram_mode'
       | 'motion_mode'
