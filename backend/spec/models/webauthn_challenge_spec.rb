@@ -27,6 +27,14 @@ RSpec.describe WebauthnChallenge, type: :model do
       expect(described_class.issue!(purpose: "authentication").user).to be_nil
     end
 
+    # 実際の登録・認証では、gem が作った options の challenge をそのまま預ける。
+    # ここで別に作ると、ブラウザへ渡した値と控えた値が食い違う
+    it "外から渡した challenge をそのまま控える" do
+      given = described_class.generate_challenge
+
+      expect(described_class.issue!(purpose: "registration", challenge: given, user: user).challenge).to eq(given)
+    end
+
     it "知らない用途は受け付けない" do
       expect { described_class.create!(challenge: "x", purpose: "unknown", expires_at: 1.minute.from_now) }
         .to raise_error(ActiveRecord::RecordInvalid)

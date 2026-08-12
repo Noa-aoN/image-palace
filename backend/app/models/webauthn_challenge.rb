@@ -24,13 +24,16 @@ class WebauthnChallenge < ApplicationRecord
 
   scope :usable, -> { where(consumed_at: nil).where(expires_at: Time.current..) }
 
-  def self.issue!(purpose:, user: nil)
-    create!(
-      user: user,
-      purpose: purpose,
-      challenge: WebAuthn::Credential.options_for_create(user: { id: "x", name: "x" }).challenge,
-      expires_at: TTL.from_now
-    )
+  # 実際の登録・認証では、gem が作った options の challenge をそのまま預ける。
+  # ここで別に作ると、ブラウザへ渡した値と控えた値が食い違う
+  def self.issue!(purpose:, challenge: generate_challenge, user: nil)
+    create!(user: user, purpose: purpose, challenge: challenge, expires_at: TTL.from_now)
+  end
+
+  # 単体で使う challenge（再認証など、options を作らない場面）。
+  # 長さと符号化は gem の作法に合わせる
+  def self.generate_challenge
+    WebAuthn.configuration.encoder.encode(SecureRandom.random_bytes(32))
   end
 
   # 使う。**同じ challenge を二度成功させない。**
