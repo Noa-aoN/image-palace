@@ -171,6 +171,15 @@ export function ItemDetailBody({ itemId, onDeleted }: { itemId: string; onDelete
           />
         )}
 
+        {/* なぜ失敗したかを、その場で見せる。
+            **理由はサーバーが既に用意している**（次に何をすればよいかまで書いてある）のに、
+            これまでは右パネルを開かないと読めなかった。開かせる理由が無い */}
+        {item.generation_status === 'failed' && item.generation_error && (
+          <p className="rounded-lg bg-destructive/10 px-3 py-2 text-sm leading-6 text-destructive">
+            {item.generation_error}
+          </p>
+        )}
+
         {/* 覆いを外すか、カードごと消すか */}
         {veiled && <SafeguardBar item={item} onUpdated={applyUpdated} onDeleted={onDeleted} />}
 

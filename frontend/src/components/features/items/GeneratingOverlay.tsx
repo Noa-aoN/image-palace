@@ -12,13 +12,23 @@ type Props = {
   style?: React.CSSProperties
   /** ラベルの文字サイズ・色 */
   textClassName?: string
+  /**
+   * 補足（失敗の理由など）。指を乗せれば読める形にしておく。
+   * 一覧に本文を出すと1枚が縦に伸びるが、理由が分からないままだと
+   * 「また押す」以外の手が思いつかない
+   */
+  title?: string
 }
 
 // 画像が未生成の枠に、ステータス文言＋（生成中は）左→右に流れるシマーを重ねる共通オーバーレイ。
 // 一覧カード・詳細で共通利用する。挙動は変えず、従来の静的 pulse をシマーへ置き換える演出向上。
-export function GeneratingOverlay({ status, label, className, textClassName , style }: Props) {
+export function GeneratingOverlay({ status, label, className, textClassName, style, title }: Props) {
   return (
-    <div className={cn('relative flex items-center justify-center overflow-hidden bg-muted', className)} style={style}>
+    <div
+      className={cn('relative flex items-center justify-center overflow-hidden bg-muted', className)}
+      style={style}
+      title={title}
+    >
       {isGenerating(status) && <div aria-hidden className="animate-shimmer pointer-events-none absolute inset-0" />}
       <span className={cn('relative z-10 px-2 text-center', textClassName)}>{label}</span>
     </div>

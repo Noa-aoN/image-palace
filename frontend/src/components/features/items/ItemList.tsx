@@ -285,6 +285,10 @@ function ItemCard({ item, selectionMode, selected, onToggle, fit, sizes, working
             label={hasImageError ? '期限切れ' : STATUS_LABEL[item.generation_status]}
             className="h-full w-full"
             textClassName="text-muted-foreground text-xs"
+            // 失敗の理由は、指を乗せれば読める形にしておく。
+            // 一覧に本文を出すと1枚が縦に伸びるが、理由が分からないままだと
+            // 「また押す」以外の手が思いつかない
+            title={item.generation_status === 'failed' ? (item.generation_error ?? undefined) : undefined}
           />
         )}
       </div>
