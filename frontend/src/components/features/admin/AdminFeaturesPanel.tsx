@@ -2,6 +2,8 @@
 
 import { useEffect, useState } from 'react'
 import { FlaskConical, RotateCcw } from 'lucide-react'
+import { Input } from '@/components/ui/input'
+import { isSubmitEnter } from '@/lib/enter-key'
 import { Button } from '@/components/ui/button'
 import { Spinner } from '@/components/ui/spinner'
 import { getAdminFeatureFlags, updateAdminFeatureFlag, resetAdminFeatureFlag } from '@/lib/api/admin'
@@ -47,6 +49,19 @@ export function AdminFeaturesPanel() {
     setError(null)
     try {
       replace(await updateAdminFeatureFlag(key, { stage }))
+    } catch {
+      setError('保存できませんでした。')
+    } finally {
+      setSaving(null)
+    }
+  }
+
+  // なぜ準備中かの一言。**利用者にそのまま出る**ので、運営向けの覚え書きとは分ける
+  const saveNote = async (key: string, notes: string) => {
+    setSaving(key)
+    setError(null)
+    try {
+      replace(await updateAdminFeatureFlag(key, { notes }))
     } catch {
       setError('保存できませんでした。')
     } finally {
@@ -107,11 +122,20 @@ export function AdminFeaturesPanel() {
               <ul className="divide-y divide-border rounded-lg border border-border">
                 {rows.map((feature) => (
                   <li key={feature.key} className="flex flex-wrap items-center justify-between gap-3 px-3 py-2.5">
-                    <div className="min-w-0">
+                    <div className="min-w-0 flex-1">
                       <p className="text-sm font-medium">{feature.label}</p>
                       <p className="truncate text-xs text-muted-foreground">
                         {feature.path ?? feature.note ?? feature.key}
                       </p>
+                      {/* 準備中・非公開のときだけ、理由を書ける。
+                          出していない機能の理由は、利用者の目に触れない */}
+                      {(feature.stage === 'development' || feature.stage === 'hidden') && (
+                        <NoteField
+                          value={feature.notes ?? ''}
+                          busy={saving === feature.key}
+                          onSave={(next) => saveNote(feature.key, next)}
+                        />
+                      )}
                     </div>
                     <div className="flex flex-wrap items-center gap-1.5">
                       {stages.map((stage) => (
@@ -164,4 +188,41 @@ const STAGE_HELP: Record<string, string> = {
   development: 'サイドバーに「準備中」と出るが、中身は出ない',
   prototype: '使える。「試作」の印が付く',
   released: '普通に出す',
+}
+
+/**
+ * 準備中の理由。**利用者にそのまま出る**ので、運営向けの覚え書きとは分ける。
+ *
+ * 押したときだけ保存する（打つたびに送ると、書きかけが利用者に出る）。
+ */
+function NoteField({
+  value,
+  busy,
+  onSave,
+}: {
+  value: string
+  busy: boolean
+  onSave: (next: string) => void
+}) {
+  const [draft, setDraft] = useState(value)
+  const dirty = draft !== value
+
+  return (
+    <div className="mt-1.5 flex items-center gap-1.5">
+      <Input
+        value={draft}
+        onChange={(e) => setDraft(e.target.value)}
+        placeholder="なぜ準備中か（利用者に出ます）"
+        className="h-8 text-xs"
+        onKeyDown={(e) => {
+          if (isSubmitEnter(e) && dirty) onSave(draft)
+        }}
+      />
+      {dirty && (
+        <Button size="sm" variant="outline" disabled={busy} onClick={() => onSave(draft)}>
+          保存
+        </Button>
+      )}
+    </div>
+  )
 }

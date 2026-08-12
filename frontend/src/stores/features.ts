@@ -17,6 +17,8 @@ interface FeaturesState {
   stages: FeatureStages | null
   /** パス → キー。いま開いている場所から段階を引くのに使う */
   paths: Record<string, string> | null
+  /** なぜ準備中かの一言（運営が書いたものだけ） */
+  notes: Record<string, string> | null
   loading: boolean
   load: () => void
 }
@@ -24,15 +26,16 @@ interface FeaturesState {
 export const useFeaturesStore = create<FeaturesState>((set, get) => ({
   stages: null,
   paths: null,
+  notes: null,
   loading: false,
   load: () => {
     if (get().stages || get().loading) return
     set({ loading: true })
     getFeatureStages()
-      .then(({ features, paths }) => set({ stages: features, paths, loading: false }))
+      .then(({ features, paths, notes }) => set({ stages: features, paths, notes: notes ?? {}, loading: false }))
       // 読めなかったときは既定（released 扱い）に倒す。設定が読めないことを理由に
       // 動いている機能まで消してしまうと、障害の被害が広がる
-      .catch(() => set({ stages: {}, paths: {}, loading: false }))
+      .catch(() => set({ stages: {}, paths: {}, notes: {}, loading: false }))
   },
 }))
 
@@ -79,4 +82,22 @@ export function usePathStage(pathname: string | null): FeatureStage | undefined 
   const own = (stages[paths[matched[0]]] as FeatureStage) ?? 'released'
   const ancestorHidden = matched.slice(1).some((path) => stages[paths[path]] === 'hidden')
   return ancestorHidden ? 'hidden' : own
+}
+
+/**
+ * そのパスの「なぜ準備中か」。運営が書いていなければ undefined。
+ *
+ * 段階（`usePathStage`）と同じ引き方をする。**同じ場所を指しているのに
+ * 段階と理由で別の機能を引く**、が起きないようにするため。
+ */
+export function usePathStageNote(pathname: string | null): string | undefined {
+  const { paths } = useLoadedFeatures()
+  const notes = useFeaturesStore((s) => s.notes)
+  if (!paths || !notes || !pathname) return undefined
+
+  const matched = Object.keys(paths)
+    .filter((path) => pathname === path || pathname.startsWith(`${path}/`))
+    .sort((a, b) => b.length - a.length)
+
+  return matched.length > 0 ? notes[paths[matched[0]]] : undefined
 }
