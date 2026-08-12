@@ -22,12 +22,21 @@ module Api
 
         private
 
+        # ここは**ログインしている全員**が通る（サイドバーの出し分けに使う）。
+        # 求めていないなら、残りは誰も見ない。
+        # 見ない値のために問い合わせを2本増やすと、その分だけ全員が待つ
         def strong_auth_state
+          return { required: false } unless ::Auth::StrongAuth.admin_required?
+
+          # 一度だけ調べる。prepared? は中で available_methods を呼ぶので、
+          # 両方を呼ぶと同じことを二度聞くことになる
+          methods = ::Auth::StrongAuth.available_methods(current_user)
+
           {
-            required: ::Auth::StrongAuth.admin_required?,
+            required: true,
             satisfied: strongly_authenticated?,
-            prepared: ::Auth::StrongAuth.prepared?(current_user),
-            methods: ::Auth::StrongAuth.available_methods(current_user)
+            prepared: methods.any?,
+            methods: methods
           }
         end
       end

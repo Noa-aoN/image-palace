@@ -68,7 +68,9 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
   // まだ求めない設定のときは、この節ごと素通りする（これまでどおり）
   const strongAuth = session.strong_auth
   if (strongAuth?.required && !strongAuth.satisfied) {
-    return <AdminStrongAuthGate prepared={strongAuth.prepared} onDone={fetchSession} />
+    // 求めているときは prepared も一緒に返る。
+    // 万一欠けていたら「持っていない」と見て、設定へ案内する側に倒す
+    return <AdminStrongAuthGate prepared={strongAuth.prepared ?? false} onDone={fetchSession} />
   }
 
   return (

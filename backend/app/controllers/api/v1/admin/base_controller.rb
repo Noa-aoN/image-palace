@@ -47,11 +47,14 @@ module Api
           return unless ::Auth::StrongAuth.admin_required?
           return if strongly_authenticated?
 
-          if ::Auth::StrongAuth.prepared?(current_user)
+          # 一度だけ調べる。prepared? は中で available_methods を呼ぶ
+          methods = ::Auth::StrongAuth.available_methods(current_user)
+
+          if methods.any?
             render json: {
               error: "執務室に入る前に、もう一度ご本人か確かめさせてください。",
               code: "strong_auth_required",
-              methods: ::Auth::StrongAuth.available_methods(current_user)
+              methods: methods
             }, status: :forbidden
           else
             render json: {

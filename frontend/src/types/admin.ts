@@ -32,14 +32,19 @@ export interface AdminSession {
  *   satisfied=false         … 確かめてもらう
  */
 export interface AdminStrongAuth {
-  /** いま求めているか。切ってあれば以下は見なくてよい */
+  /** いま求めているか */
   required: boolean
+  /**
+   * 以下は求めているときだけ返る。
+   * ここはログインしている全員が通る経路なので、
+   * 誰も見ない値のために問い合わせを増やさない
+   */
   /** この端末が確かめ済みか */
-  satisfied: boolean
+  satisfied?: boolean
   /** パスキーか認証アプリを持っているか */
-  prepared: boolean
+  prepared?: boolean
   /** 使える確かめ方。使いやすい順 */
-  methods: ('passkey' | 'totp' | 'recovery_code')[]
+  methods?: ('passkey' | 'totp' | 'recovery_code')[]
 }
 
 export interface AdminSeriesPoint {
