@@ -2,11 +2,28 @@ module Api
   module V1
     class BaseController < ApplicationController
       before_action :authenticate_user!
+      after_action :record_visit
 
       rescue_from ActiveRecord::RecordNotFound, with: :not_found
       rescue_from ActionController::ParameterMissing, with: :bad_request
 
       private
+
+      # 「その日来た人」を数えるための記録。1日1回しか書かない（User#touch_last_seen!）。
+      #
+      # after_action に置くのは、本来の応答を1ミリも遅らせたくないため……ではなく、
+      # **失敗しても応答を壊さないため**。数えるための記録が、機能を止める理由になってはいけない。
+      #
+      # ここで数えるのは「来た（Active）」であって「使った（Engagement）」ではない。
+      # 何かを作った・生成した・復習したは、それぞれの記録（items / image_usages /
+      # credit_transactions / item_reviews）から別に数える。
+      def record_visit
+        return unless current_user
+
+        current_user.touch_last_seen!
+      rescue StandardError => e
+        Rails.logger.warn "[record_visit] FAILED user_id=#{current_user&.id} #{e.class}: #{e.message}"
+      end
 
       # いま使っている端末の目印。
       #

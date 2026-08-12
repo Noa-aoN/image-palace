@@ -92,4 +92,36 @@ RSpec.describe User, type: :model do
       expect(user.name).to be_nil
     end
   end
+
+  describe "#touch_last_seen!" do
+    let(:user) { create(:user, :confirmed) }
+
+    it "初めて来た日に記録する" do
+      expect { user.touch_last_seen! }.to change { user.reload.last_seen_at }.from(nil)
+    end
+
+    it "同じ日のうちは書き直さない" do
+      user.touch_last_seen!
+      first = user.reload.last_seen_at
+
+      travel_to(first + 3.hours) do
+        expect { user.touch_last_seen! }.not_to(change { user.reload.last_seen_at })
+      end
+    end
+
+    it "日付が変わったら書き直す" do
+      today = Time.zone.local(2026, 8, 12, 23, 30)
+      travel_to(today) { user.touch_last_seen! }
+
+      travel_to(today + 1.hour) do # 日付が変わった直後
+        expect { user.touch_last_seen! }.to(change { user.reload.last_seen_at })
+        expect(user.reload.last_seen_at.to_date).to eq(Date.new(2026, 8, 13))
+      end
+    end
+
+    it "updated_at を動かさない（利用者が何かを変えた時刻の意味を守る）" do
+      user
+      expect { user.touch_last_seen! }.not_to(change { user.reload.updated_at })
+    end
+  end
 end

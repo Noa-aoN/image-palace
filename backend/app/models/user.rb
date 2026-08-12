@@ -145,6 +145,29 @@ class User < ApplicationRecord
     end
   end
 
+  # == 来訪の記録 =============================================================
+
+  # 「その日、来た」を1日1回だけ残す。DAU / WAU / MAU の素。
+  #
+  # 毎リクエスト書くと、読むだけの画面（残高・未読数は定期的に叩かれる）でも
+  # 書き込みが走り、行ロックと WAL がその回数だけ増える。**日付が変わったときだけ**にする。
+  #
+  # `update_column` を使うのは、ここが利用者の操作ではないため。
+  # コールバックもバリデーションも要らず、`updated_at` を動かすと
+  # 「利用者が何かを変えた時刻」の意味が壊れる。
+  #
+  # 競合しても困らない。同じ日に2つのリクエストが同時に来て両方が書いても、
+  # 入る値は同じ日付で、数える側は日付でしか見ない。
+  def touch_last_seen!
+    return if seen_today?
+
+    update_column(:last_seen_at, Time.current) # rubocop:disable Rails/SkipsModelValidations
+  end
+
+  def seen_today?
+    last_seen_at.present? && last_seen_at.in_time_zone.to_date == Time.zone.today
+  end
+
   # お試しも今期の毎月分も配り終えているか（ロックを取る前の早期判定）
   def free_grants_settled?
     trial_granted_at.present? &&
