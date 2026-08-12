@@ -430,3 +430,87 @@ export interface AdminFinancePage {
   parameters: AdminCostParameter[]
   groups: string[]
 }
+
+/**
+ * 経営の数字（Business Analytics）。
+ *
+ * **出せないものは null で返る。** 0 と null は違う意味なので、画面でも分けて出すこと。
+ * 「測って 0 だった」と「そもそも測れない」を同じ見た目にしない。
+ */
+export interface AdminBusinessMetrics {
+  generated_at: string
+  period: AdminPeriod
+  measurement: {
+    /** 来訪の記録が始まった時刻。まだ誰も来ていなければ null */
+    last_seen_since: string | null
+    /** 選んだ期間の途中から計測が始まっているか */
+    last_seen_partial: boolean
+    note: string
+  }
+  /** 来た人。last_seen_at から数える */
+  active: {
+    measured: boolean
+    dau: number | null
+    wau: number | null
+    mau: number | null
+    /** DAU ÷ MAU（%） */
+    stickiness: number | null
+    /**
+     * 前期間と比べられるか。**常に false**。
+     * 持っているのは利用者ごとの「最後に来た日」1点だけで、
+     * 昨日その人が来ていたかは復元できない
+     */
+    comparable: boolean
+  }
+  /** 使った人。実際の行動から数える */
+  engagement: {
+    current: AdminEngagementCounts
+    previous: AdminEngagementCounts
+    actions_per_acting_user: number | null
+  }
+  users: {
+    total: number
+    new_in_period: number
+    new_in_previous: number
+    paying: number
+    free_to_paid_cvr: number | null
+  }
+  revenue: {
+    total_jpy: number
+    previous_total_jpy: number
+    mrr_jpy: number
+    arr_jpy: number
+    arpu_jpy: number | null
+    arppu_jpy: number | null
+    test_revenue_jpy: number
+  }
+  retention: {
+    canceled_in_period: number
+    active_at_period_start: number
+    churn_rate: number | null
+    /** 率を出せないときの理由 */
+    note: string | null
+  }
+  unit_economics: {
+    ai_cost_jpy: number
+    ai_cost_per_user_jpy: number | null
+    gross_profit_jpy: number
+    gross_margin: number | null
+    ltv: {
+      value_jpy: number | null
+      /** 常に true。母数が小さいので参考値としてしか使えない */
+      reference: boolean
+      basis: string
+      average_months?: number | null
+    }
+  }
+}
+
+export interface AdminEngagementCounts {
+  cards_created: number
+  images_generated: number
+  reviews: number
+  credits_consumed: number
+  acting_users: number
+  actions: number
+}
