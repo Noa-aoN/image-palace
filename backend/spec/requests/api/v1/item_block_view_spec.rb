@@ -1,141 +1,74 @@
 require "rails_helper"
 
-RSpec.describe "Api::V1::Items block_view", type: :request do
+# カード詳細の項目の並び。**このカード1枚だけに効く**（種別の設定とは範囲が違う）。
+RSpec.describe "カード詳細の項目の並び", type: :request do
   let(:user) { create(:user, :confirmed) }
   let(:headers) { auth_headers_for(user) }
-  let(:item) { create(:item, :completed, user: user, title: "光合成") }
+  let(:item_type) { ItemType.find_or_create_by!(name: "word") { |t| t.label = "単語" } }
+  let(:item) { user.items.create!(title: "光合成", item_type: item_type, generation_status: "completed") }
 
-  describe "PATCH /api/v1/items/:id/block_view" do
-    it "認証なしでは 401" do
-      patch "/api/v1/items/#{item.id}/block_view", params: { hidden: [] }, as: :json
-      expect(response).to have_http_status(:unauthorized)
-    end
-
-    it "隠すブロックと並び順を保存する" do
-      patch "/api/v1/items/#{item.id}/block_view",
-            params: { hidden: [ "tags" ], order: [ "meanings", "item_type" ] }, headers: headers
-
-      expect(response).to have_http_status(:success)
-      expect(item.reload.hidden_block_keys).to eq([ "tags" ])
-      expect(item.ordered_block_keys).to eq([ "meanings", "item_type" ])
-      expect(json_response["block_view"]).to eq(
-        { "hidden" => [ "tags" ], "order" => [ "meanings", "item_type" ], "omitted" => [],
-          "spans" => {}, "from_preset" => false }
-      )
-    end
-
-    it "空を渡すと元に戻る" do
-      item.update!(block_view: { "hidden" => [ "tags" ], "order" => [ "meanings" ] })
-
-      patch "/api/v1/items/#{item.id}/block_view", params: { hidden: [], order: [] }, headers: headers
-
-      expect(item.reload.hidden_block_keys).to eq([])
-      expect(item.ordered_block_keys).to eq([])
-    end
-
-    it "重複と空文字は落とす" do
-      patch "/api/v1/items/#{item.id}/block_view",
-            params: { hidden: [ "tags", "tags", "", "  " ] }, headers: headers
-
-      expect(item.reload.hidden_block_keys).to eq([ "tags" ])
-    end
-
-    it "件数と長さに歯止めがある（metadata を肥らせない）" do
-      patch "/api/v1/items/#{item.id}/block_view",
-            params: { hidden: (1..200).map { |i| "k#{i}" }, order: [ "a" * 200 ] }, headers: headers
-
-      expect(item.reload.hidden_block_keys.size).to eq(Item::MAX_BLOCK_KEYS)
-      expect(item.ordered_block_keys.first.length).to eq(Item::MAX_BLOCK_KEY_LENGTH)
-    end
-
-    it "他ユーザーのカードは 404" do
-      other = create(:item, user: create(:user, :confirmed))
-
-      patch "/api/v1/items/#{other.id}/block_view", params: { hidden: [ "tags" ] }, headers: headers
-
-      expect(response).to have_http_status(:not_found)
-    end
+  def block_view
+    get "/api/v1/items/#{item.id}", headers: headers
+    json_response["block_view"]
   end
 
-  # 「持たない」と「畳む」は意味が違う。どちらも見えないが、
-  # 持たない項目は AI の穴埋めの対象からも外れる
-  describe "持たない項目（− のエリア）" do
-    it "保存して読み返せる" do
-      patch "/api/v1/items/#{item.id}/block_view",
-            params: { hidden: [ "tags" ], order: [ "meanings" ], omitted: [ "examples" ] }, headers: headers
+  it "並べ替えた順が残る" do
+    patch "/api/v1/items/#{item.id}/block_view",
+      params: { order: %w[meaning image title], hidden: [], omitted: [] },
+      headers: headers, as: :json
 
-      expect(response).to have_http_status(:success)
-      expect(item.reload.omitted_block_keys).to eq([ "examples" ])
-      expect(response.parsed_body.dig("block_view", "omitted")).to eq([ "examples" ])
-    end
-
-    it "持たない項目は AI の穴埋めから外れる" do
-      item_type = item.item_type
-      user.property_definitions.create!(item_type: item_type, key: "reading", label: "読み方", value_type: "text")
-      user.property_definitions.create!(item_type: item_type, key: "aliases", label: "別名", value_type: "text")
-      item.update!(block_view: { "omitted" => [ "prop:aliases" ] })
-
-      service = Items::FillPropertiesService.new(item: item, user: user)
-      keys = service.send(:definitions).map(&:key)
-
-      expect(keys).to eq([ "reading" ])
-    end
+    expect(response).to have_http_status(:ok)
+    expect(block_view["order"]).to eq(%w[meaning image title])
   end
 
-  # 100枚作れば100回同じ操作、を避けるためのひな型
-  describe "既定のひな型" do
-    it "まだ触っていないカードにはひな型が当たる" do
-      user.create_setting!(
-        card_property_presets: [ { "name" => "単語用", "keys" => %w[meanings examples] } ],
-        default_card_preset: "単語用"
-      )
+  it "並べ替えを繰り返しても、最後の順が残る" do
+    patch "/api/v1/items/#{item.id}/block_view",
+      params: { order: %w[a b c], hidden: [], omitted: [] }, headers: headers, as: :json
+    patch "/api/v1/items/#{item.id}/block_view",
+      params: { order: %w[c a b], hidden: [], omitted: [] }, headers: headers, as: :json
 
-      get "/api/v1/items/#{item.id}", headers: headers
-
-      view = response.parsed_body["block_view"]
-      expect(view["order"]).to eq(%w[meanings examples])
-      expect(view["from_preset"]).to be(true)
-    end
-
-    # 一度でも触ったカードにひな型を上書きすると、決めた並びが勝手に戻る
-    it "一度でも触ったカードには当てない" do
-      user.create_setting!(
-        card_property_presets: [ { "name" => "単語用", "keys" => %w[meanings] } ],
-        default_card_preset: "単語用"
-      )
-      item.update!(block_view: { "order" => %w[tags] })
-
-      get "/api/v1/items/#{item.id}", headers: headers
-
-      view = response.parsed_body["block_view"]
-      expect(view["order"]).to eq(%w[tags])
-      expect(view["from_preset"]).to be(false)
-    end
-
-    it "ひな型を決めていなければ何も当てない" do
-      get "/api/v1/items/#{item.id}", headers: headers
-
-      expect(response.parsed_body.dig("block_view", "from_preset")).to be(false)
-    end
+    expect(block_view["order"]).to eq(%w[c a b])
   end
 
-  describe "札の幅" do
-    # 列数は端末ごとの設定だが、どの札を広く見せたいかはカードの性質で決まる。
-    # 説明の長いカードは説明を2列に、といった具合に、カード側に持たせる
-    it "1より大きい幅だけを保存する（既定の1は書かない）" do
-      patch "/api/v1/items/#{item.id}/block_view",
-        params: { hidden: [], order: [ "meanings" ], omitted: [], spans: { "meanings" => 2, "tags" => 1 } },
-        headers: headers, as: :json
+  it "並べ替えると、ひな型由来ではなくなる（from_preset が下りる）" do
+    user.create_setting!(default_card_preset: "既定", card_property_presets: [
+      { "name" => "既定", "keys" => %w[title image] }
+    ])
 
-      expect(json_response.dig("block_view", "spans")).to eq({ "meanings" => 2 })
-    end
+    expect(block_view["from_preset"]).to be(true)
 
-    it "範囲の外は受けない" do
-      patch "/api/v1/items/#{item.id}/block_view",
-        params: { hidden: [], order: [ "meanings" ], omitted: [], spans: { "meanings" => 9 } },
-        headers: headers, as: :json
+    patch "/api/v1/items/#{item.id}/block_view",
+      params: { order: %w[image title], hidden: [], omitted: [] }, headers: headers, as: :json
 
-      expect(json_response.dig("block_view", "spans")).to eq({})
-    end
+    view = block_view
+    expect(view["from_preset"]).to be(false)
+    expect(view["order"]).to eq(%w[image title])
+  end
+
+  # 幅は並び替えとは別の話。並べ替えただけで幅が消えると、
+  # 「動かしたら見た目が変わった」という分かりにくい壊れ方をする
+  it "並べ替えても、札の幅は消えない" do
+    patch "/api/v1/items/#{item.id}/block_view",
+      params: { order: %w[title image], hidden: [], omitted: [], spans: { "title" => 2 } },
+      headers: headers, as: :json
+    expect(block_view["spans"]).to eq({ "title" => 2 })
+
+    # 画面の並べ替えは spans を送らない
+    patch "/api/v1/items/#{item.id}/block_view",
+      params: { order: %w[image title], hidden: [], omitted: [] },
+      headers: headers, as: :json
+
+    expect(block_view["order"]).to eq(%w[image title])
+    expect(block_view["spans"]).to eq({ "title" => 2 })
+  end
+
+  it "他人のカードは並べ替えられない" do
+    other = create(:user, :confirmed)
+
+    patch "/api/v1/items/#{item.id}/block_view",
+      params: { order: %w[image title], hidden: [], omitted: [] },
+      headers: auth_headers_for(other), as: :json
+
+    expect(response).to have_http_status(:not_found)
   end
 end

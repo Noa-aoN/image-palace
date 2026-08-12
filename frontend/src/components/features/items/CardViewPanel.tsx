@@ -24,6 +24,7 @@ import { Input } from '@/components/ui/input'
 import { Spinner } from '@/components/ui/spinner'
 import { Tooltip } from '@/components/ui/tooltip'
 import { PanelSlotContent } from '@/components/features/panel/PanelSlot'
+import { useCardDetailFit } from '@/hooks/useCardDetailColumns'
 import { updateBlockView, suggestItemProperties } from '@/lib/api/items'
 import { getSettings, updateSettings } from '@/lib/api/settings'
 import {
@@ -91,6 +92,8 @@ export function CardViewPanel({
     useSensor(PointerSensor, { activationConstraint: { distance: 4 } }),
     useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates })
   )
+
+  const { fit, change: changeFit } = useCardDetailFit()
 
   const save = async (nextHidden: string[], nextOrder: string[], nextOmitted: string[]) => {
     setBusy(true)
@@ -174,6 +177,17 @@ export function CardViewPanel({
 
         {/* 列数はこの端末で覚える。項目の少ないカードは1列、多いカードは2列、と
             カードによって変えたくなる。既定は環境設定（アカウント）に持つ */}
+        {/* 見返すときは、見出し語と絵だけを大きく見たい。
+            項目を作り込む見方とは目的が違うので、切り替えで持つ（端末ごとに覚える） */}
+        <label className="flex items-center gap-2 text-sm">
+          <input
+            type="checkbox"
+            checked={fit}
+            onChange={(e) => changeFit(e.target.checked)}
+          />
+          画面に収める（見出し語とイメージだけ）
+        </label>
+
         <div className="space-y-1.5">
           <p className="text-xs font-medium">列の数</p>
           <div className="flex gap-1.5">

@@ -119,6 +119,9 @@ export function QuickCreateCard() {
             {submitting && <Spinner size={15} />}
             {submitting ? '生成中...' : titles.length > 1 ? `${titles.length}枚を生成` : 'カードを生成'}
           </Button>
+          {/* 消費の目安は釦の隣に置く。下に1行を足すとその分だけ縦に伸び、
+              入力欄と行き先の間が遠くなる */}
+          <p className="text-xs text-muted-foreground">1枚 1{CREDIT_UNIT_SHORT}・設定は既定のまま</p>
           {/* 行き先は常に出す。作ったあとにだけ出していたため、
               「一覧はどこか」を探すことになっていた */}
           <div className="ml-auto flex items-center gap-3 text-xs text-muted-foreground">
@@ -130,9 +133,6 @@ export function QuickCreateCard() {
             </Link>
           </div>
         </div>
-        {/* 消費の目安は操作の下に1行だけ。ボタンの横に長い説明を置くと、
-            押す前に読むものが増える */}
-        <p className="text-xs text-muted-foreground">1枚 1{CREDIT_UNIT_SHORT}・設定は既定のまま</p>
         {error && <p className="text-sm text-destructive">{error}</p>}
         {doneCount !== null && !error && (
           <p className="text-sm text-muted-foreground">
