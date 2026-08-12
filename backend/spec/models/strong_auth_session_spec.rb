@@ -61,6 +61,35 @@ RSpec.describe StrongAuthSession, type: :model do
     it "一度も通していなければ無効" do
       expect(described_class.fresh?(user: user, client_id: "机")).to be(false)
     end
+
+    # 用途で窓の広さを分ける。**値そのものをここで固定する**
+    # （伸ばすなら、どちらを伸ばすのかを意識して直させたい）
+    describe "用途ごとの猶予" do
+      it "危険操作は10分、執務室は30分" do
+        expect(described_class::WINDOW).to eq(10.minutes)
+        expect(described_class::ADMIN_WINDOW).to eq(30.minutes)
+      end
+
+      it "10分を過ぎても、執務室の窓ではまだ有効" do
+        session = described_class.record!(user: user, client_id: "机", method: "passkey")
+        session.update!(authenticated_at: 20.minutes.ago)
+
+        expect(described_class.fresh?(user: user, client_id: "机")).to be(false)
+        expect(
+          described_class.fresh?(user: user, client_id: "机", within: described_class::ADMIN_WINDOW)
+        ).to be(true)
+      end
+
+      it "30分を過ぎればどちらも切れる" do
+        session = described_class.record!(user: user, client_id: "机", method: "passkey")
+        session.update!(authenticated_at: 31.minutes.ago)
+
+        expect(described_class.fresh?(user: user, client_id: "机")).to be(false)
+        expect(
+          described_class.fresh?(user: user, client_id: "机", within: described_class::ADMIN_WINDOW)
+        ).to be(false)
+      end
+    end
   end
 
   describe "取り消し" do

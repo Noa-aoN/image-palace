@@ -18,9 +18,13 @@ module Api
       # いまの状態。画面が「どれを出すか」を決めるのに使う
       def show
         render json: {
+          # ここが見ているのは**危険操作の猶予**（短い方）。
+          # 執務室に居られるかどうかは窓が広く、そちらは
+          # GET /api/v1/admin/session の strong_auth が返す
           authenticated: strongly_authenticated?,
           methods: ::Auth::StrongAuth.available_methods(current_user),
-          window_minutes: StrongAuthSession::WINDOW.in_minutes.to_i
+          window_minutes: StrongAuthSession::WINDOW.in_minutes.to_i,
+          admin_window_minutes: StrongAuthSession::ADMIN_WINDOW.in_minutes.to_i
         }
       end
 

@@ -45,7 +45,10 @@ module Api
         # 執務室の外（アカウント設定）は変わらず開くので、自分で用意して戻ってこられる。
         def require_admin_strong_auth!
           return unless ::Auth::StrongAuth.admin_required?
-          return if strongly_authenticated?
+          # 執務室に居られる時間は長めに取る（ADMIN_WINDOW）。
+          # ただし中の危険操作（役割の変更など）は require_strong_auth! が
+          # 短い窓で別に見るので、ここを広げても守りは弱くならない
+          return if strongly_authenticated?(within: StrongAuthSession::ADMIN_WINDOW)
 
           # 一度だけ調べる。prepared? は中で available_methods を呼ぶ
           methods = ::Auth::StrongAuth.available_methods(current_user)

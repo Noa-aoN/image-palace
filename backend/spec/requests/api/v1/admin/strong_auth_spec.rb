@@ -72,11 +72,36 @@ RSpec.describe "運営の入口での強い確認", type: :request do
 
       it "猶予を過ぎたら再び求める" do
         session = StrongAuthSession.record!(user: admin, client_id: client_id, method: "totp")
-        session.update!(authenticated_at: (StrongAuthSession::WINDOW + 1.minute).ago)
+        session.update!(authenticated_at: (StrongAuthSession::ADMIN_WINDOW + 1.minute).ago)
 
         get "/api/v1/admin/overview", headers: headers
 
         expect(response).to have_http_status(:forbidden)
+      end
+
+      # 読んで回るだけの時間で追い出されると、確かめ直しが作業の邪魔にしかならない。
+      # 執務室に居ること自体は、それだけでは何も壊さない
+      it "危険操作の猶予（10分）を過ぎても、執務室には居られる" do
+        session = StrongAuthSession.record!(user: admin, client_id: client_id, method: "totp")
+        session.update!(authenticated_at: 20.minutes.ago)
+
+        get "/api/v1/admin/overview", headers: headers
+
+        expect(response).to have_http_status(:success)
+      end
+
+      # ここが要。窓を広げたのは「入口」だけで、中の危険操作は短いまま
+      it "執務室には居られても、役割の変更には確かめ直しを求める" do
+        admin.update!(role: "admin")
+        session = StrongAuthSession.record!(user: admin, client_id: client_id, method: "totp")
+        session.update!(authenticated_at: 20.minutes.ago)
+        target = create(:user, :confirmed)
+
+        patch "/api/v1/admin/users/#{target.id}/role", params: { role: "support" }, headers: headers
+
+        expect(response).to have_http_status(:forbidden)
+        expect(response.parsed_body["code"]).to eq("strong_auth_required")
+        expect(target.reload.role).to eq("user")
       end
     end
 

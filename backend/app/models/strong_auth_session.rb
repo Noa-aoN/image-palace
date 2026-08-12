@@ -11,12 +11,19 @@
 class StrongAuthSession < ApplicationRecord
   belongs_to :user
 
-  # 確かめ直しを求めるまでの猶予。
+  # 確かめ直しを求めるまでの猶予。**用途で長さを分ける。**
   #
-  # 長いと、席を外した隙に操作できてしまう。短いと、権限をいくつか続けて
-  # 変えるだけで何度も求められる。**続けて数手できて、離席には間に合わない**
-  # ところとして10分に置く。
+  # 危険操作（役割の変更・パスキーの削除・二要素の解除）は、通ったあと
+  # すぐに効いてしまうもの。ここは短いままにする。長くすると、席を外した隙に
+  # 操作できてしまう。
+  #
+  # 執務室に居ること自体は、それだけでは何も壊さない。読んで回るだけの時間が
+  # 長いのに10分で追い出すと、**確かめ直しが作業の邪魔にしかならず、
+  # 「とりあえず通す」癖がつく**。守りとして働かなくなる方が危うい。
+  #
+  # どちらも同じ記録（この端末が確かめた時刻）を見て、見る窓の広さだけが違う。
   WINDOW = 10.minutes
+  ADMIN_WINDOW = 30.minutes
 
   METHODS = %w[passkey totp recovery_code].freeze
 
@@ -32,11 +39,12 @@ class StrongAuthSession < ApplicationRecord
     session
   end
 
-  # この端末は、まだ猶予の中にいるか
-  def self.fresh?(user:, client_id:)
+  # この端末は、まだ猶予の中にいるか。
+  # within を渡さなければ危険操作の猶予（短い方）で見る。**広い方は明示的に選ぶ**
+  def self.fresh?(user:, client_id:, within: WINDOW)
     return false if user.nil? || client_id.blank?
 
-    exists?(user: user, client_id: client_id, authenticated_at: WINDOW.ago..)
+    exists?(user: user, client_id: client_id, authenticated_at: within.ago..)
   end
 
   # 端末を手放したときに消す（ログアウト・鍵の取り消しなど）
