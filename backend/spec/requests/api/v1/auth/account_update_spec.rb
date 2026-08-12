@@ -16,9 +16,12 @@ RSpec.describe "Api::V1::Auth::Registrations#update", type: :request do
       expect(user.unconfirmed_email).to be_nil
     end
 
+    # パスワードを変えるときは、いまのパスワードを必ず添える
+    # （`check_current_password_before_update`。トークンだけでは変えさせない）
     it "現在と同じメールを送っても拒否されず、他項目の更新は通る" do
       put "/api/v1/auth",
-        params: { email: user.email, password: "newpassword123", password_confirmation: "newpassword123" },
+        params: { email: user.email, current_password: "password123",
+                  password: "newpassword123", password_confirmation: "newpassword123" },
         headers: headers
 
       expect(response).to have_http_status(:ok)
@@ -27,7 +30,8 @@ RSpec.describe "Api::V1::Auth::Registrations#update", type: :request do
 
     it "メール未指定の更新は従来どおり通る" do
       put "/api/v1/auth",
-        params: { password: "anotherpass123", password_confirmation: "anotherpass123" },
+        params: { current_password: "password123",
+                  password: "anotherpass123", password_confirmation: "anotherpass123" },
         headers: headers
 
       expect(response).to have_http_status(:ok)
