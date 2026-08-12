@@ -2,17 +2,18 @@
 
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { User, Globe, Trash2, AlertTriangle, IdCard, UserCog } from 'lucide-react'
+import { User, Globe, Trash2, AlertTriangle, IdCard, UserCog, ShieldCheck } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { CategorySections, type CategorySection } from '@/components/features/myroom/CategorySections'
 import { ComingSoon } from '@/components/features/myroom/ComingSoon'
 import { AvatarGenerator } from '@/components/features/account/AvatarGenerator'
 import { DisplayNameEditor } from '@/components/features/account/DisplayNameEditor'
+import { TwoFactorSettings } from '@/components/features/account/TwoFactorSettings'
 import { deleteAccount } from '@/lib/api/account'
 import { useAuthStore } from '@/stores/auth'
 import { useItemsStore } from '@/stores/items'
 
-type TabKey = 'info' | 'basic' | 'public' | 'withdraw'
+type TabKey = 'info' | 'security' | 'basic' | 'public' | 'withdraw'
 
 // 認証プロバイダ（devise-token-auth の provider 値）を日本語表記にする。
 const PROVIDER_LABELS: Record<string, string> = {
@@ -76,6 +77,12 @@ export default function AccountPage() {
       ),
     },
     {
+      key: 'security',
+      label: '安全',
+      icon: <ShieldCheck size={16} />,
+      content: <TwoFactorSettings />,
+    },
+    {
       key: 'basic',
       label: '基本プロフィール',
       icon: <User size={16} />,
@@ -84,7 +91,7 @@ export default function AccountPage() {
           <AvatarGenerator />
           <ComingSoon
             description="言語設定、ログイン連携、パスワード変更などは順次対応予定です。"
-            items={['アプリ内の呼び名', '言語 / タイムゾーン', '学習目的 / デフォルト学習ジャンル', '自分用メモ', 'ログイン連携（Google / GitHub / Apple）', 'メールアドレス変更', 'パスワード / 二要素認証']}
+            items={['アプリ内の呼び名', '言語 / タイムゾーン', '学習目的 / デフォルト学習ジャンル', '自分用メモ', 'ログイン連携（Google / GitHub / Apple）', 'メールアドレス変更', 'パスワード変更']}
           />
         </div>
       ),

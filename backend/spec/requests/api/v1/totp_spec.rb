@@ -112,4 +112,19 @@ RSpec.describe "二要素認証", type: :request do
       expect(response).to have_http_status(:ok)
     end
   end
+
+  # 秘密鍵と復旧コードが通る経路。どこにも溜めさせない
+  describe "キャッシュさせない" do
+    it "no-store を返す" do
+      get "/api/v1/totp", headers: headers
+
+      expect(response.headers["Cache-Control"]).to include("no-store")
+    end
+
+    it "登録の始めでも no-store を返す" do
+      post "/api/v1/totp", headers: headers
+
+      expect(response.headers["Cache-Control"]).to include("no-store")
+    end
+  end
 end

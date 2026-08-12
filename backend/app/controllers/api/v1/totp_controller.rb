@@ -11,6 +11,8 @@ module Api
     class TotpController < BaseController
       # 総当たりを許さない。コードは6桁しかない
       before_action :throttle_guard!, only: [ :confirm, :destroy ]
+      # 秘密鍵と復旧コードが通る経路。どこにも溜めさせない
+      before_action :do_not_store!
 
       # いまの状態。画面が「設定する」を出すかどうかの判断に使う
       def show
@@ -61,6 +63,12 @@ module Api
       end
 
       private
+
+      # 中身が中身なので、経路上のどこにも残させない
+      def do_not_store!
+        response.headers["Cache-Control"] = "no-store, no-cache, must-revalidate, private"
+        response.headers["Pragma"] = "no-cache"
+      end
 
       # Rack::Attack は経路ごとの上限。ここは利用者ごとに数える
       # （同じ人が別の網から叩いても効くように）
