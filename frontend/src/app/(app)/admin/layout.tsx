@@ -16,6 +16,7 @@ import { useAdminStore } from '@/stores/admin'
  */
 const TABS = [
   { href: '/admin', label: '概要' },
+  { href: '/admin/business', label: '経営' },
   // 「付与」は動詞で、隣（収支・獲得物）と粒度が違っていた。
   // このタブが決めるのは、有料プランの付与量も無料枠も含めた
   // クレジットの設計そのものなので、扱う対象で呼ぶ

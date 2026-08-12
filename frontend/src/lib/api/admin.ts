@@ -1,6 +1,7 @@
 import { apiClient } from './client'
 import type {
   AdminAuditLog,
+  AdminBusinessMetrics,
   AdminCostParameter,
   AdminFinancePage,
   AdminFinanceSummary,
@@ -374,5 +375,13 @@ export async function grantAdminReward(input: {
   reason: string
 }): Promise<{ granted: boolean }> {
   const res = await apiClient.post<{ granted: boolean }>('/api/v1/admin/rewards/grant', input)
+  return res.data
+}
+
+// 経営の数字。期間の指定は運営ダッシュボードと同じ（Admin::Period）
+export async function getAdminBusinessMetrics(params?: {
+  period?: string
+}): Promise<AdminBusinessMetrics> {
+  const res = await apiClient.get<AdminBusinessMetrics>('/api/v1/admin/business', { params })
   return res.data
 }
