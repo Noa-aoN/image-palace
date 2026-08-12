@@ -23,10 +23,11 @@ module Api
         private
 
         # ここは**ログインしている全員**が通る（サイドバーの出し分けに使う）。
-        # 求めていないなら、残りは誰も見ない。
-        # 見ない値のために問い合わせを2本増やすと、その分だけ全員が待つ
+        # 強い確認は運営の話なので、運営でない人には調べに行かない。
+        # 求めていないときも同じ。**見ない値のために問い合わせを増やすと、
+        # その分だけ全員が待つ**（画面は admin が false の時点で読むのをやめる）
         def strong_auth_state
-          return { required: false } unless ::Auth::StrongAuth.admin_required?
+          return { required: false } unless ::Auth::StrongAuth.admin_required? && current_user.admin?
 
           # 一度だけ調べる。prepared? は中で available_methods を呼ぶので、
           # 両方を呼ぶと同じことを二度聞くことになる

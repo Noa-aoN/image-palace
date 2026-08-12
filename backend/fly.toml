@@ -49,12 +49,23 @@ primary_region = 'sin'
   # 強い確認の栓。作りかけや不具合や締め出しが起きたとき、
   # ここを倒せば元の姿へ戻せる（画面だけでなくサーバー側でも閉じる）。
   #
-  #   PASSKEY_ENABLED=false          … Passkey の口を閉じる。認証アプリには影響しない
-  #   ADMIN_STRONG_AUTH_ENABLED=true … 運営が入るときに強い確認を求める
-  #
-  # 段階的に入れるため、運営への要求は既定で切っておく
+  #   PASSKEY_ENABLED=false … Passkey の口を閉じる。認証アプリには影響しない
   PASSKEY_ENABLED = 'true'
-  ADMIN_STRONG_AUTH_ENABLED = 'false'
+
+  # ADMIN_STRONG_AUTH_ENABLED（運営が入るときに強い確認を求めるか）は
+  # **ここに置かない。** secret として持つ。
+  #
+  # secret は fly.toml の [env] より強い（実測）。両方に書くと、
+  # このファイルには false と書いてあるのに本番は true、という食い違いが起きる。
+  # 設定を読みに来た人が嘘を掴むくらいなら、書いていない方がよい。
+  #
+  #   入にする: fly secrets set ADMIN_STRONG_AUTH_ENABLED=true
+  #   戻す:     fly secrets set ADMIN_STRONG_AUTH_ENABLED=false
+  #             （または fly secrets unset ADMIN_STRONG_AUTH_ENABLED）
+  #
+  # どちらもデプロイ不要。マシンの再起動だけで効く。
+  # 未設定なら false（コード側の既定。Auth::StrongAuth#admin_required?）。
+  # いまの本番の値は `rails auth:admin_readiness` が出す
 
 [processes]
   app = 'bundle exec rails server -b 0.0.0.0 -p 8080'
