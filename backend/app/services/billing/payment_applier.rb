@@ -33,9 +33,16 @@ module Billing
     def apply_subscription_invoice!(user:, plan:, stripe_subscription_id:, payment_key:)
       return false if user.nil? || plan.nil? || applied?(payment_key)
 
-      # Free→Paid 初回切替時、失効させずに Free 残高を「期限付きグラント」として引き継ぐ。
-      carry_over_free_balance!(user) if first_paid_grant?(user)
-      # subscription を渡し、paid の付与ログとして残す＝以降の初回判定に使う。
+      # Free→Paid で無料枠の引き継ぎ（free_carryover）は**行わない**。
+      #
+      # 無料枠は `credit_grants`（kind: trial / monthly_free）に6ヶ月の期限付きで積まれ、
+      # 有料化しても失効しない（ここで触るのは subscription_credits だけ。
+      # grant を失効させるのは解約時の forfeit ではなく、期限切れの日次ジョブ）。
+      # **つまり「使い残しを失効させない」という目的は grant 方式が既に満たしている。**
+      # ここで改めて引き継ぐと、生き残っている grant を二重に数えることになる。
+      # 経緯は docs/decisions/credit-model.md 末尾の追記を参照。
+      #
+      # subscription を渡し、paid の付与ログとして残す。
       local_sub = Subscription.find_by(stripe_subscription_id: stripe_subscription_id)
       if local_sub.nil?
         # invoice.paid が customer.subscription.created より先に届いた形。付与は続けてよいが、
@@ -51,31 +58,6 @@ module Billing
         amount_cents: plan.price_cents, currency: plan.currency
       )
       true
-    end
-
-    # 「初回の有料化」判定：free_carryover グラント未付与 かつ
-    # subscription_grant の付与ログが1件も無い。
-    #
-    # **subscription_id の有無は見ない。** invoice.paid が customer.subscription.created より
-    # 先に届くと local Subscription がまだ無く、付与ログは subscription_id 無しで残る。
-    # ここで「subscription_id 付きだけ」を数えると、そのログが初回判定から漏れる。
-    # さらに初回の Free 残高が 0 だと free_carryover グラントも作られないため、
-    # **次の更新分でもう一度「初回」と判定し、paid 残を free_carryover として引き継いでしまう**。
-    #
-    # subscription_grant を作るのは有料 invoice と trial 開始だけ（無料枠は trial /
-    # monthly_free という別の kind）。1件でもあれば「すでに有料の経路を通った」と見てよい。
-    def first_paid_grant?(user)
-      user.credit_grants.where(kind: "free_carryover").none? &&
-        user.credit_transactions.where(kind: "subscription_grant").none?
-    end
-
-    # 現在の Free 残高（subscription_credits に保持）を、上限=Free月間枠・期限=元のFree周期末で引き継ぐ。
-    def carry_over_free_balance!(user)
-      free_quota_points = Plan.find_by(name: "free")&.credits_per_period.to_i * Billing::POINTS_PER_CREDIT
-      carry = [ user.subscription_credits, free_quota_points ].min
-      return if carry <= 0
-
-      user.grant_credits!(carry, kind: "free_carryover", expires_at: user.next_free_credit_reset_at)
     end
   end
 end

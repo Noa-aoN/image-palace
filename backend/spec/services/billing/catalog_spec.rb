@@ -144,6 +144,34 @@ RSpec.describe Billing::Catalog do
     end
   end
 
+  # ここは本番の plans 行の姿を固定する。
+  # spec の factory は free プランに credits_per_period=10 を入れるため、
+  # 「本番の free は 0」という前提が spec 側からは見えない。#573 の取り残しは
+  # そのズレで見逃された（free の月間枠を見て CAP を決める古いコードが、
+  # 本番では常に CAP=0 になっていた）。
+  describe "free プランの位置づけ" do
+    let(:free) { described_class::SUBSCRIPTIONS.find { |row| row[:name] == "free" } }
+
+    it "free は「契約なし」を表す枠で、毎月の付与を持たない" do
+      expect(free[:price]).to eq(0)
+      expect(free[:credits]).to eq(0)
+    end
+
+    it "無料枠は free プランではなく Catalog の定数から配る" do
+      expect(described_class::TRIAL_CREDITS).to be_positive
+      expect(described_class::MONTHLY_FREE_CREDITS).to be_positive
+    end
+
+    it "free プランの credits_per_period を無料枠の量として使っていない" do
+      # 使っている実装があると、本番（0）とテスト（factory の 10）で挙動が割れる。
+      offenders = Dir[Rails.root.join("app/**/*.rb")].select do |path|
+        src = File.read(path)
+        src.match?(/find_by\(name: ["']free["']\)[^\n]*credits_per_period/)
+      end
+      expect(offenders).to be_empty, "free プランの credits_per_period を参照している: #{offenders.join(', ')}"
+    end
+  end
+
   describe "クレジットの寿命" do
     it "前払式支払手段の適用除外に収まる長さにする（6ヶ月以内）" do
       expect(described_class::CREDIT_LIFETIME).to be <= 6.months

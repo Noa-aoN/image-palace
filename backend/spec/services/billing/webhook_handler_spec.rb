@@ -106,8 +106,10 @@ RSpec.describe Billing::WebhookHandler do
     end
   end
 
-  describe "Free→Paid 引き継ぎ（free_carryover グラント）" do
-    let(:free_plan) { create(:plan) } # name=free, credits_per_period=10
+  # Free→Paid の引き継ぎ（free_carryover）は #573 で撤去した。
+  # 無料枠は credit_grants（trial / monthly_free）に6ヶ月の期限付きで積まれ、
+  # 有料化しても失効しない。つまり引き継ぎは要らない（やると二重に数える）。
+  describe "Free→Paid の切り替え" do
     let!(:local_sub) { create(:subscription, user:, plan:, status: "active", stripe_subscription_id: "sub_1") }
 
     def invoice_paid(event_id)
@@ -117,76 +119,63 @@ RSpec.describe Billing::WebhookHandler do
       } })
     end
 
-    it "初回の有料 invoice.paid で Free 残高を期限付きグラントとして引き継ぐ（期限=元Free周期末）" do
-      user; plan; free_plan
-      user.update!(subscription_credits: 6 * Billing::POINTS_PER_CREDIT)
-      user.update_column(:created_at, Time.zone.local(2026, 1, 15, 10))
+    it "無料枠のグラントは有料化しても失効せず、そのまま残る" do
+      user; plan
+      user.grant_credits!(3 * Billing::POINTS_PER_CREDIT, kind: "trial",
+                          expires_at: Billing::Catalog::CREDIT_LIFETIME.from_now)
+      user.grant_credits!(1 * Billing::POINTS_PER_CREDIT, kind: "monthly_free",
+                          expires_at: Billing::Catalog::CREDIT_LIFETIME.from_now)
 
-      travel_to(Time.zone.local(2026, 1, 20, 12)) { invoice_paid("evt_carry1") }
+      invoice_paid("evt_upgrade")
 
-      grant = user.reload.credit_grants.find_by(kind: "free_carryover")
-      expect(grant).to be_present
-      expect(grant.remaining_points).to eq(6 * Billing::POINTS_PER_CREDIT)
-      expect(grant.expires_at).to eq(Time.zone.local(2026, 2, 15, 10))
+      user.reload
+      expect(user.credit_grants.where(kind: %w[trial monthly_free]).sum(:remaining_points))
+        .to eq(4 * Billing::POINTS_PER_CREDIT)
       expect(user.subscription_credits).to eq(100 * Billing::POINTS_PER_CREDIT)
+      # 残高は「無料枠のグラント + 当月の有料枠」の合算になる
+      expect(user.available_credit_points).to eq(104 * Billing::POINTS_PER_CREDIT)
     end
 
-    it "CAP は Free 月間枠（10cr）を超えない" do
-      user; plan; free_plan
-      user.update!(subscription_credits: 50 * Billing::POINTS_PER_CREDIT)
+    it "free_carryover グラントはもう作らない" do
+      user; plan
+      user.update!(subscription_credits: 6 * Billing::POINTS_PER_CREDIT)
 
-      invoice_paid("evt_carry2")
-
-      expect(user.reload.credit_grants.find_by(kind: "free_carryover").remaining_points)
-        .to eq(10 * Billing::POINTS_PER_CREDIT)
-    end
-
-    it "2回目（更新）の invoice.paid では引き継がない" do
-      user; plan; free_plan
-      user.update!(subscription_credits: 5 * Billing::POINTS_PER_CREDIT)
-      invoice_paid("evt_carry_first")
-
-      expect { invoice_paid("evt_carry_second") }
-        .not_to(change { user.credit_grants.where(kind: "free_carryover").count })
-    end
-
-    it "Free 残高が 0 なら carryover グラントを作らない（0付与にもしない）" do
-      user; plan; free_plan
-      user.update!(subscription_credits: 0)
-
-      invoice_paid("evt_carry_zero")
+      invoice_paid("evt_no_carry")
 
       expect(user.reload.credit_grants.where(kind: "free_carryover")).to be_empty
-      expect(user.subscription_credits).to eq(100 * Billing::POINTS_PER_CREDIT) # Paid枠は通常付与
     end
 
-    # invoice.paid が customer.subscription.created より先に届く順序。
+    it "使い残しの当月分は subscription_carryover として移り、残高は減らない" do
+      user; plan
+      user.update!(subscription_credits: 6 * Billing::POINTS_PER_CREDIT)
+
+      invoice_paid("evt_leftover")
+
+      user.reload
+      expect(user.credit_grants.find_by(kind: "subscription_carryover").remaining_points)
+        .to eq(6 * Billing::POINTS_PER_CREDIT)
+      expect(user.available_credit_points).to eq(106 * Billing::POINTS_PER_CREDIT)
+    end
+
+    # invoice.paid が customer.subscription.created より先に届く順序（#300）。
     # local Subscription がまだ無いので、付与ログは subscription_id 無しで残る。
     context "invoice.paid が subscription.created より先に届いたとき（#300）" do
       let!(:local_sub) { nil } # 先着なので local Subscription はまだ無い
 
-      it "Free 残高 0 で先着しても、次の更新分で paid 残を引き継がない" do
-        user; plan; free_plan
+      it "紐付け無しでも付与され、2回目の更新でも残高が壊れない" do
+        user; plan
         user.update!(subscription_credits: 0)
 
-        invoice_paid("evt_race_first") # 1回目（紐付け無しで付与される）
-        expect(user.reload.credit_transactions.where(kind: "subscription_grant").count).to eq(1)
-        expect(user.credit_transactions.find_by(kind: "subscription_grant").subscription_id).to be_nil
+        invoice_paid("evt_race_first")
+        tx = user.reload.credit_transactions.find_by(kind: "subscription_grant")
+        expect(tx.subscription_id).to be_nil
+        expect(user.credit_transactions.where(kind: "subscription_grant").count).to eq(1)
 
-        expect { invoice_paid("evt_race_second") }
-          .not_to(change { user.credit_grants.where(kind: "free_carryover").count }.from(0))
-        expect(user.reload.subscription_credits).to eq(100 * Billing::POINTS_PER_CREDIT)
-      end
+        invoice_paid("evt_race_second")
 
-      it "Free 残高があれば1回目で引き継ぎ、2回目では引き継がない" do
-        user; plan; free_plan
-        user.update!(subscription_credits: 4 * Billing::POINTS_PER_CREDIT)
-
-        invoice_paid("evt_race_carry1")
-        expect(user.reload.credit_grants.where(kind: "free_carryover").count).to eq(1)
-
-        expect { invoice_paid("evt_race_carry2") }
-          .not_to(change { user.credit_grants.where(kind: "free_carryover").count }.from(1))
+        user.reload
+        expect(user.subscription_credits).to eq(100 * Billing::POINTS_PER_CREDIT)
+        expect(user.credit_grants.where(kind: "free_carryover")).to be_empty
       end
     end
   end
