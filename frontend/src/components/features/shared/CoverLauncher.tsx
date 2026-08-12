@@ -1,11 +1,13 @@
 'use client'
 
-import { ImageIcon } from 'lucide-react'
+import { ImageIcon, Maximize2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { PanelSlotContent } from '@/components/features/panel/PanelSlot'
 import { usePanelForm } from '@/components/features/panel/usePanelForm'
 import { CoverSettings } from '@/components/features/shared/CoverSettings'
+import { useState } from 'react'
 import { EntityCover } from '@/components/features/shared/EntityCover'
+import { ImageLightbox } from '@/components/ui/image-lightbox'
 import type { CoverType } from '@/types/cover'
 import type { ComponentProps, ReactNode } from 'react'
 
@@ -42,12 +44,35 @@ export function CoverLauncher({
   generateError?: string | null
 }): ReactNode {
   const panel = usePanelForm(PANEL_KEY, 'カバーの設定')
+  const [zoomed, setZoomed] = useState(false)
+  // 大きく見るときは、一覧用の縮小版ではなく元の絵を出す
+  const zoomUrl =
+    cover?.cover_image?.url ?? cover?.cover?.url ?? cover?.cover_images?.[0]?.url ?? null
 
   return (
     <div className="mb-6 flex items-center gap-4">
-      <div className="aspect-square w-24 shrink-0 overflow-hidden rounded-xl border border-border bg-muted">
+      {/* 絵の中には切替の矢印（釦）が入るので、**全体を釦で包まない**（釦の入れ子になる）。
+          代わりに角へ小さな出口を重ねる。触る画面でも押せるよう、常に出しておく */}
+      <div className="relative aspect-square w-24 shrink-0 overflow-hidden rounded-xl border border-border bg-muted">
         <EntityCover cover={cover} fallback={fallback} />
+        {zoomUrl && (
+          <button
+            type="button"
+            onClick={() => setZoomed(true)}
+            aria-label="カバー画像を大きく見る"
+            title="大きく見る"
+            className="absolute bottom-1 right-1 rounded-md bg-black/45 p-1 text-white opacity-80 transition hover:bg-black/65 hover:opacity-100 focus-visible:opacity-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white"
+          >
+            <Maximize2 size={13} />
+          </button>
+        )}
       </div>
+      <ImageLightbox
+        url={zoomUrl}
+        alt="カバー画像"
+        open={zoomed}
+        onClose={() => setZoomed(false)}
+      />
       <div>
         <Button
           variant="outline"
