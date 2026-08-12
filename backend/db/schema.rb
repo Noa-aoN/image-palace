@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_08_12_090000) do
+ActiveRecord::Schema[8.1].define(version: 2026_08_12_142225) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
   enable_extension "pg_trgm"
@@ -901,6 +901,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_08_12_090000) do
     t.datetime "credits_period_start"
     t.string "email", null: false
     t.string "encrypted_password"
+    t.datetime "last_seen_at"
     t.string "name"
     t.string "provider", default: "email", null: false
     t.datetime "reauthenticated_at"
@@ -922,6 +923,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_08_12_090000) do
     t.string "webauthn_id"
     t.index ["confirmation_token"], name: "index_users_on_confirmation_token", unique: true
     t.index ["email"], name: "index_users_on_email", unique: true
+    t.index ["last_seen_at"], name: "index_users_on_last_seen_at"
     t.index ["provider", "uid"], name: "index_users_on_provider_and_uid", unique: true
     t.index ["reset_password_token"], name: "index_users_on_reset_password_token", unique: true
     t.index ["stripe_customer_id"], name: "index_users_on_stripe_customer_id", unique: true
