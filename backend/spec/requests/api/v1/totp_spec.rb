@@ -80,25 +80,33 @@ RSpec.describe "二要素認証", type: :request do
       post "/api/v1/totp/confirm", params: { code: Auth::Totp.code_at(user.reload.totp_secret) }, headers: headers
     end
 
-    # 端末を置き忘れた隙に外されると、二要素の意味がなくなる
-    it "コードが無ければ外せない" do
-      delete "/api/v1/totp", params: { code: "000000" }, headers: headers
+    # 端末を置き忘れた隙に外されると、二要素の意味がなくなる。
+    # 確かめ方は共通の口（/reauth）に寄せてある
+    it "確かめていなければ外せない" do
+      # 設定した直後は、その端末を確かめ済みとして扱っている。
+      # 「確かめていない状態」を作るために、いったん取り消す
+      StrongAuthSession.revoke!(user: user)
 
-      expect(response).to have_http_status(:unprocessable_entity)
+      delete "/api/v1/totp", headers: headers
+
+      expect(response).to have_http_status(:forbidden)
       expect(user.reload.totp_enrolled?).to be(true)
     end
 
-    it "コードが合えば外せる" do
-      delete "/api/v1/totp", params: { code: Auth::Totp.code_at(user.reload.totp_secret) }, headers: headers
+    it "確かめていれば外せる" do
+      StrongAuthSession.record!(user: user, client_id: headers["client"], method: "totp")
+
+      delete "/api/v1/totp", headers: headers
 
       expect(response).to have_http_status(:ok)
       expect(user.reload.totp_enrolled?).to be(false)
     end
 
     it "外したことを記録に残す" do
-      expect {
-        delete "/api/v1/totp", params: { code: Auth::Totp.code_at(user.reload.totp_secret) }, headers: headers
-      }.to change { AdminAuditLog.where(action: "totp.disabled").count }.by(1)
+      StrongAuthSession.record!(user: user, client_id: headers["client"], method: "totp")
+
+      expect { delete "/api/v1/totp", headers: headers }
+        .to change { AdminAuditLog.where(action: "totp.disabled").count }.by(1)
     end
   end
 

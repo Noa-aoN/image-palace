@@ -10,6 +10,12 @@
 #     schedule: at 5am every day
 
 production:
+  # 使い終わった challenge と、猶予を過ぎた確認の記録。
+  # 放っておくと行が増え続ける（どちらも短命なもの）
+  sweep_auth_leftovers:
+    command: "WebauthnChallenge.sweep!; StrongAuthSession.sweep!"
+    schedule: every day at 4:30am
+
   clear_solid_queue_finished_jobs:
     command: "SolidQueue::Job.clear_finished_in_batches(sleep_between_batches: 0.3)"
     schedule: every hour at minute 12

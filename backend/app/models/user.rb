@@ -44,15 +44,14 @@ class User < ApplicationRecord
   # 多いと控えるのが面倒になって結局どこにも残されない
   TOTP_RECOVERY_CODE_COUNT = 10
 
-  # 危ない操作の前に本人を確かめ直す猶予。
-  # 長いと、席を外した隙に操作できてしまう
-  REAUTH_WINDOW = 15.minutes
-
   # == 関連付け ==============================================================
   has_one :setting, dependent: :destroy
   # Passkey / セキュリティキー。1人が何本でも持てる
   # （1本しか登録できないと、その端末を失った時点で入れなくなる）
   has_many :webauthn_credentials, dependent: :destroy
+  # 強い確認を通った端末。利用者ではなく端末ごとに持つ
+  # （机のパソコンで確かめた結果が、置き忘れた携帯に効いてはいけない）
+  has_many :strong_auth_sessions, dependent: :destroy
   has_many :items, dependent: :destroy
   has_many :property_definitions, dependent: :destroy
   has_many :item_reviews, dependent: :destroy
@@ -467,10 +466,6 @@ class User < ApplicationRecord
   # 生のまま持たない。漏れたら二要素を回避できてしまう
   def self.hash_recovery_code(code)
     Digest::SHA256.hexdigest("#{code}#{Rails.application.secret_key_base}")
-  end
-
-  def reauthenticated?
-    reauthenticated_at.present? && reauthenticated_at > REAUTH_WINDOW.ago
   end
 
   def self.bootstrap_admin_emails

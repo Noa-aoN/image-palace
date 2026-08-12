@@ -10,7 +10,9 @@ module Api
     # 権限を取られたときに二要素ごと剥がされる（他人の分は rake task で扱う）。
     class TotpController < BaseController
       # 総当たりを許さない。コードは6桁しかない
-      before_action :throttle_guard!, only: [ :confirm, :destroy ]
+      before_action :throttle_guard!, only: [ :confirm ]
+      # 外すのは、乗っ取った人が守りを剥がす道になる
+      before_action :require_strong_auth!, only: [ :destroy ]
       # 秘密鍵と復旧コードが通る経路。どこにも溜めさせない。
       # prepend にするのは、認証で弾かれた応答にも同じ扱いを掛けるため
       # （401 に秘密は無いが、経路ごと「溜めない」で揃えておくほうが穴が無い）
@@ -21,7 +23,7 @@ module Api
         render json: {
           enrolled: current_user.totp_enrolled?,
           recovery_codes_left: current_user.totp_recovery_codes.size,
-          reauthenticated: current_user.reauthenticated?
+          reauthenticated: strongly_authenticated?
         }
       end
 
@@ -46,20 +48,19 @@ module Api
                         status: :unprocessable_entity
         end
 
-        # 設定した本人は、その場で確かめ済みとして扱う
-        current_user.update!(reauthenticated_at: Time.current)
+        # 設定した本人は、その場で確かめ済みとして扱う（この端末だけ）
+        StrongAuthSession.record!(user: current_user, client_id: current_client_id, method: "totp")
         render json: { enrolled: true, recovery_codes: codes }
       end
 
       # 解除。**外すときも本人確認を求める**。
-      # 端末を置き忘れた隙に外されると、二要素の意味がなくなる
+      # 端末を置き忘れた隙に外されると、二要素の意味がなくなる。
+      #
+      # 確かめ方は共通の口（/reauth）に寄せた。ここで独自にコードを求めると、
+      # 確かめた直後にもう一度同じコードを入れることになる。
+      # 入力の回数は変わらないのに、手順だけが増える
       def destroy
-        unless current_user.verify_totp(params[:code])
-          return render json: { error: "コードが合いません。" }, status: :unprocessable_entity
-        end
-
-        current_user.update!(totp_secret: nil, totp_confirmed_at: nil, totp_recovery_codes: [],
-                             reauthenticated_at: nil)
+        current_user.update!(totp_secret: nil, totp_confirmed_at: nil, totp_recovery_codes: [])
         AdminAuditLog.record!(actor: current_user, action: "totp.disabled", target: current_user)
         render json: { enrolled: false }
       end

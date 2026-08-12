@@ -7,6 +7,9 @@ module Api
       # 役割の変更は owner だけが行え、必ず監査ログに残る。
       class UsersController < BaseController
         before_action :require_owner!, only: [ :update_role ]
+        # 権限を触るのは、乗っ取られたときの被害がいちばん大きい操作。
+        # 直近に本人か確かめていることを求める
+        before_action :require_strong_auth!, only: [ :update_role ]
 
         DEFAULT_PER = 25
         MAX_PER = 100

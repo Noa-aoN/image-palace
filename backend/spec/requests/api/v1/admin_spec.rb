@@ -406,6 +406,10 @@ RSpec.describe "Api::V1::Admin", type: :request do
   end
 
   describe "PATCH /api/v1/admin/users/:id/role" do
+    # 権限を触るのは、乗っ取られたときの被害がいちばん大きい操作。
+    # 直近に本人か確かめていることを求める（判定そのものは reauth の spec で確かめる）
+    before { StrongAuthSession.record!(user: owner, client_id: owner_headers["client"], method: "passkey") }
+
     it "一般ユーザーには 403" do
       patch "/api/v1/admin/users/#{member.id}/role", params: { role: "admin" }, headers: member_headers
       expect(response).to have_http_status(:forbidden)

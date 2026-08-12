@@ -112,7 +112,11 @@ RSpec.describe "運営の段階ごとに触れる範囲", type: :request do
     end
 
     it "役割を変えられる" do
-      patch "/api/v1/admin/users/#{member.id}/role", params: { role: "support" }, headers: headers_for(admin)
+      # 権限を触るには、直近に本人か確かめている必要がある
+      admin_headers = headers_for(admin)
+      StrongAuthSession.record!(user: admin, client_id: admin_headers["client"], method: "passkey")
+
+      patch "/api/v1/admin/users/#{member.id}/role", params: { role: "support" }, headers: admin_headers
 
       expect(response).to have_http_status(:success)
       expect(member.reload.role).to eq("support")
