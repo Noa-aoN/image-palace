@@ -144,6 +144,11 @@ class Rack::Attack
   #
   # こちらの負担は軽いが、外（Wikimedia）へ投げる口なので、
   # 相手の迷惑になる叩き方をこちらで止める。キャッシュが効くぶんは通る
+  # 二要素のコードは6桁しかない。総当たりを網の側でも止める
+  throttle("totp/ip", limit: 20, period: 5.minutes) do |req|
+    req.ip if req.post? && req.path.start_with?("/api/v1/totp")
+  end
+
   throttle("wikipedia/ip", limit: 30, period: 60.seconds) do |req|
     req.ip if req.get? && req.path.in?([ "/api/v1/wikipedia/summary", "/api/v1/wikipedia/search" ])
   end

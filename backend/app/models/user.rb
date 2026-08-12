@@ -35,6 +35,19 @@ class User < ApplicationRecord
   validates :name, length: { maximum: 50 }
   normalizes :name, with: ->(name) { name.to_s.gsub(/[[:cntrl:]]/, "").strip.presence }
 
+  # == 二要素認証 ============================================================
+  # 秘密鍵は暗号化して持つ。生のまま置くと、DB が漏れた時点で
+  # 二要素が二要素でなくなる
+  encrypts :totp_secret
+
+  # 復旧コードの本数。少ないと端末を失ったときに足りず、
+  # 多いと控えるのが面倒になって結局どこにも残されない
+  TOTP_RECOVERY_CODE_COUNT = 10
+
+  # 危ない操作の前に本人を確かめ直す猶予。
+  # 長いと、席を外した隙に操作できてしまう
+  REAUTH_WINDOW = 15.minutes
+
   # == 関連付け ==============================================================
   has_one :setting, dependent: :destroy
   has_many :items, dependent: :destroy
@@ -386,6 +399,56 @@ class User < ApplicationRecord
 
     effective_admins.select { |candidate| candidate.at_least?("admin") }
                     .none? { |candidate| candidate.id != user.id }
+  end
+
+  # 二要素を使える状態か。**鍵を作っただけでは有効にしない。**
+  # 認証アプリに登録し、実際にコードが合うところまで確かめてから立てる。
+  # ここを分けないと、登録に失敗した人が締め出される
+  def totp_enrolled?
+    totp_confirmed_at.present? && totp_secret.present?
+  end
+
+  # 登録の始め。まだ有効にしない（confirmed_at は立てない）
+  def start_totp_enrollment!
+    update!(totp_secret: Auth::Totp.generate_secret, totp_confirmed_at: nil, totp_recovery_codes: [])
+    totp_secret
+  end
+
+  # コードが合っていれば有効にし、復旧コードを配る。
+  # 返すのは**生のコード**で、保存するのはハッシュ。ここでしか見せられない
+  def confirm_totp!(code)
+    return nil unless totp_secret.present? && Auth::Totp.verify(totp_secret, code)
+
+    codes = Array.new(TOTP_RECOVERY_CODE_COUNT) { SecureRandom.alphanumeric(10).downcase }
+    update!(totp_confirmed_at: Time.current, totp_recovery_codes: codes.map { |c| self.class.hash_recovery_code(c) })
+    codes
+  end
+
+  # 認証アプリのコード、または復旧コード。
+  # 復旧コードは**使い捨て**（一度使ったら消す）
+  def verify_totp(code)
+    return false unless totp_enrolled?
+    return true if Auth::Totp.verify(totp_secret, code)
+
+    consume_recovery_code(code)
+  end
+
+  def consume_recovery_code(code)
+    hashed = self.class.hash_recovery_code(code.to_s.strip.downcase)
+    remaining = totp_recovery_codes.reject { |stored| ActiveSupport::SecurityUtils.secure_compare(stored.to_s, hashed) }
+    return false if remaining.size == totp_recovery_codes.size
+
+    update!(totp_recovery_codes: remaining)
+    true
+  end
+
+  # 生のまま持たない。漏れたら二要素を回避できてしまう
+  def self.hash_recovery_code(code)
+    Digest::SHA256.hexdigest("#{code}#{Rails.application.secret_key_base}")
+  end
+
+  def reauthenticated?
+    reauthenticated_at.present? && reauthenticated_at > REAUTH_WINDOW.ago
   end
 
   def self.bootstrap_admin_emails

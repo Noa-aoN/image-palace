@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_08_11_200500) do
+ActiveRecord::Schema[8.1].define(version: 2026_08_12_010000) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
   enable_extension "pg_trgm"
@@ -891,6 +891,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_08_11_200500) do
     t.string "encrypted_password"
     t.string "name"
     t.string "provider", default: "email", null: false
+    t.datetime "reauthenticated_at"
     t.datetime "reset_password_sent_at"
     t.string "reset_password_token"
     t.string "role", default: "user", null: false
@@ -899,6 +900,9 @@ ActiveRecord::Schema[8.1].define(version: 2026_08_11_200500) do
     t.integer "subscription_credits", default: 0, null: false
     t.jsonb "tokens", default: {}
     t.integer "topup_credits", default: 0, null: false
+    t.datetime "totp_confirmed_at"
+    t.jsonb "totp_recovery_codes", default: [], null: false
+    t.text "totp_secret"
     t.datetime "trial_granted_at"
     t.string "uid", default: "", null: false
     t.string "unconfirmed_email"

@@ -76,6 +76,11 @@ Rails.application.routes.draw do
       # 運営からの読みもの（お知らせ・更新情報・コラム）。公開済みのみ返す
       resources :posts, only: [ :index, :show ], param: :id
 
+      # 二要素認証。設定・確認・解除。まだ必須にはしない
+      resource :totp, only: [ :show, :create, :destroy ], controller: "totp" do
+        post :confirm
+      end
+
       resource :settings, only: [ :show, :update ]
 
       # お知らせ（生成結果・運営からの通知）
