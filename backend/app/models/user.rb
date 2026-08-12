@@ -440,9 +440,28 @@ class User < ApplicationRecord
   def confirm_totp!(code)
     return nil unless totp_secret.present? && Auth::Totp.verify(totp_secret, code)
 
-    codes = Array.new(TOTP_RECOVERY_CODE_COUNT) { SecureRandom.alphanumeric(10).downcase }
+    codes = self.class.generate_recovery_codes
     update!(totp_confirmed_at: Time.current, totp_recovery_codes: codes.map { |c| self.class.hash_recovery_code(c) })
     codes
+  end
+
+  # 復旧コードを配り直す。
+  #
+  # **配り直した時点で、前のコードはすべて使えなくなる。**
+  # 紙に控えたものを失くした・人に見られたかもしれない、というときに
+  # 古いものが生き残っていては配り直す意味がない。
+  #
+  # 認証アプリの鍵は変えない（登録し直させない）。
+  def regenerate_recovery_codes!
+    return nil unless totp_enrolled?
+
+    codes = self.class.generate_recovery_codes
+    update!(totp_recovery_codes: codes.map { |c| self.class.hash_recovery_code(c) })
+    codes
+  end
+
+  def self.generate_recovery_codes
+    Array.new(TOTP_RECOVERY_CODE_COUNT) { SecureRandom.alphanumeric(10).downcase }
   end
 
   # 認証アプリのコード、または復旧コード。

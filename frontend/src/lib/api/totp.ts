@@ -41,6 +41,15 @@ export async function confirmTotp(code: string): Promise<{ recovery_codes: strin
 }
 
 /**
+ * 復旧コードを配り直す。**配り直した時点で、前のコードは使えなくなる。**
+ * 返るのはこの1回だけ（サーバーはハッシュで持っている）
+ */
+export async function regenerateRecoveryCodes(): Promise<{ recovery_codes: string[] }> {
+  const res = await apiClient.post<{ recovery_codes: string[] }>('/api/v1/totp/regenerate_recovery_codes')
+  return res.data
+}
+
+/**
  * 外す。**コードはここで求めない。**
  * 確かめ方は共通の口（/reauth）に寄せてある。確かめが切れていれば 403 が返る
  */

@@ -11,8 +11,8 @@ module Api
     class TotpController < BaseController
       # 総当たりを許さない。コードは6桁しかない
       before_action :throttle_guard!, only: [ :confirm ]
-      # 外すのは、乗っ取った人が守りを剥がす道になる
-      before_action :require_strong_auth!, only: [ :destroy ]
+      # 外すのと配り直すのは、乗っ取った人が守りを剥がす道になる
+      before_action :require_strong_auth!, only: [ :destroy, :regenerate_recovery_codes ]
       # 秘密鍵と復旧コードが通る経路。どこにも溜めさせない。
       # prepend にするのは、認証で弾かれた応答にも同じ扱いを掛けるため
       # （401 に秘密は無いが、経路ごと「溜めない」で揃えておくほうが穴が無い）
@@ -51,6 +51,20 @@ module Api
         # 設定した本人は、その場で確かめ済みとして扱う（この端末だけ）
         StrongAuthSession.record!(user: current_user, client_id: current_client_id, method: "totp")
         render json: { enrolled: true, recovery_codes: codes }
+      end
+
+      # 復旧コードを配り直す。**配り直した時点で前のコードは使えなくなる。**
+      #
+      # 外すのと同じく、乗っ取った人が手を入れられる場所なので本人確認を求める。
+      # 失くしたときの備えを、失くしていない人が勝手に差し替えられては困る
+      def regenerate_recovery_codes
+        codes = current_user.regenerate_recovery_codes!
+        if codes.nil?
+          return render json: { error: "二要素認証が設定されていません。" }, status: :unprocessable_entity
+        end
+
+        AdminAuditLog.record!(actor: current_user, action: "totp.recovery_codes_regenerated", target: current_user)
+        render json: { recovery_codes: codes }
       end
 
       # 解除。**外すときも本人確認を求める**。

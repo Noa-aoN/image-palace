@@ -11,6 +11,7 @@ import { DisplayNameEditor } from '@/components/features/account/DisplayNameEdit
 import { SecuritySettings } from '@/components/features/account/SecuritySettings'
 import { PalaceNameEditor } from '@/components/features/account/PalaceNameEditor'
 import { deleteAccount } from '@/lib/api/account'
+import { useAdminStore } from '@/stores/admin'
 import { useAuthStore } from '@/stores/auth'
 import { useItemsStore } from '@/stores/items'
 
@@ -52,6 +53,10 @@ export default function AccountPage() {
       setDeleting(false)
     }
   }
+
+  // セキュリティの項目を出すかどうかの判断にだけ使う。
+  // 出し分けは見た目の話で、守りはサーバー側にある
+  const isAdmin = useAdminStore((s) => s.session?.admin ?? false)
 
   const sections: CategorySection<TabKey>[] = [
     {
@@ -110,14 +115,23 @@ export default function AccountPage() {
         />
       ),
     },
-    {
-      // 退会の直前に置く。どちらも「アカウントそのもの」を扱う項目で、
-      // 見え方や公開範囲の設定とは性質が違う
-      key: 'security',
-      label: 'セキュリティ',
-      icon: <ShieldCheck size={16} />,
-      content: <SecuritySettings />,
-    },
+    // 退会の直前に置く。どちらも「アカウントそのもの」を扱う項目で、
+    // 見え方や公開範囲の設定とは性質が違う。
+    //
+    // 中身（パスキー・二要素認証）が運営の運用のためのものなので、
+    // 一般の人には見出しごと出さない。**空の項目を置くと、
+    // 何か設定し忘れているのかと考えさせてしまう。**
+    // ログイン方法とメールアドレスは「登録情報」にある
+    ...(isAdmin
+      ? [
+          {
+            key: 'security' as const,
+            label: 'セキュリティ',
+            icon: <ShieldCheck size={16} />,
+            content: <SecuritySettings />,
+          },
+        ]
+      : []),
     {
       key: 'withdraw',
       label: '退会',

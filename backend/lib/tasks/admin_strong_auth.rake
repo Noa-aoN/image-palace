@@ -1,6 +1,39 @@
 # frozen_string_literal: true
 
 namespace :auth do
+  desc "締め出された運営の手立てを消す（端末を完全に失ったとき）"
+  task :reset_strong_auth, [ :email ] => :environment do |_t, args|
+    # **最後の手段。** 端末を失い、復旧コードも無く、自分では戻れないとき。
+    #
+    # 消すのは登録した手立てだけで、アカウントそのものには触らない。
+    # 消したあとは本人が登録し直すまで強い確認を通れないので、
+    # ADMIN_STRONG_AUTH_ENABLED=false と併せて使う。
+    email = args[:email].to_s.strip
+    abort "メールアドレスを指定してください（例: rails auth:reset_strong_auth[you@example.com]）" if email.blank?
+
+    user = User.find_by(email: email)
+    abort "見つかりません: #{email}" if user.nil?
+
+    passkeys = user.webauthn_credentials.count
+    had_totp = user.totp_enrolled?
+    codes = user.totp_recovery_codes.size
+
+    user.webauthn_credentials.destroy_all
+    user.update!(totp_secret: nil, totp_confirmed_at: nil, totp_recovery_codes: [])
+    StrongAuthSession.revoke!(user: user)
+    AdminAuditLog.record!(actor: user, action: "strong_auth.reset", target: user,
+                          details: { passkeys: passkeys, totp: had_totp })
+
+    puts "#{email} の手立てを消しました"
+    puts "  パスキー #{passkeys}本 / 認証アプリ #{had_totp ? 'あり' : '無し'} / 復旧コード #{codes}本"
+    puts "  通していた確認も取り消しました"
+    puts
+    puts "この人はいま手立てを持っていません。"
+    puts "ADMIN_STRONG_AUTH_ENABLED=true のままだと執務室へ入れないので、"
+    puts "本人が登録し直すまでは false にしてください:"
+    puts "  fly secrets set ADMIN_STRONG_AUTH_ENABLED=false"
+  end
+
   desc "運営が強い確認の手立てを持っているか調べる（ADMIN_STRONG_AUTH_ENABLED を入にする前に）"
   task admin_readiness: :environment do
     # Flag を入にした瞬間、手立てを持たない運営は執務室へ入れなくなる。

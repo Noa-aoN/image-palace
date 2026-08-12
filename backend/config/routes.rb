@@ -96,6 +96,7 @@ Rails.application.routes.draw do
       # 二要素認証。設定・確認・解除。まだ必須にはしない
       resource :totp, only: [ :show, :create, :destroy ], controller: "totp" do
         post :confirm
+        post :regenerate_recovery_codes
       end
 
       resource :settings, only: [ :show, :update ]
