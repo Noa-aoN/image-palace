@@ -58,7 +58,7 @@ export function AdminLimitsPanel({ overview }: { overview: AdminOverview }) {
           <button
             type="button"
             onClick={runCheck}
-            disabled={checking}
+            disabled={checking || !canWrite}
             className="rounded-lg border border-border px-3 py-1.5 text-sm hover:bg-accent disabled:opacity-50"
           >
             {checking ? (
