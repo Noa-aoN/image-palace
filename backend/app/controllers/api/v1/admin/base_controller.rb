@@ -18,6 +18,7 @@ module Api
       # エンドポイントを足すたびに別のファイルを触ることになり、書き忘れる。
       class BaseController < Api::V1::BaseController
         before_action :require_admin!
+        before_action :require_admin_strong_auth!
 
         private
 
@@ -28,6 +29,37 @@ module Api
           # 総当たりの手がかりを与えないよう、権限が無いことだけを返す（内容は明かさない）
           Rails.logger.warn "[Admin] FORBIDDEN user_id=#{current_user&.id} path=#{request.path}"
           render json: { error: "権限がありません" }, status: :forbidden
+        end
+
+        # 運営として入るには、一次認証（パスワード・Google・Apple）に加えて
+        # もう一度ご本人か確かめる。
+        #
+        # **合鍵ひとつで執務室まで開くのを避ける。** 一次認証の情報は漏れうるが、
+        # 手元の鍵（Passkey・認証アプリ）まで同時に奪うのは桁違いに難しい。
+        #
+        # まだ求めない設定（既定）のときは、これまでどおり素通りする。
+        # 切り替えは環境変数だけで済み、デプロイを待たずに戻せる。
+        #
+        # 手立てを何も持っていない人は締め出さず、**用意する場所へ案内する**。
+        # ここで黙って通してしまうと、それは恒久的な抜け道になる。
+        # 執務室の外（アカウント設定）は変わらず開くので、自分で用意して戻ってこられる。
+        def require_admin_strong_auth!
+          return unless ::Auth::StrongAuth.admin_required?
+          return if strongly_authenticated?
+
+          if ::Auth::StrongAuth.prepared?(current_user)
+            render json: {
+              error: "執務室に入る前に、もう一度ご本人か確かめさせてください。",
+              code: "strong_auth_required",
+              methods: ::Auth::StrongAuth.available_methods(current_user)
+            }, status: :forbidden
+          else
+            render json: {
+              error: "執務室に入るには、パスキーか認証アプリの設定が必要です。",
+              code: "strong_auth_setup_required",
+              methods: []
+            }, status: :forbidden
+          end
         end
 
         # その段階以上を求める。足りなければ、何が足りないかは言わずに断る

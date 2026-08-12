@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
+import { AdminStrongAuthGate } from '@/components/features/admin/AdminStrongAuthGate'
 import { ROLE_LABELS } from '@/lib/admin-roles'
 import { ShieldCheck, Loader2 } from 'lucide-react'
 import { useAdminStore } from '@/stores/admin'
@@ -61,6 +62,13 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
 
   if (!session.admin) {
     return <div className="py-24 text-center text-muted-foreground">執務室は運営のみが開けます。</div>
+  }
+
+  // 一次認証のうえで、もう一度ご本人か確かめる。
+  // まだ求めない設定のときは、この節ごと素通りする（これまでどおり）
+  const strongAuth = session.strong_auth
+  if (strongAuth?.required && !strongAuth.satisfied) {
+    return <AdminStrongAuthGate prepared={strongAuth.prepared} onDone={fetchSession} />
   }
 
   return (

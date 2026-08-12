@@ -20,6 +20,26 @@ export interface AdminSession {
   /** 権限・お金を触れるか（admin のみ）。名前は据え置き（画面側の参照が多いため） */
   owner: boolean
   role: AdminRole
+  strong_auth: AdminStrongAuth
+}
+
+/**
+ * 執務室に入る前の、もう一度の本人確認。
+ *
+ * 3つの値で、画面が出すものが決まる。
+ *   required=false          … これまでどおり。何も出さない
+ *   prepared=false          … 手立てが無い。設定へ案内する
+ *   satisfied=false         … 確かめてもらう
+ */
+export interface AdminStrongAuth {
+  /** いま求めているか。切ってあれば以下は見なくてよい */
+  required: boolean
+  /** この端末が確かめ済みか */
+  satisfied: boolean
+  /** パスキーか認証アプリを持っているか */
+  prepared: boolean
+  /** 使える確かめ方。使いやすい順 */
+  methods: ('passkey' | 'totp' | 'recovery_code')[]
 }
 
 export interface AdminSeriesPoint {
