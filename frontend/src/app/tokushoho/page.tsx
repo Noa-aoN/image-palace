@@ -8,20 +8,28 @@ export const metadata: Metadata = {
 }
 
 // 特定商取引法に基づく表記。
-// ※「要記入」の項目は事業者の実情報（氏名・住所・連絡先等）。本リリース前に必ず埋めること。
-//   個人事業主の場合、住所・電話番号は「請求があれば遅滞なく開示する」運用も可（その旨を記載済み）。
+//
+// 個人で運営しているので、氏名・住所・電話番号は「請求があれば遅滞なく開示する」
+// 運用にしている（消費者庁が個人事業主向けに認めている書き方）。
+// **「請求があったら本当に遅滞なく開示する」ことが条件**なので、
+// 問い合わせ先だけは必ず生きているものを載せること。
+//
+// ※ お問い合わせ先は未確定。決まり次第 CONTACT_EMAIL を差し替える。
+const CONTACT_EMAIL = 'support@imagepalace.app'
+const ON_REQUEST = '請求があった場合には、遅滞なく開示いたします。'
+
 const ROWS: { label: string; value: React.ReactNode }[] = [
-  { label: '販売事業者', value: '※要記入（事業者名／屋号）' },
-  { label: '運営統括責任者', value: '※要記入（氏名）' },
+  { label: '販売事業者', value: ON_REQUEST },
+  { label: '所在地', value: ON_REQUEST },
+  { label: '電話番号', value: ON_REQUEST },
   {
-    label: '所在地',
-    value: '※要記入（請求があれば遅滞なく開示します。開示を希望される場合は下記連絡先までご連絡ください）',
+    label: 'お問い合わせ',
+    value: (
+      <a href={`mailto:${CONTACT_EMAIL}`} className="underline underline-offset-2">
+        {CONTACT_EMAIL}
+      </a>
+    ),
   },
-  {
-    label: '電話番号',
-    value: '※要記入（請求があれば遅滞なく開示します。開示を希望される場合は下記連絡先までご連絡ください）',
-  },
-  { label: 'メールアドレス', value: '※要記入（お問い合わせ用メールアドレス）' },
   {
     label: '販売価格',
     value: '各有料プランの料金は、料金ページ（ログイン後の「プランを見る」）に表示します。表示価格は消費税込みです。',
@@ -61,10 +69,8 @@ const ROWS: { label: string; value: React.ReactNode }[] = [
 
 export default function TokushohoPage() {
   return (
-    <LegalLayout title="特定商取引法に基づく表記" updatedAt="最終更新日: 2026-06-27">
-      <p>
-        特定商取引法第11条に基づき、以下のとおり表示します。
-      </p>
+    <LegalLayout title="特定商取引法に基づく表記" updatedAt="最終更新日: 2026-08-12">
+      <p>特定商取引法第11条に基づき、以下のとおり表示します。</p>
 
       <dl className="divide-y" style={{ borderColor: 'var(--palace)' }}>
         {ROWS.map(({ label, value }) => (
