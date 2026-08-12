@@ -40,6 +40,9 @@ namespace :auth do
 
     puts
     puts "いまの設定: ADMIN_STRONG_AUTH_ENABLED=#{Auth::StrongAuth.admin_required? ? 'true（求めている）' : 'false（求めていない）'}"
+    # 「どこで決まっているのか」まで出す。設定が見つからないと、
+    # 戻し方も分からない
+    puts "          ↑ #{ENV.key?('ADMIN_STRONG_AUTH_ENABLED') ? 'fly secrets で設定（戻す: fly secrets set ADMIN_STRONG_AUTH_ENABLED=false）' : '未設定のためコード側の既定（false）'}"
     puts "          PASSKEY_ENABLED=#{Auth::StrongAuth.passkey_enabled?}"
 
     if unprepared.empty?

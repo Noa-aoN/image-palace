@@ -49,4 +49,22 @@ RSpec.describe "運営セッションの問い合わせ本数", type: :request d
     expect(response.parsed_body["strong_auth"]).to include("required" => true)
     expect(count).to be <= 2
   end
+
+  # 強い確認は運営の話。運営でない人にとっては、求めていようがいまいが関係ない。
+  # ここを見落とすと、栓を入にした日から**利用者全員**が2本ぶん待つ
+  context "運営でない人" do
+    let(:user) { create(:user, :confirmed) }
+
+    it "求めていても調べに行かない" do
+      allow(Auth::StrongAuth).to receive(:admin_required?).and_return(true)
+      get "/api/v1/admin/session", headers: headers
+
+      count = count_queries { get "/api/v1/admin/session", headers: headers }
+
+      expect(response).to have_http_status(:ok)
+      expect(response.parsed_body["admin"]).to be(false)
+      expect(response.parsed_body["strong_auth"]).to eq("required" => false)
+      expect(count).to eq(0)
+    end
+  end
 end
