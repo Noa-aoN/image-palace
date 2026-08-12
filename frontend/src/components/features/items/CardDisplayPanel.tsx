@@ -1,12 +1,29 @@
 'use client'
 
 import { useEffect, useState } from 'react'
+import { ChevronDown, ChevronUp, GripVertical } from 'lucide-react'
+import {
+  MAX_VISIBLE_FIELDS,
+  buildLayoutRows,
+  moveRow,
+  toggleVisible,
+  visibleCount,
+  type LayoutCandidate,
+  type LayoutRow,
+} from '@/lib/card-list-layout'
+
+// 組み込みの候補。利用者が作った項目より前に並べる（どのカードにもあるため）
+const BUILTIN_CANDIDATES: LayoutCandidate[] = [
+  { key: 'title', label: '見出し語', builtin: true },
+  { key: 'image', label: 'イメージ', builtin: true },
+  { key: 'meaning', label: '意味・説明', builtin: true },
+]
 import { LayoutGrid } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Label } from '@/components/ui/label'
 import { PanelSlotContent } from '@/components/features/panel/PanelSlot'
 import { usePanelForm } from '@/components/features/panel/usePanelForm'
-import { getPropertyDefinitions, type PropertyDefinition } from '@/lib/api/properties'
+import { getPropertyDefinitions } from '@/lib/api/properties'
 import { getSettings, updateSettings } from '@/lib/api/settings'
 import {
   CARD_COLUMN_CHOICES,
@@ -42,15 +59,9 @@ export function CardDisplayPanel({
   const panel = usePanelForm(PANEL_KEY, '表示')
   const rowChoices = availableRowChoices(display.columns)
   const perPage = cardsPerPage(display)
-  const {
-    headlineKey,
-    headlineChoices,
-    changeHeadline,
-    savingHeadline,
-    listFields,
-    maxListFields,
-    toggleListField,
-  } = useHeadlineSetting(panel.isOpen)
+  const layout = useCardListLayout(panel.isOpen)
+  // 掴んで動かしている行。HTML5 の drag は「どこから」を持たないので自分で覚える
+  const [dragging, setDragging] = useState<number | null>(null)
 
   return (
     <>
@@ -110,47 +121,78 @@ export function CardDisplayPanel({
             )}
           </div>
 
-          <div className="space-y-2">
-            <Label>名前に出す項目</Label>
-            <div className="flex flex-wrap gap-2">
-              <Chip active={!headlineKey} onClick={() => changeHeadline('')}>
-                見出し語
-              </Chip>
-              {headlineChoices.map((choice) => (
-                <Chip
-                  key={choice.key}
-                  active={headlineKey === choice.key}
-                  onClick={() => changeHeadline(choice.key)}
-                >
-                  {choice.label}
-                </Chip>
-              ))}
-            </div>
-            <p className="text-xs text-muted-foreground">
-              {headlineChoices.length === 0
-                ? '読み方や別名などの項目を作ると、ここで選べるようになります。'
-                : '選んだ項目が空のカードは、見出し語のまま出ます。この設定はアカウント全体に効きます。'}
-              {savingHeadline && ' 保存中…'}
-            </p>
-          </div>
+          {/* 列数・行数と、出す項目は別の話。線で区切って、混ざらないようにする */}
+          <hr className="border-border" />
 
           <div className="space-y-2">
-            <Label>名前の下に出す項目</Label>
-            <div className="flex flex-wrap gap-2">
-              {headlineChoices.map((choice) => (
-                <Chip
-                  key={choice.key}
-                  active={listFields.includes(choice.key)}
-                  onClick={() => toggleListField(choice.key)}
-                >
-                  {choice.label}
-                </Chip>
-              ))}
+            <div className="flex flex-wrap items-baseline justify-between gap-2">
+              <Label>表示項目</Label>
+              <span className="text-xs text-muted-foreground">
+                出す {layout.shown} / {MAX_VISIBLE_FIELDS}
+                {layout.saving && ' 保存中…'}
+              </span>
             </div>
+
+            <ul className="space-y-1">
+              {layout.rows.map((row, index) => (
+                <li
+                  key={row.key}
+                  draggable
+                  onDragStart={() => setDragging(index)}
+                  onDragOver={(e) => e.preventDefault()}
+                  onDrop={(e) => {
+                    e.preventDefault()
+                    if (dragging !== null) layout.move(dragging, index)
+                    setDragging(null)
+                  }}
+                  onDragEnd={() => setDragging(null)}
+                  className={`flex items-center gap-2 rounded-lg border px-2 py-1.5 ${
+                    row.visible ? 'border-border' : 'border-dashed border-border/60'
+                  } ${dragging === index ? 'opacity-50' : ''}`}
+                >
+                  <GripVertical size={14} className="shrink-0 cursor-grab text-muted-foreground" aria-hidden />
+
+                  <label className="flex min-w-0 flex-1 items-center gap-2 text-sm">
+                    <input
+                      type="checkbox"
+                      checked={row.visible}
+                      onChange={() => layout.toggle(row.key)}
+                      className="shrink-0"
+                    />
+                    <span className={`truncate ${row.visible ? '' : 'text-muted-foreground'}`}>
+                      {layout.labelOf(row.key)}
+                    </span>
+                  </label>
+
+                  {/* 掴んで動かせない人のために、押して動かす道も残す */}
+                  <div className="flex shrink-0 gap-0.5">
+                    <button
+                      type="button"
+                      onClick={() => layout.move(index, index - 1)}
+                      disabled={index === 0}
+                      aria-label={`${layout.labelOf(row.key)}を上へ`}
+                      className="rounded p-1 text-muted-foreground hover:bg-muted disabled:opacity-30"
+                    >
+                      <ChevronUp size={14} />
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => layout.move(index, index + 1)}
+                      disabled={index === layout.rows.length - 1}
+                      aria-label={`${layout.labelOf(row.key)}を下へ`}
+                      className="rounded p-1 text-muted-foreground hover:bg-muted disabled:opacity-30"
+                    >
+                      <ChevronDown size={14} />
+                    </button>
+                  </div>
+                </li>
+              ))}
+            </ul>
+
+            {layout.notice && <p className="text-xs text-destructive">{layout.notice}</p>}
             <p className="text-xs text-muted-foreground">
-              {headlineChoices.length === 0
-                ? '読み方や別名などの項目を作ると、ここで選べるようになります。'
-                : `最大 ${maxListFields} 件まで。値の入っていないカードには出ません。増やすほど1枚が縦に伸び、一覧として見渡しにくくなります。`}
+              上から順に出ます。**値の無い項目は「-」**として出るので、入れ忘れに気づけます。
+              読み方や別名などの項目を作ると、ここに増えます。
             </p>
           </div>
 
@@ -175,13 +217,12 @@ export function CardDisplayPanel({
  *
  * パネルを開いたときに読む。一覧を出すたびに毎回引く必要はない。
  */
-function useHeadlineSetting(isOpen: boolean) {
-  const [headlineKey, setHeadlineKey] = useState('')
-  const [definitions, setDefinitions] = useState<PropertyDefinition[]>([])
-  const [savingHeadline, setSavingHeadline] = useState(false)
+function useCardListLayout(isOpen: boolean) {
+  const [rows, setRows] = useState<LayoutRow[]>([])
+  const [candidates, setCandidates] = useState<LayoutCandidate[]>([])
   const [loaded, setLoaded] = useState(false)
-  const [listFields, setListFields] = useState<string[]>([])
-  const [maxListFields, setMaxListFields] = useState(2)
+  const [saving, setSaving] = useState(false)
+  const [notice, setNotice] = useState<string | null>(null)
 
   useEffect(() => {
     if (!isOpen || loaded) return
@@ -189,10 +230,20 @@ function useHeadlineSetting(isOpen: boolean) {
     Promise.all([getSettings(), getPropertyDefinitions()])
       .then(([settings, defs]) => {
         if (cancelled) return
-        setHeadlineKey(settings.card_headline_key ?? '')
-        setListFields(settings.card_list_fields ?? [])
-        setMaxListFields(settings.max_card_list_fields ?? 2)
-        setDefinitions(defs)
+        // 候補は「組み込み」＋「利用者が作った項目」。
+        // 同じ識別名が種別をまたいで存在しうるので畳む（読み方を種別ごとに作っていても1つ）
+        const userDefs = Array.from(
+          defs
+            .filter((d) => d.value_type === 'text' || d.value_type === 'list')
+            .reduce((acc, d) => {
+              if (!acc.has(d.key)) acc.set(d.key, { key: d.key, label: d.label, builtin: false })
+              return acc
+            }, new Map<string, LayoutCandidate>())
+            .values()
+        )
+        const all = [...BUILTIN_CANDIDATES, ...userDefs]
+        setCandidates(all)
+        setRows(buildLayoutRows(settings.card_list_layout ?? [], all))
         setLoaded(true)
       })
       .catch(() => {})
@@ -201,48 +252,41 @@ function useHeadlineSetting(isOpen: boolean) {
     }
   }, [isOpen, loaded])
 
-  const headlineChoices = Array.from(
-    definitions
-      .filter((d) => d.value_type === 'text' || d.value_type === 'list')
-      .reduce((acc, d) => {
-        if (!acc.has(d.key)) acc.set(d.key, { key: d.key, label: d.label })
-        return acc
-      }, new Map<string, { key: string; label: string }>())
-      .values()
-  )
-
-  // 上限に達したら、いちばん古い指定を落として入れ替える。
-  // 「上限です」と拒むより、押した結果が出るほうが分かりやすい
-  const toggleListField = async (key: string) => {
-    const next = listFields.includes(key)
-      ? listFields.filter((k) => k !== key)
-      : [...listFields, key].slice(-maxListFields)
-    const previous = listFields
-    setListFields(next)
+  const save = async (next: LayoutRow[]) => {
+    const previous = rows
+    setRows(next)
+    setSaving(true)
     try {
-      const saved = await updateSettings({ card_list_fields: next })
-      setListFields(saved.card_list_fields ?? [])
+      const saved = await updateSettings({ card_list_layout: next })
+      setRows(buildLayoutRows(saved.card_list_layout ?? next, candidates))
     } catch {
-      setListFields(previous) // 失敗したら元に戻す
-    }
-  }
-
-  const changeHeadline = async (key: string) => {
-    if (savingHeadline || key === headlineKey) return
-    const previous = headlineKey
-    setHeadlineKey(key)
-    setSavingHeadline(true)
-    try {
-      const saved = await updateSettings({ card_headline_key: key })
-      setHeadlineKey(saved.card_headline_key ?? '')
-    } catch {
-      setHeadlineKey(previous) // 失敗したら元に戻す
+      setRows(previous) // 失敗したら元に戻す
+      setNotice('保存できませんでした')
     } finally {
-      setSavingHeadline(false)
+      setSaving(false)
     }
   }
 
-  return { headlineKey, headlineChoices, changeHeadline, savingHeadline, listFields, maxListFields, toggleListField }
+  const toggle = (key: string) => {
+    const { rows: next, rejected } = toggleVisible(rows, key)
+    if (rejected) {
+      setNotice(`一覧に出せるのは${MAX_VISIBLE_FIELDS}件までです。どれかを隠してから選んでください。`)
+      return
+    }
+    setNotice(null)
+    save(next)
+  }
+
+  const move = (from: number, to: number) => {
+    const next = moveRow(rows, from, to)
+    if (next === rows) return
+    setNotice(null)
+    save(next)
+  }
+
+  const labelOf = (key: string) => candidates.find((c) => c.key === key)?.label ?? key
+
+  return { rows, labelOf, toggle, move, saving, notice, shown: visibleCount(rows) }
 }
 
 function Chip({

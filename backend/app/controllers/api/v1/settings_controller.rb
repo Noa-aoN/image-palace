@@ -31,6 +31,9 @@ module Api
           :diagram_mode, :motion_mode, :word_difficulty, :default_card_preset,
           library_order: [],
           card_list_fields: [],
+          # 一覧に出す項目（順序つき）。ここが新しい真実の場所。
+          # 旧の card_headline_key / card_list_fields は当面そのまま受ける
+          card_list_layout: [ :key, :visible ],
           # カードが持つ項目のひな型。[{ name:, keys: [] }]
           card_property_presets: [ :name, { keys: [] } ]
         )
@@ -59,6 +62,10 @@ module Api
           card_property_presets: setting.card_property_presets,
           card_list_fields: setting.card_list_fields,
           max_card_list_fields: Setting::MAX_CARD_LIST_FIELDS,
+          # 保存していない人には、旧の設定から読み解いた並びを返す（書き戻さない）
+          card_list_layout: setting.card_list_layout_entries,
+          max_card_list_layout: Setting::MAX_CARD_LIST_LAYOUT,
+          card_list_builtin_keys: Setting::CARD_LIST_BUILTIN_KEYS,
           default_card_preset: setting.default_card_preset,
           diagram_mode: setting.diagram_mode,
           motion_mode: setting.motion_mode,

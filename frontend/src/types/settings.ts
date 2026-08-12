@@ -39,6 +39,13 @@ export interface UserSettings {
   default_card_preset: string | null
   /** 一覧のカードに、名前と絵のほかに出す項目の識別名 */
   card_list_fields: string[]
+  /**
+   * 一覧に出す項目（順序つき）。**ここが真実の場所**。
+   * 旧 card_headline_key / card_list_fields は互換のために残っているだけ
+   */
+  card_list_layout: { key: string; visible: boolean }[]
+  /** 出す指定にできる数。隠した項目は何件あってもよい */
+  max_card_list_layout: number
   /** 追加できる項目の上限（サーバー側の決め） */
   max_card_list_fields: number
   /** 図（間取り図・記憶資産など）の表現。既定 "3d" */

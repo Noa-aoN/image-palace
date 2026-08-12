@@ -32,14 +32,15 @@ RSpec.describe "一覧の見出し語", type: :request do
     expect(response.parsed_body["headline"]).to eq("こうごうせい")
   end
 
-  # 名前の無いカードが並ぶより、元の名前が出ているほうがよい
-  it "その項目が空のカードは見出し語に戻る" do
+  # #589 / #590 で変えた。**選んだのに何も変わらない**方が分かりにくい。
+  # 値が無いことは、値が無いと分かる形（画面の「-」）で見せる
+  it "その項目が空でも、見出し語へ勝手に戻さない" do
     define_property(key: "reading", label: "読み方")
     user.create_setting!(card_headline_key: "reading")
 
     get "/api/v1/items/#{item.id}", headers: headers
 
-    expect(response.parsed_body["headline"]).to eq("光合成")
+    expect(response.parsed_body["headline"]).to be_nil
   end
 
   it "複数入る項目は先頭を使う" do
@@ -100,15 +101,18 @@ RSpec.describe "一覧の見出し語", type: :request do
       )
     end
 
-    # 空の行が並ぶだけになる
-    it "値の無い項目は返さない" do
+    # #589 / #590 で変えた。出す指定なら、値が無くても行は返す。
+    # 返さないと、出るカードと出ないカードが混ざり、法則が読めない
+    it "値の無い項目も、行としては返す（画面が「-」を出せるように）" do
       item # 一覧に出すカードを作っておく（let は参照するまで作られない）
       define_property(key: "reading", label: "読み方")
       user.create_setting!(card_list_fields: [ "reading" ])
 
       get "/api/v1/items", headers: headers
 
-      expect(response.parsed_body["items"].first["list_fields"]).to eq([])
+      expect(response.parsed_body["items"].first["list_fields"]).to eq(
+        [ { "key" => "reading", "label" => "読み方", "value" => nil } ]
+      )
     end
 
     it "複数入る項目はつないで返す" do
