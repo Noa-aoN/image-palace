@@ -244,6 +244,30 @@ fly machine exec <worker-machine-id> "bash -lc 'cd /app && bundle exec rails aut
 
 ## 8. この文書の位置づけ
 
-**認証・セキュリティの開発は #563 をもって本リリース対応を完了とする。**
+**認証・セキュリティは本番反映・smoke test まで完了。本リリース可能な状態としてクローズ。**
+（#563 まで。2026-08-12）
+
 以降の追加は §7 の Issue が発火してから。新しい認証機能を思いついたら、
 まずここへ書き足して発火条件を決める。
+
+### 本番反映の確認（2026-08-12）
+
+| 見たもの | 結果 |
+|---|---|
+| backend | Fly v205（20:37 JST）。#563 で足した `POST /api/v1/totp/regenerate_recovery_codes` が本番で 401 を返す（未実装なら 404） |
+| frontend | Workers デプロイ 20:41 JST。配信中の chunk に #563 の文言「認証アプリを設定する」が入っている |
+| 公開ページ | `/` `/login` `/signup` `/terms` `/privacy` `/tokushoho` `/guide` `/blog` すべて 200。500 系なし |
+| Google ログイン入口 | `/omniauth/google_oauth2` → 302 accounts.google.com |
+| メールログイン | 誤った資格情報で 401（500 にならない） |
+| 未認証の運営 API | `/api/v1/admin/session` `/api/v1/admin/users` ともに 401 |
+| Apple | ログイン画面に Apple ボタンなし（`apple-touch-icon` のみ）。`/omniauth/apple` は 302 でサインイン画面へ戻る。Fly に `APPLE_*` secret は無い |
+| 栓 | `rails auth:admin_readiness` → `ADMIN_STRONG_AUTH_ENABLED=true`（fly secrets 由来）・運営は手立てあり |
+| 戻し道 | 本番イメージに `auth:admin_readiness` と `auth:reset_strong_auth[email]` の両方がある |
+
+**CI は当てにできない状態だった。** #560〜#563 の CI は2秒で fail（`0 steps` /
+`log not found` = Actions 側でジョブが起動していない）。本番のコードは CI を通っていない。
+代わりに手元で確認した: 認証まわりの rspec 119 examples 0 failures / rubocop 560 files
+no offenses / frontend 206 tests + `tsc --noEmit` 通過。
+
+ログインした状態でしか見えない部分（実ログイン・一般ユーザーにセキュリティ画面が
+出ないこと・`/admin` の Strong Auth 要求と通過）は、ブラウザでの目視確認による。
