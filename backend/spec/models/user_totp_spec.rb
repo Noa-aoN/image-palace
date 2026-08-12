@@ -89,25 +89,6 @@ RSpec.describe "利用者の二要素認証", type: :model do
     end
   end
 
-  describe "再認証の猶予" do
-    it "確かめた直後は有効" do
-      user.update!(reauthenticated_at: Time.current)
-
-      expect(user.reauthenticated?).to be(true)
-    end
-
-    # 長いと、席を外した隙に操作できてしまう
-    it "猶予を過ぎたら切れる" do
-      user.update!(reauthenticated_at: (User::REAUTH_WINDOW + 1.minute).ago)
-
-      expect(user.reauthenticated?).to be(false)
-    end
-
-    it "一度も確かめていなければ無効" do
-      expect(user.reauthenticated?).to be(false)
-    end
-  end
-
   describe "秘密鍵の保存" do
     # DB が漏れた時点で二要素が二要素でなくなる
     it "生のまま保存しない" do

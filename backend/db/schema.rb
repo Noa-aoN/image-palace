@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_08_12_020000) do
+ActiveRecord::Schema[8.1].define(version: 2026_08_12_090000) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
   enable_extension "pg_trgm"
@@ -753,6 +753,18 @@ ActiveRecord::Schema[8.1].define(version: 2026_08_12_020000) do
     t.index ["user_id"], name: "index_spaces_on_user_id"
   end
 
+  create_table "strong_auth_sessions", id: :uuid, default: -> { "gen_random_uuid()" }, force: :cascade do |t|
+    t.datetime "authenticated_at", null: false
+    t.string "client_id", null: false
+    t.datetime "created_at", null: false
+    t.string "method"
+    t.datetime "updated_at", null: false
+    t.uuid "user_id", null: false
+    t.index ["authenticated_at"], name: "index_strong_auth_sessions_on_authenticated_at"
+    t.index ["user_id", "client_id"], name: "index_strong_auth_sessions_on_user_id_and_client_id", unique: true
+    t.index ["user_id"], name: "index_strong_auth_sessions_on_user_id"
+  end
+
   create_table "subscriptions", id: :uuid, default: -> { "gen_random_uuid()" }, force: :cascade do |t|
     t.boolean "cancel_at_period_end", default: false, null: false
     t.datetime "canceled_at"
@@ -1059,6 +1071,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_08_12_020000) do
   add_foreign_key "space_points", "spaces", on_delete: :cascade
   add_foreign_key "spaces", "space_points", column: "cover_space_point_id", on_delete: :nullify
   add_foreign_key "spaces", "users", on_delete: :cascade
+  add_foreign_key "strong_auth_sessions", "users"
   add_foreign_key "subscriptions", "plans", on_delete: :restrict
   add_foreign_key "subscriptions", "users", on_delete: :cascade
   add_foreign_key "tag_group_items", "tag_groups"

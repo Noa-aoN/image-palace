@@ -155,7 +155,11 @@ RSpec.describe "Passkey", type: :request do
     end
   end
 
+  # 外すのは、乗っ取った人が正規の鍵を消して締め出す道になる。
+  # 直近に本人か確かめていることを求める（判定は reauth 側の spec で確かめる）
   describe "外す" do
+    before { StrongAuthSession.record!(user: user, client_id: headers["client"], method: "passkey") }
+
     it "外せる" do
       created = register!
 

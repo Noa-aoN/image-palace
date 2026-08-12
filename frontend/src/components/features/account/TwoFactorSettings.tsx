@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Spinner } from '@/components/ui/spinner'
 import { HelpPopover } from '@/components/ui/help-popover'
+import { StrongAuthPrompt } from '@/components/features/account/StrongAuthPrompt'
 import {
   getTotpStatus,
   startTotpEnrollment,
@@ -45,6 +46,9 @@ export function TwoFactorSettings() {
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [disabling, setDisabling] = useState(false)
+  // 確かめが切れていたら、その場で確かめてもらう。
+  // ここで独自にコードを求めると、確かめた直後にもう一度同じコードを入れることになる
+  const [needsAuth, setNeedsAuth] = useState(false)
 
   const reload = useCallback(() => {
     getTotpStatus()
@@ -93,12 +97,16 @@ export function TwoFactorSettings() {
     setBusy(true)
     setError(null)
     try {
-      await disableTotp(code)
-      setCode('')
+      await disableTotp()
       setDisabling(false)
       reload()
-    } catch {
-      setError('コードが合いません。認証アプリのコード、または復旧コードを入れてください。')
+    } catch (err: unknown) {
+      // 確かめが切れていたら、その場で確かめてもらう
+      if ((err as { response?: { status?: number } })?.response?.status === 403) {
+        setNeedsAuth(true)
+        return
+      }
+      setError('外せませんでした')
     } finally {
       setBusy(false)
     }
@@ -182,19 +190,23 @@ export function TwoFactorSettings() {
             )}
           </p>
 
-          {disabling ? (
+          {needsAuth ? (
+            <StrongAuthPrompt
+              reason="二要素認証を外すため"
+              onDone={() => {
+                setNeedsAuth(false)
+                void disable()
+              }}
+              onCancel={() => {
+                setNeedsAuth(false)
+                setDisabling(false)
+              }}
+            />
+          ) : disabling ? (
             <div className="space-y-2 rounded-lg border border-border bg-background p-3">
-              <p className="text-sm">外すには、いまのコードを入れてください。</p>
+              <p className="text-sm">二要素認証を外します。よろしいですか？</p>
               <div className="flex flex-wrap items-center gap-2">
-                <Input
-                  value={code}
-                  onChange={(e) => setCode(e.target.value)}
-                  placeholder="6桁のコード、または復旧コード"
-                  autoComplete="one-time-code"
-                  className="w-56"
-                  disabled={busy}
-                />
-                <Button size="sm" variant="destructive" onClick={disable} disabled={busy || !code.trim()}>
+                <Button size="sm" variant="destructive" onClick={disable} disabled={busy}>
                   {busy && <Spinner size={13} />}
                   外す
                 </Button>

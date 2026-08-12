@@ -76,6 +76,16 @@ Rails.application.routes.draw do
       # 運営からの読みもの（お知らせ・更新情報・コラム）。公開済みのみ返す
       resources :posts, only: [ :index, :show ], param: :id
 
+      # 危険な操作の前の、もう一度の本人確認。
+      # 出口は1つ（この端末が確かめ済みか）だが、道筋は方式ごとに分ける
+      # （Passkey は challenge を配る段が要る）
+      namespace :reauth do
+        root to: "/api/v1/reauth#show", via: :get
+        post "passkey/options", to: "/api/v1/reauth#passkey_options"
+        post "passkey", to: "/api/v1/reauth#verify_passkey"
+        post "code", to: "/api/v1/reauth#verify_code"
+      end
+
       # Passkey。登録・一覧・名前変更・削除。まだログインには使わない
       resources :webauthn_credentials, only: [ :index, :create, :update, :destroy ], path: "passkeys" do
         collection do

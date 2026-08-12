@@ -8,6 +8,7 @@ import { getAdminUsers, updateAdminUserRole } from '@/lib/api/admin'
 import { PeriodSelect } from './PeriodSelect'
 import type { AdminRole, AdminUser, AdminUserStats, AdminUsersPage } from '@/types/admin'
 import { ROLE_LABELS } from '@/lib/admin-roles'
+import { StrongAuthPrompt } from '@/components/features/account/StrongAuthPrompt'
 
 // 弱い順に並べる。付け外しの選択肢として、上げ下げの向きが見て分かるように
 const ROLES: AdminRole[] = ['user', 'support', 'operator', 'admin']
@@ -50,6 +51,9 @@ export function AdminUsersPanel({ canChangeRole }: { canChangeRole: boolean }) {
     load(submittedQuery)
   }, [load, submittedQuery])
 
+  // 確かめが切れていたときに、確かめ終わってから続きをやるための控え
+  const [pendingRole, setPendingRole] = useState<{ user: AdminUser; role: AdminRole } | null>(null)
+
   const changeRole = async (user: AdminUser, role: AdminRole) => {
     setBusyId(user.id)
     setError(null)
@@ -60,7 +64,16 @@ export function AdminUsersPanel({ canChangeRole }: { canChangeRole: boolean }) {
       )
       setConfirming(null)
     } catch (err: unknown) {
-      const e = err as { response?: { data?: { error?: string } } }
+      const e = err as { response?: { data?: { error?: string }; status?: number } }
+      // 確かめが切れていたら、その場で確かめてもらう。
+      // 権限を触るのは、乗っ取られたときの被害がいちばん大きい操作
+      if (e?.response?.status === 403 && e?.response?.data?.error) {
+        const needsAuth = (e.response.data as { code?: string }).code === 'strong_auth_required'
+        if (needsAuth) {
+          setPendingRole({ user, role })
+          return
+        }
+      }
       setError(e?.response?.data?.error ?? '役割を変更できませんでした')
     } finally {
       setBusyId(null)
@@ -70,6 +83,20 @@ export function AdminUsersPanel({ canChangeRole }: { canChangeRole: boolean }) {
   return (
     <section className="space-y-3">
       <h2 className="text-lg font-semibold">利用者</h2>
+
+      {/* 確かめが切れていたら、その場で確かめてから続きをやる。
+          押し直させると、何をしようとしていたか忘れる */}
+      {pendingRole && (
+        <StrongAuthPrompt
+          reason={`${pendingRole.user.email} の役割を「${ROLE_LABELS[pendingRole.role]}」に変えるため`}
+          onDone={() => {
+            const pending = pendingRole
+            setPendingRole(null)
+            void changeRole(pending.user, pending.role)
+          }}
+          onCancel={() => setPendingRole(null)}
+        />
+      )}
 
       {/* 期間は「いつ登録した人か」で絞る。伸びの数字（下）は全体のまま */}
       {page?.period && <PeriodSelect period={page.period} value={period} onChange={setPeriod} />}

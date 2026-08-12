@@ -40,6 +40,10 @@ export async function confirmTotp(code: string): Promise<{ recovery_codes: strin
   return res.data
 }
 
-export async function disableTotp(code: string): Promise<void> {
-  await apiClient.delete('/api/v1/totp', { data: { code } })
+/**
+ * 外す。**コードはここで求めない。**
+ * 確かめ方は共通の口（/reauth）に寄せてある。確かめが切れていれば 403 が返る
+ */
+export async function disableTotp(): Promise<void> {
+  await apiClient.delete('/api/v1/totp')
 }

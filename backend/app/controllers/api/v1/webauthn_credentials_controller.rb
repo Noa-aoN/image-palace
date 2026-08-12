@@ -12,6 +12,9 @@ module Api
       prepend_before_action :do_not_store!
       before_action :require_passkey_enabled!
       before_action :set_credential, only: [ :update, :destroy ]
+      # 外すのは、乗っ取った人が正規の鍵を消して締め出す道になる。
+      # 名前を変えるだけなら求めない（消えるものが無い）
+      before_action :require_strong_auth!, only: [ :destroy ]
 
       # 登録済みの鍵。名前・登録日・最後に使った日を返す
       def index

@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Spinner } from '@/components/ui/spinner'
 import { HelpPopover } from '@/components/ui/help-popover'
+import { StrongAuthPrompt } from '@/components/features/account/StrongAuthPrompt'
 import {
   listPasskeys,
   startPasskeyRegistration,
@@ -162,6 +163,8 @@ function PasskeyRow({
   const [draft, setDraft] = useState(passkey.nickname ?? '')
   const [busy, setBusy] = useState(false)
   const [confirming, setConfirming] = useState(false)
+  // 外すのは、乗っ取った人が正規の鍵を消して締め出す道になる
+  const [needsAuth, setNeedsAuth] = useState(false)
 
   const save = async () => {
     setBusy(true)
@@ -183,12 +186,36 @@ function PasskeyRow({
     try {
       await removePasskey(passkey.id)
       onChanged()
-    } catch {
+      setConfirming(false)
+    } catch (err: unknown) {
+      // 確かめが切れていたら、その場で確かめてもらう
+      if ((err as { response?: { status?: number } })?.response?.status === 403) {
+        setNeedsAuth(true)
+        return
+      }
       onError('外せませんでした')
+      setConfirming(false)
     } finally {
       setBusy(false)
-      setConfirming(false)
     }
+  }
+
+  if (needsAuth) {
+    return (
+      <li className="px-3 py-2.5">
+        <StrongAuthPrompt
+          reason={`「${passkey.display_name}」を外すため`}
+          onDone={() => {
+            setNeedsAuth(false)
+            void remove()
+          }}
+          onCancel={() => {
+            setNeedsAuth(false)
+            setConfirming(false)
+          }}
+        />
+      </li>
+    )
   }
 
   return (
