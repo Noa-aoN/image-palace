@@ -12,6 +12,7 @@ RSpec.describe "Api::V1::Admin", type: :request do
   describe "入れる人の切り分け" do
     paths = {
       "GET /api/v1/admin/overview" => [ :get, "/api/v1/admin/overview" ],
+      "GET /api/v1/admin/business" => [ :get, "/api/v1/admin/business" ],
       "GET /api/v1/admin/users" => [ :get, "/api/v1/admin/users" ],
       "GET /api/v1/admin/audit_logs" => [ :get, "/api/v1/admin/audit_logs" ]
     }

@@ -16,6 +16,8 @@ RSpec.describe "運営の段階ごとに触れる範囲", type: :request do
   # 読むだけの入口。support 以上なら通る
   READABLE = [
     [ :get, "/api/v1/admin/overview" ],
+    # 経営の数字。読むだけなので support も見られる
+    [ :get, "/api/v1/admin/business" ],
     [ :get, "/api/v1/admin/users" ],
     [ :get, "/api/v1/admin/audit_logs" ],
     [ :get, "/api/v1/admin/finance" ],
