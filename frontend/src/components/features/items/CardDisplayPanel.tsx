@@ -191,7 +191,7 @@ export function CardDisplayPanel({
 
             {layout.notice && <p className="text-xs text-destructive">{layout.notice}</p>}
             <p className="text-xs text-muted-foreground">
-              上から順に出ます。**値の無い項目は「-」**として出るので、入れ忘れに気づけます。
+              上から順に出ます。値の無い項目は「-」として出るので、入れ忘れに気づけます。
               読み方や別名などの項目を作ると、ここに増えます。
             </p>
           </div>
