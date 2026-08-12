@@ -48,6 +48,7 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
 import { useTagBoard, type BoardTag, type BoardGroup, type TagBoard } from '@/hooks/useTagBoard'
+import { isSubmitEnter } from '@/lib/enter-key'
 
 // ---- ドラッグ用 ID スキーム（cid に ':' は含まれない）----
 const groupSortId = (cid: string) => `G:${cid}`
@@ -152,7 +153,7 @@ function TagChip({
             value={draft}
             onChange={(e) => setDraft(e.target.value)}
             onKeyDown={(e) => {
-              if (e.key === 'Enter') {
+              if (isSubmitEnter(e)) {
                 e.preventDefault()
                 save()
               }
@@ -397,7 +398,7 @@ function GroupCard({ group, board }: { group: BoardGroup; board: TagBoard }) {
                 value={draft}
                 onChange={(e) => setDraft(e.target.value)}
                 onKeyDown={(e) => {
-                  if (e.key === 'Enter') {
+                  if (isSubmitEnter(e)) {
                     e.preventDefault()
                     saveName()
                   }

@@ -5,6 +5,7 @@ import { House, Loader2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { getSettings, updateSettings } from '@/lib/api/settings'
+import { isSubmitEnter } from '@/lib/enter-key'
 
 /**
  * 宮殿の名前。
@@ -58,7 +59,7 @@ export function PalaceNameEditor() {
             setSaved(false)
           }}
           onKeyDown={(e) => {
-            if (e.key === 'Enter') {
+            if (isSubmitEnter(e)) {
               e.preventDefault()
               void save()
             }

@@ -10,6 +10,7 @@ import type { AdminUser } from '@/types/admin'
 import { useCanOperate } from '@/hooks/useAdminPermissions'
 import { ReadOnlyNotice } from '@/components/features/admin/ReadOnlyNotice'
 import { PanelSlotContent } from '@/components/features/panel/PanelSlot'
+import { isSubmitEnter } from '@/lib/enter-key'
 
 /**
  * 手で配る。表彰など、条件では表せないものに使う。
@@ -99,7 +100,7 @@ export function AdminRewardGrant({ rewards }: { rewards: AdminRewardDefinition[]
             placeholder="メールアドレス・表示名"
             onChange={(e) => setQuery(e.target.value)}
             onKeyDown={(e) => {
-              if (e.key === 'Enter') search()
+              if (isSubmitEnter(e)) search()
             }}
           />
           <Button variant="outline" onClick={search} disabled={busy || !query.trim()}>

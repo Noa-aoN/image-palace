@@ -8,6 +8,7 @@ import { updateViewEdge, removeViewEdge, type ViewEdgeInput } from '@/lib/api/vi
 import { useRightPanelStore } from '@/stores/rightPanel'
 import { EdgeStyleControls } from './EdgeStyleControls'
 import type { ViewEdge, ViewEdgeStyle } from '@/types/view'
+import { isSubmitEnter } from '@/lib/enter-key'
 
 function toApiInput(c: Partial<ViewEdge>): ViewEdgeInput {
   const out: ViewEdgeInput = {}
@@ -74,7 +75,7 @@ export function EdgePropertiesBody({ viewId }: { viewId: string }) {
             onChange={(e) => setLabel(e.target.value)}
             onBlur={saveLabel}
             onKeyDown={(e) => {
-              if (e.key === 'Enter') {
+              if (isSubmitEnter(e)) {
                 e.preventDefault()
                 saveLabel()
               }

@@ -21,6 +21,7 @@ import { useRightPanelStore } from '@/stores/rightPanel'
 import { useOpenCardCreate } from '@/components/features/items/CardCreatePanel'
 import type { BoxDetail, BoxEntry, BoxEntryType } from '@/types/box'
 import type { CoverType } from '@/types/cover'
+import { isSubmitEnter } from '@/lib/enter-key'
 
 // 追加候補の正規化表現
 
@@ -298,7 +299,7 @@ export default function BoxDetailPage() {
             <Input
               value={nameDraft}
               onChange={(e) => setNameDraft(e.target.value)}
-              onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); handleSaveName() } if (e.key === 'Escape') setEditing(false) }}
+              onKeyDown={(e) => { if (isSubmitEnter(e)) { e.preventDefault(); handleSaveName() } if (e.key === 'Escape') setEditing(false) }}
               disabled={saving}
               autoFocus
               aria-label="ボックス名"

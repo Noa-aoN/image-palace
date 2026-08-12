@@ -7,6 +7,7 @@ import { Input } from '@/components/ui/input'
 import { Spinner } from '@/components/ui/spinner'
 import { getCodeRedemptions, redeemCampaignCode, type CodeRedemption } from '@/lib/api/billing'
 import { CREDIT_UNIT } from '@/lib/billing'
+import { isSubmitEnter } from '@/lib/enter-key'
 
 /**
  * 引き換えコードの入力。
@@ -89,7 +90,7 @@ export function RedeemCodePanel({
           value={code}
           onChange={(e) => setCode(e.target.value)}
           onKeyDown={(e) => {
-            if (e.key === 'Enter') {
+            if (isSubmitEnter(e)) {
               e.preventDefault()
               submit()
             }

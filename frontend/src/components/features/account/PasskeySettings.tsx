@@ -8,6 +8,7 @@ import { Input } from '@/components/ui/input'
 import { Spinner } from '@/components/ui/spinner'
 import { HelpPopover } from '@/components/ui/help-popover'
 import { StrongAuthPrompt } from '@/components/features/account/StrongAuthPrompt'
+import { isSubmitEnter } from '@/lib/enter-key'
 import {
   listPasskeys,
   startPasskeyRegistration,
@@ -226,7 +227,7 @@ function PasskeyRow({
             value={draft}
             onChange={(e) => setDraft(e.target.value)}
             onKeyDown={(e) => {
-              if (e.key === 'Enter') {
+              if (isSubmitEnter(e)) {
                 e.preventDefault()
                 void save()
               }

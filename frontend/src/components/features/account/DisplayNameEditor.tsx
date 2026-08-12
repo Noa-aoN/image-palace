@@ -5,6 +5,7 @@ import { Check, Loader2, Pencil, X } from 'lucide-react'
 import { updateProfile } from '@/lib/api/account'
 import { useAuthStore } from '@/stores/auth'
 import { defaultDisplayName } from '@/lib/display-name'
+import { isSubmitEnter } from '@/lib/enter-key'
 
 const MAX_LENGTH = 50
 
@@ -83,7 +84,7 @@ export function DisplayNameEditor() {
             disabled={saving}
             onChange={(e) => setValue(e.target.value)}
             onKeyDown={(e) => {
-              if (e.key === 'Enter') save()
+              if (isSubmitEnter(e)) save()
               if (e.key === 'Escape') setEditing(false)
             }}
             className="w-48 rounded-lg border border-border bg-background px-2 py-1"

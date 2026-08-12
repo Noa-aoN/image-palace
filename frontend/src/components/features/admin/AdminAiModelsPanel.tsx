@@ -16,6 +16,7 @@ import {
 import type { AdminAiModel, AdminAiModelsPage } from '@/types/admin'
 import { useCanOperate } from '@/hooks/useAdminPermissions'
 import { ReadOnlyNotice } from '@/components/features/admin/ReadOnlyNotice'
+import { isSubmitEnter } from '@/lib/enter-key'
 
 /**
  * AI モデルの登録簿。
@@ -401,7 +402,7 @@ function NumberCell({
           value={draft}
           onChange={(e) => setDraft(e.target.value)}
           onKeyDown={(e) => {
-            if (e.key === 'Enter') {
+            if (isSubmitEnter(e)) {
               onSave(draft.trim() === '' ? null : Number(draft))
               setEditing(false)
             }

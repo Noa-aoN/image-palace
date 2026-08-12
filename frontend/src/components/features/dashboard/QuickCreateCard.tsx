@@ -12,6 +12,7 @@ import { DEFAULT_MEANING_LEVEL } from '@/lib/meaning-levels'
 import { CREDIT_UNIT_SHORT } from '@/lib/billing'
 import { useItemsStore } from '@/stores/items'
 import { useBillingStore } from '@/stores/billing'
+import { isSubmitEnter } from '@/lib/enter-key'
 
 const MAX_TITLE_LENGTH = 100
 
@@ -102,7 +103,7 @@ export function QuickCreateCard() {
             if (doneCount !== null) setDoneCount(null)
           }}
           onKeyDown={(e) => {
-            if ((e.metaKey || e.ctrlKey) && e.key === 'Enter') {
+            if ((e.metaKey || e.ctrlKey) && isSubmitEnter(e)) {
               e.preventDefault()
               handleGenerate()
             }
