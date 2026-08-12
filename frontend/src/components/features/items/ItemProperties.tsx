@@ -63,6 +63,8 @@ type ItemPropertiesProps = {
   item: Item
   /** 更新後のItemを親（詳細画面・ストア）へ反映する */
   onUpdated: (item: Item) => void
+  /** 「画面に収める」見方のとき、札を出さない（設定も中身も消さない） */
+  blocksHidden?: boolean
 }
 
 const FACT_CHECK_BADGE: Record<string, { label: string; className: string }> = {
@@ -249,7 +251,7 @@ function FactCheckResult({
  * カードのプロパティ（種別・意味）編集。
  * 種別は選択即保存、意味はインライン編集で保存する。
  */
-export function ItemProperties({ item, onUpdated }: ItemPropertiesProps) {
+export function ItemProperties({ item, onUpdated, blocksHidden = false }: ItemPropertiesProps) {
   // 既定はアカウントの設定。この端末で選んでいればそちらが勝つ
   const defaultColumns = useSettingsStore((s) => s.settings?.card_detail_columns) ?? 1
   const { columns, change: changeColumns } = useCardDetailColumns(defaultColumns)
@@ -795,6 +797,9 @@ export function ItemProperties({ item, onUpdated }: ItemPropertiesProps) {
       {/* 列数はこの端末で覚える。既定はアカウントの設定から来る。
           並べ替えはここでも「表示」パネルでもできる。書き先は同じ block_view.order
           なので、どちらで動かしても両方に効く（片方だけ古い、が起きない） */}
+      {/* 「画面に収める」ときは、札を出さない（見出し語と絵だけを大きく見る見方）。
+          消しているのは見え方だけで、設定も中身も残る */}
+      {!blocksHidden && (
       <DndContext sensors={blockSensors} collisionDetection={closestCenter} onDragEnd={handleBlockDragEnd}>
         <SortableContext items={visibleBlocks.map((b) => b.key)} strategy={rectSortingStrategy}>
           <div className={cardDetailGridClass(columns)}>
@@ -812,6 +817,7 @@ export function ItemProperties({ item, onUpdated }: ItemPropertiesProps) {
           </div>
         </SortableContext>
       </DndContext>
+      )}
 
       {/* この1枚だけの見え方。種別ぜんぶに効く「項目の設定」とは分けてある */}
       <CardViewPanel

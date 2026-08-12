@@ -12,7 +12,7 @@ import { ItemProperties } from '@/components/features/items/ItemProperties'
 import { ItemImageBar } from '@/components/features/items/ItemImageBar'
 import { CARD_VIEW_PANEL_KEY } from '@/components/features/items/CardViewPanel'
 import { useSettingsStore } from '@/stores/settings'
-import { useCardDetailColumns } from '@/hooks/useCardDetailColumns'
+import { useCardDetailColumns, useCardDetailFit } from '@/hooks/useCardDetailColumns'
 import { CardInfoButton } from '@/components/features/items/CardInfoPanel'
 import { PropertyBlock, BlockAction } from '@/components/features/items/PropertyBlock'
 import { Tooltip } from '@/components/ui/tooltip'
@@ -42,6 +42,9 @@ export default function ItemDetailPage() {
   // 幅は列数で決める。列を増やしたのは並べて見たいからなので、そのときは広げる
   const defaultColumns = useSettingsStore((s) => s.settings?.card_detail_columns) ?? 1
   const { columns: detailColumns } = useCardDetailColumns(defaultColumns)
+  // 「画面に収める」見方のときは、見出し語と絵だけを大きく見せる。
+  // 項目を全部並べる見方とは目的が違う（見返す / 作り込む）ので、まとめて出さない
+  const { fit: fitToWindow } = useCardDetailFit()
   const router = useRouter()
   const openSection = useRightPanelStore((s) => s.openSection)
   const searchParams = useSearchParams()
@@ -326,8 +329,10 @@ export default function ItemDetailPage() {
           <ItemImageBar item={item} onUpdated={applyUpdated} />
         </PropertyBlock>
 
-        {/* プロパティ（種別・意味） */}
-        <ItemProperties item={item} onUpdated={applyUpdated} />
+        {/* プロパティ（種別・意味）。
+            「画面に収める」ときは項目を畳む。**設定は消さない**ので、戻せば元どおり出る。
+            パネルの入口ごと消さないのは、収めた先で切り替えに戻れなくなるため */}
+        <ItemProperties item={item} onUpdated={applyUpdated} blocksHidden={fitToWindow} />
 
 
       </div>

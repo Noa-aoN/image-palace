@@ -209,8 +209,12 @@ module Api
           "order" => block_keys(:order),
           # そのカードでは持たない項目。畳んでいる（hidden）のとは意味が違う
           "omitted" => block_keys(:omitted),
-          # 札ごとの幅（何列ぶん）。1〜3の外は受けない
-          "spans" => block_spans_param
+          # 札ごとの幅（何列ぶん）。1〜3の外は受けない。
+          #
+          # **送られてこなかったときは、いまの幅を残す。** 並べ替えは
+          # hidden / order / omitted しか送らないので、ここで毎回上書きすると
+          # 「動かしたら幅が戻った」という、原因の分かりにくい壊れ方をする
+          "spans" => params.key?(:spans) ? block_spans_param : item.block_spans
         })
         render json: serialize_item(item.reload)
       rescue ActiveRecord::RecordInvalid => e

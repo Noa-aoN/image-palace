@@ -61,3 +61,37 @@ export function cardDetailGridClass(columns: number): string {
   if (columns === 2) return 'grid items-start gap-3 md:grid-cols-2'
   return 'space-y-3'
 }
+
+/**
+ * カード詳細を「画面に収める」かどうか。
+ *
+ * 学習で見返すときは、**見出し語と絵だけを大きく見たい**。
+ * 項目を全部並べる見方（列設定どおり）とは目的が違うので、切り替えで持つ。
+ *
+ * 列数と同じく端末ごとに覚える。**新しい設定体系は増やさない**
+ * （同じ「詳細の見え方」の話なので、置き場所も揃える）。
+ *
+ * 何を出すかの語彙は一覧と同じ（見出し語 = title / イメージ = image）。
+ * 収めるときはその2つだけを見せる。
+ */
+const FIT_KEY = 'card-detail-fit'
+
+function readFit(): boolean {
+  if (typeof window === 'undefined') return false
+  return window.localStorage.getItem(FIT_KEY) === 'true'
+}
+
+export function useCardDetailFit() {
+  const fit = useSyncExternalStore(
+    subscribe,
+    readFit,
+    () => false
+  )
+
+  const change = useCallback((next: boolean) => {
+    window.localStorage.setItem(FIT_KEY, String(next))
+    listeners.forEach((listener) => listener())
+  }, [])
+
+  return { fit, change }
+}
