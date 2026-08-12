@@ -6,6 +6,7 @@ import { Check, KeyRound, Pencil, Plus, Trash2, X } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Spinner } from '@/components/ui/spinner'
+import { HelpPopover } from '@/components/ui/help-popover'
 import {
   listPasskeys,
   startPasskeyRegistration,
@@ -88,6 +89,25 @@ export function PasskeySettings() {
         <KeyRound size={18} style={{ color: 'var(--palace)' }} />
         <h2 className="text-lg font-semibold">パスキー</h2>
         <span className="text-sm text-muted-foreground">{keys.length > 0 ? '設定済み' : '未設定'}</span>
+        {/* 見出しの並びの終わりに置く。主操作（追加）より目立たせない */}
+        <span className="ml-auto">
+          <HelpPopover label="パスキーについて" title="パスキーとは">
+            <p>
+              指紋・顔・端末の暗証番号（Touch ID / Face ID / Windows Hello など）で本人確認する方法です。
+              合言葉と違い、鍵が端末から出てこないので、のぞき見られても他所では使えません。
+            </p>
+            <p>
+              いくつでも登録できます。パソコンと携帯の両方に入れておくと、片方を使えなくなっても困りません。
+            </p>
+            <p>
+              登録したパスキーは、あとから名前を変えたり外したりできます。
+              <strong className="text-foreground">外してもアカウントは消えません。</strong>
+            </p>
+            <p>
+              パスキーが使えないときは、認証アプリ（下の「二要素認証」）や復旧コードでも本人確認できます。
+            </p>
+          </HelpPopover>
+        </span>
       </div>
 
       <p className="text-sm text-muted-foreground">
