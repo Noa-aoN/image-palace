@@ -43,6 +43,19 @@ namespace :admin do
     puts "#{user.email}: #{previous} → #{role}"
   end
 
+  desc "二要素認証を外す（端末を失ったときの逃げ道）"
+  task :reset_totp, [ :email ] => :environment do |_t, args|
+    user = find_user!(args[:email])
+    unless user.totp_enrolled?
+      puts "#{user.email} は二要素を設定していません"
+      next
+    end
+
+    user.update!(totp_secret: nil, totp_confirmed_at: nil, totp_recovery_codes: [], reauthenticated_at: nil)
+    AdminAuditLog.record!(actor: user, action: "totp.disabled", target: user, details: { via: "rake" })
+    puts "#{user.email} の二要素を外しました。本人に設定し直してもらってください"
+  end
+
   desc "いま運営権限を持っている人を出す"
   task admins: :environment do
     User.effective_admins.find_each do |user|
