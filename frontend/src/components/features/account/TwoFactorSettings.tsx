@@ -13,6 +13,7 @@ import {
   startTotpEnrollment,
   confirmTotp,
   disableTotp,
+  regenerateRecoveryCodes,
   type TotpStatus,
 } from '@/lib/api/totp'
 import {
@@ -36,6 +37,9 @@ import {
  */
 type Step = 'idle' | 'enrolling' | 'saved'
 
+/** 確かめが要る操作。どちらも「守りを剥がす／差し替える」side にある */
+type Guarded = 'disable' | 'regenerate'
+
 export function TwoFactorSettings() {
   const [status, setStatus] = useState<TotpStatus | null>(null)
   const [step, setStep] = useState<Step>('idle')
@@ -43,12 +47,16 @@ export function TwoFactorSettings() {
   const [uri, setUri] = useState<string | null>(null)
   const [code, setCode] = useState('')
   const [codes, setCodes] = useState<string[] | null>(null)
+  // 同じ画面を「設定できました」と「作り直しました」で使い回すので、どちらか覚えておく
+  const [codesFrom, setCodesFrom] = useState<'setup' | 'regenerate'>('setup')
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [disabling, setDisabling] = useState(false)
   // 確かめが切れていたら、その場で確かめてもらう。
-  // ここで独自にコードを求めると、確かめた直後にもう一度同じコードを入れることになる
-  const [needsAuth, setNeedsAuth] = useState(false)
+  // ここで独自にコードを求めると、確かめた直後にもう一度同じコードを入れることになる。
+  // **どの操作のために確かめるのか**を持っておく（通った後に続きをやるため）
+  const [needsAuth, setNeedsAuth] = useState<Guarded | null>(null)
+  const [regenerating, setRegenerating] = useState(false)
 
   const reload = useCallback(() => {
     getTotpStatus()
@@ -80,6 +88,7 @@ export function TwoFactorSettings() {
     try {
       const result = await confirmTotp(code)
       setCodes(result.recovery_codes)
+      setCodesFrom('setup')
       // 鍵はもう要らない。持ち続ける理由がない
       setSecret(null)
       setUri(null)
@@ -93,6 +102,12 @@ export function TwoFactorSettings() {
     }
   }
 
+  // 確かめが切れていたら、その場で確かめてもらう。
+  // 403 は「あなたには権限が無い」ではなく「もう一度確かめさせてください」なので、
+  // 失敗として見せずに確認へ回す
+  const needsStrongAuth = (err: unknown) =>
+    (err as { response?: { status?: number } })?.response?.status === 403
+
   const disable = async () => {
     setBusy(true)
     setError(null)
@@ -101,12 +116,32 @@ export function TwoFactorSettings() {
       setDisabling(false)
       reload()
     } catch (err: unknown) {
-      // 確かめが切れていたら、その場で確かめてもらう
-      if ((err as { response?: { status?: number } })?.response?.status === 403) {
-        setNeedsAuth(true)
+      if (needsStrongAuth(err)) {
+        setNeedsAuth('disable')
         return
       }
-      setError('外せませんでした')
+      setError('外せませんでした。時間を置いてお試しください。')
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  const regenerate = async () => {
+    setBusy(true)
+    setError(null)
+    try {
+      const result = await regenerateRecoveryCodes()
+      setCodes(result.recovery_codes)
+      setCodesFrom('regenerate')
+      setRegenerating(false)
+      setStep('saved')
+      reload()
+    } catch (err: unknown) {
+      if (needsStrongAuth(err)) {
+        setNeedsAuth('regenerate')
+        return
+      }
+      setError('作り直せませんでした。時間を置いてお試しください。')
     } finally {
       setBusy(false)
     }
@@ -122,7 +157,16 @@ export function TwoFactorSettings() {
 
   // 控えを取り終えるまでは、この画面から離さない
   if (step === 'saved' && codes) {
-    return <RecoveryCodes codes={codes} onDone={() => setStep('idle')} />
+    return (
+      <RecoveryCodes
+        codes={codes}
+        title={codesFrom === 'setup' ? '設定できました' : '復旧コードを作り直しました'}
+        onDone={() => {
+          setCodes(null)
+          setStep('idle')
+        }}
+      />
+    )
   }
 
   if (step === 'enrolling' && secret && uri) {
@@ -192,16 +236,38 @@ export function TwoFactorSettings() {
 
           {needsAuth ? (
             <StrongAuthPrompt
-              reason="二要素認証を外すため"
+              reason={needsAuth === 'disable' ? '二要素認証を外すため' : '復旧コードを作り直すため'}
               onDone={() => {
-                setNeedsAuth(false)
-                void disable()
+                const next = needsAuth
+                setNeedsAuth(null)
+                // 確かめが通ったので、止まっていた続きをそのまま進める。
+                // ここで「もう一度押してください」と言うと、二度手間になる
+                if (next === 'disable') void disable()
+                else void regenerate()
               }}
               onCancel={() => {
-                setNeedsAuth(false)
+                setNeedsAuth(null)
                 setDisabling(false)
+                setRegenerating(false)
               }}
             />
+          ) : regenerating ? (
+            <div className="space-y-2 rounded-lg border border-border bg-background p-3">
+              <p className="text-sm">
+                復旧コードを作り直します。
+                <strong>いまお持ちのコードは、すべて使えなくなります。</strong>
+              </p>
+              <div className="flex flex-wrap items-center gap-2">
+                <Button size="sm" onClick={regenerate} disabled={busy}>
+                  {busy && <Spinner size={13} />}
+                  作り直す
+                </Button>
+                <Button size="sm" variant="ghost" onClick={() => { setRegenerating(false); setError(null) }} disabled={busy}>
+                  やめる
+                </Button>
+              </div>
+              {error && <p className="text-sm text-destructive">{error}</p>}
+            </div>
           ) : disabling ? (
             <div className="space-y-2 rounded-lg border border-border bg-background p-3">
               <p className="text-sm">二要素認証を外します。よろしいですか？</p>
@@ -217,16 +283,23 @@ export function TwoFactorSettings() {
               {error && <p className="text-sm text-destructive">{error}</p>}
             </div>
           ) : (
-            <Button size="sm" variant="outline" onClick={() => setDisabling(true)}>
-              二要素認証を外す
-            </Button>
+            <div className="flex flex-wrap items-center gap-2">
+              {/* 失くした・見られたかもしれない、というときの入口。
+                  外すより先に置く（こちらの方が穏当な打ち手） */}
+              <Button size="sm" variant="outline" onClick={() => setRegenerating(true)}>
+                復旧コードを作り直す
+              </Button>
+              <Button size="sm" variant="ghost" onClick={() => setDisabling(true)}>
+                二要素認証を外す
+              </Button>
+            </div>
           )}
         </>
       ) : (
         <>
           <Button size="sm" onClick={begin} disabled={busy} className="flex items-center gap-1.5">
             {busy ? <Spinner size={13} /> : <ShieldCheck size={14} />}
-            設定する
+            認証アプリを設定する
           </Button>
           {error && <p className="text-sm text-destructive">{error}</p>}
         </>
@@ -308,7 +381,7 @@ function Enrollment({
   )
 }
 
-function RecoveryCodes({ codes, onDone }: { codes: string[]; onDone: () => void }) {
+function RecoveryCodes({ codes, title, onDone }: { codes: string[]; title: string; onDone: () => void }) {
   const [copied, setCopied] = useState(false)
   const [downloaded, setDownloaded] = useState(false)
   const [acknowledged, setAcknowledged] = useState(false)
@@ -334,7 +407,7 @@ function RecoveryCodes({ codes, onDone }: { codes: string[]; onDone: () => void 
     <section className="space-y-4 rounded-xl border border-border bg-card p-5">
       <div className="flex items-center gap-2">
         <ShieldCheck size={18} style={{ color: 'var(--palace)' }} />
-        <h2 className="text-lg font-semibold">設定できました</h2>
+        <h2 className="text-lg font-semibold">{title}</h2>
       </div>
 
       {/* サーバーはハッシュで持っているので、あとから出し直せない */}
