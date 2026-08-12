@@ -159,6 +159,36 @@ RSpec.describe Billing::WebhookHandler do
       expect(user.reload.credit_grants.where(kind: "free_carryover")).to be_empty
       expect(user.subscription_credits).to eq(100 * Billing::POINTS_PER_CREDIT) # Paid枠は通常付与
     end
+
+    # invoice.paid が customer.subscription.created より先に届く順序。
+    # local Subscription がまだ無いので、付与ログは subscription_id 無しで残る。
+    context "invoice.paid が subscription.created より先に届いたとき（#300）" do
+      let!(:local_sub) { nil } # 先着なので local Subscription はまだ無い
+
+      it "Free 残高 0 で先着しても、次の更新分で paid 残を引き継がない" do
+        user; plan; free_plan
+        user.update!(subscription_credits: 0)
+
+        invoice_paid("evt_race_first") # 1回目（紐付け無しで付与される）
+        expect(user.reload.credit_transactions.where(kind: "subscription_grant").count).to eq(1)
+        expect(user.credit_transactions.find_by(kind: "subscription_grant").subscription_id).to be_nil
+
+        expect { invoice_paid("evt_race_second") }
+          .not_to(change { user.credit_grants.where(kind: "free_carryover").count }.from(0))
+        expect(user.reload.subscription_credits).to eq(100 * Billing::POINTS_PER_CREDIT)
+      end
+
+      it "Free 残高があれば1回目で引き継ぎ、2回目では引き継がない" do
+        user; plan; free_plan
+        user.update!(subscription_credits: 4 * Billing::POINTS_PER_CREDIT)
+
+        invoice_paid("evt_race_carry1")
+        expect(user.reload.credit_grants.where(kind: "free_carryover").count).to eq(1)
+
+        expect { invoice_paid("evt_race_carry2") }
+          .not_to(change { user.credit_grants.where(kind: "free_carryover").count }.from(1))
+      end
+    end
   end
 
   it "upserts a local subscription on customer.subscription.created" do
