@@ -10,7 +10,16 @@ module Api
       class RewardsController < BaseController
         # 配るもの・配る操作は通常運用の範囲
         before_action -> { require_role!(:operator) },
-                      only: [ :update_reward, :update_achievement, :update_mission, :grant ]
+                      only: [ :create_reward, :create_achievement, :create_mission,
+                              :update_reward, :update_achievement, :update_mission, :grant ]
+
+        # 定義を作る。**「配る」とは別**。
+        #
+        # ここで増えるのは「何があるか」であって、誰かの持ち物ではない。
+        # 配るのは grant（手で配る）と、条件を満たしたときの自動付与。
+        #
+        # 鍵（key）は組み込みの定義と同じ名前空間に入る。既にある鍵と衝突すると
+        # 組み込みの上書きになってしまうため、モデルの uniqueness で弾く。
         def index
           render json: {
             rewards: RewardDefinition.registry.map { |d| serialize_reward(d) },
@@ -23,6 +32,27 @@ module Api
             cadences: MissionDefinition::CADENCES,
             condition_types: ::Achievements::Conditions.options
           }
+        end
+
+        def create_reward
+          definition = RewardDefinition.new(create_reward_params)
+          save_definition(definition, kind: "reward", action: "reward_definition_create") do
+            { reward: serialize_reward(definition) }
+          end
+        end
+
+        def create_achievement
+          definition = AchievementDefinition.new(create_achievement_params)
+          save_definition(definition, kind: "achievement", action: "achievement_definition_create") do
+            { achievement: serialize_achievement(definition) }
+          end
+        end
+
+        def create_mission
+          definition = MissionDefinition.new(create_mission_params)
+          save_definition(definition, kind: "mission", action: "mission_definition_create") do
+            { mission: serialize_mission(definition) }
+          end
         end
 
         # 獲得物の編集。名前・説明・レア度・分類・公開。
@@ -90,8 +120,50 @@ module Api
 
         private
 
+        # 作る・記録する・返すが3つとも同じ形なので、ここでまとめる。
+        # 失敗したときに何も記録しないのも共通（作られていない定義の作成ログは残さない）
+        def save_definition(definition, kind:, action:)
+          if definition.save
+            audit!(action, target: definition, details: { key: definition.key, name: definition.name })
+            render json: yield, status: :created
+          else
+            render json: { errors: definition.errors.full_messages }, status: :unprocessable_entity
+          end
+        rescue ActiveRecord::RecordNotUnique
+          # 鍵の一意性は DB の unique index でも守られている。
+          # 二人が同時に同じ鍵で作ると、検証をすり抜けてここに来る。
+          # **500 にはしない**（作れなかった理由は利用者側の入力なので、断り方も同じにする）
+          render json: { errors: [ "その鍵は既に使われています（#{definition.key}）" ] },
+                 status: :unprocessable_entity
+        end
+
         def reward_params
           params.require(:reward).permit(:name, :description, :rarity_level, :category, :published, :image_key)
+        end
+
+        # 作るときだけ受け取れるもの（鍵と種別）を足す。
+        # **後から変えられない**ようにしてある。鍵は既に配った持ち物が指しており、
+        # 種別は既定値の出どころ（apply_kind_defaults）なので、途中で変えると
+        # 手元にある獲得物の意味が変わってしまう
+        def create_reward_params
+          params.require(:reward)
+                .permit(:key, :kind, :name, :description, :rarity_level, :category, :published,
+                        :image_key, :enabled, :starts_at, :ends_at, :position)
+        end
+
+        def create_achievement_params
+          params.require(:achievement)
+                .permit(:key, :name, :description, :category, :condition_type, :condition_target,
+                        :position, :enabled, :published, :starts_at, :ends_at,
+                        rewards: [ :type, :key, :amount ])
+        end
+
+        def create_mission_params
+          params.require(:mission)
+                .permit(:key, :name, :description, :cadence, :condition_type, :condition_target,
+                        :position, :enabled, :published, :starts_at, :ends_at,
+                        :mission_series_id, :series_step,
+                        rewards: [ :type, :key, :amount ])
         end
 
         def achievement_params

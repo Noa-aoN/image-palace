@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import { Spinner } from '@/components/ui/spinner'
 import { Button } from '@/components/ui/button'
 import { AdminRewardGrant } from './AdminRewardGrant'
@@ -27,6 +27,11 @@ import {
   type EditTarget,
 } from '@/components/features/admin/AdminRewardEditPanel'
 import { REWARD_GRANT_PANEL_KEY } from '@/components/features/admin/AdminRewardGrant'
+import {
+  AdminDefinitionCreate,
+  DEFINITION_CREATE_PANEL_KEY,
+  DefinitionCreateButton,
+} from '@/components/features/admin/AdminDefinitionCreate'
 import { useCanOperate } from '@/hooks/useAdminPermissions'
 import { ReadOnlyNotice } from '@/components/features/admin/ReadOnlyNotice'
 
@@ -63,11 +68,18 @@ export function AdminRewardsPanel() {
     openSection({ key: REWARD_EDIT_PANEL_KEY, title: '編集' })
   }
 
+  // 作った直後に一覧へ載せたいので、読み込みを名前付きにして呼び直せるようにする
+  const load = useCallback(
+    () =>
+      getAdminRewards()
+        .then(setPage)
+        .catch(() => setError('読み込めませんでした')),
+    []
+  )
+
   useEffect(() => {
-    getAdminRewards()
-      .then(setPage)
-      .catch(() => setError('読み込めませんでした'))
-  }, [])
+    load()
+  }, [load])
 
   if (error) return <p className="text-sm text-destructive">{error}</p>
   if (!page) {
@@ -213,7 +225,7 @@ export function AdminRewardsPanel() {
 
       {/* 常に画面の下に開いていると、見に来ただけの人にも配る操作が見えている。
           必要なときだけ開く */}
-      <div className="pt-1">
+      <div className="flex flex-wrap gap-2 pt-1">
         <Button
           size="sm"
           variant="outline"
@@ -223,9 +235,15 @@ export function AdminRewardsPanel() {
           <Gift size={14} />
           手で配る
         </Button>
+        {/* 「配る」の隣に「作る」を置く。**別の操作**なので、
+            開くパネルも文言も分けてある（作っただけでは誰の持ち物も増えない） */}
+        <DefinitionCreateButton
+          onClick={() => openSection({ key: DEFINITION_CREATE_PANEL_KEY, title: '新しく作る' })}
+        />
       </div>
 
       <AdminRewardGrant rewards={page.rewards} />
+      <AdminDefinitionCreate page={page} onCreated={load} />
       <AdminRewardEditPanel
         target={editing}
         series={page.series}
