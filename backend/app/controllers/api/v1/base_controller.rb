@@ -39,8 +39,10 @@ module Api
       # **どの方法で確かめたかは見ない。** Passkey でも認証アプリでも
       # 復旧コードでも、通っていれば同じ扱いにする。
       # 危険操作の側が手段を知る必要はない
-      def strongly_authenticated?
-        StrongAuthSession.fresh?(user: current_user, client_id: current_client_id)
+      # 既定は危険操作の猶予（短い方）。執務室に居るかどうかの判断だけが
+      # 広い窓（StrongAuthSession::ADMIN_WINDOW）を明示して呼ぶ
+      def strongly_authenticated?(within: StrongAuthSession::WINDOW)
+        StrongAuthSession.fresh?(user: current_user, client_id: current_client_id, within: within)
       end
 
       # 危険な操作の前に置く。通っていなければ、何が使えるかを添えて断る

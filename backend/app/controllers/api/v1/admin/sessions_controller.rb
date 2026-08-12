@@ -35,7 +35,9 @@ module Api
 
           {
             required: true,
-            satisfied: strongly_authenticated?,
+            # 執務室の門と同じ窓で見る。ここだけ短い窓で見ると、
+            # 画面は確かめ直しを出すのに API は通る（またはその逆）になる
+            satisfied: strongly_authenticated?(within: StrongAuthSession::ADMIN_WINDOW),
             prepared: methods.any?,
             methods: methods
           }
