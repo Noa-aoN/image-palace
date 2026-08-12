@@ -39,6 +39,8 @@ Rails.application.routes.draw do
       namespace :admin do
         get "session", to: "sessions#show"
         get "overview", to: "overviews#show"
+        # 経営の数字（成長・売上・原価）。運営ダッシュボードとは見るものが違う
+        get "business", to: "business_metrics#show"
         get "users", to: "users#index"
         patch "users/:id/role", to: "users#update_role"
         get "audit_logs", to: "audit_logs#index"
