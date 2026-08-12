@@ -14,4 +14,11 @@ DeviseTokenAuth.setup do |config|
   # つまり能動的に使っているユーザーはログアウトされず、
   # 「この日数アクセスが無かった場合に再ログイン」という意味になる。
   config.token_lifespan = ENV.fetch("TOKEN_LIFESPAN_DAYS", "7").to_i.days
+
+  # パスワードを変えるときは、**いまのパスワードを必ず聞く**。
+  #
+  # 既定は聞かない。トークンさえ奪えば、パスワードごと乗っ取れてしまう
+  # （置き忘れた端末・持ち出されたトークンで、本人が締め出される）。
+  # :password にすると、変更の対象がパスワードのときだけ現在のものを求める。
+  config.check_current_password_before_update = :password
 end

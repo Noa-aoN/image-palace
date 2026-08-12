@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/button'
 import { CategorySections, type CategorySection } from '@/components/features/myroom/CategorySections'
 import { ComingSoon } from '@/components/features/myroom/ComingSoon'
 import { AvatarGenerator } from '@/components/features/account/AvatarGenerator'
+import { PasswordEditor } from '@/components/features/account/PasswordEditor'
 import { DisplayNameEditor } from '@/components/features/account/DisplayNameEditor'
 import { SecuritySettings } from '@/components/features/account/SecuritySettings'
 import { PalaceNameEditor } from '@/components/features/account/PalaceNameEditor'
@@ -75,9 +76,12 @@ export default function AccountPage() {
               <dt className="text-muted-foreground">ログイン連携</dt>
               <dd className="font-medium">{providerLabel(user?.provider)}</dd>
             </div>
+            {/* パスワードを持つのはメールで登録した人だけ。
+                Google などで入っている人には出さない（変えるものが無い） */}
+            {user?.provider === 'email' && <PasswordEditor />}
           </dl>
           <p className="text-xs text-muted-foreground">
-            メールアドレス・パスワード・ログイン連携の編集は順次対応予定です。
+            メールアドレスの変更とログイン連携の追加は、まだご利用いただけません。
           </p>
         </section>
       ),
@@ -98,8 +102,8 @@ export default function AccountPage() {
         <div className="space-y-4">
           <AvatarGenerator />
           <ComingSoon
-            description="言語設定、ログイン連携、パスワード変更などは順次対応予定です。"
-            items={['アプリ内の呼び名', '言語 / タイムゾーン', '学習目的 / デフォルト学習ジャンル', '自分用メモ', 'ログイン連携（Google / GitHub / Apple）', 'メールアドレス変更', 'パスワード変更']}
+            description="言語設定やログイン連携などは順次対応予定です。呼び名とパスワードは「登録情報」で変えられます。"
+            items={['言語 / タイムゾーン', '学習目的 / デフォルト学習ジャンル', '自分用メモ', 'ログイン連携（Google / Apple）', 'メールアドレス変更']}
           />
         </div>
       ),
