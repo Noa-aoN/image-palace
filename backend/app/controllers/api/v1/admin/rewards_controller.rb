@@ -11,7 +11,8 @@ module Api
         # 配るもの・配る操作は通常運用の範囲
         before_action -> { require_role!(:operator) },
                       only: [ :create_reward, :create_achievement, :create_mission,
-                              :update_reward, :update_achievement, :update_mission, :grant ]
+                              :update_reward, :update_achievement, :update_mission, :grant,
+                              :generate_reward_image, :destroy_reward_image ]
 
         # 定義を作る。**「配る」とは別**。
         #
@@ -68,6 +69,34 @@ module Api
           else
             render json: { errors: definition.errors.full_messages }, status: :unprocessable_entity
           end
+        end
+
+        # 獲得物の絵を作る。
+        #
+        # 仕組みは既にある（`Achievements::ImageGenerator`。これまで rake からしか
+        # 呼べなかった）。**作った獲得物に、その場で絵を付けられる**ようにする。
+        #
+        # 待ち時間が出るので、押した人には「作っている」ことが分かる応答を返す。
+        # 失敗しても定義そのものは壊さない（絵が無いだけで、既定の絵柄で出る）。
+        def generate_reward_image
+          definition = RewardDefinition.find(params[:id])
+
+          ::Achievements::ImageGenerator.call(reward: definition, user_id: current_user.id)
+          audit!("reward_image_generate", target: definition, details: { key: definition.key })
+          render json: { reward: serialize_reward(definition.reload) }
+        rescue StandardError => e
+          Rails.logger.error "[RewardImage] FAILED key=#{definition&.key} #{e.class}: #{e.message}"
+          render json: { errors: [ "絵を作れませんでした（#{e.class}）" ] }, status: :unprocessable_entity
+        end
+
+        # 絵を外す。定義は残す（絵が無ければ、種別ごとの既定の絵柄で出る）
+        def destroy_reward_image
+          definition = RewardDefinition.find(params[:id])
+          definition.image.purge if definition.image.attached?
+          definition.update!(image_key: nil)
+          audit!("reward_image_destroy", target: definition, details: { key: definition.key })
+
+          render json: { reward: serialize_reward(definition.reload) }
         end
 
         def update_achievement
@@ -183,7 +212,11 @@ module Api
             name: definition.name, description: definition.description,
             rarity_level: definition.rarity_level, rarity_tier: definition.rarity_tier,
             category: definition.category, published: definition.published?,
-            image_path: definition.image_path, builtin: definition.builtin?,
+            image_path: definition.image_path,
+            # 絵を確かめられるように、そのまま開ける形でも返す。
+            # 組み立て方は利用者側（Presenter）と同じものを使う（食い違わせない）
+            image_url: ::Achievements::Presenter.image_url_for(definition),
+            builtin: definition.builtin?,
             # 何人が持っているか。配りすぎ・配らなすぎに気づくため
             owned_count: UserReward.where(reward_definition_id: definition.id).count
           }

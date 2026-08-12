@@ -260,6 +260,8 @@ export interface AdminRewardDefinition {
   category: string | null
   published: boolean
   image_path: string | null
+  /** そのまま開ける形。無ければ null（画面が種別ごとの既定の絵柄で描く） */
+  image_url: string | null
   builtin: boolean
   /** 何人が持っているか。配りすぎ・配らなすぎに気づくため */
   owned_count: number
@@ -443,6 +445,27 @@ export async function createAdminMission(mission: {
   const res = await apiClient.post<{ mission: AdminMissionDefinition }>(
     '/api/v1/admin/rewards/missions',
     { mission }
+  )
+  return res.data
+}
+
+/**
+ * 獲得物の絵を作る（AI に描かせる）。
+ *
+ * 仕組みは以前からあったが、コマンドからしか呼べなかった。
+ * **作った獲得物に、その場で絵を付けられる**ようにするための口。
+ */
+export async function generateAdminRewardImage(id: string): Promise<{ reward: AdminRewardDefinition }> {
+  const res = await apiClient.post<{ reward: AdminRewardDefinition }>(
+    `/api/v1/admin/rewards/definitions/${id}/image`
+  )
+  return res.data
+}
+
+/** 絵を外す。定義は残る（絵が無ければ種別ごとの既定の絵柄で出る） */
+export async function deleteAdminRewardImage(id: string): Promise<{ reward: AdminRewardDefinition }> {
+  const res = await apiClient.delete<{ reward: AdminRewardDefinition }>(
+    `/api/v1/admin/rewards/definitions/${id}/image`
   )
   return res.data
 }

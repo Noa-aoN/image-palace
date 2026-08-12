@@ -308,6 +308,11 @@ module Achievements
     # 添付を差し替えた場合は、その環境の CDN 設定に従う
     PUBLIC_IMAGE_BASE = "https://cdn.imagepalace.app"
 
+    # 運営画面からも同じ組み立てを使う（画面ごとに作ると食い違う）
+    def self.image_url_for(definition)
+      new(user: nil).send(:image_url_for, definition)
+    end
+
     def image_url_for(definition)
       path = definition.image_path
       return nil if path.blank?
