@@ -6,6 +6,7 @@ import { Check, Copy, Download, ShieldCheck, ShieldOff } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Spinner } from '@/components/ui/spinner'
+import { HelpPopover } from '@/components/ui/help-popover'
 import {
   getTotpStatus,
   startTotpEnrollment,
@@ -146,6 +147,26 @@ export function TwoFactorSettings() {
         )}
         <h2 className="text-lg font-semibold">二要素認証</h2>
         <span className="text-sm text-muted-foreground">{status.enrolled ? '設定済み' : '未設定'}</span>
+        {/* 見出しの並びの終わりに置く。主操作（設定する）より目立たせない */}
+        <span className="ml-auto">
+          <HelpPopover label="二要素認証について" title="二要素認証とは">
+            <p>
+              認証アプリに出る6桁の数字で本人確認する方法です。数字は30秒ごとに変わるので、
+              一度のぞき見られても使い回せません。
+            </p>
+            <p>
+              Google Authenticator・1Password・Microsoft Authenticator などが使えます。
+            </p>
+            <p>
+              パスキーが使えない端末や、パスキーを登録していないときの控えになります。
+            </p>
+            <p>
+              端末を失っても、設定のときにお渡しする
+              <strong className="text-foreground">復旧コード</strong>で入れます。
+              <strong className="text-foreground">人に見せず、安全な場所に控えてください。</strong>
+            </p>
+          </HelpPopover>
+        </span>
       </div>
 
       <p className="text-sm text-muted-foreground">
