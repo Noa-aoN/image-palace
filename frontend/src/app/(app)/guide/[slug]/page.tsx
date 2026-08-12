@@ -4,7 +4,7 @@ import { notFound } from 'next/navigation'
 import { ArrowLeft } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { NAV_SECTIONS, GLOBAL_ACTIONS } from '@/components/features/layout/nav-items'
-import { GUIDE_SECTIONS, getGuideSection, STEPS, FEATURE_GROUPS, FAQ, GLOSSARY, USE_CASE_GROUPS, type GuideSlug } from '@/lib/guide/sections'
+import { GUIDE_SECTIONS, getGuideSection, STEPS, FEATURE_GROUPS, FAQ, GLOSSARY, USE_CASES, type GuideSlug } from '@/lib/guide/sections'
 
 export function generateStaticParams() {
   return GUIDE_SECTIONS.map((s) => ({ slug: s.slug }))
@@ -185,42 +185,60 @@ function SitemapContent() {
  * おすすめ使用例。
  *
  * 「何ができるか」ではなく**何のために使うか**を並べる。
- * 初めての人が困るのは操作ではなく、単語帳以外の使い道が思いつかないこと。
- * 場面 → 出来上がる形 → 使う道具、の順に読めるようにしてある。
+ * 読む順は 一言 → こんな人に → 作るカード → 効く機能 → 完成イメージ。
+ * **説明は短く。** 長い文は読まれず、読まれなければ無いのと同じ。
  */
 function UseCasesContent() {
   return (
-    <div className="space-y-8">
-      {USE_CASE_GROUPS.map((group) => {
-        const Icon = group.icon
-        return (
-          <section key={group.theme}>
-            <h2 className="flex items-center gap-2 text-sm font-semibold">
-              <Icon size={16} style={{ color: 'var(--palace)' }} />
-              {group.theme}
-            </h2>
-            <div className="mt-3 grid gap-3 md:grid-cols-2">
-              {group.cases.map((useCase) => (
-                <article key={useCase.title} className="rounded-xl border border-border bg-card p-4">
-                  <h3 className="font-medium">{useCase.title}</h3>
-                  <p className="mt-1 text-xs text-muted-foreground">{useCase.scene}</p>
-                  <p className="mt-2 text-sm leading-relaxed">{useCase.body}</p>
-                  <ul className="mt-3 flex flex-wrap gap-1.5">
-                    {useCase.tools.map((tool) => (
+    <div className="space-y-4">
+      <p className="text-sm text-muted-foreground">
+        いま出来ることだけで書いています。気になったものから、そのまま真似してください。
+      </p>
+
+      <div className="grid gap-3 md:grid-cols-2">
+        {USE_CASES.map((useCase) => (
+          <article key={useCase.title} className="flex flex-col rounded-xl border border-border bg-card p-4">
+            <h2 className="font-medium leading-snug">{useCase.title}</h2>
+            <p className="mt-1 text-sm text-muted-foreground">{useCase.summary}</p>
+
+            <dl className="mt-3 space-y-2 text-sm">
+              <div>
+                <dt className="text-xs font-medium text-muted-foreground">こんな人に</dt>
+                <dd>{useCase.forWhom}</dd>
+              </div>
+              <div>
+                <dt className="text-xs font-medium text-muted-foreground">どんなカードを作るか</dt>
+                <dd>{useCase.cards}</dd>
+              </div>
+              <div>
+                <dt className="text-xs font-medium text-muted-foreground">ここが役立つ</dt>
+                <dd>
+                  <ul className="mt-0.5 flex flex-wrap gap-1.5">
+                    {useCase.features.map((feature) => (
                       <li
-                        key={tool}
+                        key={feature}
                         className="rounded-full border border-border px-2 py-0.5 text-[11px] text-muted-foreground"
                       >
-                        {tool}
+                        {feature}
                       </li>
                     ))}
                   </ul>
-                </article>
-              ))}
-            </div>
-          </section>
-        )
-      })}
+                </dd>
+              </div>
+            </dl>
+
+            {/* 出来上がった状態を最後に置く。ここだけ読んでも用途が分かるように */}
+            <p className="mt-3 rounded-lg bg-muted/40 px-3 py-2 text-xs">{useCase.result}</p>
+          </article>
+        ))}
+      </div>
+
+      {/* 行き先は1つだけ。増やすと、どれを押せばよいか考えさせる */}
+      <div className="pt-2">
+        <Link href="/items/new">
+          <Button>この使い方で始める</Button>
+        </Link>
+      </div>
     </div>
   )
 }
