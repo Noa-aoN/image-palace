@@ -64,7 +64,7 @@ module Achievements
         # 称号が無い人に「ありません」とだけ出しても、次に何をすればよいか分からない
         next_title: title ? nil : next_title,
         # 星を入れたものを種別ごとに返す。出す場所が種別で違うため
-        #   称号=名乗る / 勲章=掲げる / 褒賞=飾る / 表彰=プロフィール
+        #   称号=名乗る / 勲章=掲げる / 宝物=飾る / 表彰=プロフィール
         showcase: RewardDefinition::KINDS.to_h { |kind|
           [ kind, (by_kind[kind] || []).map { |r| reward_row(r.reward_definition) } ]
         },

@@ -1,6 +1,6 @@
 import { apiClient } from './client'
 
-/** 獲得物の種類。称号は名乗るもの、勲章は掲げるもの、褒賞は飾るもの、表彰は選ばれたもの */
+/** 獲得物の種類。称号は名乗るもの、勲章は掲げるもの、宝物は飾るもの、表彰は選ばれたもの */
 export type RewardKind = 'title' | 'medal' | 'treasure' | 'honor'
 /** 画面で使う5つの段。内部のレア度（1〜9）をここへ丸めて出す */
 export type RarityTier = 'stone' | 'metal' | 'jewel' | 'sacred' | 'muse'
@@ -159,7 +159,7 @@ export async function getAchievements(): Promise<AchievementsPage> {
 /**
  * 星の入り切り。
  *
- * 称号なら名乗る、勲章なら掲げる、褒賞なら飾る、と結果は変わるが、
+ * 称号なら名乗る、勲章なら掲げる、宝物なら飾る、と結果は変わるが、
  * 操作は1つ。種別ごとの違いはサーバー側で吸収する。
  */
 export async function toggleStar(key: string): Promise<AchievementsPage> {

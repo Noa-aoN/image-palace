@@ -26,7 +26,7 @@ export function RewardCard({
 }: {
   reward: RewardRow
   onOpen: () => void
-  /** 星の入り切り。称号なら名乗る、勲章なら掲げる、褒賞なら飾る */
+  /** 星の入り切り。称号なら名乗る、勲章なら掲げる、宝物なら飾る */
   onToggleStar: () => void
   busy?: boolean
   /** 絵だけ並べる。名前や説明はホバー（狭い画面では押して詳細）で見る */
@@ -45,7 +45,7 @@ export function RewardCard({
       }`}
       style={reward.owned && style.glow ? { boxShadow: style.glow } : undefined}
     >
-      {/* 操作は星ひとつ。称号なら名乗る、勲章なら掲げる、褒賞なら飾る、と
+      {/* 操作は星ひとつ。称号なら名乗る、勲章なら掲げる、宝物なら飾る、と
           結果だけが変わる。種別ごとにボタンを並べると、絵より操作が目立ってしまう。
           入れているものは常に光らせる（ホバーしないと分からない状態にしない） */}
       {reward.owned && (

@@ -1,7 +1,7 @@
 /**
  * 獲得物・実績・ミッションを、種別ごとに束ねる。
  *
- * 1枚の表に全部並べると、称号と勲章と褒賞が混ざる。運営から見ると
+ * 1枚の表に全部並べると、称号と勲章と宝物が混ざる。運営から見ると
  * 「称号をひとつ足す」「勲章の公開を止める」のように**種別ごとの作業**なので、
  * 見出しで区切って束ねる。
  *
@@ -15,7 +15,7 @@ export const REWARD_KIND_ORDER = ['title', 'medal', 'treasure', 'honor'] as cons
 export const REWARD_KIND_LABELS: Record<string, string> = {
   title: '称号',
   medal: '勲章',
-  treasure: '褒賞',
+  treasure: '宝物',
   honor: '表彰',
 }
 

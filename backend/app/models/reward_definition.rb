@@ -1,6 +1,6 @@
 # frozen_string_literal: true
 
-# 獲得物（称号・勲章・褒賞・表彰）の定義。
+# 獲得物（称号・勲章・宝物・表彰）の定義。
 #
 # 4種を1テーブルにしているのは、列の9割が同じで、管理画面・ギャラリー・通知・付与の
 # 流れも同じだから。分けると同じ画面を4つ作ることになる。
@@ -11,7 +11,7 @@
 class RewardDefinition < ApplicationRecord
   KINDS = %w[title medal treasure honor].freeze
   KIND_LABELS = {
-    "title" => "称号", "medal" => "勲章", "treasure" => "褒賞", "honor" => "表彰"
+    "title" => "称号", "medal" => "勲章", "treasure" => "宝物", "honor" => "表彰"
   }.freeze
 
   # レア度は9段階。九柱のムーサに対応させてある。
@@ -95,7 +95,7 @@ class RewardDefinition < ApplicationRecord
       description: "100枚のカードを積み上げた証。", position: 23,
       metadata: { "motif" => "a full laurel wreath crown shaped as a circular medal" }, image_key: "xni91sd8u68mlyc4aju1p1lkh3pm" },
 
-    # ── 褒賞 ──
+    # ── 宝物 ──
     { key: "treasure_seed", kind: "treasure", name: "記憶の種", rarity_level: 1, category: "学習",
       description: "すべてはここから。", position: 30,
       metadata: { "motif" => "a small clay pot holding a single sprouting seed" }, image_key: "ur6et8kagnnjhzr66l6av0oplwe3" },
@@ -103,16 +103,16 @@ class RewardDefinition < ApplicationRecord
       description: "積み重ねた学習の記録。", position: 31,
       metadata: { "motif" => "a small stone tablet with faint carved grid lines" }, image_key: "4htwy3acujtos3t2zw3mi72r7wyu" },
     { key: "treasure_cup", kind: "treasure", name: "青銅の小杯", rarity_level: 2, category: "創作",
-      description: "10枚のカードを作った褒賞。", position: 32,
+      description: "10枚のカードを作った宝物。", position: 32,
       metadata: { "motif" => "a small two-handled bronze drinking cup (kylix)" }, image_key: "ytajhw0ret812b87m0gzrdd19wq9" },
     { key: "treasure_book", kind: "treasure", name: "学匠の書籍", rarity_level: 3, category: "学習",
-      description: "正しく答え続けた褒賞。", position: 33,
+      description: "正しく答え続けた宝物。", position: 33,
       metadata: { "motif" => "a bound codex with a leather strap and a laurel emblem" }, image_key: "idln7pibyinzknsuu51or5rc2bhw" },
     { key: "treasure_laurel_pot", kind: "treasure", name: "月桂樹の鉢植え", rarity_level: 4, category: "継続",
       description: "長く続けた人の部屋に。", position: 34,
       metadata: { "motif" => "a terracotta pot with a young laurel tree" }, image_key: "n1vzsrdej830hkyb3nut6cnx0us3" },
     { key: "treasure_shelf", kind: "treasure", name: "小さな本棚", rarity_level: 3, category: "整理",
-      description: "まとめる力の褒賞。", position: 35,
+      description: "まとめる力の宝物。", position: 35,
       metadata: { "motif" => "a small wooden shelf holding rolled scrolls" }, image_key: "73afip2yv4lsxx2ckjiopxybk5b4" },
 
 
@@ -142,7 +142,7 @@ class RewardDefinition < ApplicationRecord
       description: "一年ぶん通った証。", position: 27,
       metadata: { "motif" => "a medal with concentric tree rings and a laurel border" } },
 
-    # 褒賞
+    # 宝物
     { key: "treasure_lyre", kind: "treasure", name: "小さな竪琴", rarity_level: 3, category: "創作",
       description: "調べを奏でる道具。", position: 36,
       metadata: { "motif" => "a small lyre with strings" } },

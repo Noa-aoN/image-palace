@@ -6,7 +6,7 @@ import { AchievementsBoard } from '@/components/features/achievements/Achievemen
 /**
  * アチーブメント（栄誉の間）。
  *
- * ページ名は「アチーブメント」に統一する。「トロフィー」は褒賞アイテムの一種であって、
+ * ページ名は「アチーブメント」に統一する。「トロフィー」は宝物アイテムの一種であって、
  * 場所の名前ではない。世界観としての「栄誉の間」は副題に残す。
  */
 export default function AchievementsPage() {
