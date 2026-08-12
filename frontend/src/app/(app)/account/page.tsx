@@ -8,7 +8,7 @@ import { CategorySections, type CategorySection } from '@/components/features/my
 import { ComingSoon } from '@/components/features/myroom/ComingSoon'
 import { AvatarGenerator } from '@/components/features/account/AvatarGenerator'
 import { DisplayNameEditor } from '@/components/features/account/DisplayNameEditor'
-import { TwoFactorSettings } from '@/components/features/account/TwoFactorSettings'
+import { SecuritySettings } from '@/components/features/account/SecuritySettings'
 import { PalaceNameEditor } from '@/components/features/account/PalaceNameEditor'
 import { deleteAccount } from '@/lib/api/account'
 import { useAuthStore } from '@/stores/auth'
@@ -116,7 +116,7 @@ export default function AccountPage() {
       key: 'security',
       label: 'セキュリティ',
       icon: <ShieldCheck size={16} />,
-      content: <TwoFactorSettings />,
+      content: <SecuritySettings />,
     },
     {
       key: 'withdraw',

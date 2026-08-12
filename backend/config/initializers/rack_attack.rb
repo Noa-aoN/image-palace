@@ -144,6 +144,11 @@ class Rack::Attack
   #
   # こちらの負担は軽いが、外（Wikimedia）へ投げる口なので、
   # 相手の迷惑になる叩き方をこちらで止める。キャッシュが効くぶんは通る
+  # Passkey の登録も、繰り返し叩かれる理由がない。網の側で止める
+  throttle("passkeys/ip", limit: 20, period: 5.minutes) do |req|
+    req.ip if (req.post? || req.patch? || req.delete?) && req.path.start_with?("/api/v1/passkeys")
+  end
+
   # 二要素のコードは6桁しかない。総当たりを網の側でも止める
   throttle("totp/ip", limit: 20, period: 5.minutes) do |req|
     req.ip if req.post? && req.path.start_with?("/api/v1/totp")
