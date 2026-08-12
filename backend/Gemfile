@@ -39,6 +39,10 @@ gem "rack-cors"
 # API レート制限（ブルートフォース・乱用・画像生成コストの抑制）
 gem "rack-attack"
 
+# Passkey / WebAuthn。署名検証・COSE 鍵の解釈・端末証明の検証は自前で書かない。
+# 間違えても動いてしまう類の処理で、間違いに気づけない
+gem "webauthn", "~> 3.4"
+
 # エラーモニタリング（本番のみ有効。SENTRY_DSN 未設定なら no-op）
 gem "sentry-ruby"
 gem "sentry-rails"

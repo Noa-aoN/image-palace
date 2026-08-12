@@ -29,6 +29,8 @@ node_modules/
 docs/*
 !docs/performance-history.md
 !docs/performance-tips.md
+# RP ID は後から変えられない。設定値と意図を、コードを読む人が辿れる場所に置く
+!docs/webauthn-design.md
 
 # Cloudflare Workers ビルド成果物
 frontend/.open-next/

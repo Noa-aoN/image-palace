@@ -50,6 +50,9 @@ class User < ApplicationRecord
 
   # == 関連付け ==============================================================
   has_one :setting, dependent: :destroy
+  # Passkey / セキュリティキー。1人が何本でも持てる
+  # （1本しか登録できないと、その端末を失った時点で入れなくなる）
+  has_many :webauthn_credentials, dependent: :destroy
   has_many :items, dependent: :destroy
   has_many :property_definitions, dependent: :destroy
   has_many :item_reviews, dependent: :destroy
@@ -399,6 +402,25 @@ class User < ApplicationRecord
 
     effective_admins.select { |candidate| candidate.at_least?("admin") }
                     .none? { |candidate| candidate.id != user.id }
+  end
+
+  # 認証器に渡す利用者の目印。
+  #
+  # **内部の利用者IDをそのまま渡さない。** user handle は認証器に保存され、
+  # 端末を持つ人から読めることがある。ここから利用者数や登録順が
+  # 推し量れる形にしない。
+  #
+  # 必要になった時点で作る（全員に前もって配る理由がない）
+  def webauthn_handle
+    return webauthn_id if webauthn_id.present?
+
+    update!(webauthn_id: SecureRandom.uuid)
+    webauthn_id
+  end
+
+  # 鍵を登録しているか
+  def passkey_enrolled?
+    webauthn_credentials.exists?
   end
 
   # 二要素を使える状態か。**鍵を作っただけでは有効にしない。**
