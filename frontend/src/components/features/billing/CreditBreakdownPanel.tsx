@@ -2,6 +2,7 @@
 
 import { Coins } from 'lucide-react'
 import { Button } from '@/components/ui/button'
+import { HelpPopover } from '@/components/ui/help-popover'
 import { Spinner } from '@/components/ui/spinner'
 import { PanelSlotContent } from '@/components/features/panel/PanelSlot'
 import { usePanelForm } from '@/components/features/panel/usePanelForm'
@@ -38,7 +39,33 @@ export function CreditBreakdownPanel() {
         ) : (
           <>
             <div>
-              <p className="text-xs text-muted-foreground">使えるクレジット</p>
+              <p className="flex items-center gap-1 text-xs text-muted-foreground">
+                使えるクレジット
+                {/* 仕組みが分かりにくいところに `?` を置く。
+                    残高の数字だけでは、なぜ減るのか・いつ消えるのかが分からない */}
+                <HelpPopover label="クレジットについて" title="クレジット">
+                  <dl className="space-y-2 text-sm">
+                    <div>
+                      <dt className="text-xs font-medium text-muted-foreground">何に使うか</dt>
+                      <dd>絵を1枚つくるたびに 1 消費します。文章のAIは、使った量に応じて少しずつ引かれます。</dd>
+                    </div>
+                    <div>
+                      <dt className="text-xs font-medium text-muted-foreground">どこから来るか</dt>
+                      <dd>登録時のお試し・毎月の無料枠・プランの付与・買い切り・引き換えコード。</dd>
+                    </div>
+                    <div>
+                      <dt className="text-xs font-medium text-muted-foreground">期限</dt>
+                      <dd>
+                        受け取ってから6か月です。<strong>期限の近いものから先に使われます</strong>。
+                      </dd>
+                    </div>
+                    <div>
+                      <dt className="text-xs font-medium text-muted-foreground">同じ言葉は二度作らない</dt>
+                      <dd>誰かが作った絵と同じ言葉なら、作り直さずその絵を使います（待ち時間もかかりません）。</dd>
+                    </div>
+                  </dl>
+                </HelpPopover>
+              </p>
               <p className="text-3xl font-bold">
                 {summary.available_credits}
                 <span className="ml-1 text-sm font-normal text-muted-foreground">{CREDIT_UNIT}</span>
