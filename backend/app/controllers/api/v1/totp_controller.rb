@@ -11,8 +11,10 @@ module Api
     class TotpController < BaseController
       # 総当たりを許さない。コードは6桁しかない
       before_action :throttle_guard!, only: [ :confirm, :destroy ]
-      # 秘密鍵と復旧コードが通る経路。どこにも溜めさせない
-      before_action :do_not_store!
+      # 秘密鍵と復旧コードが通る経路。どこにも溜めさせない。
+      # prepend にするのは、認証で弾かれた応答にも同じ扱いを掛けるため
+      # （401 に秘密は無いが、経路ごと「溜めない」で揃えておくほうが穴が無い）
+      prepend_before_action :do_not_store!
 
       # いまの状態。画面が「設定する」を出すかどうかの判断に使う
       def show

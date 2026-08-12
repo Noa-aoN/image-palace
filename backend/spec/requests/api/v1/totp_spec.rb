@@ -121,6 +121,14 @@ RSpec.describe "二要素認証", type: :request do
       expect(response.headers["Cache-Control"]).to include("no-store")
     end
 
+    # 認証で弾かれた応答にも同じ扱いを掛ける（経路ごと揃えておくほうが穴が無い）
+    it "認証されていない応答でも no-store を返す" do
+      get "/api/v1/totp"
+
+      expect(response).to have_http_status(:unauthorized)
+      expect(response.headers["Cache-Control"]).to include("no-store")
+    end
+
     it "登録の始めでも no-store を返す" do
       post "/api/v1/totp", headers: headers
 
