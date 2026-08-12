@@ -10,6 +10,10 @@ class AchievementDefinition < ApplicationRecord
 
   validates :key, presence: true, uniqueness: true, format: { with: /\A[a-z][a-z0-9_]*\z/ }
   validates :name, :condition_type, presence: true
+  # 知らない条件は**いつまでも達成にならない**（数える手立てが無く、常に 0 のまま）。
+  # 運営が画面から作るときに気づけるよう、作る時点で弾く。
+  # 既にある行は触らない（組み込みを後から足すときに、古い行が落ちないように）
+  validate :condition_type_must_be_known, on: :create
   validates :condition_target, numericality: { only_integer: true, greater_than: 0 }
   validate :rewards_must_be_known
 
@@ -171,5 +175,14 @@ class AchievementDefinition < ApplicationRecord
         errors.add(:rewards, "に知らない種類が入っています（#{type}）")
       end
     end
+  end
+
+  private
+
+  def condition_type_must_be_known
+    return if condition_type.blank?
+    return if ::Achievements::Conditions.known?(condition_type)
+
+    errors.add(:condition_type, "は数える手立てがありません（#{condition_type}）")
   end
 end

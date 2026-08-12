@@ -58,6 +58,11 @@ Rails.application.routes.draw do
         patch "plans/:id", to: "plans#update"
         # 獲得物・実績・ミッションは1つの入口で扱う（運営から見ると「何を配るか」の1つの話）
         get "rewards", to: "rewards#index"
+        # 定義を新しく作る。**配る操作（rewards/grant）とは別物**。
+        # ここで作るのは「何があるか」で、誰かの持ち物は増えない
+        post "rewards/definitions", to: "rewards#create_reward"
+        post "rewards/achievements", to: "rewards#create_achievement"
+        post "rewards/missions", to: "rewards#create_mission"
         patch "rewards/definitions/:id", to: "rewards#update_reward"
         patch "rewards/achievements/:id", to: "rewards#update_achievement"
         patch "rewards/missions/:id", to: "rewards#update_mission"

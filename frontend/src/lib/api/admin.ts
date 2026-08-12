@@ -385,3 +385,64 @@ export async function getAdminBusinessMetrics(params?: {
   const res = await apiClient.get<AdminBusinessMetrics>('/api/v1/admin/business', { params })
   return res.data
 }
+
+/**
+ * 定義を新しく作る。**「手で配る」とは別**。
+ *
+ * ここで増えるのは「何があるか」であって、誰かの持ち物ではない。
+ * 配るのは grantAdminReward（手で配る）と、条件を満たしたときの自動付与。
+ */
+export async function createAdminRewardDefinition(reward: {
+  key: string
+  kind: string
+  name: string
+  description?: string
+  rarity_level?: number
+  category?: string
+  published?: boolean
+  enabled?: boolean
+}): Promise<{ reward: AdminRewardDefinition }> {
+  const res = await apiClient.post<{ reward: AdminRewardDefinition }>(
+    '/api/v1/admin/rewards/definitions',
+    { reward }
+  )
+  return res.data
+}
+
+export async function createAdminAchievement(achievement: {
+  key: string
+  name: string
+  description?: string
+  category?: string
+  condition_type: string
+  condition_target?: number
+  published?: boolean
+  enabled?: boolean
+  rewards?: { type: string; key?: string; amount?: number }[]
+}): Promise<{ achievement: AdminAchievementDefinition }> {
+  const res = await apiClient.post<{ achievement: AdminAchievementDefinition }>(
+    '/api/v1/admin/rewards/achievements',
+    { achievement }
+  )
+  return res.data
+}
+
+export async function createAdminMission(mission: {
+  key: string
+  name: string
+  description?: string
+  cadence: string
+  condition_type: string
+  condition_target?: number
+  published?: boolean
+  enabled?: boolean
+  starts_at?: string | null
+  ends_at?: string | null
+  rewards?: { type: string; key?: string; amount?: number }[]
+}): Promise<{ mission: AdminMissionDefinition }> {
+  const res = await apiClient.post<{ mission: AdminMissionDefinition }>(
+    '/api/v1/admin/rewards/missions',
+    { mission }
+  )
+  return res.data
+}
