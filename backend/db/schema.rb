@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_08_12_010000) do
+ActiveRecord::Schema[8.1].define(version: 2026_08_12_020000) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
   enable_extension "pg_trgm"
@@ -907,11 +907,13 @@ ActiveRecord::Schema[8.1].define(version: 2026_08_12_010000) do
     t.string "uid", default: "", null: false
     t.string "unconfirmed_email"
     t.datetime "updated_at", null: false
+    t.string "webauthn_id"
     t.index ["confirmation_token"], name: "index_users_on_confirmation_token", unique: true
     t.index ["email"], name: "index_users_on_email", unique: true
     t.index ["provider", "uid"], name: "index_users_on_provider_and_uid", unique: true
     t.index ["reset_password_token"], name: "index_users_on_reset_password_token", unique: true
     t.index ["stripe_customer_id"], name: "index_users_on_stripe_customer_id", unique: true
+    t.index ["webauthn_id"], name: "index_users_on_webauthn_id", unique: true
   end
 
   create_table "view_edges", id: :uuid, default: -> { "gen_random_uuid()" }, force: :cascade do |t|
@@ -973,6 +975,32 @@ ActiveRecord::Schema[8.1].define(version: 2026_08_12_010000) do
     t.index ["space_id"], name: "index_views_on_space_id"
     t.index ["user_id", "created_at"], name: "index_views_on_user_id_and_created_at"
     t.index ["user_id"], name: "index_views_on_user_id"
+  end
+
+  create_table "webauthn_challenges", id: :uuid, default: -> { "gen_random_uuid()" }, force: :cascade do |t|
+    t.string "challenge", null: false
+    t.datetime "consumed_at"
+    t.datetime "created_at", null: false
+    t.datetime "expires_at", null: false
+    t.string "purpose", null: false
+    t.datetime "updated_at", null: false
+    t.uuid "user_id"
+    t.index ["challenge", "purpose"], name: "index_webauthn_challenges_on_challenge_and_purpose", unique: true
+    t.index ["expires_at"], name: "index_webauthn_challenges_on_expires_at"
+    t.index ["user_id"], name: "index_webauthn_challenges_on_user_id"
+  end
+
+  create_table "webauthn_credentials", id: :uuid, default: -> { "gen_random_uuid()" }, force: :cascade do |t|
+    t.datetime "created_at", null: false
+    t.string "external_id", null: false
+    t.datetime "last_used_at"
+    t.string "nickname"
+    t.string "public_key", null: false
+    t.bigint "sign_count", default: 0, null: false
+    t.datetime "updated_at", null: false
+    t.uuid "user_id", null: false
+    t.index ["external_id"], name: "index_webauthn_credentials_on_external_id", unique: true
+    t.index ["user_id"], name: "index_webauthn_credentials_on_user_id"
   end
 
   create_table "wordlists", id: :uuid, default: -> { "gen_random_uuid()" }, force: :cascade do |t|
@@ -1052,5 +1080,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_08_12_010000) do
   add_foreign_key "views", "items", column: "cover_item_id", on_delete: :nullify
   add_foreign_key "views", "spaces", on_delete: :nullify
   add_foreign_key "views", "users", on_delete: :cascade
+  add_foreign_key "webauthn_challenges", "users"
+  add_foreign_key "webauthn_credentials", "users"
   add_foreign_key "wordlists", "users", on_delete: :cascade
 end

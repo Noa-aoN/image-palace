@@ -35,6 +35,17 @@ primary_region = 'sin'
   # 個人のアドレスを使いたい場合だけ fly secrets へ移す。
   WIKIPEDIA_CONTACT = 'https://imagepalace.app'
 
+  # Passkey / WebAuthn。どちらも秘密ではない（ブラウザにそのまま渡る値）。
+  #
+  # **RP ID は後から変えられない。** 変えると登録済みの鍵がすべて無効になり、
+  # 利用者から見るとある日いきなり Passkey が消える。
+  # apex にしてあるので、サブドメインを足してもこの値は変えなくてよい。
+  #
+  # origin は「呼んだ画面のアドレス」。API のアドレスではない
+  # （取り違えると検証が必ず失敗する）
+  WEBAUTHN_RP_ID = 'imagepalace.app'
+  WEBAUTHN_ORIGIN = 'https://imagepalace.app'
+
 [processes]
   app = 'bundle exec rails server -b 0.0.0.0 -p 8080'
   worker = 'bundle exec bin/jobs'
