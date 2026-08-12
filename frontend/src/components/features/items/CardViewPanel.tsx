@@ -35,6 +35,7 @@ import {
 import { getItem } from '@/lib/api/items'
 import type { CardPropertyPreset } from '@/types/settings'
 import type { Item } from '@/types/item'
+import { isSubmitEnter } from '@/lib/enter-key'
 
 export const CARD_VIEW_PANEL_KEY = 'item-card-view'
 
@@ -561,7 +562,7 @@ function PresetBar({
             value={name}
             onChange={(e) => setName(e.target.value)}
             onKeyDown={(e) => {
-              if (e.key === 'Enter') {
+              if (isSubmitEnter(e)) {
                 e.preventDefault()
                 remember()
               }

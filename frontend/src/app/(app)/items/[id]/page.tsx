@@ -32,6 +32,7 @@ import { StatusBadge } from '@/components/features/items/StatusBadge'
 import { useItemDetail } from '@/hooks/useItemDetail'
 import { useMainAreaBox } from '@/hooks/useMainAreaBox'
 import { aspectRatioCss } from '@/lib/aspect-ratio'
+import { isSubmitEnter } from '@/lib/enter-key'
 
 // 本文領域の端から空ける距離。狭めると本文に食い込み、広げると画面外へ出る
 const NAV_INSET = 12
@@ -246,7 +247,7 @@ export default function ItemDetailPage() {
                   value={titleDraft}
                   onChange={(e) => setTitleDraft(e.target.value)}
                   onKeyDown={(e) => {
-                    if (e.key === 'Enter') { e.preventDefault(); handleSaveTitle() }
+                    if (isSubmitEnter(e)) { e.preventDefault(); handleSaveTitle() }
                     if (e.key === 'Escape') cancelEdit()
                   }}
                   disabled={saving}

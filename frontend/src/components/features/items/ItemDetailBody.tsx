@@ -21,6 +21,7 @@ import { StatusBadge } from '@/components/features/items/StatusBadge'
 import { useItemDetail } from '@/hooks/useItemDetail'
 import { STATUS_LABEL, isRegenerating } from '@/lib/item-status'
 import { aspectRatioCss } from '@/lib/aspect-ratio'
+import { isSubmitEnter } from '@/lib/enter-key'
 
 // カード詳細の本体（画像・タイトル編集・再生成・プロパティ・生成情報）。
 // 詳細ページと右パネルの両方から使えるよう、前後ナビ・パンくずは含めない。
@@ -87,7 +88,7 @@ export function ItemDetailBody({ itemId, onDeleted }: { itemId: string; onDelete
                 value={titleDraft}
                 onChange={(e) => setTitleDraft(e.target.value)}
                 onKeyDown={(e) => {
-                  if (e.key === 'Enter') {
+                  if (isSubmitEnter(e)) {
                     e.preventDefault()
                     handleSaveTitle()
                   }

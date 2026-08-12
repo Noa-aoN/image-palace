@@ -6,6 +6,7 @@ import { Fingerprint, KeyRound, ShieldCheck } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Spinner } from '@/components/ui/spinner'
+import { isSubmitEnter } from '@/lib/enter-key'
 import {
   getReauthStatus,
   startReauthPasskey,
@@ -136,7 +137,7 @@ export function StrongAuthPrompt({
               value={code}
               onChange={(e) => setCode(e.target.value)}
               onKeyDown={(e) => {
-                if (e.key === 'Enter') {
+                if (isSubmitEnter(e)) {
                   e.preventDefault()
                   void withCode()
                 }

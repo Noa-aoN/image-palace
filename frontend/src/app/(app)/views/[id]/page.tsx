@@ -33,6 +33,7 @@ const DeckBoard = dynamic(
 import { useCoverGeneration } from '@/hooks/useCoverGeneration'
 import { AiEditPanel } from '@/components/features/views/AiEditPanel'
 import { CoverLauncher } from '@/components/features/shared/CoverLauncher'
+import { isSubmitEnter } from '@/lib/enter-key'
 
 export default function ViewEditorPage() {
   const { id } = useParams<{ id: string }>()
@@ -212,7 +213,7 @@ export default function ViewEditorPage() {
             <Input
               value={nameDraft}
               onChange={(e) => setNameDraft(e.target.value)}
-              onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); handleSaveName() } if (e.key === 'Escape') setEditing(false) }}
+              onKeyDown={(e) => { if (isSubmitEnter(e)) { e.preventDefault(); handleSaveName() } if (e.key === 'Escape') setEditing(false) }}
               disabled={saving}
               autoFocus
               aria-label="キャンバス名"
