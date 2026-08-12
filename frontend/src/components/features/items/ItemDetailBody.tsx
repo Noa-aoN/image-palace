@@ -7,6 +7,7 @@ import { Input } from '@/components/ui/input'
 import { Spinner } from '@/components/ui/spinner'
 import { Skeleton } from '@/components/ui/skeleton'
 import { Tooltip } from '@/components/ui/tooltip'
+import { ImageLightbox } from '@/components/ui/image-lightbox'
 import { PropertyBlock, BlockAction, BlockError } from '@/components/features/items/PropertyBlock'
 import { ItemProperties } from '@/components/features/items/ItemProperties'
 import { ItemImageBar } from '@/components/features/items/ItemImageBar'
@@ -202,29 +203,16 @@ export function ItemDetailBody({ itemId, onDeleted }: { itemId: string; onDelete
         </div>
       )}
 
-      {/* 画像拡大モーダル */}
-      {zoomed && item.media?.url && (
-        <div
-          className="fixed inset-0 z-50 flex cursor-zoom-out items-center justify-center bg-black/80 p-4"
-          onClick={() => setZoomed(false)}
-        >
-          <button
-            type="button"
-            onClick={(e) => {
-              e.stopPropagation()
-              downloadImage(item.media!.url!, item.title)
-            }}
-            aria-label="画像をダウンロード"
-            title="画像をダウンロード"
-            className="absolute right-4 top-4 flex items-center gap-1.5 rounded-lg bg-white/15 px-3 py-2 text-sm text-white transition-colors hover:bg-white/25"
-          >
-            <Download size={16} />
-            ダウンロード
-          </button>
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src={item.media.url} alt={item.title} className="max-h-full max-w-full rounded-xl object-contain" />
-        </div>
-      )}
+      {/* 画像拡大。閉じ方（背景・Esc・×）と焦点の戻しは共通の覆いが持つ */}
+      <ImageLightbox
+        url={item.media?.url}
+        alt={item.title}
+        open={zoomed}
+        onClose={() => setZoomed(false)}
+        onDownload={
+          item.media?.url ? () => downloadImage(item.media!.url!, item.title) : undefined
+        }
+      />
     </div>
   )
 }

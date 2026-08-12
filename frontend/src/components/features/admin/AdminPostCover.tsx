@@ -3,6 +3,7 @@
 import { useRef, useState } from 'react'
 import { ImagePlus, Trash2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
+import { ImageLightbox, ZoomableImage } from '@/components/ui/image-lightbox'
 import { Spinner } from '@/components/ui/spinner'
 import { removeAdminPostCover, uploadAdminPostCover } from '@/lib/api/posts'
 import type { AdminPost } from '@/types/post'
@@ -29,6 +30,7 @@ export function AdminPostCover({
 }) {
   const inputRef = useRef<HTMLInputElement>(null)
   const [busy, setBusy] = useState(false)
+  const [zoomed, setZoomed] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
   const upload = async (file: File) => {
@@ -59,16 +61,25 @@ export function AdminPostCover({
 
   return (
     <section className="space-y-2">
+      <ImageLightbox
+        url={post.image_url}
+        alt={`${post.title}の見出し画像`}
+        open={zoomed}
+        onClose={() => setZoomed(false)}
+      />
       <p className="text-sm font-medium">見出し画像</p>
 
       <div className="flex flex-wrap items-center gap-3">
         {post.image_url ? (
-          // eslint-disable-next-line @next/next/no-img-element -- 外部CDNの画像。最適化は経由させない
-          <img
-            src={post.image_url}
-            alt=""
-            className={`h-20 w-32 rounded-lg border border-border object-cover ${visible ? '' : 'opacity-40'}`}
-          />
+          // 小さく切り取って出しているので、確かめるには大きく見る必要がある
+          <ZoomableImage url={post.image_url} alt={`${post.title}の見出し画像`} onOpen={() => setZoomed(true)}>
+            {/* eslint-disable-next-line @next/next/no-img-element -- 外部CDNの画像。最適化は経由させない */}
+            <img
+              src={post.image_url}
+              alt=""
+              className={`h-20 w-32 rounded-lg border border-border object-cover ${visible ? '' : 'opacity-40'}`}
+            />
+          </ZoomableImage>
         ) : (
           <div className="flex h-20 w-32 items-center justify-center rounded-lg border border-dashed border-border text-xs text-muted-foreground">
             なし
