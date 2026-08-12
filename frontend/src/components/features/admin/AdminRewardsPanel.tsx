@@ -251,6 +251,13 @@ export function AdminRewardsPanel() {
         onSaveReward={saveReward}
         onSaveAchievement={saveAchievement}
         onSaveMission={saveMission}
+        onRewardImageChanged={(reward) =>
+          setPage((current) =>
+            current
+              ? { ...current, rewards: current.rewards.map((r) => (r.id === reward.id ? reward : r)) }
+              : current
+          )
+        }
       />
 
       {/* 期間が終わったら消さずに「無効」にする。消すと user_missions の履歴が浮く */}

@@ -64,6 +64,10 @@ Rails.application.routes.draw do
         post "rewards/achievements", to: "rewards#create_achievement"
         post "rewards/missions", to: "rewards#create_mission"
         patch "rewards/definitions/:id", to: "rewards#update_reward"
+        # 獲得物の絵。**作る**（AIに描かせる）と**消す**だけ。
+        # 差し替えは作り直しで足りる（同じ鍵の絵は1つしか持たない）
+        post "rewards/definitions/:id/image", to: "rewards#generate_reward_image"
+        delete "rewards/definitions/:id/image", to: "rewards#destroy_reward_image"
         patch "rewards/achievements/:id", to: "rewards#update_achievement"
         patch "rewards/missions/:id", to: "rewards#update_mission"
         post "rewards/grant", to: "rewards#grant"

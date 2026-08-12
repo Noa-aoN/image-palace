@@ -1,6 +1,8 @@
 'use client'
 
 import { useState } from 'react'
+import { deleteAdminRewardImage, generateAdminRewardImage } from '@/lib/api/admin'
+import { ImageLightbox, ZoomableImage } from '@/components/ui/image-lightbox'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Spinner } from '@/components/ui/spinner'
@@ -41,11 +43,14 @@ export function AdminRewardEditPanel({
   onSaveReward,
   onSaveAchievement,
   onSaveMission,
+  onRewardImageChanged,
 }: {
   target: EditTarget | null
   series: AdminMissionSeries[]
   busy: boolean
   onSaveReward: (id: string, patch: Record<string, unknown>) => Promise<void>
+  /** 絵を作り直したときに、一覧へ反映する */
+  onRewardImageChanged: (reward: AdminRewardDefinition) => void
   onSaveAchievement: (id: string, patch: Record<string, unknown>) => Promise<void>
   onSaveMission: (id: string, patch: Record<string, unknown>) => Promise<void>
 }) {
@@ -54,7 +59,7 @@ export function AdminRewardEditPanel({
       {target === null ? (
         <p className="text-sm text-muted-foreground">選んでください。</p>
       ) : target.type === 'reward' ? (
-        <RewardForm key={target.row.id} row={target.row} busy={busy} onSave={onSaveReward} />
+        <RewardForm key={target.row.id} row={target.row} busy={busy} onSave={onSaveReward} onImageChanged={onRewardImageChanged} />
       ) : target.type === 'achievement' ? (
         <AchievementForm key={target.row.id} row={target.row} busy={busy} onSave={onSaveAchievement} />
       ) : (
@@ -127,15 +132,46 @@ function RewardForm({
   row,
   busy,
   onSave,
+  onImageChanged,
 }: {
   row: AdminRewardDefinition
   busy: boolean
   onSave: (id: string, patch: Record<string, unknown>) => Promise<void>
+  /** 絵を作り直したら、一覧の側にも反映する（開いたままでも古い絵が残らない） */
+  onImageChanged: (reward: AdminRewardDefinition) => void
 }) {
   const [name, setName] = useState(row.name)
   const [description, setDescription] = useState(row.description ?? '')
   const [published, setPublished] = useState(row.published)
   const [imageKey, setImageKey] = useState(row.image_path ?? '')
+  const [zoomed, setZoomed] = useState(false)
+  const [imageBusy, setImageBusy] = useState(false)
+  const [imageError, setImageError] = useState<string | null>(null)
+
+  const generateImage = async () => {
+    setImageBusy(true)
+    setImageError(null)
+    try {
+      onImageChanged((await generateAdminRewardImage(row.id)).reward)
+    } catch (e) {
+      const detail = (e as { response?: { data?: { errors?: string[] } } })?.response?.data?.errors
+      setImageError(detail?.[0] ?? '絵を作れませんでした')
+    } finally {
+      setImageBusy(false)
+    }
+  }
+
+  const removeImage = async () => {
+    setImageBusy(true)
+    setImageError(null)
+    try {
+      onImageChanged((await deleteAdminRewardImage(row.id)).reward)
+    } catch {
+      setImageError('外せませんでした')
+    } finally {
+      setImageBusy(false)
+    }
+  }
 
 
   const dirty =
@@ -156,8 +192,51 @@ function RewardForm({
         <textarea value={description} onChange={(e) => setDescription(e.target.value)} disabled={busy} rows={3} className={TEXTAREA} />
       </Field>
 
-      {/* 画像はまだ画面から差し替えられない。いまは R2 に置いた物の名前を指すだけ */}
-      <Field label="画像の名前" hint="R2 に置いた画像の名前。ここから上げ下ろしはまだできません">
+      {/* 絵。作る・確かめる・外す。作り直しは「作る」を押し直せばよい
+          （同じ獲得物の絵は1つしか持たない） */}
+      <Field label="絵" hint="AI に描かせます。押すと少し待ちます">
+        <div className="space-y-2">
+          <div className="flex items-center gap-3">
+            {row.image_url ? (
+              <ZoomableImage url={row.image_url} alt={`${row.name}の絵`} onOpen={() => setZoomed(true)}>
+                {/* eslint-disable-next-line @next/next/no-img-element -- CDN 配信。最適化は経由させない */}
+                <img
+                  src={row.image_url}
+                  alt=""
+                  className="size-16 rounded-lg border border-border bg-muted object-contain"
+                />
+              </ZoomableImage>
+            ) : (
+              <div className="flex size-16 items-center justify-center rounded-lg border border-dashed border-border text-[11px] text-muted-foreground">
+                なし
+              </div>
+            )}
+
+            <div className="flex flex-wrap gap-2">
+              <Button variant="outline" size="sm" disabled={busy || imageBusy} onClick={generateImage}>
+                {imageBusy ? '作っています…' : row.image_url ? '作り直す' : '絵を作る'}
+              </Button>
+              {row.image_url && (
+                <Button variant="ghost" size="sm" disabled={busy || imageBusy} onClick={removeImage}>
+                  外す
+                </Button>
+              )}
+            </div>
+          </div>
+
+          {imageError && <p className="text-xs text-destructive">{imageError}</p>}
+
+          <ImageLightbox
+            url={row.image_url}
+            alt={`${row.name}の絵`}
+            open={zoomed}
+            onClose={() => setZoomed(false)}
+          />
+        </div>
+      </Field>
+
+      {/* 鍵は既に置いてある絵を指すための逃げ道。ふだんは触らない */}
+      <Field label="画像の名前（上級）" hint="R2 に置いた絵を直に指すとき用">
         <Input value={imageKey} onChange={(e) => setImageKey(e.target.value)} disabled={busy} placeholder="例: o18zg7f5u2w1m2ga…" />
       </Field>
 

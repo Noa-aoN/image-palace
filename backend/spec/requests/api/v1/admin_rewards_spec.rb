@@ -270,4 +270,61 @@ RSpec.describe "獲得物の管理", type: :request do
       end
     end
   end
+
+  # 絵を作る仕組みは既にあった（rake からしか呼べなかった）。
+  # **作った獲得物に、その場で絵を付けられる**ようにしたぶんの確認。
+  describe "獲得物の絵" do
+    let(:definition) { RewardDefinition.registry.first }
+
+    describe "POST /api/v1/admin/rewards/definitions/:id/image" do
+      it "作れて、監査ログに残る" do
+        allow(::Achievements::ImageGenerator).to receive(:call).and_return(true)
+
+        expect {
+          post "/api/v1/admin/rewards/definitions/#{definition.id}/image",
+            headers: admin_headers, as: :json
+        }.to change { AdminAuditLog.where(action: "reward_image_generate").count }.by(1)
+
+        expect(response).to have_http_status(:ok)
+      end
+
+      # 絵が無くても定義は使える（種別ごとの既定の絵柄で出る）。
+      # 失敗を理由に定義を壊さない
+      it "作れなかったときは、定義を壊さずに断る" do
+        allow(::Achievements::ImageGenerator).to receive(:call).and_raise(StandardError, "boom")
+
+        post "/api/v1/admin/rewards/definitions/#{definition.id}/image",
+          headers: admin_headers, as: :json
+
+        expect(response).to have_http_status(:unprocessable_entity)
+        expect(definition.reload).to be_present
+      end
+
+      it "運営でなければ作れない" do
+        post "/api/v1/admin/rewards/definitions/#{definition.id}/image",
+          headers: headers, as: :json
+
+        expect(response).to have_http_status(:forbidden)
+      end
+    end
+
+    describe "DELETE /api/v1/admin/rewards/definitions/:id/image" do
+      it "外せて、監査ログに残る（定義は残る）" do
+        expect {
+          delete "/api/v1/admin/rewards/definitions/#{definition.id}/image",
+            headers: admin_headers, as: :json
+        }.to change { AdminAuditLog.where(action: "reward_image_destroy").count }.by(1)
+
+        expect(response).to have_http_status(:ok)
+        expect(definition.reload.image_key).to be_nil
+      end
+
+      it "運営でなければ外せない" do
+        delete "/api/v1/admin/rewards/definitions/#{definition.id}/image",
+          headers: headers, as: :json
+
+        expect(response).to have_http_status(:forbidden)
+      end
+    end
+  end
 end
