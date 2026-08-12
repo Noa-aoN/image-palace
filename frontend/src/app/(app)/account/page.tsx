@@ -2,18 +2,19 @@
 
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { User, Globe, Trash2, AlertTriangle, IdCard, UserCog, ShieldCheck } from 'lucide-react'
+import { User, Globe, Trash2, AlertTriangle, IdCard, UserCog, ShieldCheck, House } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { CategorySections, type CategorySection } from '@/components/features/myroom/CategorySections'
 import { ComingSoon } from '@/components/features/myroom/ComingSoon'
 import { AvatarGenerator } from '@/components/features/account/AvatarGenerator'
 import { DisplayNameEditor } from '@/components/features/account/DisplayNameEditor'
 import { TwoFactorSettings } from '@/components/features/account/TwoFactorSettings'
+import { PalaceNameEditor } from '@/components/features/account/PalaceNameEditor'
 import { deleteAccount } from '@/lib/api/account'
 import { useAuthStore } from '@/stores/auth'
 import { useItemsStore } from '@/stores/items'
 
-type TabKey = 'info' | 'security' | 'basic' | 'public' | 'withdraw'
+type TabKey = 'info' | 'palace' | 'basic' | 'public' | 'security' | 'withdraw'
 
 // 認証プロバイダ（devise-token-auth の provider 値）を日本語表記にする。
 const PROVIDER_LABELS: Record<string, string> = {
@@ -77,10 +78,12 @@ export default function AccountPage() {
       ),
     },
     {
-      key: 'security',
-      label: '安全',
-      icon: <ShieldCheck size={16} />,
-      content: <TwoFactorSettings />,
+      // 宮殿の名前は「見え方の好み」ではなく自分の名乗り。呼び名と同じ性質なので、
+      // 表示・操作の設定ではなくアカウントに置く
+      key: 'palace',
+      label: '宮殿の名前',
+      icon: <House size={16} />,
+      content: <PalaceNameEditor />,
     },
     {
       key: 'basic',
@@ -106,6 +109,14 @@ export default function AccountPage() {
           items={['公開名 / 公開アイコン', '自己紹介', 'SNS / 外部リンク', '公開プロフィール URL', '公開ボックス / 公開トロフィー', '公開 / 非公開の切り替え']}
         />
       ),
+    },
+    {
+      // 退会の直前に置く。どちらも「アカウントそのもの」を扱う項目で、
+      // 見え方や公開範囲の設定とは性質が違う
+      key: 'security',
+      label: 'セキュリティ',
+      icon: <ShieldCheck size={16} />,
+      content: <TwoFactorSettings />,
     },
     {
       key: 'withdraw',

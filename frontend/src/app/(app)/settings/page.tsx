@@ -2,9 +2,8 @@
 
 import { useEffect, useState } from 'react'
 import Link from 'next/link'
-import { Download, Sparkles, Loader2, Share2, Plug, SlidersHorizontal, Bell, Database, Image as ImageIcon, Boxes, Zap, Settings, Wand2, House } from 'lucide-react'
+import { Download, Sparkles, Loader2, Share2, Plug, SlidersHorizontal, Bell, Database, Image as ImageIcon, Boxes, Zap, Settings, Wand2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
-import { Input } from '@/components/ui/input'
 import { CategorySections, type CategorySection } from '@/components/features/myroom/CategorySections'
 import { ComingSoon } from '@/components/features/myroom/ComingSoon'
 import { exportAccountData } from '@/lib/api/account'
@@ -27,8 +26,6 @@ export default function SettingsPage() {
   const [regenWithMeaning, setRegenWithMeaning] = useState<boolean | null>(null)
   const [imageSafeguard, setImageSafeguard] = useState<boolean | null>(null)
   const [cardDetailColumns, setCardDetailColumns] = useState(1)
-  const [palaceName, setPalaceName] = useState('')
-  const [savingPalaceName, setSavingPalaceName] = useState(false)
   const [savingSettings, setSavingSettings] = useState(false)
   // デフォルト画像スタイル（null = 読み込み中）
   const [defaultStyle, setDefaultStyle] = useState<string | null>(null)
@@ -75,7 +72,6 @@ export default function SettingsPage() {
         setRegenWithMeaning(s.regenerate_with_meaning)
         setImageSafeguard(s.image_safeguard)
         setCardDetailColumns(s.card_detail_columns ?? 1)
-        setPalaceName(s.palace_name ?? '')
         setDefaultStyle(s.default_image_style)
         setDefaultAspect(s.default_aspect_ratio)
         setListStyle(s.display_style)
@@ -231,19 +227,6 @@ export default function SettingsPage() {
       setImageSafeguard(!next) // 失敗したら元に戻す
     } finally {
       setSavingSettings(false)
-    }
-  }
-
-  const savePalaceName = async () => {
-    if (savingPalaceName) return
-    setSavingPalaceName(true)
-    try {
-      const saved = await updateSettings({ palace_name: palaceName.trim() })
-      setPalaceName(saved.palace_name ?? '')
-    } catch {
-      // 失敗しても入力は消さない。もう一度押せばよい
-    } finally {
-      setSavingPalaceName(false)
     }
   }
 
@@ -495,35 +478,6 @@ export default function SettingsPage() {
       icon: <SlidersHorizontal size={16} />,
       content: (
         <>
-          {/* 宮殿の名前。エントランスの「宮殿の主人」に出る */}
-          <section className="space-y-3 rounded-xl border border-border bg-card p-5">
-            <div className="flex items-center gap-2">
-              <House size={18} style={{ color: 'var(--palace)' }} />
-              <h2 className="text-lg font-semibold">宮殿の名前</h2>
-            </div>
-            <p className="text-sm text-muted-foreground">
-              エントランスに出る、あなたの宮殿の呼び名です。空のままなら「◯◯の宮殿」と出ます。
-            </p>
-            <div className="flex flex-wrap gap-2">
-              <Input
-                value={palaceName}
-                onChange={(e) => setPalaceName(e.target.value)}
-                onKeyDown={(e) => {
-                  if (e.key === 'Enter') {
-                    e.preventDefault()
-                    savePalaceName()
-                  }
-                }}
-                placeholder="記憶の宮殿"
-                maxLength={30}
-                className="w-64"
-              />
-              <Button onClick={savePalaceName} disabled={savingPalaceName}>
-                {savingPalaceName ? <Loader2 size={14} className="animate-spin" /> : '保存'}
-              </Button>
-            </div>
-          </section>
-
           {/* 一覧の見せ方。場（ライブラリ/アトリエ/スタディ）ごとの器を使うかどうか */}
           <section className="space-y-3 rounded-xl border border-border bg-card p-5">
             <div className="flex items-center gap-2">
