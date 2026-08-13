@@ -34,6 +34,8 @@ export interface RewardRow {
   progress: number | null
   target: number | null
   owned: boolean
+  /** いくつ持っているか。持っていなければ 0。重ねられないもの（称号・勲章・表彰）は 1 */
+  quantity: number
   granted_at: string | null
   /** 星が入っているか。種別ごとの持ち方の違いはサーバー側で畳んである */
   starred: boolean

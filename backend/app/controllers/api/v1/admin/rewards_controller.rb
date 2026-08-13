@@ -218,7 +218,11 @@ module Api
             image_url: ::Achievements::Presenter.image_url_for(definition),
             builtin: definition.builtin?,
             # 何人が持っているか。配りすぎ・配らなすぎに気づくため
-            owned_count: UserReward.where(reward_definition_id: definition.id).count
+            # 持っている**人数**と、配った**総数**は別のもの。
+            # 宝物は1人が複数持てるので、人数だけでは配りすぎに気づけない
+            owned_count: UserReward.where(reward_definition_id: definition.id).count,
+            granted_total: UserReward.where(reward_definition_id: definition.id).sum(:quantity),
+            stackable: definition.stackable?
           }
         end
 

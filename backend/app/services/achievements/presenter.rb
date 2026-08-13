@@ -275,7 +275,11 @@ module Achievements
         target: source&.condition_target,
         image_url: image_url_for(definition),
         owned: held.present?,
+        # いくつ持っているか。重ねられないもの（称号・勲章・表彰）は常に1
+        quantity: held&.quantity || 0,
         granted_at: held&.granted_at,
+        first_acquired_at: held&.first_acquired_at,
+        last_acquired_at: held&.last_acquired_at,
         # 星の入り切り。種別ごとの持ち方の違いは、ここで1つに畳む
         starred: held ? Showcase.starred?(held) : false,
         equippable: definition.equippable,
