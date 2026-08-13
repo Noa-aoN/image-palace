@@ -124,7 +124,7 @@ export function PromptInfo({ item, onUpdated }: { item: Item; onUpdated?: (item:
       )}
 
       <div className="flex items-center justify-between border-t border-border/60 pt-2">
-        <span className="text-xs text-muted-foreground">直すときは「イメージを作り直す」から。</span>
+        <span className="text-xs text-muted-foreground">直すときは「イメージ再生成」から。</span>
         {item.brief_edited && <span className="text-xs text-muted-foreground">編集済み</span>}
       </div>
     </InfoPopover>
