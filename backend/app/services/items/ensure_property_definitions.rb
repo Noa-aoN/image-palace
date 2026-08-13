@@ -13,9 +13,12 @@ module Items
   class EnsurePropertyDefinitions
     # 作成時に選べるもの。ここに無い識別名は作らない（勝手に項目を増やさない）。
     PRESETS = {
-      "reading" => { label: "読み仮名", value_type: "text", description: "その語の読み。複数の読みがあれば全部。" },
-      "aliases" => { label: "別名・異表記", value_type: "list", description: "同じものを指す別の呼び名や書き方。" },
-      "pronunciation" => { label: "発音記号", value_type: "text", description: "発音記号（IPA など）。" }
+      "reading" => { label: "読み仮名", value_type: "text", category: "subject",
+                     description: "その語の読み。複数の読みがあれば全部。" },
+      "aliases" => { label: "別名・異表記", value_type: "list", category: "subject",
+                     description: "同じものを指す別の呼び名や書き方。" },
+      "pronunciation" => { label: "発音記号", value_type: "text", category: "subject",
+                           description: "発音記号（IPA など）。" }
     }.freeze
 
     KEYS = PRESETS.keys.freeze
@@ -45,7 +48,9 @@ module Items
       attrs = PRESETS.fetch(key)
       @user.property_definitions.create!(
         item_type_id: @item_type_id, key: key,
-        label: attrs[:label], value_type: attrs[:value_type], description: attrs[:description]
+        label: attrs[:label], value_type: attrs[:value_type],
+        category: attrs[:category] || PropertyDefinition::DEFAULT_CATEGORY,
+        description: attrs[:description]
       )
     rescue ActiveRecord::RecordNotUnique, ActiveRecord::RecordInvalid => e
       # 同時に2枚作ったときに両方が作ろうとすることがある。片方が勝てばよい
