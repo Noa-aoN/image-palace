@@ -44,7 +44,7 @@ export function PageGate({ children }: { children: ReactNode }) {
     return (
       <>
         <div className="mx-auto w-full max-w-7xl px-6 pt-4">
-          <PrototypeBadge />
+          <PrototypeBadge note={note} />
         </div>
         {children}
       </>
