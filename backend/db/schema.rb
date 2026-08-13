@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_08_13_142149) do
+ActiveRecord::Schema[8.1].define(version: 2026_08_13_230942) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
   enable_extension "pg_trgm"
@@ -378,9 +378,11 @@ ActiveRecord::Schema[8.1].define(version: 2026_08_13_142149) do
     t.string "fact_check_title_suggestion"
     t.datetime "fact_checked_at"
     t.uuid "item_id", null: false
+    t.string "kind", default: "meaning", null: false
     t.string "language_code", default: "ja", null: false
     t.integer "position"
     t.datetime "updated_at", null: false
+    t.index ["item_id", "kind"], name: "index_meanings_on_item_id_and_kind"
     t.index ["item_id", "position"], name: "index_meanings_on_item_id_and_position"
     t.index ["item_id"], name: "index_meanings_on_item_id"
   end
