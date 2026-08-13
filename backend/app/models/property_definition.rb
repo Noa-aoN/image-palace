@@ -20,7 +20,10 @@ class PropertyDefinition < ApplicationRecord
   # url だと手で貼ったリンクにしかならず、冒頭も出典表記も持てない
   # boolean は「済んだ / 済んでいない」を持つ。**未入力と false は違う。**
   # 触っていないのか、見て「違う」と決めたのかが読めないと、印の意味が無くなる
-  VALUE_TYPES = %w[text longtext list number date url boolean wikipedia].freeze
+  # free_text は**見出しも中身も自由**に書ける欄。
+  # 決まった項目に収まらないもの（そのカード限りのメモ・引用・気づき）のために置く。
+  # 見出しを定義側で決めないので、同じ「自由欄」を何枚か持てる。
+  VALUE_TYPES = %w[text longtext list number date url boolean free_text wikipedia].freeze
 
   # 項目の役割。**何のために持つのか**で分ける。
   #
