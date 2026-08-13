@@ -92,14 +92,18 @@ module Achievements
     end
 
     # 実績・ミッションの報酬をまとめて配る。配れたものだけ返す
-    def grant_rewards(user:, rewards:, source:, source_ref: nil, now: Time.current)
+    def grant_rewards(user:, rewards:, source:, source_ref: nil, now: Time.current, event_key: nil)
       Array(rewards).filter_map do |entry|
         case entry["type"]
         when "reward"
           definition = RewardDefinition.find_by(key: entry["key"])
           next if definition.nil?
 
-          grant(user: user, reward: definition, source: source, source_ref: source_ref, now: now)
+          # 1回の操作で複数配るときは、獲得物ごとに別の出来事として扱う
+          # （鍵をそのまま使い回すと、2つ目以降が「同じ出来事」に見えて配られない）
+          key = event_key.presence && "#{event_key}:#{definition.key}"
+          grant(user: user, reward: definition, source: source, source_ref: source_ref,
+                now: now, event_key: key)
         when "credits"
           grant_credits(user, entry["amount"].to_i, source_ref)
           nil

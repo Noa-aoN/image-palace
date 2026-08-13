@@ -136,13 +136,24 @@ module Api
 
           return render(json: { error: "理由を書いてください" }, status: :unprocessable_entity) if reason.blank?
 
+          # 冪等の鍵。画面が1回の操作につき1つ作って送る。
+          #
+          # **理由（reason）は鍵にしない。** 同じ理由で別の日に配るのは正しい2回目で、
+          # 理由を鍵にすると、その正しい配布まで止まってしまう。
+          # 送られてこなければ、これまでどおり毎回新しい出来事として扱う
+          event_key = params[:event_key].presence&.to_s&.first(200)
+
           granted = ::Achievements::Granter.grant_rewards(
             user: user, rewards: [ { "type" => "reward", "key" => definition.key } ],
-            source: "manual", source_ref: reason
+            source: "manual", source_ref: reason, event_key: event_key
           )
+
+          # 押し直し・再送で配られなかったことも残す。
+          # 「配った」だけを残すと、二重に押した跡が消えて後から追えない
           audit!("reward_manual_grant", target: user,
                                         details: { reward_key: definition.key, reason: reason,
-                                                   already_owned: granted.empty? })
+                                                   granted: granted.any?,
+                                                   resent: granted.empty? && event_key.present? })
 
           render json: { granted: granted.any?, reward: serialize_reward(definition) }
         end

@@ -380,6 +380,13 @@ export async function grantAdminReward(input: {
   user_id: string
   reward_key: string
   reason: string
+  /**
+   * 同じ操作かどうかを判じる鍵。押し直し・再送では**同じ値**を送る。
+   *
+   * 理由（reason）は鍵にしない。同じ理由で別の日に配るのは正しい2回目で、
+   * 理由を鍵にすると、その正しい配布まで止まる
+   */
+  event_key?: string
 }): Promise<{ granted: boolean }> {
   const res = await apiClient.post<{ granted: boolean }>('/api/v1/admin/rewards/grant', input)
   return res.data

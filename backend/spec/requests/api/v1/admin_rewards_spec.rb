@@ -327,4 +327,77 @@ RSpec.describe "獲得物の管理", type: :request do
       end
     end
   end
+
+  # 押し直し・再送で二重に配らないための鍵。
+  #
+  # **理由（reason）は鍵にしない。** 同じ理由で別の日に配るのは正しい2回目で、
+  # 理由を鍵にすると、その正しい配布まで止まる
+  describe "手で配るときの冪等" do
+    let(:treasure) { RewardDefinition.registry.find { |d| d.kind == "treasure" } }
+    let(:title) { RewardDefinition.registry.find { |d| d.kind == "title" } }
+
+    def post_grant(reward, event_key: nil, reason: "不具合のお詫び")
+      post "/api/v1/admin/rewards/grant",
+        params: { user_id: user.id, reward_key: reward.key, reason: reason, event_key: event_key }.compact,
+        headers: admin_headers, as: :json
+    end
+
+    it "ふつうに配ると1個" do
+      post_grant(treasure, event_key: "admin:grant:abc")
+
+      expect(response).to have_http_status(:ok)
+      expect(json_response["granted"]).to be(true)
+      expect(UserReward.find_by(user: user, reward_definition: treasure).quantity).to eq(1)
+    end
+
+    # ここが要。同じ操作を送り直しても増えない
+    it "同じ鍵を再送しても増えない" do
+      post_grant(treasure, event_key: "admin:grant:abc")
+      post_grant(treasure, event_key: "admin:grant:abc")
+
+      expect(response).to have_http_status(:ok)
+      expect(json_response["granted"]).to be(false)
+      expect(UserReward.find_by(user: user, reward_definition: treasure).quantity).to eq(1)
+    end
+
+    it "何度送り直しても、受け取りの記録は1件" do
+      3.times { post_grant(treasure, event_key: "admin:grant:abc") }
+
+      expect(UserRewardGrant.where(user: user, reward_definition: treasure).count).to eq(1)
+    end
+
+    it "別の鍵なら、宝物は正しく増える" do
+      post_grant(treasure, event_key: "admin:grant:one")
+      post_grant(treasure, event_key: "admin:grant:two")
+
+      expect(UserReward.find_by(user: user, reward_definition: treasure).quantity).to eq(2)
+    end
+
+    it "称号は別の鍵でも増えない" do
+      post_grant(title, event_key: "admin:grant:one")
+      post_grant(title, event_key: "admin:grant:two")
+
+      expect(UserReward.find_by(user: user, reward_definition: title).quantity).to eq(1)
+    end
+
+    # 鍵を送ってこない古い画面からの呼び出しは、これまでどおり毎回配る
+    it "鍵が無ければ、これまでどおり毎回配る" do
+      post_grant(treasure)
+      post_grant(treasure)
+
+      expect(UserReward.find_by(user: user, reward_definition: treasure).quantity).to eq(2)
+    end
+
+    # 「配った」だけを残すと、二重に押した跡が消えて後から追えない
+    it "再送のときも監査ログに残る（配っていないことが分かる形で）" do
+      post_grant(treasure, event_key: "admin:grant:abc")
+      post_grant(treasure, event_key: "admin:grant:abc")
+
+      logs = AdminAuditLog.where(action: "reward_manual_grant").order(:created_at)
+      expect(logs.count).to eq(2)
+      expect(logs.first.details["granted"]).to be(true)
+      expect(logs.last.details["granted"]).to be(false)
+      expect(logs.last.details["resent"]).to be(true)
+    end
+  end
 end
