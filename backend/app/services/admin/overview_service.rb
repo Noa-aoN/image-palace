@@ -157,7 +157,7 @@ module Admin
       subscription_points = users["subscription"].to_i
       old_topup_points = users["topup"].to_i
       # 買い切りは2か所に散っている。期限が付く前の古い残り（users.topup_credits）と、
-      # いまの積み方（credit_grants の kind: topup、6か月で失効）。
+      # いまの積み方（credit_grants の kind: topup、CreditExpiryPolicy の長さで失効）。
       # 片方だけ数えると、受け取ったお金のぶんが「付与」に化ける。
       topup_points = old_topup_points + grants["topup"].to_i
       # 付与はこちらが配ったぶん。買い切りを除く
@@ -169,7 +169,7 @@ module Admin
         # 期限付き: 月額の当月分と、期限付きグラント（繰り越し・ボーナス）
         expiring: to_credits(subscription_points + grants["expiring"].to_i),
         # 期限なし: 期限が付く前の古い買い切りと、期限を付けずに配ったグラント。
-        # いまは買い切りも6か月で失効するので、ここは増えない（古い残りが減るだけ）
+        # いまは買い切りも期限付きなので、ここは増えない（古い残りが減るだけ）
         unlimited: to_credits(old_topup_points + grants["unlimited"].to_i),
         total: to_credits(total_points),
         # 未使用クレジットが**全部使われたら**、これだけ原価が出る（円）。
@@ -288,7 +288,7 @@ module Admin
           gate: "credits",
           trial_credits: ::Billing::Catalog::TRIAL_CREDITS,
           monthly_free_credits: ::Billing::Catalog::MONTHLY_FREE_CREDITS,
-          credit_lifetime_months: (::Billing::Catalog::CREDIT_LIFETIME / 1.month).to_i,
+          credit_lifetime_months: ::Billing::CreditExpiryPolicy.months,
           plans: ::Billing::Catalog::SUBSCRIPTIONS.map do |plan|
             { name: plan[:name], price: plan[:price], monthly_credits: plan[:credits] }
           end

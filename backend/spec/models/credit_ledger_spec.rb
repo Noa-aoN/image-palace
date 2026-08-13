@@ -26,8 +26,8 @@ RSpec.describe "User credit ledger", type: :model do
 
       carryover = user.credit_grants.find_by(kind: "subscription_carryover")
       expect(carryover.remaining_points).to eq(7)
-      # 届いた日から数えて6ヶ月ぶん（当月分として1ヶ月すでに居たので、残りは5ヶ月）
-      expect(carryover.expires_at).to be_within(1.day).of(5.months.from_now)
+      # 届いた日から数えて寿命ぶん（当月分として1ヶ月すでに居たので、持ち越しは1ヶ月短い）
+      expect(carryover.expires_at).to be_within(1.day).of(Billing::CreditExpiryPolicy.carryover_expires_at)
 
       # 入れ物を移しただけなので、残高も台帳も「増えた・減った」を書かない
       kinds = user.credit_transactions.order(:created_at).pluck(:kind)
@@ -62,7 +62,7 @@ RSpec.describe "User credit ledger", type: :model do
 
       grant = user.reload.credit_grants.find_by(kind: "topup")
       expect(grant.remaining_points).to eq(100)
-      expect(grant.expires_at).to be_within(1.day).of(Billing::Catalog::CREDIT_LIFETIME.from_now)
+      expect(grant.expires_at).to be_within(1.day).of(Billing::CreditExpiryPolicy.expires_at)
       expect(user.available_credit_points).to eq(100)
       expect(user.credit_transactions.last.kind).to eq("topup_purchase")
     end
@@ -184,7 +184,7 @@ RSpec.describe "User credit ledger", type: :model do
         .from(0).to(trial_points + monthly_points)
 
       trial = user.credit_grants.find_by(kind: "trial")
-      expect(trial.expires_at).to be_within(1.day).of(Billing::Catalog::CREDIT_LIFETIME.from_now)
+      expect(trial.expires_at).to be_within(1.day).of(Billing::CreditExpiryPolicy.expires_at)
       expect(user.credit_grants.find_by(kind: "monthly_free")).to be_present
       expect(user.trial_granted_at).to be_present
     end

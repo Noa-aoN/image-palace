@@ -69,7 +69,7 @@ RSpec.describe Billing::WebhookHandler do
     # 買い切りは期限付きで積まれる
     grant = user.reload.credit_grants.find_by(kind: "topup")
     expect(grant.remaining_points).to eq(100 * Billing::POINTS_PER_CREDIT)
-    expect(grant.expires_at).to be_within(1.day).of(Billing::Catalog::CREDIT_LIFETIME.from_now)
+    expect(grant.expires_at).to be_within(1.day).of(Billing::CreditExpiryPolicy.expires_at)
   end
 
   describe "冪等性（Webhook 重複・順序）" do
@@ -107,7 +107,7 @@ RSpec.describe Billing::WebhookHandler do
   end
 
   # Free→Paid の引き継ぎ（free_carryover）は #573 で撤去した。
-  # 無料枠は credit_grants（trial / monthly_free）に6ヶ月の期限付きで積まれ、
+  # 無料枠は credit_grants（trial / monthly_free）に期限付きで積まれ、
   # 有料化しても失効しない。つまり引き継ぎは要らない（やると二重に数える）。
   describe "Free→Paid の切り替え" do
     let!(:local_sub) { create(:subscription, user:, plan:, status: "active", stripe_subscription_id: "sub_1") }
@@ -122,9 +122,9 @@ RSpec.describe Billing::WebhookHandler do
     it "無料枠のグラントは有料化しても失効せず、そのまま残る" do
       user; plan
       user.grant_credits!(3 * Billing::POINTS_PER_CREDIT, kind: "trial",
-                          expires_at: Billing::Catalog::CREDIT_LIFETIME.from_now)
+                          expires_at: Billing::CreditExpiryPolicy.expires_at)
       user.grant_credits!(1 * Billing::POINTS_PER_CREDIT, kind: "monthly_free",
-                          expires_at: Billing::Catalog::CREDIT_LIFETIME.from_now)
+                          expires_at: Billing::CreditExpiryPolicy.expires_at)
 
       invoice_paid("evt_upgrade")
 

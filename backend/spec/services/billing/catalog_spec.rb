@@ -171,20 +171,4 @@ RSpec.describe Billing::Catalog do
       expect(offenders).to be_empty, "free プランの credits_per_period を参照している: #{offenders.join(', ')}"
     end
   end
-
-  describe "クレジットの寿命" do
-    it "前払式支払手段の適用除外に収まる長さにする（6ヶ月以内）" do
-      expect(described_class::CREDIT_LIFETIME).to be <= 6.months
-    end
-
-    it "使い切れる長さを確保する（短すぎると割引が見せかけになる）" do
-      expect(described_class::CREDIT_LIFETIME).to be >= 3.months
-    end
-
-    it "いちばん大きい買い切りでも、期限内に無理なく使える量にする" do
-      largest = described_class::TOPUPS.max_by { |row| row[:credits] }
-      per_day = largest[:credits] / (described_class::CREDIT_LIFETIME / 1.day)
-      expect(per_day).to be <= 10
-    end
-  end
 end

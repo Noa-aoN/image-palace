@@ -7,7 +7,7 @@ import { Spinner } from '@/components/ui/spinner'
 import { PanelSlotContent } from '@/components/features/panel/PanelSlot'
 import { usePanelForm } from '@/components/features/panel/usePanelForm'
 import { useBillingStore } from '@/stores/billing'
-import { CREDIT_UNIT, CREDIT_UNIT_SHORT } from '@/lib/billing'
+import { CREDIT_UNIT, CREDIT_UNIT_SHORT, CREDIT_VALIDITY_LABEL } from '@/lib/billing'
 
 export const CREDIT_BREAKDOWN_PANEL_KEY = 'credit-breakdown'
 
@@ -56,7 +56,7 @@ export function CreditBreakdownPanel() {
                     <div>
                       <dt className="text-xs font-medium text-muted-foreground">期限</dt>
                       <dd>
-                        受け取ってから6か月です。<strong>期限の近いものから先に使われます</strong>。
+                        受け取ってから{CREDIT_VALIDITY_LABEL}です。<strong>期限の近いものから先に使われます</strong>。
                       </dd>
                     </div>
                     <div>
@@ -105,7 +105,7 @@ export function CreditBreakdownPanel() {
             <p className="text-xs leading-relaxed text-muted-foreground">
               上から順に使われます（期限が近いものから）。
               <br />
-              クレジットは受け取ってから6か月間有効です。
+              クレジットは受け取ってから{CREDIT_VALIDITY_LABEL}間有効です。
             </p>
           </>
         )}

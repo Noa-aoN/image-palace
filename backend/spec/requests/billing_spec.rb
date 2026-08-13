@@ -84,7 +84,8 @@ RSpec.describe "Billing endpoints", type: :request do
 
     it "credit_breakdown（サブスク/ボーナス/チャージ）と最も近い期限を返す" do
       user = create(:user, :confirmed)
-      user.grant_credits!(3 * Billing::POINTS_PER_CREDIT, kind: "campaign", expires_at: Time.zone.local(2026, 12, 1))
+      campaign_expires_at = 10.days.from_now
+      user.grant_credits!(3 * Billing::POINTS_PER_CREDIT, kind: "campaign", expires_at: campaign_expires_at)
 
       get "/api/v1/billing/summary", headers: auth_headers_for(user), as: :json
 
@@ -93,8 +94,8 @@ RSpec.describe "Billing endpoints", type: :request do
       expect(bd["subscription"]).to eq(0.0)
       expect(bd["grant"]).to eq((Billing::Catalog::TRIAL_CREDITS + Billing::Catalog::MONTHLY_FREE_CREDITS) + 3.0)
       expect(bd["topup"]).to eq(0.0)
-      # 期限がいちばん近いもの（キャンペーンの方がお試し枠の6ヶ月後より早い）
-      expect(Time.zone.parse(bd["grant_expires_at"])).to eq(Time.zone.local(2026, 12, 1))
+      # 期限がいちばん近いもの（キャンペーンの方がお試し枠の期限より早い）
+      expect(Time.zone.parse(bd["grant_expires_at"])).to be_within(1.second).of(campaign_expires_at)
     end
   end
 end

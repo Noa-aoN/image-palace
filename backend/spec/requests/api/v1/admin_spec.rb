@@ -287,7 +287,7 @@ RSpec.describe "Api::V1::Admin", type: :request do
       expect(breakdown["grant"]).to eq(2.0)
     end
 
-    it "期限なしは、期限が付く前の残りだけを数える（買い切りは6か月で失効するため）" do
+    it "期限なしは、期限が付く前の残りだけを数える（買い切りも期限付きで失効するため）" do
       member.update!(topup_credits: 100)
       member.credit_grants.create!(
         kind: "topup", amount_points: 300, remaining_points: 300, expires_at: 6.months.from_now
