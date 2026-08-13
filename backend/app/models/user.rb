@@ -343,7 +343,7 @@ class User < ApplicationRecord
   # 使える残高を、期限が近い順に並べたもの。
   # 期限が無いものは nil を最後に置く（無期限のまま置いておいても失われないため）。
   def consumption_sources
-    sources = credit_grants.active.map do |grant|
+    sources = credit_grants.consume_order.map do |grant|
       {
         expires_at: grant.expires_at,
         points: grant.remaining_points,
@@ -368,7 +368,12 @@ class User < ApplicationRecord
       }
     end
 
-    sources.sort_by { |source| [ source[:expires_at] ? 0 : 1, source[:expires_at] || Time.current ] }
+    # 並べ直しても同着の順が入れ替わらないよう、最後に並びの位置を見る。
+    # Ruby の sort_by は同着の順を保たないため、これが無いと
+    # 同じ期限のグラントを引く順が実行のたびに変わり得る。
+    sources.each_with_index
+           .sort_by { |source, index| [ source[:expires_at] ? 0 : 1, source[:expires_at] || Time.current, index ] }
+           .map(&:first)
   end
 
   # 月額プランのぶんが消えるとき。契約が無ければ無料枠の周期末

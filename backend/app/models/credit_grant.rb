@@ -12,6 +12,11 @@ class CreditGrant < ApplicationRecord
 
   # 残量あり かつ 未期限切れ（期限なしも有効）
   scope :active, -> { where("remaining_points > 0 AND (expires_at IS NULL OR expires_at > ?)", Time.current) }
-  # 消費順：期限が近いものから（期限なしは最後）
-  scope :consume_order, -> { active.order(Arel.sql("expires_at ASC NULLS LAST")) }
+  # 消費順：期限が近いものから（期限なしは最後）。
+  # 同じ期限が並んだときは、古く配ったものから使う。
+  # 期限だけで並べると同着の順が DB 任せになり、同じ操作でも消える先が変わる。
+  # お金の記録は「同じことをすれば同じ結果になる」ことが要るので、id まで見て決め切る。
+  scope :consume_order, lambda {
+    active.order(Arel.sql("expires_at ASC NULLS LAST, created_at ASC, id ASC"))
+  }
 end
