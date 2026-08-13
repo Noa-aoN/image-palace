@@ -127,9 +127,10 @@ export function AdminFeaturesPanel() {
                       <p className="truncate text-xs text-muted-foreground">
                         {feature.path ?? feature.note ?? feature.key}
                       </p>
-                      {/* 準備中・非公開のときだけ、理由を書ける。
-                          出していない機能の理由は、利用者の目に触れない */}
-                      {(feature.stage === 'development' || feature.stage === 'hidden') && (
+                      {/* 出来上がっていない段階では、理由を書ける。
+                          試作でも書けるようにしてある。**「粗い」とだけ伝わっても、
+                          どこが粗いのかが分からない**ので、書いた一言をそのまま添える */}
+                      {feature.stage !== 'released' && (
                         <NoteField
                           value={feature.notes ?? ''}
                           busy={saving === feature.key}

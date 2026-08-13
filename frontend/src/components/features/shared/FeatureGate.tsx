@@ -50,11 +50,14 @@ export function FeatureGate({
  * 黙って出すと「壊れている」と受け取られ、準備中にすると触ってもらえない。
  * その間を作るための印なので、消さずに済むよう小さくしている。
  */
-export function PrototypeBadge() {
+export function PrototypeBadge({ note }: { note?: string }) {
   return (
-    <span className="inline-flex items-center gap-1 rounded-full bg-muted px-2 py-0.5 text-xs text-muted-foreground">
+    <span className="inline-flex flex-wrap items-center gap-1 rounded-full bg-muted px-2 py-0.5 text-xs text-muted-foreground">
       <FlaskConical size={12} />
       プロトタイプ版
+      {/* 「粗い」だけだと、どこが粗いのかが分からない。
+          運営が書いていれば、その一言をそのまま添える */}
+      {note && <span className="border-l border-border pl-1.5">{note}</span>}
     </span>
   )
 }
