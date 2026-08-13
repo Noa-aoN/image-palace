@@ -113,6 +113,17 @@ module Items
       @meaning ||= @item.primary_meaning&.definition.to_s.strip.first(MEANING_EXCERPT)
     end
 
+    # Wikipedia の項目に入っている冒頭。持っていなければ nil
+    def wikipedia_extract
+      return @wikipedia_extract if defined?(@wikipedia_extract)
+
+      row = @item.item_properties.includes(:property_definition)
+                 .find { |p| p.property_definition&.value_type == "wikipedia" }
+      parsed = row && (JSON.parse(row.typed_value.to_s) rescue nil)
+      @wikipedia_extract =
+        parsed.is_a?(Hash) ? parsed["wikipedia_extract"].to_s.strip.first(MEANING_EXCERPT).presence : nil
+    end
+
     # OpenAI へ渡るユーザー入力は必ず検査する（作成・再生成と同じ基準）
     def moderate!
       [ @item.title, meaning ].each do |text|
@@ -135,6 +146,10 @@ module Items
       end
       parts = [ "<単語>\n#{@item.title}" ]
       parts << "<説明>\n#{meaning}" if meaning.present?
+      # 調べた結果があれば下敷きにする。**写させない**（そのまま入れると
+      # 出どころの分からない文がカードに残る）。確かでないものを返さない作りと合わせて、
+      # 作り話が混ざりにくくなる
+      parts << "<調べた結果（参考。書き写さない）>\n#{wikipedia_extract}" if wikipedia_extract.present?
       parts << "<埋める項目>\n#{lines.join("\n")}"
       parts.join("\n\n")
     end
