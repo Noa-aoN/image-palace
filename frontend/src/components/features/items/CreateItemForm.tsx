@@ -32,6 +32,7 @@ import { getWordlists, generateWords } from '@/lib/api/wordlists'
 import type { View } from '@/types/view'
 import type { Wordlist } from '@/types/wordlist'
 import { ASPECT_RATIOS, ASPECT_RATIO_KEYS, type AspectRatioKey } from '@/lib/aspect-ratio'
+import { HelpPopover } from '@/components/ui/help-popover'
 
 const MAX_TITLE_LENGTH = 100
 const WORDLIST_SECTION = 'card-create-wordlist'
@@ -60,6 +61,33 @@ function parseTitles(raw: string, splitByPunctuation = false): string[] {
  * inPanel: 右パネルに差し込んで使う場合。作成後に一覧へ遷移せず、
  * 入力だけ空にして開いたままにする（続けて作れるようにするため）。
  */
+/**
+ * 作成時に一緒に埋められる項目。
+ *
+ * サーバー側の許可一覧（Items::EnsurePropertyDefinitions::PRESETS）と揃える。
+ * ここに無いものは作らない。押した時点で、その項目の置き場所も用意される。
+ */
+const PROPERTY_OPTIONS = [
+  {
+    key: 'reading',
+    label: '読み仮名',
+    what: 'その語の読みを入れます。複数の読みがあれば全部。',
+    when: '読めない漢字・専門用語を覚えるときに効きます。',
+  },
+  {
+    key: 'aliases',
+    label: '別名・異表記',
+    what: '同じものを指す別の呼び名や書き方を入れます。',
+    when: '略称や旧称があるもの、表記が揺れるものに。',
+  },
+  {
+    key: 'pronunciation',
+    label: '発音記号',
+    what: '発音記号（IPA など）を入れます。',
+    when: '外国語の単語に。日本語の語では埋まらないことがあります。',
+  },
+] as const
+
 export function CreateItemForm({
   inPanel = false,
   wordlistId,
@@ -85,6 +113,27 @@ export function CreateItemForm({
   const [generateMeaning, setGenerateMeaning] = useState(true)
   const [meaningLevel, setMeaningLevel] = useState<string>(DEFAULT_MEANING_LEVEL)
   const [generateTags, setGenerateTags] = useState(true)
+  // 項目（読み仮名・別名・発音記号）の自動生成。選んだぶんを1回でまとめて埋める。
+  // 既定は空（AI の呼び出しが1回増えるので、明示的に選んでもらう）
+  const [propertyKeys, setPropertyKeys] = useState<string[]>([])
+
+  const togglePropertyKey = (key: string, on: boolean) =>
+    setPropertyKeys((prev) => (on ? [...new Set([...prev, key])] : prev.filter((k) => k !== key)))
+
+  /**
+   * 「できる限り」は、いま全部入っているかを映す鏡。
+   *
+   * 押すと全部入り、もう一度押すと全部外れる。1つでも外せば、ここの印も外れる。
+   * こうしておくと「全部にしたのに一部が作られない」が起こらない。
+   */
+  const allEnrichOn =
+    generateMeaning && generateTags && PROPERTY_OPTIONS.every((o) => propertyKeys.includes(o.key))
+
+  const toggleAllEnrich = (on: boolean) => {
+    setGenerateMeaning(on)
+    setGenerateTags(on)
+    setPropertyKeys(on ? PROPERTY_OPTIONS.map((o) => o.key) : [])
+  }
   const [deckViews, setDeckViews] = useState<View[]>([])
   const [wordlists, setWordlists] = useState<Wordlist[]>([])
   const [createNewDeck, setCreateNewDeck] = useState(false)
@@ -93,7 +142,7 @@ export function CreateItemForm({
   const [apiError, setApiError] = useState<string | null>(null)
   // 生成オプションは既定で閉じる。作るだけなら触らずに済むため。
   // 開けるのは 1 グループずつ（同時に開くと縦に伸びて入力欄から遠くなる）
-  const [openGroup, setOpenGroup] = useState<'image' | 'enrich' | 'place' | null>(null)
+  const [openGroup, setOpenGroup] = useState<'image' | 'enrich' | 'organize' | 'place' | null>(null)
   const [showWordlists, setShowWordlists] = useState(false)
   const wordlistBoxRef = useRef<HTMLDivElement>(null)
   // 一覧を開いたまま他を触ったら畳む。開きっぱなしだと入力欄が押し下げられる
@@ -245,6 +294,8 @@ export function CreateItemForm({
           generateMeaning,
           generateMeaningLevel: generateMeaning ? meaningLevel : undefined,
           generateTags,
+          generateProperties: propertyKeys.length > 0,
+          generatePropertyKeys: propertyKeys,
         })
         // 作成したカードを選択中のデッキ（deck-view）へ追加する
         for (const viewId of targetViewIds) {
@@ -300,7 +351,12 @@ export function CreateItemForm({
       framing && '構図',
       aspectRatio && '形',
     ]),
-    enrich: join([generateMeaning && '意味', generateTags && 'タグ']),
+    enrich: join([
+      generateMeaning && '意味',
+      propertyKeys.length > 0 && `項目${propertyKeys.length}件`,
+      generateTags && 'タグ',
+    ]),
+    organize: join([tagNames.length > 0 && `タグ${tagNames.length}件`]),
     place: join([(createNewDeck || selectedDeckIds.length > 0) && 'デッキ']),
   }
 
@@ -614,24 +670,6 @@ export function CreateItemForm({
         </p>
       </div>
 
-      <div className="space-y-2">
-        <Label htmlFor="tags">タグ</Label>
-        <input
-          id="tags"
-          type="text"
-          value={tagsInput}
-          onChange={(e) => setTagsInput(e.target.value)}
-          disabled={submitting}
-          placeholder="スペース区切りで入力（例: 英語 IT）"
-          className="w-full rounded-lg border border-input bg-background px-3 py-2 text-sm placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-        />
-        {tagNames.length > 0 && (
-          <p className="text-xs text-muted-foreground">
-            {tagNames.length}個のタグを、作成するすべてのカードに付与します
-          </p>
-        )}
-      </div>
-
       <label className="flex items-start gap-3 rounded-xl border border-border/70 bg-background px-4 py-3">
         <input
           type="checkbox"
@@ -654,6 +692,35 @@ export function CreateItemForm({
           open={openGroup === 'enrich'}
           onToggle={() => setOpenGroup((cur) => (cur === 'enrich' ? null : 'enrich'))}
         >
+      {/*
+        いちばん上に「まとめて」を置く。ここだけ押せば決まるようにして、
+        こだわる人が下で外せる形にする。
+        説明はぜんぶ ? へ逃がす。1行ずつ本文を付けると、項目が増えるほど縦に伸びる
+      */}
+      <label className="flex items-start gap-3 rounded-xl border border-[var(--palace)]/40 bg-[var(--palace)]/5 px-4 py-3">
+        <input
+          type="checkbox"
+          className="mt-1 h-4 w-4 rounded border-input"
+          checked={allEnrichOn}
+          onChange={(e) => toggleAllEnrich(e.target.checked)}
+          disabled={submitting}
+        />
+        <span className="flex-1">
+          <span className="flex items-center gap-1.5 text-sm font-medium">
+            できる限り自動で生成する
+            <HelpPopover label="できる限り自動で生成するについて" title="できる限り自動で生成する">
+              <div className="space-y-2 text-sm">
+                <p>意味・説明、読み仮名・別名・発音記号、タグをまとめて作ります。</p>
+                <p>入れたあとで、下の一つずつを外せます。もう一度ここを押すと、また全部が入ります。</p>
+                <p className="text-muted-foreground">
+                  画像の作り方や画質など、費用の大きいものはここには入りません。
+                </p>
+              </div>
+            </HelpPopover>
+          </span>
+        </span>
+      </label>
+
       {/* 意味・説明の自動生成 */}
       <label className="flex items-start gap-3 rounded-xl border border-border/70 bg-background px-4 py-3">
         <input
@@ -664,9 +731,15 @@ export function CreateItemForm({
           disabled={submitting}
         />
         <span className="flex-1 space-y-2">
-          <span className="block text-sm font-medium">各カードの意味・説明をAIで自動生成する</span>
-          <span className="block text-xs text-muted-foreground">
-            作成するすべてのカードについて、意味・説明をAIで生成します。あとから個別に生成・編集することもできます。
+          <span className="flex items-center gap-1.5 text-sm font-medium">
+            意味・説明
+            <HelpPopover label="意味・説明について" title="意味・説明">
+              <div className="space-y-2 text-sm">
+                <p>その語が何かを、AI が短くまとめます。</p>
+                <p>あとから直せます。手で書いたものは上書きされません。</p>
+                <p className="text-muted-foreground">1枚につき AI の呼び出しが1回。</p>
+              </div>
+            </HelpPopover>
           </span>
           {generateMeaning && (
             <span className="flex flex-wrap items-center gap-1.5 pt-1">
@@ -693,6 +766,37 @@ export function CreateItemForm({
           )}
         </span>
       </label>
+      {/* 項目（読み仮名・別名・発音記号）。**選んだぶんを1回でまとめて埋める** */}
+      {PROPERTY_OPTIONS.map((option) => (
+        <label
+          key={option.key}
+          className="flex items-start gap-3 rounded-xl border border-border/70 bg-background px-4 py-3"
+        >
+          <input
+            type="checkbox"
+            className="mt-1 h-4 w-4 rounded border-input"
+            checked={propertyKeys.includes(option.key)}
+            onChange={(e) => togglePropertyKey(option.key, e.target.checked)}
+            disabled={submitting}
+          />
+          <span className="flex-1">
+            <span className="flex items-center gap-1.5 text-sm font-medium">
+              {option.label}
+              <HelpPopover label={`${option.label}について`} title={option.label}>
+                <div className="space-y-2 text-sm">
+                  <p>{option.what}</p>
+                  <p>{option.when}</p>
+                  <p className="text-muted-foreground">
+                    選んだ項目はまとめて1回で埋めます。いくつ選んでも AI の呼び出しは1回のまま。
+                    空いているところだけを埋めるので、手で書いたものは上書きされません。
+                  </p>
+                </div>
+              </HelpPopover>
+            </span>
+          </span>
+        </label>
+      ))}
+
       {/* タグの自動生成 */}
       <label className="flex items-start gap-3 rounded-xl border border-border/70 bg-background px-4 py-3">
         <input
@@ -702,13 +806,45 @@ export function CreateItemForm({
           onChange={(e) => setGenerateTags(e.target.checked)}
           disabled={submitting}
         />
-        <span className="space-y-1">
-          <span className="block text-sm font-medium">各カードのタグをAIで自動生成する</span>
-          <span className="block text-xs text-muted-foreground">
-            作成するすべてのカードについて、分類タグをAIで生成します。手入力したタグがあれば、それに追加されます。
+        <span className="flex-1">
+          <span className="flex items-center gap-1.5 text-sm font-medium">
+            タグ
+            <HelpPopover label="タグについて" title="タグ">
+              <div className="space-y-2 text-sm">
+                <p>分類のタグを AI が付けます。</p>
+                <p>下の「整理」で手入力したタグがあれば、それに足す形になります。</p>
+                <p className="text-muted-foreground">1枚につき AI の呼び出しが1回。</p>
+              </div>
+            </HelpPopover>
           </span>
         </span>
       </label>
+        </OptionGroup>
+        <OptionGroup
+          label="整理"
+          summary={optionSummary.organize}
+          open={openGroup === 'organize'}
+          onToggle={() => setOpenGroup((cur) => (cur === 'organize' ? null : 'organize'))}
+        >
+      {/* 手で付けるタグ。**絵の話ではなく、カードを分けるための話**なので、
+          画像の作り方から出してここに置く */}
+      <div className="space-y-2 rounded-xl border border-border/70 bg-background px-4 py-3">
+        <Label htmlFor="tags">タグ</Label>
+        <input
+          id="tags"
+          type="text"
+          value={tagsInput}
+          onChange={(e) => setTagsInput(e.target.value)}
+          disabled={submitting}
+          placeholder="スペース区切りで入力（例: 英語 IT）"
+          className="w-full rounded-lg border border-input bg-background px-3 py-2 text-sm placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+        />
+        {tagNames.length > 0 && (
+          <p className="text-xs text-muted-foreground">
+            {tagNames.length}個のタグを、作成するすべてのカードに付与します
+          </p>
+        )}
+      </div>
         </OptionGroup>
         <OptionGroup
           label="保存する場所"

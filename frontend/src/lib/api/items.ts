@@ -24,6 +24,10 @@ export interface CreateItemOptions {
   generateMeaningLevel?: string
   /** 各カードのタグを AI で自動生成するか（未指定ならユーザー設定に従う） */
   generateTags?: boolean
+  /** 項目（読み仮名・別名など）を自動で埋めるか */
+  generateProperties?: boolean
+  /** 埋める項目の識別名。渡したぶんだけを1回でまとめて埋める */
+  generatePropertyKeys?: string[]
   /** 画像への指示の作り方（word / brief / research）。未指定は brief */
   promptSource?: string
   /** 画像の縦横比（未指定ならユーザー設定の既定を使う） */
@@ -49,6 +53,12 @@ export async function createItem(
       ...(options?.generateMeaning !== undefined ? { generate_meaning: options.generateMeaning } : {}),
       ...(options?.generateMeaningLevel ? { generate_meaning_level: options.generateMeaningLevel } : {}),
       ...(options?.generateTags !== undefined ? { generate_tags: options.generateTags } : {}),
+      ...(options?.generateProperties !== undefined
+        ? { generate_properties: options.generateProperties }
+        : {}),
+      ...(options?.generatePropertyKeys?.length
+        ? { generate_property_keys: options.generatePropertyKeys }
+        : {}),
       ...(options?.promptSource ? { prompt_source: options.promptSource } : {}),
       ...(options?.aspectRatio ? { aspect_ratio: options.aspectRatio } : {}),
       ...(options?.imageModel ? { image_model: options.imageModel } : {}),
