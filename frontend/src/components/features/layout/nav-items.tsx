@@ -27,6 +27,7 @@ import {
   Newspaper,
   Megaphone,
   ShieldCheck,
+  Compass,
 } from 'lucide-react'
 import { CreateIcon } from './CreateIcon'
 
@@ -37,6 +38,14 @@ export interface NavNode {
   // children + href（ライブラリ）= リンク＋開閉、children のみ（アトリエ）= 開閉グループ見出し。
   href?: string
   children?: NavNode[]
+  /**
+   * 行き先がちょうどそこのときだけ点ける。
+   *
+   * 既定は前方一致（`/items` は `/items/123` でも点く）。
+   * ただし `/admin` のような「入口そのもの」は、前方一致だと**中のどのページでも点いてしまい、
+   * いま概要を見ているのかどうかが分からない**。
+   */
+  exact?: boolean
 }
 
 export interface NavSection {
@@ -154,7 +163,31 @@ export const NAV_SECTIONS: NavSection[] = [
 // 運営メンバーにだけ出す項目。既存の「公式」セクションの末尾へ足す。
 // ここに出す／出さないは見た目の話で、守りはサーバー側の権限判定が行う。
 export const ADMIN_SECTION_KEY = 'ops'
-export const ADMIN_ITEM: NavNode = { href: '/admin', icon: <ShieldCheck size={22} />, label: '執務室' }
+/**
+ * 執務室。**これは管理画面そのものの名前**で、中に分類を持つ。
+ *
+ * 中で何をするかで分ける。
+ *   概要   … いま何が起きているか（最初に開く）
+ *   分析   … 数字を見る（読むだけ・変えない）
+ *   運営   … 日々の操作（人・物・お知らせ）
+ *   戦略   … 次に何をするか
+ *   システム … 設定と安全（**壊せるもの**）
+ *
+ * ここに出すのは2階層まで。その先（経営 / 収支 など）は執務室の中の帯で選ぶ。
+ * 横に置いた帯と同じものをここにも全部並べると、脇が長くなるだけで見つけやすくならない。
+ */
+export const ADMIN_ITEM: NavNode = {
+  href: '/admin',
+  icon: <ShieldCheck size={22} />,
+  label: '執務室',
+  children: [
+    { href: '/admin', icon: <House size={20} />, label: '概要', exact: true },
+    { href: '/admin/business', icon: <BarChart3 size={20} />, label: '分析' },
+    { href: '/admin/users', icon: <UserCog size={20} />, label: '運営' },
+    { href: '/admin/strategy', icon: <Compass size={20} />, label: '戦略' },
+    { href: '/admin/grants', icon: <Settings size={20} />, label: 'システム' },
+  ],
+}
 
 /** 運営メンバーなら「公式」セクションの末尾に執務室を足したものを返す */
 export function navSectionsFor(isAdmin: boolean): NavSection[] {

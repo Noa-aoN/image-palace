@@ -85,3 +85,46 @@ describe('執務室の分け方', () => {
     expect(analytics.items).not.toContain('/admin/features')
   })
 })
+
+/**
+ * サイドバーに出す執務室の中身。
+ *
+ * **執務室は管理画面そのものの名前**で、中に分類を持つ。
+ * ここに出すのは2階層まで。その先（経営 / 収支 など）は執務室の中の帯で選ぶ。
+ */
+const SIDEBAR_ADMIN_CHILDREN = [
+  { href: '/admin', label: '概要', exact: true },
+  { href: '/admin/business', label: '分析' },
+  { href: '/admin/users', label: '運営' },
+  { href: '/admin/strategy', label: '戦略' },
+  { href: '/admin/grants', label: 'システム' },
+]
+
+const active = (href: string, pathname: string, exact = false) =>
+  exact ? pathname === href : pathname === href || pathname.startsWith(`${href}/`)
+
+describe('サイドバーの執務室', () => {
+  it('中身は5つで、帯の大分類と同じ並び', () => {
+    expect(SIDEBAR_ADMIN_CHILDREN.map((c) => c.label)).toEqual(
+      SECTIONS.map((s) => s.label)
+    )
+  })
+
+  it('それぞれ、その分類の最初の行き先を指す', () => {
+    for (const child of SIDEBAR_ADMIN_CHILDREN) {
+      const section = SECTIONS.find((s) => s.label === child.label)!
+      expect(section.items[0], child.label).toBe(child.href)
+    }
+  })
+
+  it('概要は、ちょうど /admin のときだけ点く', () => {
+    expect(active('/admin', '/admin', true)).toBe(true)
+    // 前方一致のままだと、執務室の中のどのページでも点いてしまう
+    expect(active('/admin', '/admin/business', true)).toBe(false)
+  })
+
+  it('分類のほうは、その中のページでも点く', () => {
+    expect(active('/admin/users', '/admin/users')).toBe(true)
+    expect(active('/admin/strategy', '/admin/strategy')).toBe(true)
+  })
+})
