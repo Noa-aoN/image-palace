@@ -54,7 +54,7 @@ export function RoomShowcase() {
             <p className="text-sm">{help.description}</p>
           </HelpPopover>
         )}
-        <Link href="/trophy" className="ml-auto text-xs text-muted-foreground hover:text-foreground">
+        <Link href="/achievements" className="ml-auto text-xs text-muted-foreground hover:text-foreground">
           栄誉の間で選ぶ
         </Link>
       </div>
@@ -63,7 +63,7 @@ export function RoomShowcase() {
         // 「ありません」で終わらせない。次に何をすればよいかを出す
         <p className="mt-3 rounded-xl border border-dashed border-border px-4 py-6 text-center text-sm text-muted-foreground">
           まだ何も飾っていません。
-          <Link href="/trophy" className="mx-1 underline hover:text-foreground">
+          <Link href="/achievements" className="mx-1 underline hover:text-foreground">
             栄誉の間
           </Link>
           で、手に入れた宝物に星を入れると、ここに並びます。

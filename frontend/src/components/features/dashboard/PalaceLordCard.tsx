@@ -48,133 +48,123 @@ export function PalaceLordCard({ tier }: { tier: string | null }) {
   return (
     <section className="flex flex-col space-y-3">
       <h2 className="text-sm font-semibold text-muted-foreground">宮殿の主人</h2>
-      <Link
-        href="/account"
-        aria-label="アカウントの設定を見る"
-        className="group block flex-1 rounded-xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--palace)]"
-      >
-        <Card className="h-full cursor-pointer transition hover:border-[var(--palace)] hover:shadow-md">
-          <CardContent className="space-y-4">
-            <div className="flex items-center justify-between">
-              {/* 宮殿の名前。付けていない人には既定の呼び方を出す。
-                  「自分の宮殿」と言いながら名無しだと、ただの保管庫に見える */}
-              <p className="flex items-center gap-2 truncate text-sm text-muted-foreground">
-                <Crown size={18} className="shrink-0" style={{ color: 'var(--palace)' }} />
-                {palaceName?.trim() || `${displayName}の宮殿`}
-              </p>
-              <ChevronRight
-                size={18}
-                className="text-muted-foreground transition-transform group-hover:translate-x-0.5 group-hover:text-foreground"
-              />
-            </div>
+      {/*
+        札そのものはリンクにしない。**中に釦と別の行き先があるため。**
+        全体を包んでいたころは、「?」を押しても獲得物の絵を押しても、
+        ぜんぶアカウントの設定へ飛んでいた。
+        行き先は、それを押した人が期待するものに分ける。
+      */}
+      <Card className="h-full">
+        <CardContent className="space-y-4">
+          {/* 宮殿の名前の行だけがアカウントへの入口。
+              「自分の宮殿」と言いながら名無しだと、ただの保管庫に見える */}
+          <Link
+            href="/account"
+            aria-label="アカウントの設定を見る"
+            className="group flex items-center justify-between rounded-lg transition hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--palace)]"
+          >
+            <p className="flex items-center gap-2 truncate text-sm text-muted-foreground group-hover:text-foreground">
+              <Crown size={18} className="shrink-0" style={{ color: 'var(--palace)' }} />
+              {palaceName?.trim() || `${displayName}の宮殿`}
+            </p>
+            <ChevronRight
+              size={18}
+              className="text-muted-foreground transition-transform group-hover:translate-x-0.5 group-hover:text-foreground"
+            />
+          </Link>
 
-            <div className="flex items-center gap-3">
-              <CardImage
-                src={avatar}
-                alt=""
-                className="h-14 w-14 shrink-0 rounded-full border border-border"
-                fallback={<Crown size={20} className="text-muted-foreground/60" />}
-              />
-              <div className="min-w-0">
-                {/* 称号は名前の上に小さく。名前と同じ大きさで横に並べると、
-                    どちらが本人の名前なのか分からなくなる */}
-                {/* 称号は鉤括弧で囲む。**与えられた名前**なので、地の文と同じ見た目だと
-                    本人が入力した文字列と区別がつかない（記名板と同じ扱いに揃える）。
-                    絵は出さない。ここは名乗りであって、品物を見せる場ではない
-                    （品物としての姿は栄誉の間で見る） */}
-                {honors?.title && (
-                  <p className="flex min-w-0 items-center gap-1 text-xs" style={{ color: 'var(--palace)' }}>
-                    <span className="truncate">「{honors.title.name}」</span>
-                    {/* 手に入れた人ほど「これは何か」を知りたい。
-                        栄誉の間の ? と同じ説明を、ここからも開けるようにする */}
-                    <RewardKindHelpButton kind="title" />
-                  </p>
+          <div className="flex items-center gap-3">
+            <CardImage
+              src={avatar}
+              alt=""
+              className="h-14 w-14 shrink-0 rounded-full border border-border"
+              fallback={<Crown size={20} className="text-muted-foreground/60" />}
+            />
+            <div className="min-w-0">
+              {/* 称号は名前の上に小さく。名前と同じ大きさで横に並べると、
+                  どちらが本人の名前なのか分からなくなる */}
+              {/* 称号は鉤括弧で囲む。**与えられた名前**なので、地の文と同じ見た目だと
+                  本人が入力した文字列と区別がつかない（記名板と同じ扱いに揃える）。
+                  絵は出さない。ここは名乗りであって、品物を見せる場ではない
+                  （品物としての姿は栄誉の間で見る） */}
+              {honors?.title && (
+                <p className="flex min-w-0 items-center gap-1 text-xs" style={{ color: 'var(--palace)' }}>
+                  <span className="truncate">「{honors.title.name}」</span>
+                  {/* 手に入れた人ほど「これは何か」を知りたい。
+                      栄誉の間の ? と同じ説明を、ここからも開けるようにする */}
+                  <RewardKindHelpButton kind="title" />
+                </p>
+              )}
+              {/* 勲章は名前の右に、絵だけを並べる。
+                  項目行（位・入居…）に混ぜると、増えるたびに縦へ伸びていく。
+                  横に流せば、数が増えても札の高さは変わらない */}
+              <div className="flex min-w-0 items-center gap-1.5">
+                <p className="truncate text-lg font-semibold">{displayName}</p>
+                {/* 勲章は名前から離す。くっついていると、名前の続きに見える。
+                    何の並びなのかが分かるよう、見出しも添える */}
+                {medals.length > 0 && (
+                  <span className="ml-2 flex shrink-0 items-center gap-1 border-l border-border pl-2">
+                    <span className="text-[11px] text-muted-foreground">勲章</span>
+                    <RewardKindHelpButton kind="medal" />
+                    {medals.map((reward) =>
+                      reward.image_url ? (
+                        <RewardLink key={reward.key} name={reward.name}>
+                          {/* eslint-disable-next-line @next/next/no-img-element */}
+                          <img src={reward.image_url} alt={reward.name} width={20} height={20} loading="lazy" />
+                        </RewardLink>
+                      ) : null
+                    )}
+                  </span>
                 )}
-                {/* 勲章は名前の右に、絵だけを並べる。
-                    項目行（位・入居…）に混ぜると、増えるたびに縦へ伸びていく。
-                    横に流せば、数が増えても札の高さは変わらない */}
-                <div className="flex min-w-0 items-center gap-1.5">
-                  <p className="truncate text-lg font-semibold">{displayName}</p>
-                  {/* 勲章は名前から離す。くっついていると、名前の続きに見える。
-                      何の並びなのかが分かるよう、見出しも添える */}
-                  {medals.length > 0 && (
-                    <span className="ml-2 flex shrink-0 items-center gap-1 border-l border-border pl-2">
-                      <span className="text-[11px] text-muted-foreground">勲章</span>
-                      <RewardKindHelpButton kind="medal" />
-                      {medals.map((reward) =>
-                        reward.image_url ? (
-                          // eslint-disable-next-line @next/next/no-img-element
-                          <img
-                            key={reward.key}
-                            src={reward.image_url}
-                            alt={reward.name}
-                            title={reward.name}
-                            width={20}
-                            height={20}
-                            loading="lazy"
-                          />
-                        ) : null
-                      )}
-                    </span>
-                  )}
-                </div>
               </div>
             </div>
+          </div>
 
-            <dl className="grid grid-cols-2 gap-x-4 gap-y-2 text-sm">
-              <div>
-                <dt className="text-xs text-muted-foreground">位</dt>
-                <dd className="font-medium">{tier ? tierLabel(tier) : '—'}</dd>
+          <dl className="grid grid-cols-2 gap-x-4 gap-y-2 text-sm">
+            <div>
+              <dt className="text-xs text-muted-foreground">位</dt>
+              <dd className="font-medium">{tier ? tierLabel(tier) : '—'}</dd>
+            </div>
+            {/* 入居日は「位」と同じ並びに独立して置く。名前の下に埋めると、
+                本人を指す情報と宮殿の情報が混ざる */}
+            <div>
+              <dt className="text-xs text-muted-foreground">入居</dt>
+              <dd className="font-medium">{movedInOn}</dd>
+            </div>
+            {/* 称号が無い人には、次に取れるものを出す */}
+            {!honors?.title && honors?.next_title && (
+              <div className="col-span-2">
+                <dt className="text-xs text-muted-foreground">称号</dt>
+                <dd className="text-xs text-muted-foreground">
+                  {honors.next_title.condition ?? 'もう少し進める'}と「{honors.next_title.name}」
+                </dd>
               </div>
-              {/* 入居日は「位」と同じ並びに独立して置く。名前の下に埋めると、
-                  本人を指す情報と宮殿の情報が混ざる */}
-              <div>
-                <dt className="text-xs text-muted-foreground">入居</dt>
-                <dd className="font-medium">{movedInOn}</dd>
-              </div>
-              {/* 称号が無い人には、次に取れるものを出す */}
-              {!honors?.title && honors?.next_title && (
-                <div className="col-span-2">
-                  <dt className="text-xs text-muted-foreground">称号</dt>
-                  <dd className="text-xs text-muted-foreground">
-                    {honors.next_title.condition ?? 'もう少し進める'}と「{honors.next_title.name}」
+            )}
+            {/* 記名板で星を入れたものを、種別ごとに出す */}
+            {SHOWCASE_KINDS.map(([kind, label]) => {
+              const rows = honors?.showcase?.[kind] ?? []
+              if (rows.length === 0) return null
+              return (
+                <div key={kind} className="col-span-2">
+                  <dt className="text-xs text-muted-foreground">{label}</dt>
+                  <dd className="flex flex-wrap items-center gap-1.5 pt-0.5">
+                    {rows.map((reward) => (
+                      <RewardLink key={reward.key} name={reward.name}>
+                        {reward.image_url ? (
+                          // eslint-disable-next-line @next/next/no-img-element
+                          <img src={reward.image_url} alt={reward.name} width={22} height={22} loading="lazy" />
+                        ) : (
+                          <span className="text-xs">{reward.name}</span>
+                        )}
+                      </RewardLink>
+                    ))}
                   </dd>
                 </div>
-              )}
-              {/* 記名板で星を入れたものを、種別ごとに出す */}
-              {SHOWCASE_KINDS.map(([kind, label]) => {
-                const rows = honors?.showcase?.[kind] ?? []
-                if (rows.length === 0) return null
-                return (
-                  <div key={kind} className="col-span-2">
-                    <dt className="text-xs text-muted-foreground">{label}</dt>
-                    <dd className="flex flex-wrap items-center gap-1.5 pt-0.5">
-                      {rows.map((reward) =>
-                        reward.image_url ? (
-                          // eslint-disable-next-line @next/next/no-img-element
-                          <img
-                            key={reward.key}
-                            src={reward.image_url}
-                            alt={reward.name}
-                            title={reward.name}
-                            width={22}
-                            height={22}
-                            loading="lazy"
-                          />
-                        ) : (
-                          <span key={reward.key} className="text-xs">
-                            {reward.name}
-                          </span>
-                        )
-                      )}
-                    </dd>
-                  </div>
-                )
-              })}
-            </dl>
-          </CardContent>
-        </Card>
-      </Link>
+              )
+            })}
+          </dl>
+      </CardContent>
+      </Card>
     </section>
   )
 }
@@ -185,6 +175,25 @@ const SHOWCASE_KINDS: [RewardKind, string][] = [
   ['treasure', '宝物'],
   ['honor', '表彰'],
 ]
+
+/**
+ * 獲得物ひとつ。押すと栄誉の間へ行く。
+ *
+ * 絵を押した人が見たいのは**その品物**であって、アカウントの設定ではない。
+ * 名前は title で添える（絵だけでは何か分からない）。
+ */
+function RewardLink({ name, children }: { name: string; children: React.ReactNode }) {
+  return (
+    <Link
+      href="/achievements"
+      title={name}
+      aria-label={`${name}（栄誉の間で見る）`}
+      className="inline-flex rounded transition hover:opacity-80 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--palace)]"
+    >
+      {children}
+    </Link>
+  )
+}
 
 /**
  * 種類の説明を開く小さな釦。

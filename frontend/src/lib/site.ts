@@ -40,6 +40,7 @@ export const PRIVATE_PATHS = [
   '/profile',
   '/settings',
   '/trophy',
+  '/achievements',
   '/forgot-password',
   '/reset-password',
 ] as const
