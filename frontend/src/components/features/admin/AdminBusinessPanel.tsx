@@ -268,7 +268,7 @@ export function AdminBusinessPanel() {
         note={
           retentionDays.measurement_started_on
             ? `計測開始 ${new Date(retentionDays.measurement_started_on).toLocaleDateString('ja-JP')}。それより前の来訪は残っていない`
-            : '来訪の記録はまだ始まっていない'
+            : undefined
         }
       >
         {(['d1', 'd7', 'd30'] as const).map((key) => {

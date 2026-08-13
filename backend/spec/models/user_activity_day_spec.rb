@@ -57,16 +57,33 @@ RSpec.describe UserActivityDay do
     end
   end
 
+  # ここが動くと、同じ過去を見ているのに答えが変わる
   describe "測り始めた日" do
-    it "いちばん古い記録の日" do
-      described_class.record!(user.id, Date.new(2026, 8, 12))
-      described_class.record!(other.id, Date.new(2026, 8, 20))
-
-      expect(described_class.measurement_started_on).to eq(Date.new(2026, 8, 12))
+    it "記録が1件も無くても、決めた日を返す（誰も来なかったことも観測結果）" do
+      expect(described_class.count).to eq(0)
+      expect(described_class.measurement_started_on).to eq(described_class::MEASUREMENT_STARTED_ON)
     end
 
-    it "1件も無ければ nil（0 ではない）" do
-      expect(described_class.measurement_started_on).to be_nil
+    it "最初の記録が何日後であっても動かない" do
+      described_class.record!(user.id, described_class::MEASUREMENT_STARTED_ON + 10.days)
+
+      expect(described_class.measurement_started_on).to eq(described_class::MEASUREMENT_STARTED_ON)
+    end
+
+    it "いちばん古い記録を消しても動かない" do
+      described_class.record!(user.id, described_class::MEASUREMENT_STARTED_ON)
+      described_class.record!(other.id, described_class::MEASUREMENT_STARTED_ON + 3.days)
+
+      described_class.where(user_id: user.id).delete_all
+
+      expect(described_class.measurement_started_on).to eq(described_class::MEASUREMENT_STARTED_ON)
+    end
+
+    it "いちばん古い記録を持つ人が退会しても動かない" do
+      described_class.record!(user.id, described_class::MEASUREMENT_STARTED_ON)
+      user.destroy
+
+      expect(described_class.measurement_started_on).to eq(described_class::MEASUREMENT_STARTED_ON)
     end
   end
 
