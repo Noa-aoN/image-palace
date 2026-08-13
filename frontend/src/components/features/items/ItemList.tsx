@@ -164,9 +164,14 @@ type ItemCardProps = {
   sizes: string
   /** いま一括処理の順番が回っているカード。どれを触っているかを見せる */
   working: boolean
+  /**
+   * 何をどの順で積むか（サーバーの設定から来る）。
+   * カード側に固定で書いていたころは、絵を外しても出続け、並べ替えても順が変わらなかった。
+   */
+  blocks: string[]
 }
 
-function ItemCard({ item, selectionMode, selected, onToggle, fit, sizes, working }: ItemCardProps) {
+function ItemCard({ item, selectionMode, selected, onToggle, fit, sizes, working, blocks }: ItemCardProps) {
   const router = useRouter()
   const [failedImageUrl, setFailedImageUrl] = useState<string | null>(null)
   const warmedRef = useRef(false)
@@ -212,36 +217,14 @@ function ItemCard({ item, selectionMode, selected, onToggle, fit, sizes, working
     })
   }
 
-  const inner = (
-    <>
-      {/* いま順番が回っているカードは、そうと分かるようにする。
-          上の進捗（3/12）だけだと、どれを触っているのか分からず、
-          並んでいるカードのどこかが変わるのを待つことになる。
-          見え方は大きく変えない。薄い覆いと小さな輪だけ */}
-      {working && (
-        <span className="pointer-events-none absolute inset-0 z-10 flex items-center justify-center rounded-xl bg-background/50">
-          <Spinner size={18} />
-        </span>
-      )}
-      {/* テキストを上・画像を下に配置 */}
-      <div className="px-3 py-2 flex items-center justify-between gap-2">
-        {/* ファクトチェックで「正しい」以外なら単語名に色を付けて気づけるようにする */}
-        <span
-          className={`text-sm font-medium truncate ${factCheckTitleClass(item)}`}
-          title={needsFactCheckAttention(item) ? 'AIチェックで要確認' : undefined}
-          onMouseEnter={showTitleTooltip}
-          onMouseLeave={() => setTooltipAlign(null)}
-        >
-          {item.headline || item.title}
-        </span>
-        <StatusBadge status={item.generation_status} />
-      </div>
-      {/* 画像の周りに細い余白（マット）を入れ、トレーディングカードの縁に見せる。
-          スキンやフレームを差し替えるときはこの枠を変える。
-
-          そろえるときは枠を正方形に固定し、画像は縮めて全体を収める。台紙の余白が
-          画像の周りに回るので、比率の違うカードが混ざっても棚が波打たない。
-          画像側に w/h を張らないのは、張ると縁の影と線が画像ではなく余白の外周に付くため。 */}
+  // 絵。設定で外されていれば、そもそも積まない（枠だけ・余白だけが残らない）
+  // 画像の周りに細い余白（マット）を入れ、トレーディングカードの縁に見せる。
+  // スキンやフレームを差し替えるときはこの枠を変える。
+  //
+  // そろえるときは枠を正方形に固定し、画像は縮めて全体を収める。台紙の余白が
+  // 画像の周りに回るので、比率の違うカードが混ざっても棚が波打たない。
+  // 画像側に w/h を張らないのは、張ると縁の影と線が画像ではなく余白の外周に付くため。
+  const imageBlock = (
       <div
         className="relative w-full bg-[color-mix(in_srgb,var(--card)_92%,var(--foreground))] p-[5%] flex items-center justify-center overflow-hidden"
         style={{ aspectRatio: fit === 'uniform' ? '1 / 1' : aspectRatioCss(item.aspect_ratio) }}
@@ -292,30 +275,62 @@ function ItemCard({ item, selectionMode, selected, onToggle, fit, sizes, working
           />
         )}
       </div>
+  )
 
-      {/* 名前と絵のほかに出す項目。**出す指定なら、値が無くても「-」で出す。**
-          落としてしまうと、出るカードと出ないカードが混ざり、法則が読めない。
-          1行1項目で、長いものは省略する（1枚が縦に伸びると一覧が見渡せない） */}
-      {(item.list_fields?.length ?? 0) > 0 && (
-        <dl className="space-y-0.5 px-3 py-1.5">
-          {item.list_fields!.map((field) => {
-            const empty = !field.value?.trim()
-            return (
-              <div key={field.key} className="flex gap-1.5 text-[11px] leading-snug">
-                <dt className="shrink-0 text-muted-foreground">{field.label}</dt>
-                {/* 意味・説明だけは長い。3行までに丸める（それ以上は一覧を圧迫する） */}
-                <dd
-                  className={`${field.key === 'meaning' ? 'line-clamp-3' : 'truncate'} ${
-                    empty ? 'text-muted-foreground/60' : ''
-                  }`}
-                >
-                  {empty ? EMPTY_VALUE_MARK : field.value}
-                </dd>
-              </div>
-            )
-          })}
-        </dl>
+  // 項目1行。出す指定なら、値が無くても「-」で出す。
+  // 落としてしまうと、出るカードと出ないカードが混ざり、法則が読めない
+  const renderField = (field: { key: string; label: string; value: string }) => {
+    const empty = !field.value?.trim()
+    return (
+      <div className="flex gap-1.5 text-[11px] leading-snug">
+        <dt className="shrink-0 text-muted-foreground">{field.label}</dt>
+        {/* 意味・説明だけは長い。3行までに丸める（それ以上は一覧を圧迫する） */}
+        <dd
+          className={`${field.key === 'meaning' ? 'line-clamp-3' : 'truncate'} ${
+            empty ? 'text-muted-foreground/60' : ''
+          }`}
+        >
+          {empty ? EMPTY_VALUE_MARK : field.value}
+        </dd>
+      </div>
+    )
+  }
+
+  const inner = (
+    <>
+      {/* いま順番が回っているカードは、そうと分かるようにする。
+          上の進捗（3/12）だけだと、どれを触っているのか分からず、
+          並んでいるカードのどこかが変わるのを待つことになる。
+          見え方は大きく変えない。薄い覆いと小さな輪だけ */}
+      {working && (
+        <span className="pointer-events-none absolute inset-0 z-10 flex items-center justify-center rounded-xl bg-background/50">
+          <Spinner size={18} />
+        </span>
       )}
+      {/* テキストを上・画像を下に配置 */}
+      <div className="px-3 py-2 flex items-center justify-between gap-2">
+        {/* ファクトチェックで「正しい」以外なら単語名に色を付けて気づけるようにする */}
+        <span
+          className={`text-sm font-medium truncate ${factCheckTitleClass(item)}`}
+          title={needsFactCheckAttention(item) ? 'AIチェックで要確認' : undefined}
+          onMouseEnter={showTitleTooltip}
+          onMouseLeave={() => setTooltipAlign(null)}
+        >
+          {item.headline || item.title}
+        </span>
+        <StatusBadge status={item.generation_status} />
+      </div>
+      {blocks.map((block) => {
+        if (block === 'image') return <div key="image">{imageBlock}</div>
+
+        const field = item.list_fields?.find((row) => row.key === block)
+        if (!field) return null
+        return (
+          <dl key={block} className="space-y-0.5 px-3 pb-1.5 pt-1.5 last:pb-2">
+            {renderField(field)}
+          </dl>
+        )
+      })}
     </>
   )
 
@@ -410,6 +425,8 @@ export function ItemList({ initialTag = null }: { initialTag?: string | null }) 
   const [deleting, setDeleting] = useState(false)
   const [actionError, setActionError] = useState<string | null>(null)
   const [refreshToken, setRefreshToken] = useState(0)
+  // 一覧の並べ方（サーバーの設定から来る）。既定は「絵だけ」
+  const [listBlocks, setListBlocks] = useState<string[]>(['image'])
   // 一括AI操作（タグ再設定・付与・ファクトチェック・説明付与）の進捗とサマリ
   const [bulkAction, setBulkAction] = useState<{ label: string; done: number; total: number } | null>(null)
   // いま処理しているカード。上の進捗だけだと「どれが対象か」が分からず、
@@ -654,6 +671,7 @@ export function ItemList({ initialTag = null }: { initialTag?: string | null }) 
         status: statusFilter || undefined,
       })
       setItems(fetched)
+      if (meta.card_list) setListBlocks(meta.card_list.blocks)
       setTotalPages(Math.max(meta.total_pages, 1))
       setError(null)
       return fetched
@@ -990,7 +1008,11 @@ export function ItemList({ initialTag = null }: { initialTag?: string | null }) 
           選択
         </Button>
       )}
-      <CardDisplayPanel display={display} onChange={changeDisplay} />
+      <CardDisplayPanel
+        display={display}
+        onChange={changeDisplay}
+        onLayoutSaved={() => setRefreshToken((token) => token + 1)}
+      />
       <CardCreateButton />
     </div>
   )
@@ -1137,7 +1159,11 @@ export function ItemList({ initialTag = null }: { initialTag?: string | null }) 
           </div>
         </div>
         <div className="flex shrink-0 items-center gap-2">
-          <CardDisplayPanel display={display} onChange={changeDisplay} />
+          <CardDisplayPanel
+            display={display}
+            onChange={changeDisplay}
+            onLayoutSaved={() => setRefreshToken((token) => token + 1)}
+          />
           <CardCreateButton />
         </div>
       </div>
@@ -1230,6 +1256,7 @@ export function ItemList({ initialTag = null }: { initialTag?: string | null }) 
             selected={selectedIds.has(item.id)}
             onToggle={toggleSelect}
             fit={display.fit}
+            blocks={listBlocks}
             sizes={cardImageSizes(display.columns)}
             working={bulkCurrentId === item.id}
           />

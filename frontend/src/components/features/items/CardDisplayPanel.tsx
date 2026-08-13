@@ -52,14 +52,21 @@ const PANEL_KEY = 'items-display'
 export function CardDisplayPanel({
   display,
   onChange,
+  onLayoutSaved,
 }: {
   display: CardDisplay
   onChange: (patch: Partial<CardDisplay>) => void
+  /**
+   * 表示項目を保存し終えたとき。
+   * 出す項目・並び・絵の有無はサーバーが解決して一覧の payload に載るので、
+   * **保存しただけでは棚は変わらない。** 取り直しの合図をここで出す。
+   */
+  onLayoutSaved?: () => void
 }) {
   const panel = usePanelForm(PANEL_KEY, '表示')
   const rowChoices = availableRowChoices(display.columns)
   const perPage = cardsPerPage(display)
-  const layout = useCardListLayout(panel.isOpen)
+  const layout = useCardListLayout(panel.isOpen, onLayoutSaved)
   // 掴んで動かしている行。HTML5 の drag は「どこから」を持たないので自分で覚える
   const [dragging, setDragging] = useState<number | null>(null)
 
@@ -120,6 +127,12 @@ export function CardDisplayPanel({
               <p className="text-xs text-muted-foreground">1ページ {MAX_CARDS_PER_PAGE} 枚までです。</p>
             )}
           </div>
+          <p className="rounded-lg bg-muted/40 px-3 py-2 text-xs text-muted-foreground">
+            <strong className="text-foreground">
+              {display.columns} 列 × {display.rows} 行
+            </strong>{' '}
+            ＝ 1ページ <strong className="text-foreground">{perPage} 枚</strong>
+          </p>
 
           {/* 列数・行数と、出す項目は別の話。線で区切って、混ざらないようにする */}
           <hr className="border-border" />
@@ -196,12 +209,6 @@ export function CardDisplayPanel({
             </p>
           </div>
 
-          <p className="rounded-lg bg-muted/40 px-3 py-2 text-xs text-muted-foreground">
-            <strong className="text-foreground">
-              {display.columns} 列 × {display.rows} 行
-            </strong>{' '}
-            ＝ 1ページ <strong className="text-foreground">{perPage} 枚</strong>
-          </p>
         </div>
       </PanelSlotContent>
     </>
@@ -217,7 +224,7 @@ export function CardDisplayPanel({
  *
  * パネルを開いたときに読む。一覧を出すたびに毎回引く必要はない。
  */
-function useCardListLayout(isOpen: boolean) {
+function useCardListLayout(isOpen: boolean, onSaved?: () => void) {
   const [rows, setRows] = useState<LayoutRow[]>([])
   const [candidates, setCandidates] = useState<LayoutCandidate[]>([])
   const [loaded, setLoaded] = useState(false)
@@ -259,6 +266,7 @@ function useCardListLayout(isOpen: boolean) {
     try {
       const saved = await updateSettings({ card_list_layout: next })
       setRows(buildLayoutRows(saved.card_list_layout ?? next, candidates))
+      onSaved?.()
     } catch {
       setRows(previous) // 失敗したら元に戻す
       setNotice('保存できませんでした')
