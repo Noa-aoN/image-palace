@@ -93,11 +93,17 @@ describe('執務室の分け方', () => {
  * ここに出すのは2階層まで。その先（経営 / 収支 など）は執務室の中の帯で選ぶ。
  */
 const SIDEBAR_ADMIN_CHILDREN = [
-  { href: '/admin', label: '概要', exact: true },
-  { href: '/admin/business', label: '分析' },
-  { href: '/admin/users', label: '運営' },
-  { href: '/admin/strategy', label: '戦略' },
-  { href: '/admin/grants', label: 'システム' },
+  { label: '概要', href: '/admin', exact: true, children: [] as string[] },
+  { label: '分析', children: ['/admin/business', '/admin/finance'] },
+  {
+    label: '運営',
+    children: ['/admin/users', '/admin/campaigns', '/admin/rewards', '/admin/posts'],
+  },
+  { label: '戦略', children: ['/admin/strategy'] },
+  {
+    label: 'システム',
+    children: ['/admin/grants', '/admin/models', '/admin/features', '/admin/audit'],
+  },
 ]
 
 const active = (href: string, pathname: string, exact = false) =>
@@ -110,11 +116,20 @@ describe('サイドバーの執務室', () => {
     )
   })
 
-  it('それぞれ、その分類の最初の行き先を指す', () => {
+  it('中の行き先が、帯の中身とそろっている', () => {
     for (const child of SIDEBAR_ADMIN_CHILDREN) {
       const section = SECTIONS.find((s) => s.label === child.label)!
-      expect(section.items[0], child.label).toBe(child.href)
+      // 概要だけは中を持たない（自分がその行き先）
+      const expected = child.label === '概要' ? [] : section.items
+      expect(child.children, child.label).toEqual(expected)
     }
+  })
+
+  it('脇と帯で、同じ場所を別の名前で呼ばない', () => {
+    const sidebar = SIDEBAR_ADMIN_CHILDREN.flatMap((c) => c.children)
+    const band = SECTIONS.flatMap((s) => s.items).filter((href) => href !== '/admin')
+
+    expect(sidebar.sort()).toEqual(band.sort())
   })
 
   it('概要は、ちょうど /admin のときだけ点く', () => {

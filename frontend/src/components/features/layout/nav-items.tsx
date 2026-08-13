@@ -173,8 +173,8 @@ export const ADMIN_SECTION_KEY = 'ops'
  *   戦略   … 次に何をするか
  *   システム … 設定と安全（**壊せるもの**）
  *
- * ここに出すのは2階層まで。その先（経営 / 収支 など）は執務室の中の帯で選ぶ。
- * 横に置いた帯と同じものをここにも全部並べると、脇が長くなるだけで見つけやすくならない。
+ * 分類は畳める。開いていなければ5行のまま、開いた分類の中だけが伸びる。
+ * 執務室の中の帯と同じ並びにしてある（片方だけ増えると、同じ場所の名前が2つになる）。
  */
 export const ADMIN_ITEM: NavNode = {
   href: '/admin',
@@ -182,10 +182,39 @@ export const ADMIN_ITEM: NavNode = {
   label: '執務室',
   children: [
     { href: '/admin', icon: <House size={20} />, label: '概要', exact: true },
-    { href: '/admin/business', icon: <BarChart3 size={20} />, label: '分析' },
-    { href: '/admin/users', icon: <UserCog size={20} />, label: '運営' },
-    { href: '/admin/strategy', icon: <Compass size={20} />, label: '戦略' },
-    { href: '/admin/grants', icon: <Settings size={20} />, label: 'システム' },
+    {
+      icon: <BarChart3 size={20} />,
+      label: '分析',
+      children: [
+        { href: '/admin/business', icon: <BarChart3 size={20} />, label: '経営' },
+        { href: '/admin/finance', icon: <CreditCard size={20} />, label: '収支' },
+      ],
+    },
+    {
+      icon: <UserCog size={20} />,
+      label: '運営',
+      children: [
+        { href: '/admin/users', icon: <UserCog size={20} />, label: '利用者' },
+        { href: '/admin/campaigns', icon: <Megaphone size={20} />, label: 'キャンペーン' },
+        { href: '/admin/rewards', icon: <Crown size={20} />, label: '獲得物' },
+        { href: '/admin/posts', icon: <Newspaper size={20} />, label: '読みもの' },
+      ],
+    },
+    {
+      icon: <Compass size={20} />,
+      label: '戦略',
+      children: [{ href: '/admin/strategy', icon: <Compass size={20} />, label: 'AI分析' }],
+    },
+    {
+      icon: <Settings size={20} />,
+      label: 'システム',
+      children: [
+        { href: '/admin/grants', icon: <CreditCard size={20} />, label: '料金と枠' },
+        { href: '/admin/models', icon: <Wand2 size={20} />, label: 'AIモデル' },
+        { href: '/admin/features', icon: <Layers size={20} />, label: '機能管理' },
+        { href: '/admin/audit', icon: <List size={20} />, label: '監査ログ' },
+      ],
+    },
   ],
 }
 

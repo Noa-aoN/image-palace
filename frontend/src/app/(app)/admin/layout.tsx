@@ -62,7 +62,7 @@ const SECTIONS = [
       // 中身はプラン価格・利用上限・付与ポリシー。扱う対象で呼ぶ
       { href: '/admin/grants', label: '料金と枠' },
       { href: '/admin/models', label: 'AIモデル' },
-      { href: '/admin/features', label: '機能の公開段階' },
+      { href: '/admin/features', label: '機能管理' },
       { href: '/admin/audit', label: '監査ログ' },
     ],
   },
