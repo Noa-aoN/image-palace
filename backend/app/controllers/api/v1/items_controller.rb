@@ -475,7 +475,9 @@ module Api
       def item_params
         params.require(:item).permit(
           :title, :item_type_id, :force_generate, :style, :custom_prompt, :framing, :aspect_ratio, :image_model,
-          :generate_meaning, :generate_meaning_level, :generate_tags, :prompt_source
+          :generate_meaning, :generate_meaning_level, :generate_tags, :prompt_source,
+          # 項目（読み仮名・別名など）の自動生成。識別名を渡すと、そのぶんだけ埋める
+          :generate_properties, generate_property_keys: []
         )
       end
 
