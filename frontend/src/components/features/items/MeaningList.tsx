@@ -13,6 +13,9 @@ import {
   MEANING_LANGUAGES,
   DEFAULT_MEANING_LANGUAGE,
   meaningLanguageLabel,
+  MEANING_KINDS,
+  DEFAULT_MEANING_KIND,
+  meaningKindLabel,
 } from '@/lib/meaning-levels'
 import { createMeaning, updateMeaning, deleteMeaning, reorderMeanings, getItem } from '@/lib/api/items'
 import type { Item, ItemMeaning } from '@/types/item'
@@ -42,6 +45,8 @@ export function MeaningList({
   const [exampleDraft, setExampleDraft] = useState('')
   const [levelDraft, setLevelDraft] = useState<string>(DEFAULT_MEANING_LEVEL)
   const [languageDraft, setLanguageDraft] = useState<string>(DEFAULT_MEANING_LANGUAGE)
+  // 何を書いた文か。詳しさとは別の軸なので、別に持つ
+  const [kindDraft, setKindDraft] = useState<string>(DEFAULT_MEANING_KIND)
   const [busyId, setBusyId] = useState<string | null>(null)
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -59,6 +64,7 @@ export function MeaningList({
     setExampleDraft('')
     setLevelDraft(DEFAULT_MEANING_LEVEL)
     setLanguageDraft(DEFAULT_MEANING_LANGUAGE)
+    setKindDraft(DEFAULT_MEANING_KIND)
     setError(null)
   }
 
@@ -69,6 +75,7 @@ export function MeaningList({
     setExampleDraft(entry.example_sentence ?? '')
     setLevelDraft(entry.detail_level)
     setLanguageDraft(entry.language_code)
+    setKindDraft(entry.kind ?? DEFAULT_MEANING_KIND)
     setError(null)
   }
 
@@ -89,6 +96,7 @@ export function MeaningList({
         example_sentence: exampleDraft.trim() || null,
         detail_level: levelDraft,
         language_code: languageDraft,
+        kind: kindDraft,
       }
       if (editingId) await updateMeaning(item.id, editingId, payload)
       else await createMeaning(item.id, payload)
@@ -160,6 +168,8 @@ export function MeaningList({
               onExample={setExampleDraft}
               level={levelDraft}
               onLevel={setLevelDraft}
+              kind={kindDraft}
+              onKind={setKindDraft}
               language={languageDraft}
               onLanguage={setLanguageDraft}
               saving={saving}
@@ -181,6 +191,13 @@ export function MeaningList({
                       代表
                     </span>
                   )}
+                  {/* 何を書いた文かは、詳しさより先に読ませる。
+                      解説を探しているのに意味が並んでいる、が分かる */}
+                  <span
+                    className="rounded-full border border-border px-1.5 py-0.5 text-[11px] text-muted-foreground"
+                  >
+                    {meaningKindLabel(entry.kind ?? DEFAULT_MEANING_KIND)}
+                  </span>
                   <span className="text-[11px] text-muted-foreground">
                     {meaningLevelLabel(entry.detail_level)}
                     {entry.language_code !== DEFAULT_MEANING_LANGUAGE &&
@@ -229,6 +246,8 @@ export function MeaningList({
             onExample={setExampleDraft}
             level={levelDraft}
             onLevel={setLevelDraft}
+            kind={kindDraft}
+            onKind={setKindDraft}
             language={languageDraft}
             onLanguage={setLanguageDraft}
             saving={saving}
@@ -261,6 +280,8 @@ function Editor({
   onExample,
   level,
   onLevel,
+  kind,
+  onKind,
   language,
   onLanguage,
   saving,
@@ -273,6 +294,8 @@ function Editor({
   onExample: (v: string) => void
   level: string
   onLevel: (v: string) => void
+  kind: string
+  onKind: (v: string) => void
   language: string
   onLanguage: (v: string) => void
   saving: boolean
@@ -297,6 +320,30 @@ function Editor({
         placeholder="例文（任意）"
         className="w-full rounded-lg border border-input bg-background px-3 py-1.5 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
       />
+      {/* 何を書く文かを先に決める。詳しさとは別の軸（解説を「ひとこと」で書くこともある） */}
+      <div className="flex flex-wrap items-center gap-1.5">
+        <span className="text-xs text-muted-foreground">種類:</span>
+        {MEANING_KINDS.map((row) => {
+          const active = kind === row.key
+          return (
+            <button
+              key={row.key}
+              type="button"
+              onClick={() => onKind(row.key)}
+              disabled={saving}
+              aria-pressed={active}
+              title={row.hint}
+              className={`rounded-full border px-2.5 py-0.5 text-xs transition-colors disabled:opacity-50 ${
+                active ? 'border-transparent text-white' : 'border-border text-muted-foreground hover:bg-muted'
+              }`}
+              style={active ? { backgroundColor: 'var(--palace)' } : undefined}
+            >
+              {row.label}
+            </button>
+          )
+        })}
+      </div>
+
       <div className="flex flex-wrap items-center gap-1.5">
         <span className="text-xs text-muted-foreground">詳しさ:</span>
         {MEANING_LEVELS.map((lv) => {
