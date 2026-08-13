@@ -255,7 +255,11 @@ function RewardForm({
         }
       />
 
-      <p className="text-xs text-muted-foreground">いま {row.owned_count} 人が持っています。</p>
+      <p className="text-xs text-muted-foreground">
+        いま {row.owned_count} 人が持っています
+        {row.granted_total > row.owned_count && `（配った総数 ${row.granted_total} 個）`}。
+        {row.stackable && ' この種別は同じものを複数持てます。'}
+      </p>
     </div>
   )
 }

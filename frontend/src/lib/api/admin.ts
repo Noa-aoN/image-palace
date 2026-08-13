@@ -264,7 +264,12 @@ export interface AdminRewardDefinition {
   image_url: string | null
   builtin: boolean
   /** 何人が持っているか。配りすぎ・配らなすぎに気づくため */
+  /** 持っている人数 */
   owned_count: number
+  /** 配った総数。宝物は1人が複数持てるので、人数だけでは配りすぎに気づけない */
+  granted_total: number
+  /** 同じものを複数持てるか（宝物だけ） */
+  stackable: boolean
 }
 
 export interface AdminAchievementDefinition {

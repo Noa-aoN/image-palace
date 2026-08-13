@@ -86,6 +86,7 @@ export function RewardCard({
         <RewardArt reward={reward} size={52} />
         <span className="pointer-events-none absolute inset-x-[-1rem] bottom-full mb-1 hidden rounded-md bg-foreground px-2 py-1 text-[11px] leading-snug text-background shadow-md group-hover:block">
           {reward.name}
+          {reward.quantity > 1 && <span className="ml-1">×{reward.quantity}</span>}
           {!reward.owned && reward.condition && <span className="block opacity-80">{reward.condition}</span>}
         </span>
       </button>
@@ -95,6 +96,11 @@ export function RewardCard({
           <div className="space-y-1">
             <p className={`text-[13px] font-medium leading-tight ${reward.owned ? '' : 'text-muted-foreground'}`}>
             {reward.name}
+            {/* 2つ以上持っているものだけ数を出す。1個のときに ×1 と書くと、
+                重ねられないもの（称号・勲章）まで数える対象に見えてしまう */}
+            {reward.quantity > 1 && (
+              <span className="ml-1 tabular-nums text-muted-foreground">×{reward.quantity}</span>
+            )}
           </p>
             <RarityMarks level={reward.rarity_level} tierClass={style.text} dim={!reward.owned} />
           </div>

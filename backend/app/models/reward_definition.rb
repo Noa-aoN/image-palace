@@ -215,6 +215,17 @@ class RewardDefinition < ApplicationRecord
     BUILTIN_KEYS.include?(key)
   end
 
+  # 同じものを複数持てるか。
+  #
+  # **種別で決める。** 定義ごとの旗は持たない（同じ判断を2か所に置くと必ず食い違う）。
+  #   称号 … 名乗るもの。1つ選んで名乗るので、2つ持っても意味が無い
+  #   勲章 … 掲げるもの。功績のしるしなので、同じものは1つ
+  #   表彰 … 運営が選んで贈るもの。同じ表彰を2回は贈らない
+  #   宝物 … 手に入れた品。同じ品が複数あってよい
+  def stackable?
+    kind == "treasure"
+  end
+
   def kind_label
     KIND_LABELS[kind]
   end

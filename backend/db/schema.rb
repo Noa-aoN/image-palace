@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_08_12_163256) do
+ActiveRecord::Schema[8.1].define(version: 2026_08_13_000732) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
   enable_extension "pg_trgm"
@@ -856,11 +856,29 @@ ActiveRecord::Schema[8.1].define(version: 2026_08_12_163256) do
     t.index ["user_id"], name: "index_user_missions_on_user_id"
   end
 
+  create_table "user_reward_grants", id: :uuid, default: -> { "gen_random_uuid()" }, force: :cascade do |t|
+    t.datetime "created_at", null: false
+    t.string "event_key"
+    t.datetime "granted_at", null: false
+    t.uuid "reward_definition_id", null: false
+    t.string "source", default: "achievement", null: false
+    t.string "source_ref"
+    t.datetime "updated_at", null: false
+    t.uuid "user_id", null: false
+    t.index ["reward_definition_id"], name: "index_user_reward_grants_on_reward_definition_id"
+    t.index ["user_id", "event_key"], name: "index_reward_grants_on_user_and_event_key", unique: true
+    t.index ["user_id", "reward_definition_id", "granted_at"], name: "index_reward_grants_on_user_definition_granted"
+    t.index ["user_id"], name: "index_user_reward_grants_on_user_id"
+  end
+
   create_table "user_rewards", id: :uuid, default: -> { "gen_random_uuid()" }, force: :cascade do |t|
     t.datetime "created_at", null: false
     t.boolean "equipped", default: false, null: false
     t.datetime "featured_at"
+    t.datetime "first_acquired_at"
     t.datetime "granted_at", null: false
+    t.datetime "last_acquired_at"
+    t.integer "quantity", default: 1, null: false
     t.uuid "reward_definition_id", null: false
     t.boolean "room_placed", default: false, null: false
     t.string "source", default: "achievement", null: false
@@ -871,6 +889,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_08_12_163256) do
     t.index ["user_id", "equipped"], name: "index_user_rewards_on_user_id_and_equipped"
     t.index ["user_id", "reward_definition_id"], name: "index_user_rewards_on_user_id_and_reward_definition_id", unique: true
     t.index ["user_id"], name: "index_user_rewards_on_user_id"
+    t.check_constraint "quantity >= 1", name: "user_rewards_quantity_positive"
   end
 
   create_table "user_stats", id: :uuid, default: -> { "gen_random_uuid()" }, force: :cascade do |t|
@@ -1085,6 +1104,8 @@ ActiveRecord::Schema[8.1].define(version: 2026_08_12_163256) do
   add_foreign_key "user_achievements", "users"
   add_foreign_key "user_missions", "mission_definitions"
   add_foreign_key "user_missions", "users"
+  add_foreign_key "user_reward_grants", "reward_definitions"
+  add_foreign_key "user_reward_grants", "users"
   add_foreign_key "user_rewards", "reward_definitions"
   add_foreign_key "user_rewards", "users"
   add_foreign_key "user_stats", "users"

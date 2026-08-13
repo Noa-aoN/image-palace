@@ -169,7 +169,14 @@ export function AdminRewardsPanel() {
                 <RowMain name={reward.name} sub={reward.key} />
                 <RowMeta>
                   <span>{reward.rarity_tier}</span>
-                  <span className="tabular-nums">{reward.owned_count} 人</span>
+                  <span className="tabular-nums">
+                    {reward.owned_count} 人
+                    {/* 重ねて持てるものは、人数と配った総数がずれる。
+                        ずれているときだけ出す（同じ数字を二度書かない） */}
+                    {reward.granted_total > reward.owned_count && (
+                      <span className="ml-1 text-muted-foreground">/ {reward.granted_total} 個</span>
+                    )}
+                  </span>
                   <PublishedMark on={reward.published} />
                 </RowMeta>
               </Row>
