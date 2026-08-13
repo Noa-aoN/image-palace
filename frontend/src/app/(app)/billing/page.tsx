@@ -25,6 +25,7 @@ import {
   unitPrice,
   discountPercent,
   CREDIT_UNIT,
+  CREDIT_VALIDITY_LABEL,
 } from '@/lib/billing'
 import {
   CreditBreakdownPanel,
@@ -343,7 +344,7 @@ export default function BillingPage() {
                 <h2 className="text-lg font-semibold">クレジットを追加</h2>
               </div>
               <p className="text-sm text-muted-foreground">
-                まとめるほど1枚あたりが安くなります。クレジットは受け取ってから6ヶ月間有効です。
+                まとめるほど1枚あたりが安くなります。クレジットは受け取ってから{CREDIT_VALIDITY_LABEL}間有効です。
               </p>
               <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
                 {topupPlans.map((plan) => {

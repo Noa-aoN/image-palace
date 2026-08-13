@@ -35,7 +35,7 @@ module Billing
 
       # Free→Paid で無料枠の引き継ぎ（free_carryover）は**行わない**。
       #
-      # 無料枠は `credit_grants`（kind: trial / monthly_free）に6ヶ月の期限付きで積まれ、
+      # 無料枠は `credit_grants`（kind: trial / monthly_free）に期限付き（CreditExpiryPolicy）で積まれ、
       # 有料化しても失効しない（ここで触るのは subscription_credits だけ。
       # grant を失効させるのは解約時の forfeit ではなく、期限切れの日次ジョブ）。
       # **つまり「使い残しを失効させない」という目的は grant 方式が既に満たしている。**

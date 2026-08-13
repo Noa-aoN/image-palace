@@ -101,7 +101,8 @@ class User < ApplicationRecord
 
   # == クレジット =============================================================
   # 残高は3つの入れ物：期限付きグラント（credit_grants）+ subscription_credits（当月分）
-  # + topup_credits（期限を持たない古い買い切り）。どれも受け取りから6ヶ月で期限が来る。
+  # + topup_credits（期限を持たない古い買い切り）。どれも受け取りから同じ長さで期限が来る
+  # （長さは Billing::CreditExpiryPolicy）。
   # 履歴は credit_transactions に追記する（監査用の append-only 台帳）。
   class InsufficientCredits < StandardError; end
 
@@ -205,7 +206,7 @@ class User < ApplicationRecord
     # 配りすぎのブレーカー。当たった場合は配らないが、印は付けて何度も試させない
     return mark_trial_granted! unless Billing::FreeGrantGuard.allow?(amount)
 
-    grant_credits!(amount, kind: "trial", expires_at: Billing::Catalog::CREDIT_LIFETIME.from_now)
+    grant_credits!(amount, kind: "trial", expires_at: Billing::CreditExpiryPolicy.expires_at)
     TrialGrantRecord.remember!(trial_identifiers)
     mark_trial_granted!
   end
@@ -221,7 +222,7 @@ class User < ApplicationRecord
     return advance_free_period!(period_start) if amount <= 0
     return unless Billing::FreeGrantGuard.allow?(amount)
 
-    grant_credits!(amount, kind: "monthly_free", expires_at: Billing::Catalog::CREDIT_LIFETIME.from_now)
+    grant_credits!(amount, kind: "monthly_free", expires_at: Billing::CreditExpiryPolicy.expires_at)
     advance_free_period!(period_start)
   end
 
@@ -248,7 +249,7 @@ class User < ApplicationRecord
 
   # 月額プランのぶんを当月分に入れ替える。invoice 支払い時などに呼ぶ。
   #
-  # 使い残しは**失効させず、期限付きの持ち越しに移す**（Catalog::CREDIT_LIFETIME）。
+  # 使い残しは**失効させず、期限付きの持ち越しに移す**（CreditExpiryPolicy）。
   # 残高は減らないので、移し替えの台帳記録は残さない（グラント行そのものが記録になる）。
   #
   # forfeit: true のときだけ、これまでどおり失効させる。解約がこれにあたる。
@@ -280,7 +281,7 @@ class User < ApplicationRecord
         kind: "topup",
         amount_points: amount,
         remaining_points: amount,
-        expires_at: Billing::Catalog::CREDIT_LIFETIME.from_now
+        expires_at: Billing::CreditExpiryPolicy.expires_at
       )
       record_credit!(kind: "topup_purchase", delta: amount, stripe_event_id:, amount_cents:, currency:)
     end
@@ -299,7 +300,7 @@ class User < ApplicationRecord
 
     credit_grants.create!(
       kind: "subscription_carryover", amount_points: leftover, remaining_points: leftover,
-      expires_at: Billing::Catalog::CREDIT_LIFETIME.from_now - 1.month
+      expires_at: Billing::CreditExpiryPolicy.carryover_expires_at
     )
     update!(subscription_credits: 0)
   end

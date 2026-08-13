@@ -68,7 +68,7 @@ class CampaignCode < ApplicationRecord
   def credit_expires_at(now = Time.current)
     return now + credit_valid_days.days if credit_valid_days.present?
 
-    now + Billing::Catalog::CREDIT_LIFETIME
+    Billing::CreditExpiryPolicy.expires_at(now)
   end
 
   private

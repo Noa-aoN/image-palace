@@ -118,7 +118,7 @@ module Achievements
       user.grant_credits!(
         amount * ::Billing::POINTS_PER_CREDIT,
         kind: "campaign",
-        expires_at: ::Billing::Catalog::CREDIT_LIFETIME.from_now,
+        expires_at: ::Billing::CreditExpiryPolicy.expires_at,
         metadata: { "achievement" => source_ref }
       )
     end
