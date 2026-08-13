@@ -262,6 +262,23 @@ export function CreateItemForm({
   const remainingCards = billing ? estimatedCards(billing.available_credits) : null
   const willExceedCredits = remainingCards !== null && wordCount > remainingCards
 
+  /**
+   * Cmd / Ctrl + Enter で作る。
+   *
+   * ここは改行で区切って何枚も書く欄なので、Enter だけでは送れない。
+   * 書き終えるたびに下の釦まで手を動かすのは、まとめて作るときほど効いてくる。
+   *
+   * 日本語の変換中は送らない（変換を確定する Enter で作られてしまう）。
+   */
+  const handleShortcut = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
+    if (e.key !== 'Enter' || !(e.metaKey || e.ctrlKey)) return
+    if (e.nativeEvent.isComposing) return
+    if (submitting || wordCount === 0 || hasTooLongTitle) return
+
+    e.preventDefault()
+    e.currentTarget.form?.requestSubmit()
+  }
+
   const handleSubmit = async (e: React.SyntheticEvent<HTMLFormElement>) => {
     e.preventDefault()
     if (titles.length === 0) return
@@ -478,6 +495,7 @@ export function CreateItemForm({
           placeholder={'例）パルテノン神殿\nAPI\n光合成\n︙'}
           value={input}
           onChange={(e) => setInput(e.target.value)}
+          onKeyDown={handleShortcut}
           disabled={submitting}
         />
         {oracleError && <p className="text-xs text-destructive">{oracleError}</p>}
@@ -926,6 +944,8 @@ export function CreateItemForm({
           : wordCount > 1
             ? `${wordCount}件のカードを作成`
             : 'カードを作成'}
+        {/* 押さずに作れることは、書いてある間だけ気づける */}
+        {!submitting && <span className="text-xs opacity-70">⌘/Ctrl + Enter</span>}
       </Button>
     </form>
   )
