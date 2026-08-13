@@ -372,6 +372,8 @@ export interface MeaningPayload {
   definition?: string
   example_sentence?: string | null
   detail_level?: string
+  /** 何を書いた文か（意味 / 説明 / 解説 / 翻訳 / 原義） */
+  kind?: string
   language_code?: string
 }
 

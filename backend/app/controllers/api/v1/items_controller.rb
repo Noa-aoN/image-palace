@@ -876,6 +876,8 @@ module Api
           definition: record.definition,
           example_sentence: record.example_sentence,
           detail_level: record.detail_level,
+          # 何を書いた文か（意味 / 説明 / 解説 / 翻訳 / 原義）
+          kind: record.kind,
           language_code: record.language_code,
           position: record.position,
           fact_check_status: record.fact_check_status,
