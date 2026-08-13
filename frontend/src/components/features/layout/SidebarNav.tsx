@@ -62,16 +62,17 @@ function NavTree({
   const isAdmin = useAdminStore((s) => s.session?.admin ?? false)
   const toggleGroup = useUiStore((s) => s.toggleGroup)
 
-  const isActive = (href: string) => isNavItemActive(href, pathname, currentQuery)
+  const isActive = (href: string, exact = false) =>
+    exact ? pathname === href : isNavItemActive(href, pathname, currentQuery)
 
   const linkClass = (depth: number) =>
     `flex rounded-lg py-2.5 text-sm font-medium transition-colors hover:bg-black/5 ${
       iconsOnly ? 'items-center justify-center px-0' : `items-center gap-3 ${INDENT[depth] ?? INDENT[2]}`
     }`
 
-  const linkStyle = (href: string): React.CSSProperties => ({
-    color: isActive(href) ? 'var(--palace)' : 'inherit',
-    backgroundColor: isActive(href) ? 'rgba(198,167,94,0.1)' : undefined,
+  const linkStyle = (href: string, exact = false): React.CSSProperties => ({
+    color: isActive(href, exact) ? 'var(--palace)' : 'inherit',
+    backgroundColor: isActive(href, exact) ? 'rgba(198,167,94,0.1)' : undefined,
     whiteSpace: 'nowrap',
     overflow: 'hidden',
   })
@@ -106,7 +107,7 @@ function NavTree({
         href={href}
         onClick={onNavigate}
         className={linkClass(depth)}
-        style={linkStyle(href)}
+        style={linkStyle(href, node.exact)}
         title={iconsOnly ? node.label : undefined}
       >
         <span className="shrink-0">{node.icon}</span>
