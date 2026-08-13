@@ -39,6 +39,9 @@ export function AdminRewardGrant({ rewards }: { rewards: AdminRewardDefinition[]
   const [rewardKey, setRewardKey] = useState('')
   const [reason, setReason] = useState('')
   const [busy, setBusy] = useState(false)
+  // いま進めている配布を指す鍵。押し直しのときに作り直さないため、状態として持つ。
+  // **運営には見せない**（意識させるものではない）
+  const [eventKey, setEventKey] = useState<string | null>(null)
   const [message, setMessage] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
 
@@ -64,20 +67,28 @@ export function AdminRewardGrant({ rewards }: { rewards: AdminRewardDefinition[]
     setBusy(true)
     setError(null)
     setMessage(null)
+
+    // この1回の配布を指す鍵。**失敗して押し直しても同じ値を使う**ので、
+    // 二重に配られない。成功したら捨てて、次は別の配布として扱う
+    const key = eventKey ?? `admin:grant:${crypto.randomUUID()}`
+    setEventKey(key)
+
     try {
       const result = await grantAdminReward({
         user_id: target.id,
         reward_key: reward.key,
         reason: reason.trim(),
+        event_key: key,
       })
       setMessage(
         result.granted
           ? `${target.email} に「${reward.name}」を配りました。`
-          : `${target.email} は既に「${reward.name}」を持っています。`
+          : `${target.email} には、この配布ぶんが既に届いています。`
       )
       setReason('')
+      setEventKey(null) // 次は別の配布
     } catch {
-      setError('配れませんでした')
+      setError('配れませんでした。もう一度押しても、二重には配られません。')
     } finally {
       setBusy(false)
     }
@@ -119,7 +130,11 @@ export function AdminRewardGrant({ rewards }: { rewards: AdminRewardDefinition[]
             <li key={candidate.id}>
               <button
                 type="button"
-                onClick={() => setTarget(candidate)}
+                onClick={() => {
+                  setTarget(candidate)
+                  // 相手を変えたら別の配布。前の鍵は捨てる
+                  setEventKey(null)
+                }}
                 className={`w-full rounded-lg border px-3 py-2 text-left text-sm transition-colors ${
                   target?.id === candidate.id
                     ? 'border-[var(--palace)] bg-muted/50'
@@ -139,7 +154,11 @@ export function AdminRewardGrant({ rewards }: { rewards: AdminRewardDefinition[]
         <select
           id="grant-reward"
           value={rewardKey}
-          onChange={(e) => setRewardKey(e.target.value)}
+          onChange={(e) => {
+            setRewardKey(e.target.value)
+            // 配るものを変えたら別の配布。前の鍵は捨てる
+            setEventKey(null)
+          }}
           className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm"
         >
           <option value="">選んでください</option>
