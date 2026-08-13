@@ -100,6 +100,26 @@ RSpec.describe "宝物の複数所持", type: :model do
     end
   end
 
+  # 外側のトランザクションの中から呼ばれることがある（まとめて配る処理など）。
+  # 重複でここが失敗したときに**外側ごと壊す**と、印を付けるだけのつもりが
+  # 呼び出し側の仕事を巻き添えにする
+  describe "外側のトランザクションの中から呼ばれたとき" do
+    let(:treasure) { define_reward(kind: "treasure") }
+
+    it "同じ出来事が2回来ても、外側の取引を壊さない" do
+      expect {
+        ActiveRecord::Base.transaction do
+          grant(treasure, event_key: "same")
+          grant(treasure, event_key: "same") # 2回目。ここで外側を壊してはいけない
+          # 壊れていれば、この問い合わせで PG::InFailedSqlTransaction になる
+          User.where(id: user.id).count
+        end
+      }.not_to raise_error
+
+      expect(UserReward.find_by(user: user, reward_definition: treasure).quantity).to eq(1)
+    end
+  end
+
   describe "受け取りの履歴" do
     let(:treasure) { define_reward(kind: "treasure") }
 

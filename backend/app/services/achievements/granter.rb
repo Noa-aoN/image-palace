@@ -30,7 +30,12 @@ module Achievements
       key = event_key.presence || default_event_key(reward, source, source_ref)
 
       granted = nil
-      ActiveRecord::Base.transaction do
+      # **必ず自分のセーブポイントを作る**（requires_new）。
+      #
+      # 外側のトランザクションの中から呼ばれたとき、重複でここが失敗すると、
+      # 印を付けるだけのつもりが**外側ごと壊す**（PG はエラーで取引全体を捨てる）。
+      # 呼び出し側が何かをまとめている最中でも、ここの失敗はここで閉じる。
+      ActiveRecord::Base.transaction(requires_new: true) do
         # 同じ出来事から2回目なら、ここで弾かれる（unique index が最後の砦）
         UserRewardGrant.create!(
           user: user, reward_definition: reward, granted_at: now,
