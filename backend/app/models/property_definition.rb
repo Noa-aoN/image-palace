@@ -20,6 +20,21 @@ class PropertyDefinition < ApplicationRecord
   # url だと手で貼ったリンクにしかならず、冒頭も出典表記も持てない
   VALUE_TYPES = %w[text longtext list number date url wikipedia].freeze
 
+  # 項目の役割。**何のために持つのか**で分ける。
+  #
+  # 分けないと、覚えるための手立てと、調べた事実が同じ見た目で並ぶ。
+  # 「語源」と「語呂合わせ」は隣に置くと似て見えるが、
+  # 前者は**合っているか**が大事で、後者は**思い出せるか**が大事。
+  # 直したいときに、どちらの物差しで見ればよいかが変わる。
+  CATEGORIES = %w[subject mnemonic admin].freeze
+  DEFAULT_CATEGORY = "subject"
+
+  CATEGORY_LABELS = {
+    "subject" => "その語のこと",
+    "mnemonic" => "覚えかた",
+    "admin" => "整理"
+  }.freeze
+
   MAX_KEY_LENGTH = 40
   MAX_LABEL_LENGTH = 40
   MAX_PER_ITEM_TYPE = 40
@@ -30,10 +45,12 @@ class PropertyDefinition < ApplicationRecord
   validates :key, presence: true, length: { maximum: MAX_KEY_LENGTH }, format: { with: KEY_FORMAT }
   validates :label, presence: true, length: { maximum: MAX_LABEL_LENGTH }
   validates :value_type, inclusion: { in: VALUE_TYPES }
+  validates :category, inclusion: { in: CATEGORIES }
   validates :key, uniqueness: { scope: [ :user_id, :item_type_id ] }
 
   scope :ordered, -> { order(:position, :created_at) }
   scope :for_item_type, ->(item_type_id) { where(item_type_id: item_type_id) }
+  scope :of_category, ->(category) { where(category: category) }
 
   before_validation :assign_position, on: :create
 

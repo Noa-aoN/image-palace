@@ -720,6 +720,8 @@ module Api
             key: definition.key,
             label: definition.label,
             value_type: definition.value_type,
+            # 何のために持つ項目か（見分けが付くよう、画面で色と見出しに使う）
+            category: definition.category,
             description: definition.description,
             value: values[definition.id]&.typed_value || (definition.list? ? [] : nil)
           }

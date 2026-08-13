@@ -61,7 +61,7 @@ module Api
 
       def definition_params
         params.require(:property_definition)
-              .permit(:item_type_id, :key, :label, :value_type, :description)
+              .permit(:item_type_id, :key, :label, :value_type, :description, :category)
               .to_h.symbolize_keys
       end
 
@@ -72,6 +72,8 @@ module Api
           key: record.key,
           label: record.label,
           value_type: record.value_type,
+          # 何のために持つ項目か（その語のこと / 覚えかた / 整理）
+          category: record.category,
           description: record.description,
           position: record.position
         }

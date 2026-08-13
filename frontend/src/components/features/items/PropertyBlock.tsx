@@ -3,6 +3,7 @@
 import type { ReactNode } from 'react'
 import { Spinner } from '@/components/ui/spinner'
 import { Tooltip } from '@/components/ui/tooltip'
+import { propertyCategoryOf, type PropertyCategory } from '@/lib/api/properties'
 
 /**
  * カード詳細のプロパティを載せる、共通の器。
@@ -24,6 +25,7 @@ export function PropertyBlock({
   actions,
   children,
   busy = false,
+  category,
 }: {
   title: string
   /** 右上に並べる操作。BlockAction を使う */
@@ -31,12 +33,29 @@ export function PropertyBlock({
   children: ReactNode
   /** 見出しの横に回すスピナー（保存中など） */
   busy?: boolean
+  /**
+   * 何のために持つ項目か。左端に細い線と、小さな見出しで表す。
+   *
+   * **色だけに頼らない。** 覚えかたの項目は「合っているか」より
+   * 「思い出せるか」で直すので、見分けが付かないと直す物差しを間違える。
+   */
+  category?: PropertyCategory
 }) {
+  const role = category ? propertyCategoryOf(category) : null
+
   return (
-    <section className="space-y-2 rounded-xl border border-border/70 bg-muted/30 px-4 py-3">
+    <section
+      className="space-y-2 rounded-xl border border-border/70 bg-muted/30 px-4 py-3"
+      style={role ? { borderLeft: `3px solid ${role.accent}` } : undefined}
+    >
       <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-1">
         <div className="flex items-center gap-2">
           <h3 className="text-sm font-medium">{title}</h3>
+          {role && (
+            <span className="text-[10px] text-muted-foreground" title={role.hint}>
+              {role.label}
+            </span>
+          )}
           {busy && <Spinner size={14} className="text-muted-foreground" />}
         </div>
         {actions && <div className="flex items-center gap-3">{actions}</div>}

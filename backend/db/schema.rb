@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_08_13_134342) do
+ActiveRecord::Schema[8.1].define(version: 2026_08_13_142149) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
   enable_extension "pg_trgm"
@@ -500,6 +500,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_08_13_134342) do
   end
 
   create_table "property_definitions", id: :uuid, default: -> { "gen_random_uuid()" }, force: :cascade do |t|
+    t.string "category", default: "subject", null: false
     t.datetime "created_at", null: false
     t.text "description"
     t.uuid "item_type_id", null: false
@@ -510,6 +511,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_08_13_134342) do
     t.uuid "user_id", null: false
     t.string "value_type", default: "text", null: false
     t.index ["item_type_id"], name: "index_property_definitions_on_item_type_id"
+    t.index ["user_id", "item_type_id", "category"], name: "index_property_definitions_on_user_type_category"
     t.index ["user_id", "item_type_id", "key"], name: "index_property_definitions_on_user_type_key", unique: true
     t.index ["user_id", "item_type_id", "position"], name: "index_property_definitions_on_user_type_position"
     t.index ["user_id"], name: "index_property_definitions_on_user_id"

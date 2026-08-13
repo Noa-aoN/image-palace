@@ -34,6 +34,8 @@ import {
   reorderPropertyDefinitions,
   type PropertyDefinition,
   type PropertyValueType,
+  PROPERTY_CATEGORIES,
+  type PropertyCategory,
 } from '@/lib/api/properties'
 import type { ItemType } from '@/types/item'
 
@@ -56,6 +58,8 @@ export function CardPropertiesEditor({
   const [label, setLabel] = useState('')
   const [key, setKey] = useState('')
   const [valueType, setValueType] = useState<PropertyValueType>('text')
+  // 何のために持つ項目か。既定は「その語のこと」
+  const [category, setCategory] = useState<PropertyCategory>('subject')
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
@@ -66,7 +70,12 @@ export function CardPropertiesEditor({
 
   const usedKeys = new Set(definitions.map((d) => d.key))
 
-  const add = async (payload: { key: string; label: string; value_type: PropertyValueType }) => {
+  const add = async (payload: {
+    key: string
+    label: string
+    value_type: PropertyValueType
+    category?: PropertyCategory
+  }) => {
     setBusy(true)
     setError(null)
     try {
@@ -174,7 +183,7 @@ export function CardPropertiesEditor({
                   <button
                     key={item.key}
                     type="button"
-                    onClick={() => add(item)}
+                    onClick={() => add({ ...item, category: preset.category })}
                     disabled={busy || usedKeys.has(item.key)}
                     className="rounded-full border border-border px-2.5 py-0.5 text-xs text-muted-foreground transition-colors hover:bg-muted disabled:opacity-40"
                     title={usedKeys.has(item.key) ? '追加済み' : PROPERTY_VALUE_TYPE_LABELS[item.value_type]}
@@ -217,6 +226,36 @@ export function CardPropertiesEditor({
               英小文字・数字・アンダースコア。あとから変えられません（入っている値が辿れなくなるため）。
             </p>
           </div>
+          {/* 役割を先に決める。**型より先に効く**（覚えかたの項目は、
+              合っているかより思い出せるかで直すので、見分けが付く必要がある） */}
+          <div className="space-y-1.5">
+            <Label>役割</Label>
+            <div className="flex flex-wrap gap-2">
+              {PROPERTY_CATEGORIES.map((row) => {
+                const active = category === row.key
+                return (
+                  <button
+                    key={row.key}
+                    type="button"
+                    onClick={() => setCategory(row.key)}
+                    disabled={busy}
+                    aria-pressed={active}
+                    title={row.hint}
+                    className={`rounded-full border px-3 py-1 text-sm transition-colors disabled:opacity-50 ${
+                      active ? 'border-transparent text-white' : 'border-border text-muted-foreground hover:bg-muted'
+                    }`}
+                    style={active ? { backgroundColor: row.accent } : undefined}
+                  >
+                    {row.label}
+                  </button>
+                )
+              })}
+            </div>
+            <p className="text-xs text-muted-foreground">
+              {PROPERTY_CATEGORIES.find((row) => row.key === category)?.hint}
+            </p>
+          </div>
+
           <div className="space-y-1.5">
             <Label>型</Label>
             <div className="flex flex-wrap gap-2">
@@ -248,7 +287,9 @@ export function CardPropertiesEditor({
           <div className="flex gap-2">
             <Button
               size="sm"
-              onClick={() => add({ key: key.trim(), label: label.trim(), value_type: valueType })}
+              onClick={() =>
+                add({ key: key.trim(), label: label.trim(), value_type: valueType, category })
+              }
               disabled={busy || !label.trim() || !key.trim()}
             >
               {busy ? <Spinner size={14} /> : '追加'}
