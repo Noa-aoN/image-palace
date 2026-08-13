@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_08_13_022954) do
+ActiveRecord::Schema[8.1].define(version: 2026_08_13_114317) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
   enable_extension "pg_trgm"
@@ -841,6 +841,14 @@ ActiveRecord::Schema[8.1].define(version: 2026_08_13_022954) do
     t.index ["user_id"], name: "index_user_achievements_on_user_id"
   end
 
+  create_table "user_activity_days", id: :uuid, default: -> { "gen_random_uuid()" }, force: :cascade do |t|
+    t.datetime "created_at", null: false
+    t.date "on_date", null: false
+    t.uuid "user_id", null: false
+    t.index ["on_date"], name: "index_user_activity_days_on_on_date"
+    t.index ["user_id", "on_date"], name: "index_user_activity_days_on_user_id_and_on_date", unique: true
+  end
+
   create_table "user_missions", id: :uuid, default: -> { "gen_random_uuid()" }, force: :cascade do |t|
     t.datetime "completed_at"
     t.datetime "created_at", null: false
@@ -1100,6 +1108,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_08_13_022954) do
   add_foreign_key "tags", "users", on_delete: :cascade
   add_foreign_key "user_achievements", "achievement_definitions"
   add_foreign_key "user_achievements", "users"
+  add_foreign_key "user_activity_days", "users"
   add_foreign_key "user_missions", "mission_definitions"
   add_foreign_key "user_missions", "users"
   add_foreign_key "user_reward_grants", "reward_definitions"
