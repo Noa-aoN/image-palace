@@ -63,6 +63,7 @@ export function AdminBusinessPanel() {
     retention,
     unit_economics: unit,
     credit_economics: credits,
+    activity_retention: retentionDays,
   } = data
   const measuredAt = new Date(data.generated_at)
   const measuredSince = data.measurement.last_seen_since
@@ -260,6 +261,33 @@ export function AdminBusinessPanel() {
           reference={unit.ltv.reference}
           sub={unit.ltv.value_jpy === null ? undefined : unit.ltv.basis}
         />
+      </Section>
+
+      <Section
+        title="続けて使われているか"
+        note={
+          retentionDays.measurement_started_on
+            ? `計測開始 ${new Date(retentionDays.measurement_started_on).toLocaleDateString('ja-JP')}。それより前の来訪は残っていない`
+            : '来訪の記録はまだ始まっていない'
+        }
+      >
+        {(['d1', 'd7', 'd30'] as const).map((key) => {
+          const day = retentionDays.days[key]
+          return (
+            <MetricCard
+              key={key}
+              metric={key === 'd1' ? 'retentionD1' : key === 'd7' ? 'retentionD7' : 'retentionD30'}
+              value={day.rate === null ? null : pct(day.rate)}
+              empty="not-measured"
+              emptyReason={
+                day.mature ? '答えの出せる人がいない' : '計測中（この日数が経った人がまだいない）'
+              }
+              // 母数が小さいうちは1人で大きく動く
+              reference={day.mature && day.cohort < 10}
+              sub={day.mature ? `母数 ${num(day.cohort)}人・戻った ${num(day.returned ?? 0)}人` : undefined}
+            />
+          )
+        })}
       </Section>
 
       <Section title="クレジット経済" note="配った量・使われた量・まだ提供していない量">

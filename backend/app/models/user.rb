@@ -75,6 +75,7 @@ class User < ApplicationRecord
   has_many :notifications, dependent: :destroy
   has_many :credit_transactions, dependent: :destroy
   has_many :credit_grants, dependent: :destroy
+  has_many :user_activity_days, dependent: :delete_all
 
   # == プロフィールアイコン（AI生成）========================================
   # GenerateAvatarJob が生成画像を添付する。avatar_thumb は一覧/ヘッダー用のサムネ。
@@ -163,6 +164,9 @@ class User < ApplicationRecord
     return if seen_today?
 
     update_column(:last_seen_at, Time.current) # rubocop:disable Rails/SkipsModelValidations
+    # 「その日活動した」を1行だけ残す。last_seen_at と同じ入口に相乗りするので、
+    # 書き込みは1日1回で済む（2回目以降はここまで来ない）
+    UserActivityDay.record!(id)
   end
 
   def seen_today?
