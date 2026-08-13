@@ -57,14 +57,15 @@ RSpec.describe "経営の数字の問い合わせ本数", type: :request do
     expect(many).to eq(few)
   end
 
-  it "粗利の内訳を足しても、収支の計算は期間ごとに1回で済む" do
+  it "指標を足しても、まとめて数える形を崩さない" do
     seed(users: 1)
     fetch
 
     total = count_queries { fetch }
 
-    # 現在と前期間の2つぶんを数えるが、内訳は同じ結果を使い回す。
-    # いまは45本。ここが跳ねたら、どこかで FinanceService を呼び直している
-    expect(total).to be <= 48
+    # 現在と前期間の2つぶんを数えるが、収支の計算は同じ結果を使い回す。
+    # クレジット経済も、種類ごとの合計を1回ずつ引くだけ（利用者ごとには引かない）。
+    # いまは50本。ここが跳ねたら、どこかで1件ずつ数えている
+    expect(total).to be <= 54
   end
 end
