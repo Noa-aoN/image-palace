@@ -40,7 +40,9 @@ module Ai
       "words_generate" => UNIT_COST_POINTS,
       "words_check" => UNIT_COST_POINTS,
       "canvas_edit" => UNIT_COST_POINTS,
-      "canvas_card_proposal" => UNIT_COST_POINTS
+      "canvas_card_proposal" => UNIT_COST_POINTS,
+      # 経営の見立て。手で更新したときだけ走る（画面を開くたびには走らない）
+      "admin_brief" => UNIT_COST_POINTS
     }.freeze
 
     def daily_call_cap

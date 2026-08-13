@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_08_13_125447) do
+ActiveRecord::Schema[8.1].define(version: 2026_08_13_134342) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
   enable_extension "pg_trgm"
@@ -76,6 +76,44 @@ ActiveRecord::Schema[8.1].define(version: 2026_08_13_125447) do
     t.string "target_type"
     t.index ["actor_id", "created_at"], name: "index_admin_audit_logs_on_actor_id_and_created_at"
     t.index ["created_at"], name: "index_admin_audit_logs_on_created_at"
+  end
+
+  create_table "admin_briefs", id: :uuid, default: -> { "gen_random_uuid()" }, force: :cascade do |t|
+    t.jsonb "completeness", default: {}, null: false
+    t.integer "completion_tokens", default: 0, null: false
+    t.integer "cost_points", default: 0, null: false
+    t.datetime "created_at", null: false
+    t.jsonb "facts", default: {}, null: false
+    t.uuid "generated_by_id"
+    t.string "model", null: false
+    t.datetime "period_from", null: false
+    t.string "period_key", null: false
+    t.datetime "period_to", null: false
+    t.integer "prompt_tokens", default: 0, null: false
+    t.jsonb "summary", default: {}, null: false
+    t.datetime "updated_at", null: false
+    t.index ["created_at"], name: "index_admin_briefs_on_created_at"
+  end
+
+  create_table "admin_insights", id: :uuid, default: -> { "gen_random_uuid()" }, force: :cascade do |t|
+    t.uuid "admin_brief_id", null: false
+    t.string "confidence", null: false
+    t.datetime "created_at", null: false
+    t.datetime "dismissed_at"
+    t.jsonb "evidence", default: [], null: false
+    t.string "impact", null: false
+    t.uuid "linked_initiative_id"
+    t.text "observation", null: false
+    t.integer "position", default: 0, null: false
+    t.datetime "resolved_at"
+    t.datetime "reviewed_at"
+    t.string "status", default: "open", null: false
+    t.text "suggested_action", null: false
+    t.datetime "updated_at", null: false
+    t.string "urgency", null: false
+    t.index ["admin_brief_id", "position"], name: "index_admin_insights_on_admin_brief_id_and_position"
+    t.index ["admin_brief_id"], name: "index_admin_insights_on_admin_brief_id"
+    t.index ["status"], name: "index_admin_insights_on_status"
   end
 
   create_table "ai_models", id: :uuid, default: -> { "gen_random_uuid()" }, force: :cascade do |t|
@@ -1057,6 +1095,8 @@ ActiveRecord::Schema[8.1].define(version: 2026_08_13_125447) do
   add_foreign_key "active_storage_attachments", "active_storage_blobs", column: "blob_id"
   add_foreign_key "active_storage_variant_records", "active_storage_blobs", column: "blob_id"
   add_foreign_key "admin_audit_logs", "users", column: "actor_id", on_delete: :nullify
+  add_foreign_key "admin_briefs", "users", column: "generated_by_id"
+  add_foreign_key "admin_insights", "admin_briefs"
   add_foreign_key "ai_usages", "users", on_delete: :cascade
   add_foreign_key "box_entries", "boxes", on_delete: :cascade
   add_foreign_key "box_items", "boxes", on_delete: :cascade
