@@ -215,8 +215,6 @@ module Admin
 
     # その日数ぶん経った人（＝答えの出せる人）だけを母数にする
     def retention_for(days, started_on)
-      return immature(0) if started_on.nil?
-
       # 「N 日後」が計測開始日以降にあり、かつ今日より前（＝もう過ぎている）人
       cohort = User.where(created_at: ...(@now - days.days))
                    .where("users.created_at >= ?", started_on.to_time - days.days)
