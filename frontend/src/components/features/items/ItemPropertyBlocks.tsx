@@ -16,7 +16,7 @@ import {
 import { getItem } from '@/lib/api/items'
 import type { Item } from '@/types/item'
 import { WikipediaProperty } from './WikipediaProperty'
-import type { WikipediaValue } from '@/lib/api/properties'
+import type { WikipediaValue, FreeTextValue } from '@/lib/api/properties'
 
 /**
  * 項目の道具立て（未記入の数・まとめてAIで埋める・項目の設定への入口）。
@@ -264,6 +264,9 @@ export function PropertyEntryBlock({
   // チェックは「入 / 切」を持つ。**触っていない状態と「切」は別**なので、
   // 空にできる道（未設定へ戻す）も残す
   const isCheck = entry.value_type === 'boolean'
+  // 自由欄。見出しも中身もこのカードで決める
+  const isFree = entry.value_type === 'free_text'
+  const freeValue = (isFree ? (entry.value as FreeTextValue | null) : null) ?? { heading: '', body: '' }
   // Wikipedia は手で書く項目ではない。引いてきた結果をそのまま持つ
   const isWikipedia = entry.value_type === 'wikipedia'
   const [editing, setEditing] = useState(false)
@@ -276,15 +279,36 @@ export function PropertyEntryBlock({
   const scalarValue = isList ? '' : entry.value == null ? '' : String(entry.value)
   const filled = isCheck
     ? entry.value != null
-    : isList
-      ? listValue.length > 0
-      : scalarValue !== ''
+    : isFree
+      ? Boolean(freeValue.heading || freeValue.body)
+      : isList
+        ? listValue.length > 0
+        : scalarValue !== ''
 
   const startEdit = () => {
     // 複数の値は1行1件で書く。区切り文字を覚えさせるより、見たまま並べたほうが早い
     setDraft(isList ? listValue.join('\n') : scalarValue)
+    setFreeDraft(freeValue)
     setEditing(true)
     setError(null)
+  }
+
+  // 自由欄の下書き。見出しと中身を別に持つ
+  const [freeDraft, setFreeDraft] = useState<FreeTextValue>({ heading: '', body: '' })
+
+  const saveFree = async () => {
+    setSaving(true)
+    setError(null)
+    try {
+      await setItemProperty(item.id, entry.property_definition_id, JSON.stringify(freeDraft))
+      onUpdated(await getItem(item.id))
+      setEditing(false)
+    } catch (err: unknown) {
+      const axiosErr = err as { response?: { data?: { errors?: string[] } } }
+      setError(axiosErr?.response?.data?.errors?.[0] ?? '保存できませんでした。もう一度お試しください。')
+    } finally {
+      setSaving(false)
+    }
   }
 
   // チェックはその場で入れる（編集に入らない）
@@ -427,6 +451,40 @@ export function PropertyEntryBlock({
             onUpdated(await getItem(item.id))
           }}
         />
+      ) : editing && isFree ? (
+        <div className="space-y-2">
+          {/* 見出しもこのカードで決める。**定義側で決めないから、同じ欄を何枚でも置ける** */}
+          <input
+            value={freeDraft.heading}
+            onChange={(e) => setFreeDraft({ ...freeDraft, heading: e.target.value })}
+            disabled={saving}
+            autoFocus
+            placeholder="見出し（例：覚えるコツ）"
+            className="w-full rounded-lg border border-input bg-background px-3 py-1.5 text-sm font-medium focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+          />
+          <textarea
+            value={freeDraft.body}
+            onChange={(e) => setFreeDraft({ ...freeDraft, body: e.target.value })}
+            disabled={saving}
+            rows={3}
+            placeholder="中身"
+            className="w-full resize-y rounded-lg border border-input bg-background px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+          />
+          <div className="flex gap-2">
+            <Button size="sm" onClick={saveFree} disabled={saving} className="flex items-center gap-1.5">
+              {saving ? <Spinner size={14} /> : <Check size={14} />}
+              保存
+            </Button>
+            <Button variant="ghost" size="sm" onClick={() => setEditing(false)} disabled={saving}>
+              <X size={14} />
+              キャンセル
+            </Button>
+          </div>
+          <p className="text-xs text-muted-foreground">
+            見出しだけ、中身だけでも残せます。どちらも空にすると未設定に戻ります。
+          </p>
+          <BlockError message={error} />
+        </div>
       ) : editing ? (
         <div className="space-y-2">
           {isList || entry.value_type === 'longtext' ? (
@@ -494,6 +552,16 @@ function PropertyValue({
   filled: boolean
 }) {
   if (!filled) return <BlockEmpty>未設定</BlockEmpty>
+
+  if (entry.value_type === 'free_text') {
+    const value = entry.value as FreeTextValue
+    return (
+      <div className="space-y-1">
+        {value.heading && <p className="text-sm font-medium">{value.heading}</p>}
+        {value.body && <p className="whitespace-pre-wrap text-sm">{value.body}</p>}
+      </div>
+    )
+  }
 
   if (entry.value_type === 'boolean') {
     const on = entry.value === true || entry.value === 'true'
