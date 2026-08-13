@@ -25,7 +25,7 @@ RSpec.describe "一覧の見出し語", type: :request do
   it "設定した項目の値を返す" do
     definition = define_property(key: "reading", label: "読み方")
     set_value(definition, "こうごうせい")
-    user.create_setting!(card_headline_key: "reading")
+    user.create_setting!(card_list_layout: [ { "key" => "reading", "visible" => true }, { "key" => "image", "visible" => true } ])
 
     get "/api/v1/items/#{item.id}", headers: headers
 
@@ -36,7 +36,7 @@ RSpec.describe "一覧の見出し語", type: :request do
   # 値が無いことは、値が無いと分かる形（画面の「-」）で見せる
   it "その項目が空でも、見出し語へ勝手に戻さない" do
     define_property(key: "reading", label: "読み方")
-    user.create_setting!(card_headline_key: "reading")
+    user.create_setting!(card_list_layout: [ { "key" => "reading", "visible" => true }, { "key" => "image", "visible" => true } ])
 
     get "/api/v1/items/#{item.id}", headers: headers
 
@@ -46,7 +46,7 @@ RSpec.describe "一覧の見出し語", type: :request do
   it "複数入る項目は先頭を使う" do
     definition = define_property(key: "aliases", label: "別名", value_type: "list")
     set_value(definition, [ "炭酸同化", "光合成作用" ])
-    user.create_setting!(card_headline_key: "aliases")
+    user.create_setting!(card_list_layout: [ { "key" => "aliases", "visible" => true }, { "key" => "image", "visible" => true } ])
 
     get "/api/v1/items/#{item.id}", headers: headers
 
@@ -56,7 +56,7 @@ RSpec.describe "一覧の見出し語", type: :request do
   it "一覧にも同じ名前が出る" do
     definition = define_property(key: "reading", label: "読み方")
     set_value(definition, "こうごうせい")
-    user.create_setting!(card_headline_key: "reading")
+    user.create_setting!(card_list_layout: [ { "key" => "reading", "visible" => true }, { "key" => "image", "visible" => true } ])
 
     get "/api/v1/items", headers: headers
 
@@ -73,7 +73,7 @@ RSpec.describe "一覧の見出し語", type: :request do
   # 引く相手が無いので eager load ごと省かれる。見たいのは上限なので、それでよい
   it "項目定義は枚数によらず高々1回しか読まない" do
     define_property(key: "reading", label: "読み方")
-    user.create_setting!(card_headline_key: "reading")
+    user.create_setting!(card_list_layout: [ { "key" => "reading", "visible" => true }, { "key" => "image", "visible" => true } ])
     5.times { |i| create(:item, user: user, item_type: item_type, title: "語#{i}") }
 
     reads = 0
@@ -92,7 +92,7 @@ RSpec.describe "一覧の見出し語", type: :request do
     it "設定した項目の値を返す" do
       definition = define_property(key: "reading", label: "読み方")
       set_value(definition, "こうごうせい")
-      user.create_setting!(card_list_fields: [ "reading" ])
+      user.create_setting!(card_list_layout: [ { "key" => "title", "visible" => true }, { "key" => "reading", "visible" => true } ])
 
       get "/api/v1/items", headers: headers
 
@@ -106,7 +106,7 @@ RSpec.describe "一覧の見出し語", type: :request do
     it "値の無い項目も、行としては返す（画面が「-」を出せるように）" do
       item # 一覧に出すカードを作っておく（let は参照するまで作られない）
       define_property(key: "reading", label: "読み方")
-      user.create_setting!(card_list_fields: [ "reading" ])
+      user.create_setting!(card_list_layout: [ { "key" => "title", "visible" => true }, { "key" => "reading", "visible" => true } ])
 
       get "/api/v1/items", headers: headers
 
@@ -118,20 +118,24 @@ RSpec.describe "一覧の見出し語", type: :request do
     it "複数入る項目はつないで返す" do
       definition = define_property(key: "aliases", label: "別名", value_type: "list")
       set_value(definition, [ "炭酸同化", "光合成作用" ])
-      user.create_setting!(card_list_fields: [ "aliases" ])
+      user.create_setting!(card_list_layout: [ { "key" => "title", "visible" => true }, { "key" => "aliases", "visible" => true } ])
 
       get "/api/v1/items", headers: headers
 
       expect(response.parsed_body["items"].first["list_fields"].first["value"]).to eq("炭酸同化、光合成作用")
     end
 
-    it "上限を超えたぶんは保存時に切る" do
+    # 上限は「出す指定の数」に掛かる（候補は隠したまま持てる）。
+    # 詳しくは spec/models/card_list_layout_spec.rb
+    it "出す指定が多すぎれば断る" do
       setting = user.create_setting!
-      setting.update!(card_list_fields: %w[a b c d e])
+      setting.card_list_layout = (1..6).map { |i| { "key" => "p#{i}", "visible" => true } }
 
-      expect(setting.reload.card_list_fields.size).to eq(Setting::MAX_CARD_LIST_FIELDS)
+      expect(setting).not_to be_valid
     end
 
+    # 既定は「名前と絵」。どちらもカードの形そのものとして描かれるので、
+    # 名前の下に出す項目は無い
     it "設定していなければ空で返す" do
       item
 

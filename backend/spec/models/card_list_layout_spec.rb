@@ -15,26 +15,57 @@ RSpec.describe "一覧に出す項目の並び", type: :model do
     end
   end
 
-  describe "旧の設定からの読み解き" do
-    it "名前に出す項目が先頭に来る" do
-      setting.update!(card_headline_key: "reading")
-
-      expect(setting.visible_card_list_keys).to eq(%w[reading image])
+  # 旧フィールド（card_headline_key / card_list_fields）への依存は #598 で外した。
+  # **既定は新しい設定体系が持つ**（旧が空だから、たまたまそう見えていたのではない）
+  describe "既定" do
+    it "保存していない人は、名前と絵" do
+      expect(setting.visible_card_list_keys).to eq(%w[title image])
     end
 
-    it "名前の下に出す項目が、絵の後ろに続く" do
-      setting.update!(card_headline_key: "reading", card_list_fields: %w[alias])
-
-      expect(setting.visible_card_list_keys).to eq(%w[reading image alias])
+    it "既定は定数として持つ（画面ごとに書かない）" do
+      expect(Setting::DEFAULT_CARD_LIST_LAYOUT.map { |r| r["key"] }).to eq(%w[title image])
     end
 
-    # ここが要。読み解くだけで、行は書き換えない
-    it "読み解いても、保存されている値は空のまま" do
-      setting.update!(card_list_fields: %w[alias])
-
+    it "読んだだけでは保存しない" do
       setting.visible_card_list_keys
 
       expect(setting.reload.card_list_layout).to eq([])
+    end
+  end
+
+  describe "名前として出す項目" do
+    it "何も選んでいなければ nil（呼び出し側が見出し語を使う）" do
+      expect(setting.headline_key).to be_nil
+    end
+
+    it "先頭が見出し語なら nil のまま" do
+      setting.update!(card_list_layout: [ { "key" => "title", "visible" => true },
+                                          { "key" => "reading", "visible" => true } ])
+
+      expect(setting.headline_key).to be_nil
+    end
+
+    # 並べ替えたら名前も変わる。別に持つと「並べ替えたのに名前が変わらない」が起きる
+    it "先頭が項目なら、それが名前になる" do
+      setting.update!(card_list_layout: [ { "key" => "reading", "visible" => true },
+                                          { "key" => "title", "visible" => true } ])
+
+      expect(setting.headline_key).to eq("reading")
+    end
+
+    it "絵と意味・説明は名前にしない" do
+      setting.update!(card_list_layout: [ { "key" => "image", "visible" => true },
+                                          { "key" => "meaning", "visible" => true },
+                                          { "key" => "reading", "visible" => true } ])
+
+      expect(setting.headline_key).to eq("reading")
+    end
+
+    it "隠した項目は名前にしない" do
+      setting.update!(card_list_layout: [ { "key" => "reading", "visible" => false },
+                                          { "key" => "title", "visible" => true } ])
+
+      expect(setting.headline_key).to be_nil
     end
   end
 

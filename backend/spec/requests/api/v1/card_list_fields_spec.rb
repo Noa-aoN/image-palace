@@ -33,7 +33,11 @@ RSpec.describe "一覧に出す項目", type: :request do
   describe "名前に出す項目" do
     let!(:definition) { define_property!("reading", "読み方") }
 
-    before { setting.update!(card_headline_key: "reading") }
+    # 並びの先頭に置いた項目が、名前になる
+    before do
+      setting.update!(card_list_layout: [ { "key" => "reading", "visible" => true },
+                                          { "key" => "image", "visible" => true } ])
+    end
 
     it "値があれば、その値を名前として返す" do
       create_item!(title: "薔薇", property: "ばら", definition: definition)
@@ -49,7 +53,7 @@ RSpec.describe "一覧に出す項目", type: :request do
     end
 
     it "選んでいなければ、これまでどおり見出し語を返す" do
-      setting.update!(card_headline_key: nil)
+      setting.update!(card_list_layout: Setting::DEFAULT_CARD_LIST_LAYOUT)
       create_item!(title: "百合")
 
       expect(listed("百合")["headline"]).to eq("百合")
