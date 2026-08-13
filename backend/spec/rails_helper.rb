@@ -1,9 +1,37 @@
 # This file is copied to spec/ when you run 'rails generate rspec:install'
 require 'spec_helper'
-ENV['RAILS_ENV'] ||= 'test'
+require_relative 'support/test_database_url'
+# `||=` にしない。docker compose の web は RAILS_ENV=development を持っているので、
+# それだと **テストが開発環境のまま走る**（host 制限やエラー表示が開発の設定になり、
+# request spec が HTML のエラーページを受け取る）。テストは test 環境と決め切る。
+ENV['RAILS_ENV'] = 'test'
+
+# テストは必ずテスト専用の DB を使う。
+# DATABASE_URL が入っている環境（docker compose）では、それが database.yml の
+# test: の url を上書きしてしまい、開発 DB の上でテストが走る。
+# 開発 DB の上で走ると、既存データを数えてしまう spec が理由もなく落ちるし、
+# 消す系の spec は手元のデータを本当に消す。ここで行き先を決め切る。
+ENV['DATABASE_URL'] = TestDatabaseUrl.resolve(
+  ENV['TEST_DATABASE_URL'], ENV['DATABASE_URL']
+)
+
 require_relative '../config/environment'
 # Prevent database truncation if the environment is production
 abort("The Rails environment is running in production mode!") if Rails.env.production?
+
+# 環境と DB の両方を、走り出す前に確かめる。
+abort("テストは test 環境でしか実行しません（いまは #{Rails.env}）") unless Rails.env.test?
+
+# 万一 test 以外の DB につながっていたら、1件も走らせずに止める。
+# 「気づかずに開発 DB を触っていた」を二度とやらないための栓。
+connected_database = ActiveRecord::Base.connection_db_config.database.to_s
+unless connected_database.end_with?('_test')
+  abort(<<~MESSAGE)
+    テストの接続先が「#{connected_database}」になっています。
+    テスト専用 DB（末尾が _test）以外では実行しません。
+    TEST_DATABASE_URL でテスト用の接続先を指定してください。
+  MESSAGE
+end
 # Uncomment the line below in case you have `--require rails_helper` in the `.rspec` file
 # that will avoid rails generators crashing because migrations haven't been run yet
 # return unless Rails.env.test?
