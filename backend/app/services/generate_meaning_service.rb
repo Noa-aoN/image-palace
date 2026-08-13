@@ -55,7 +55,7 @@ class GenerateMeaningService
       model: model,
       messages: [
         { role: "system", content: system_prompt },
-        { role: "user", content: @item.title }
+        { role: "user", content: user_message }
       ],
       temperature: 0.4,
       response_format: { type: "json_object" }
@@ -69,6 +69,36 @@ class GenerateMeaningService
     { definition: definition, example_sentence: parsed["example_sentence"].to_s.strip.presence }
   rescue JSON::ParserError => e
     raise GenerationError, "意味の解析に失敗しました: #{e.message}"
+  end
+
+  # 調べた結果があれば、それを下敷きにする。
+  #
+  # **写させない。** 引き写すと、出どころの分からない文がカードに残る
+  # （Wikipedia の文には条件が付く）。読んで、この製品の言葉で書き直させる。
+  # 下敷きがあるぶん、作り話が混ざりにくくもなる。
+  def user_message
+    return @item.title if wikipedia_extract.blank?
+
+    <<~TEXT
+      <単語>
+      #{@item.title}
+
+      <調べた結果>
+      #{wikipedia_extract}
+
+      調べた結果は**参考**です。そのまま書き写さず、自分の言葉で短く書き直してください。
+      書かれていないことを足さないでください。
+    TEXT
+  end
+
+  # Wikipedia の項目に入っている冒頭。持っていなければ nil
+  def wikipedia_extract
+    return @wikipedia_extract if defined?(@wikipedia_extract)
+
+    row = @item.item_properties.includes(:property_definition)
+               .find { |p| p.property_definition&.value_type == "wikipedia" }
+    parsed = row && (JSON.parse(row.typed_value.to_s) rescue nil)
+    @wikipedia_extract = parsed.is_a?(Hash) ? parsed["wikipedia_extract"].to_s.strip.presence : nil
   end
 
   def model

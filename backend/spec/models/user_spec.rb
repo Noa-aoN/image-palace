@@ -101,10 +101,12 @@ RSpec.describe User, type: :model do
     end
 
     it "同じ日のうちは書き直さない" do
-      user.touch_last_seen!
-      first = user.reload.last_seen_at
+      # 時刻を決め打つ。いまの時刻から3時間進めると、**実行した時間帯によっては
+      # 日付をまたぐ**（深夜に流すと落ちる）
+      morning = Time.zone.local(2026, 8, 12, 9, 0)
+      travel_to(morning) { user.touch_last_seen! }
 
-      travel_to(first + 3.hours) do
+      travel_to(morning + 3.hours) do
         expect { user.touch_last_seen! }.not_to(change { user.reload.last_seen_at })
       end
     end
