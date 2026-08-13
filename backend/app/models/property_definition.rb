@@ -18,7 +18,9 @@ class PropertyDefinition < ApplicationRecord
 
   # wikipedia は「調べた結果」を持つ型。url で代用しない。
   # url だと手で貼ったリンクにしかならず、冒頭も出典表記も持てない
-  VALUE_TYPES = %w[text longtext list number date url wikipedia].freeze
+  # boolean は「済んだ / 済んでいない」を持つ。**未入力と false は違う。**
+  # 触っていないのか、見て「違う」と決めたのかが読めないと、印の意味が無くなる
+  VALUE_TYPES = %w[text longtext list number date url boolean wikipedia].freeze
 
   # 項目の役割。**何のために持つのか**で分ける。
   #

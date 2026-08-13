@@ -261,6 +261,9 @@ export function PropertyEntryBlock({
   autoLookup?: boolean
 }) {
   const isList = entry.value_type === 'list'
+  // チェックは「入 / 切」を持つ。**触っていない状態と「切」は別**なので、
+  // 空にできる道（未設定へ戻す）も残す
+  const isCheck = entry.value_type === 'boolean'
   // Wikipedia は手で書く項目ではない。引いてきた結果をそのまま持つ
   const isWikipedia = entry.value_type === 'wikipedia'
   const [editing, setEditing] = useState(false)
@@ -271,13 +274,31 @@ export function PropertyEntryBlock({
 
   const listValue = isList ? ((entry.value as string[] | null) ?? []) : []
   const scalarValue = isList ? '' : entry.value == null ? '' : String(entry.value)
-  const filled = isList ? listValue.length > 0 : scalarValue !== ''
+  const filled = isCheck
+    ? entry.value != null
+    : isList
+      ? listValue.length > 0
+      : scalarValue !== ''
 
   const startEdit = () => {
     // 複数の値は1行1件で書く。区切り文字を覚えさせるより、見たまま並べたほうが早い
     setDraft(isList ? listValue.join('\n') : scalarValue)
     setEditing(true)
     setError(null)
+  }
+
+  // チェックはその場で入れる（編集に入らない）
+  const saveCheck = async (value: string) => {
+    setSaving(true)
+    setError(null)
+    try {
+      await setItemProperty(item.id, entry.property_definition_id, value)
+      onUpdated(await getItem(item.id))
+    } catch {
+      setError('保存できませんでした。もう一度お試しください。')
+    } finally {
+      setSaving(false)
+    }
   }
 
   const save = async () => {
@@ -357,7 +378,45 @@ export function PropertyEntryBlock({
         </>
       }
     >
-      {isWikipedia ? (
+      {isCheck && !editing ? (
+        // チェックは一手で決まる。**編集に入って保存する形にすると、
+        // 印を付けるだけのことに3回押させることになる**
+        <div className="flex flex-wrap items-center gap-2">
+          {[
+            { value: 'true', label: '入' },
+            { value: 'false', label: '切' },
+          ].map((choice) => {
+            const active = filled && String(entry.value) === choice.value
+            return (
+              <button
+                key={choice.value}
+                type="button"
+                onClick={() => saveCheck(choice.value)}
+                disabled={saving}
+                aria-pressed={active}
+                className={`rounded-full border px-3 py-0.5 text-sm transition-colors disabled:opacity-50 ${
+                  active ? 'border-transparent text-white' : 'border-border text-muted-foreground hover:bg-muted'
+                }`}
+                style={active ? { backgroundColor: 'var(--palace)' } : undefined}
+              >
+                {choice.label}
+              </button>
+            )
+          })}
+          {filled && (
+            <button
+              type="button"
+              onClick={() => saveCheck('')}
+              disabled={saving}
+              className="text-xs text-muted-foreground underline hover:text-foreground disabled:opacity-50"
+            >
+              未設定に戻す
+            </button>
+          )}
+          {saving && <Spinner size={14} className="text-muted-foreground" />}
+          <BlockError message={error} />
+        </div>
+      ) : isWikipedia ? (
         <WikipediaProperty
           value={parseWikipedia(scalarValue)}
           term={item.title}
@@ -435,6 +494,16 @@ function PropertyValue({
   filled: boolean
 }) {
   if (!filled) return <BlockEmpty>未設定</BlockEmpty>
+
+  if (entry.value_type === 'boolean') {
+    const on = entry.value === true || entry.value === 'true'
+    return (
+      <p className="flex items-center gap-1.5 text-sm">
+        {on ? <Check size={16} style={{ color: 'var(--palace)' }} /> : <X size={16} className="text-muted-foreground" />}
+        <span className={on ? '' : 'text-muted-foreground'}>{on ? '入' : '切'}</span>
+      </p>
+    )
+  }
 
   if (entry.value_type === 'list') {
     return (

@@ -856,6 +856,10 @@ module Api
       def property_value_for(item, key, multiple: :join)
         entry = item.item_properties.find { |p| p.property_definition&.key == key }
         value = entry&.typed_value
+        # チェックは true/false をそのまま文字にすると「true」と出る。
+        # **触っていない状態と「切」を分けたまま**、読める形に直す
+        return (value ? "入" : "切") if entry&.boolean? && !value.nil?
+
         value = multiple == :first ? value.first : value.join("、") if value.is_a?(Array)
         value.to_s.presence
       end
