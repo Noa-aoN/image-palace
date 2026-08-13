@@ -17,22 +17,49 @@ module Admin
     # 月数も一緒に返して、何を掛けた結果なのかが画面から分かるようにしておく。
     def self.totals(now: Time.zone.now)
       first = [ User.minimum(:created_at), CreditTransaction.minimum(:created_at) ].compact.min || now
-      new(from: first.beginning_of_month, to: now.next_month.beginning_of_month, costs: CostParameter.table).call.merge(
-        months: months_between(first, now)
-      )
+      months = months_between(first, now)
+      # 総計も収支ページの面。稼働した月数ぶんをそのまま掛ける（日割りにしない）
+      new(from: first.beginning_of_month, to: now.next_month.beginning_of_month,
+          costs: CostParameter.table, infra_months: months).call.merge(months: months)
     end
 
     def self.months_between(from, to)
       ((to.year - from.year) * 12 + (to.month - from.month)) + 1
     end
 
-    def initialize(year: nil, month: nil, from: nil, to: nil, costs: nil)
+    # 1年を12で割った、1ヶ月あたりの日数。うるう年ぶんを含めた 365.25 で数える
+    DAYS_PER_MONTH = 365.25 / 12
+
+    # 月額の固定費を、日数ぶんへ配る。
+    #
+    # 「またいだ暦月の数」で数えると、30日を選んだだけでも月の変わり目を
+    # またげば2ヶ月ぶんが乗る。**期間を比べるための数字なのに、
+    # 選んだ期間の長さと合わない。**
+    #
+    # 月額 → 年額 → 日額 → 期間ぶん、と配る。
+    # 7日で約0.23ヶ月、30日で約0.99ヶ月、90日で約2.96ヶ月、365日で約12ヶ月。
+    # 期間を倍にすれば配る額も倍になる。
+    def self.allocated_months(days)
+      days.to_f * 12 / 365.25
+    end
+
+    # from/to で呼ぶとき（経営タブ）は、インフラ費を期間の日数ぶんへ配る。
+    # infra_days を渡せばその日数で配る（全期間で、始まる前まで配らないときに使う）。
+    def initialize(year: nil, month: nil, from: nil, to: nil, costs: nil, infra_days: nil, infra_months: nil)
       @from = from || Time.zone.local(year, month, 1)
       @to = to || @from.next_month
       @year = year
       @month = month
-      # 総計のときはインフラ月額を月数ぶん掛ける
-      @infra_months = year.nil? ? self.class.months_between(@from, @to - 1.day) : 1
+      # 年月で呼ぶ収支ページは、その月ぶん（1ヶ月）をそのまま乗せる。
+      # 月次の実績として見る面なので、按分すると請求と読み比べられなくなる
+      @infra_months =
+        if year
+          1
+        elsif infra_months
+          infra_months
+        else
+          self.class.allocated_months(infra_days || ((@to - @from) / 1.day))
+        end
       # 単価は同じ値を何十回も参照する。1回読んで使い回す
       @costs = costs || CostParameter.table
     end
@@ -57,8 +84,9 @@ module Admin
           image: image,
           text: text,
           infra: infra,
-          # インフラ費は使った量ではなく月額の見積り。何ヶ月ぶんを足したかを添える
-          infra_months: @infra_months
+          # インフラ費は使った量ではなく月額の見積り。何ヶ月ぶんを配ったかを添える
+          # （経営タブは日割り、収支ページは1ヶ月固定）
+          infra_months: @infra_months.round(2)
         },
         profit: revenue - estimated_cost,
         margin: revenue.positive? ? ((revenue - estimated_cost).fdiv(revenue) * 100).round(1) : nil,

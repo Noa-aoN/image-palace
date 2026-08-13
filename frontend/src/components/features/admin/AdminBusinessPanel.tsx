@@ -244,17 +244,37 @@ function CostBreakdown({
     { label: '画像の原価', value: breakdown.image_jpy, note: '生成回数 × 単価 × 為替' },
     { label: '文章の原価', value: breakdown.text_jpy, note: 'トークン数 × 単価 × 為替' },
     {
-      label: 'インフラ',
+      label: 'インフラ費（期間配賦）',
       value: breakdown.infra_jpy,
-      note: `月額の見積り × ${breakdown.infra_months}か月ぶん（使った量では変わらない）`,
+      note: `月額の見積りを日数で配ったぶん（この期間で約${breakdown.infra_months}か月ぶん）`,
     },
   ]
 
   return (
     <section className="space-y-3">
-      <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1">
+      <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
         <h2 className="text-base font-semibold">原価の内訳</h2>
         <p className="text-xs text-muted-foreground">粗利がその額になる理由</p>
+        <HelpPopover label="原価の内訳について" title="原価の内訳｜インフラ費の配り方">
+          <dl className="space-y-2">
+            <HelpRow
+              term="インフラ費（期間配賦）"
+              description="月額の固定費を、選んだ期間の日数ぶんに配った額。月額 → 年額 → 日額 → 期間ぶん、と配る。"
+            />
+            <HelpRow
+              term="請求額ではない"
+              description="実際の請求日・請求額そのものではない。期間を比べて粗利を掴むための管理上の数字。"
+            />
+            <HelpRow
+              term="なぜ配るか"
+              description="またいだ月の数で数えると、同じ30日でも月の変わり目をまたぐだけで2ヶ月ぶんが乗り、期間どうしを比べられなくなる。"
+            />
+            <HelpRow
+              term="月次の収支は別"
+              description="収支ページ（年月で見る面）は按分せず、その月ぶんをそのまま乗せる。請求と読み比べるための面のため。"
+            />
+          </dl>
+        </HelpPopover>
       </div>
 
       <div className="overflow-x-auto rounded-xl border border-border bg-background">

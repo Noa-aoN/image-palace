@@ -253,9 +253,12 @@ module Admin
       (months.sum / months.size).round(2)
     end
 
+    # インフラ費は選んだ期間の日数ぶんへ配る（月境界をまたいだ回数では変えない）。
+    # 前の期間も同じ長さなので、同じ日数を渡す
     def finance_for(from, to)
       @finance_cache ||= {}
-      @finance_cache[[ from, to ]] ||= ::Admin::FinanceService.new(from: from, to: to).call
+      @finance_cache[[ from, to ]] ||=
+        ::Admin::FinanceService.new(from: from, to: to, infra_days: @period.allocation_days).call
     end
 
     # 割合（%）。母数が 0 のときは割らずに nil を返す（0.0 と書くと「測って0だった」に見える）
