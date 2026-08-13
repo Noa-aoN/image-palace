@@ -905,11 +905,24 @@ function SortableBlock({
         boxRef.current = node
       }}
       style={{ transform: CSS.Transform.toString(transform), transition, opacity: isDragging ? 0.6 : 1 }}
-      className={`group/block relative ${SPAN_CLASSES[span] ?? ''}`}
-      {...attributes}
-      {...listeners}
+      // 掴む役は下のつまみだけに持たせる。ここに持たせると、
+      // **本文をなぞった瞬間に札が動き出して、文字を選べない**
+      className={`group/block relative select-text ${SPAN_CLASSES[span] ?? ''}`}
     >
       {children}
+
+      {/* 並べ替えのつまみ。触ったときだけ出す。
+          札そのものを掴めるようにすると読めなくなるので、掴む場所を1点に絞る。
+          キーボードでも掴めるよう、目印（attributes）もここに付ける */}
+      <button
+        type="button"
+        aria-label="この札を動かす"
+        className="absolute left-1 top-1 hidden h-5 w-5 cursor-grab touch-none items-center justify-center rounded text-muted-foreground opacity-0 transition-opacity focus-visible:flex focus-visible:opacity-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--palace)] group-hover/block:flex group-hover/block:opacity-100 active:cursor-grabbing"
+        {...attributes}
+        {...listeners}
+      >
+        <GripVertical size={12} />
+      </button>
 
       {/* つまみは常には出さない。触ったときだけ出れば足りるし、
           札ごとに常時出ていると、読むときに邪魔になる */}

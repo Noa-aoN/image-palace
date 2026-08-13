@@ -52,6 +52,10 @@ export function WordItems({ words, onChange, issues, disabled }: Props) {
     onChange(next)
   }
 
+  // 掴めるのはつまみを押している間だけ。
+  // 行そのものを draggable にすると、**単語をなぞって写せない**（なぞった時点でドラッグが始まる）
+  const [grabbed, setGrabbed] = useState<number | null>(null)
+
   return (
     <ul className="divide-y divide-border overflow-hidden rounded-xl border border-border bg-card">
       {words.map((word, i) => {
@@ -59,11 +63,12 @@ export function WordItems({ words, onChange, issues, disabled }: Props) {
         return (
           <li
             key={`${word}-${i}`}
-            draggable={!disabled}
+            draggable={!disabled && grabbed === i}
             onDragStart={() => setDragging(i)}
             onDragEnd={() => {
               setDragging(null)
               setOver(null)
+              setGrabbed(null)
             }}
             onDragOver={(e) => {
               e.preventDefault()
@@ -74,13 +79,20 @@ export function WordItems({ words, onChange, issues, disabled }: Props) {
               if (dragging !== null) move(dragging, i)
               setDragging(null)
               setOver(null)
+              setGrabbed(null)
             }}
             className={`flex items-start gap-2 px-3 py-2 text-sm transition-colors ${
               over === i && dragging !== null && dragging !== i ? 'bg-[rgba(198,167,94,0.12)]' : ''
             } ${dragging === i ? 'opacity-50' : ''}`}
           >
+            {/* ここを押している間だけ動かせる。押していなければただの行なので、
+                単語をなぞって写せる */}
             <span
-              className={`mt-0.5 shrink-0 text-muted-foreground ${disabled ? '' : 'cursor-grab active:cursor-grabbing'}`}
+              onPointerDown={() => !disabled && setGrabbed(i)}
+              onPointerUp={() => setGrabbed(null)}
+              className={`mt-0.5 shrink-0 touch-none text-muted-foreground ${
+                disabled ? '' : 'cursor-grab active:cursor-grabbing'
+              }`}
               aria-hidden
             >
               <GripVertical size={14} />

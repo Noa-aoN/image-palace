@@ -69,6 +69,8 @@ export function CardDisplayPanel({
   const layout = useCardListLayout(panel.isOpen, onLayoutSaved)
   // 掴んで動かしている行。HTML5 の drag は「どこから」を持たないので自分で覚える
   const [dragging, setDragging] = useState<number | null>(null)
+  // つまみを押している行だけが動かせる
+  const [grabbed, setGrabbed] = useState<number | null>(null)
 
   return (
     <>
@@ -150,20 +152,31 @@ export function CardDisplayPanel({
               {layout.rows.map((row, index) => (
                 <li
                   key={row.key}
-                  draggable
+                  // 掴めるのはつまみを押している間だけ（行そのものを掴めると文字を選べない）
+                  draggable={grabbed === index}
                   onDragStart={() => setDragging(index)}
                   onDragOver={(e) => e.preventDefault()}
                   onDrop={(e) => {
                     e.preventDefault()
                     if (dragging !== null) layout.move(dragging, index)
                     setDragging(null)
+                    setGrabbed(null)
                   }}
-                  onDragEnd={() => setDragging(null)}
+                  onDragEnd={() => {
+                    setDragging(null)
+                    setGrabbed(null)
+                  }}
                   className={`flex items-center gap-2 rounded-lg border px-2 py-1.5 ${
                     row.visible ? 'border-border' : 'border-dashed border-border/60'
                   } ${dragging === index ? 'opacity-50' : ''}`}
                 >
-                  <GripVertical size={14} className="shrink-0 cursor-grab text-muted-foreground" aria-hidden />
+                  <GripVertical
+                    size={14}
+                    onPointerDown={() => setGrabbed(index)}
+                    onPointerUp={() => setGrabbed(null)}
+                    className="shrink-0 cursor-grab touch-none text-muted-foreground"
+                    aria-hidden
+                  />
 
                   <label className="flex min-w-0 flex-1 items-center gap-2 text-sm">
                     <input
