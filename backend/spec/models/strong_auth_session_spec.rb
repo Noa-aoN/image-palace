@@ -65,9 +65,9 @@ RSpec.describe StrongAuthSession, type: :model do
     # 用途で窓の広さを分ける。**値そのものをここで固定する**
     # （伸ばすなら、どちらを伸ばすのかを意識して直させたい）
     describe "用途ごとの猶予" do
-      it "危険操作は10分、執務室は30分" do
+      it "危険操作は10分、執務室は1時間" do
         expect(described_class::WINDOW).to eq(10.minutes)
-        expect(described_class::ADMIN_WINDOW).to eq(30.minutes)
+        expect(described_class::ADMIN_WINDOW).to eq(1.hour)
       end
 
       it "10分を過ぎても、執務室の窓ではまだ有効" do
@@ -80,9 +80,9 @@ RSpec.describe StrongAuthSession, type: :model do
         ).to be(true)
       end
 
-      it "30分を過ぎればどちらも切れる" do
+      it "1時間を過ぎればどちらも切れる" do
         session = described_class.record!(user: user, client_id: "机", method: "passkey")
-        session.update!(authenticated_at: 31.minutes.ago)
+        session.update!(authenticated_at: 61.minutes.ago)
 
         expect(described_class.fresh?(user: user, client_id: "机")).to be(false)
         expect(
