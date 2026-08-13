@@ -87,6 +87,17 @@ module Admin
       ((@to - @from) / 1.day).round
     end
 
+    # 固定費を日数で配るときに使う日数。
+    #
+    # 全期間で、記録が1件も無ければ 0 を返す。**始まっていない期間に費用を配らない。**
+    # （記録が無いときの from は「1年前」という置きの値なので、そのまま配ると
+    #   使われてもいないサービスに1年ぶんのインフラ費が乗る）
+    def allocation_days
+      return 0 if @key == ALL && !any_record?
+
+      days
+    end
+
     # 折れ線の1点にまとめる日数。長い期間ほど大きくなる
     def bucket_days
       [ (days.to_f / MAX_SERIES_POINTS).ceil, 1 ].max
@@ -131,7 +142,15 @@ module Admin
 
     # いちばん古い記録。何も無ければ1年前まで遡る（範囲が空だと割り算が崩れる）
     def first_record_at
-      [ User.minimum(:created_at), Item.minimum(:created_at) ].compact.min&.in_time_zone || @now - 1.year
+      earliest = [ User.minimum(:created_at), Item.minimum(:created_at) ].compact.min
+      @any_record = earliest.present?
+      earliest&.in_time_zone || @now - 1.year
+    end
+
+    # 記録が1件でもあるか。全期間の from が「置きの値」かどうかの判定に使う
+    def any_record?
+      first_record_at unless defined?(@any_record)
+      @any_record
     end
   end
 end
