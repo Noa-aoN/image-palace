@@ -93,6 +93,38 @@ export function AdminBusinessPanel() {
 
       <MeasurementNotice measurement={data.measurement} testRevenue={revenue.test_revenue_jpy} />
 
+      {/*
+        いちばん上に、状態を掴むための数字だけを置く。
+        下の各節は「なぜそうなっているか」を見る場所で、ここは「いまどうか」を見る場所。
+        増やすと10秒で読めなくなるので、6枚に絞る。
+      */}
+      <Section title="ビジネスの状態" note="まずここだけ見れば、いまの調子が分かる">
+        <MetricCard metric="mrr" value={yen(revenue.mrr_jpy)} />
+        <MetricCard metric="grossProfit" value={yen(unit.gross_profit_jpy)} />
+        <MetricCard
+          metric="grossMargin"
+          value={unit.gross_margin === null ? null : pct(unit.gross_margin)}
+          empty="unavailable"
+          emptyReason="売上が 0 円のときは割り算ができない"
+        />
+        <MetricCard
+          metric="mau"
+          value={active.mau === null ? null : num(active.mau)}
+          reference={active.mau !== null && !windowFilled(30)}
+          sub={activeNote(30)}
+        />
+        <MetricCard metric="payingUsers" value={num(users.paying)} />
+        <MetricCard
+          metric="aiCost"
+          value={yen(unit.ai_cost_jpy)}
+          sub={
+            credits.cost_per_credit_jpy === null
+              ? undefined
+              : `1枚あたり ${yen(credits.cost_per_credit_jpy)}`
+          }
+        />
+      </Section>
+
       <Section
         title="来た人（Active）"
         note="来訪の記録から数える。手を動かしたかどうかは見ない"
