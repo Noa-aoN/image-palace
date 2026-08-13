@@ -47,7 +47,8 @@ module Admin
         revenue: revenue_summary,
         retention: retention_summary,
         unit_economics: unit_economics,
-        credit_economics: credit_economics
+        credit_economics: credit_economics,
+        activity_retention: activity_retention
       }
     end
 
@@ -190,6 +191,51 @@ module Admin
         churn_rate: at_start.positive? ? ratio(canceled, at_start) : nil,
         note: at_start.zero? ? "期間の初めに有料契約が無いため、解約率は出せない" : nil
       }
+    end
+
+    # 継続率（D1 / D7 / D30）。
+    #
+    # **登録日の N 日後「ぴったり」その日に活動したか**で数える。
+    # 窓を持たせると「D7に来た人」と「D5に来た人」が混ざり、期間を変えたときに比べられない。
+    # 学習は毎日とは限らないので、ぴったりの D7 / D30 は低めに出る。傾向として読む。
+    #
+    # 数えられるのは、その「N 日後」が計測を始めた日以降にある人だけ。
+    # 計測より前の日は記録が無く、**来なかったのか測っていないのかを区別できない**。
+    # 推定で埋めない。
+    RETENTION_DAYS = { d1: 1, d7: 7, d30: 30 }.freeze
+
+    def activity_retention
+      started_on = UserActivityDay.measurement_started_on
+
+      {
+        measurement_started_on: started_on,
+        days: RETENTION_DAYS.transform_values { |days| retention_for(days, started_on) }
+      }
+    end
+
+    # その日数ぶん経った人（＝答えの出せる人）だけを母数にする
+    def retention_for(days, started_on)
+      return immature(0) if started_on.nil?
+
+      # 「N 日後」が計測開始日以降にあり、かつ今日より前（＝もう過ぎている）人
+      cohort = User.where(created_at: ...(@now - days.days))
+                   .where("users.created_at >= ?", started_on.to_time - days.days)
+      total = cohort.count
+      return immature(0) if total.zero?
+
+      returned = UserActivityDay
+                 .joins(:user)
+                 .where(user_id: cohort.select(:id))
+                 .where("user_activity_days.on_date = (users.created_at + make_interval(days => ?))::date", days)
+                 .distinct
+                 .count(:user_id)
+
+      { cohort: total, returned: returned, rate: ratio(returned, total), mature: true }
+    end
+
+    # まだ答えの出せる人がいない。**0% とは書かない**
+    def immature(cohort)
+      { cohort: cohort, returned: nil, rate: nil, mature: false }
     end
 
     # 原価と粗利。計算は収支ページ（FinanceService）と同じものを使う。

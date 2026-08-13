@@ -515,6 +515,17 @@ export interface AdminBusinessMetrics {
     }
   }
   /**
+   * 継続率。登録日の N 日後ぴったりに活動したか。
+   * `mature: false` は「まだ答えの出せる人がいない」＝ 0% ではない。
+   */
+  activity_retention: {
+    measurement_started_on: string | null
+    days: Record<
+      'd1' | 'd7' | 'd30',
+      { cohort: number; returned: number | null; rate: number | null; mature: boolean }
+    >
+  }
+  /**
    * クレジットの出入りと、いま抱えているぶん。
    * **未使用残高は「負債」ではない**（会計上そう扱えるかは別の判断）。
    */
