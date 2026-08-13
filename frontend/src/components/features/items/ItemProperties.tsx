@@ -313,6 +313,12 @@ export function ItemProperties({ item, onUpdated, blocksHidden = false }: ItemPr
     }
   }
 
+  // Wikipedia の項目を持っていて、中身が入っているか。
+  // 持っていれば、意味・説明はそれを下敷きに書かれる
+  const hasWikipedia = (item.properties ?? []).some(
+    (entry) => entry.value_type === 'wikipedia' && entry.value != null
+  )
+
   const handleGenerateMeaning = async () => {
     setGeneratingMeaning(true)
     setMeaningError(null)
@@ -499,6 +505,13 @@ export function ItemProperties({ item, onUpdated, blocksHidden = false }: ItemPr
                 label={item.meaning ? '再生成' : 'AIで生成'}
                 onClick={handleGenerateMeaning}
                 busy={generatingMeaning}
+                // Wikipedia を持っていれば、それを下敷きに書く。
+                // 何を見て書いたのかが分からないと、直してよいのかが判断できない
+                title={
+                  hasWikipedia
+                    ? 'Wikipedia の冒頭を下敷きに書きます（書き写さず、短く言い直します）'
+                    : undefined
+                }
               />
               {item.meaning && (
                 <BlockAction
