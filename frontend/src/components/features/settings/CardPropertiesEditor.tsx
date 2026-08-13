@@ -124,7 +124,12 @@ export function CardPropertiesEditor({
       </div>
 
       {definitions.length === 0 ? (
-        <p className="text-sm text-muted-foreground">項目はまだありません。</p>
+        // 「ありません」で終わらせない。何ができるようになるかを添える。
+        // 案内する先は、実際にこの画面にあるものだけにする
+        <p className="text-sm text-muted-foreground">
+          項目はまだありません。下の「よく使う項目から選ぶ」か「自分で決めて足す」から作れます。
+          作った項目は、カード一覧の「表示」で出す項目としても選べます。
+        </p>
       ) : (
         <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
           <SortableContext items={definitions.map((d) => d.id)} strategy={verticalListSortingStrategy}>

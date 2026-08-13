@@ -75,7 +75,14 @@ export function BoardCardsList({ viewId }: { viewId: string }) {
   }, [viewId])
 
   if (items === null) return <p className="text-xs text-muted-foreground">読み込み中…</p>
-  if (items.length === 0) return <p className="text-xs text-muted-foreground">まだカードがありません。</p>
+  // 「ありません」で終わらせない。ここから何をすればよいかを添える
+  if (items.length === 0) {
+    return (
+      <p className="text-xs text-muted-foreground">
+        まだカードがありません。「カードを配置」から、この板に置くカードを選べます。
+      </p>
+    )
+  }
 
   const select = (itemId: string) => {
     openCard(itemId, viewId)
