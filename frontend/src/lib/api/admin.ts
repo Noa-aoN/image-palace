@@ -1,5 +1,6 @@
 import { apiClient } from './client'
 import type {
+  AdminBrief,
   AdminAuditLog,
   AdminBusinessMetrics,
   AdminCostParameter,
@@ -398,6 +399,20 @@ export async function getAdminBusinessMetrics(params?: {
 }): Promise<AdminBusinessMetrics> {
   const res = await apiClient.get<AdminBusinessMetrics>('/api/v1/admin/business', { params })
   return res.data
+}
+
+/**
+ * いまある見立てを読む。**開くだけでは作らない。**
+ * 作るのは明示的に更新したときだけ（見るだけの人が費用を積み上げないため）。
+ */
+export async function getAdminBrief(): Promise<AdminBrief | null> {
+  const res = await apiClient.get<{ brief: AdminBrief | null }>('/api/v1/admin/brief')
+  return res.data.brief
+}
+
+export async function generateAdminBrief(period?: string): Promise<AdminBrief | null> {
+  const res = await apiClient.post<{ brief: AdminBrief | null }>('/api/v1/admin/brief', { period })
+  return res.data.brief
 }
 
 /**
