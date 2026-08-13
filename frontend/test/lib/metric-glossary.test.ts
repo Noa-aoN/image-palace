@@ -40,6 +40,16 @@ describe('経営の用語集', () => {
     }
   })
 
+  // 最上段に置く6枚。ここが「10秒で状態を判断する」ための面になる
+  it('ビジネスの状態に出す指標が、すべて用語集にある', () => {
+    const health: MetricKey[] = ['mrr', 'grossProfit', 'grossMargin', 'mau', 'payingUsers', 'aiCost']
+
+    for (const key of health) {
+      expect(metricDefinition(key).name, key).not.toBe('')
+    }
+    expect(health).toHaveLength(6)
+  })
+
   it('粗利と粗利率の式が食い違わない', () => {
     expect(metricDefinition('grossProfit').formula).toContain('売上 −')
     expect(metricDefinition('grossMargin').formula).toBe('粗利 ÷ 売上 × 100')
