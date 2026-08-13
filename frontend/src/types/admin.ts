@@ -496,6 +496,16 @@ export interface AdminBusinessMetrics {
     ai_cost_per_user_jpy: number | null
     gross_profit_jpy: number
     gross_margin: number | null
+    /** 粗利の内訳。売上 −（手数料 + 画像 + 文章 + インフラ）= 粗利 が閉じる */
+    cost_breakdown: {
+      revenue_jpy: number
+      stripe_fee_jpy: number
+      image_jpy: number
+      text_jpy: number
+      infra_jpy: number
+      total_jpy: number
+      infra_months: number
+    }
     ltv: {
       value_jpy: number | null
       /** 常に true。母数が小さいので参考値としてしか使えない */

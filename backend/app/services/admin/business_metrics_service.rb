@@ -193,16 +193,37 @@ module Admin
 
     # 原価と粗利。計算は収支ページ（FinanceService）と同じものを使う。
     # ここで別に足し直すと、同じ画面に同じ名前の違う数字が並ぶ。
+    #
+    # 内訳をそのまま渡す。合計だけ渡していたときは、AI 原価より粗利の赤字が大きいのに
+    # **その差が何なのか画面から辿れなかった**（正体はインフラ費）。
+    # 「売上 − 原価の内訳 = 粗利」が画面の上で閉じるように、全部渡す。
     def unit_economics
       finance = finance_for(@from, @to)
       paying = paying_users
+      ai_cost = finance[:cost][:image][:jpy] + finance[:cost][:text][:jpy]
 
       {
-        ai_cost_jpy: finance[:cost][:image][:jpy] + finance[:cost][:text][:jpy],
-        ai_cost_per_user_jpy: divide(finance[:cost][:image][:jpy] + finance[:cost][:text][:jpy], User.count),
+        ai_cost_jpy: ai_cost,
+        ai_cost_per_user_jpy: divide(ai_cost, User.count),
         gross_profit_jpy: finance[:profit],
         gross_margin: finance[:margin],
+        cost_breakdown: cost_breakdown(finance),
         ltv: ltv(paying)
+      }
+    end
+
+    # 粗利の内訳。**足し算がそのまま読める形**で渡す。
+    #   売上 −（決済手数料 + 画像 + 文章 + インフラ）= 粗利
+    def cost_breakdown(finance)
+      {
+        revenue_jpy: finance[:revenue][:total],
+        stripe_fee_jpy: finance[:cost][:stripe_fee],
+        image_jpy: finance[:cost][:image][:jpy],
+        text_jpy: finance[:cost][:text][:jpy],
+        infra_jpy: finance[:cost][:infra],
+        total_jpy: finance[:cost][:total],
+        # インフラ費は使った量ではなく月額の見積り。期間が何ヶ月ぶんかで変わる
+        infra_months: finance[:cost][:infra_months]
       }
     end
 
