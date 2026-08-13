@@ -74,11 +74,19 @@ module Achievements
 
     # 出来事の鍵。呼び出し側が渡さないときの既定。
     #
-    # 実績・ミッションは source_ref に定義の鍵が入る（1人1回しか達成しない）。
-    # 手で配るときは理由と時刻を混ぜる（同じ理由でも別の時なら別の出来事）
+    # **理由（source_ref）と鍵（event_key）は役割が違う。**
+    #   理由 … なぜ配ったかを人が読むためのもの
+    #   鍵   … 同じ出来事かどうかを機械が判じるためのもの
+    #
+    # 理由や時刻を鍵の代わりにしない。同じ理由で別の日に配れば別の出来事になるし、
+    # 秒が同じだけで別の配布が同じ出来事に見えることもある。**どちらも冪等の根拠にならない。**
+    #
+    # 実績・ミッションは定義の鍵をそのまま使える（1人1回しか達成しない）。
+    # 手で配るのは、そのつど新しい1回なので、一意な鍵を作る。
+    # 呼び出し側が再送で同じ鍵を渡せば、そちらが優先される。
     def default_event_key(reward, source, source_ref)
       case source
-      when "manual" then "manual:#{reward.key}:#{source_ref}:#{Time.current.to_i}"
+      when "manual" then "admin:grant:#{SecureRandom.uuid}"
       else "#{source}:#{source_ref || reward.key}:#{reward.key}"
       end
     end

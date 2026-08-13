@@ -120,6 +120,41 @@ RSpec.describe "宝物の複数所持", type: :model do
     end
   end
 
+  # 理由（source_ref）と鍵（event_key）は役割が違う。
+  # 理由や時刻を鍵の代わりにすると、冪等の根拠にならない
+  describe "手で配るときの鍵" do
+    let(:treasure) { define_reward(kind: "treasure") }
+
+    it "同じ理由で2回配れば、2個になる（理由は鍵ではない）" do
+      Achievements::Granter.grant(user: user, reward: treasure, source: "manual",
+                                  source_ref: "不具合のお詫び", notify: false)
+      Achievements::Granter.grant(user: user, reward: treasure, source: "manual",
+                                  source_ref: "不具合のお詫び", notify: false)
+
+      expect(UserReward.find_by(user: user, reward_definition: treasure).quantity).to eq(2)
+    end
+
+    it "同じ秒に2回配っても、別の出来事として扱う（時刻は鍵ではない）" do
+      travel_to(Time.zone.local(2026, 8, 13, 12, 0, 0)) do
+        2.times do
+          Achievements::Granter.grant(user: user, reward: treasure, source: "manual",
+                                      source_ref: "配布", notify: false)
+        end
+      end
+
+      expect(UserRewardGrant.where(user: user, reward_definition: treasure).count).to eq(2)
+    end
+
+    it "呼び出し側が鍵を渡せば、そちらで冪等になる" do
+      2.times do
+        Achievements::Granter.grant(user: user, reward: treasure, source: "manual",
+                                    source_ref: "配布", notify: false, event_key: "admin:grant:fixed")
+      end
+
+      expect(UserReward.find_by(user: user, reward_definition: treasure).quantity).to eq(1)
+    end
+  end
+
   describe "受け取りの履歴" do
     let(:treasure) { define_reward(kind: "treasure") }
 
