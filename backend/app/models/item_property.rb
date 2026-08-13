@@ -20,6 +20,10 @@ class ItemProperty < ApplicationRecord
     property_definition.list? ? Array(raw) : raw
   end
 
+  def boolean?
+    property_definition&.value_type == "boolean"
+  end
+
   # 画面・API から来た値を、型に合わせて整えてから入れる
   def typed_value=(input)
     self.value = { "v" => normalize(input) }
@@ -28,6 +32,8 @@ class ItemProperty < ApplicationRecord
   # 値が空か（空なら行ごと消す。空の行を残すと「未設定」と区別が付かない）
   def blank_value?
     v = typed_value
+    return v.nil? if boolean? # **false は「入っていない」ではない**
+
     property_definition.list? ? v.empty? : v.blank?
   end
 
@@ -40,6 +46,9 @@ class ItemProperty < ApplicationRecord
     when "number"
       # 数として読めないものは捨てる（"12個" のような入力を黙って 12 にしない）
       Float(input.to_s, exception: false)
+    when "boolean"
+      # 空で来たら「触っていない」。false と分けて持つ
+      input.nil? || input == "" ? nil : ActiveModel::Type::Boolean.new.cast(input)
     else
       input.to_s.strip.presence
     end
@@ -57,6 +66,8 @@ class ItemProperty < ApplicationRecord
       errors.add(:value, "は日付で入力してください") if v.present? && (Date.parse(v.to_s) rescue nil).nil?
     when "url"
       errors.add(:value, "は http(s) の URL で入力してください") if v.present? && !v.to_s.match?(%r{\Ahttps?://})
+    when "boolean"
+      errors.add(:value, "は入 / 切で入力してください") unless [ true, false, nil ].include?(v)
     else
       errors.add(:value, "が長すぎます") if v.to_s.length > MAX_TEXT_LENGTH
     end
