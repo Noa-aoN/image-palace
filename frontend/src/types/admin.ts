@@ -514,6 +514,26 @@ export interface AdminBusinessMetrics {
       average_months?: number | null
     }
   }
+  /**
+   * クレジットの出入りと、いま抱えているぶん。
+   * **未使用残高は「負債」ではない**（会計上そう扱えるかは別の判断）。
+   */
+  credit_economics: {
+    issued: number
+    consumed: number
+    expired: number
+    outstanding: number
+    outstanding_free: number
+    outstanding_paid: number
+    cost_per_credit_jpy: number | null
+    estimated_unfulfilled_cost_jpy: number | null
+    expiring: {
+      within_7_days: number
+      within_30_days: number
+      share_of_outstanding: number | null
+    }
+    consumption_to_issuance: number | null
+  }
 }
 
 export interface AdminEngagementCounts {
