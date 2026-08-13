@@ -70,6 +70,20 @@ export function CardPropertiesEditor({
 
   const usedKeys = new Set(definitions.map((d) => d.key))
 
+  /**
+   * 足すときの鍵。
+   *
+   * 自由欄は同じものを何枚も置くので、既にあれば番号を振る（free, free_2, free_3…）。
+   * **鍵はあとから変えられない**ので、ここで衝突しない形にしておく。
+   */
+  const nextKey = (item: { key: string; value_type: PropertyValueType }) => {
+    if (item.value_type !== 'free_text' || !usedKeys.has(item.key)) return item.key
+
+    let n = 2
+    while (usedKeys.has(`${item.key}_${n}`)) n += 1
+    return `${item.key}_${n}`
+  }
+
   const add = async (payload: {
     key: string
     label: string
@@ -183,8 +197,9 @@ export function CardPropertiesEditor({
                   <button
                     key={item.key}
                     type="button"
-                    onClick={() => add({ ...item, category: preset.category })}
-                    disabled={busy || usedKeys.has(item.key)}
+                    onClick={() => add({ ...item, key: nextKey(item), category: preset.category })}
+                    // 自由欄は何枚でも足せる（見出しを定義側で決めないため）
+                    disabled={busy || (item.value_type !== 'free_text' && usedKeys.has(item.key))}
                     className="rounded-full border border-border px-2.5 py-0.5 text-xs text-muted-foreground transition-colors hover:bg-muted disabled:opacity-40"
                     title={usedKeys.has(item.key) ? '追加済み' : PROPERTY_VALUE_TYPE_LABELS[item.value_type]}
                   >

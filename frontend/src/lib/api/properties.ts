@@ -18,6 +18,7 @@ export const PROPERTY_VALUE_TYPES = [
   'date',
   'url',
   'boolean',
+  'free_text',
   'wikipedia',
 ] as const
 
@@ -31,12 +32,14 @@ export const PROPERTY_VALUE_TYPE_LABELS: Record<PropertyValueType, string> = {
   date: '日付',
   url: 'リンク',
   boolean: 'チェック',
+  free_text: '自由欄',
   wikipedia: 'Wikipedia',
 }
 
 /** 型ごとの一言。選ぶときに何が起きるのかを読ませる */
 export const PROPERTY_VALUE_TYPE_NOTES: Partial<Record<PropertyValueType, string>> = {
   boolean: '入 / 切で持ちます。触っていないうちは、どちらでもない状態のままです',
+  free_text: '見出しも中身もカードごとに自由に書けます。同じ種別に何枚でも置けます',
   wikipedia: '見出し語で Wikipedia を引き、冒頭と記事リンクを出します',
 }
 
@@ -123,7 +126,13 @@ export interface ItemPropertyEntry {
   value_type: PropertyValueType
   category?: PropertyCategory
   description?: string | null
-  value: string | number | string[] | boolean | null
+  value: string | number | string[] | boolean | FreeTextValue | null
+}
+
+/** 自由欄の中身。見出しも中身もカードごとに決める */
+export interface FreeTextValue {
+  heading: string
+  body: string
 }
 
 export async function getPropertyDefinitions(itemTypeId?: string): Promise<PropertyDefinition[]> {
@@ -256,6 +265,9 @@ export const PROPERTY_PRESETS: {
       { key: 'substitute_word', label: '変換語', value_type: 'text', description: '覚えにくい語を、音の似た身近な語へ置き換えたもの。' },
       { key: 'substitute_image', label: '変換イメージ', value_type: 'longtext', description: '変換語から思い浮かべる場面。奇抜なほど残る。' },
       { key: 'note', label: 'メモ', value_type: 'longtext', description: '自分のための覚書。決まった形はない。' },
+      // 見出しごと自由に決められる欄。決まった項目に収まらないもののために置く。
+      // 同じものを何枚でも足せるよう、鍵は追加時に採番する
+      { key: 'free', label: '自由欄', value_type: 'free_text', description: '見出しも中身もカードごとに自由。' },
     ],
   },
   {
