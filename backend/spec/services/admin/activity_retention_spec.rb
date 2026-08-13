@@ -6,7 +6,7 @@ require "rails_helper"
 # **測り始めた日より前は「未計測」で、0% ではない。** 推定で埋めない。
 RSpec.describe "継続率" do
   let(:now) { Time.zone.local(2026, 9, 30, 12) }
-  let(:started_on) { Date.new(2026, 8, 1) }
+  let(:started_on) { UserActivityDay::MEASUREMENT_STARTED_ON }
 
   def retention(period: "1y")
     travel_to(now) { Admin::BusinessMetricsService.call(now: now, period: period) }[:activity_retention]
@@ -20,15 +20,20 @@ RSpec.describe "継続率" do
     user
   end
 
-  describe "測る前" do
-    it "記録が1件も無ければ、0% ではなく「まだ出せない」と返す" do
+  describe "測り始めた日" do
+    it "記録が1件も無くても、決めた日を返す（計測は始まっている）" do
       user_registered(days_ago: 40)
 
       result = retention
 
-      expect(result[:measurement_started_on]).to be_nil
-      expect(result[:days][:d1][:mature]).to be(false)
-      expect(result[:days][:d1][:rate]).to be_nil
+      expect(result[:measurement_started_on]).to eq(started_on)
+    end
+
+    it "記録が無ければ、指標は 0% ではなく「まだ出せない」" do
+      user_registered(days_ago: 40)
+
+      expect(retention[:days][:d1][:returned]).to eq(0)
+      expect(retention[:days][:d30][:returned]).to eq(0)
     end
   end
 
@@ -83,12 +88,10 @@ RSpec.describe "継続率" do
 
   describe "測り始めた日より前" do
     it "その日を測っていない人は母数に入れない（来なかったのか測っていないのか分からない）" do
-      # 測り始めたのが 8/1。この人の D30 は 7/11 で、記録が無い期間
+      # 測り始めたのが 8/13。この人の D30 は 7/11 で、記録が無い期間
       old = create(:user, :confirmed)
       old.update_column(:created_at, Time.zone.local(2026, 6, 11))
-      # 測定開始の目印として、別の人の記録を 8/1 に置く
-      recent = user_registered(days_ago: 40, active_on: [ 0, 30 ])
-      UserActivityDay.record!(recent.id, started_on)
+      user_registered(days_ago: 40, active_on: [ 0, 30 ])
 
       days = retention[:days]
 

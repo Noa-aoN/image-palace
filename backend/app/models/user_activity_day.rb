@@ -20,8 +20,18 @@ class UserActivityDay < ApplicationRecord
     )
   end
 
-  # 測り始めた日。これより前は「未計測」であって 0 ではない
+  # 測り始めた日。**記録から導かない。**
+  #
+  # 「最初の行が入った日」にすると、
+  #   - 誰も来なかった日が計測前だったことになる（来なかったことも観測結果なのに）
+  #   - いちばん古い行を持つ人が退会すると、開始日が動く
+  # という具合に、同じ過去を見ているのに答えが変わってしまう。
+  #
+  # ここは「正しく観測できるようになった日」＝この仕組みを本番へ入れた日で固定する。
+  # 動かすときは、なぜ動かすのかが説明できるときだけ。
+  MEASUREMENT_STARTED_ON = Date.new(2026, 8, 13)
+
   def self.measurement_started_on
-    minimum(:on_date)
+    MEASUREMENT_STARTED_ON
   end
 end
