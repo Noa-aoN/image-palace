@@ -8,6 +8,7 @@ import { Card, CardContent } from '@/components/ui/card'
 import { useAuthStore } from '@/stores/auth'
 import { useBillingStore } from '@/stores/billing'
 import { tierLabel, CREDIT_UNIT } from '@/lib/billing'
+import { RoomShowcase } from '@/components/features/myroom/RoomShowcase'
 
 const LINKS: { href: string; icon: ReactNode; label: string; description: string }[] = [
   { href: '/trophy', icon: <Trophy size={20} />, label: 'トロフィー', description: '実績・バッジ・称号・活動記録。' },
@@ -64,8 +65,12 @@ export default function MyRoomPage() {
         </Card>
       </Link>
 
+      {/* 飾ってある宝物。設定への導線より先に置く。
+          ここは「自分の部屋」なので、まず自分のものが目に入るほうがよい */}
+      <RoomShowcase />
+
       {/* 個人設定への導線 */}
-      <div className="mt-4 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+      <div className="mt-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         {LINKS.map((link) => (
           <Link
             key={link.href}
