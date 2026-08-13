@@ -15,6 +15,13 @@ module Ai
 
     DEFAULT_TIMEOUT = 30
 
+    # 返させる長さの上限。**上限が無いと、返事の長さが費用と待ち時間をそのまま決める。**
+    #
+    # ここで止めているのは「暴発」であって、ふだんの長さではない。
+    # 意味・説明もタグも項目埋めも、この半分にも届かない。
+    # 届いてしまう用途が出てきたら、その呼び出しだけ max_tokens を渡して上げる。
+    DEFAULT_MAX_TOKENS = 2_000
+
     def self.call(kind:, model:, messages:, user: nil, **options)
       new(kind:, model:, messages:, user:, **options).call
     end
@@ -45,7 +52,9 @@ module Ai
     end
 
     def parameters
-      { model: @model, messages: @messages }.merge(@options.except(:request_timeout))
+      # 呼び出し側が明示していなければ上限を置く。渡していれば、そちらを尊重する
+      defaults = { max_tokens: DEFAULT_MAX_TOKENS }
+      { model: @model, messages: @messages }.merge(defaults).merge(@options.except(:request_timeout))
     end
 
     # 課金。呼び出す前に ensure_allowed! で残高を見ているので、ここまで来て落ちるのは
