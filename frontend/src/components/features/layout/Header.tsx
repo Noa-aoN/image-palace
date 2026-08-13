@@ -195,7 +195,7 @@ export function AppHeader() {
               <DropdownMenuItem onClick={() => router.push('/settings')} className="cursor-pointer">
                 環境設定
               </DropdownMenuItem>
-              <DropdownMenuItem onClick={() => router.push('/trophy')} className="cursor-pointer">
+              <DropdownMenuItem onClick={() => router.push('/achievements')} className="cursor-pointer">
                 トロフィー
               </DropdownMenuItem>
               <DropdownMenuSeparator />
