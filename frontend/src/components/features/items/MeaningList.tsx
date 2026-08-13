@@ -147,7 +147,7 @@ export function MeaningList({
   return (
     <div className="space-y-2">
       {entries.length === 0 && !adding && (
-        <BlockEmpty>未設定（「AIで生成」または「追加」から書けます）</BlockEmpty>
+        <BlockEmpty>未設定（「AIで生成」から書けます。生成したあとは直接直せます）</BlockEmpty>
       )}
 
       {entries.map((entry, index) => (
