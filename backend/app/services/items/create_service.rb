@@ -72,6 +72,9 @@ module Items
       # タグの自動生成: generate_tags が明示指定されればそれを優先し、
       # 指定がなければユーザー設定（auto_generate_tags）にフォールバックする
       GenerateTagsJob.perform_later(item.id) if generate_tags?
+      # 項目（読み仮名・別名など）の自動生成。**選んだぶんをまとめて1回で埋める。**
+      # 出す項目そのものが無ければ、ここで用意してから積む（決めていない人がほとんどのため）
+      enqueue_property_fill(item)
       Result.new(item: item)
     end
 
@@ -98,6 +101,36 @@ module Items
     # 説明の詳しさレベル（未指定・不正値は simple）
     def meaning_level
       Meaning.normalize_level(@params[:generate_meaning_level])
+    end
+
+    # 項目の自動生成。選んだ識別名ぶんだけ定義を用意してから、1回の呼び出しでまとめて埋める。
+    #
+    # カードの作成そのものは待たせない（ジョブへ回す）。
+    # 説明ができてから埋めたほうが精度が上がるが、いまは待ち合わせを作らない。
+    # 空欄だけを埋めるので、あとから説明が付いても取りこぼしにはならない。
+    def enqueue_property_fill(item)
+      return unless generate_properties?
+
+      keys = EnsurePropertyDefinitions.call(
+        user: @user, item_type_id: item.item_type_id, keys: property_keys
+      )
+      return if keys.empty?
+
+      FillItemPropertiesJob.perform_later(item.id, keys)
+    end
+
+    def generate_properties?
+      if @params.key?(:generate_properties)
+        ActiveModel::Type::Boolean.new.cast(@params[:generate_properties])
+      else
+        @user.setting&.auto_generate_properties
+      end
+    end
+
+    # 名指しが無ければ、用意できるものを全部
+    def property_keys
+      keys = Array(@params[:generate_property_keys]).map(&:to_s)
+      keys.presence || EnsurePropertyDefinitions::KEYS
     end
 
     # 作成時に generate_tags が渡された場合はその真偽値を、なければユーザー設定を使う

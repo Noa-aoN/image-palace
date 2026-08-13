@@ -55,17 +55,21 @@ module Items
 
     Result = Struct.new(:filled_keys, :skipped_keys, :model, keyword_init: true)
 
-    def self.call(item:, user: nil, overwrite: false, keys: nil)
-      new(item: item, user: user, overwrite: overwrite, keys: keys).call
+    def self.call(item:, user: nil, overwrite: false, keys: nil, only_blank: false)
+      new(item: item, user: user, overwrite: overwrite, keys: keys, only_blank: only_blank).call
     end
 
     # keys を渡すとその項目だけを対象にする。1項目だけ書き直したいときに使う。
     # 呼び出しは1回のままなので、項目ごとに叩く形にはならない
-    def initialize(item:, user: nil, overwrite: false, keys: nil)
+    # only_blank: 名指ししても、空いている項目だけを埋める。
+    # カード作成時のように「選んだ項目のうち、まだ何も入っていないものだけ」を
+    # 埋めたいときに使う。名指し＝書き直し、という既定と分けるために要る。
+    def initialize(item:, user: nil, overwrite: false, keys: nil, only_blank: false)
       @item = item
       @user = user || item.user
       @overwrite = overwrite
       @keys = Array(keys).map(&:to_s).presence
+      @only_blank = only_blank
     end
 
     def call
@@ -95,7 +99,13 @@ module Items
       @targets ||= begin
         filled = @item.item_properties.includes(:property_definition).reject(&:blank_value?)
         filled_ids = filled.map(&:property_definition_id)
-        @overwrite || @keys ? definitions : definitions.reject { |d| filled_ids.include?(d.id) }
+        blank_only = definitions.reject { |d| filled_ids.include?(d.id) }
+
+        if @only_blank
+          blank_only
+        else
+          @overwrite || @keys ? definitions : blank_only
+        end
       end
     end
 
