@@ -70,15 +70,19 @@ RSpec.describe "一覧に出す項目の並び", type: :model do
   end
 
   describe "新しい形で保存したとき" do
-    it "旧の設定より優先される" do
-      setting.update!(
-        card_headline_key: "reading",
-        card_list_fields: %w[alias],
-        card_list_layout: [ { "key" => "title", "visible" => true },
-                            { "key" => "meaning", "visible" => true } ]
-      )
+    it "保存した並びが、そのまま出す順になる" do
+      setting.update!(card_list_layout: [ { "key" => "title", "visible" => true },
+                                          { "key" => "meaning", "visible" => true } ])
 
       expect(setting.visible_card_list_keys).to eq(%w[title meaning])
+    end
+
+    # 既定へ戻したいときは、空にすれば既定が返る（別に「既定へ戻す」操作を持たない）
+    it "空にすると既定へ戻る" do
+      setting.update!(card_list_layout: [ { "key" => "meaning", "visible" => true } ])
+      setting.update!(card_list_layout: [])
+
+      expect(setting.reload.visible_card_list_keys).to eq(%w[title image])
     end
 
     it "出さない指定の項目は、並びには残るが出す対象から外れる" do
