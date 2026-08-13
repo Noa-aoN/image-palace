@@ -16,6 +16,8 @@ export function DeckBoard({ viewId, initialItems }: { viewId: string; initialIte
   const [allItems, setAllItems] = useState<Item[]>([])
   const [busy, setBusy] = useState(false)
   const [dragIndex, setDragIndex] = useState<number | null>(null)
+  // つまみを押している行だけが動かせる
+  const [grabbed, setGrabbed] = useState<number | null>(null)
 
   const placedIds = new Set(items.map((i) => i.item_id))
 
@@ -116,15 +118,22 @@ export function DeckBoard({ viewId, initialItems }: { viewId: string; initialIte
             return (
               <li
                 key={vi.item_id}
-                draggable
+                // 掴めるのはつまみを押している間だけ。
+                // 行そのものを draggable にすると、**カード名をなぞって写せない**
+                draggable={grabbed === index}
                 onDragStart={() => setDragIndex(index)}
                 onDragOver={(e) => { e.preventDefault(); handleDragOver(index) }}
-                onDragEnd={handleDragEnd}
+                onDragEnd={() => { handleDragEnd(); setGrabbed(null) }}
                 className={`flex items-center gap-3 rounded-xl border border-border bg-card p-2 ${
                   dragIndex === index ? 'opacity-50' : ''
                 }`}
               >
-                <span className="cursor-grab text-muted-foreground/60 active:cursor-grabbing" aria-hidden="true">
+                <span
+                  onPointerDown={() => setGrabbed(index)}
+                  onPointerUp={() => setGrabbed(null)}
+                  className="cursor-grab touch-none text-muted-foreground/60 active:cursor-grabbing"
+                  aria-hidden="true"
+                >
                   <GripVertical size={16} />
                 </span>
                 <span className="w-6 text-center text-xs text-muted-foreground">{index + 1}</span>
