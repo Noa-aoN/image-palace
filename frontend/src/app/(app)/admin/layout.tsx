@@ -17,7 +17,10 @@ import { useAdminStore } from '@/stores/admin'
 /**
  * 執務室の大分類。**そこで何をするか**で分ける。
  *
- *   執務室 … いま何が起きているか（最初に開く）
+ * **執務室は管理画面そのものの名前**で、分類と並べない（上の帯に置く）。
+ * 並ぶのはその中身。
+ *
+ *   概要   … いま何が起きているか（最初に開く）
  *   分析   … 数字を見る（読むだけ・変えない）
  *   運営   … 日々の操作（人・物・お知らせ）
  *   戦略   … 次に何をするか
@@ -30,7 +33,9 @@ import { useAdminStore } from '@/stores/admin'
  * 壊さないため。整理は別の機会に、行き先の付け替えとして行う。
  */
 const SECTIONS = [
-  { key: 'desk', label: '執務室', items: [{ href: '/admin', label: '概要' }] },
+  // 概要だけは中を持たない。**執務室を開いて最初に見る場所**なので、
+  // 一段挟むと、開くたびに1回多く押すことになる
+  { key: 'overview', label: '概要', items: [{ href: '/admin', label: '概要' }] },
   {
     key: 'analytics',
     label: '分析',
@@ -49,7 +54,7 @@ const SECTIONS = [
       { href: '/admin/posts', label: '読みもの' },
     ],
   },
-  { key: 'strategy', label: '戦略', items: [{ href: '/admin/strategy', label: 'これから' }] },
+  { key: 'strategy', label: '戦略', items: [{ href: '/admin/strategy', label: 'AI分析' }] },
   {
     key: 'system',
     label: 'システム',

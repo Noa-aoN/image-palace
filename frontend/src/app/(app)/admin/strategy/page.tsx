@@ -1,92 +1,193 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { Compass } from 'lucide-react'
-import { getAdminBusinessMetrics } from '@/lib/api/admin'
-import type { AdminBusinessMetrics } from '@/types/admin'
+import { Compass, Loader2, RefreshCw } from 'lucide-react'
+import { Button } from '@/components/ui/button'
+import { getAdminBrief, generateAdminBrief } from '@/lib/api/admin'
+import type { AdminBrief } from '@/types/admin'
+
+const LEVEL_LABEL: Record<string, string> = { low: '低', medium: '中', high: '高' }
 
 /**
- * 戦略（これから）。
+ * 戦略（AI分析）。
  *
  * 「次に何をするか」を置く場所。数字を見る場所（分析）とも、
  * 日々の操作をする場所（運営）とも別に持つ。
  *
- * いまは入口だけ。**置き場所を先に決めておく**ことに意味がある。
- * 後から作る AI の見立ては、判断の材料が揃ってからでないと
- * 「まだ分からない」しか言えない。何がいつ揃うかをここに出しておく。
+ * **開くだけでは作らない。** 明示的に更新したときだけ AI を呼ぶ。
+ * 見るだけの人が費用を積み上げないため。
+ *
+ * まだ「万能の経営AI」のようには見せない。**測れていないものは、
+ * 測れていないと出す**。数字が揃うほど、言えることが増えていく。
  */
 export default function AdminStrategyPage() {
-  const [data, setData] = useState<AdminBusinessMetrics | null>(null)
+  const [brief, setBrief] = useState<AdminBrief | null>(null)
+  const [loading, setLoading] = useState(true)
+  const [generating, setGenerating] = useState(false)
+  const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
     let cancelled = false
-    getAdminBusinessMetrics()
+    getAdminBrief()
       .then((next) => {
-        if (!cancelled) setData(next)
+        if (!cancelled) setBrief(next)
       })
-      .catch(() => {})
+      .catch(() => {
+        if (!cancelled) setError('見立てを読み込めませんでした')
+      })
+      .finally(() => {
+        if (!cancelled) setLoading(false)
+      })
     return () => {
       cancelled = true
     }
   }, [])
 
-  const startedOn = data?.activity_retention?.measurement_started_on
-  const started = startedOn ? new Date(startedOn) : null
-  const matureOn = started ? new Date(started.getTime() + 30 * 86_400_000) : null
-  const fmt = (date: Date) => date.toLocaleDateString('ja-JP')
+  const refresh = async () => {
+    if (generating) return
+    setGenerating(true)
+    setError(null)
+    try {
+      const next = await generateAdminBrief()
+      // 失敗しても前の見立ては壊さない（返ってきたときだけ入れ替える）
+      if (next) setBrief(next)
+    } catch {
+      setError('AI の呼び出しに失敗しました。時間をおいてお試しください。')
+    } finally {
+      setGenerating(false)
+    }
+  }
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center gap-2">
+      <div className="flex flex-wrap items-center gap-2">
         <Compass size={20} style={{ color: 'var(--palace)' }} />
-        <h2 className="text-lg font-semibold">これから</h2>
+        <h2 className="text-lg font-semibold">AI分析</h2>
+        <Button
+          size="sm"
+          variant="outline"
+          onClick={refresh}
+          disabled={generating}
+          className="ml-auto"
+        >
+          {generating ? (
+            <Loader2 size={14} className="mr-1 animate-spin" />
+          ) : (
+            <RefreshCw size={14} className="mr-1" />
+          )}
+          {generating ? '考えています…' : 'AI分析を更新'}
+        </Button>
       </div>
 
       <p className="text-sm text-muted-foreground">
-        数字を見る場所（分析）と、日々の操作をする場所（運営）とは別に、
-        「次に何をするか」をここに置きます。
+        数字は先にこちらで確定させ、AI には
+        <strong className="text-foreground">その意味と、どれから手を付けるか</strong>
+        だけを考えてもらいます。AI に計算はさせません。
       </p>
 
-      <section className="space-y-3 rounded-xl border border-border bg-background p-5">
-        <h3 className="text-sm font-semibold">AI の見立て</h3>
-        <p className="text-sm text-muted-foreground">
-          準備中です。いまの数字（粗利・AI原価・1枚あたりの実原価・未使用クレジット・
-          新しく来た人）だけでも見立てはできますが、
-          <strong className="text-foreground">続けて使われているか</strong>が分かるまでは、
-          いちばん大事な問いに答えられません。
+      {error && <p className="text-sm text-destructive">{error}</p>}
+
+      {loading ? (
+        <div className="flex items-center gap-2 text-sm text-muted-foreground">
+          <Loader2 size={16} className="animate-spin" /> 読み込んでいます
+        </div>
+      ) : brief ? (
+        <BriefView brief={brief} />
+      ) : (
+        <p className="rounded-xl border border-dashed border-border/70 p-6 text-sm text-muted-foreground">
+          まだ見立てはありません。「AI分析を更新」を押すと、いまの数字から作ります。
         </p>
-
-        <dl className="grid gap-3 sm:grid-cols-3">
-          <div>
-            <dt className="text-xs text-muted-foreground">継続率の計測開始</dt>
-            <dd className="text-sm font-medium">{started ? fmt(started) : '未取得'}</dd>
-          </div>
-          <div>
-            <dt className="text-xs text-muted-foreground">D1 が読めるころ</dt>
-            <dd className="text-sm font-medium">
-              {started ? fmt(new Date(started.getTime() + 86_400_000)) : '—'}
-            </dd>
-          </div>
-          <div>
-            <dt className="text-xs text-muted-foreground">D30 が読めるころ</dt>
-            <dd className="text-sm font-medium">{matureOn ? fmt(matureOn) : '—'}</dd>
-          </div>
-        </dl>
-
-        <p className="text-xs text-muted-foreground">
-          出せない数字は「未計測」と書きます。0 とは違うことなので、混ぜません。
-        </p>
-      </section>
-
-      <section className="space-y-2 rounded-xl border border-dashed border-border/70 p-5">
-        <h3 className="text-sm font-semibold">ここに置く予定のもの</h3>
-        <ul className="space-y-1 text-sm text-muted-foreground">
-          <li>・今週の要点と、気になる変化</li>
-          <li>・いちばんの課題（1件だけ）</li>
-          <li>・次にやること（3〜5件。根拠と、見直す日つき）</li>
-          <li>・やったことの結果（前と後）</li>
-        </ul>
-      </section>
+      )}
     </div>
+  )
+}
+
+function BriefView({ brief }: { brief: AdminBrief }) {
+  const generatedAt = new Date(brief.generated_at)
+  const from = new Date(brief.period.from)
+  const to = new Date(brief.period.to)
+  const fmt = (date: Date) => date.toLocaleDateString('ja-JP')
+  const retention = brief.completeness?.retention
+
+  return (
+    <div className="space-y-5">
+      <p className="text-xs text-muted-foreground">
+        {generatedAt.toLocaleString('ja-JP')} 作成 ・ 対象 {fmt(from)}〜{fmt(to)} ・ {brief.model} ・
+        費用 {brief.cost_credits} cr
+      </p>
+
+      {/* 何が測れていないかを、いちばん上に置く。
+          「言われなかったこと」を「問題が無かったこと」と読まれないように */}
+      <section className="space-y-1 rounded-lg border border-border bg-muted/30 p-3 text-xs text-muted-foreground">
+        <p className="font-medium text-foreground">まだ測れていないもの</p>
+        {retention?.status && (
+          <p>
+            継続率（
+            {Object.entries(retention.status)
+              .filter(([, value]) => value !== 'measured')
+              .map(([key]) => key.toUpperCase())
+              .join(' / ') || 'なし'}
+            ）… {retention.measurement_started_on ?? '—'} から計測
+          </p>
+        )}
+        <p>登録から使い始めるまでの流れ・機能ごとの利用状況・キャンペーンの効果 … 未計測</p>
+      </section>
+
+      <Block title="今週の要点" items={brief.summary.highlights} />
+      <Block title="気になる変化" items={brief.summary.changes} />
+
+      {brief.summary.top_issue && (
+        <section className="space-y-1 rounded-xl border border-[var(--palace)]/40 bg-[var(--palace)]/5 p-4">
+          <h3 className="text-sm font-semibold">いちばんの課題</h3>
+          <p className="text-sm">{brief.summary.top_issue}</p>
+        </section>
+      )}
+
+      <Block title="次にやること" items={brief.summary.actions} ordered />
+
+      {brief.insights.length > 0 && (
+        <section className="space-y-2">
+          <h3 className="text-sm font-semibold">見立て</h3>
+          {brief.insights.map((insight) => (
+            <div key={insight.id} className="space-y-2 rounded-xl border border-border bg-background p-4">
+              <p className="text-sm font-medium">{insight.observation}</p>
+
+              {/* 根拠を必ず出す。**根拠の見えない見立ては、次の判断に使えない** */}
+              <ul className="space-y-0.5">
+                {insight.evidence.map((line) => (
+                  <li key={line} className="text-xs text-muted-foreground">
+                    ・{line}
+                  </li>
+                ))}
+              </ul>
+
+              <p className="text-sm">{insight.suggested_action}</p>
+
+              <p className="flex flex-wrap gap-x-3 text-[11px] text-muted-foreground">
+                <span>確信度 {LEVEL_LABEL[insight.confidence] ?? insight.confidence}</span>
+                <span>効き目 {LEVEL_LABEL[insight.impact] ?? insight.impact}</span>
+                <span>急ぎ {LEVEL_LABEL[insight.urgency] ?? insight.urgency}</span>
+              </p>
+            </div>
+          ))}
+        </section>
+      )}
+    </div>
+  )
+}
+
+function Block({ title, items, ordered }: { title: string; items?: string[]; ordered?: boolean }) {
+  if (!items?.length) return null
+
+  const List = ordered ? 'ol' : 'ul'
+  return (
+    <section className="space-y-1">
+      <h3 className="text-sm font-semibold">{title}</h3>
+      <List className={`space-y-1 text-sm ${ordered ? 'list-inside list-decimal' : ''}`}>
+        {items.map((line) => (
+          <li key={line}>{ordered ? line : `・${line}`}</li>
+        ))}
+      </List>
+    </section>
   )
 }

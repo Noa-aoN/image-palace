@@ -557,3 +557,44 @@ export interface AdminEngagementCounts {
   acting_users: number
   actions: number
 }
+
+/**
+ * AI がまとめた「いまの見立て」。
+ *
+ * 数字は Rails 側で確定させ、AI は解釈と順番付けだけを担う。
+ * **根拠（evidence）の無い見立ては置かない。**
+ */
+export interface AdminBrief {
+  id: string
+  generated_at: string
+  period: { key: string; from: string; to: string }
+  summary: {
+    highlights?: string[]
+    changes?: string[]
+    top_issue?: string
+    actions?: string[]
+  }
+  /** どこまで測れていたか。未計測を 0 と読み違えないための但し書き */
+  completeness: {
+    retention?: {
+      measurement_started_on?: string | null
+      status?: Record<string, 'measured' | 'immature'>
+    }
+    activation_funnel?: { status?: string; note?: string }
+    [key: string]: unknown
+  }
+  model: string
+  prompt_tokens: number
+  completion_tokens: number
+  cost_credits: number
+  insights: {
+    id: string
+    observation: string
+    evidence: string[]
+    confidence: 'low' | 'medium' | 'high'
+    impact: 'low' | 'medium' | 'high'
+    urgency: 'low' | 'medium' | 'high'
+    suggested_action: string
+    status: string
+  }[]
+}

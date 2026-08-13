@@ -27,7 +27,9 @@ RSpec.describe "運営の段階ごとに触れる範囲", type: :request do
     [ :get, "/api/v1/admin/feature_flags" ],
     [ :get, "/api/v1/admin/grant_policies" ],
     [ :get, "/api/v1/admin/ai_models" ],
-    [ :get, "/api/v1/admin/campaign_codes" ]
+    [ :get, "/api/v1/admin/campaign_codes" ],
+    # 経営の見立て。読むだけ（作るのは operator 以上）
+    [ :get, "/api/v1/admin/brief" ]
   ].freeze
 
   # 通常運用。operator 以上でないと通らない
@@ -38,7 +40,9 @@ RSpec.describe "運営の段階ごとに触れる範囲", type: :request do
     [ :post, "/api/v1/admin/rewards/grant" ],
     [ :post, "/api/v1/admin/provider_check" ],
     [ :put, "/api/v1/admin/feature_flags/page.trophy" ],
-    [ :put, "/api/v1/admin/grant_policies/free_monthly" ]
+    [ :put, "/api/v1/admin/grant_policies/free_monthly" ],
+    # 見立てを作る。AI を呼ぶので費用が出るし、記録として残る
+    [ :post, "/api/v1/admin/brief" ]
   ].freeze
 
   # お金と権限。admin でないと通らない

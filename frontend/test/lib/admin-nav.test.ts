@@ -10,7 +10,7 @@ import { describe, expect, it } from 'vitest'
  * （画面の実装を写したものなので、片方を変えたらもう片方も直す）
  */
 const SECTIONS = [
-  { key: 'desk', label: '執務室', items: ['/admin'] },
+  { key: 'overview', label: '概要', items: ['/admin'] },
   { key: 'analytics', label: '分析', items: ['/admin/business', '/admin/finance'] },
   {
     key: 'ops',
@@ -32,7 +32,8 @@ const sectionOf = (pathname: string) =>
 
 describe('執務室の分け方', () => {
   it('大分類は5つ', () => {
-    expect(SECTIONS.map((s) => s.label)).toEqual(['執務室', '分析', '運営', '戦略', 'システム'])
+    // 「執務室」は管理画面そのものの名前。分類として並べない
+    expect(SECTIONS.map((s) => s.label)).toEqual(['概要', '分析', '運営', '戦略', 'システム'])
   })
 
   it('同じ行き先が2つの分類に入らない', () => {
@@ -62,7 +63,7 @@ describe('執務室の分け方', () => {
   })
 
   it('いまいる場所から、その大分類が分かる', () => {
-    expect(sectionOf('/admin').key).toBe('desk')
+    expect(sectionOf('/admin').key).toBe('overview')
     expect(sectionOf('/admin/business').key).toBe('analytics')
     expect(sectionOf('/admin/posts/new').key).toBe('ops')
     expect(sectionOf('/admin/audit').key).toBe('system')
@@ -70,11 +71,11 @@ describe('執務室の分け方', () => {
   })
 
   it('/admin は前方一致で拾わない（すべてに当たってしまう）', () => {
-    expect(sectionOf('/admin/finance').key).not.toBe('desk')
+    expect(sectionOf('/admin/finance').key).not.toBe('overview')
   })
 
-  it('知らない行き先は執務室に落とす（迷子にしない）', () => {
-    expect(sectionOf('/admin/知らない場所').key).toBe('desk')
+  it('知らない行き先は概要に落とす（迷子にしない）', () => {
+    expect(sectionOf('/admin/知らない場所').key).toBe('overview')
   })
 
   it('数字を見る場所に、設定を変えるものを混ぜない', () => {
