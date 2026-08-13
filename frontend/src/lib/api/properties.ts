@@ -52,12 +52,54 @@ export interface WikipediaValue {
   type?: string
 }
 
+/**
+ * 項目の役割。**何のために持つのか**で分ける。
+ *
+ * 分けないと、覚えるための手立てと、調べた事実が同じ見た目で並ぶ。
+ * 「語源」と「語呂合わせ」は隣に置くと似て見えるが、
+ * 前者は**合っているか**が大事で、後者は**思い出せるか**が大事。
+ */
+export type PropertyCategory = 'subject' | 'mnemonic' | 'admin'
+
+export const PROPERTY_CATEGORIES: {
+  key: PropertyCategory
+  label: string
+  hint: string
+  /** 札の縁の色。色だけに頼らず、見出しの文字でも分かるようにする */
+  accent: string
+}[] = [
+  {
+    key: 'subject',
+    label: 'その語のこと',
+    hint: 'その語そのものについて。読み・語源・品詞など。合っているかが大事',
+    accent: 'var(--palace)',
+  },
+  {
+    key: 'mnemonic',
+    label: '覚えかた',
+    hint: '思い出すための手立て。語呂合わせ・変換イメージなど。合っているかより、思い出せるかが大事',
+    accent: '#9a6dd7',
+  },
+  {
+    key: 'admin',
+    label: '整理',
+    hint: '自分のための管理。出典・メモ・注意点など',
+    accent: '#6b7280',
+  },
+]
+
+export function propertyCategoryOf(category?: string | null) {
+  return PROPERTY_CATEGORIES.find((row) => row.key === category) ?? PROPERTY_CATEGORIES[0]
+}
+
 export interface PropertyDefinition {
   id: string
   item_type_id: string
   key: string
   label: string
   value_type: PropertyValueType
+  /** 何のために持つ項目か */
+  category?: PropertyCategory
   description?: string | null
   position: number
 }
@@ -68,6 +110,7 @@ export interface ItemPropertyEntry {
   key: string
   label: string
   value_type: PropertyValueType
+  category?: PropertyCategory
   description?: string | null
   value: string | number | string[] | null
 }
@@ -162,10 +205,13 @@ export const PROPERTY_PRESETS: {
   group: string
   /** description は「何を入れる項目か」の一行。名前だけでは分からないものがある
       （「分類」に何を書くのか、「例」は例文なのか用例なのか） */
+  /** その群の項目が既定でどの役割になるか（1つずつ変えられる） */
+  category: PropertyCategory
   items: { key: string; label: string; value_type: PropertyValueType; description: string }[]
 }[] = [
   {
     group: 'ことば',
+    category: 'subject',
     items: [
       { key: 'reading', label: '読み仮名', value_type: 'text', description: 'その語の読み。複数の読みがあれば全部。' },
       { key: 'aliases', label: '別名・異表記', value_type: 'list', description: '同じものを指す別の呼び名や書き方。' },
@@ -174,10 +220,12 @@ export const PROPERTY_PRESETS: {
       { key: 'derivatives', label: '派生語', value_type: 'list', description: 'その語から作られた語、関係の深い語。' },
       { key: 'examples', label: '例', value_type: 'list', description: 'その語を使った短い文や、具体的な例。' },
       { key: 'etymology', label: '語源', value_type: 'longtext', description: 'どこから来た語か。成り立ちの説明。' },
+      { key: 'origin', label: '由来', value_type: 'longtext', description: 'その名が付いたいきさつ。誰が・いつ・なぜ。' },
     ],
   },
   {
     group: 'ものごと',
+    category: 'subject',
     items: [
       { key: 'category', label: '分類', value_type: 'text', description: 'それが何の仲間か（動物・化合物・王朝など）。' },
       { key: 'formula', label: '式・公式', value_type: 'text', description: '数式・化学式など、記号で書ける形。' },
@@ -189,8 +237,13 @@ export const PROPERTY_PRESETS: {
   },
   {
     group: '覚えかた',
+    category: 'mnemonic',
     items: [
       { key: 'mnemonic', label: '語呂合わせ', value_type: 'longtext', description: '思い出すための語呂・こじつけ。' },
+      // 覚えるための手立ては「合っているか」より「思い出せるか」で選ぶ。
+      // 事実の項目と混ぜると、直すときの物差しが変わってしまう
+      { key: 'substitute_word', label: '変換語', value_type: 'text', description: '覚えにくい語を、音の似た身近な語へ置き換えたもの。' },
+      { key: 'substitute_image', label: '変換イメージ', value_type: 'longtext', description: '変換語から思い浮かべる場面。奇抜なほど残る。' },
       { key: 'note', label: 'メモ', value_type: 'longtext', description: '自分のための覚書。決まった形はない。' },
     ],
   },
@@ -198,6 +251,7 @@ export const PROPERTY_PRESETS: {
     // 引いてくる項目。手で書くものとは性質が違うので群を分ける。
     // ここに無いと、型の一覧から「Wikipedia」を選ぶまで存在に気づけない
     group: '調べる',
+    category: 'subject',
     items: [
       {
         key: 'wikipedia',

@@ -40,6 +40,7 @@ module Api
           key: record.property_definition.key,
           label: record.property_definition.label,
           value_type: record.property_definition.value_type,
+          category: record.property_definition.category,
           value: record.typed_value
         }
       end

@@ -322,6 +322,7 @@ export function PropertyEntryBlock({
   return (
     <PropertyBlock
       title={entry.label}
+      category={entry.category}
       busy={writing}
       actions={
         <>
