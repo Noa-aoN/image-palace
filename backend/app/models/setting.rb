@@ -32,11 +32,6 @@ class Setting < ApplicationRecord
   # 宮殿の名前。長いと画面の見出しが折り返す
   MAX_PALACE_NAME_LENGTH = 30
 
-  # 一覧のカードに、名前と絵のほかに出す項目の数。
-  # 増やすほど1枚が縦に伸び、一覧として見渡せなくなる。
-  # 名前と絵で2つぶん使っているので、追加はここまで
-  MAX_CARD_LIST_FIELDS = 2
-
   # == 一覧に出す項目（順序つき） ============================================
   #
   # 表示の有無と並び順を**1つの並び**で持つ。分かれていると並び替えができず、
@@ -45,9 +40,8 @@ class Setting < ApplicationRecord
   # 形: [{ "key" => "title", "visible" => true }, ...]
   #
   # key は組み込み（title / image / meaning）か、利用者が作った項目の
-  # 識別名（読み方・別名など）。**組み込み以外は "property:" を付けない**
-  # （項目の識別名がそのまま入る。既存の card_headline_key と同じ形にして、
-  # 移行で読み替えずに済ませる）。
+  # 識別名（読み方・別名など）。**組み込み以外は接頭辞を付けない**
+  # （項目の識別名がそのまま入る）。
   CARD_LIST_BUILTIN_KEYS = %w[title image meaning].freeze
 
   # **上限は「出す指定の数」に掛ける。** 候補そのものは持っていてよい。
@@ -57,11 +51,18 @@ class Setting < ApplicationRecord
   # 候補として持てる数。ここは器の上限で、画面の見え方には効かない
   MAX_CARD_LIST_LAYOUT = 30
 
-  # 何も設定していない人の並び。これまでの見え方（名前と絵）と同じにする
+  # 何も設定していない人の並び。**ここが既定の出どころ**。
+  #
+  # 「旧フィールドが空だから、たまたま名前と絵になっていた」のではなく、
+  # 新しい設定体系として明示的にこう決める。
   DEFAULT_CARD_LIST_LAYOUT = [
     { "key" => "title", "visible" => true },
     { "key" => "image", "visible" => true }
   ].freeze
+
+  # 見出しとして使わない項目。絵は見出しにならないし、
+  # 意味・説明は長すぎて名前にならない
+  NON_HEADLINE_KEYS = %w[image meaning].freeze
 
   belongs_to :user
 
@@ -77,7 +78,6 @@ class Setting < ApplicationRecord
   # こうしておけば、棚が増えても既存ユーザーの画面から消えることがない。
   before_validation :normalize_library_order
   before_validation :normalize_card_property_presets
-  before_validation :normalize_card_list_fields
   before_validation :normalize_card_list_layout
   validate :visible_card_list_fields_within_limit
 
@@ -93,14 +93,12 @@ class Setting < ApplicationRecord
     card_preset(default_card_preset)&.dig("keys")
   end
 
-  # 一覧に出す項目の並び。**ここが真実の場所**。
+  # 一覧に出す項目の並び。**ここが唯一の出どころ**。
   #
-  # まだ新しい形で保存していない人には、旧の2つ（card_headline_key /
-  # card_list_fields）から読み解いて返す。読み解くだけで書き戻さないのは、
-  # 設定画面を開いていない人の行をこちらの都合で書き換えないため。
+  # 保存していない人には既定（名前と絵）を返す。
   def card_list_layout_entries
     stored = Array(card_list_layout).select { |row| row.is_a?(Hash) && row["key"].present? }
-    rows = stored.any? ? stored : migrated_card_list_layout
+    rows = stored.any? ? stored : DEFAULT_CARD_LIST_LAYOUT
 
     # 古い行が上限を超えていても壊れないようにする。
     # **書き戻さない**（読むだけの人の行を、こちらの都合で変えない）
@@ -118,17 +116,17 @@ class Setting < ApplicationRecord
     card_list_layout_entries.select { |row| row["visible"] }.map { |row| row["key"].to_s }
   end
 
-  # 旧の設定を新しい形に読み替える。
-  #   card_headline_key … 名前として出していた項目。先頭に置く
-  #   card_list_fields  … 名前の下に出していた項目。絵の後ろに続ける
-  # どちらも空なら、これまでどおり「名前と絵」。
-  def migrated_card_list_layout
-    keys = []
-    keys << (card_headline_key.presence || "title")
-    keys << "image"
-    keys.concat(Array(card_list_fields).map(&:to_s))
+  # 一覧で名前として出す項目。
+  #
+  # **並びの先頭にある、名前になりうる項目**（絵と意味・説明は除く）。
+  # 別に持たせない（別に持つと、並べ替えたのに名前が変わらない、が起きる）。
+  #
+  # 何も選んでいなければ nil。呼び出し側が見出し語（items.title）を使う
+  def headline_key
+    key = visible_card_list_keys.find { |k| NON_HEADLINE_KEYS.exclude?(k) }
+    return nil if key.nil? || key == "title"
 
-    keys.uniq.first(MAX_VISIBLE_CARD_LIST_FIELDS).map { |key| { "key" => key, "visible" => true } }
+    key
   end
 
   # 実際に描くべき並び。未設定なら既定の順
@@ -165,11 +163,6 @@ class Setting < ApplicationRecord
     return if visible <= MAX_VISIBLE_CARD_LIST_FIELDS
 
     errors.add(:card_list_layout, "に出す項目は#{MAX_VISIBLE_CARD_LIST_FIELDS}件までです（いま#{visible}件）")
-  end
-
-  # 一覧に出す追加項目。上限を超えたぶんは切る
-  def normalize_card_list_fields
-    self.card_list_fields = Array(card_list_fields).map(&:to_s).reject(&:blank?).uniq.first(MAX_CARD_LIST_FIELDS)
   end
 
   # 名前とキーだけに絞り、名前の無いもの・重複・多すぎるものを落とす。

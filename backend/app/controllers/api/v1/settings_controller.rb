@@ -26,13 +26,11 @@ module Api
         params.require(:setting).permit(
           :auto_generate_meanings, :auto_generate_tags, :default_image_style, :default_aspect_ratio,
           :display_style, :shelf_orientation, :onboarded,
-          :regenerate_with_meaning, :image_safeguard, :card_headline_key, :palace_name,
+          :regenerate_with_meaning, :image_safeguard, :palace_name,
           :card_detail_columns,
           :diagram_mode, :motion_mode, :word_difficulty, :default_card_preset,
           library_order: [],
-          card_list_fields: [],
-          # 一覧に出す項目（順序つき）。ここが新しい真実の場所。
-          # 旧の card_headline_key / card_list_fields は当面そのまま受ける
+          # 一覧に出す項目（順序つき）。**ここが唯一の出どころ**
           card_list_layout: [ :key, :visible ],
           # カードが持つ項目のひな型。[{ name:, keys: [] }]
           card_property_presets: [ :name, { keys: [] } ]
@@ -55,14 +53,11 @@ module Api
           regenerate_with_meaning: setting.regenerate_with_meaning,
           image_safeguard: setting.image_safeguard,
           # 一覧で名前として出す項目。空なら見出し語
-          card_headline_key: setting.card_headline_key,
           # カード詳細で項目を何列に並べるかの既定。1枚ずつの指定はカード側が持つ
           card_detail_columns: setting.card_detail_columns,
           palace_name: setting.palace_name,
           card_property_presets: setting.card_property_presets,
-          card_list_fields: setting.card_list_fields,
-          max_card_list_fields: Setting::MAX_CARD_LIST_FIELDS,
-          # 保存していない人には、旧の設定から読み解いた並びを返す（書き戻さない）
+          # 保存していない人には既定を返す（書き戻さない）
           card_list_layout: setting.card_list_layout_entries,
           max_card_list_layout: Setting::MAX_CARD_LIST_LAYOUT,
           card_list_builtin_keys: Setting::CARD_LIST_BUILTIN_KEYS,

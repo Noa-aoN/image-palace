@@ -28,7 +28,6 @@ export interface UserSettings {
   /** 生成された絵に覆いを掛けて、承認するまで直視しないで済むようにする。既定 OFF */
   image_safeguard: boolean
   /** カード一覧で名前として出す項目の識別名。空なら見出し語（title） */
-  card_headline_key: string | null
   /** カード詳細で項目を何列に並べるかの既定（1〜3）。1枚ごとの指定はカード側が持つ */
   card_detail_columns: number
   /** 宮殿の名前。空なら画面側で既定の呼び方に落とす */
@@ -38,16 +37,14 @@ export interface UserSettings {
   /** 新しいカードに最初から当てるひな型の名前。空なら当てない */
   default_card_preset: string | null
   /** 一覧のカードに、名前と絵のほかに出す項目の識別名 */
-  card_list_fields: string[]
   /**
    * 一覧に出す項目（順序つき）。**ここが真実の場所**。
-   * 旧 card_headline_key / card_list_fields は互換のために残っているだけ
+   * ここが唯一の出どころ（旧フィールドは #598 で撤去した）
    */
   card_list_layout: { key: string; visible: boolean }[]
   /** 出す指定にできる数。隠した項目は何件あってもよい */
   max_card_list_layout: number
   /** 追加できる項目の上限（サーバー側の決め） */
-  max_card_list_fields: number
   /** 図（間取り図・記憶資産など）の表現。既定 "3d" */
   diagram_mode: DiagramMode
   /** アニメーションの扱い。"auto" は端末（OS）の設定に従う。既定 "auto" */

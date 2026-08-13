@@ -727,11 +727,12 @@ module Api
         @definitions_by_item_type[item_type_id] || []
       end
 
-      # 設定で選ばれた項目。空なら見出し語をそのまま使う
+      # 名前として出す項目。**並びの先頭にある、名前になりうる項目**（Setting が決める）。
+      # 何も選んでいなければ nil で、そのときは見出し語をそのまま使う
       def headline_key
         return @headline_key if defined?(@headline_key)
 
-        @headline_key = current_user.setting&.card_headline_key.presence
+        @headline_key = current_user.setting&.headline_key
       end
 
       # このカードの見え方。まだ一度も触っていないカードには、既定のひな型を当てる。
@@ -794,8 +795,9 @@ module Api
         card_list_layout.filter_map do |row|
           key = row["key"].to_s
           next unless row["visible"]
-          # 名前と絵は、カードの形そのものとして別に描かれる
-          next if key == "title" || key == "image"
+          # 名前と絵は、カードの形そのものとして別に描かれる。
+          # 名前として使っている項目も、下にもう一度出さない（同じ値が2つ並ぶ）
+          next if key == "title" || key == "image" || key == headline_key
 
           if key == "meaning"
             { key: key, label: "意味・説明", value: meaning_summary_for(item) }
