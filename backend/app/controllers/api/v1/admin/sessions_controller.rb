@@ -33,14 +33,30 @@ module Api
           # 両方を呼ぶと同じことを二度聞くことになる
           methods = ::Auth::StrongAuth.available_methods(current_user)
 
+          # 通っているかと、いつまで居られるかを**同じ1行から**導く。
+          # 別々に問い合わせると、同じことを二度聞くことになる
+          expires_at = admin_window_expires_at
+          satisfied = expires_at.present? && expires_at > Time.current
+
           {
             required: true,
             # 執務室の門と同じ窓で見る。ここだけ短い窓で見ると、
             # 画面は確かめ直しを出すのに API は通る（またはその逆）になる
-            satisfied: strongly_authenticated?(within: StrongAuthSession::ADMIN_WINDOW),
+            satisfied: satisfied,
+            # いつまで居られるか。**残り時間を出さないと、作業の途中で急に閉め出されたように見える**
+            expires_at: (expires_at if satisfied),
             prepared: methods.any?,
             methods: methods
           }
+        end
+
+        def admin_window_expires_at
+          return nil if current_client_id.blank?
+
+          authenticated_at = StrongAuthSession
+                             .where(user: current_user, client_id: current_client_id)
+                             .pick(:authenticated_at)
+          authenticated_at&.+(StrongAuthSession::ADMIN_WINDOW)
         end
       end
     end

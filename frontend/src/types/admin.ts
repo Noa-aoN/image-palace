@@ -41,6 +41,8 @@ export interface AdminStrongAuth {
    */
   /** この端末が確かめ済みか */
   satisfied?: boolean
+  /** いつまで居られるか。残り時間を出さないと、途中で急に閉め出されたように見える */
+  expires_at?: string | null
   /** パスキーか認証アプリを持っているか */
   prepared?: boolean
   /** 使える確かめ方。使いやすい順 */
