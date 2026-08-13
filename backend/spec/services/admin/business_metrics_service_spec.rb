@@ -155,4 +155,51 @@ RSpec.describe Admin::BusinessMetricsService do
 
     expect(result[:unit_economics]).to include(:ai_cost_jpy, :gross_profit_jpy, :gross_margin)
   end
+
+  describe "粗利の内訳" do
+    # 合計だけ渡していたときは、AI 原価より赤字が大きい理由（インフラ費）が
+    # 画面から辿れなかった。**足し算が画面の上で閉じる**ことを固定する。
+    it "売上 −（決済手数料 + 画像 + 文章 + インフラ）= 粗利 になっている" do
+      result = travel_to(now) { call }
+      unit = result[:unit_economics]
+      breakdown = unit[:cost_breakdown]
+
+      parts = breakdown.values_at(:stripe_fee_jpy, :image_jpy, :text_jpy, :infra_jpy)
+      expect(parts.sum).to eq(breakdown[:total_jpy])
+      expect(breakdown[:revenue_jpy] - breakdown[:total_jpy]).to eq(unit[:gross_profit_jpy])
+    end
+
+    it "AI 原価は画像と文章の合計（内訳から辿れる）" do
+      unit = travel_to(now) { call }[:unit_economics]
+
+      expect(unit[:ai_cost_jpy])
+        .to eq(unit[:cost_breakdown][:image_jpy] + unit[:cost_breakdown][:text_jpy])
+    end
+
+    it "インフラ費は何ヶ月ぶんを足したかを添える（使った量ではなく月額の見積りのため）" do
+      unit = travel_to(now) { call(period: "30d") }[:unit_economics]
+
+      expect(unit[:cost_breakdown][:infra_months]).to be_present
+    end
+
+    it "売上が無ければ粗利率は 0% ではなく出さない" do
+      unit = travel_to(now) { call }[:unit_economics]
+
+      expect(unit[:cost_breakdown][:revenue_jpy]).to eq(0)
+      expect(unit[:gross_margin]).to be_nil
+    end
+
+    it "売上があれば粗利率を出す" do
+      user = create(:user, :confirmed)
+      travel_to(now - 3.days) do
+        user.credit_transactions.create!(kind: "topup_purchase", delta: 1000,
+                                         amount_cents: 100_000, currency: "jpy", livemode: true)
+      end
+
+      unit = travel_to(now) { call }[:unit_economics]
+
+      expect(unit[:cost_breakdown][:revenue_jpy]).to eq(100_000)
+      expect(unit[:gross_margin]).to be_a(Numeric)
+    end
+  end
 end

@@ -56,7 +56,9 @@ module Admin
           stripe_fee: fee,
           image: image,
           text: text,
-          infra: infra
+          infra: infra,
+          # インフラ費は使った量ではなく月額の見積り。何ヶ月ぶんを足したかを添える
+          infra_months: @infra_months
         },
         profit: revenue - estimated_cost,
         margin: revenue.positive? ? ((revenue - estimated_cost).fdiv(revenue) * 100).round(1) : nil,
