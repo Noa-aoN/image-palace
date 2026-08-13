@@ -46,7 +46,8 @@ module Admin
         users: users_summary,
         revenue: revenue_summary,
         retention: retention_summary,
-        unit_economics: unit_economics
+        unit_economics: unit_economics,
+        credit_economics: credit_economics
       }
     end
 
@@ -225,6 +226,93 @@ module Admin
         # インフラ費は使った量ではなく月額の見積り。期間が何ヶ月ぶんかで変わる
         infra_months: finance[:cost][:infra_months]
       }
+    end
+
+    # クレジットの出入りと、いま抱えているぶん。
+    #
+    # 台帳（credit_transactions）を唯一の出どころにする。残高の表から数え直すと、
+    # 「配った量」と「使われた量」が別の数え方になって合わなくなる。
+    #
+    # **未使用の残高を「負債」と書かない。** 会計上そう扱えるかは別の判断で、
+    # ここは経営の指標として「まだ提供していないぶん」を見るための数字。
+    def credit_economics
+      flows = ledger_flows
+      consumed = flows[:consumed]
+      unit_cost = credit_unit_cost(consumed)
+      outstanding = outstanding_credits
+
+      {
+        issued: flows[:issued],
+        consumed: consumed,
+        expired: flows[:expired],
+        # いま使われずに残っているぶん（期間ではなく、いまの断面）
+        outstanding: outstanding[:total],
+        outstanding_free: outstanding[:free],
+        outstanding_paid: outstanding[:paid],
+        # 1クレジットあたりの実原価。AI の変動費を、その期間に使われた枚数で割る
+        cost_per_credit_jpy: unit_cost,
+        # まだ提供していないぶんの原価の見当。**負債額ではない**
+        estimated_unfulfilled_cost_jpy: unit_cost && (outstanding[:total] * unit_cost).round,
+        expiring: expiring_credits,
+        # 期間の消費 ÷ 期間の発行。**同じクレジットの追跡ではない**（期間前に配ったぶんの
+        # 消費も分子に入る）ので、コホート単位の消化率とは別物。参考値として見る
+        consumption_to_issuance: ratio(consumed, flows[:issued])
+      }
+    end
+
+    # 台帳から、期間内の出入りをまとめて数える（1回の問い合わせ）
+    def ledger_flows
+      by_kind = CreditTransaction.where(created_at: @period.range).group(:kind).sum(:delta)
+      sum_of = ->(kinds) { kinds.sum { |kind| by_kind[kind].to_i } }
+
+      {
+        issued: credits(sum_of.call(%w[subscription_grant grant topup_purchase adjustment refund])),
+        consumed: credits(-sum_of.call(%w[consumption])),
+        expired: credits(-sum_of.call(%w[grant_expire subscription_expire]))
+      }
+    end
+
+    # いま使われずに残っているぶん。無料由来と有料由来に分ける。
+    # 期限切れは含めない（使えないものを「残っている」と数えない）
+    def outstanding_credits
+      by_kind = CreditGrant.active.group(:kind).sum(:remaining_points)
+      free = by_kind.slice(*FREE_GRANT_KINDS).values.sum
+      paid = by_kind.except(*FREE_GRANT_KINDS).values.sum
+      # 期限を持たない古い入れ物は有料由来（買い切り・月額の当月分）
+      legacy = User.sum(:subscription_credits) + User.sum(:topup_credits)
+
+      { total: credits(free + paid + legacy), free: credits(free), paid: credits(paid + legacy) }
+    end
+
+    # 無料で配ったぶん。回収の当てがないので、有料由来と混ぜない
+    FREE_GRANT_KINDS = %w[trial monthly_free campaign goodwill free_carryover].freeze
+
+    # 期限が近いぶん。3ヶ月の寿命だと、ここが積み上がると一気に失効する
+    def expiring_credits
+      active = CreditGrant.active
+      within = lambda do |days|
+        credits(active.where(expires_at: ..(@now + days.days)).sum(:remaining_points))
+      end
+
+      total = credits(active.sum(:remaining_points))
+      in_30 = within.call(30)
+
+      { within_7_days: within.call(7), within_30_days: in_30, share_of_outstanding: ratio(in_30, total) }
+    end
+
+    # 1クレジットあたりの実原価。AI の変動費だけを、その期間に使われた枚数で割る。
+    # インフラ費は使った量で変わらないので入れない（枚数で割ると意味が崩れる）
+    def credit_unit_cost(consumed)
+      return nil if consumed.nil? || consumed.zero?
+
+      finance = finance_for(@from, @to)
+      ai_cost = finance[:cost][:image][:jpy] + finance[:cost][:text][:jpy]
+      (ai_cost / consumed).round(2)
+    end
+
+    # ポイントを表示用のクレジットに直す（1cr = POINTS_PER_CREDIT pt）
+    def credits(points)
+      points.to_i.fdiv(::Billing::POINTS_PER_CREDIT).round(2)
     end
 
     # LTV。いまは「有料利用者1人あたりの売上 × 平均継続月数」で置く。

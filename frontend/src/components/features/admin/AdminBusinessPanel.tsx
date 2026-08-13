@@ -12,6 +12,7 @@ import type { AdminBusinessMetrics } from '@/types/admin'
 const yen = (value: number) => `¥${Math.round(value).toLocaleString()}`
 const num = (value: number) => value.toLocaleString()
 const pct = (value: number) => `${value}%`
+const cr = (value: number) => `${value.toLocaleString()} cr`
 
 /**
  * 経営の数字。
@@ -54,7 +55,15 @@ export function AdminBusinessPanel() {
     )
   }
 
-  const { active, engagement, users, revenue, retention, unit_economics: unit } = data
+  const {
+    active,
+    engagement,
+    users,
+    revenue,
+    retention,
+    unit_economics: unit,
+    credit_economics: credits,
+  } = data
   const measuredAt = new Date(data.generated_at)
   const measuredSince = data.measurement.last_seen_since
     ? new Date(data.measurement.last_seen_since)
@@ -218,6 +227,45 @@ export function AdminBusinessPanel() {
           emptyReason={unit.ltv.basis}
           reference={unit.ltv.reference}
           sub={unit.ltv.value_jpy === null ? undefined : unit.ltv.basis}
+        />
+      </Section>
+
+      <Section title="クレジット経済" note="配った量・使われた量・まだ提供していない量">
+        <MetricCard metric="creditsIssued" value={cr(credits.issued)} />
+        <MetricCard
+          metric="creditsConsumed"
+          value={cr(credits.consumed)}
+          sub={
+            credits.consumption_to_issuance === null
+              ? undefined
+              : `配ったぶんの ${pct(credits.consumption_to_issuance)}（同じ枚の追跡ではない）`
+          }
+        />
+        <MetricCard metric="creditsExpired" value={cr(credits.expired)} />
+        <MetricCard
+          metric="creditsOutstanding"
+          value={cr(credits.outstanding)}
+          sub={`無料 ${cr(credits.outstanding_free)} / 有料 ${cr(credits.outstanding_paid)}`}
+        />
+        <MetricCard
+          metric="creditUnitCost"
+          value={credits.cost_per_credit_jpy === null ? null : yen(credits.cost_per_credit_jpy)}
+          empty="unavailable"
+          emptyReason="この期間に使われたクレジットが 0 枚"
+          sub={
+            credits.estimated_unfulfilled_cost_jpy === null
+              ? undefined
+              : `未使用ぶんの原価の見当 ${yen(credits.estimated_unfulfilled_cost_jpy)}`
+          }
+        />
+        <MetricCard
+          metric="creditsExpiringSoon"
+          value={cr(credits.expiring.within_30_days)}
+          sub={
+            credits.expiring.share_of_outstanding === null
+              ? `7日以内 ${cr(credits.expiring.within_7_days)}`
+              : `未使用の ${pct(credits.expiring.share_of_outstanding)}・7日以内 ${cr(credits.expiring.within_7_days)}`
+          }
         />
       </Section>
 
