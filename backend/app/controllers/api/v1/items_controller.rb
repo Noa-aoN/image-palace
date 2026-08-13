@@ -49,7 +49,8 @@ module Api
             page: page,
             per: per,
             total_count: total_count,
-            total_pages: total_pages
+            total_pages: total_pages,
+            card_list: card_list_meta
           }
         }
       end
@@ -451,7 +452,10 @@ module Api
       def sort_clause
         column = SORTABLE_COLUMNS.fetch(params[:sort], "items.created_at")
         direction = SORT_DIRECTIONS.include?(params[:direction]) ? params[:direction] : "desc"
-        Arel.sql("#{column} #{direction}, items.created_at DESC")
+        # 最後に id を置いて、同着の順を決め切る。
+        # 同じ時刻・同じ名前のカードが並ぶと、LIMIT/OFFSET のページごとに順が変わり得て、
+        # **同じカードが2ページに出て、別のカードがどこにも出ない**ことが起こる
+        Arel.sql("#{column} #{direction}, items.created_at DESC, items.id DESC")
       end
 
       # 1始まり。不正値・0以下は 1 に丸める
@@ -807,8 +811,29 @@ module Api
         end
       end
 
+      # 一覧の並べ方。**カードごとではなく1回だけ返す**（全カードで同じ設定のため）。
+      #
+      # 画面は blocks の順にそのまま積む。これを渡していなかったころは、
+      # 絵と項目の並びがカード側に固定で書かれていて、
+      # **設定で「イメージ」を外しても絵が出続け、項目を並べ替えても順が変わらなかった。**
+      def card_list_meta
+        blocks = card_list_layout.filter_map do |row|
+          key = row["key"].to_s
+          next unless row["visible"]
+          # 名前はカードの見出しとして別に描く。名前に使っている項目も下に重ねない
+          next if key == "title" || key == headline_key
+
+          key
+        end
+
+        { blocks: blocks, image: blocks.include?("image") }
+      end
+
+      # 設定の行がまだ無い人にも既定の並びを使う。
+      # 空で返すと、一度も設定を触っていない人のカードから絵が消える
       def card_list_layout
-        @card_list_layout ||= (current_user.setting&.card_list_layout_entries || [])
+        @card_list_layout ||=
+          (current_user.setting&.card_list_layout_entries || ::Setting::DEFAULT_CARD_LIST_LAYOUT)
       end
 
       # 項目の呼び名。**カード側からは引かない。**

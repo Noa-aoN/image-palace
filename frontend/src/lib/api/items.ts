@@ -62,6 +62,11 @@ export interface PaginationMeta {
   per: number
   total_count: number
   total_pages: number
+  /**
+   * 一覧の並べ方。カードごとではなく一覧に1回だけ付く（全カードで同じ設定のため）。
+   * blocks の順にそのまま積む。'image' は絵、それ以外は list_fields の項目。
+   */
+  card_list?: { blocks: string[]; image: boolean }
 }
 
 export interface ItemsPage {
