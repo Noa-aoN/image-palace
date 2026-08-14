@@ -48,7 +48,8 @@ module Admin
         retention: retention_summary,
         unit_economics: unit_economics,
         credit_economics: credit_economics,
-        activity_retention: activity_retention
+        activity_retention: activity_retention,
+        regeneration: regeneration
       }
     end
 
@@ -191,6 +192,47 @@ module Admin
         churn_rate: at_start.positive? ? ratio(canceled, at_start) : nil,
         note: at_start.zero? ? "期間の初めに有料契約が無いため、解約率は出せない" : nil
       }
+    end
+
+    # 作り直し。
+    #
+    # **作り直しが多い語は、指示が効いていない語。** 1枚ぶんの原価が丸ごと余分にかかる。
+    # どの語で何度も作り直しているかが分かれば、指示の作り方を直せる。
+    #
+    # 数えるのは「そのカードで使った絵の数」。2つ以上あるカードは作り直している。
+    def regeneration
+      counts = ItemMediaGeneration.group(:item_id).count
+      redone = counts.count { |_, n| n > 1 }
+      extra = counts.values.sum { |n| n - 1 }
+
+      {
+        # 記録を持つカード（この仕組みを入れた日から積まれる）
+        tracked_items: counts.size,
+        # 1回でも作り直したカード
+        redone_items: redone,
+        # 余分に作った枚数の合計（そのぶん原価が出ている）
+        extra_images: extra,
+        extra_cost_jpy: extra_cost_jpy(extra),
+        share_of_tracked: ratio(redone, counts.size),
+        # いちばん作り直している語（指示を直す手がかり）
+        top_items: top_redone(counts)
+      }
+    end
+
+    def extra_cost_jpy(extra)
+      unit = credit_economics_cache[:cost_per_credit_jpy]
+      return nil if unit.nil? || extra.zero?
+
+      (unit * extra).round
+    end
+
+    # 上位5件。**誰のものかは出さない**（数字を見るのに要らない）
+    def top_redone(counts)
+      top = counts.select { |_, n| n > 1 }.sort_by { |_, n| -n }.first(5)
+      return [] if top.empty?
+
+      titles = Item.where(id: top.map(&:first)).pluck(:id, :title).to_h
+      top.map { |id, n| { title: titles[id].to_s, images: n } }
     end
 
     # 継続率（D1 / D7 / D30）。

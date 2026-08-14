@@ -538,6 +538,18 @@ export interface AdminBusinessMetrics {
     >
   }
   /**
+   * 作り直し。**作り直しが多い語は、指示が効いていない語。**
+   * 1枚ぶんの原価が丸ごと余分にかかる。
+   */
+  regeneration?: {
+    tracked_items: number
+    redone_items: number
+    extra_images: number
+    extra_cost_jpy: number | null
+    share_of_tracked: number | null
+    top_items: { title: string; images: number }[]
+  }
+  /**
    * クレジットの出入りと、いま抱えているぶん。
    * **未使用残高は「負債」ではない**（会計上そう扱えるかは別の判断）。
    */
