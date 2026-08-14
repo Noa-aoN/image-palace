@@ -1,4 +1,4 @@
-import type { Metadata } from 'next'
+import type { Metadata, Viewport } from 'next'
 import { Geist } from 'next/font/google'
 import Script from 'next/script'
 import './globals.css'
@@ -7,6 +7,7 @@ import { SettingsBootstrap } from '@/components/features/layout/SettingsBootstra
 import { CookieConsentBanner } from '@/components/features/consent/CookieConsentBanner'
 import { Analytics } from '@/components/features/consent/Analytics'
 import { SITE_URL, SITE_NAME, SITE_DESCRIPTION } from '@/lib/site'
+import { THEME_COLOR } from '@/lib/pwa/manifest'
 
 const geist = Geist({
   variable: '--font-geist-sans',
@@ -34,6 +35,18 @@ export const metadata: Metadata = {
     title: SITE_NAME,
     description: SITE_DESCRIPTION,
   },
+  // 端末に入れて使えるようにする。iOS はここを見て、上の帯と起動の見た目を決める
+  manifest: '/manifest.webmanifest',
+  appleWebApp: {
+    capable: true,
+    title: SITE_NAME,
+    statusBarStyle: 'default',
+  },
+}
+
+export const viewport: Viewport = {
+  themeColor: THEME_COLOR,
+  colorScheme: 'light',
 }
 
 export default function RootLayout({
