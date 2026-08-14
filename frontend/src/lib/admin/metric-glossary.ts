@@ -318,6 +318,24 @@ export const METRIC_GLOSSARY = {
     why: '習慣になったかを見る。ここが立つと、増やした人がそのまま積み上がる。',
     here: '30日経っていない人は母数に入れない。答えの出せる人がいなければ「計測中」と出す（0% とは書かない）。',
   },
+  redoneItems: {
+    name: '作り直したカード',
+    abbr: 'Redone',
+    fullName: 'Items with Regenerated Images',
+    meaning: '絵を2回以上作ったカードの数。',
+    formula: 'カードごとに使った絵の数を数え、2つ以上のものを数える。',
+    why: '作り直しが多い語は、**指示が効いていない語**。指示の作り方を直す手がかりになる。',
+    here: '記録はこの仕組みを入れた日から積まれる。それ以前の作り直しは残っていない。',
+  },
+  extraImages: {
+    name: '余分に作った枚数',
+    abbr: 'Extra Images',
+    fullName: 'Extra Generated Images',
+    meaning: '1枚で済んだはずのところを、何枚よけいに作ったか。',
+    formula: 'カードごとに（使った絵の数 − 1）を足す。',
+    why: 'そのぶん原価が丸ごと出ている。減らせば粗利がそのまま良くなる。',
+    here: '1枚あたりの実原価が出せるときは、円でも出す。',
+  },
 } as const satisfies Record<string, MetricDefinition>
 
 

@@ -64,6 +64,7 @@ export function AdminBusinessPanel() {
     unit_economics: unit,
     credit_economics: credits,
     activity_retention: retentionDays,
+    regeneration,
   } = data
   const measuredAt = new Date(data.generated_at)
   const measuredSince = data.measurement.last_seen_since
@@ -332,6 +333,46 @@ export function AdminBusinessPanel() {
       <CostBreakdown breakdown={unit.cost_breakdown} grossProfit={unit.gross_profit_jpy} />
 
       {unit.fx_headroom && <FxHeadroom fx={unit.fx_headroom} />}
+
+      {regeneration && regeneration.tracked_items > 0 && (
+        <Section
+          title="作り直し"
+          note="作り直しが多い語は、指示が効いていない語。そのぶん原価が余分に出ている"
+        >
+          <MetricCard
+            metric="redoneItems"
+            value={num(regeneration.redone_items)}
+            sub={
+              regeneration.share_of_tracked === null
+                ? `記録のあるカード ${num(regeneration.tracked_items)}枚`
+                : `記録のある ${num(regeneration.tracked_items)}枚の ${pct(regeneration.share_of_tracked)}`
+            }
+            reference={regeneration.tracked_items < 30}
+          />
+          <MetricCard
+            metric="extraImages"
+            value={num(regeneration.extra_images)}
+            sub={
+              regeneration.extra_cost_jpy === null
+                ? undefined
+                : `原価にして ${yen(regeneration.extra_cost_jpy)}`
+            }
+          />
+          {regeneration.top_items.length > 0 && (
+            <div className="rounded-xl border border-border bg-background p-4 sm:col-span-2">
+              <p className="text-sm text-muted-foreground">いちばん作り直している語</p>
+              <ul className="mt-2 space-y-1">
+                {regeneration.top_items.map((row) => (
+                  <li key={row.title} className="flex items-baseline justify-between gap-3 text-sm">
+                    <span className="min-w-0 truncate">{row.title}</span>
+                    <span className="shrink-0 tabular-nums text-muted-foreground">{row.images}枚</span>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
+        </Section>
+      )}
     </div>
   )
 }
