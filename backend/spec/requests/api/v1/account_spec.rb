@@ -23,6 +23,63 @@ RSpec.describe "Api::V1::Account", type: :request do
       expect(json_response["items"].map { |i| i["id"] }).to include(item.id)
     end
 
+    # 持ち出したいのは、まず自分で書いたもの。項目が抜けていると、
+    # **書いた内容の大半が持ち出せていない**ことになる
+    context "カードの項目" do
+      let(:item_type) { ItemType.find_or_create_by!(name: "term") { |t| t.label = "単語" } }
+      let(:item) { create(:item, user: user, item_type: item_type, title: "光合成") }
+
+      def write!(key, value_type, value)
+        definition = user.property_definitions.create!(item_type: item_type, key: key,
+                                                       label: key, value_type: value_type)
+        property = item.item_properties.create!(property_definition: definition)
+        property.typed_value = value
+        property.save!
+      end
+
+      def exported_properties
+        get "/api/v1/account/export", headers: headers
+        json_response["items"].find { |i| i["id"] == item.id }["properties"]
+      end
+
+      it "書いた項目を、呼び名と型ごと出す" do
+        write!("reading", "text", "こうごうせい")
+
+        expect(exported_properties).to include(
+          hash_including("key" => "reading", "label" => "reading",
+                          "value_type" => "text", "value" => "こうごうせい")
+        )
+      end
+
+      it "中身が2つある項目は、形のまま出す（読み込み直せる）" do
+        write!("note", "free_text", { "heading" => "覚え方", "body" => "葉が光を食べる" })
+
+        expect(exported_properties.first["value"]).to eq("heading" => "覚え方", "body" => "葉が光を食べる")
+      end
+
+      it "内部の目印は出さない（持ち出す人には意味が無い）" do
+        write!("scene", "free_image", { "heading" => "葉のなか", "prompt" => "葉緑体",
+                                         "status" => "completed", "shared_media_id" => 42 })
+
+        expect(exported_properties.first["value"]).not_to have_key("shared_media_id")
+        expect(exported_properties.first["value"]["prompt"]).to eq("葉緑体")
+      end
+
+      it "触っていない項目は出さない（空の行だけが並ばない）" do
+        definition = user.property_definitions.create!(item_type: item_type, key: "memo",
+                                                        label: "memo", value_type: "text")
+        item.item_properties.create!(property_definition: definition)
+
+        expect(exported_properties).to be_empty
+      end
+
+      it "切ってあるチェックは出す（**false は「書いていない」ではない**）" do
+        write!("done", "boolean", false)
+
+        expect(exported_properties.first["value"]).to be(false)
+      end
+    end
+
     it "他ユーザーのデータは含めない" do
       other = create(:user, :confirmed)
       create(:item, user: other, title: "他人のカード")
