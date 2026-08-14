@@ -35,9 +35,9 @@ class PropertyDefinition < ApplicationRecord
   DEFAULT_CATEGORY = "subject"
 
   CATEGORY_LABELS = {
-    "subject" => "その語のこと",
-    "mnemonic" => "覚えかた",
-    "admin" => "整理"
+    "subject" => "記憶要素",
+    "mnemonic" => "記憶術要素",
+    "admin" => "管理要素"
   }.freeze
 
   MAX_KEY_LENGTH = 40

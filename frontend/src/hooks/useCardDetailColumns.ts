@@ -81,6 +81,29 @@ function readFit(): boolean {
   return window.localStorage.getItem(FIT_KEY) === 'true'
 }
 
+/**
+ * 見出し語とイメージも、ほかの項目と同じ列に並べるか。
+ *
+ * 端末ごとに覚える（人によって画面の広さが違うので、揃える意味が薄い）。
+ */
+const LEAD_KEY = 'card-detail-lead-in-grid'
+
+function readLeadInGrid(): boolean {
+  if (typeof window === 'undefined') return false
+  return window.localStorage.getItem(LEAD_KEY) === 'true'
+}
+
+export function useCardDetailLeadInGrid() {
+  const value = useSyncExternalStore(subscribe, readLeadInGrid, () => false)
+
+  const change = useCallback((next: boolean) => {
+    window.localStorage.setItem(LEAD_KEY, String(next))
+    listeners.forEach((listener) => listener())
+  }, [])
+
+  return { leadInGrid: value, change }
+}
+
 export function useCardDetailFit() {
   const fit = useSyncExternalStore(
     subscribe,

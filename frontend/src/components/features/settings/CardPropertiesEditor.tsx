@@ -244,7 +244,7 @@ export function CardPropertiesEditor({
           {/* 役割を先に決める。**型より先に効く**（覚えかたの項目は、
               合っているかより思い出せるかで直すので、見分けが付く必要がある） */}
           <div className="space-y-1.5">
-            <Label>役割</Label>
+            <Label>大別</Label>
             <div className="flex flex-wrap gap-2">
               {PROPERTY_CATEGORIES.map((row) => {
                 const active = category === row.key
