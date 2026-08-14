@@ -191,6 +191,41 @@ RSpec.describe Images::SceneRewriteService do
       end
     end
 
+    # 中身が2つある項目は、そのまま文字にすると `{"heading"=>…}` が指示に混ざる
+    it "自由テキストからは、見出しと本文だけを渡す" do
+      note = define_property("scene_note", "覚え方", value_type: "free_text")
+      property = item.item_properties.create!(property_definition: note)
+      property.typed_value = { "heading" => "覚え方", "body" => "葉が光を食べる" }
+      property.save!
+      client = stub_chat({ options: [ { label: "案", scene_prompt: "a leaf" } ] }.to_json)
+
+      described_class.call(item: item, user: user, property_keys: [ "scene_note" ])
+
+      expect(client).to have_received(:chat) do |parameters:|
+        content = parameters[:messages].last[:content]
+        expect(content).to include("覚え方。葉が光を食べる")
+        expect(content).not_to include("heading")
+      end
+    end
+
+    it "自由イメージからは、段取り用の値を渡さない（絵の役に立たない）" do
+      scene = define_property("scene_1", "場面", value_type: "free_image")
+      property = item.item_properties.create!(property_definition: scene)
+      property.typed_value = { "heading" => "葉のなか", "prompt" => "葉緑体が光を受けている",
+                               "status" => "completed", "shared_media_id" => 42 }
+      property.save!
+      client = stub_chat({ options: [ { label: "案", scene_prompt: "a leaf" } ] }.to_json)
+
+      described_class.call(item: item, user: user, property_keys: [ "scene_1" ])
+
+      expect(client).to have_received(:chat) do |parameters:|
+        content = parameters[:messages].last[:content]
+        expect(content).to include("葉のなか。葉緑体が光を受けている")
+        expect(content).not_to include("shared_media_id")
+        expect(content).not_to include("completed")
+      end
+    end
+
     it "指定した項目が空なら断る" do
       define_property("note", "メモ")
 

@@ -893,7 +893,21 @@ module Api
         return compound_summary(entry, value) if value.is_a?(Hash)
 
         value = multiple == :first ? value.first : value.join("、") if value.is_a?(Array)
-        value.to_s.presence
+        text = value.to_s.presence
+        # Wikipedia は JSON の文字列で入っている。**そのまま出すと鍵と URL が一覧に並ぶ**
+        entry&.property_definition&.value_type == "wikipedia" ? wikipedia_summary(text) : text
+      end
+
+      # Wikipedia の値から、一覧に出す1行を取り出す。題名が無ければ冒頭で代える
+      def wikipedia_summary(raw)
+        return raw if raw.blank?
+
+        parsed = JSON.parse(raw)
+        return raw unless parsed.is_a?(Hash)
+
+        parsed["wikipedia_title"].presence || parsed["wikipedia_extract"].to_s.presence
+      rescue JSON::ParserError
+        raw
       end
 
       # 見出しと中身を持つ項目を、一覧の1行にする。
