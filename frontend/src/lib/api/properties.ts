@@ -84,20 +84,20 @@ export const PROPERTY_CATEGORIES: {
 }[] = [
   {
     key: 'subject',
-    label: 'その語のこと',
-    hint: 'その語そのものについて。読み・語源・品詞など。合っているかが大事',
+    label: '記憶要素',
+    hint: '覚える対象そのもの。読み・語源・品詞など。合っているかが大事',
     accent: 'var(--palace)',
   },
   {
     key: 'mnemonic',
-    label: '覚えかた',
+    label: '記憶術要素',
     hint: '思い出すための手立て。語呂合わせ・変換イメージなど。合っているかより、思い出せるかが大事',
     accent: '#9a6dd7',
   },
   {
     key: 'admin',
-    label: '整理',
-    hint: '自分のための管理。出典・メモ・注意点など',
+    label: '管理要素',
+    hint: '整理のためのもの。出典・メモ・注意点など',
     accent: '#6b7280',
   },
 ]
