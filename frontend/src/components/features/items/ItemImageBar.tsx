@@ -26,9 +26,14 @@ export function ItemImageBar({ item, onUpdated }: { item: Item; onUpdated: (item
     <div className="flex flex-wrap items-center justify-center gap-x-6 gap-y-2 border-t border-border/60 pt-2.5">
       <GenerationInfo item={item} />
       <PromptInfo item={item} onUpdated={onUpdated} />
-      {canRegenerate && <RegeneratePanel item={item} onUpdated={onUpdated} />}
-      {/* これまでに使った絵。作り直しの隣に置く（戻したいと思うのは作り直したあと） */}
+      {/*
+        これまでに使った絵。**指示の話と、作り直しの間**に置く。
+        「どんな指示で出たか」を見て、「前のほうが良かった」と思い、
+        それでも無ければ作り直す、という順で手が動く。
+        作り直しの後ろに置くと、戻す道があることに気づかないまま1枚使うことになる。
+      */}
       {canRegenerate && <ImageHistoryPanel item={item} onUpdated={onUpdated} />}
+      {canRegenerate && <RegeneratePanel item={item} onUpdated={onUpdated} />}
     </div>
   )
 }
