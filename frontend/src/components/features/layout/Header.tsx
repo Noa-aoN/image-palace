@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react'
 import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
-import { CircleUser, Castle, Coins, ScrollText, ShieldCheck, X } from 'lucide-react'
+import { CircleUser, Castle, Coins, Plus, ScrollText, ShieldCheck, X } from 'lucide-react'
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -26,6 +26,18 @@ import { NotificationsPanel } from '@/components/features/layout/NotificationsPa
 // 未読バッジの更新間隔。生成の完了に程よく気づける程度に抑える。
 const UNREAD_POLL_MS = 30_000
 
+/**
+ * 作れるもの。**サイドバーの「◯◯を作成」と同じ行き先**にそろえる。
+ * ここだけ別の道にすると、同じ操作をしたつもりで違う結果を受け取ることになる。
+ */
+const CREATE_ITEMS = [
+  { href: '/items/new', label: 'カードを作成' },
+  { href: '/views/new', label: 'キャンバスを作成' },
+  { href: '/spaces/new', label: 'スペースを作成' },
+  { href: '/boxes/new', label: 'ボックスを作成' },
+  { href: '/materials/new', label: 'マテリアルを作成' },
+]
+
 export function AppHeader() {
   const pathname = usePathname()
   const router = useRouter()
@@ -42,6 +54,7 @@ export function AppHeader() {
   const fetchUnreadCount = useNotificationsStore((s) => s.fetchUnreadCount)
   const [notificationsOpen, setNotificationsOpen] = useState(false)
   const [menuOpen, setMenuOpen] = useState(false)
+  const [createOpen, setCreateOpen] = useState(false)
   const isAuthPage = pathname?.startsWith('/login') || pathname?.startsWith('/signup') || pathname?.startsWith('/auth/')
   const isLandingPage = pathname === '/'
   const showUserMenu = hasHydrated && isAuthenticated
@@ -129,6 +142,43 @@ export function AppHeader() {
             <span className="text-xs text-muted-foreground">{CREDIT_UNIT_SHORT}</span>
           </Link>
         )}
+        {/*
+          作れるものの入口。
+          **アトリエを開いてから選ぶ**までの間に、作る気が薄れることがある。
+          どこにいても、作れるものが一覧で見えて、そのまま入れるようにする。
+
+          行き先はページ（右パネルではない）。**サイドバーの「◯◯を作成」と同じ道**に揃える。
+          同じ操作をしたつもりで違う結果を受け取ると、どちらが本当なのか分からなくなる。
+        */}
+        {showUserMenu && (
+          <DropdownMenu open={createOpen} onOpenChange={setCreateOpen}>
+            <DropdownMenuTrigger
+              className="rounded-full p-1.5 transition-colors hover:bg-black/5"
+              title="作る"
+              aria-label="作る"
+            >
+              <Plus size={20} style={{ color: 'var(--palace)' }} />
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" sideOffset={12} className="min-w-52 translate-x-4">
+              <DropdownMenuLabel>作る</DropdownMenuLabel>
+              <DropdownMenuGroup>
+                {CREATE_ITEMS.map((row) => (
+                  <DropdownMenuItem
+                    key={row.href}
+                    onClick={() => {
+                      setCreateOpen(false)
+                      router.push(row.href)
+                    }}
+                    className="cursor-pointer"
+                  >
+                    {row.label}
+                  </DropdownMenuItem>
+                ))}
+              </DropdownMenuGroup>
+            </DropdownMenuContent>
+          </DropdownMenu>
+        )}
+
         {/* お知らせ（生成結果・運営からの通知）。未読があれば巻物にバッジを付け、クリックで一覧パネルを開く */}
         {showUserMenu && (
           <button
