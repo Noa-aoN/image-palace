@@ -57,6 +57,9 @@ const WORK_POLL_MS = 3000
 export function DashboardContent() {
   const [summary, setSummary] = useState<ItemsSummary | null>(null)
   const [progress, setProgress] = useState<BatchProgress | null>(null)
+  // 作り始めた合図。**生成中が無いあいだは見張りを止めている**ので、
+  // 作った直後にここを進めて、もう一度見に行かせる
+  const [watchToken, setWatchToken] = useState(0)
   const billing = useBillingStore((s) => s.summary)
   const fetchBilling = useBillingStore((s) => s.fetchSummary)
   // 「作業状況」バッチ進捗：生成中の総数を基準に 成功/失敗/残り をリアルタイム表示。
@@ -114,7 +117,7 @@ export function DashboardContent() {
       if (timer) clearTimeout(timer)
       if (clearTimerRef.current) clearTimeout(clearTimerRef.current)
     }
-  }, [fetchBilling])
+  }, [fetchBilling, watchToken])
 
   // 読み込み中はスケルトンを表示する。新規ユーザー判定（total_count===0）の前に出すことで、
   // 「統計(…) → ようこそ画面」へ切り替わるレイアウトシフトを防ぐ。
@@ -285,7 +288,7 @@ export function DashboardContent() {
       */}
       <section className="space-y-3">
         <h2 className="text-sm font-semibold text-muted-foreground">クイック作成</h2>
-        <QuickCreateCard />
+        <QuickCreateCard onCreated={() => setWatchToken((token) => token + 1)} />
       </section>
 
       {/* 作業状況（生成中バッチの進捗、または失敗があるときだけ表示。3秒ポーリングで更新） */}
