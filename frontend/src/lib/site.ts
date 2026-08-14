@@ -12,8 +12,10 @@ export const SITE_DESCRIPTION = '単語をAI画像に変換して記憶できる
 
 // 認証が必要でクロールさせたくないパス（robots の Disallow と一致させる）。
 //
-// **使い方ガイドと読みものは、ここに入れない。** どちらもログイン不要で読める
-// 公開の読みもので、外から人が来る入口そのもの。閉じると、書いた意味が無くなる。
+// **`(app)` の下にあるページは、ここから外さない。** あの下は AuthGuard が
+// ログインへ送り、PageGate はサーバー側で何も描かない。外して案内だけ出しても、
+// 検索側から見えるのは中身の無い殻とログインへの転送になる。
+// 使い方ガイド・読みものを外に出したい場合は、置き場所のほうを先に動かすこと。
 export const PRIVATE_PATHS = [
   '/entrance',
   '/dashboard',
@@ -36,6 +38,8 @@ export const PRIVATE_PATHS = [
   '/agora',
   '/stadion',
   '/arena',
+  '/guide',
+  '/blog',
   '/account',
   '/billing',
   '/profile',

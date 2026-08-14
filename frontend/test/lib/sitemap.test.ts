@@ -1,24 +1,30 @@
 import { describe, it, expect } from 'vitest'
+import { existsSync } from 'node:fs'
+import { resolve } from 'node:path'
 import { sitemapEntries } from '@/app/sitemap'
 import { PRIVATE_PATHS } from '@/lib/site'
-import { GUIDE_SECTIONS } from '@/lib/guide/sections'
-import { ARTICLES } from '@/lib/blog/articles'
 
 // sitemap.xml は「見つけてほしいページ」の申告。
-// **載せ忘れたページは、書いても見つからない。**
+//
+// **案内した先が空では、載せないより悪い。** `(app)` の下は AuthGuard が
+// ログインへ送り、PageGate はサーバー側で何も描かないので、検索側から見えるのは
+// 中身の無い殻になる。載せてよいのは、あの下に無いページだけ。
 describe('サイトマップ', () => {
   const entries = sitemapEntries()
   const paths = entries.map((entry) => entry.path)
+  const appRoot = resolve(__dirname, '../../src/app')
 
-  it('書いた読みものを1件残らず載せる（記事を足したら自動で載る）', () => {
-    for (const article of ARTICLES) {
-      expect(paths).toContain(`/blog/${article.slug}`)
-    }
-  })
+  /** そのパスの置き場所が `(app)` の下か（＝ログインが要り、殻しか返らないか） */
+  function behindAppShell(path: string): boolean {
+    const segment = path === '/' ? '' : path
+    return ['page.tsx', '[slug]/page.tsx'].some((leaf) =>
+      existsSync(resolve(appRoot, `(app)${segment}/${leaf}`))
+    )
+  }
 
-  it('使い方ガイドを1件残らず載せる', () => {
-    for (const section of GUIDE_SECTIONS) {
-      expect(paths).toContain(`/guide/${section.slug}`)
+  it('アプリの殻の中にあるページは載せない（案内した先が空になる）', () => {
+    for (const path of paths) {
+      expect(behindAppShell(path), `${path} は (app) の下にある`).toBe(false)
     }
   })
 
@@ -27,6 +33,25 @@ describe('サイトマップ', () => {
       const blocked = PRIVATE_PATHS.some((priv) => path === priv || path.startsWith(`${priv}/`))
       expect(blocked, `${path} は Disallow 対象なのに載っている`).toBe(false)
     }
+  })
+
+  // 置き場所はルートグループで分かれている（`(auth)` など）。
+  // グループ名は URL に出ないので、どのグループにあっても見つけられるようにする
+  const ROUTE_GROUPS = ['', '(auth)']
+
+  it('載せると決めたページは、実際にそこに置いてある', () => {
+    for (const path of paths) {
+      const segment = path === '/' ? '' : path
+      const found = ROUTE_GROUPS.some((group) =>
+        // 先頭のスラッシュを落とす（残すと絶対パスとして扱われ、app の外を見に行く）
+        existsSync(resolve(appRoot, `${group}${segment}/page.tsx`.replace(/^\/+/, '')))
+      )
+      expect(found, `${path} のページが見当たらない`).toBe(true)
+    }
+  })
+
+  it('売り物がある以上、特定商取引法の表示は見つかる場所に置く', () => {
+    expect(paths).toContain('/tokushoho')
   })
 
   it('同じページを二度載せない', () => {
@@ -38,11 +63,5 @@ describe('サイトマップ', () => {
       expect(entry.priority).toBeGreaterThan(0)
       expect(entry.priority).toBeLessThanOrEqual(1)
     }
-  })
-
-  it('読みものには書いた日を添える（更新の頻度が伝わる）', () => {
-    const article = entries.find((entry) => entry.path === `/blog/${ARTICLES[0].slug}`)
-
-    expect(article?.lastModified).toBe(ARTICLES[0].date)
   })
 })
