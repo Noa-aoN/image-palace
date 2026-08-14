@@ -196,14 +196,36 @@ export function WikipediaProperty({
     <div className="space-y-2">
       {/* 見出し（絵と題）。ここは送らない。何の記事かは、本文のどこを読んでいても見えている */}
       <div className="flex gap-3">
-        {value.wikipedia_thumbnail_url && (
-          // eslint-disable-next-line @next/next/no-img-element -- Wikimedia の画像。こちらに保存しない
-          <img
-            src={value.wikipedia_thumbnail_url}
-            alt=""
-            className="h-14 w-14 shrink-0 rounded-lg border border-border object-cover sm:h-16 sm:w-16"
-          />
-        )}
+        {value.wikipedia_thumbnail_url &&
+          (value.wikipedia_url ? (
+            // 絵から記事へ行けるようにする。**出どころと、その画像の条件は記事の側にある**。
+            // こちらに保存しないのは、保存するとその条件をこちらで背負うことになるため
+            <a
+              href={value.wikipedia_url}
+              target="_blank"
+              rel="noopener noreferrer"
+              title={`${value.wikipedia_title}（Wikipedia）`}
+              className="shrink-0"
+            >
+              {/* eslint-disable-next-line @next/next/no-img-element -- Wikimedia の画像。こちらに保存しない */}
+              <img
+                src={value.wikipedia_thumbnail_url}
+                alt=""
+                loading="lazy"
+                referrerPolicy="no-referrer"
+                className="h-14 w-14 rounded-lg border border-border object-cover sm:h-16 sm:w-16"
+              />
+            </a>
+          ) : (
+            // eslint-disable-next-line @next/next/no-img-element -- Wikimedia の画像。こちらに保存しない
+            <img
+              src={value.wikipedia_thumbnail_url}
+              alt=""
+              loading="lazy"
+              referrerPolicy="no-referrer"
+              className="h-14 w-14 shrink-0 rounded-lg border border-border object-cover sm:h-16 sm:w-16"
+            />
+          ))}
         <p className="min-w-0 self-center text-sm font-medium">
           {value.wikipedia_title}
           {value.wikipedia_description && (

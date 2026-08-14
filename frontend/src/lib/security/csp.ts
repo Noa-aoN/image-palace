@@ -29,7 +29,22 @@ const API_ORIGINS = ['https://image-palace-api.fly.dev', 'https://api.imagepalac
  * 許可を広げるだけでは配信元は変わらないため、先に入れておいても副作用はない。
  */
 const CDN_ORIGIN = 'https://cdn.imagepalace.app'
-const IMAGE_ORIGINS = [...API_ORIGINS, CDN_ORIGIN, 'https://*.r2.cloudflarestorage.com']
+/**
+ * Wikipedia の記事の画像。**こちらには保存せず、あちらから直に出す。**
+ *
+ * 保存すると、その画像の条件（作者表示など）をこちらで背負うことになる。
+ * 直に出して記事へのリンクを添えれば、出どころと条件はあちらのページで辿れる。
+ *
+ * ここに載せるまで、画像は CSP に止められて**何も出ていなかった**（枠だけが残る）。
+ */
+const WIKIMEDIA_ORIGIN = 'https://upload.wikimedia.org'
+
+const IMAGE_ORIGINS = [
+  ...API_ORIGINS,
+  CDN_ORIGIN,
+  'https://*.r2.cloudflarestorage.com',
+  WIKIMEDIA_ORIGIN,
+]
 
 export function buildContentSecurityPolicy(): string {
   return [
