@@ -45,7 +45,8 @@ module Api
 
       def export_items
         current_user.items
-                    .includes(:item_type, :meanings, :tags, MEDIA_INCLUDES)
+                    .includes(:item_type, :meanings, :tags,
+                              { item_properties: :property_definition }, MEDIA_INCLUDES)
                     .order(:created_at)
                     .map do |item|
           {
@@ -55,8 +56,29 @@ module Api
             generation_status: item.generation_status,
             meaning: item.primary_meaning&.definition,
             tags: item.tags.map(&:name),
+            # 自分で書いた項目。**持ち出したいのは、まずこれ**
+            properties: export_properties(item),
             image_url: serialize_media(item.primary_media)&.dig(:url),
             created_at: item.created_at
+          }
+        end
+      end
+
+      # カードの項目。値は入っている形のまま出す（読み込み直せることを優先する）。
+      # 段取り用の内部の目印（絵の実体の id）は、持ち出す人には意味が無いので落とす
+      def export_properties(item)
+        item.item_properties.filter_map do |property|
+          definition = property.property_definition
+          next if definition.nil?
+
+          value = property.typed_value
+          next if value.nil? || (value.respond_to?(:empty?) && value.empty?)
+
+          {
+            key: definition.key,
+            label: definition.label,
+            value_type: definition.value_type,
+            value: value.is_a?(Hash) ? value.except("shared_media_id") : value
           }
         end
       end
