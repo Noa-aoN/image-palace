@@ -15,7 +15,9 @@ export const SITE_DESCRIPTION = '単語をAI画像に変換して記憶できる
 // **`(app)` の下にあるページは、ここから外さない。** あの下は AuthGuard が
 // ログインへ送り、PageGate はサーバー側で何も描かない。外して案内だけ出しても、
 // 検索側から見えるのは中身の無い殻とログインへの転送になる。
-// 使い方ガイド・読みものを外に出したい場合は、置き場所のほうを先に動かすこと。
+//
+// 使い方ガイドと読みものは `(public)` へ移した（#683）ので、ここには入れない。
+// あちらは門を通さず、本文がそのまま HTML で返る。
 export const PRIVATE_PATHS = [
   '/entrance',
   '/dashboard',
@@ -38,8 +40,6 @@ export const PRIVATE_PATHS = [
   '/agora',
   '/stadion',
   '/arena',
-  '/guide',
-  '/blog',
   '/account',
   '/billing',
   '/profile',

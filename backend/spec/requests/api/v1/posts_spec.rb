@@ -13,6 +13,44 @@ RSpec.describe "運営からの読みもの", type: :request do
     }.merge(attrs))
   end
 
+  # 外に向けて書いた文章に門を置くと、中の人にしか届かない。
+  # ここに載るのは既に公開したものだけなので、読むのにログインは要らない
+  describe "ログインしていない人" do
+    it "公開済みの一覧を読める" do
+      create_post(slug: "open", title: "公開")
+
+      get "/api/v1/posts"
+
+      expect(response).to have_http_status(:ok)
+      expect(json_response["posts"].map { |p| p["slug"] }).to eq([ "open" ])
+    end
+
+    it "公開済みの本文を読める" do
+      create_post(slug: "open", title: "公開")
+
+      get "/api/v1/posts/open"
+
+      expect(response).to have_http_status(:ok)
+      expect(json_response["body"]).to be_present
+    end
+
+    it "下書きは読めない（公開前のものが外に出ない）" do
+      create_post(slug: "draft", title: "下書き", published_at: nil)
+
+      get "/api/v1/posts"
+      expect(json_response["posts"]).to be_empty
+
+      get "/api/v1/posts/draft"
+      expect(response).to have_http_status(:not_found)
+    end
+
+    it "書く側には触れない（運営だけの口）" do
+      get "/api/v1/admin/posts"
+
+      expect(response).to have_http_status(:unauthorized)
+    end
+  end
+
   describe "読む側" do
     it "公開済みだけ返す" do
       create_post(slug: "open", title: "公開")

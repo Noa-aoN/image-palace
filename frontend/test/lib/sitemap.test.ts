@@ -3,6 +3,8 @@ import { existsSync } from 'node:fs'
 import { resolve } from 'node:path'
 import { sitemapEntries } from '@/app/sitemap'
 import { PRIVATE_PATHS } from '@/lib/site'
+import { GUIDE_SECTIONS } from '@/lib/guide/sections'
+import { ARTICLES } from '@/lib/blog/articles'
 
 // sitemap.xml は「見つけてほしいページ」の申告。
 //
@@ -14,17 +16,39 @@ describe('サイトマップ', () => {
   const paths = entries.map((entry) => entry.path)
   const appRoot = resolve(__dirname, '../../src/app')
 
-  /** そのパスの置き場所が `(app)` の下か（＝ログインが要り、殻しか返らないか） */
-  function behindAppShell(path: string): boolean {
+  // 置き場所はルートグループで分かれている。グループ名は URL に出ないので、
+  // どのグループにあっても見つけられるようにする
+  const ROUTE_GROUPS = ['', '(auth)', '(public)']
+
+  /** そのパスを描くファイル。決め打ちのページか、`[slug]` のどちらか */
+  function pageFileIn(group: string, path: string): string | null {
     const segment = path === '/' ? '' : path
-    return ['page.tsx', '[slug]/page.tsx'].some((leaf) =>
-      existsSync(resolve(appRoot, `(app)${segment}/${leaf}`))
-    )
+    // 先頭のスラッシュを落とす（残すと絶対パスとして扱われ、app の外を見に行く）
+    const own = `${group}${segment}/page.tsx`.replace(/^\/+/, '')
+    if (existsSync(resolve(appRoot, own))) return own
+
+    const parent = segment.slice(0, segment.lastIndexOf('/'))
+    const bySlug = `${group}${parent}/[slug]/page.tsx`.replace(/^\/+/, '')
+    return existsSync(resolve(appRoot, bySlug)) ? bySlug : null
   }
+
+  function pageFileFor(path: string): string | null {
+    for (const group of ROUTE_GROUPS) {
+      const found = pageFileIn(group, path)
+      if (found) return found
+    }
+    return null
+  }
+
+  it('載せると決めたページは、実際にそこに置いてある', () => {
+    for (const path of paths) {
+      expect(pageFileFor(path), `${path} のページが見当たらない`).not.toBeNull()
+    }
+  })
 
   it('アプリの殻の中にあるページは載せない（案内した先が空になる）', () => {
     for (const path of paths) {
-      expect(behindAppShell(path), `${path} は (app) の下にある`).toBe(false)
+      expect(pageFileIn('(app)', path), `${path} は (app) の下にある`).toBeNull()
     }
   })
 
@@ -35,19 +59,22 @@ describe('サイトマップ', () => {
     }
   })
 
-  // 置き場所はルートグループで分かれている（`(auth)` など）。
-  // グループ名は URL に出ないので、どのグループにあっても見つけられるようにする
-  const ROUTE_GROUPS = ['', '(auth)']
-
-  it('載せると決めたページは、実際にそこに置いてある', () => {
-    for (const path of paths) {
-      const segment = path === '/' ? '' : path
-      const found = ROUTE_GROUPS.some((group) =>
-        // 先頭のスラッシュを落とす（残すと絶対パスとして扱われ、app の外を見に行く）
-        existsSync(resolve(appRoot, `${group}${segment}/page.tsx`.replace(/^\/+/, '')))
-      )
-      expect(found, `${path} のページが見当たらない`).toBe(true)
+  it('書いた読みものを1件残らず載せる（記事を足したら自動で載る）', () => {
+    for (const article of ARTICLES) {
+      expect(paths).toContain(`/blog/${article.slug}`)
     }
+  })
+
+  it('使い方ガイドを1件残らず載せる', () => {
+    for (const section of GUIDE_SECTIONS) {
+      expect(paths).toContain(`/guide/${section.slug}`)
+    }
+  })
+
+  it('読みものには書いた日を添える（更新の頻度が伝わる）', () => {
+    const article = entries.find((entry) => entry.path === `/blog/${ARTICLES[0].slug}`)
+
+    expect(article?.lastModified).toBe(ARTICLES[0].date)
   })
 
   it('売り物がある以上、特定商取引法の表示は見つかる場所に置く', () => {
