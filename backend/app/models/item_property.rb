@@ -9,6 +9,8 @@ class ItemProperty < ApplicationRecord
   belongs_to :item
   belongs_to :property_definition
 
+  # 自由な指示の上限。長い文はそのまま費用と待ち時間になる
+  MAX_FREE_IMAGE_PROMPT = 500
   MAX_TEXT_LENGTH = 2_000
   MAX_LIST_SIZE = 50
 
@@ -28,6 +30,10 @@ class ItemProperty < ApplicationRecord
     property_definition&.value_type == "free_text"
   end
 
+  def free_image?
+    property_definition&.value_type == "free_image"
+  end
+
   # 画面・API から来た値を、型に合わせて整えてから入れる
   def typed_value=(input)
     self.value = { "v" => normalize(input) }
@@ -38,6 +44,7 @@ class ItemProperty < ApplicationRecord
     v = typed_value
     return v.nil? if boolean? # **false は「入っていない」ではない**
     return v.blank? || v.values.all?(&:blank?) if free_text?
+    return v.blank? if free_image?
 
     property_definition.list? ? v.empty? : v.blank?
   end
@@ -56,6 +63,8 @@ class ItemProperty < ApplicationRecord
       input.nil? || input == "" ? nil : ActiveModel::Type::Boolean.new.cast(input)
     when "free_text"
       normalize_free_text(input)
+    when "free_image"
+      normalize_free_image(input)
     else
       input.to_s.strip.presence
     end
@@ -76,6 +85,27 @@ class ItemProperty < ApplicationRecord
     { "heading" => heading, "body" => body }
   end
 
+  # 小見出し・指示・出来上がった絵・いまの状態を持つ。
+  # 絵そのものは shared_medias にあるので、ここは指し示すだけ
+  FREE_IMAGE_STATUSES = %w[pending processing completed failed].freeze
+
+  def normalize_free_image(input)
+    raw = input.is_a?(String) ? (JSON.parse(input) rescue nil) : input
+    return nil unless raw.is_a?(Hash)
+
+    heading = raw["heading"].to_s.strip
+    prompt = raw["prompt"].to_s.strip
+    return nil if heading.blank? && prompt.blank?
+
+    {
+      "heading" => heading,
+      "prompt" => prompt,
+      "shared_media_id" => raw["shared_media_id"].presence,
+      "status" => FREE_IMAGE_STATUSES.include?(raw["status"].to_s) ? raw["status"].to_s : "pending",
+      "error" => raw["error"].presence
+    }.compact
+  end
+
   def value_must_match_type
     v = typed_value
     case property_definition&.value_type
@@ -92,6 +122,8 @@ class ItemProperty < ApplicationRecord
       errors.add(:value, "は入 / 切で入力してください") unless [ true, false, nil ].include?(v)
     when "free_text"
       errors.add(:value, "が長すぎます") if v.is_a?(Hash) && v.values.any? { |t| t.to_s.length > MAX_TEXT_LENGTH }
+    when "free_image"
+      errors.add(:value, "の指示が長すぎます") if v.is_a?(Hash) && v["prompt"].to_s.length > MAX_FREE_IMAGE_PROMPT
     else
       errors.add(:value, "が長すぎます") if v.to_s.length > MAX_TEXT_LENGTH
     end

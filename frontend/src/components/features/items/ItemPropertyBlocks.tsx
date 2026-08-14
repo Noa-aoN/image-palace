@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { BookOpen, Check, Pencil, Plus, RefreshCw, Settings2, Sparkles, X } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Spinner } from '@/components/ui/spinner'
@@ -16,7 +16,9 @@ import {
 import { getItem } from '@/lib/api/items'
 import type { Item } from '@/types/item'
 import { WikipediaProperty } from './WikipediaProperty'
-import type { WikipediaValue, FreeTextValue } from '@/lib/api/properties'
+import type { WikipediaValue, FreeTextValue, FreeImageValue } from '@/lib/api/properties'
+import { generateFreeImage } from '@/lib/api/properties'
+import { CREDIT_UNIT_SHORT } from '@/lib/billing'
 
 /**
  * 項目の道具立て（未記入の数・まとめてAIで埋める・項目の設定への入口）。
@@ -266,6 +268,10 @@ export function PropertyEntryBlock({
   const isCheck = entry.value_type === 'boolean'
   // 自由欄。見出しも中身もこのカードで決める
   const isFree = entry.value_type === 'free_text'
+  // 自由イメージ。**カードの見出し語には縛られない絵**
+  const isFreeImage = entry.value_type === 'free_image'
+  const freeImage = (isFreeImage ? (entry.value as FreeImageValue | null) : null) ?? {}
+  const generating = freeImage.status === 'pending' || freeImage.status === 'processing'
   const freeValue = (isFree ? (entry.value as FreeTextValue | null) : null) ?? { heading: '', body: '' }
   // Wikipedia は手で書く項目ではない。引いてきた結果をそのまま持つ
   const isWikipedia = entry.value_type === 'wikipedia'
@@ -277,7 +283,9 @@ export function PropertyEntryBlock({
 
   const listValue = isList ? ((entry.value as string[] | null) ?? []) : []
   const scalarValue = isList ? '' : entry.value == null ? '' : String(entry.value)
-  const filled = isCheck
+  const filled = isFreeImage
+    ? Boolean(freeImage.heading || freeImage.prompt)
+    : isCheck
     ? entry.value != null
     : isFree
       ? Boolean(freeValue.heading || freeValue.body)
@@ -402,7 +410,15 @@ export function PropertyEntryBlock({
         </>
       }
     >
-      {isCheck && !editing ? (
+      {isFreeImage ? (
+        <FreeImageField
+          item={item}
+          entry={entry}
+          value={freeImage}
+          generating={generating}
+          onUpdated={onUpdated}
+        />
+      ) : isCheck && !editing ? (
         // チェックは一手で決まる。**編集に入って保存する形にすると、
         // 印を付けるだけのことに3回押させることになる**
         <div className="flex flex-wrap items-center gap-2">
@@ -625,4 +641,104 @@ function parseWikipedia(raw: string): WikipediaValue | null {
   } catch {
     return null
   }
+}
+
+/**
+ * 自由イメージ。**小見出しと、描いてほしいことを書いて作る。**
+ *
+ * カードの見出し語からは作らない。そのカードの中の一場面・対比・図解など、
+ * 見出し語1つでは表せないものを持つための欄。
+ *
+ * 1枚作るので、カードの絵と同じだけクレジットを使う。**押す前に分かるように書いておく。**
+ */
+function FreeImageField({
+  item,
+  entry,
+  value,
+  generating,
+  onUpdated,
+}: {
+  item: Item
+  entry: ItemPropertyEntry
+  value: FreeImageValue
+  generating: boolean
+  onUpdated: (item: Item) => void
+}) {
+  const [heading, setHeading] = useState(value.heading ?? '')
+  const [prompt, setPrompt] = useState(value.prompt ?? '')
+  const [busy, setBusy] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+
+  // 作っている間は、出来上がりを待って取り直す
+  useEffect(() => {
+    if (!generating) return
+    const timer = setInterval(async () => {
+      onUpdated(await getItem(item.id))
+    }, 3000)
+    return () => clearInterval(timer)
+  }, [generating, item.id, onUpdated])
+
+  const generate = async () => {
+    if (!prompt.trim() || busy) return
+    setBusy(true)
+    setError(null)
+    try {
+      await generateFreeImage(item.id, entry.property_definition_id, {
+        heading: heading.trim(),
+        prompt: prompt.trim(),
+      })
+      onUpdated(await getItem(item.id))
+    } catch (err: unknown) {
+      const axiosErr = err as { response?: { data?: { error?: string } } }
+      setError(axiosErr?.response?.data?.error ?? '作れませんでした。もう一度お試しください。')
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  return (
+    <div className="space-y-2">
+      {value.url && (
+        // eslint-disable-next-line @next/next/no-img-element
+        <img src={value.url} alt={value.heading ?? ''} loading="lazy" className="w-full rounded-lg" />
+      )}
+
+      {generating && (
+        <p className="flex items-center gap-2 text-sm text-muted-foreground">
+          <Spinner size={14} /> 作っています
+        </p>
+      )}
+
+      {value.status === 'failed' && (
+        <p className="text-sm text-destructive">{value.error ?? '作れませんでした'}</p>
+      )}
+
+      <input
+        value={heading}
+        onChange={(e) => setHeading(e.target.value)}
+        disabled={busy || generating}
+        placeholder="小見出し（例：葉のなか）"
+        className="w-full rounded-lg border border-input bg-background px-3 py-1.5 text-sm font-medium focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+      />
+      <textarea
+        value={prompt}
+        onChange={(e) => setPrompt(e.target.value)}
+        disabled={busy || generating}
+        rows={2}
+        placeholder="何を描くか（例：葉緑体が光を受けている場面）"
+        className="w-full resize-y rounded-lg border border-input bg-background px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+      />
+
+      <div className="flex flex-wrap items-center gap-2">
+        <Button size="sm" onClick={generate} disabled={busy || generating || !prompt.trim()}>
+          {busy ? <Spinner size={14} /> : <Sparkles size={14} className="mr-1" />}
+          {value.url ? '作り直す' : '作る'}
+        </Button>
+        {/* 押す前に分かるように書いておく。押してから減ったことに気づくのがいちばん困る */}
+        <span className="text-xs text-muted-foreground">1枚 1{CREDIT_UNIT_SHORT}</span>
+      </div>
+
+      <BlockError message={error} />
+    </div>
+  )
 }

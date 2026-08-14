@@ -723,9 +723,29 @@ module Api
             # 何のために持つ項目か（見分けが付くよう、画面で色と見出しに使う）
             category: definition.category,
             description: definition.description,
-            value: values[definition.id]&.typed_value || (definition.list? ? [] : nil)
+            value: property_entry_value(definition, values[definition.id])
           }
         end
+      end
+
+      # 項目1件ぶんの値。
+      # 自由イメージだけは、指し示している絵の URL を添える（画面はそれを出すだけでよい）
+      def property_entry_value(definition, property)
+        value = property&.typed_value
+        return (definition.list? ? [] : nil) if value.nil?
+        return value unless definition.value_type == "free_image"
+
+        value.merge("url" => free_image_url(value["shared_media_id"])).compact
+      end
+
+      def free_image_url(shared_media_id)
+        return nil if shared_media_id.blank?
+
+        shared = SharedMedia.find_by(id: shared_media_id)
+        return nil unless shared&.file&.attached?
+
+        blob = shared.thumb.attached? ? shared.thumb.blob : shared.file.blob
+        blob_available?(blob) ? media_url(blob) : nil
       end
 
       # 種別ごとの項目定義。一覧では1枚ごとに引くと枚数ぶん問い合わせが飛ぶので、
