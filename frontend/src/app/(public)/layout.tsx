@@ -1,5 +1,6 @@
 import { HubBackground } from '@/components/features/layout/HubBackground'
 import { SignedInSidebar } from '@/components/features/layout/SignedInSidebar'
+import { LandingFooter } from '@/components/features/layout/LandingFooter'
 
 /**
  * ログイン無しで読めるページの殻。
@@ -17,7 +18,12 @@ export default function PublicLayout({ children }: { children: React.ReactNode }
     <div className="relative isolate flex flex-1 overflow-hidden">
       <HubBackground />
       <SignedInSidebar />
-      <main className="flex-1 overflow-y-auto">{children}</main>
+      {/* 検索から来た人は、ここが最初のページになる。
+          規約・特商法・他の読みものへ辿れる足場を必ず置く */}
+      <main className="flex-1 overflow-y-auto">
+        {children}
+        <LandingFooter />
+      </main>
     </div>
   )
 }
