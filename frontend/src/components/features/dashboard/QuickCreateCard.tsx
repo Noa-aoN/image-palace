@@ -29,7 +29,17 @@ function parseTitles(raw: string): string[] {
  * スタイル・意味・タグなどはデフォルト設定（おまかせ／ユーザー設定値）で生成し、
  * 詳しく設定したい場合のみ作成ページ（/items/new）へ誘導する。
  */
-export function QuickCreateCard({ onCreated }: { onCreated?: () => void } = {}) {
+export function QuickCreateCard({
+  onCreated,
+  progress,
+}: {
+  onCreated?: () => void
+  /**
+   * いまの進み具合。**親が持っているものをそのまま受け取る。**
+   * ここで数え直すと、下の「作業状況」と食い違う。
+   */
+  progress?: { remaining: number; success: number; done: boolean } | null
+} = {}) {
   const upsertItem = useItemsStore((s) => s.upsertItem)
   const fetchBilling = useBillingStore((s) => s.fetchSummary)
   const [input, setInput] = useState('')
@@ -49,6 +59,12 @@ export function QuickCreateCard({ onCreated }: { onCreated?: () => void } = {}) 
       })
       .catch(() => {})
   }, [])
+
+  // 見張りが動き出したら、作り始めの一言は引っ込める。
+  // 残しておくと「作りはじめました」と「◯枚生成中」が並んで、同じことを2回言うことになる
+  useEffect(() => {
+    if (progress) setDoneCount(null)
+  }, [progress])
 
   const titles = parseTitles(input)
   const tooLong = titles.some((t) => t.length > MAX_TITLE_LENGTH)
@@ -126,6 +142,21 @@ export function QuickCreateCard({ onCreated }: { onCreated?: () => void } = {}) 
           {/* 消費の目安は釦の隣に置く。下に1行を足すとその分だけ縦に伸び、
               入力欄と行き先の間が遠くなる */}
           <p className="text-xs text-muted-foreground">1枚 1{CREDIT_UNIT_SHORT}・設定は既定のまま</p>
+
+          {/* いまどうなっているか。**費用の案内（変わらない）と行き先の間**に置く。
+              数えるのは親（下の作業状況と同じ数字）。ここで数え直すと食い違う */}
+          {progress && (
+            <p className="flex items-center gap-1.5 text-xs">
+              {progress.done ? (
+                <span className="text-muted-foreground">{progress.success}枚生成完了しました</span>
+              ) : (
+                <>
+                  <Spinner size={12} />
+                  <span className="text-muted-foreground">{progress.remaining}枚生成中</span>
+                </>
+              )}
+            </p>
+          )}
           {/* 行き先は常に出す。作ったあとにだけ出していたため、
               「一覧はどこか」を探すことになっていた */}
           <div className="ml-auto flex items-center gap-3 text-xs text-muted-foreground">
@@ -138,12 +169,12 @@ export function QuickCreateCard({ onCreated }: { onCreated?: () => void } = {}) 
           </div>
         </div>
         {error && <p className="text-sm text-destructive">{error}</p>}
-        {doneCount !== null && !error && (
-          /* 進み具合は**下の「作業状況」が持つ**（進捗の帯・成功/失敗/残り）。
-             ここでも数えると、同じことを2か所で数えて食い違う */
+        {doneCount !== null && !error && !progress && (
+          /* 見張りが動き出すまでの短い間だけ出す。
+             動き出したら、上の行（◯枚生成中）がそのまま引き継ぐ */
           <p className="flex items-center gap-2 text-sm text-muted-foreground">
             <Spinner size={14} />
-            {doneCount}枚を作りはじめました。下の「作業状況」で進み具合が出ます。
+            {doneCount}枚を作りはじめました
           </p>
         )}
       </CardContent>

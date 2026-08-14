@@ -288,13 +288,17 @@ export function DashboardContent() {
       */}
       <section className="space-y-3">
         <h2 className="text-sm font-semibold text-muted-foreground">クイック作成</h2>
-        <QuickCreateCard onCreated={() => setWatchToken((token) => token + 1)} />
+        <QuickCreateCard onCreated={() => setWatchToken((token) => token + 1)} progress={progress} />
       </section>
 
-      {/* 作業状況（生成中バッチの進捗、または失敗があるときだけ表示。3秒ポーリングで更新） */}
-      {(progress || summary.failed_count > 0) && (
-        <section className="space-y-3">
-          <h2 className="text-sm font-semibold text-muted-foreground">作業状況</h2>
+      {/*
+        作業状況。**いつも置いておく。**
+        動いているときだけ出していたころは、作るたびに区画が生まれて消え、
+        下にあるものが上下に動いた。**読んでいる途中で場所が変わるのがいちばん困る。**
+        何も動いていないときは、そう書いた1行だけを出す。
+      */}
+      <section className="space-y-3">
+        <h2 className="text-sm font-semibold text-muted-foreground">作業状況</h2>
           <Link
             href="/items"
             aria-label="作業状況を見る"
@@ -339,7 +343,7 @@ export function DashboardContent() {
                       )}
                     </div>
                   </>
-                ) : (
+                ) : summary.failed_count > 0 ? (
                   <div className="flex items-center justify-between gap-3">
                     <span className="text-sm">
                       <span className="text-destructive">失敗 {summary.failed_count} 件</span>
@@ -351,12 +355,22 @@ export function DashboardContent() {
                       style={{ color: 'var(--palace)' }}
                     />
                   </div>
+                ) : (
+                  /* 何も動いていないときも、区画そのものは残す。
+                     出したり消したりすると、下にあるものが上下に動く */
+                  <div className="flex items-center justify-between gap-3">
+                    <span className="text-sm text-muted-foreground">いま動いているものはありません</span>
+                    <ChevronRight
+                      size={16}
+                      className="transition-transform group-hover:translate-x-0.5"
+                      style={{ color: 'var(--palace)' }}
+                    />
+                  </div>
                 )}
               </CardContent>
             </Card>
           </Link>
         </section>
-      )}
 
       {/* 記憶資産・間取り図（横並びで全幅を使う） */}
       <div className="grid gap-6 lg:grid-cols-2 lg:items-stretch">
