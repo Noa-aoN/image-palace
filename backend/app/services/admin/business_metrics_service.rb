@@ -253,7 +253,31 @@ module Admin
         gross_profit_jpy: finance[:profit],
         gross_margin: finance[:margin],
         cost_breakdown: cost_breakdown(finance),
+        fx_headroom: fx_headroom(ai_cost),
         ltv: ltv(paying)
+      }
+    end
+
+    # 為替がどこまで動いても採算が持つか。
+    #
+    # 売る値段は円で、AI の原価はドルで決まる。**円安になるほど、
+    # 同じ値段のまま原価だけが上がる。** 気づくのが値上げの直前になると、
+    # 利用者には「急に上げた」ようにしか見えない。
+    def fx_headroom(ai_cost)
+      consumed = credit_economics_cache[:consumed]
+      result = ::Billing::FxSensitivity.call(consumed_credits: consumed, ai_cost_jpy: ai_cost)
+      tightest = result.tightest
+      return nil if tightest.nil?
+
+      {
+        fx_rate: result.fx_rate,
+        usd_per_credit: result.usd_per_credit.round(4),
+        # 実際に使われたぶんから割り出したか、設定値か
+        basis: result.basis,
+        tightest_plan: tightest[:name],
+        break_even_fx: tightest[:break_even_fx],
+        margin_floor_fx: tightest[:margin_floor_fx],
+        headroom_percent: tightest[:headroom_percent]
       }
     end
 
@@ -280,6 +304,14 @@ module Admin
     # **未使用の残高を「負債」と書かない。** 会計上そう扱えるかは別の判断で、
     # ここは経営の指標として「まだ提供していないぶん」を見るための数字。
     def credit_economics
+      credit_economics_cache
+    end
+
+    def credit_economics_cache
+      @credit_economics_cache ||= build_credit_economics
+    end
+
+    def build_credit_economics
       flows = ledger_flows
       consumed = flows[:consumed]
       unit_cost = credit_unit_cost(consumed)
