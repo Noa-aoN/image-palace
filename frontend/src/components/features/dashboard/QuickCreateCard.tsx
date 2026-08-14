@@ -5,7 +5,7 @@ import Link from 'next/link'
 import { Button } from '@/components/ui/button'
 import { Spinner } from '@/components/ui/spinner'
 import { Card, CardContent } from '@/components/ui/card'
-import { createItem } from '@/lib/api/items'
+import { createItem, getItem } from '@/lib/api/items'
 import { trackEvent } from '@/lib/analytics'
 import { getSettings } from '@/lib/api/settings'
 import { DEFAULT_MEANING_LEVEL } from '@/lib/meaning-levels'
@@ -36,6 +36,9 @@ export function QuickCreateCard() {
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [doneCount, setDoneCount] = useState<number | null>(null)
+  // いま作らせているカード。**できるまで動いているのが見える**ようにする
+  const [watching, setWatching] = useState<string[]>([])
+  const [ready, setReady] = useState(0)
   // 意味・タグの自動生成の既定（ユーザー設定）。CreateItemForm と同じ値。
   const [genMeaning, setGenMeaning] = useState(true)
   const [genTags, setGenTags] = useState(true)
@@ -49,6 +52,35 @@ export function QuickCreateCard() {
       .catch(() => {})
   }, [])
 
+  /**
+   * できたかどうかを追う。
+   *
+   * 「始めました」と出したきり動かないと、**進んでいるのか止まったのかが分からない**。
+   * 数えるのは作らせたぶんだけ。全部片付いたら見るのをやめる（ずっと叩き続けない）。
+   */
+  useEffect(() => {
+    if (watching.length === 0) return
+
+    let cancelled = false
+    const timer = setInterval(async () => {
+      const results = await Promise.all(
+        watching.map((id) => getItem(id).catch(() => null))
+      )
+      if (cancelled) return
+
+      const settled = results.filter(
+        (item) => item && (item.generation_status === 'completed' || item.generation_status === 'failed')
+      ).length
+      setReady(settled)
+      if (settled >= watching.length) setWatching([])
+    }, 2500)
+
+    return () => {
+      cancelled = true
+      clearInterval(timer)
+    }
+  }, [watching])
+
   const titles = parseTitles(input)
   const tooLong = titles.some((t) => t.length > MAX_TITLE_LENGTH)
 
@@ -60,7 +92,10 @@ export function QuickCreateCard() {
     }
     setError(null)
     setDoneCount(null)
+    setWatching([])
+    setReady(0)
     setSubmitting(true)
+    const created: { id: string }[] = []
     try {
       for (const title of titles) {
         // デフォルト生成: スタイルはおまかせ（省略）、キャッシュ利用、意味/タグは設定値。
@@ -70,6 +105,7 @@ export function QuickCreateCard() {
           generateTags: genTags,
         })
         upsertItem(item)
+        created.push(item)
       }
       trackEvent('create_items', {
         count: titles.length,
@@ -80,6 +116,8 @@ export function QuickCreateCard() {
       })
       fetchBilling()
       setDoneCount(titles.length)
+      setWatching(created.map((item) => item.id))
+      setReady(0)
       setInput('')
     } catch (err: unknown) {
       const axiosErr = err as { response?: { data?: { error?: string; errors?: string[] } } }
@@ -135,8 +173,15 @@ export function QuickCreateCard() {
         </div>
         {error && <p className="text-sm text-destructive">{error}</p>}
         {doneCount !== null && !error && (
-          <p className="text-sm text-muted-foreground">
-            {doneCount}枚の生成を始めました。
+          <p className="flex items-center gap-2 text-sm text-muted-foreground">
+            {watching.length > 0 ? (
+              <>
+                <Spinner size={14} />
+                {doneCount}枚を作っています（{ready}/{doneCount} 枚できました）
+              </>
+            ) : (
+              <>{doneCount}枚できました。</>
+            )}
           </p>
         )}
       </CardContent>
