@@ -4,7 +4,8 @@ import assert from 'node:assert/strict'
 import { SITE_URL, SITE_NAME, SITE_DESCRIPTION, PRIVATE_PATHS } from '../src/lib/site.ts'
 
 // 公開してインデックスさせたいパス。PRIVATE_PATHS に混入していないことを保証する。
-const PUBLIC_PATHS = ['/', '/login', '/signup', '/privacy', '/terms', '/tokushoho']
+// 使い方ガイドと読みものは `(public)` にあり、ログイン無しで本文が読める（#683）
+const PUBLIC_PATHS = ['/', '/login', '/signup', '/privacy', '/terms', '/tokushoho', '/guide', '/blog']
 
 test('SITE_URL は絶対 https URL である', () => {
   assert.match(SITE_URL, /^https:\/\//)

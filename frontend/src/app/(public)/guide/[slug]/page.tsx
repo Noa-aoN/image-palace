@@ -3,6 +3,7 @@ import Link from 'next/link'
 import { notFound } from 'next/navigation'
 import { ArrowLeft } from 'lucide-react'
 import { Button } from '@/components/ui/button'
+import { StartLink } from '@/components/features/shared/StartLink'
 import { NAV_SECTIONS, GLOBAL_ACTIONS } from '@/components/features/layout/nav-items'
 import { GUIDE_SECTIONS, getGuideSection, STEPS, FEATURE_GROUPS, FAQ, GLOSSARY, USE_CASES, type GuideSlug } from '@/lib/guide/sections'
 import { guideJsonLd, breadcrumbJsonLd } from '@/lib/seo/structured-data'
@@ -247,9 +248,10 @@ function UseCasesContent() {
 
       {/* 行き先は1つだけ。増やすと、どれを押せばよいか考えさせる */}
       <div className="pt-2">
-        <Link href="/items/new">
+        {/* 読みに来た人が、押した先で追い返されないように */}
+        <StartLink href="/items/new">
           <Button>この使い方で始める</Button>
-        </Link>
+        </StartLink>
       </div>
     </div>
   )

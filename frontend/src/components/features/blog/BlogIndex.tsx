@@ -16,7 +16,7 @@ import type { Post } from '@/types/post'
  * 読む側にとっては同じものなので、**日付順に混ぜて1本**にする。
  * 分けて並べると「どちらを見ればよいのか」を読む側に考えさせることになる。
  */
-export default function BlogPage() {
+export function BlogIndex() {
   const [columnPosts, setColumnPosts] = useState<Post[]>([])
   const [error, setError] = useState(false)
 
