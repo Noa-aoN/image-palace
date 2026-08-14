@@ -27,7 +27,9 @@ plans_data.each do |data|
     price_cents: data[:price_cents],
     currency: "jpy",
     credits_per_period: data[:credits_per_period],
-    active: true
+    # 並べるかどうかも Catalog が決める。ここで true に固定していたころは、
+    # **DB で外しても次のデプロイの seed で戻っていた**（本番は毎回 seed が走る）
+    active: data.fetch(:active, true)
   )
 end
 
