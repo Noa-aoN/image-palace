@@ -138,6 +138,8 @@ Rails.application.routes.draw do
           get :navigation
           delete :bulk_destroy
         end
+        # 自由な小見出しと、自由な指示で作る絵（項目ごと）
+        post "properties/:property_definition_id/free_image", to: "free_images#create"
         # これまでに使った絵。**新しく作らない**（既にある絵を付け替えるだけ）
         resources :media_generations, only: [ :index, :destroy ] do
           member { post :apply }
