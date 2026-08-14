@@ -218,17 +218,23 @@ export default function ItemDetailPage() {
       <div className="relative">
         {item.media?.url && !imgError ? (
           <div
-            className="relative w-full overflow-hidden rounded-lg bg-muted"
+            ref={fitRef}
+            className={`relative overflow-hidden rounded-lg bg-muted ${
+              fitHeight ? 'flex w-full justify-center' : 'w-full'
+            }`}
             style={item.media.blur ? { backgroundImage: `url("${item.media.blur}")`, backgroundSize: 'cover', backgroundPosition: 'center' } : undefined}
           >
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img
               src={item.media.url}
               alt={item.title}
-              className={`w-full rounded-lg ${fitHeight ? 'object-contain' : 'object-cover'} ${
-                regenerating ? REGENERATING_IMAGE_CLASS : ''
-              } ${veiled ? SAFEGUARD_IMAGE_CLASS : 'cursor-zoom-in'}`}
-              // 収めるときは、切らずに縮める（切ると何の絵か分からなくなる）
+              className={`rounded-lg ${
+                fitHeight ? 'h-auto w-auto max-w-full object-contain' : 'w-full object-cover'
+              } ${regenerating ? REGENERATING_IMAGE_CLASS : ''} ${
+                veiled ? SAFEGUARD_IMAGE_CLASS : 'cursor-zoom-in'
+              }`}
+              // 収めるときは**比率を保ったまま高さで決める**。
+              // 幅を張ったままだと縦長の絵が入りきらない（左右に余白ができてよい）
               style={fitHeight ? { maxHeight: fitHeight } : undefined}
               decoding="async"
               fetchPriority="high"
