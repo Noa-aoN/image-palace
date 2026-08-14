@@ -3,6 +3,7 @@ import Link from 'next/link'
 import { notFound } from 'next/navigation'
 import { ArrowLeft, Clock } from 'lucide-react'
 import { ARTICLES, getArticle, type ArticleBlock } from '@/lib/blog/articles'
+import { articleJsonLd, breadcrumbJsonLd } from '@/lib/seo/structured-data'
 
 export function generateStaticParams() {
   return ARTICLES.map((a) => ({ slug: a.slug }))
@@ -12,7 +13,21 @@ export async function generateMetadata({ params }: { params: Promise<{ slug: str
   const { slug } = await params
   const article = getArticle(slug)
   if (!article) return { title: 'コラム' }
-  return { title: article.title, description: article.excerpt }
+
+  return {
+    title: article.title,
+    description: article.excerpt,
+    // 同じ記事が別の URL でも読める形にしない（検索から見て重複になる）
+    alternates: { canonical: `/blog/${article.slug}` },
+    openGraph: {
+      type: 'article',
+      title: article.title,
+      description: article.excerpt,
+      url: `/blog/${article.slug}`,
+      publishedTime: article.date,
+      tags: article.tags,
+    },
+  }
 }
 
 function Block({ block }: { block: ArticleBlock }) {
@@ -46,8 +61,22 @@ export default async function ArticlePage({ params }: { params: Promise<{ slug: 
   const article = getArticle(slug)
   if (!article) notFound()
 
+  // 静的な定数のみ埋め込む（利用者の入力は入らないため XSS の経路にならない）
+  const jsonLd = [
+    articleJsonLd(article),
+    breadcrumbJsonLd([
+      { name: 'ホーム', path: '/' },
+      { name: 'コラム', path: '/blog' },
+      { name: article.title, path: `/blog/${article.slug}` },
+    ]),
+  ]
+
   return (
     <article className="mx-auto max-w-7xl px-6 py-12">
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
+      />
       {/* 外枠は全幅、本文は読みやすい幅に制限 */}
       <div className="mx-auto max-w-2xl">
       <Link href="/blog" className="inline-flex items-center gap-1 text-sm text-muted-foreground transition-colors hover:text-foreground">
