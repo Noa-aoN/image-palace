@@ -138,6 +138,10 @@ Rails.application.routes.draw do
           get :navigation
           delete :bulk_destroy
         end
+        # これまでに使った絵。**新しく作らない**（既にある絵を付け替えるだけ）
+        resources :media_generations, only: [ :index, :destroy ] do
+          member { post :apply }
+        end
         # 意味・説明はカード1枚に複数ぶら下がる。並び替えは一括で受ける
         resources :meanings, only: [ :create, :update, :destroy ] do
           collection { patch :reorder }

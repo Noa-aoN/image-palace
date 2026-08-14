@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_08_13_235534) do
+ActiveRecord::Schema[8.1].define(version: 2026_08_14_015334) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
   enable_extension "pg_trgm"
@@ -309,6 +309,19 @@ ActiveRecord::Schema[8.1].define(version: 2026_08_13_235534) do
     t.index ["created_at"], name: "index_image_usages_on_created_at"
     t.index ["model", "created_at"], name: "index_image_usages_on_model_and_created_at"
     t.index ["user_id"], name: "index_image_usages_on_user_id"
+  end
+
+  create_table "item_media_generations", id: :uuid, default: -> { "gen_random_uuid()" }, force: :cascade do |t|
+    t.datetime "created_at", null: false
+    t.uuid "item_id", null: false
+    t.string "model"
+    t.text "prompt"
+    t.uuid "shared_media_id", null: false
+    t.datetime "updated_at", null: false
+    t.datetime "used_at", null: false
+    t.index ["item_id", "shared_media_id"], name: "index_item_media_generations_on_item_id_and_shared_media_id", unique: true
+    t.index ["item_id", "used_at"], name: "index_item_media_generations_on_item_id_and_used_at"
+    t.index ["shared_media_id"], name: "index_item_media_generations_on_shared_media_id"
   end
 
   create_table "item_properties", id: :uuid, default: -> { "gen_random_uuid()" }, force: :cascade do |t|
@@ -1128,6 +1141,8 @@ ActiveRecord::Schema[8.1].define(version: 2026_08_13_235534) do
   add_foreign_key "campaign_redemptions", "users"
   add_foreign_key "credit_grants", "users"
   add_foreign_key "credit_transactions", "users", on_delete: :cascade
+  add_foreign_key "item_media_generations", "items"
+  add_foreign_key "item_media_generations", "shared_medias"
   add_foreign_key "item_properties", "items"
   add_foreign_key "item_properties", "property_definitions"
   add_foreign_key "item_reviews", "items"

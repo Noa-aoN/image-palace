@@ -143,6 +143,12 @@ class GenerateImageJob < ApplicationJob
 
     item.medias.where.not(id: media.id).destroy_all
     media.file.attach(shared_media.file.blob)
+    # どの絵を使ったかを残す。**絵は増やさない**（行を1つ足すだけ）。
+    # ここを残していなかったので、作り直すと前の絵へ戻る道が無かった
+    ItemMediaGeneration.record!(
+      item: item, shared_media: shared_media,
+      prompt: shared_media.normalized_prompt, model: shared_media.metadata["model"]
+    )
     # 事前生成済みサムネがあれば参照（CDN 直配信用）。無い古いキャッシュは未添付のままで OK。
     media.thumb.attach(shared_media.thumb.blob) if shared_media.thumb.attached?
   end

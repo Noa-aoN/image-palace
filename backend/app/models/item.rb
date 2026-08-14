@@ -14,6 +14,8 @@ class Item < ApplicationRecord
   has_many :item_properties, dependent: :destroy
   has_many :item_reviews, dependent: :destroy
   has_many :medias, dependent: :destroy
+  # これまでに使った絵の記録（絵そのものは shared_medias にある）
+  has_many :item_media_generations, dependent: :destroy
   has_many :box_items, dependent: :destroy
   has_many :boxes, through: :box_items
   has_many :box_entries, as: :entry, dependent: :destroy
