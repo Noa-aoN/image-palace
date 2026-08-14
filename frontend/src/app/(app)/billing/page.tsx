@@ -21,6 +21,7 @@ import {
   TIER_NOTES,
   SUBSCRIPTION_VALIDITY,
   TOPUP_VALIDITY,
+  monthlyPace,
   formatYen,
   unitPrice,
   discountPercent,
@@ -369,6 +370,10 @@ export default function BillingPage() {
                         {/* 買い切りは繰り越すが無期限ではない。期限を出さないと、
                             ある日いきなり減ったように見える */}
                         <span className="block text-xs text-muted-foreground">{TOPUP_VALIDITY}</span>
+                        {/* 大きい束ほど期限のほうが先に来る。買う前に自分の速さと引き比べられるように */}
+                        <span className="block text-xs text-muted-foreground">
+                          使い切るなら 月 {monthlyPace(plan.credits).toLocaleString('ja-JP')} 枚
+                        </span>
                       </span>
                       <span className="shrink-0 tabular-nums font-semibold">{formatYen(plan.price)}</span>
                     </button>
