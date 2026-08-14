@@ -277,6 +277,17 @@ export function DashboardContent() {
       <PalaceLordCard tier={billing?.plan?.tier ?? null} />
       </div>
 
+      {/*
+        クイック作成。**いちばん手前に置く。**
+        エントランスへ来る目的の多くは「1枚作る」ことで、
+        下にあると、記憶資産や間取りを読み飛ばしてから辿り着くことになる。
+        残高と位（上の2枚）を見たすぐ下なら、あと何枚作れるかを見てから書ける。
+      */}
+      <section className="space-y-3">
+        <h2 className="text-sm font-semibold text-muted-foreground">クイック作成</h2>
+        <QuickCreateCard />
+      </section>
+
       {/* 作業状況（生成中バッチの進捗、または失敗があるときだけ表示。3秒ポーリングで更新） */}
       {(progress || summary.failed_count > 0) && (
         <section className="space-y-3">
@@ -358,12 +369,6 @@ export function DashboardContent() {
           <PalaceFloorplan />
         </section>
       </div>
-
-      {/* クイック作成: エントランスでそのまま単語を入れて即生成する */}
-      <section className="space-y-3">
-        <h2 className="text-sm font-semibold text-muted-foreground">クイック作成</h2>
-        <QuickCreateCard />
-      </section>
 
       {/* 残高の内訳。開くのは上のボタンから */}
       <CreditBreakdownPanel />
