@@ -80,6 +80,48 @@ RSpec.describe "Api::V1::Account", type: :request do
       end
     end
 
+    # 名前だけ出しても、持ち出した先で組み直せない
+    context "まとめたもの・置いたもの" do
+      let(:item) { create(:item, user: user, title: "光合成") }
+
+      it "ボックスは、入れたカードまで出す" do
+        box = user.boxes.create!(name: "生物")
+        box.box_items.create!(item: item)
+
+        get "/api/v1/account/export", headers: headers
+
+        expect(json_response["boxes"].first["item_ids"]).to eq([ item.id ])
+      end
+
+      it "キャンバスは、置いたカードまで出す" do
+        view = user.views.create!(name: "光合成の流れ")
+        view.view_items.create!(item: item)
+
+        get "/api/v1/account/export", headers: headers
+
+        expect(json_response["views"].first["item_ids"]).to eq([ item.id ])
+      end
+
+      it "スペースは、どこに何を置いたかまで出す" do
+        space = user.spaces.create!(name: "書斎")
+        space.space_points.create!(item: item, name: "机の上", position: 1)
+
+        get "/api/v1/account/export", headers: headers
+
+        point = json_response["spaces"].first["points"].first
+        expect(point["item_id"]).to eq(item.id)
+        expect(point["name"]).to eq("机の上")
+      end
+
+      it "カードを入れていなくても、空の入れ物として出す" do
+        user.boxes.create!(name: "からっぽ")
+
+        get "/api/v1/account/export", headers: headers
+
+        expect(json_response["boxes"].first["item_ids"]).to eq([])
+      end
+    end
+
     it "他ユーザーのデータは含めない" do
       other = create(:user, :confirmed)
       create(:item, user: other, title: "他人のカード")
