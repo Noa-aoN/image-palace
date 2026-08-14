@@ -13,9 +13,9 @@ module Api
           exported_at: Time.current.iso8601,
           user: export_user,
           items: export_items,
-          boxes: name_records(current_user.boxes),
-          spaces: name_records(current_user.spaces),
-          views: name_records(current_user.views),
+          boxes: export_boxes,
+          spaces: export_spaces,
+          views: export_views,
           tags: current_user.tags.order(:created_at).map { |t| { id: t.id, name: t.name } }
         }
 
@@ -83,8 +83,32 @@ module Api
         end
       end
 
-      def name_records(relation)
-        relation.order(:created_at).map { |r| { id: r.id, name: r.name, created_at: r.created_at } }
+      # まとめたもの・置いたものは、**中身まで出す**。
+      # 名前だけでは、持ち出しても組み直せない（どのカードを入れたかが失われる）
+      def export_boxes
+        current_user.boxes.includes(:box_items).order(:created_at).map do |box|
+          name_record(box).merge(item_ids: box.box_items.map(&:item_id))
+        end
+      end
+
+      def export_spaces
+        current_user.spaces.includes(:space_points).order(:created_at).map do |space|
+          points = space.space_points.map do |point|
+            { item_id: point.item_id, name: point.name.presence,
+              surface: point.surface, position: point.position }.compact
+          end
+          name_record(space).merge(points: points)
+        end
+      end
+
+      def export_views
+        current_user.views.includes(:view_items).order(:created_at).map do |view|
+          name_record(view).merge(item_ids: view.view_items.map(&:item_id))
+        end
+      end
+
+      def name_record(record)
+        { id: record.id, name: record.name, created_at: record.created_at }
       end
     end
   end
