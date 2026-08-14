@@ -11,6 +11,9 @@ export const SITE_NAME = 'ImagePalace'
 export const SITE_DESCRIPTION = '単語をAI画像に変換して記憶できるサービス。'
 
 // 認証が必要でクロールさせたくないパス（robots の Disallow と一致させる）。
+//
+// **使い方ガイドと読みものは、ここに入れない。** どちらもログイン不要で読める
+// 公開の読みもので、外から人が来る入口そのもの。閉じると、書いた意味が無くなる。
 export const PRIVATE_PATHS = [
   '/entrance',
   '/dashboard',
@@ -33,8 +36,6 @@ export const PRIVATE_PATHS = [
   '/agora',
   '/stadion',
   '/arena',
-  '/guide',
-  '/blog',
   '/account',
   '/billing',
   '/profile',
