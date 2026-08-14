@@ -23,7 +23,9 @@ class PropertyDefinition < ApplicationRecord
   # free_text は**見出しも中身も自由**に書ける欄。
   # 決まった項目に収まらないもの（そのカード限りのメモ・引用・気づき）のために置く。
   # 見出しを定義側で決めないので、同じ「自由欄」を何枚か持てる。
-  VALUE_TYPES = %w[text longtext list number date url boolean free_text wikipedia].freeze
+  # free_image は**自由な小見出しと、自由な指示で作る絵**。
+  # カードの見出し語に縛られないので、そのカードの中の一場面・対比・図解などを持てる。
+  VALUE_TYPES = %w[text longtext list number date url boolean free_text free_image wikipedia].freeze
 
   # 項目の役割。**何のために持つのか**で分ける。
   #

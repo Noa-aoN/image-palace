@@ -19,6 +19,7 @@ export const PROPERTY_VALUE_TYPES = [
   'url',
   'boolean',
   'free_text',
+  'free_image',
   'wikipedia',
 ] as const
 
@@ -33,6 +34,7 @@ export const PROPERTY_VALUE_TYPE_LABELS: Record<PropertyValueType, string> = {
   url: 'リンク',
   boolean: 'チェック',
   free_text: '自由欄',
+  free_image: '自由イメージ',
   wikipedia: 'Wikipedia',
 }
 
@@ -40,6 +42,7 @@ export const PROPERTY_VALUE_TYPE_LABELS: Record<PropertyValueType, string> = {
 export const PROPERTY_VALUE_TYPE_NOTES: Partial<Record<PropertyValueType, string>> = {
   boolean: '入 / 切で持ちます。触っていないうちは、どちらでもない状態のままです',
   free_text: '見出しも中身もカードごとに自由に書けます。同じ種別に何枚でも置けます',
+  free_image: '小見出しと、描いてほしいものを書いて絵を作ります。1枚 1クレジット',
   wikipedia: '見出し語で Wikipedia を引き、冒頭と記事リンクを出します',
 }
 
@@ -126,7 +129,19 @@ export interface ItemPropertyEntry {
   value_type: PropertyValueType
   category?: PropertyCategory
   description?: string | null
-  value: string | number | string[] | boolean | FreeTextValue | null
+  value: string | number | string[] | boolean | FreeTextValue | FreeImageValue | null
+}
+
+/**
+ * 自由イメージ。**カードの見出し語には縛られない絵。**
+ * そのカードの中の一場面・対比・図解などを持てる。
+ */
+export interface FreeImageValue {
+  heading?: string
+  prompt?: string
+  status?: 'pending' | 'processing' | 'completed' | 'failed'
+  url?: string | null
+  error?: string | null
 }
 
 /** 自由欄の中身。見出しも中身もカードごとに決める */
@@ -268,6 +283,7 @@ export const PROPERTY_PRESETS: {
       // 見出しごと自由に決められる欄。決まった項目に収まらないもののために置く。
       // 同じものを何枚でも足せるよう、鍵は追加時に採番する
       { key: 'free', label: '自由欄', value_type: 'free_text', description: '見出しも中身もカードごとに自由。' },
+      { key: 'scene', label: '自由イメージ', value_type: 'free_image', description: '小見出しと指示で、この語の一場面を描く。' },
     ],
   },
   {
@@ -321,4 +337,16 @@ export function suggestPropertyKey(label: string): string {
     .replace(/[^a-z0-9]+/g, '_')
     .replace(/^_+|_+$/g, '')
   return /^[a-z]/.test(ascii) ? ascii.slice(0, 40) : ''
+}
+
+/** 自由イメージを作る。**1枚 1クレジット**（カードの絵と同じ） */
+export async function generateFreeImage(
+  itemId: string,
+  propertyDefinitionId: string,
+  payload: { heading: string; prompt: string }
+): Promise<void> {
+  await apiClient.post(
+    `/api/v1/items/${itemId}/properties/${propertyDefinitionId}/free_image`,
+    payload
+  )
 }
