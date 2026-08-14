@@ -80,6 +80,21 @@ RSpec.describe "Api::V1::Account", type: :request do
       end
     end
 
+    # 意味は1つとは限らない。種類ごとに持てるので、先頭だけでは足りない
+    it "書いた意味を、種類ごとに全部出す" do
+      item = create(:item, user: user, title: "光合成")
+      item.meanings.create!(definition: "植物が光から養分を作る働き", kind: "meaning",
+                            language_code: "ja", position: 1)
+      item.meanings.create!(definition: "photosynthesis", kind: "translation",
+                            language_code: "en", position: 2)
+
+      get "/api/v1/account/export", headers: headers
+
+      exported = json_response["items"].find { |i| i["id"] == item.id }["meanings"]
+      expect(exported.map { |m| m["kind"] }).to eq(%w[meaning translation])
+      expect(exported.map { |m| m["definition"] }).to include("photosynthesis")
+    end
+
     # 名前だけ出しても、持ち出した先で組み直せない
     context "まとめたもの・置いたもの" do
       let(:item) { create(:item, user: user, title: "光合成") }
