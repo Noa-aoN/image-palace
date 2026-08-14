@@ -27,6 +27,12 @@ describe('Content-Security-Policy', () => {
 
   // CDN_BASE_URL を設定した瞬間に画像 URL が cdn へ変わる。
   // 許可が後回しになると画像が一斉にブロックされるため、先に入れておく
+  // 記事の絵は、こちらに保存せずあちらから直に出す。
+  // ここに載せていないと、CSP に止められて**枠だけが残る**
+  it('img-src は Wikipedia の画像置き場を許可する', () => {
+    expect(directive('img-src')).toContain('https://upload.wikimedia.org')
+  })
+
   it('img-src は CDN と新 API ドメインを許可する', () => {
     const img = directive('img-src')
     expect(img).toContain('https://cdn.imagepalace.app')
