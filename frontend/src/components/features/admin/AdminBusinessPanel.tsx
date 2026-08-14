@@ -330,6 +330,8 @@ export function AdminBusinessPanel() {
       </Section>
 
       <CostBreakdown breakdown={unit.cost_breakdown} grossProfit={unit.gross_profit_jpy} />
+
+      {unit.fx_headroom && <FxHeadroom fx={unit.fx_headroom} />}
     </div>
   )
 }
@@ -441,6 +443,80 @@ function CostBreakdown({
         単価と月額は収支ページで設定する。
       </p>
     </section>
+  )
+}
+
+/**
+ * 為替の余裕。
+ *
+ * 売る値段は円で、AI の原価はドルで決まる。**円安になるほど、
+ * 同じ値段のまま原価だけが上がる。**
+ * 気づくのが値上げの直前になると、利用者には「急に上げた」ようにしか見えない。
+ *
+ * ここでは値段も付与量も変えない。**あとどれだけ動いたら赤字になるか**を出すだけ。
+ */
+function FxHeadroom({ fx }: { fx: NonNullable<AdminBusinessMetrics['unit_economics']['fx_headroom']> }) {
+  const tight = fx.headroom_percent !== null && fx.headroom_percent < 30
+
+  return (
+    <section className="space-y-2">
+      <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1">
+        <h2 className="text-base font-semibold">為替の余裕</h2>
+        <p className="text-xs text-muted-foreground">
+          値段は円、AI の原価はドル。円安になるほど原価だけが上がる
+        </p>
+      </div>
+
+      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+        <FxCell label="いまのレート" value={`¥${fx.fx_rate}`} note="1ドルあたり" />
+        <FxCell
+          label="1枚あたり（ドル建て）"
+          value={`$${fx.usd_per_credit}`}
+          note={fx.basis === 'measured' ? '実際に使われたぶんから' : '設定してある単価から'}
+        />
+        <FxCell
+          label="見直しの線"
+          value={`¥${fx.margin_floor_fx}`}
+          note={`${fx.tightest_plan} の粗利が下限を割る`}
+        />
+        <FxCell
+          label="赤字になるレート"
+          value={`¥${fx.break_even_fx}`}
+          note={
+            fx.headroom_percent === null
+              ? undefined
+              : `いまから ${fx.headroom_percent}% 円安まで`
+          }
+          alert={tight}
+        />
+      </div>
+
+      {tight && (
+        <p className="text-xs text-amber-600 dark:text-amber-500">
+          余地が細くなっている。値段ではなく付与量で調整できるうちに手を打つ。
+        </p>
+      )}
+    </section>
+  )
+}
+
+function FxCell({
+  label,
+  value,
+  note,
+  alert,
+}: {
+  label: string
+  value: string
+  note?: string
+  alert?: boolean
+}) {
+  return (
+    <div className={`rounded-xl border bg-background p-4 ${alert ? 'border-amber-500/60' : 'border-border'}`}>
+      <p className="text-sm text-muted-foreground">{label}</p>
+      <p className="mt-1 text-xl font-semibold tabular-nums">{value}</p>
+      {note && <p className="mt-0.5 text-xs text-muted-foreground">{note}</p>}
+    </div>
   )
 }
 

@@ -508,6 +508,16 @@ export interface AdminBusinessMetrics {
       total_jpy: number
       infra_months: number
     }
+    /** 為替がどこまで動いても採算が持つか。円安になるほど原価だけが上がる */
+    fx_headroom?: {
+      fx_rate: number
+      usd_per_credit: number
+      basis: 'measured' | 'configured'
+      tightest_plan: string
+      break_even_fx: number
+      margin_floor_fx: number
+      headroom_percent: number | null
+    } | null
     ltv: {
       value_jpy: number | null
       /** 常に true。母数が小さいので参考値としてしか使えない */
