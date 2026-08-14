@@ -118,6 +118,12 @@ module Admin
           cost_points: ::Ai::UsageLimit.cost_points("admin_brief")
         )
         insights_of(parsed).each_with_index { |row, index| create_insight!(brief, row, index) }
+        # 「次にやること」は行として持つ。**見立てとは別**（AI は別々に書くので対応しない）
+        brief.summary["actions"].each_with_index do |title, index|
+          next if title.blank?
+
+          brief.admin_brief_actions.create!(title: title, position: index)
+        end
         brief
       end
     end
