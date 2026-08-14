@@ -91,4 +91,15 @@ RSpec.configure do |config|
   # as the one that triggered the failure.
   Kernel.srand config.seed
 =end
+
+  # **並びをばらす。** 決まった順で走らせていると、順序に頼った書き方
+  # （前の例が残した状態をあてにする）が通ってしまい、気づけない。
+  #
+  # ここは長らく上の =begin ... =end の中にあり、**効いていなかった**。
+  # そのため seed も出ておらず、まれに落ちたときに
+  # **同じ並びで再現する手立てが無かった**。
+  config.order = :random
+
+  # 乱数そのものも seed から決める。--seed を渡せば、同じ並び・同じ乱数で再現できる
+  Kernel.srand config.seed
 end

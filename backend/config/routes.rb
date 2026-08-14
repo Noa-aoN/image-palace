@@ -44,6 +44,11 @@ Rails.application.routes.draw do
         # 経営の見立て。作るのは明示的に更新したときだけ（開くだけでは作らない）
         get "brief", to: "briefs#show"
         post "brief", to: "briefs#create"
+        # 過去のぶんも並べる（新しいものが上）
+        get "briefs", to: "briefs#index"
+        # 「次にやること」。終わったかどうかだけを持つ
+        get "brief_actions", to: "brief_actions#index"
+        patch "brief_actions/:id", to: "brief_actions#update"
         get "users", to: "users#index"
         patch "users/:id/role", to: "users#update_role"
         get "audit_logs", to: "audit_logs#index"

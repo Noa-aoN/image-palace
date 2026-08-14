@@ -23,6 +23,7 @@ import type {
   AdminUser,
   AdminUsersPage,
   AdminPeriod,
+  AdminBriefAction,
 } from '@/types/admin'
 
 // いま入っている人の運営権限。一般ユーザーが呼んでもエラーにはならない
@@ -413,6 +414,32 @@ export async function getAdminBrief(): Promise<AdminBrief | null> {
 export async function generateAdminBrief(period?: string): Promise<AdminBrief | null> {
   const res = await apiClient.post<{ brief: AdminBrief | null }>('/api/v1/admin/brief', { period })
   return res.data.brief
+}
+
+/** 過去のぶんも並べる（新しいものが上） */
+export async function getAdminBriefs(): Promise<AdminBrief[]> {
+  const res = await apiClient.get<{ briefs: AdminBrief[] }>('/api/v1/admin/briefs')
+  return res.data.briefs
+}
+
+/** 次にやること。既定は未完了だけ */
+export async function getAdminBriefActions(
+  status: 'open' | 'done' | 'all' = 'open'
+): Promise<AdminBriefAction[]> {
+  const res = await apiClient.get<{ actions: AdminBriefAction[] }>('/api/v1/admin/brief_actions', {
+    params: { status },
+  })
+  return res.data.actions
+}
+
+export async function updateAdminBriefAction(
+  id: string,
+  status: 'open' | 'done'
+): Promise<AdminBriefAction> {
+  const res = await apiClient.patch<{ action: AdminBriefAction }>(`/api/v1/admin/brief_actions/${id}`, {
+    status,
+  })
+  return res.data.action
 }
 
 /**

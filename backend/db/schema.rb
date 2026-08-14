@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_08_13_230942) do
+ActiveRecord::Schema[8.1].define(version: 2026_08_13_235534) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
   enable_extension "pg_trgm"
@@ -76,6 +76,20 @@ ActiveRecord::Schema[8.1].define(version: 2026_08_13_230942) do
     t.string "target_type"
     t.index ["actor_id", "created_at"], name: "index_admin_audit_logs_on_actor_id_and_created_at"
     t.index ["created_at"], name: "index_admin_audit_logs_on_created_at"
+  end
+
+  create_table "admin_brief_actions", id: :uuid, default: -> { "gen_random_uuid()" }, force: :cascade do |t|
+    t.uuid "admin_brief_id", null: false
+    t.uuid "admin_insight_id"
+    t.datetime "completed_at"
+    t.datetime "created_at", null: false
+    t.integer "position", default: 0, null: false
+    t.string "status", default: "open", null: false
+    t.text "title", null: false
+    t.datetime "updated_at", null: false
+    t.index ["admin_brief_id", "position"], name: "index_admin_brief_actions_on_admin_brief_id_and_position"
+    t.index ["admin_brief_id"], name: "index_admin_brief_actions_on_admin_brief_id"
+    t.index ["status"], name: "index_admin_brief_actions_on_status"
   end
 
   create_table "admin_briefs", id: :uuid, default: -> { "gen_random_uuid()" }, force: :cascade do |t|
@@ -1099,6 +1113,8 @@ ActiveRecord::Schema[8.1].define(version: 2026_08_13_230942) do
   add_foreign_key "active_storage_attachments", "active_storage_blobs", column: "blob_id"
   add_foreign_key "active_storage_variant_records", "active_storage_blobs", column: "blob_id"
   add_foreign_key "admin_audit_logs", "users", column: "actor_id", on_delete: :nullify
+  add_foreign_key "admin_brief_actions", "admin_briefs"
+  add_foreign_key "admin_brief_actions", "admin_insights"
   add_foreign_key "admin_briefs", "users", column: "generated_by_id"
   add_foreign_key "admin_insights", "admin_briefs"
   add_foreign_key "ai_usages", "users", on_delete: :cascade
