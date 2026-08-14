@@ -2,8 +2,15 @@ module Api
   module V1
     # 公開済みの読みもの（お知らせ・更新情報・コラム）を読む側。
     # 下書きは返さない。
+    #
+    # **読むのにログインは要らない。** ここに載るのは既に公開したものだけで、
+    # 検索や共有から初めての人が直に開く。門を置くと、外に向けて書いた文章が
+    # 中の人にしか届かなくなる。書く側（Admin::PostsController）は別で、
+    # そちらは運営だけが触れる。
     class PostsController < BaseController
       include ItemSerialization
+
+      skip_before_action :authenticate_user!, only: %i[index show]
 
       DEFAULT_LIMIT = 50
       MAX_LIMIT = 100
