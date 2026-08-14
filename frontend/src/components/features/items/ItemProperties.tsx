@@ -47,7 +47,13 @@ import {
   useSensors,
   type DragEndEvent,
 } from '@dnd-kit/core'
-import { SortableContext, arrayMove, rectSortingStrategy, sortableKeyboardCoordinates, useSortable } from '@dnd-kit/sortable'
+import {
+  SortableContext,
+  arrayMove,
+  sortableKeyboardCoordinates,
+  useSortable,
+  verticalListSortingStrategy,
+} from '@dnd-kit/sortable'
 import { CSS } from '@dnd-kit/utilities'
 import { GripVertical } from 'lucide-react'
 
@@ -817,7 +823,10 @@ export function ItemProperties({ item, onUpdated, leadingBlocks = [] }: ItemProp
           なので、どちらで動かしても両方に効く（片方だけ古い、が起きない） */}
       {(
       <DndContext sensors={blockSensors} collisionDetection={closestCenter} onDragEnd={handleBlockDragEnd}>
-        <SortableContext items={visibleBlocks.map((b) => b.key)} strategy={rectSortingStrategy}>
+        {/* 列の中を上から順に流すので、掴んだものは**縦に**動く。
+            四角く並べる前提の作法（rectSortingStrategy）だと、
+            上下に動かしたつもりが左右に飛ぶ */}
+        <SortableContext items={visibleBlocks.map((b) => b.key)} strategy={verticalListSortingStrategy}>
           <div className={cardDetailGridClass(columns)}>
             {visibleBlocks.map((b) => (
               <SortableBlock
@@ -855,10 +864,17 @@ export function ItemProperties({ item, onUpdated, leadingBlocks = [] }: ItemProp
 }
 
 /** 幅に対応する格子の指定。静的な文字列で書く（Tailwind は組み立てた名前を拾えない） */
+/**
+ * 幅の指定。
+ *
+ * 列の中を流す並べ方では、**2列ぶんだけ**という幅は作れない（そういう仕組みが無い）。
+ * 1列ぶんか、全部の列にまたがるか、の2つになる。
+ * 「広げたい」という意図は全幅で満たせるので、2以上はすべて全幅に倒す。
+ */
 const SPAN_CLASSES: Record<number, string> = {
   1: '',
-  2: 'md:col-span-2',
-  3: 'md:col-span-2 xl:col-span-3',
+  2: '[column-span:all]',
+  3: '[column-span:all]',
 }
 
 /**

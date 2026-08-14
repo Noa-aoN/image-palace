@@ -50,6 +50,18 @@ export function useCardDetailColumns(fallback = 1) {
  * 列数に対応する格子。狭い画面では自動で1列に戻す。
  * 決めた数はあくまで広い画面での話で、携帯で2列に並べても読めない。
  */
+/**
+ * 札の並べ方。
+ *
+ * **列の中を上から順に埋める**（左の列が終わってから、次の列へ）。
+ *
+ * 行から埋める並べ方だと、
+ *   ・短い札の下に空きができる（同じ行の高さがいちばん高い札に決まるため）
+ *   ・1つ動かすと、次から後ろが左右にずれる（縦に動かしたつもりが横へ飛ぶ）
+ * の2つが同時に起きる。どちらも「並びが読めない」に見える。
+ *
+ * 列の中を流す形なら、上下に動かすと上下にだけ動く。空きも出ない。
+ */
 export function cardDetailGridClass(columns: number): string {
   // 間隔は札どうしで揃える（詳細ページの space-y-3 と同じ 12px）。
   // ここだけ広いと、同じ並びの札なのに群があるように見える。
@@ -57,8 +69,9 @@ export function cardDetailGridClass(columns: number): string {
   // items-start は、札を中身の高さのままにするため。既定（stretch）だと
   // 同じ行でいちばん高い札に合わせて全部が伸び、短い項目の下に空の面ができる。
   // 「読み仮名」の札が「語源」と同じ高さになるのは、詰まって見えない
-  if (columns >= 3) return 'grid items-start gap-3 md:grid-cols-2 xl:grid-cols-3'
-  if (columns === 2) return 'grid items-start gap-3 md:grid-cols-2'
+  // gap は列と列の間。段の間は札そのものの下余白で作る（columns には row-gap が無い）
+  if (columns >= 3) return 'md:columns-2 xl:columns-3 gap-3 [&>*]:mb-3 [&>*]:break-inside-avoid'
+  if (columns === 2) return 'md:columns-2 gap-3 [&>*]:mb-3 [&>*]:break-inside-avoid'
   return 'space-y-3'
 }
 
