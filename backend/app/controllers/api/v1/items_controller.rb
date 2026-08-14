@@ -741,11 +741,20 @@ module Api
       def free_image_url(shared_media_id)
         return nil if shared_media_id.blank?
 
-        shared = SharedMedia.find_by(id: shared_media_id)
+        shared = shared_media_for(shared_media_id)
         return nil unless shared&.file&.attached?
 
         blob = shared.thumb.attached? ? shared.thumb.blob : shared.file.blob
         blob_available?(blob) ? media_url(blob) : nil
+      end
+
+      # 自由イメージが指している絵。**1リクエストにつき、同じ絵は1回しか引かない**。
+      # 項目ごとに引くと、項目の数だけ問い合わせが飛ぶ（絵の実体も別に2本ずつ増える）
+      def shared_media_for(id)
+        @shared_media_cache ||= {}
+        return @shared_media_cache[id] if @shared_media_cache.key?(id)
+
+        @shared_media_cache[id] = SharedMedia.with_files.find_by(id: id)
       end
 
       # 種別ごとの項目定義。一覧では1枚ごとに引くと枚数ぶん問い合わせが飛ぶので、
@@ -879,9 +888,23 @@ module Api
         # チェックは true/false をそのまま文字にすると「true」と出る。
         # **触っていない状態と「切」を分けたまま**、読める形に直す
         return (value ? "入" : "切") if entry&.boolean? && !value.nil?
+        # 中身が2つある項目（自由テキスト・自由イメージ）は、そのまま文字にすると
+        # **`{"heading"=>…}` が一覧に出る**。読める形に組み直す
+        return compound_summary(entry, value) if value.is_a?(Hash)
 
         value = multiple == :first ? value.first : value.join("、") if value.is_a?(Array)
         value.to_s.presence
+      end
+
+      # 見出しと中身を持つ項目を、一覧の1行にする。
+      # 自由イメージは絵そのものを文字にできないので、付けた見出し（無ければ指示）で表す
+      def compound_summary(entry, value)
+        heading = value["heading"].to_s.strip.presence
+        body = (entry&.free_image? ? value["prompt"] : value["body"]).to_s.strip.presence
+        return body if heading.nil?
+        return heading if body.nil? || entry&.free_image?
+
+        "#{heading}：#{body}"
       end
 
       # 意味・説明は一覧を圧迫するので、先頭のものだけを短く出す（画面側で3行に丸める）

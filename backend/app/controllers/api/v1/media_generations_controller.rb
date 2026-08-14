@@ -10,7 +10,10 @@ module Api
       before_action :set_item
 
       def index
-        rows = @item.item_media_generations.recent.includes(shared_media: { file_attachment: :blob })
+        # 一覧に出すのは縮小版。**本体とは別の添付**なので、両方まとめて読む。
+        # 片方を書き忘れると、1行につき1本ずつ問い合わせが増える
+        rows = @item.item_media_generations.recent
+                    .includes(shared_media: [ { file_attachment: :blob }, { thumb_attachment: :blob } ])
 
         render json: { generations: rows.filter_map { |row| serialize(row) } }
       end
