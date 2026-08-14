@@ -4,6 +4,8 @@ import Link from 'next/link'
 import { ChevronRight, Boxes, GalleryHorizontal, Box, LayoutGrid, Frame, Palette } from 'lucide-react'
 import { Card, CardContent } from '@/components/ui/card'
 import { CreateIcon } from '@/components/features/layout/CreateIcon'
+import { KindPreview } from '@/components/features/atelier/KindPreview'
+import type { AtelierKind } from '@/lib/atelier/examples'
 
 export const metadata: Metadata = { title: 'アトリエ' }
 
@@ -13,17 +15,20 @@ export const metadata: Metadata = { title: 'アトリエ' }
 // 作りに来た人をその場に留めることになっていた。作る気で来た人には広い場所を渡す。
 // 一覧のツールバーやサイドバーからの「カードを作成」は、いま見ているものを
 // 離れたくない場面なので、これまでどおり右パネルのままにしている。
+//
+// 文字だけだと、作る前に結果を想像できない。**どれも、できあがりを添えて出す**。
 const CREATE_ACTIONS: {
   href: string
+  kind: AtelierKind
   icon: ReactNode
   label: string
   description: string
 }[] = [
-  { href: '/materials/new', icon: <CreateIcon><Boxes size={20} /></CreateIcon>, label: 'マテリアルを作成', description: 'カード化の前の素材（ワードリスト等）をまとめて用意します。' },
-  { href: '/items/new', icon: <CreateIcon><GalleryHorizontal size={20} /></CreateIcon>, label: 'カードを作成', description: '単語や概念をAI画像のカードにします。' },
-  { href: '/views/new', icon: <CreateIcon><LayoutGrid size={20} /></CreateIcon>, label: 'キャンバスを作成', description: 'カードを自由に配置するキャンバスを作ります。' },
-  { href: '/spaces/new', icon: <CreateIcon><Frame size={20} /></CreateIcon>, label: 'スペースを作成', description: '記憶の場所（ルーム／ロード）を作ります。' },
-  { href: '/boxes/new', icon: <CreateIcon><Box size={20} /></CreateIcon>, label: 'ボックスを作成', description: 'カードをテーマごとにまとめます。' },
+  { href: '/materials/new', kind: 'material', icon: <CreateIcon><Boxes size={20} /></CreateIcon>, label: 'マテリアルを作成', description: 'カード化の前の素材（ワードリスト等）をまとめて用意します。' },
+  { href: '/items/new', kind: 'item', icon: <CreateIcon><GalleryHorizontal size={20} /></CreateIcon>, label: 'カードを作成', description: '単語や概念をAI画像のカードにします。' },
+  { href: '/views/new', kind: 'view', icon: <CreateIcon><LayoutGrid size={20} /></CreateIcon>, label: 'キャンバスを作成', description: 'カードを自由に配置するキャンバスを作ります。' },
+  { href: '/spaces/new', kind: 'space', icon: <CreateIcon><Frame size={20} /></CreateIcon>, label: 'スペースを作成', description: '記憶の場所（ルーム／ロード）を作ります。' },
+  { href: '/boxes/new', kind: 'box', icon: <CreateIcon><Box size={20} /></CreateIcon>, label: 'ボックスを作成', description: 'カードをテーマごとにまとめます。' },
 ]
 
 export default function AtelierPage() {
@@ -57,6 +62,7 @@ export default function AtelierPage() {
                   />
                 </div>
                 <p className="mt-2 text-sm text-muted-foreground">{action.description}</p>
+                <KindPreview kind={action.kind} label={action.label} />
               </CardContent>
             </Card>
           </Link>
