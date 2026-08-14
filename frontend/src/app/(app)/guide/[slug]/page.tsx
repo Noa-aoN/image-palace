@@ -5,6 +5,7 @@ import { ArrowLeft } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { NAV_SECTIONS, GLOBAL_ACTIONS } from '@/components/features/layout/nav-items'
 import { GUIDE_SECTIONS, getGuideSection, STEPS, FEATURE_GROUPS, FAQ, GLOSSARY, USE_CASES, type GuideSlug } from '@/lib/guide/sections'
+import { guideJsonLd, breadcrumbJsonLd } from '@/lib/seo/structured-data'
 
 export function generateStaticParams() {
   return GUIDE_SECTIONS.map((s) => ({ slug: s.slug }))
@@ -14,7 +15,18 @@ export async function generateMetadata({ params }: { params: Promise<{ slug: str
   const { slug } = await params
   const section = getGuideSection(slug)
   if (!section) return { title: '使い方' }
-  return { title: `${section.title} — 使い方`, description: section.excerpt }
+
+  return {
+    title: `${section.title} — 使い方`,
+    description: section.excerpt,
+    alternates: { canonical: `/guide/${section.slug}` },
+    openGraph: {
+      type: 'article',
+      title: section.title,
+      description: section.excerpt,
+      url: `/guide/${section.slug}`,
+    },
+  }
 }
 
 // --- セクションごとの本文 ---
@@ -260,8 +272,22 @@ export default async function GuideSectionPage({ params }: { params: Promise<{ s
   const Icon = section.icon
   const Content = CONTENT[section.slug]
 
+  // 静的な定数のみ埋め込む（利用者の入力は入らないため XSS の経路にならない）
+  const jsonLd = [
+    guideJsonLd(section),
+    breadcrumbJsonLd([
+      { name: 'ホーム', path: '/' },
+      { name: '使い方', path: '/guide' },
+      { name: section.title, path: `/guide/${section.slug}` },
+    ]),
+  ]
+
   return (
     <div className="mx-auto max-w-7xl px-6 py-12">
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
+      />
       {/* 外枠は全幅、本文は読みやすい幅に制限 */}
       <div className="mx-auto max-w-2xl">
       <Link
