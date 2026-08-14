@@ -63,8 +63,13 @@ type ItemPropertiesProps = {
   item: Item
   /** 更新後のItemを親（詳細画面・ストア）へ反映する */
   onUpdated: (item: Item) => void
-  /** 「画面に収める」見方のとき、札を出さない（設定も中身も消さない） */
-  blocksHidden?: boolean
+  /**
+   * 見出し語とイメージも、ほかの項目と同じ列に並べる。
+   *
+   * ページ側で別に描くのをやめ、**同じ札として**渡してもらう。
+   * こうすると幅を変えたり、順を入れ替えたりが、ほかの項目とまったく同じに効く。
+   */
+  leadingBlocks?: { key: string; label: string; node: React.ReactNode }[]
 }
 
 const FACT_CHECK_BADGE: Record<string, { label: string; className: string }> = {
@@ -251,7 +256,7 @@ function FactCheckResult({
  * カードのプロパティ（種別・意味）編集。
  * 種別は選択即保存、意味はインライン編集で保存する。
  */
-export function ItemProperties({ item, onUpdated, blocksHidden = false }: ItemPropertiesProps) {
+export function ItemProperties({ item, onUpdated, leadingBlocks = [] }: ItemPropertiesProps) {
   // 既定はアカウントの設定。この端末で選んでいればそちらが勝つ
   const defaultColumns = useSettingsStore((s) => s.settings?.card_detail_columns) ?? 1
   const { columns, change: changeColumns } = useCardDetailColumns(defaultColumns)
@@ -732,8 +737,8 @@ export function ItemProperties({ item, onUpdated, blocksHidden = false }: ItemPr
   // 0件のときは種別のすぐ下に置く。位置ではなく鍵で挿すのは、
   // 作り付けの並びを変えたときに黙ってずれないようにするため
   const allBlocks = hasProperties
-    ? [ ...blocks, ...customBlocks, toolsBlock ]
-    : insertAfter(blocks, 'item_type', toolsBlock)
+    ? [ ...leadingBlocks, ...blocks, ...customBlocks, toolsBlock ]
+    : [ ...leadingBlocks, ...insertAfter(blocks, 'item_type', toolsBlock) ]
 
   // − に入れたもの（このカードでは持たない）と、＋の中で畳んだもの。
   // どちらも出さないが、意味が違うので分けて持つ。
@@ -810,9 +815,7 @@ export function ItemProperties({ item, onUpdated, blocksHidden = false }: ItemPr
       {/* 列数はこの端末で覚える。既定はアカウントの設定から来る。
           並べ替えはここでも「表示」パネルでもできる。書き先は同じ block_view.order
           なので、どちらで動かしても両方に効く（片方だけ古い、が起きない） */}
-      {/* 「画面に収める」ときは、札を出さない（見出し語と絵だけを大きく見る見方）。
-          消しているのは見え方だけで、設定も中身も残る */}
-      {!blocksHidden && (
+      {(
       <DndContext sensors={blockSensors} collisionDetection={closestCenter} onDragEnd={handleBlockDragEnd}>
         <SortableContext items={visibleBlocks.map((b) => b.key)} strategy={rectSortingStrategy}>
           <div className={cardDetailGridClass(columns)}>

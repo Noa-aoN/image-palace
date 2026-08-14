@@ -24,7 +24,7 @@ import { Input } from '@/components/ui/input'
 import { Spinner } from '@/components/ui/spinner'
 import { Tooltip } from '@/components/ui/tooltip'
 import { PanelSlotContent } from '@/components/features/panel/PanelSlot'
-import { useCardDetailFit } from '@/hooks/useCardDetailColumns'
+import { useCardDetailFit, useCardDetailLeadInGrid } from '@/hooks/useCardDetailColumns'
 import { updateBlockView, suggestItemProperties } from '@/lib/api/items'
 import { getSettings, updateSettings } from '@/lib/api/settings'
 import {
@@ -94,6 +94,7 @@ export function CardViewPanel({
   )
 
   const { fit, change: changeFit } = useCardDetailFit()
+  const { leadInGrid, change: changeLead } = useCardDetailLeadInGrid()
 
   const save = async (nextHidden: string[], nextOrder: string[], nextOmitted: string[]) => {
     setBusy(true)
@@ -177,16 +178,32 @@ export function CardViewPanel({
 
         {/* 列数はこの端末で覚える。項目の少ないカードは1列、多いカードは2列、と
             カードによって変えたくなる。既定は環境設定（アカウント）に持つ */}
-        {/* 見返すときは、見出し語と絵だけを大きく見たい。
-            項目を作り込む見方とは目的が違うので、切り替えで持つ（端末ごとに覚える） */}
+        {/* 開いた瞬間に絵の全体が見えるようにする。**隠すのではなく縮める** */}
         <label className="flex items-center gap-2 text-sm">
           <input
             type="checkbox"
             checked={fit}
             onChange={(e) => changeFit(e.target.checked)}
           />
-          画面に収める（見出し語とイメージだけ）
+          画面に収まるように自動調整
         </label>
+        <p className="-mt-1 text-xs text-muted-foreground">
+          見出し語とイメージが、いまの窓に収まる高さに縮みます。
+          ほかの項目はそのまま下に並びます。窓の大きさを変えると合わせ直します。
+        </p>
+
+        {/* 見出し語とイメージを、ほかの項目と同じ札として扱うか */}
+        <label className="flex items-center gap-2 text-sm">
+          <input
+            type="checkbox"
+            checked={leadInGrid}
+            onChange={(e) => changeLead(e.target.checked)}
+          />
+          見出し語とイメージも列に含める
+        </label>
+        <p className="-mt-1 text-xs text-muted-foreground">
+          ほかの項目と同じ幅・同じ並びで扱えます（幅を変える・順を入れ替える）。
+        </p>
 
         <div className="space-y-1.5">
           <p className="text-xs font-medium">列の数</p>
@@ -237,6 +254,27 @@ export function CardViewPanel({
         )}
         {suggestError && <p className="text-xs text-destructive">{suggestError}</p>}
 
+        {/* 列に含めていないときも、あることは見えるようにする。
+            **無い**のではなく、**別に置いてある**だけなので */}
+        {!leadInGrid && (
+          <div className="space-y-1.5">
+            <p className="text-xs font-medium">必須項目</p>
+            {REQUIRED_BLOCKS.map((block) => (
+              <div
+                key={block.key}
+                className="flex items-center justify-between gap-2 rounded-lg border border-border/70 bg-background px-3 py-2"
+              >
+                <span className="truncate text-sm">{block.label}</span>
+                <span className="shrink-0 text-[10px] text-muted-foreground">必須</span>
+              </div>
+            ))}
+            <p className="text-xs text-muted-foreground">
+              上の「見出し語とイメージも列に含める」を入れると、ここではなく下の並びに入り、
+              ほかの項目と同じように並べ替えられます。
+            </p>
+          </div>
+        )}
+
         <p className="text-xs font-medium">＋ このカードが持つ項目</p>
 
         {blocks.length === 0 ? (
@@ -253,6 +291,7 @@ export function CardViewPanel({
                     busy={busy}
                     onToggle={() => toggle(block.key)}
                     onOmit={() => omit(block.key)}
+                    required={REQUIRED_KEYS.has(block.key)}
                   />
                 ))}
               </div>
@@ -304,18 +343,35 @@ export function CardViewPanel({
   )
 }
 
+/**
+ * 無くせない項目。
+ *
+ * 見出し語と絵は、このカードが何かを決めているもの。畳むことも持たないこともできない。
+ * 列に含めているときは**並べ替えと幅だけ**を、ほかの項目と同じように扱える。
+ */
+const REQUIRED_KEYS = new Set(['title', 'image'])
+
+/** 列に含めていないときに、あることだけを見せる */
+const REQUIRED_BLOCKS = [
+  { key: 'title', label: '見出し語' },
+  { key: 'image', label: 'イメージ' },
+]
+
 function SortableRow({
   block,
   hidden,
   busy,
   onToggle,
   onOmit,
+  required = false,
 }: {
   block: CardBlock
   hidden: boolean
   busy: boolean
   onToggle: () => void
   onOmit: () => void
+  /** 無くせない項目（見出し語・イメージ）。並べ替えと幅だけを扱える */
+  required?: boolean
 }) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: block.key })
 
@@ -346,6 +402,8 @@ function SortableRow({
         </span>
       </div>
       <div className="flex shrink-0 items-center gap-2 text-muted-foreground">
+        {required && <span className="text-[10px]">必須</span>}
+        {!required && (
         <Tooltip label={hidden ? '出す' : '畳む'}>
           <button
             type="button"
@@ -357,6 +415,8 @@ function SortableRow({
             {hidden ? <EyeOff size={15} /> : <Eye size={15} />}
           </button>
         </Tooltip>
+        )}
+        {!required && (
         <Tooltip label="この項目を持たない">
           <button
             type="button"
@@ -368,6 +428,7 @@ function SortableRow({
             <Minus size={15} />
           </button>
         </Tooltip>
+        )}
       </div>
     </div>
   )

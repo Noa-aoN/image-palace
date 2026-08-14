@@ -34,20 +34,18 @@ export function PropertyBlock({
   /** 見出しの横に回すスピナー（保存中など） */
   busy?: boolean
   /**
-   * 何のために持つ項目か。左端に細い線と、小さな見出しで表す。
+   * 何のために持つ項目か。**枠は変えず、小さな文字だけで表す。**
    *
-   * **色だけに頼らない。** 覚えかたの項目は「合っているか」より
-   * 「思い出せるか」で直すので、見分けが付かないと直す物差しを間違える。
+   * 縁に色の線を入れていたが、同じ形で並ぶはずのものが1つだけ違う形に見えた。
+   * 見分けたいのは「直すときの物差しが違う」ことであって、
+   * 別の種類の入れ物だと思わせたいわけではない。
    */
   category?: PropertyCategory
 }) {
   const role = category ? propertyCategoryOf(category) : null
 
   return (
-    <section
-      className="space-y-2 rounded-xl border border-border/70 bg-muted/30 px-4 py-3"
-      style={role ? { borderLeft: `3px solid ${role.accent}` } : undefined}
-    >
+    <section className="space-y-2 rounded-xl border border-border/70 bg-muted/30 px-4 py-3">
       <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-1">
         <div className="flex items-center gap-2">
           <h3 className="text-sm font-medium">{title}</h3>

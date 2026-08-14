@@ -12,7 +12,12 @@ import { ItemProperties } from '@/components/features/items/ItemProperties'
 import { ItemImageBar } from '@/components/features/items/ItemImageBar'
 import { CARD_VIEW_PANEL_KEY } from '@/components/features/items/CardViewPanel'
 import { useSettingsStore } from '@/stores/settings'
-import { useCardDetailColumns, useCardDetailFit } from '@/hooks/useCardDetailColumns'
+import {
+  useCardDetailColumns,
+  useCardDetailFit,
+  useCardDetailLeadInGrid,
+} from '@/hooks/useCardDetailColumns'
+import { useFitToWindow } from '@/hooks/useFitToWindow'
 import { CardInfoButton } from '@/components/features/items/CardInfoPanel'
 import { PropertyBlock, BlockAction } from '@/components/features/items/PropertyBlock'
 import { Tooltip } from '@/components/ui/tooltip'
@@ -42,9 +47,12 @@ export default function ItemDetailPage() {
   // 幅は列数で決める。列を増やしたのは並べて見たいからなので、そのときは広げる
   const defaultColumns = useSettingsStore((s) => s.settings?.card_detail_columns) ?? 1
   const { columns: detailColumns } = useCardDetailColumns(defaultColumns)
-  // 「画面に収める」見方のときは、見出し語と絵だけを大きく見せる。
-  // 項目を全部並べる見方とは目的が違う（見返す / 作り込む）ので、まとめて出さない
+  // 画面に収まるように、見出し語と絵の高さを詰める。
+  // **隠すのではなく縮める。** ほかの項目は下にそのまま並んでいる
   const { fit: fitToWindow } = useCardDetailFit()
+  // 見出し語とイメージも、ほかの項目と同じ列に並べるか
+  const { leadInGrid } = useCardDetailLeadInGrid()
+  const { ref: fitRef, maxHeight: fitHeight } = useFitToWindow(fitToWindow)
   const router = useRouter()
   const openSection = useRightPanelStore((s) => s.openSection)
   const searchParams = useSearchParams()
@@ -137,6 +145,128 @@ export default function ItemDetailPage() {
   // セーフガードの承認待ち。作り直し中はそちらの見せ方を優先する
   const veiled = Boolean(item.media?.needs_approval) && !regenerating
 
+  // 見出し語とイメージの札。
+  //
+  // 「同じ列に並べる」を選ぶと、これをそのまま ItemProperties へ渡す。
+  // 別々に描いていたころは、幅を変えることも、順を入れ替えることもできなかった
+  // （ほかの項目と同じ形をしているのに、同じようには扱えなかった）。
+  // 見出し語も、下のプロパティと同じ薄い枠に載せて見え方を揃える
+  const titleNode = (
+    <PropertyBlock
+      title="見出し語"
+      actions={
+        !editing && (
+          <>
+            <BlockAction icon={<Pencil size={16} />} label="単語を編集" onClick={startEdit} hideLabel />
+            <Tooltip label="ブラウザで検索（別タブ）">
+              <a
+                href={`https://www.google.com/search?q=${encodeURIComponent(item.title)}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="block text-muted-foreground transition-colors hover:text-foreground"
+                aria-label="ブラウザで検索（別タブ）"
+              >
+                <ExternalLink size={16} />
+              </a>
+            </Tooltip>
+          </>
+        )
+      }
+    >
+      {editing ? (
+        <div className="space-y-2">
+          <div className="flex items-center gap-2">
+            <Input
+              value={titleDraft}
+              onChange={(e) => setTitleDraft(e.target.value)}
+              onKeyDown={(e) => {
+                if (isSubmitEnter(e)) { e.preventDefault(); handleSaveTitle() }
+                if (e.key === 'Escape') cancelEdit()
+              }}
+              disabled={saving}
+              autoFocus
+              aria-label="見出し語"
+              className="text-lg"
+            />
+            <Tooltip label="保存">
+              <Button size="sm" onClick={handleSaveTitle} disabled={saving} aria-label="保存" className="shrink-0">
+                {saving ? <Spinner size={16} /> : <Check size={16} />}
+              </Button>
+            </Tooltip>
+            <Tooltip label="キャンセル">
+              <Button variant="ghost" size="sm" onClick={cancelEdit} disabled={saving} aria-label="キャンセル" className="shrink-0">
+                <X size={16} />
+              </Button>
+            </Tooltip>
+          </div>
+          {editError && <p className="text-sm text-destructive">{editError}</p>}
+        </div>
+      ) : (
+        <div className="flex items-center justify-between gap-3">
+          <h1 className="truncate text-2xl font-semibold">{item.title}</h1>
+          <StatusBadge status={item.generation_status} size="lg" />
+        </div>
+      )}
+    </PropertyBlock>
+  )
+
+  // ── 画像 + ナビゲーション ──
+  // イメージも他のプロパティと同じ幅に揃える。
+  // 矢印は画像の上に重ねる（幅を取らない）。
+  const imageNode = (
+    <PropertyBlock title="イメージ">
+      <div className="relative">
+        {item.media?.url && !imgError ? (
+          <div
+            className="relative w-full overflow-hidden rounded-lg bg-muted"
+            style={item.media.blur ? { backgroundImage: `url("${item.media.blur}")`, backgroundSize: 'cover', backgroundPosition: 'center' } : undefined}
+          >
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
+              src={item.media.url}
+              alt={item.title}
+              className={`w-full rounded-lg ${fitHeight ? 'object-contain' : 'object-cover'} ${
+                regenerating ? REGENERATING_IMAGE_CLASS : ''
+              } ${veiled ? SAFEGUARD_IMAGE_CLASS : 'cursor-zoom-in'}`}
+              // 収めるときは、切らずに縮める（切ると何の絵か分からなくなる）
+              style={fitHeight ? { maxHeight: fitHeight } : undefined}
+              decoding="async"
+              fetchPriority="high"
+              onClick={() => !veiled && setZoomed(true)}
+              onError={() => setImgError(true)}
+            />
+            {regenerating && <RegeneratingOverlay />}
+            {veiled && <SafeguardVeil />}
+          </div>
+        ) : (
+          <GeneratingOverlay
+            status={item.generation_status}
+            label={imgError ? '画像を表示できません' : STATUS_LABEL[item.generation_status]}
+            className="w-full rounded-lg text-muted-foreground"
+            style={{ aspectRatio: aspectRatioCss(item?.aspect_ratio) }}
+            textClassName="text-sm"
+          />
+        )}
+
+      </div>
+
+      {/* 覆いを外すか、カードごと消すか */}
+      {veiled && (
+        <SafeguardBar item={item} onUpdated={applyUpdated} onDeleted={() => router.push(backHref)} />
+      )}
+
+      {/* イメージへの操作は、イメージの枠の中に収める。右パネルと同じ並び */}
+      <ItemImageBar item={item} onUpdated={applyUpdated} />
+    </PropertyBlock>
+  )
+
+  const leadingBlocks = leadInGrid
+    ? [
+        { key: 'title', label: '見出し語', node: titleNode },
+        { key: 'image', label: 'イメージ', node: imageNode },
+      ]
+    : []
+
   return (
     <div className="relative flex flex-col min-h-full">
 
@@ -221,118 +351,13 @@ export default function ItemDetailPage() {
           </div>
         </div>
 
-        {/* 見出し語も、下のプロパティと同じ薄い枠に載せて見え方を揃える */}
-        <PropertyBlock
-          title="見出し語"
-          actions={
-            !editing && (
-              <>
-                <BlockAction icon={<Pencil size={16} />} label="単語を編集" onClick={startEdit} hideLabel />
-                <Tooltip label="ブラウザで検索（別タブ）">
-                  <a
-                    href={`https://www.google.com/search?q=${encodeURIComponent(item.title)}`}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="block text-muted-foreground transition-colors hover:text-foreground"
-                    aria-label="ブラウザで検索（別タブ）"
-                  >
-                    <ExternalLink size={16} />
-                  </a>
-                </Tooltip>
-              </>
-            )
-          }
-        >
-          {editing ? (
-            <div className="space-y-2">
-              <div className="flex items-center gap-2">
-                <Input
-                  value={titleDraft}
-                  onChange={(e) => setTitleDraft(e.target.value)}
-                  onKeyDown={(e) => {
-                    if (isSubmitEnter(e)) { e.preventDefault(); handleSaveTitle() }
-                    if (e.key === 'Escape') cancelEdit()
-                  }}
-                  disabled={saving}
-                  autoFocus
-                  aria-label="見出し語"
-                  className="text-lg"
-                />
-                <Tooltip label="保存">
-                  <Button size="sm" onClick={handleSaveTitle} disabled={saving} aria-label="保存" className="shrink-0">
-                    {saving ? <Spinner size={16} /> : <Check size={16} />}
-                  </Button>
-                </Tooltip>
-                <Tooltip label="キャンセル">
-                  <Button variant="ghost" size="sm" onClick={cancelEdit} disabled={saving} aria-label="キャンセル" className="shrink-0">
-                    <X size={16} />
-                  </Button>
-                </Tooltip>
-              </div>
-              {editError && <p className="text-sm text-destructive">{editError}</p>}
-            </div>
-          ) : (
-            <div className="flex items-center justify-between gap-3">
-              <h1 className="truncate text-2xl font-semibold">{item.title}</h1>
-              <StatusBadge status={item.generation_status} size="lg" />
-            </div>
-          )}
-        </PropertyBlock>
+        {/* 同じ列に並べるときは、下の ItemProperties が描く（二重に出さない） */}
+        {!leadInGrid && titleNode}
+        {!leadInGrid && imageNode}
 
-        {/*
-          ── 画像 + ナビゲーション ──
-          イメージも他のプロパティと同じ幅に揃える。
-          以前は左右に矢印スロット（各32px）を並べていたため、モバイルでこのブロックだけ
-          狭くなり、カードが持つものが同じ形で並ぶという見え方が崩れていた。
-          矢印は画像の上に重ねる（幅を取らない）。
-        */}
-        <PropertyBlock title="イメージ">
-          <div className="relative">
-            {item.media?.url && !imgError ? (
-              <div
-                className="relative w-full overflow-hidden rounded-lg bg-muted"
-                style={item.media.blur ? { backgroundImage: `url("${item.media.blur}")`, backgroundSize: 'cover', backgroundPosition: 'center' } : undefined}
-              >
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img
-                  src={item.media.url}
-                  alt={item.title}
-                  className={`w-full rounded-lg object-cover ${regenerating ? REGENERATING_IMAGE_CLASS : ''} ${
-                    veiled ? SAFEGUARD_IMAGE_CLASS : 'cursor-zoom-in'
-                  }`}
-                  decoding="async"
-                  fetchPriority="high"
-                  onClick={() => !veiled && setZoomed(true)}
-                  onError={() => setImgError(true)}
-                />
-                {regenerating && <RegeneratingOverlay />}
-                {veiled && <SafeguardVeil />}
-              </div>
-            ) : (
-              <GeneratingOverlay
-                status={item.generation_status}
-                label={imgError ? '画像を表示できません' : STATUS_LABEL[item.generation_status]}
-                className="w-full rounded-lg text-muted-foreground"
-                style={{ aspectRatio: aspectRatioCss(item?.aspect_ratio) }}
-                textClassName="text-sm"
-              />
-            )}
-
-          </div>
-
-          {/* 覆いを外すか、カードごと消すか */}
-          {veiled && (
-            <SafeguardBar item={item} onUpdated={applyUpdated} onDeleted={() => router.push(backHref)} />
-          )}
-
-          {/* イメージへの操作は、イメージの枠の中に収める。右パネルと同じ並び */}
-          <ItemImageBar item={item} onUpdated={applyUpdated} />
-        </PropertyBlock>
-
-        {/* プロパティ（種別・意味）。
-            「画面に収める」ときは項目を畳む。**設定は消さない**ので、戻せば元どおり出る。
-            パネルの入口ごと消さないのは、収めた先で切り替えに戻れなくなるため */}
-        <ItemProperties item={item} onUpdated={applyUpdated} blocksHidden={fitToWindow} />
+        {/* プロパティ（種別・意味・カードの項目）。
+            見出し語とイメージも、選べば同じ列に並ぶ */}
+        <ItemProperties item={item} onUpdated={applyUpdated} leadingBlocks={leadingBlocks} />
 
 
       </div>
