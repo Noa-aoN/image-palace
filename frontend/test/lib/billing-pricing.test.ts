@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { unitPrice, discountPercent } from '@/lib/billing'
+import { unitPrice, discountPercent, monthlyPace, CREDIT_VALIDITY_MONTHS } from '@/lib/billing'
 
 describe('unitPrice', () => {
   it('1クレジットあたりの価格を返す', () => {
@@ -35,5 +35,28 @@ describe('discountPercent', () => {
 
   it('基準が無ければ 0', () => {
     expect(discountPercent(12, 0)).toBe(0)
+  })
+})
+
+// 期限までに使い切る速さ。
+// **大きい束ほど期限のほうが先に来る**ので、買う前に引き比べられる形にしておく。
+describe('使い切る速さ', () => {
+  it('量を期限で割った、月あたりの枚数を出す', () => {
+    expect(monthlyPace(300, 3)).toBe(100)
+    expect(monthlyPace(1000, 3)).toBe(334)
+  })
+
+  it('既定は画面に出している有効期間と揃える（規約と食い違わせない）', () => {
+    expect(monthlyPace(300)).toBe(monthlyPace(300, CREDIT_VALIDITY_MONTHS))
+  })
+
+  it('端数は切り上げる（足りない速さを出すと使い切れない）', () => {
+    expect(monthlyPace(10, 3)).toBe(4)
+  })
+
+  it('0 や負の値でも壊れない', () => {
+    expect(monthlyPace(0)).toBe(0)
+    expect(monthlyPace(-5)).toBe(0)
+    expect(monthlyPace(100, 0)).toBe(0)
   })
 })

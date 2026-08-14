@@ -86,3 +86,16 @@ export const CREDIT_VALIDITY_LABEL = `${CREDIT_VALIDITY_MONTHS}か月`
 export const TOPUP_VALIDITY = `購入から${CREDIT_VALIDITY_LABEL}ぶん有効・繰り越します`
 
 export const SUBSCRIPTION_VALIDITY = `受け取りから${CREDIT_VALIDITY_LABEL}ぶん有効・使い残しは繰り越します`
+
+/**
+ * その量を期限までに使い切るなら、月に何枚作ることになるか。
+ *
+ * **大きい束ほど、期限のほうが先に来る。** 1000枚を3か月なら月333枚で、
+ * ふつうの使い方では余らせる。値段の安さだけ見て買うと、あとで損に気づく。
+ * 買う前に「自分はそこまで作るか」を確かめられるように、量ではなく速さで見せる。
+ */
+export function monthlyPace(credits: number, months = CREDIT_VALIDITY_MONTHS): number {
+  if (credits <= 0 || months <= 0) return 0
+
+  return Math.ceil(credits / months)
+}
