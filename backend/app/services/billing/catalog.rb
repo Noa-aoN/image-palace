@@ -58,12 +58,28 @@ module Billing
     ].freeze
 
     # 買い切り（Top-up）。まとまるほど1枚あたりを安くする。
+    #
+    # `listed: false` は「いまは並べない」。**消すのではない。**
+    # 定義（値段・枚数）はそのまま残し、Stripe の Price も生かしたままにするので、
+    # 使われ方が見えた時点で `listed` を戻すだけで並べ直せる。
+    #
+    # クレジットの寿命は出どころによらず3か月（Billing::CreditExpiryPolicy）。
+    # **大きい束ほど、期限のほうが先に来る。**
+    #   100枚 … 月34枚で使い切る
+    #   300枚 … 月100枚
+    #   1000枚 … 月334枚
+    # 本番の実測（2026-08-14・直近90日）で最も多い人が月24枚なので、
+    # 300 と 1000 は、いまの使われ方では買った時点で余らせることが分かっている。
+    # 1枚あたりの安さだけが並んでいると、安いほうを選んで後から損に気づく。
+    #
+    # **大きい束を残すために期限を延ばさない。** 出どころで寿命を変えると、
+    # 「3か月」という1つの決まりが崩れ、例外の数だけ説明が要るようになる。
     TOPUPS = [
       { name: "topup_10",   price: 190,    credits: 10 },
       { name: "topup_50",   price: 900,    credits: 50 },
       { name: "topup_100",  price: 1_700,  credits: 100 },
-      { name: "topup_300",  price: 4_800,  credits: 300 },
-      { name: "topup_1000", price: 15_000, credits: 1_000 }
+      { name: "topup_300",  price: 4_800,  credits: 300,   listed: false },
+      { name: "topup_1000", price: 15_000, credits: 1_000, listed: false }
     ].freeze
 
     module_function
@@ -77,7 +93,7 @@ module Billing
       SUBSCRIPTIONS.map do |row|
         {
           name: row[:name], tier: row[:tier], kind: "subscription", interval: "month",
-          price_cents: row[:price], credits_per_period: row[:credits]
+          price_cents: row[:price], credits_per_period: row[:credits], active: listed?(row)
         }
       end
     end
@@ -86,9 +102,26 @@ module Billing
       TOPUPS.map do |row|
         {
           name: row[:name], tier: "topup", kind: "one_time", interval: nil,
-          price_cents: row[:price], credits_per_period: row[:credits]
+          price_cents: row[:price], credits_per_period: row[:credits], active: listed?(row)
         }
       end
+    end
+
+    # いま並べるか。**書いていなければ並べる**（既存の行に手を入れずに済む）
+    def listed?(row)
+      row.fetch(:listed, true)
+    end
+
+    # いま並べている買い切りだけ
+    def listed_topups
+      TOPUPS.select { |row| listed?(row) }
+    end
+
+    # その量を期限までに使い切るなら、月に何枚作ることになるか（画面の表示と揃える）
+    def monthly_pace(credits, months: CreditExpiryPolicy.months)
+      return 0 if credits.to_i <= 0 || months.to_i <= 0
+
+      (credits.to_f / months).ceil
     end
 
     # 1クレジットあたりの価格（円）。無料プランは 0 を返す
