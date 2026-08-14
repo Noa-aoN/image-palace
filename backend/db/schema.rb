@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_08_14_015334) do
+ActiveRecord::Schema[8.1].define(version: 2026_08_14_092410) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
   enable_extension "pg_trgm"
@@ -620,6 +620,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_08_14_015334) do
     t.datetime "onboarded_at"
     t.string "palace_name"
     t.boolean "regenerate_with_meaning", default: false, null: false
+    t.boolean "share_generated_images", default: true, null: false
     t.string "shelf_orientation", default: "rows", null: false
     t.string "timezone", default: "Asia/Tokyo", null: false
     t.datetime "updated_at", null: false
