@@ -58,7 +58,9 @@ class GenerateImageJob < ApplicationJob
           prompt: effective_prompt, aspect_ratio: item.aspect_ratio,
           kind: "item", user_id: item.user_id, model_key: model_key
         )
-        shared_media = create_shared_media!(item, shared_media_key(cache_key, force_generate:), result)
+        shared_media = create_shared_media!(
+          item, shared_media_key(cache_key, force_generate:, user: item.user), result
+        )
         attach_image_data(
           shared_media, result.image_data, result.content_type,
           crop_ratio: AspectRatios.crop_ratio(item.aspect_ratio)
@@ -118,10 +120,21 @@ class GenerateImageJob < ApplicationJob
     raise
   end
 
-  def shared_media_key(normalized, force_generate:)
-    return normalized unless force_generate
+  # 作った絵をどの鍵で置くか。
+  #
+  # 既定は指示そのもの（＝同じ指示の人が使い回せる）。
+  # 「ほかの人に使わせない」と決めている人のぶんは、その人だけの鍵で置く。
+  # **取る側は変えない。** ほかの人が作った絵は今までどおり使う
+  # （切ると待ち時間も原価も跳ね上がるうえ、同じ絵がもう1枚できるだけ）。
+  def shared_media_key(normalized, force_generate:, user: nil)
+    return "#{normalized}\nforce:#{SecureRandom.uuid}" if force_generate
+    return normalized if share_generated_images?(user)
 
-    "#{normalized}\nforce:#{SecureRandom.uuid}"
+    "#{normalized}\nprivate:#{user.id}"
+  end
+
+  def share_generated_images?(user)
+    user.nil? || user.setting.nil? || user.setting.share_generated_images
   end
 
   def lock_shared_media_cache!(normalized)

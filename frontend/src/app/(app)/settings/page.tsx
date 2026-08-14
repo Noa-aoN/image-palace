@@ -25,6 +25,8 @@ export default function SettingsPage() {
   const [autoTags, setAutoTags] = useState<boolean | null>(null)
   const [regenWithMeaning, setRegenWithMeaning] = useState<boolean | null>(null)
   const [imageSafeguard, setImageSafeguard] = useState<boolean | null>(null)
+  // 自分が作らせた絵を、ほかの人にも使わせてよいか
+  const [shareImages, setShareImages] = useState<boolean | null>(null)
   const [cardDetailColumns, setCardDetailColumns] = useState(1)
   const [savingSettings, setSavingSettings] = useState(false)
   // デフォルト画像スタイル（null = 読み込み中）
@@ -71,6 +73,7 @@ export default function SettingsPage() {
         setAutoTags(s.auto_generate_tags)
         setRegenWithMeaning(s.regenerate_with_meaning)
         setImageSafeguard(s.image_safeguard)
+        setShareImages(s.share_generated_images)
         setCardDetailColumns(s.card_detail_columns ?? 1)
         setDefaultStyle(s.default_image_style)
         setDefaultAspect(s.default_aspect_ratio)
@@ -230,6 +233,21 @@ export default function SettingsPage() {
     }
   }
 
+  const toggleShareImages = async () => {
+    if (shareImages === null || savingSettings) return
+    const next = !shareImages
+    setSavingSettings(true)
+    setShareImages(next)
+    try {
+      const s = await updateSettings({ share_generated_images: next })
+      setShareImages(s.share_generated_images)
+    } catch {
+      setShareImages(!next) // 失敗したら元に戻す
+    } finally {
+      setSavingSettings(false)
+    }
+  }
+
   // データエクスポート
   const [exporting, setExporting] = useState(false)
   const [exportError, setExportError] = useState<string | null>(null)
@@ -359,6 +377,28 @@ export default function SettingsPage() {
                 onClick={toggleImageSafeguard}
               />
             </div>
+            {/* 同じ指示の絵は世界で1回しか作らない。**得か、自分だけのものにするか** */}
+            <div className="flex items-start justify-between gap-4 border-t border-border/60 pt-4">
+              <div className="min-w-0">
+                <p className="font-medium">作った絵を、ほかの人にも使わせる</p>
+                <p className="mt-1 text-sm text-muted-foreground">
+                  同じ指示で作られた絵は、世界で1回しか作りません。ONのままなら、
+                  あなたが作らせた絵も、同じ指示を書いた人にそのまま渡ります
+                  （その人はクレジットを使いますが、待ち時間はありません）。
+                  OFFにすると、これから作る絵はあなただけのものになります。
+                  <strong className="text-foreground">
+                    OFFにしても、ほかの人が作った絵は今までどおり使えます。
+                  </strong>
+                </p>
+              </div>
+              <Toggle
+                checked={shareImages === true}
+                label="作った絵を、ほかの人にも使わせる"
+                disabled={shareImages === null || savingSettings}
+                onClick={toggleShareImages}
+              />
+            </div>
+
             {savingSettings && (
               <p className="flex items-center gap-1 text-xs text-muted-foreground">
                 <Loader2 size={12} className="animate-spin" /> 保存中…

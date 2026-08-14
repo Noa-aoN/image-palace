@@ -27,6 +27,8 @@ export interface UserSettings {
   regenerate_with_meaning: boolean
   /** 生成された絵に覆いを掛けて、承認するまで直視しないで済むようにする。既定 OFF */
   image_safeguard: boolean
+  /** 自分が作らせた絵を、ほかの人にも使わせてよいか（取る側は変わらない） */
+  share_generated_images: boolean
   /** カード一覧で名前として出す項目の識別名。空なら見出し語（title） */
   /** カード詳細で項目を何列に並べるかの既定（1〜3）。1枚ごとの指定はカード側が持つ */
   card_detail_columns: number

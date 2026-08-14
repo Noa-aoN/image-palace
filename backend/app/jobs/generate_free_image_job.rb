@@ -34,6 +34,7 @@ class GenerateFreeImageJob < ApplicationJob
 
   private
 
+  # 取る側は、共有の置き場をそのまま見る（ほかの人が作った絵は使う）
   def cached(prompt)
     SharedMedia.for_prompt(cache_key(prompt)).detect { |shared| shared.file.attached? }
   end
@@ -42,14 +43,24 @@ class GenerateFreeImageJob < ApplicationJob
   # 混ざると片方を消したときにもう片方が壊れる
   def cache_key(prompt) = "free_image:#{prompt}"
 
+  # 置く側の鍵。「ほかの人に使わせない」と決めている人のぶんは、その人だけの鍵で置く
+  def write_key(prompt, user)
+    return cache_key(prompt) if user&.setting.nil? || user.setting.share_generated_images
+
+    "#{cache_key(prompt)}\nprivate:#{user.id}"
+  end
+
   def generate!(property, prompt)
-    user_id = property.item.user_id
-    result = GenerateImageService.call(prompt: prompt, kind: "free_image", user_id: user_id)
-    shared = SharedMedia.create!(normalized_prompt: cache_key(prompt), user_id: user_id, metadata: result.metadata)
+    user = property.item.user
+    result = GenerateImageService.call(prompt: prompt, kind: "free_image", user_id: user.id)
+    shared = SharedMedia.create!(
+      normalized_prompt: write_key(prompt, user), user_id: user.id, metadata: result.metadata
+    )
     attach!(shared, result)
     shared
   rescue ActiveRecord::RecordNotUnique
-    cached(prompt) || raise
+    # ぶつかった相手は、いま置こうとした鍵の行。共有の鍵を見に行っても見つからない
+    SharedMedia.for_prompt(write_key(prompt, user)).detect { |s| s.file.attached? } || raise
   end
 
   def attach!(shared, result)
