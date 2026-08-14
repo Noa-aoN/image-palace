@@ -587,6 +587,8 @@ export interface AdminBrief {
   prompt_tokens: number
   completion_tokens: number
   cost_credits: number
+  /** 次にやること。**見立てとは1対1ではない**（AI は別々に書く） */
+  actions?: AdminBriefAction[]
   insights: {
     id: string
     observation: string
@@ -597,4 +599,21 @@ export interface AdminBrief {
     suggested_action: string
     status: string
   }[]
+}
+
+/**
+ * 「次にやること」1件。
+ *
+ * 終わったかどうかだけを持つ。Issue や PR は GitHub 側の話で、
+ * ここが持つのは「言われたことを、やったかどうか」だけ。
+ */
+export interface AdminBriefAction {
+  id: string
+  title: string
+  status: 'open' | 'done'
+  completed_at?: string | null
+  position?: number
+  brief_id?: string
+  /** いつ言われたことか。古いまま残っているものに気づける */
+  generated_at?: string
 }

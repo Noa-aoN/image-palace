@@ -29,7 +29,9 @@ RSpec.describe "運営の段階ごとに触れる範囲", type: :request do
     [ :get, "/api/v1/admin/ai_models" ],
     [ :get, "/api/v1/admin/campaign_codes" ],
     # 経営の見立て。読むだけ（作るのは operator 以上）
-    [ :get, "/api/v1/admin/brief" ]
+    [ :get, "/api/v1/admin/brief" ],
+    [ :get, "/api/v1/admin/briefs" ],
+    [ :get, "/api/v1/admin/brief_actions" ]
   ].freeze
 
   # 通常運用。operator 以上でないと通らない

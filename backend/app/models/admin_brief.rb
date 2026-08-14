@@ -7,6 +7,7 @@
 class AdminBrief < ApplicationRecord
   belongs_to :generated_by, class_name: "User", optional: true
   has_many :admin_insights, -> { order(:position) }, dependent: :destroy, inverse_of: :admin_brief
+  has_many :admin_brief_actions, -> { order(:position) }, dependent: :destroy, inverse_of: :admin_brief
 
   scope :recent, -> { order(created_at: :desc) }
 

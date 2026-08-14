@@ -11,7 +11,15 @@ module Api
         before_action -> { require_role!(:operator) }, only: :create
 
         def show
-          render json: { brief: serialize(AdminBrief.recent.includes(:admin_insights).first) }
+          render json: { brief: serialize(latest) }
+        end
+
+        # 過去のぶんも並べる。**新しいものを上に。**
+        # 何を言われて、何をやったかは、並べて初めて追える
+        def index
+          briefs = AdminBrief.recent.includes(:admin_insights, :admin_brief_actions).limit(LIST_LIMIT)
+
+          render json: { briefs: briefs.map { |brief| serialize(brief) } }
         end
 
         def create
@@ -35,6 +43,13 @@ module Api
 
         private
 
+        # 一覧に出す件数。増えても読めないので打ち止めを置く
+        LIST_LIMIT = 30
+
+        def latest
+          AdminBrief.recent.includes(:admin_insights, :admin_brief_actions).first
+        end
+
         def serialize(brief)
           return nil unless brief
 
@@ -48,7 +63,18 @@ module Api
             prompt_tokens: brief.prompt_tokens,
             completion_tokens: brief.completion_tokens,
             cost_credits: brief.cost_points.fdiv(::Billing::POINTS_PER_CREDIT).round(2),
-            insights: brief.admin_insights.map { |insight| serialize_insight(insight) }
+            insights: brief.admin_insights.map { |insight| serialize_insight(insight) },
+            actions: brief.admin_brief_actions.map { |action| serialize_action(action) }
+          }
+        end
+
+        def serialize_action(action)
+          {
+            id: action.id,
+            title: action.title,
+            status: action.status,
+            completed_at: action.completed_at,
+            position: action.position
           }
         end
 

@@ -1,10 +1,16 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { Compass, Loader2, RefreshCw } from 'lucide-react'
+import { Check, Compass, History, ListTodo, Loader2, RefreshCw } from 'lucide-react'
 import { Button } from '@/components/ui/button'
-import { getAdminBrief, generateAdminBrief } from '@/lib/api/admin'
-import type { AdminBrief } from '@/types/admin'
+import {
+  getAdminBrief,
+  generateAdminBrief,
+  getAdminBriefs,
+  getAdminBriefActions,
+  updateAdminBriefAction,
+} from '@/lib/api/admin'
+import type { AdminBrief, AdminBriefAction } from '@/types/admin'
 
 const LEVEL_LABEL: Record<string, string> = { low: '低', medium: '中', high: '高' }
 
@@ -25,6 +31,9 @@ export default function AdminStrategyPage() {
   const [loading, setLoading] = useState(true)
   const [generating, setGenerating] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  // 過去のぶん。**新しいものが上**。何を言われて何をやったかは、並べて初めて追える
+  const [history, setHistory] = useState<AdminBrief[]>([])
+  const [showHistory, setShowHistory] = useState(false)
 
   useEffect(() => {
     let cancelled = false
@@ -42,6 +51,11 @@ export default function AdminStrategyPage() {
       cancelled = true
     }
   }, [])
+
+  const openHistory = async () => {
+    setShowHistory((current) => !current)
+    if (history.length === 0) setHistory(await getAdminBriefs().catch(() => []))
+  }
 
   const refresh = async () => {
     if (generating) return
@@ -63,13 +77,12 @@ export default function AdminStrategyPage() {
       <div className="flex flex-wrap items-center gap-2">
         <Compass size={20} style={{ color: 'var(--palace)' }} />
         <h2 className="text-lg font-semibold">AI分析</h2>
-        <Button
-          size="sm"
-          variant="outline"
-          onClick={refresh}
-          disabled={generating}
-          className="ml-auto"
-        >
+        <ActionPanel />
+        <Button size="sm" variant="ghost" onClick={openHistory} className="ml-auto">
+          <History size={14} className="mr-1" />
+          これまでの分析
+        </Button>
+        <Button size="sm" variant="outline" onClick={refresh} disabled={generating}>
           {generating ? (
             <Loader2 size={14} className="mr-1 animate-spin" />
           ) : (
@@ -98,6 +111,8 @@ export default function AdminStrategyPage() {
           まだ見立てはありません。「AI分析を更新」を押すと、いまの数字から作ります。
         </p>
       )}
+
+      {showHistory && <BriefHistory briefs={history} />}
     </div>
   )
 }
@@ -189,5 +204,207 @@ function Block({ title, items, ordered }: { title: string; items?: string[]; ord
         ))}
       </List>
     </section>
+  )
+}
+
+/**
+ * これまでの分析。**新しいものが上。**
+ *
+ * 何を言われて、何をやったかは、並べて初めて追える。
+ * 差分の比較や折れ線はまだ持たない（見るものが増えるほど、読まなくなる）。
+ */
+function BriefHistory({ briefs }: { briefs: AdminBrief[] }) {
+  if (briefs.length === 0) {
+    return <p className="text-sm text-muted-foreground">これまでの分析はまだありません。</p>
+  }
+
+  return (
+    <section className="space-y-2">
+      <h3 className="text-sm font-semibold">これまでの分析</h3>
+      <ul className="space-y-2">
+        {briefs.map((brief) => {
+          const done = (brief.actions ?? []).filter((a) => a.status === 'done').length
+          const total = (brief.actions ?? []).length
+          const immature = Object.entries(brief.completeness?.retention?.status ?? {})
+            .filter(([, value]) => value !== 'measured')
+            .map(([key]) => key.toUpperCase())
+
+          return (
+            <li key={brief.id} className="rounded-xl border border-border bg-background p-3">
+              <details>
+                <summary className="cursor-pointer list-none">
+                  <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1">
+                    <span className="text-sm font-medium">
+                      {new Date(brief.generated_at).toLocaleString('ja-JP')}
+                    </span>
+                    <span className="text-xs text-muted-foreground">
+                      {new Date(brief.period.from).toLocaleDateString('ja-JP')}〜
+                      {new Date(brief.period.to).toLocaleDateString('ja-JP')}
+                    </span>
+                    <span className="text-xs text-muted-foreground">{brief.model}</span>
+                    <span className="text-xs text-muted-foreground">{brief.cost_credits} cr</span>
+                    {total > 0 && (
+                      <span className="text-xs text-muted-foreground">
+                        やること {done}/{total}
+                      </span>
+                    )}
+                    {/* 何が測れていなかったかを並べる。
+                        言われなかったことを「問題が無かった」と読まないため */}
+                    {immature.length > 0 && (
+                      <span className="text-xs text-amber-600 dark:text-amber-500">
+                        未計測 {immature.join(' / ')}
+                      </span>
+                    )}
+                  </div>
+                  {brief.summary.top_issue && (
+                    <p className="mt-1 text-sm">{brief.summary.top_issue}</p>
+                  )}
+                </summary>
+
+                <div className="mt-3 space-y-3 border-t border-border/60 pt-3">
+                  <Block title="今週の要点" items={brief.summary.highlights} />
+                  <Block title="気になる変化" items={brief.summary.changes} />
+                  <Block title="次にやること" items={(brief.actions ?? []).map((a) => a.title)} ordered />
+                  {brief.insights.map((insight) => (
+                    <div key={insight.id} className="space-y-1">
+                      <p className="text-sm font-medium">{insight.observation}</p>
+                      <ul>
+                        {insight.evidence.map((line) => (
+                          <li key={line} className="text-xs text-muted-foreground">
+                            ・{line}
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                  ))}
+                </div>
+              </details>
+            </li>
+          )
+        })}
+      </ul>
+    </section>
+  )
+}
+
+const ACTION_FILTERS = [
+  { key: 'open', label: '未完了' },
+  { key: 'done', label: '完了' },
+  { key: 'all', label: 'すべて' },
+] as const
+
+/**
+ * 「次にやること」を横から開く。
+ *
+ * **終わったものを消さない。** やったことも、やらなかったことも、次の見立ての材料になる。
+ * 既定は未完了（開いた人がまず見たいのは、まだ残っているもの）。
+ */
+function ActionPanel() {
+  const [open, setOpen] = useState(false)
+  const [filter, setFilter] = useState<'open' | 'done' | 'all'>('open')
+  const [rows, setRows] = useState<AdminBriefAction[]>([])
+  const [loading, setLoading] = useState(false)
+
+  useEffect(() => {
+    if (!open) return
+    let cancelled = false
+    // 読み込み中の印は次の順番へ回す。効果の中でそのまま書き換えると、
+    // 描き直しが連鎖する形になる
+    const spinner = setTimeout(() => setLoading(true), 0)
+    getAdminBriefActions(filter)
+      .then((next) => {
+        if (!cancelled) setRows(next)
+      })
+      .catch(() => {})
+      .finally(() => {
+        if (!cancelled) setLoading(false)
+      })
+    return () => {
+      cancelled = true
+      clearTimeout(spinner)
+    }
+  }, [open, filter])
+
+  const toggle = async (row: AdminBriefAction) => {
+    const next = row.status === 'done' ? 'open' : 'done'
+    // 押した瞬間に変える。戻ってくるのを待つと、押せたのかが分からない
+    setRows((current) => current.map((r) => (r.id === row.id ? { ...r, status: next } : r)))
+    try {
+      await updateAdminBriefAction(row.id, next)
+      if (filter !== 'all') setRows((current) => current.filter((r) => r.id !== row.id))
+    } catch {
+      setRows((current) => current.map((r) => (r.id === row.id ? { ...r, status: row.status } : r)))
+    }
+  }
+
+  return (
+    <>
+      <Button size="sm" variant="ghost" onClick={() => setOpen((v) => !v)}>
+        <ListTodo size={14} className="mr-1" />
+        やること
+      </Button>
+
+      {open && (
+        <div className="w-full space-y-2 rounded-xl border border-border bg-background p-3">
+          <div className="flex flex-wrap items-center gap-1.5">
+            {ACTION_FILTERS.map((row) => (
+              <button
+                key={row.key}
+                type="button"
+                onClick={() => setFilter(row.key)}
+                aria-pressed={filter === row.key}
+                className={`rounded-full border px-2.5 py-0.5 text-xs transition-colors ${
+                  filter === row.key
+                    ? 'border-transparent text-white'
+                    : 'border-border text-muted-foreground hover:bg-muted'
+                }`}
+                style={filter === row.key ? { backgroundColor: 'var(--palace)' } : undefined}
+              >
+                {row.label}
+              </button>
+            ))}
+            {loading && <Loader2 size={14} className="animate-spin text-muted-foreground" />}
+          </div>
+
+          {rows.length === 0 ? (
+            <p className="text-xs text-muted-foreground">
+              {filter === 'open' ? '残っているものはありません。' : 'ありません。'}
+            </p>
+          ) : (
+            <ul className="space-y-1">
+              {rows.map((row) => (
+                <li key={row.id} className="flex items-start gap-2">
+                  <button
+                    type="button"
+                    onClick={() => toggle(row)}
+                    aria-pressed={row.status === 'done'}
+                    aria-label={row.status === 'done' ? '未完了に戻す' : '完了にする'}
+                    className={`mt-0.5 flex h-4 w-4 shrink-0 items-center justify-center rounded border ${
+                      row.status === 'done' ? 'border-transparent text-white' : 'border-border'
+                    }`}
+                    style={row.status === 'done' ? { backgroundColor: 'var(--palace)' } : undefined}
+                  >
+                    {row.status === 'done' && <Check size={11} strokeWidth={3} />}
+                  </button>
+                  <span className="min-w-0 flex-1">
+                    <span
+                      className={`block text-sm ${row.status === 'done' ? 'text-muted-foreground line-through' : ''}`}
+                    >
+                      {row.title}
+                    </span>
+                    {/* いつ言われたことか。古いまま残っているものに気づける */}
+                    {row.generated_at && (
+                      <span className="block text-[11px] text-muted-foreground">
+                        {new Date(row.generated_at).toLocaleDateString('ja-JP')} の分析
+                      </span>
+                    )}
+                  </span>
+                </li>
+              ))}
+            </ul>
+          )}
+        </div>
+      )}
+    </>
   )
 }
