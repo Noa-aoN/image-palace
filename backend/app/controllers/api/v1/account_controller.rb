@@ -55,6 +55,12 @@ module Api
             item_type: item.item_type&.name,
             generation_status: item.generation_status,
             meaning: item.primary_meaning&.definition,
+            # 意味は1つとは限らない。**種類（意味／解説／原義…）ごとに持てる**ので、
+            # 先頭だけ出すと、書いたものの大半が落ちる
+            meanings: item.meanings.sort_by { |m| [ m.position || 0, m.id ] }.map do |meaning|
+              { kind: meaning.kind, detail_level: meaning.detail_level,
+                language_code: meaning.language_code, definition: meaning.definition }.compact
+            end,
             tags: item.tags.map(&:name),
             # 自分で書いた項目。**持ち出したいのは、まずこれ**
             properties: export_properties(item),
