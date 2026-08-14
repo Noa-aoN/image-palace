@@ -55,7 +55,7 @@ import {
   verticalListSortingStrategy,
 } from '@dnd-kit/sortable'
 import { CSS } from '@dnd-kit/utilities'
-import { GripVertical } from 'lucide-react'
+import { GripVertical, MoveHorizontal } from 'lucide-react'
 
 /** 指定した鍵の札の直後へ挿す。見つからなければ先頭に置く */
 function insertAfter<T extends { key: string }>(list: T[], afterKey: string, block: T): T[] {
@@ -483,22 +483,39 @@ export function ItemProperties({ item, onUpdated, leadingBlocks = [] }: ItemProp
       label: '種別',
       node: (
         <PropertyBlock title="種別" busy={savingType}>
-          <select
-            id="item-type"
-            aria-label="種別"
-            value={item.item_type?.id ?? ''}
-            onChange={(e) => handleTypeChange(e.target.value)}
-            disabled={savingType || itemTypes.length === 0}
-            className="h-9 rounded-lg border border-input bg-background px-3 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-50"
-          >
-            {itemTypes.length === 0 && <option value="">読み込み中...</option>}
-            {item.item_type == null && itemTypes.length > 0 && <option value="">未設定</option>}
-            {itemTypes.map((type) => (
-              <option key={type.id} value={type.id}>
-                {type.label}
-              </option>
-            ))}
-          </select>
+          {/*
+            候補を並べて1つ選ぶ。畳んだ一覧から選ぶ形（select）だと、
+            **開くまで何が選べるのか分からない**。種別は数が少なく、
+            持てる項目そのものが変わる選択なので、選択肢が見えているほうがよい。
+          */}
+          {itemTypes.length === 0 ? (
+            <p className="text-sm text-muted-foreground">読み込み中…</p>
+          ) : (
+            <div role="radiogroup" aria-label="種別" className="flex flex-wrap gap-1.5">
+              {itemTypes.map((type) => {
+                const active = item.item_type?.id === type.id
+                return (
+                  <button
+                    key={type.id}
+                    type="button"
+                    role="radio"
+                    aria-checked={active}
+                    onClick={() => !active && handleTypeChange(type.id)}
+                    disabled={savingType}
+                    className={`rounded-full border px-3 py-1 text-sm transition-colors disabled:opacity-50 ${
+                      active ? 'border-transparent text-white' : 'border-border text-muted-foreground hover:bg-muted'
+                    }`}
+                    style={active ? { backgroundColor: 'var(--palace)' } : undefined}
+                  >
+                    {type.label}
+                  </button>
+                )
+              })}
+            </div>
+          )}
+          {item.item_type == null && itemTypes.length > 0 && (
+            <p className="text-xs text-muted-foreground">まだ決めていません。選ぶと、その種別の項目が出ます。</p>
+          )}
           <BlockError message={typeError} />
         </PropertyBlock>
       ),
@@ -966,9 +983,12 @@ function SortableBlock({
           aria-valuenow={span}
           aria-valuemin={1}
           aria-valuemax={columns}
+          title="引いて幅を変える"
           className="absolute bottom-1 right-1 hidden h-4 w-4 cursor-ew-resize items-center justify-center rounded text-muted-foreground opacity-0 transition-opacity group-hover/block:flex group-hover/block:opacity-100"
         >
-          <GripVertical size={12} />
+          {/* 掴んで動かすつまみ（左上）と同じ絵にしない。
+              **同じ絵は同じことをする**と読まれる。こちらは横に引いて幅を変える */}
+          <MoveHorizontal size={12} />
         </span>
       )}
     </div>
