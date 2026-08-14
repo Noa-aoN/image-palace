@@ -101,19 +101,24 @@ export function PalaceLordCard({ tier }: { tier: string | null }) {
               <div className="flex min-w-0 items-center gap-1.5">
                 <p className="truncate text-lg font-semibold">{displayName}</p>
                 {/* 勲章は名前から離す。くっついていると、名前の続きに見える。
-                    何の並びなのかが分かるよう、見出しも添える */}
+                    何の並びなのかが分かるよう、絵の上の行に見出しを置く */}
                 {medals.length > 0 && (
-                  <span className="ml-2 flex shrink-0 items-center gap-1 border-l border-border pl-2">
-                    <span className="text-[11px] text-muted-foreground">勲章</span>
-                    <RewardKindHelpButton kind="medal" />
-                    {medals.map((reward) =>
-                      reward.image_url ? (
-                        <RewardLink key={reward.key} name={reward.name}>
-                          {/* eslint-disable-next-line @next/next/no-img-element */}
-                          <img src={reward.image_url} alt={reward.name} width={20} height={20} loading="lazy" />
-                        </RewardLink>
-                      ) : null
-                    )}
+                  <span className="ml-2 flex shrink-0 flex-col items-start gap-0.5 border-l border-border pl-2">
+                    {/* 見出しは絵の上の行に置く。横に並べると、見出しも勲章のひとつに見える */}
+                    <span className="flex items-center gap-1 text-[11px] text-muted-foreground">
+                      勲章
+                      <RewardKindHelpButton kind="medal" />
+                    </span>
+                    <span className="flex items-center gap-1">
+                      {medals.map((reward) =>
+                        reward.image_url ? (
+                          <RewardLink key={reward.key} name={reward.name}>
+                            {/* eslint-disable-next-line @next/next/no-img-element */}
+                            <img src={reward.image_url} alt={reward.name} width={20} height={20} loading="lazy" />
+                          </RewardLink>
+                        ) : null
+                      )}
+                    </span>
                   </span>
                 )}
               </div>
