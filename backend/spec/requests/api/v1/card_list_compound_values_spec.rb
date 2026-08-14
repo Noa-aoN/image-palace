@@ -77,6 +77,24 @@ RSpec.describe "一覧に出す、中身が2つある項目", type: :request do
     expect(list_fields["scene"]).to eq("葉緑体が光を受けている")
   end
 
+  # Wikipedia の値は JSON の文字列で入っている。**そのまま出すと鍵と URL が一覧に並ぶ**
+  it "Wikipedia は題名だけを出す" do
+    write!(define!("wiki", "wikipedia"),
+           { "wikipedia_title" => "光合成", "wikipedia_extract" => "植物が光から養分を作る働き",
+             "wikipedia_url" => "https://ja.wikipedia.org/wiki/光合成" }.to_json)
+    show_in_list!("wiki")
+
+    expect(list_fields["wiki"]).to eq("光合成")
+  end
+
+  it "題名の無い Wikipedia の値は、冒頭で表す（鍵は出さない）" do
+    write!(define!("wiki", "wikipedia"),
+           { "wikipedia_extract" => "植物が光から養分を作る働き" }.to_json)
+    show_in_list!("wiki")
+
+    expect(list_fields["wiki"]).to eq("植物が光から養分を作る働き")
+  end
+
   it "中身が2つある項目を名前に使っても、記号の並びにならない" do
     write!(define!("note", "free_text"), { "heading" => "覚え方", "body" => "葉が光を食べる" })
     headline_from!("note")

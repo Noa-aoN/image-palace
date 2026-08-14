@@ -150,10 +150,19 @@ module Images
       text =
         case value
         when Array then value.join("、")
+        # 中身が2つある項目（自由テキスト・自由イメージ）。そのまま文字にすると
+        # **`{"heading"=>…}` がそのまま絵の指示に混ざる**
+        when Hash then compound_text(value)
         else readable_value(value.to_s)
         end
 
       text.strip.first(MEANING_EXCERPT)
+    end
+
+    # 見出しと中身を持つ項目を、絵の手がかりになる1行にする。
+    # 段取り用の値（status・shared_media_id）は絵の役に立たないので入れない
+    def compound_text(value)
+      [ value["heading"], value["body"], value["prompt"] ].compact_blank.join("。")
     end
 
     # JSON の文字列なら、中の読める部分（題名と冒頭）だけにする。
