@@ -3,6 +3,7 @@
 import { GenerationInfo } from '@/components/features/items/GenerationInfo'
 import { PromptInfo } from '@/components/features/items/PromptInfo'
 import { RegeneratePanel } from '@/components/features/items/RegeneratePanel'
+import { ImageHistoryPanel } from '@/components/features/items/ImageHistoryPanel'
 import type { Item } from '@/types/item'
 
 /**
@@ -26,6 +27,8 @@ export function ItemImageBar({ item, onUpdated }: { item: Item; onUpdated: (item
       <GenerationInfo item={item} />
       <PromptInfo item={item} onUpdated={onUpdated} />
       {canRegenerate && <RegeneratePanel item={item} onUpdated={onUpdated} />}
+      {/* これまでに使った絵。作り直しの隣に置く（戻したいと思うのは作り直したあと） */}
+      {canRegenerate && <ImageHistoryPanel item={item} onUpdated={onUpdated} />}
     </div>
   )
 }

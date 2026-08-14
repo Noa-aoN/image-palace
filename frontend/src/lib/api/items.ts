@@ -447,3 +447,37 @@ export async function updateBlockView(id: string, view: BlockView): Promise<Item
   const res = await apiClient.patch<Item>(`/api/v1/items/${id}/block_view`, view)
   return res.data
 }
+
+/**
+ * そのカードで、これまでに使った絵。
+ *
+ * **絵そのものは増やさない。** 生成した絵は共有の置き場に残っているので、
+ * ここは「いつ、どれを使ったか」の記録だけを持つ。
+ */
+export interface MediaGeneration {
+  id: string
+  used_at: string
+  model?: string | null
+  quality?: string | null
+  prompt?: string | null
+  url: string | null
+  /** いま使っている絵か */
+  current: boolean
+}
+
+export async function getMediaGenerations(itemId: string): Promise<MediaGeneration[]> {
+  const res = await apiClient.get<{ generations: MediaGeneration[] }>(
+    `/api/v1/items/${itemId}/media_generations`
+  )
+  return res.data.generations
+}
+
+/** 過去の絵に戻す。**生成しない**ので、クレジットは減らない */
+export async function applyMediaGeneration(itemId: string, id: string): Promise<void> {
+  await apiClient.post(`/api/v1/items/${itemId}/media_generations/${id}/apply`)
+}
+
+/** 記録だけ消す。絵そのものは消さない（同じ絵をほかの人が使っている） */
+export async function deleteMediaGeneration(itemId: string, id: string): Promise<void> {
+  await apiClient.delete(`/api/v1/items/${itemId}/media_generations/${id}`)
+}
