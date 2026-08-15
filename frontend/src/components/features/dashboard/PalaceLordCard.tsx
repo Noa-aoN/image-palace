@@ -135,13 +135,16 @@ export function PalaceLordCard({ tier }: { tier: string | null }) {
                   {honors?.title && (
                     // 勲章の絵と同じ行き先にする。名乗っているものを押した人が
                     // 見たいのは**それが何か**であって、この札の説明ではない
+                    // 鉤括弧は外す。**すぐ下に表示名が来る並び**なので、
+                    // 引いて見せなくても、上が名乗り・下が本人の名前だと読み取れる。
+                    // 代わりに少し太くして、地の文との差は保つ
                     <Link
                       href="/achievements"
                       title={honors.title.name}
                       aria-label={`称号「${honors.title.name}」（栄誉の間で見る）`}
-                      className="min-w-0 truncate rounded transition hover:opacity-80 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--palace)]"
+                      className="min-w-0 truncate rounded font-medium transition hover:opacity-80 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--palace)]"
                     >
-                      「{honors.title.name}」
+                      {honors.title.name}
                     </Link>
                   )}
                 </p>
