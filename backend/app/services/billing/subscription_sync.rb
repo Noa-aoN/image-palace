@@ -26,7 +26,7 @@ module Billing
       # ※ Stripe オブジェクトは未知メソッドで NoMethodError を投げるため、必ず [] でアクセスする。
       subscription.current_period_start = time_at(period_value(stripe_subscription, line, :current_period_start))
       subscription.current_period_end = time_at(period_value(stripe_subscription, line, :current_period_end))
-      subscription.cancel_at_period_end = stripe_subscription.cancel_at_period_end
+      subscription.cancel_at_period_end = cancelling?(stripe_subscription)
       subscription.canceled_at = time_at(stripe_subscription.canceled_at)
       subscription.started_at ||= Time.current
       # テストで作った契約を「有料契約」に数えないための目印。
@@ -34,6 +34,22 @@ module Billing
       subscription.livemode = stripe_subscription[:livemode].nil? ? Billing::Mode.live? : stripe_subscription[:livemode]
       subscription.save!
       subscription
+    end
+
+    # 解約が予約されているか。
+    #
+    # **`cancel_at_period_end` だけでは足りない。** お支払い管理ページからの解約では、
+    # Stripe が「その日に終わらせる」形（`cancel_at` に期末の時刻）で予約し、
+    # 真偽値のほうは false のままになることがある。
+    # 真偽値だけを写していると、**利用者が解約したのに画面には何も出ない**まま
+    # 期末を迎えることになる（本番の実地検証で実際にこうなった）。
+    #
+    # 予約日そのものは列に持たない。画面に出しているのは期間の終わりで、
+    # お支払い管理ページから予約できるのも期末だけなので、いまは真偽値で足りる。
+    def cancelling?(stripe_subscription)
+      return true if stripe_subscription.cancel_at_period_end
+
+      stripe_subscription[:cancel_at].present?
     end
 
     # current_period_* は Subscription 直下（旧API）か items 配下（新API）のどちらか。
