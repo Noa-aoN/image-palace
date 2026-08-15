@@ -34,6 +34,14 @@ import { CreateIcon } from './CreateIcon'
 export interface NavNode {
   label: string
   icon: React.ReactNode
+  /**
+   * その場所が何をするところかを、ひとことで。
+   *
+   * 名前は宮殿の見立て（デルフォイ・アゴラ・スタディオン…）なので、
+   * **初めての人には名前だけでは何があるのか分からない**。
+   * 名前を説明的に変えると世界観が崩れるので、名前は残して説明を添える。
+   */
+  description?: string
   // 葉ノードはリンク先を持つ。children を持つノードは開閉可能。
   // children + href（ライブラリ）= リンク＋開閉、children のみ（アトリエ）= 開閉グループ見出し。
   href?: string
@@ -68,12 +76,12 @@ export const NAV_SECTIONS: NavSection[] = [
     key: 'palace',
     title: '宮殿',
     items: [
-      { href: '/entrance', icon: <DoorOpen size={22} />, label: 'エントランス' },
+      { href: '/entrance', icon: <DoorOpen size={22} />, label: 'エントランス', description: '宮殿の入口。いまの様子と、次にやることが分かる' },
       {
         // 親はアトリエのトップ（作成ハブ）へのリンク兼開閉グループ。
         href: '/atelier',
         icon: <Palette size={22} />,
-        label: 'アトリエ',
+        label: 'アトリエ', description: 'つくる場所。カード・キャンバス・スペースなどを新しく作る',
         children: [
           // 他の「◯◯を作成」と同じくページへ移る。
           // ここだけ右パネルが開くと、押した人は同じ操作をしたつもりで違う結果を受け取る
@@ -87,7 +95,7 @@ export const NAV_SECTIONS: NavSection[] = [
       {
         href: '/library',
         icon: <LibraryBig size={22} />,
-        label: 'ライブラリ',
+        label: 'ライブラリ', description: 'しまう場所。作ったものを一覧で見て、探して、整理する',
         children: [
           { href: '/items', icon: <GalleryHorizontal size={20} />, label: 'カード一覧' },
           {
@@ -106,7 +114,7 @@ export const NAV_SECTIONS: NavSection[] = [
         // スタディのトップ（学習ハブ）へのリンク兼開閉グループ。準備中のゲーム/レコードはハブのみ。
         href: '/study',
         icon: <GraduationCap size={22} />,
-        label: 'スタディ',
+        label: 'スタディ', description: 'おぼえる場所。作ったカードで練習・クイズをする',
         children: [
           { href: '/study/practice', icon: <Layers size={20} />, label: 'プラクティス' },
           { href: '/study/quiz', icon: <HelpCircle size={20} />, label: 'クイズ' },
@@ -120,7 +128,7 @@ export const NAV_SECTIONS: NavSection[] = [
         // トロフィーは眺めて楽しむもの、アカウント管理はほとんど触らないもの。
         href: '/myroom',
         icon: <House size={22} />,
-        label: 'マイルーム',
+        label: 'マイルーム', description: '自分の部屋。設定・支払い・記録をまとめて置いてある',
         children: [
           { href: '/achievements', icon: <Crown size={20} />, label: 'アチーブメント' },
           { href: '/settings', icon: <Settings size={20} />, label: '環境設定' },
@@ -134,9 +142,9 @@ export const NAV_SECTIONS: NavSection[] = [
     key: 'outside',
     title: '市街',
     items: [
-      { href: '/delphi', icon: <Wand2 size={22} />, label: 'デルフォイ' },
-      { href: '/agora', icon: <Store size={22} />, label: 'アゴラ' },
-      { href: '/stadion', icon: <Swords size={22} />, label: 'スタディオン' },
+      { href: '/delphi', icon: <Wand2 size={22} />, label: 'デルフォイ', description: 'AI に相談する場所。何を覚えるとよいか、言葉を選んでもらう' },
+      { href: '/agora', icon: <Store size={22} />, label: 'アゴラ', description: 'みんなの広場。ほかの人が作ったものを見つける' },
+      { href: '/stadion', icon: <Swords size={22} />, label: 'スタディオン', description: '腕試しの場所。競って学ぶ（準備中）' },
     ],
   },
   {
@@ -149,7 +157,7 @@ export const NAV_SECTIONS: NavSection[] = [
         // 親自身も面を持つ（3種を一望する掲示板）。畳んだままでも新着に届く
         href: '/board',
         icon: <Megaphone size={22} />,
-        label: '掲示板',
+        label: '掲示板', description: '運営からのお知らせ・使い方・コラムを読む',
         children: [
           { href: '/news', icon: <Megaphone size={20} />, label: 'お知らせ' },
           { href: '/guide', icon: <BookOpen size={20} />, label: '使い方' },
@@ -179,7 +187,7 @@ export const ADMIN_SECTION_KEY = 'ops'
 export const ADMIN_ITEM: NavNode = {
   href: '/admin',
   icon: <ShieldCheck size={22} />,
-  label: '執務室',
+  label: '執務室', description: '運営向け。数字の確認と、日々の運営操作',
   children: [
     { href: '/admin', icon: <House size={20} />, label: '概要', exact: true },
     {

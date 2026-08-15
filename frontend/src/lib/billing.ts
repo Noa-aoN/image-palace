@@ -99,3 +99,38 @@ export function monthlyPace(credits: number, months = CREDIT_VALIDITY_MONTHS): n
 
   return Math.ceil(credits / months)
 }
+
+/** 期限が近いと見なす日数。**この日数以内なら印を出す** */
+export const CREDIT_EXPIRY_SOON_DAYS = 14
+
+/**
+ * その期限まであと何日か。**日付だけで数える**（時刻を含めると、
+ * 同じ「明日まで」が朝と夜で 0 日と 1 日に割れる）。
+ *
+ * 期限なしは null。過ぎているものは負の数。
+ */
+export function daysUntilExpiry(expiresAt: string | null | undefined, now: Date = new Date()): number | null {
+  if (!expiresAt) return null
+
+  const end = new Date(expiresAt)
+  if (Number.isNaN(end.getTime())) return null
+
+  const startOfDay = (d: Date) => Date.UTC(d.getFullYear(), d.getMonth(), d.getDate())
+  return Math.round((startOfDay(end) - startOfDay(now)) / 86_400_000)
+}
+
+/** 期限が近いか。**期限なしは急がない** */
+export function expiresSoon(expiresAt: string | null | undefined, now: Date = new Date()): boolean {
+  const days = daysUntilExpiry(expiresAt, now)
+  return days !== null && days <= CREDIT_EXPIRY_SOON_DAYS
+}
+
+/** 「あと3日」「今日まで」。**期限が近いときだけ添える言葉** */
+export function expiryUrgencyLabel(expiresAt: string | null | undefined, now: Date = new Date()): string | null {
+  const days = daysUntilExpiry(expiresAt, now)
+  if (days === null || days > CREDIT_EXPIRY_SOON_DAYS) return null
+  if (days < 0) return '期限切れ'
+  if (days === 0) return '今日まで'
+
+  return `あと${days}日`
+}
