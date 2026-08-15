@@ -93,7 +93,11 @@ Plan.update_all(stripe_product_id: nil, stripe_price_id: nil)
 
 購読するイベント:
 `checkout.session.completed` / `invoice.paid` /
-`customer.subscription.updated` / `customer.subscription.deleted`
+`customer.subscription.updated` / `customer.subscription.deleted` / `refund.created`
+
+**返金の正本は `refund.created`。** `charge.refunded` は購読しない。
+あちらは同じ決済に複数回の部分返金があると、毎回**累計額**を持って発火するので、
+その回いくら返したのかが読めない。`refund.created` なら「返金1件 = Refund 1件」で数えられる。
 
 ### 疎通確認
 
@@ -286,8 +290,21 @@ end
 `payment_key` が、その束を積んだ決済（買い切りなら checkout session の id）。
 **返金対象の決済に対応する束**がどれかは、これで分かる。
 
-> 月額のぶんは束を持たない（`users.subscription_credits` に載る）。
-> どの請求で付いたかは台帳の `stripe_event_id` を見る。
+### ⚠ 辿れる細かさが、買い切りと月額で違う
+
+| | どこまで辿れるか | 何を見るか |
+|---|---|---|
+| 買い切り | **束（grant）単位** | `credit_grants.metadata["payment_key"]` |
+| 月額 | **台帳（transaction）単位まで** | `credit_transactions.stripe_event_id`（請求の id） |
+
+月額は束を作らない（`users.subscription_credits` という1つの入れ物に載る）ため、
+「この請求で付いたぶん」を束として切り出せない。解約時に持ち越しへ移した束も、
+複数月ぶんが混ざった**合計**であって、特定の請求には対応しない。
+
+将来クレジットの自動回収を作るときは、**この非対称が制約になる**。
+買い切りは束を名指しできるが、月額は「いまの残高から引く」形にならざるを得ない。
+
+> `payment_key` は**今後の買い切りだけ**に入る。既存の束には入っていない。
 
 **4. 全額か一部かを決める**
 
@@ -305,7 +322,8 @@ end
 
 **6. 返金が届いたことを確認**
 
-`charge.refunded` を受けて、台帳に `refund` の行が入り、Sentry に通知が飛ぶ。
+`refund.created` を受けて、台帳に `refund` の行が入り、Sentry に通知が飛ぶ。
+鍵は**返金そのものの id**（`re_...`）なので、同じ返金は何度届いても1行に収まる。
 
 ```ruby
 CreditTransaction.where(kind: "refund").order(:created_at).last
@@ -365,3 +383,33 @@ puts "調整の行: #{CreditTransaction.where(kind: 'adjustment').count}"
 **気をつけること** — 返金額を `amount_cents` に負で入れると、
 `revenue_jpy` が黙って Net に変わる。既存の数字の意味が変わるので、
 入れるときは同時に Gross / Refunds / Net を分けて出すこと。
+
+
+---
+
+## 11. 返金が後から失敗した場合（Later・未購読）
+
+Stripe の返金は、決済手段によっては**後から失敗する**ことがある
+（`refund.updated` / `refund.failed`）。いまはどちらも購読していない。
+
+### いまの台帳は、その更新に耐えるか
+
+**耐える。** 理由は、`refund.created` を受けた時点で**残高を1点も動かしていない**から。
+
+自動回収していれば、失敗したときに戻した分を戻し直す必要があり、
+「戻した／やっぱり戻っていない」の二重管理になる。それをしていないので、
+返金が失敗しても**辻褄を合わせる作業が発生しない**。台帳の行は
+「その時点で返金が作られた」という事実として、そのまま正しい。
+
+受け取った時点の `status` を `description` に残してあるので、
+後から「pending で受けたものが最終的にどうなったか」を追える。
+
+### 将来購読するときの注意
+
+鍵が `refund.id` なので、**同じ返金の `refund.updated` は一意制約に弾かれて
+黙って捨てられる**。状態の更新を拾いたいなら、次のどちらかが要る。
+
+- 別の鍵で行を足す（例: `re_xxx:failed`）。台帳は追記だけで済む
+- 既存行の `description` を書き換える。履歴は残らない
+
+**前者を勧める**。お金の記録は、書き換えるより積むほうが後から読める。
