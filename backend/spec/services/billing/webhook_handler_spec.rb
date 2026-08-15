@@ -251,15 +251,22 @@ RSpec.describe Billing::WebhookHandler do
       { id: "evt_d1", type: "customer.subscription.deleted", data: { object: { id: "sub_1" } } }
     end
 
-    it "forfeits remaining subscription credits and marks canceled" do
+    # **没収しない。** 規約は出どころによらず「付与から3か月」と定めていて、
+    # 解約を理由に取り上げるとその約束と食い違う
+    it "marks canceled and keeps the remaining credits until they expire" do
       sub = create(:subscription, user:, plan:, status: "active", stripe_subscription_id: "sub_1")
       user.update!(subscription_credits: 50 * Billing::POINTS_PER_CREDIT)
 
       handle(deleted_event)
 
       expect(sub.reload.status).to eq("canceled")
+      # 月々の入れ物は空になる（次の付与は止まる）が、中身は持ち越しへ移る
       expect(user.reload.subscription_credits).to eq(0)
-      expect(CreditTransaction.where(user:, kind: "subscription_expire").count).to eq(1)
+      expect(user.credit_grants.where(kind: "subscription_carryover").sum(:remaining_points))
+        .to eq(50 * Billing::POINTS_PER_CREDIT)
+      expect(user.available_credit_points).to eq(50 * Billing::POINTS_PER_CREDIT)
+      # 残高が減っていないので、失効の記録は残さない
+      expect(CreditTransaction.where(user:, kind: "subscription_expire").count).to eq(0)
     end
 
     it "is idempotent when the subscription is already canceled" do
@@ -267,9 +274,10 @@ RSpec.describe Billing::WebhookHandler do
       user.update!(subscription_credits: 50 * Billing::POINTS_PER_CREDIT)
       handle(deleted_event)
 
+      # 再配信で持ち越しが二重に積まれない
       expect {
         handle(id: "evt_d2", type: "customer.subscription.deleted", data: { object: { id: "sub_1" } })
-      }.not_to(change { CreditTransaction.where(user:, kind: "subscription_expire").count })
+      }.not_to(change { user.reload.available_credit_points })
     end
   end
 
