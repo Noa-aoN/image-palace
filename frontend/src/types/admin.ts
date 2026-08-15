@@ -371,7 +371,15 @@ export interface AdminAuditLog {
 
 export interface AdminFinanceSummary {
   period: { year: number | null; month: number | null; from: string; to: string }
-  revenue: { total: number; by_kind: Record<string, number> }
+  revenue: {
+    /** Gross。返金を差し引かない（既存の値と互換） */
+    total: number
+    by_kind: Record<string, number>
+    /** 返金。負の値 */
+    refunds: number
+    /** 手元に残った額（Gross + Refunds） */
+    net: number
+  }
   /** テストの決済（売上には入れない）。0 でなければ画面に断りを出す */
   test_revenue: number
   /** 「本番」か「テスト」か。いまの Stripe の鍵で決まる */
@@ -485,6 +493,9 @@ export interface AdminBusinessMetrics {
     arpu_jpy: number | null
     arppu_jpy: number | null
     test_revenue_jpy: number
+    refunds_jpy: number
+    net_jpy: number
+    previous_net_jpy: number
   }
   retention: {
     canceled_in_period: number

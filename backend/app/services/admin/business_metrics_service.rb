@@ -159,8 +159,13 @@ module Admin
       paying = paying_users
 
       {
+        # Gross。返金を差し引かない（これまでどおりの値）
         total_jpy: revenue,
         previous_total_jpy: previous[:revenue][:total],
+        # 返金（負）と、手元に残った額
+        refunds_jpy: current[:revenue][:refunds],
+        net_jpy: current[:revenue][:net],
+        previous_net_jpy: previous[:revenue][:net],
         # 契約が続くかぎり毎月入る額。買い切りは含めない（次の月に入る保証が無い）
         mrr_jpy: mrr_jpy,
         arr_jpy: mrr_jpy * 12,
