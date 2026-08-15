@@ -111,19 +111,34 @@ export function HeroScrollZoom() {
 
         {/* テキスト/CTA（最前面・ズームでフェードアウト） */}
         <div className="hero-content flex flex-col items-center">
-          <p className="text-sm tracking-widest mb-4 font-medium" style={{ color: 'var(--palace)' }}>
+          {/* 大きさで読む順を決める。**名前 → 何をするか → どう使えるか**。
+              いちばん大きいものが名前でないと、初めての人は何を見ているのか分からない */}
+          <p
+            className="brand-wordmark mb-4 text-[clamp(2rem,9vw,4.5rem)] leading-none"
+            style={{ color: 'var(--palace)' }}
+          >
             IMAGE PALACE
           </p>
-          <h1 className="text-[clamp(1.5rem,7vw,2.25rem)] md:text-5xl font-bold tracking-tight mb-6 leading-tight" style={{ color: '#111111' }}>
+          <h1
+            className="mb-6 text-[clamp(1.15rem,4.5vw,1.75rem)] font-bold leading-snug tracking-tight md:text-3xl"
+            style={{ color: 'var(--foreground)' }}
+          >
             言葉をイメージに変えて、
             <br />
             記憶の宮殿をつくる。
           </h1>
-          <p className="text-base md:text-lg max-w-md mb-10" style={{ color: '#4A4A4A' }}>
-            AIが単語を画像カードに変換。
-            <br />
-            自分だけの記憶の宮殿を、少しずつ育てていけます。
-          </p>
+          {/* 絵の上に直接置くと、背景の明暗で読めなくなる。**紙を1枚敷く** */}
+          <div className="mb-10 max-w-lg rounded-2xl border border-white/70 bg-white/72 px-6 py-5 text-left shadow-sm backdrop-blur-sm">
+            <p className="text-sm leading-relaxed md:text-base" style={{ color: 'var(--foreground)' }}>
+              覚えたい言葉を書くと、AI がその情景を絵にします。
+              絵と言葉が一枚になった<strong className="font-semibold">メモリーカード</strong>が、
+              記憶の基本の単位です。
+            </p>
+            <p className="mt-3 text-sm leading-relaxed" style={{ color: '#5A5348' }}>
+              単語帳・学習図鑑・用語集はもちろん、ビジョンボードや絵日記としても。
+              集めたカードは、自分だけの宮殿として並べて眺められます。
+            </p>
+          </div>
           <LandingCta className="flex w-full max-w-sm flex-col gap-3 sm:w-auto sm:max-w-none sm:flex-row" />
         </div>
 

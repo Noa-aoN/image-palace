@@ -97,20 +97,31 @@ export function AppHeader() {
   return (
     <header
       className="h-14 flex items-center justify-between px-6 shrink-0 relative z-30"
+      // 地を濃い金にして、上に乗るものは白で通す。
+      // 差し色の金（--palace）をそのまま地にすると、その上の金の要素が沈む
       style={{
-        backgroundColor: 'var(--ivory)',
-        borderBottom: '1px solid var(--palace)',
+        backgroundColor: 'var(--palace-deep)',
+        color: 'var(--on-palace)',
       }}
     >
       {/* 左: ロゴ（常に左端）＋ モバイルのハンバーガー（認証時のみ）。
           LP へ戻る導線はアカウントメニュー内「最初のページに戻る」へ移設した。 */}
       <div className="flex items-center gap-1">
-        <Link href={isAuthenticated ? '/entrance' : '/'} className="flex items-center gap-1.5" aria-label="ImagePalace ホーム">
+        {/* 名前を常に出す。絵記号だけだと、初めての人には何のアプリか分からない。
+            狭い画面では中央に置く（左に寄せると、ハンバーガーと窮屈に並ぶ） */}
+        <Link
+          href={isAuthenticated ? '/entrance' : '/'}
+          className="absolute left-1/2 flex -translate-x-1/2 items-center gap-1.5 md:static md:translate-x-0"
+          aria-label="ImagePalace ホーム"
+        >
           {/* ロゴは仮置き（宮殿アイコン）。正式ロゴ確定までのプレースホルダ */}
-          <Castle size={32} style={{ color: 'var(--palace)' }} />
+          <Castle size={28} style={{ color: 'var(--on-palace)' }} />
+          <span className="brand-wordmark text-base leading-none tracking-wide" style={{ color: 'var(--on-palace)' }}>
+            IMAGE PALACE
+          </span>
           {/* 開発段階を示すバッジ。正式リリースまで表示する */}
           <span
-            className="rounded-full border border-border px-1.5 py-0.5 text-[10px] font-medium leading-none text-muted-foreground"
+            className="hidden rounded-full border border-white/45 px-1.5 py-0.5 text-[10px] font-medium leading-none text-white/85 sm:inline"
             aria-label="アルファ版"
           >
             α版
@@ -127,7 +138,7 @@ export function AppHeader() {
           <Link
             href="/admin"
             title={adminSession.owner ? '運営の管理者' : '運営'}
-            className="hidden rounded-full border border-[var(--palace)]/50 bg-[rgba(198,167,94,0.12)] px-2 py-0.5 text-xs font-medium text-[var(--palace)] transition-colors hover:bg-[rgba(198,167,94,0.22)] sm:inline-flex sm:items-center sm:gap-1"
+            className="hidden rounded-full border border-white/45 bg-white/15 px-2 py-0.5 text-xs font-medium text-white transition-colors hover:bg-white/25 sm:inline-flex sm:items-center sm:gap-1"
           >
             <ShieldCheck size={12} />
             管理者
@@ -136,12 +147,12 @@ export function AppHeader() {
         {showUserMenu && billingSummary && (
           <Link
             href="/billing"
-            className="flex items-center gap-1 rounded-full px-2.5 py-1 text-sm hover:bg-black/5 transition-colors"
+            className="flex items-center gap-1 rounded-full px-2.5 py-1 text-sm hover:bg-white/15 transition-colors"
             title="クレジット残高"
           >
-            <Coins size={16} style={{ color: 'var(--palace)' }} />
+            <Coins size={16} style={{ color: 'var(--on-palace)' }} />
             <span className="font-medium tabular-nums">{billingSummary.available_credits}</span>
-            <span className="text-xs text-muted-foreground">{CREDIT_UNIT_SHORT}</span>
+            <span className="text-xs text-white/75">{CREDIT_UNIT_SHORT}</span>
           </Link>
         )}
         {/*
@@ -155,11 +166,11 @@ export function AppHeader() {
         {showUserMenu && (
           <DropdownMenu open={createOpen} onOpenChange={setCreateOpen}>
             <DropdownMenuTrigger
-              className="rounded-full p-1.5 transition-colors hover:bg-black/5"
+              className="rounded-full p-1.5 transition-colors hover:bg-white/15"
               title="作る"
               aria-label="作る"
             >
-              <Plus size={20} style={{ color: 'var(--palace)' }} />
+              <Plus size={20} style={{ color: 'var(--on-palace)' }} />
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end" sideOffset={12} className="min-w-52 translate-x-4">
               <DropdownMenuLabel>作る</DropdownMenuLabel>
@@ -186,11 +197,11 @@ export function AppHeader() {
           <button
             type="button"
             onClick={() => setNotificationsOpen(true)}
-            className="relative rounded-full p-1.5 transition-colors hover:bg-black/5"
+            className="relative rounded-full p-1.5 transition-colors hover:bg-white/15"
             title="お知らせ"
             aria-label={unreadCount > 0 ? `お知らせ（未読${unreadCount}件）` : 'お知らせ'}
           >
-            <ScrollText size={20} style={{ color: 'var(--palace)' }} />
+            <ScrollText size={20} style={{ color: 'var(--on-palace)' }} />
             {unreadCount > 0 && (
               <span className="absolute -right-0.5 -top-0.5 flex h-4 min-w-4 items-center justify-center rounded-full bg-red-600 px-1 text-[10px] font-bold leading-none text-white">
                 {unreadCount > 99 ? '99+' : unreadCount}
@@ -200,7 +211,7 @@ export function AppHeader() {
         )}
         {showUserMenu ? (
           <DropdownMenu open={menuOpen} onOpenChange={setMenuOpen}>
-            <DropdownMenuTrigger className="rounded-full p-1 hover:bg-black/5 transition-colors">
+            <DropdownMenuTrigger className="rounded-full p-1 hover:bg-white/15 transition-colors">
               {(user?.avatar_thumb_url ?? user?.avatar_url) ? (
                 // eslint-disable-next-line @next/next/no-img-element
                 <img
