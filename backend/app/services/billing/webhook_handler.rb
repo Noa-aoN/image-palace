@@ -10,7 +10,9 @@ module Billing
       new(...).call
     end
 
-    def initialize(payload:, signature:, secret: ENV["STRIPE_WEBHOOK_SECRET"])
+    # 署名シークレットは起動時に決めたものを使う（API キーと同じモードのもの）。
+    # ここで ENV を直に見ると、鍵とシークレットのモードが食い違っても気づけない
+    def initialize(payload:, signature:, secret: Billing::KeySelection.webhook_secret)
       @payload = payload
       @signature = signature
       @secret = secret
