@@ -2,6 +2,7 @@ import type { Metadata } from 'next'
 import { BlogIndex } from '@/components/features/blog/BlogIndex'
 import { ARTICLES } from '@/lib/blog/articles'
 import { absoluteUrl, breadcrumbJsonLd } from '@/lib/seo/structured-data'
+import { shareImage } from '@/lib/seo/share-image'
 
 const TITLE = 'コラム'
 const DESCRIPTION = '記憶・学習・認知科学にまつわる話題をお届けします。'
@@ -11,7 +12,11 @@ export const metadata: Metadata = {
   title: TITLE,
   description: DESCRIPTION,
   alternates: { canonical: '/blog' },
-  openGraph: { type: 'website', title: TITLE, description: DESCRIPTION, url: '/blog' },
+  openGraph: {
+    type: 'website', title: TITLE, description: DESCRIPTION, url: '/blog',
+    images: [shareImage('blog')],
+  },
+  twitter: { card: 'summary_large_image', images: [shareImage('blog')] },
 }
 
 export default function BlogPage() {
