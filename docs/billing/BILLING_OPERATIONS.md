@@ -1,0 +1,237 @@
+# 課金の運用手順
+
+> 最終更新: 2026-08-15
+>
+> 記憶ではなく**そのまま実行できる手順**として書く。
+>
+> **このファイルは git 管理対象。** 秘密情報（API キー・署名シークレット・顧客や決済の id・
+> 個人情報）は書かないこと。値は `.env` や Fly のシークレットから読ませる。
+
+関連:
+- 仕様の正本 … `docs/billing-credits.md` / `docs/billing-credit-flow.md`（**どちらも git 管理外の手元メモ**）
+- テストの対応表 … `BILLING_TEST_MATRIX.md`
+- 事故と再発防止 … `BILLING_INCIDENTS.md`
+
+仕様書はこの3本とは別に既存のものがある。**同じことを2か所に書かない**
+（必ず食い違うため）。仕様を変えたら正本のほうを直すこと。
+
+---
+
+## 1. Test / Live の切替
+
+### 決まり
+
+`backend/.env` は両方を持ち、`STRIPE_MODE` で選ぶ。判断は `Billing::KeySelection`。
+
+```
+STRIPE_MODE=test
+STRIPE_TEST_SECRET_KEY=...
+STRIPE_TEST_WEBHOOK_SECRET=...
+STRIPE_LIVE_SECRET_KEY=          # 手元では通常空でよい
+STRIPE_LIVE_WEBHOOK_SECRET=
+```
+
+**鍵と署名シークレットは必ず同じモードの組で選ばれる。**
+`STRIPE_MODE` を書かなければ従来の名前に落ちる（**Fly の本番はこの形**）。
+
+### 手元で Live を使う（原則やらない）
+
+```
+STRIPE_MODE=live
+ALLOW_LIVE_STRIPE_LOCALLY=true
+```
+
+両方揃わなければ鍵は渡されない（＝課金が起きない）。`1`/`yes` では通らない。
+**使い終わったら必ず `STRIPE_MODE=test` に戻す。**
+
+### 反映
+
+```bash
+docker compose up -d      # restart では env を読み直さない
+```
+
+### 確認（値を出さずに）
+
+```bash
+docker compose exec web bin/rails runner '
+  sel = Billing::KeySelection.select(env: ENV, local: Rails.env.local?)
+  puts "mode=#{sel.mode} refused=#{sel.refused?} test?=#{Billing::Mode.test?}"
+  puts "接続: #{Stripe::Balance.retrieve.livemode ? "LIVE" : "test"}"
+'
+```
+
+---
+
+## 2. プランの同期
+
+モードを切り替えたら必ず流す。**そのモードの商品・値札が作られる。**
+
+```bash
+# 手元（Test）
+docker compose exec web bundle exec rails stripe:sync_plans
+
+# 本番（Live）
+fly machine exec <worker-id> "sh -lc 'cd /app && bundle exec rake stripe:sync_plans'"
+```
+
+- 対象は `Plan.active`（`free` を除く）。**並べていない束は同期されない**
+- 税コード（`txcd_10000000`）が必ず付く。無いと Checkout の作成が失敗する
+- 既存の Price は金額が一致していれば作り直さない
+
+モードを跨いだときは、先に**指し先を空にする**（別モードの id は使えない）。
+
+```ruby
+Plan.update_all(stripe_product_id: nil, stripe_price_id: nil)
+```
+
+---
+
+## 3. Webhook
+
+**endpoint は `https://api.imagepalace.app/api/v1/stripe/webhook`。**
+`/api/v1/billing/webhook` ではない（事故1）。
+
+購読するイベント:
+`checkout.session.completed` / `invoice.paid` /
+`customer.subscription.updated` / `customer.subscription.deleted`
+
+### 疎通確認
+
+```bash
+curl -s -o /dev/null -w "%{http_code}\n" -X POST \
+  https://api.imagepalace.app/api/v1/stripe/webhook \
+  -H "Content-Type: application/json" -d '{"id":"x","type":"ping"}'
+```
+
+**400 が正しい**（署名が無いため拒否）。404 なら URL が違う。
+
+### 手元で受ける（stripe listen）
+
+`stripe listen` が出す署名シークレットは**ダッシュボードのものとは別物**。毎回変わる。
+
+```bash
+# 1. 転送を開始（出力の whsec_ を控える）
+stripe listen --forward-to http://localhost:3001/api/v1/stripe/webhook
+
+# 2. 控えた値を backend/.env の STRIPE_TEST_WEBHOOK_SECRET に入れる
+# 3. docker compose up -d
+# 4. 別の端末で投げる
+stripe trigger checkout.session.completed
+stripe trigger invoice.paid
+stripe trigger customer.subscription.updated
+```
+
+転送を止めると無効になる。受けない期間はダミー（`whsec_local_dummy`）でよい。
+
+---
+
+## 4. Sandbox E2E
+
+**どこまで自動化できるか**
+
+| 手順 | 自動 | 要るもの |
+|---|---|---|
+| Checkout Session 作成 | ✓ runner で作れる | — |
+| 決済の完了 | ✗ | **ブラウザ**でテストカード入力（`4242 4242 4242 4242`） |
+| webhook 受信 | △ | `stripe listen` または `stripe trigger` |
+| Portal を開く | ✓ URL は作れる | 中の操作は**ブラウザ** |
+| 解約 | ✗ | **ブラウザ**（または API で `cancel_at_period_end` を立てる） |
+| 返金 | ✗ | **ダッシュボード** |
+
+**毎回やること**（課金コードを触ったとき）
+1. `bundle exec rspec spec/services/billing spec/models/credit_*`
+2. Checkout Session が作れること（下記）
+
+```bash
+docker compose exec web bin/rails runner '
+  user = User.where.not(confirmed_at: nil).first
+  %w[topup_10 standard].each do |name|
+    plan = Plan.active.find_by(name: name)
+    s = Billing::CheckoutSession.call(user: user, plan: plan,
+          success_url: "http://localhost:3000/billing", cancel_url: "http://localhost:3000/billing")
+    puts "#{name}: url=#{s.url.present?} livemode=#{s.livemode}"
+    Stripe::Checkout::Session.expire(s.id)
+  end
+'
+```
+
+**節目でやること**（webhook の経路を変えたとき）— `stripe listen` ＋ `stripe trigger` で
+`checkout.session.completed` / `invoice.paid` を流し、台帳が1行だけ増えることを見る。
+
+---
+
+## 5. 本番 smoke の段階
+
+**実決済は毎回やらない。**
+
+| 変更の種類 | やること |
+|---|---|
+| 通常の変更 | 自動テスト |
+| 課金ロジックの変更 | 自動テスト ＋ Sandbox E2E |
+| Live 初回切替・大きな課金変更 | 上記 ＋ **本番の実決済 smoke** |
+
+### 本番実決済 smoke のチェックリスト（Live 初回切替で実施した順）
+
+1. 鍵のモードを確認（`mode=LIVE` / 署名シークレットが `whsec_`）
+2. 別モードの id を空にする（Plan / 引けない顧客）
+3. `sync_plans`。**並んでいる商品だけ**が同期されることを確認
+4. webhook の疎通（署名なしで 400）
+5. `topup_10`（190円）を実購入
+6. 付与が**1回だけ**・期限が3ヶ月・台帳に `livemode=true`・二重付与なし
+7. `standard`（1,480円）を実契約 → 契約行・月次付与を確認
+8. Portal を開く → 解約 → **即時失効せず期末解約**・DB が Stripe と一致
+9. 検証分を返金（ダッシュボード）＋ **手で CR を調整**（下記）
+10. 健全性確認（下記）
+
+---
+
+## 6. 手動でクレジットを調整する
+
+返金しても CR は自動で戻らない（事故7）。**台帳に理由を残す。**
+
+```ruby
+# 引く先は「実際に付与されたもの」を名指しする。
+# 期限の近い順（FEFO）で引くと、別の grant が減って期限の並びが実態とずれる。
+user.with_lock do
+  grant.update!(remaining_points: 0)                     # 買い切りぶん
+  user.update!(subscription_credits: user.subscription_credits - points)  # 月額ぶん
+  user.credit_transactions.create!(
+    kind: "adjustment", delta: -total,
+    description: "◯◯の取り消し（返金に対応）"   # ← あとから理由が分かる形で
+  )
+end
+```
+
+`consume_credits!` は使わない（自前で `consumption` を記録するため、台帳が二重になる）。
+
+---
+
+## 7. 健全性の確認
+
+```ruby
+puts "モード: #{Billing::Mode.label}"
+puts "引けない顧客: #{User.where.not(stripe_customer_id: [nil, ""]).count { |u|
+  begin; Stripe::Customer.retrieve(u.stripe_customer_id); false
+  rescue Stripe::InvalidRequestError; true; end }} 人"
+puts "負の残高: #{User.where('subscription_credits < 0 OR topup_credits < 0').count}"
+puts "1人で2契約: #{Subscription.group(:user_id).having('count(*) > 1').count.size}"
+puts "同じ決済 id で2行: #{CreditTransaction.where.not(stripe_event_id: nil)
+       .group(:stripe_event_id).having('count(*) > 1').count.size}"
+puts "期限切れなのに残る grant: #{CreditGrant.where('expires_at < ? AND remaining_points > 0', Time.current).count}"
+```
+
+**すべて 0 が正常。**
+
+---
+
+## 8. 重い処理は worker で
+
+本番で runner や rake を回すときは**必ず worker のマシン**を使う。
+app マシンで重い処理を回すと API が詰まる。
+
+```bash
+fly machine exec <worker-id> "sh -lc 'cd /app && bin/rails runner /tmp/x.rb'"
+```
+
+長い処理は `fly machine exec` のタイムアウトで切れるので、`nohup ... &` で流して
+後からログを見る。**デプロイするとマシンが再起動して止まる**ので、走っている間はデプロイしない。

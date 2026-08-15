@@ -33,6 +33,15 @@ docs/*
 !docs/webauthn-design.md
 !docs/auth-policy.md
 
+# 課金の3本は共有する。事故の再発防止と、変更時に読み返す手順のため。
+# 親（docs/billing/）をいったん戻し、その中でまた既定を「入れない」に振ってから名指しする。
+# **秘密情報は書かない**（鍵・署名シークレット・顧客や決済の id・個人情報）
+!docs/billing/
+docs/billing/*
+!docs/billing/BILLING_TEST_MATRIX.md
+!docs/billing/BILLING_OPERATIONS.md
+!docs/billing/BILLING_INCIDENTS.md
+
 # Cloudflare Workers ビルド成果物
 frontend/.open-next/
 frontend/.wrangler/
