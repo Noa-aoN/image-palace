@@ -209,7 +209,9 @@ export function SignupForm() {
         )}
 
         <Button type="submit" disabled={loading} className="w-full mt-1">
-          {loading ? '登録中...' : 'パレスを作る'}
+          {/* 釦は**何が起きるか**を書く。見出し（パレスを作る）は世界観、
+              釦は操作の説明、と役割を分ける */}
+          {loading ? '登録中...' : 'アカウントを登録する'}
         </Button>
       </form>
 
