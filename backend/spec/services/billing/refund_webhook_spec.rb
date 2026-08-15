@@ -131,11 +131,12 @@ RSpec.describe "返金の受け取り" do
       expect(sub.cancel_at_period_end).to be(false)
     end
 
-    # 売上の集計は amount_cents をそのまま足す。入れると「入ってきたお金」の意味が黙って変わる
-    it "金額を売上の列には入れない（既存の集計を動かさない）" do
-      handle(refund_event)
+    # 集計側が機械的に読めるように、金額は負で持つ。
+    # 売上（Gross）は「返金の行を外して」数えるので、意味は変わらない
+    it "金額を負で持つ（集計が読めるように）" do
+      handle(refund_event(amount: 190))
 
-      expect(user.credit_transactions.find_by(kind: "refund").amount_cents).to be_nil
+      expect(user.credit_transactions.find_by(kind: "refund").amount_cents).to eq(-190)
     end
   end
 
