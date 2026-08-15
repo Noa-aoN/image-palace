@@ -65,7 +65,7 @@ module Achievements
         next_title: title ? nil : next_title,
         # 星を入れたものを種別ごとに返す。出す場所が種別で違うため
         #   称号=名乗る / 勲章=掲げる / 宝物=飾る / 表彰=プロフィール
-        showcase: RewardDefinition::KINDS.to_h { |kind|
+        showcase: RewardDefinition::DISPLAY_ORDER.to_h { |kind|
           [ kind, (by_kind[kind] || []).map { |r| reward_row(r.reward_definition) } ]
         },
         limits: Showcase::LIMITS,
@@ -87,7 +87,7 @@ module Achievements
     # 種別ごとに「持っている数 / ぜんぶの数」。分母が無いと、集め具合が分からない
     def counts_by_kind
       all = RewardDefinition.registry.select { |d| d.published? || owned.key?(d.id) }
-      RewardDefinition::KINDS.to_h do |kind|
+      RewardDefinition::DISPLAY_ORDER.to_h do |kind|
         rows = all.select { |d| d.kind == kind }
         [ kind, { owned: rows.count { |d| owned.key?(d.id) }, total: rows.size } ]
       end

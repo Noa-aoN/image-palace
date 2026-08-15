@@ -238,11 +238,12 @@ export function PalaceLordCard({ tier }: { tier: string | null }) {
 // 画面の中の並びが変わっても行き先は変わらない
 const AVATAR_SETTINGS_HREF = '/account#basic'
 
-// 記名板に出す種別と見出し。称号は名前の上に出すので、ここには含めない
+// 記名板に出す種別と見出し。称号は名前の上に、勲章は名前の右に出すので含めない。
+// 並びは栄誉の間と同じ（称号 → 勲章 → 表彰 → 宝物）。
+// **同じものが2つの画面で違う順に並ぶと、どちらかが間違って見える**
 const SHOWCASE_KINDS: [RewardKind, string][] = [
-  // 勲章は名前の右に絵だけで出すので、ここには含めない
-  ['treasure', '宝物'],
   ['honor', '表彰'],
+  ['treasure', '宝物'],
 ]
 
 /**
