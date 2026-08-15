@@ -8,12 +8,12 @@
 > 個人情報）は書かないこと。値は `.env` や Fly のシークレットから読ませる。
 
 関連:
-- 仕様の正本 … `docs/billing-credits.md` / `docs/billing-credit-flow.md`（**どちらも git 管理外の手元メモ**）
+- 仕様の正本 … `docs/billing-credits.md`（値段・期限・無料枠）/ `docs/billing-credit-flow.md`（お金の流れ）
 - テストの対応表 … `BILLING_TEST_MATRIX.md`
 - 事故と再発防止 … `BILLING_INCIDENTS.md`
 
-仕様書はこの3本とは別に既存のものがある。**同じことを2か所に書かない**
-（必ず食い違うため）。仕様を変えたら正本のほうを直すこと。
+**同じことを2か所に書かない**（必ず食い違うため）。仕様を変えたら正本のほうを直す。
+この手順書は「どう操作するか」だけを持つ。
 
 ---
 
