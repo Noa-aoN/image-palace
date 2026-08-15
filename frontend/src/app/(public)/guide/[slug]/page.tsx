@@ -7,6 +7,7 @@ import { StartLink } from '@/components/features/shared/StartLink'
 import { NAV_SECTIONS, GLOBAL_ACTIONS } from '@/components/features/layout/nav-items'
 import { GUIDE_SECTIONS, getGuideSection, STEPS, FEATURE_GROUPS, FAQ, GLOSSARY, USE_CASES, type GuideSlug } from '@/lib/guide/sections'
 import { guideJsonLd, breadcrumbJsonLd } from '@/lib/seo/structured-data'
+import { shareImage } from '@/lib/seo/share-image'
 
 export function generateStaticParams() {
   return GUIDE_SECTIONS.map((s) => ({ slug: s.slug }))
@@ -26,7 +27,9 @@ export async function generateMetadata({ params }: { params: Promise<{ slug: str
       title: section.title,
       description: section.excerpt,
       url: `/guide/${section.slug}`,
+      images: [shareImage('guide')],
     },
+    twitter: { card: 'summary_large_image', images: [shareImage('guide')] },
   }
 }
 
