@@ -168,9 +168,9 @@ module Billing
     # いま塞ぎたいのは「**返金に気づかない**」という一点だけ。
     # 台帳に残し、運営に知らせて、そこで人が判断する。
     #
-    # 金額は `amount_cents` に入れない。あの列は売上の集計にそのまま足されるので、
-    # 入れると「実際に入ってきたお金」の意味が黙って変わる。
-    # 返金を差し引いた額をどう出すかは別に決める（BILLING_OPERATIONS.md の設計メモ）。
+    # 金額は `amount_cents` に**負で**入れる。集計側は「返金」の行を
+    # 売上（Gross）から外したうえで、ここを合計して Refunds を出す。
+    # **Gross の意味は変えない**（既存の数字と互換を保つ）。
     def record_refund(event)
       refund = event.data.object
       note = refund_note(refund)
@@ -188,6 +188,9 @@ module Billing
         # （refund.created と refund.updated など）が同じ返金で別々に積まれる
         stripe_event_id: refund[:id],
         currency: refund[:currency],
+        # **負で入れる。** 集計側は「返金」の行を売上（Gross）から外したうえで、
+        # ここを合計して Refunds を出す。文字の中に額があるだけだと機械が読めない
+        amount_cents: -refund[:amount].to_i,
         livemode: refund[:livemode].nil? ? Billing::Mode.live? : refund[:livemode],
         description: note
       )

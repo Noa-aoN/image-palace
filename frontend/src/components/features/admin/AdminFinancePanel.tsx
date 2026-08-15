@@ -139,7 +139,21 @@ export function AdminFinancePanel() {
         )}
 
         <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-          <Stat label="収入" value={yen(summary.revenue.total)} sub="本番の決済のみ" />
+          {/* 返金があった期間は、売上・返金・手元に残った額を分けて出す。
+              **売上（Gross）の意味は変えない**（返金を差し引かない、これまでどおりの値） */}
+          <Stat
+            label="収入"
+            value={yen(summary.revenue.total)}
+            sub={summary.revenue.refunds < 0 ? `返金前 / 本番の決済のみ` : '本番の決済のみ'}
+          />
+          {summary.revenue.refunds < 0 && (
+            <Stat
+              label="返金"
+              value={yen(summary.revenue.refunds)}
+              tone="bad"
+              sub={`差引 ${yen(summary.revenue.net)}`}
+            />
+          )}
           <Stat label="支出（概算）" value={yen(summary.cost.total)} />
           <Stat
             label="差引"

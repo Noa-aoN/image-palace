@@ -66,6 +66,10 @@ module Admin
 
     def call
       revenue = revenue_jpy
+      refunds = refunds_jpy
+      net = revenue + refunds
+      # **手数料は Gross に掛ける。** 返金しても、元の決済の処理手数料は戻らない。
+      # Net に掛けると、返金するほど手数料が減るという実態と逆の数字になる
       fee = (revenue * @costs.value_for("stripe_fee_rate")).round
       image = image_cost
       text = text_cost
@@ -75,8 +79,13 @@ module Admin
       {
         period: { year: @year, month: @month, from: @from.to_date, to: (@to - 1.day).to_date },
         revenue: {
+          # Gross。**意味を変えない**（返金を差し引かない、これまでどおりの値）
           total: revenue,
-          by_kind: revenue_by_kind
+          by_kind: revenue_by_kind,
+          # 返金。負の値で持つ（画面ではそのままマイナスとして出す）
+          refunds: refunds,
+          # 手元に残った額
+          net: net
         },
         cost: {
           total: estimated_cost,
@@ -88,8 +97,9 @@ module Admin
           # （経営タブは日割り、収支ページは1ヶ月固定）
           infra_months: @infra_months.round(2)
         },
-        profit: revenue - estimated_cost,
-        margin: revenue.positive? ? ((revenue - estimated_cost).fdiv(revenue) * 100).round(1) : nil,
+        # 粗利は Net から引く。返金したぶんは手元に残っていない
+        profit: net - estimated_cost,
+        margin: net.positive? ? ((net - estimated_cost).fdiv(net) * 100).round(1) : nil,
         actual: actual_comparison(estimated_cost - fee),
         # テストの決済。売上には入れないが、隠すと「決済したのに 0 円」に見える
         test_revenue: test_revenue_jpy,
@@ -105,22 +115,37 @@ module Admin
     # **テストの決済は数えない**。テストも本物と同じ経路で金額まで記録されるので、
     # 分けないと「今月いくら入ったか」を見ているつもりで、自分で叩いた額を見ることになる。
     # livemode が nil の古い行は、本番の決済がまだ無かった時期のもの＝テスト扱いにする。
+    # 種別ごとの金額。**1回だけ引いて使い回す。**
+    # 売上・返金・内訳はどれもこの1つから出せるので、別々に引くと本数だけが増える
+    def amounts_by_kind
+      @amounts_by_kind ||=
+        CreditTransaction.where(created_at: @from...@to).where.not(amount_cents: nil)
+                         .where(livemode: true).group(:kind).sum(:amount_cents)
+    end
+
+    # 売上（Gross）。**返金の行は入れない。**
+    # 返金を混ぜると「入ってきたお金」が黙って Net の意味に変わる
     def revenue_jpy
-      paid_scope.sum(:amount_cents)
+      amounts_by_kind.except("refund").values.sum
     end
 
     def revenue_by_kind
-      paid_scope.group(:kind).sum(:amount_cents)
+      amounts_by_kind.except("refund")
     end
 
-    def paid_scope
-      CreditTransaction.where(created_at: @from...@to).where.not(amount_cents: nil).where(livemode: true)
+    # 返金（負の値）。**返金が起きた日で数える**。
+    #
+    # 元の決済の月へ遡って引き直さない。運営が見るのは「その月に何が起きたか」で、
+    # 過去の月の数字が後から動くと、一度読んだ数字が信じられなくなる。
+    # 決済と返金が別の月にまたがるときは、それぞれの月に別々に立つ。
+    def refunds_jpy
+      amounts_by_kind["refund"].to_i
     end
 
     # 期間内に記録された、テストの決済の額。0 でなければ画面に断りを出す
     def test_revenue_jpy
       CreditTransaction.where(created_at: @from...@to).where.not(amount_cents: nil)
-                       .where(livemode: [ false, nil ]).sum(:amount_cents)
+                       .where(livemode: [ false, nil ]).where.not(kind: "refund").sum(:amount_cents)
     end
 
     # 画像は「枚数 × 1枚あたりの単価」。モデルと品質ごとに単価が違う。
