@@ -235,3 +235,133 @@ fly machine exec <worker-id> "sh -lc 'cd /app && bin/rails runner /tmp/x.rb'"
 
 長い処理は `fly machine exec` のタイムアウトで切れるので、`nohup ... &` で流して
 後からログを見る。**デプロイするとマシンが再起動して止まる**ので、走っている間はデプロイしない。
+
+
+---
+
+## 9. 返金の手順（Refund Runbook）
+
+### 返金の方針
+
+**利用者都合の返金は原則行わない。** ただし次は個別に対応する。
+
+- 二重請求
+- 誤請求
+- こちら側の重大な不具合・提供不能
+- 法令上必要な場合
+- その他、運営が合理的に必要と判断した場合
+
+**返金と解約は別の操作。** 返金してもは契約は終わらないし、解約しても返金はされない。
+返金の判断は当面すべて人が行う（自動回収はしていない）。
+
+> 海外向けには、日本と同じ返金ルールをそのまま当てない。EU などでは撤回権など
+> 別の決まりがあり得るため、海外へ本格展開するときにリージョンごとに決め直す。
+
+### 手順
+
+**1. 受付**
+- どの決済についての依頼かを特定する（日時・金額・プラン名）
+- 上の「個別に対応する」に当たるかを判断する。当たらなければ、原則どおり断る
+
+**2. Stripe 上の決済を確認**
+- ダッシュボードで対象の決済を開く（Live モードであることを確認）
+- 金額・日時・顧客・成功しているかを見る
+- **すでに返金済みでないか**を必ず確認（二重返金を防ぐ）
+
+**3. 利用状況を確認**
+
+```ruby
+user = User.find_by(email: "...")            # または stripe_customer_id から
+puts "残高: #{user.available_credit_points / Billing::POINTS_PER_CREDIT} cr"
+user.credit_grants.where(kind: "topup").order(:created_at).each do |g|
+  puts format("%s  %d/%d cr  期限=%s  決済=%s",
+              g.created_at.strftime("%Y-%m-%d %H:%M"),
+              g.remaining_points / Billing::POINTS_PER_CREDIT,
+              g.amount_points / Billing::POINTS_PER_CREDIT,
+              g.expires_at&.strftime("%Y-%m-%d"),
+              g.metadata["payment_key"] || "—")
+end
+```
+
+`payment_key` が、その束を積んだ決済（買い切りなら checkout session の id）。
+**返金対象の決済に対応する束**がどれかは、これで分かる。
+
+> 月額のぶんは束を持たない（`users.subscription_credits` に載る）。
+> どの請求で付いたかは台帳の `stripe_event_id` を見る。
+
+**4. 全額か一部かを決める**
+
+| 状況 | 返金 | クレジット |
+|---|---|---|
+| 未使用 | 全額 | 束を 0 にする |
+| 一部使用 | 全額または未使用分に相当する額 | **残っているぶんだけ**戻す |
+| 全部使用済み | 役務は提供済み。**原則返金しない**（不具合が原因なら別） | 触らない |
+
+**残高はマイナスにしない。** 引けないぶんは引かない。
+
+**5. Stripe で返金する**
+- ダッシュボードから返金（全額 / 一部）
+- **アプリ側では何も起きない。** クレジットは自動で戻らない
+
+**6. 返金が届いたことを確認**
+
+`charge.refunded` を受けて、台帳に `refund` の行が入り、Sentry に通知が飛ぶ。
+
+```ruby
+CreditTransaction.where(kind: "refund").order(:created_at).last
+# => description に 金額 / 全額か一部か / charge・payment_intent・invoice の id
+```
+
+**行が無ければ webhook が届いていない。** endpoint と購読イベントを確認する（§3）。
+
+**7. クレジットを手で調整する（必要な場合のみ）**
+
+§6 の手順に従う。**引く先は名指しする**（期限の近い順で引くと別の束が減る）。
+理由は必ず残す。
+
+```ruby
+user.with_lock do
+  grant.update!(remaining_points: 0)
+  user.credit_transactions.create!(
+    kind: "adjustment", delta: -points,
+    description: "返金に伴う取り消し（charge=ch_xxx）"
+  )
+end
+```
+
+**8. 契約について**
+
+返金しただけでは契約は続く。終わらせたいなら、**別の操作として**
+お支払い管理ページから解約する（期末解約になる）。
+
+**9. 最終確認**
+
+```ruby
+puts "残高: #{user.reload.available_credit_points / Billing::POINTS_PER_CREDIT} cr"
+puts "負の残高: #{User.where('subscription_credits < 0 OR topup_credits < 0').count}"   # 0 であること
+puts "返金の行: #{CreditTransaction.where(kind: 'refund').count}"
+puts "調整の行: #{CreditTransaction.where(kind: 'adjustment').count}"
+```
+
+---
+
+## 10. 売上と返金の見せ方（設計メモ・未実装）
+
+いまの `Admin::FinanceService#revenue_jpy` は `amount_cents` をそのまま合計する。
+**返金の行には `amount_cents` を入れていない**ので、既存の数字は返金前のまま
+（＝ Gross Revenue）で、意味は変わっていない。
+
+将来、返金を差し引いた額まで出すときの形。
+
+| 指標 | 出し方 |
+|---|---|
+| Gross Revenue | いまの `revenue_jpy`（`amount_cents` の合計・`livemode: true`） |
+| Refunds | `kind: "refund"` の返金額の合計。**いまは列に入れていない**ので、
+入れるなら `amount_cents` に負で持たせるか、専用の列を足す |
+| Net Revenue | Gross − Refunds |
+| Stripe fees | `Billing::Catalog::STRIPE_FEE_RATE`（3.6%）。実額は Stripe の残高明細が正 |
+| Gross Profit | Net Revenue − 手数料 − 画像の原価 |
+
+**気をつけること** — 返金額を `amount_cents` に負で入れると、
+`revenue_jpy` が黙って Net に変わる。既存の数字の意味が変わるので、
+入れるときは同時に Gross / Refunds / Net を分けて出すこと。

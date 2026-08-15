@@ -31,6 +31,8 @@ module Billing
         sync_subscription(event)
       when "customer.subscription.deleted"
         cancel_subscription(event)
+      when "charge.refunded"
+        record_refund(event)
       when "invoice.paid"
         grant_subscription_credits(event)
       end
@@ -156,6 +158,57 @@ module Billing
     # 200 は返し続ける（Stripe に再送させても永久に一致しないため）が、
     # 必ずログと Sentry に出して、後から手当てできるようにする。
     # 個人情報は載せない（顧客IDとイベントIDだけで Stripe 側から辿れる）。
+    # 返金を記録する。**クレジットは触らない。**
+    #
+    # 自動で戻すには、まだ足りないものが多い。
+    #   ・使い切ったぶんをどう扱うかは、事業としての判断が要る
+    #   ・部分返金の按分も同じ
+    #   ・誤って戻すほうが、手で直すより危ない
+    #
+    # いま塞ぎたいのは「**返金に気づかない**」という一点だけ。
+    # 台帳に残し、運営に知らせて、そこで人が判断する。
+    #
+    # 金額は `amount_cents` に入れない。あの列は売上の集計にそのまま足されるので、
+    # 入れると「実際に入ってきたお金」の意味が黙って変わる。
+    # 返金を差し引いた額をどう出すかは別に決める（BILLING_OPERATIONS.md の設計メモ）。
+    def record_refund(event)
+      charge = event.data.object
+      user = user_for(charge[:customer])
+      amount = charge[:amount_refunded].to_i
+      full = charge[:refunded]
+
+      note = [
+        "返金 #{amount} #{charge[:currency].to_s.upcase}",
+        full ? "全額" : "一部",
+        "charge=#{charge[:id]}",
+        charge[:payment_intent].present? ? "payment_intent=#{charge[:payment_intent]}" : nil,
+        charge[:invoice].present? ? "invoice=#{charge[:invoice]}" : nil
+      ].compact.join(" / ")
+
+      # 宛先が分からなくても黙って捨てない。**気づけないことがいちばん困る**
+      if user.nil?
+        message = "[stripe webhook] REFUND 宛先不明 event=#{event.id} #{note}"
+        Rails.logger.error(message)
+        Sentry.capture_message(message, level: :error) if defined?(Sentry)
+        return nil
+      end
+
+      CreditTransaction.create!(
+        user: user, kind: "refund", delta: 0,
+        stripe_event_id: event.id, currency: charge[:currency],
+        livemode: charge[:livemode].nil? ? Billing::Mode.live? : charge[:livemode],
+        description: note
+      )
+
+      message = "[stripe webhook] REFUND user_id=#{user.id} #{note} "                 "（クレジットは自動で戻していない。手当てが要るか確認すること）"
+      Rails.logger.error(message)
+      Sentry.capture_message(message, level: :error) if defined?(Sentry)
+      nil
+    rescue ActiveRecord::RecordNotUnique
+      # 同じ返金の再配信。2度目は何もしない（stripe_event_id の一意制約が受け止める）
+      nil
+    end
+
     def report_unmatched!(event, user:, plan:, customer: nil, client_reference_id: nil)
       reason = [ ("user" if user.nil?), ("plan" if plan.nil?) ].compact.join("+")
       message = "[stripe webhook] UNMATCHED #{reason} type=#{event.type} event=#{event.id} " \

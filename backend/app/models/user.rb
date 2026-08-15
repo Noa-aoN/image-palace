@@ -290,7 +290,12 @@ class User < ApplicationRecord
         kind: "topup",
         amount_points: amount,
         remaining_points: amount,
-        expires_at: Billing::CreditExpiryPolicy.expires_at
+        expires_at: Billing::CreditExpiryPolicy.expires_at,
+        # **どの決済で積んだ束か**を、束そのものに残す。
+        # 返金が来たときに「どれを戻すか」を選べるようにするため
+        # （台帳の行にしか無いと、束と決済を突き合わせられない）。
+        # 鍵は付与に使ったものと同じ（買い切りなら checkout session の id）
+        metadata: { "payment_key" => stripe_event_id }.compact
       )
       record_credit!(kind: "topup_purchase", delta: amount, stripe_event_id:, amount_cents:, currency:)
     end
