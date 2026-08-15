@@ -12,11 +12,23 @@ class ItemMediaGeneration < ApplicationRecord
   # 新しく使ったものを上に
   scope :recent, -> { order(used_at: :desc) }
 
+  # いまの見出し語で作ったものだけ。
+  #
+  # **見出し語を変えたら、前の語で作った絵は選べない。** 残しておくと、
+  # 1枚のカードで語を書き換えながら絵を集め、あとから好きなものを選び直せてしまう。
+  # 語と絵の結びつきが崩れ、「その語の絵」という前提が成り立たなくなる。
+  #
+  # 語を記録していない古い行は選べる側に倒す。
+  # **後から入れた決まりで、過去に作った絵を取り上げない**
+  scope :for_title, ->(title) { where(item_title: [ nil, title ]) }
+
   # 同じ絵に戻したときは行を増やさず、使った時刻だけ新しくする。
   # 行き来するたびに増えると、選ぶ一覧が同じ絵で埋まる
   def self.record!(item:, shared_media:, prompt: nil, model: nil, now: Time.current)
     row = find_or_initialize_by(item_id: item.id, shared_media_id: shared_media.id)
-    row.assign_attributes(prompt: prompt.presence || row.prompt, model: model.presence || row.model, used_at: now)
+    row.assign_attributes(prompt: prompt.presence || row.prompt, model: model.presence || row.model,
+                          # どの語で作ったか。あとで「いまの語のものだけ」を選ぶのに使う
+                          item_title: item.title, used_at: now)
     row.save!
     row
   rescue ActiveRecord::RecordNotUnique

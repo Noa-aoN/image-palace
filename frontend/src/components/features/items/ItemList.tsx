@@ -17,6 +17,7 @@ import {
 } from '@/components/ui/dropdown-menu'
 import { Spinner } from '@/components/ui/spinner'
 import { CardGridSkeleton } from '@/components/ui/skeleton'
+import { shouldShowSkeleton } from '@/lib/items/list-loading'
 import { GeneratingOverlay } from '@/components/features/items/GeneratingOverlay'
 import {
   RegeneratingOverlay,
@@ -425,6 +426,8 @@ export function ItemList({ initialTag = null }: { initialTag?: string | null }) 
   const [deleting, setDeleting] = useState(false)
   const [actionError, setActionError] = useState<string | null>(null)
   const [refreshToken, setRefreshToken] = useState(0)
+  // その取り直しが「裏で追いかけているだけ」か。骨組みを出すかどうかの判断に使う
+  const backgroundRefreshRef = useRef(false)
   // 一覧の並べ方（サーバーの設定から来る）。既定は「絵だけ」
   const [listBlocks, setListBlocks] = useState<string[]>(['image'])
   // 一括AI操作（タグ再設定・付与・ファクトチェック・説明付与）の進捗とサマリ
@@ -730,7 +733,13 @@ export function ItemList({ initialTag = null }: { initialTag?: string | null }) 
   useEffect(() => {
     let cancelled = false
 
-    setLoading(true)
+    // **裏での取り直しでは、並んでいるものを消さない。**
+    // 生成中を追いかける取り直し（usePendingRefresh）でも骨組みに戻していたため、
+    // 1枚作っただけで一覧ぜんぶが骨組みになり、出来ているカードまで消えていた。
+    // 骨組みを出すのは、並ぶ中身そのものが入れ替わるとき（頁・絞り込み・並び順）だけ。
+    const background = backgroundRefreshRef.current
+    backgroundRefreshRef.current = false
+    if (shouldShowSkeleton({ background, hasItems: items.length > 0 })) setLoading(true)
 
     // 取得は 1 回だけ。生成中を追いかけるのは usePendingRefresh に任せる。
     // ここで自前に繰り返すと、取得時点で生成中が居なかった場合に起動せず、
@@ -753,8 +762,10 @@ export function ItemList({ initialTag = null }: { initialTag?: string | null }) 
     生成中のカードがある間だけ取り直す。
     パネルで作られたカードもストアへ入るので、ここが拾って完成を反映する。
   */
-  // 取得そのものは効果の中で行う決まりなので、印を進めて効果を動かす
+  // 取得そのものは効果の中で行う決まりなので、印を進めて効果を動かす。
+  // **裏での取り直しである**ことを添えて、骨組みに戻さないようにする
   const refreshCurrentPage = useCallback(() => {
+    backgroundRefreshRef.current = true
     setRefreshToken((token) => token + 1)
   }, [])
   usePendingRefresh(items, refreshCurrentPage)
