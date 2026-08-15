@@ -31,7 +31,7 @@ module Billing
         sync_subscription(event)
       when "customer.subscription.deleted"
         cancel_subscription(event)
-      when "charge.refunded"
+      when "refund.created"
         record_refund(event)
       when "invoice.paid"
         grant_subscription_credits(event)
@@ -172,41 +172,64 @@ module Billing
     # 入れると「実際に入ってきたお金」の意味が黙って変わる。
     # 返金を差し引いた額をどう出すかは別に決める（BILLING_OPERATIONS.md の設計メモ）。
     def record_refund(event)
-      charge = event.data.object
-      user = user_for(charge[:customer])
-      amount = charge[:amount_refunded].to_i
-      full = charge[:refunded]
-
-      note = [
-        "返金 #{amount} #{charge[:currency].to_s.upcase}",
-        full ? "全額" : "一部",
-        "charge=#{charge[:id]}",
-        charge[:payment_intent].present? ? "payment_intent=#{charge[:payment_intent]}" : nil,
-        charge[:invoice].present? ? "invoice=#{charge[:invoice]}" : nil
-      ].compact.join(" / ")
+      refund = event.data.object
+      note = refund_note(refund)
+      user = user_for_refund(refund)
 
       # 宛先が分からなくても黙って捨てない。**気づけないことがいちばん困る**
       if user.nil?
-        message = "[stripe webhook] REFUND 宛先不明 event=#{event.id} #{note}"
-        Rails.logger.error(message)
-        Sentry.capture_message(message, level: :error) if defined?(Sentry)
+        notify_operator!("REFUND 宛先不明 event=#{event.id} #{note}")
         return nil
       end
 
       CreditTransaction.create!(
         user: user, kind: "refund", delta: 0,
-        stripe_event_id: event.id, currency: charge[:currency],
-        livemode: charge[:livemode].nil? ? Billing::Mode.live? : charge[:livemode],
+        # **鍵は返金そのものの id。** イベントの id にすると、種別の違う出来事
+        # （refund.created と refund.updated など）が同じ返金で別々に積まれる
+        stripe_event_id: refund[:id],
+        currency: refund[:currency],
+        livemode: refund[:livemode].nil? ? Billing::Mode.live? : refund[:livemode],
         description: note
       )
 
-      message = "[stripe webhook] REFUND user_id=#{user.id} #{note} "                 "（クレジットは自動で戻していない。手当てが要るか確認すること）"
-      Rails.logger.error(message)
-      Sentry.capture_message(message, level: :error) if defined?(Sentry)
+      notify_operator!(
+        "REFUND user_id=#{user.id} #{note} （クレジットは自動で戻していない。手当てが要るか確認すること）"
+      )
       nil
     rescue ActiveRecord::RecordNotUnique
       # 同じ返金の再配信。2度目は何もしない（stripe_event_id の一意制約が受け止める）
       nil
+    end
+
+    # 台帳に残す一行。**あとから人が読んで判断できる**ことを優先する。
+    # status も残す。返金は後から失敗しうるので、何の状態で受けたかが要る
+    def refund_note(refund)
+      [
+        "返金 #{refund[:amount].to_i} #{refund[:currency].to_s.upcase}",
+        "status=#{refund[:status].presence || '不明'}",
+        refund[:reason].present? ? "reason=#{refund[:reason]}" : nil,
+        refund[:charge].present? ? "charge=#{refund[:charge]}" : nil,
+        refund[:payment_intent].present? ? "payment_intent=#{refund[:payment_intent]}" : nil
+      ].compact.join(" / ")
+    end
+
+    # Refund は顧客を持たない。元の決済まで辿って突き止める。
+    # 辿れなくても落とさない（宛先不明として知らせる）
+    def user_for_refund(refund)
+      charge_id = refund[:charge]
+      return nil if charge_id.blank?
+
+      charge = Stripe::Charge.retrieve(charge_id)
+      user_for(charge[:customer])
+    rescue StandardError => e
+      Rails.logger.warn("[stripe webhook] 返金の元決済を辿れず: #{e.class}")
+      nil
+    end
+
+    def notify_operator!(message)
+      full = "[stripe webhook] #{message}"
+      Rails.logger.error(full)
+      Sentry.capture_message(full, level: :error) if defined?(Sentry)
     end
 
     def report_unmatched!(event, user:, plan:, customer: nil, client_reference_id: nil)
