@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useState } from 'react'
+import { useFeaturesStore } from '@/stores/features'
 import { FlaskConical, RotateCcw } from 'lucide-react'
 import { Input } from '@/components/ui/input'
 import { isSubmitEnter } from '@/lib/enter-key'
@@ -49,6 +50,9 @@ export function AdminFeaturesPanel() {
     setError(null)
     try {
       replace(await updateAdminFeatureFlag(key, { stage }))
+      // 変えた本人の画面にも、すぐ効かせる。読み直さないと、
+      // **自分で閉じた機能が自分には開いたまま**に見える
+      useFeaturesStore.getState().refresh()
     } catch {
       setError('保存できませんでした。')
     } finally {

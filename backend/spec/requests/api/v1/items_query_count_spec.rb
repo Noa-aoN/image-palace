@@ -20,24 +20,7 @@ RSpec.describe "カード一覧の問い合わせ本数", type: :request do
     item
   end
 
-  # 認証まわりは数えない。devise-token-auth はトークンを一定の窓でまとめて
-  # 更新するので、同じ操作でも users への問い合わせが1本増えたり減ったりする。
-  # ここで見たいのは「枚数に比例して増えるか」だけなので、揺れる分を外す
-  AUTH_TABLES = /"(users|settings)"/
 
-  def count_queries
-    count = 0
-    sub = ActiveSupport::Notifications.subscribe("sql.active_record") do |*, payload|
-      next if payload[:name].to_s.match?(/SCHEMA|TRANSACTION/)
-      next if payload[:sql].to_s.match?(AUTH_TABLES)
-
-      count += 1
-    end
-    yield
-    count
-  ensure
-    ActiveSupport::Notifications.unsubscribe(sub)
-  end
 
   it "枚数を増やしても問い合わせの本数は増えない" do
     2.times { |i| create_card("語#{i}") }

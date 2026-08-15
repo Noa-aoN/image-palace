@@ -16,21 +16,7 @@ RSpec.describe "経営の数字の問い合わせ本数", type: :request do
 
   # 認証まわりは数えない（devise-token-auth はトークンを一定の窓でまとめて更新するため、
   # 同じ操作でも users への問い合わせが増えたり減ったりする）
-  AUTH_TABLES = /"(users|settings|strong_auth_sessions)"/
 
-  def count_queries
-    count = 0
-    sub = ActiveSupport::Notifications.subscribe("sql.active_record") do |*, payload|
-      next if payload[:name].to_s.match?(/SCHEMA|TRANSACTION/)
-      next if payload[:sql].to_s.match?(AUTH_TABLES)
-
-      count += 1
-    end
-    yield
-    count
-  ensure
-    ActiveSupport::Notifications.unsubscribe(sub)
-  end
 
   def seed(users:)
     users.times do |i|
