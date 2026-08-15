@@ -1,4 +1,5 @@
 import type { Metadata } from 'next'
+import { CONTACT_EMAIL, CONTACT_PENDING_LABEL } from '@/lib/contact'
 import { LegalLayout } from '@/components/features/legal/LegalLayout'
 
 export const metadata: Metadata = {
@@ -17,7 +18,7 @@ export const metadata: Metadata = {
  * 決まったら NEXT_PUBLIC_CONTACT_EMAIL に入れる。それまでは
  * 「準備中」と正直に出す。
  */
-const CONTACT_EMAIL = process.env.NEXT_PUBLIC_CONTACT_EMAIL
+// 出どころは lib/contact.ts に1つだけ置く（フッターも同じものを見る）
 
 /**
  * 氏名・住所・電話番号は、請求があったときに開示する。
@@ -82,7 +83,7 @@ const ROWS: { label: string; value: React.ReactNode }[] = [
         {CONTACT_EMAIL}
       </a>
     ) : (
-      '準備中です。'
+      CONTACT_PENDING_LABEL
     ),
   },
 ]
