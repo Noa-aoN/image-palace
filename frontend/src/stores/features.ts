@@ -20,7 +20,33 @@ interface FeaturesState {
   /** なぜ準備中かの一言（運営が書いたものだけ） */
   notes: Record<string, string> | null
   loading: boolean
+  /** 最後に読んだ時刻（ミリ秒）。取り直しの間隔を測るのに使う */
+  fetchedAt: number
   load: () => void
+  /** いま読み直す。運営が段階を変えたときと、画面に戻ってきたときに使う */
+  refresh: () => void
+}
+
+/**
+ * 取り直しの最短の間隔。
+ *
+ * 画面に戻るたびに読みに行くと、行き来しただけで問い合わせが増える。
+ * かといって長いと、運営が閉じた機能がいつまでも開いたままになる。
+ */
+export const FEATURES_REFRESH_INTERVAL_MS = 60_000
+
+function fetchStages(set: (partial: Partial<FeaturesState>) => void) {
+  set({ loading: true })
+  getFeatureStages()
+    .then(({ features, paths, notes }) =>
+      set({ stages: features, paths, notes: notes ?? {}, loading: false, fetchedAt: Date.now() })
+    )
+    // 読めなかったときは既定（released 扱い）に倒す。設定が読めないことを理由に
+    // 動いている機能まで消してしまうと、障害の被害が広がる
+    //
+    // **失敗しても fetchedAt は進める。** 進めないと、落ちている間じゅう
+    // 画面に戻るたびに読みに行くことになる
+    .catch(() => set({ stages: {}, paths: {}, notes: {}, loading: false, fetchedAt: Date.now() }))
 }
 
 export const useFeaturesStore = create<FeaturesState>((set, get) => ({
@@ -28,14 +54,14 @@ export const useFeaturesStore = create<FeaturesState>((set, get) => ({
   paths: null,
   notes: null,
   loading: false,
+  fetchedAt: 0,
   load: () => {
     if (get().stages || get().loading) return
-    set({ loading: true })
-    getFeatureStages()
-      .then(({ features, paths, notes }) => set({ stages: features, paths, notes: notes ?? {}, loading: false }))
-      // 読めなかったときは既定（released 扱い）に倒す。設定が読めないことを理由に
-      // 動いている機能まで消してしまうと、障害の被害が広がる
-      .catch(() => set({ stages: {}, paths: {}, notes: {}, loading: false }))
+    fetchStages(set)
+  },
+  refresh: () => {
+    if (get().loading) return
+    fetchStages(set)
   },
 }))
 
@@ -47,6 +73,25 @@ function useLoadedFeatures() {
   useEffect(() => {
     load()
   }, [load])
+
+  // 画面に戻ってきたときに読み直す。
+  //
+  // 段階は運営がいつでも変えられるが、**開きっぱなしの画面には届かない**
+  // （読むのは1回だけなので、閉じたはずの機能が開いたまま残る）。
+  // 別のタブから戻ってきた瞬間が、いちばん自然な取り直しどころ。
+  useEffect(() => {
+    const onVisible = () => {
+      if (document.visibilityState !== 'visible') return
+
+      const { fetchedAt, refresh } = useFeaturesStore.getState()
+      if (Date.now() - fetchedAt < FEATURES_REFRESH_INTERVAL_MS) return
+
+      refresh()
+    }
+
+    document.addEventListener('visibilitychange', onVisible)
+    return () => document.removeEventListener('visibilitychange', onVisible)
+  }, [])
 
   return { stages, paths }
 }
