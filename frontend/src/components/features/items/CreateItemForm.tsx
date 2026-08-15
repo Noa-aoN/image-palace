@@ -163,7 +163,7 @@ export function CreateItemForm({
   const [consulting, setConsulting] = useState(false)
   const [oracleError, setOracleError] = useState<string | null>(null)
   const settings = useSettingsStore((st) => st.settings)
-  // アクロポリスと同じ履歴を見る。受け取り済みは出さず、キャンセル済みは出にくくする
+  // デルフォイと同じ履歴を見る。受け取り済みは出さず、キャンセル済みは出にくくする
   const acropolisHistory = useAcropolisStore((st) => st.history)
   const oracleExclude = useMemo(
     () =>
@@ -184,14 +184,14 @@ export function CreateItemForm({
     デルフォイ挿入。神託から単語をひとつ受け取り、入力欄の末尾へ足す。
     ここで作るのは単語だけで、クレジットは消費しない（消費はカードを作る段階）。
 
-    出す語の選び方はアクロポリスと揃える。あちらだけ賢いと、同じ「神託」なのに
+    出す語の選び方はデルフォイと揃える。あちらだけ賢いと、同じ「神託」なのに
     こちらでは同じような語ばかり出る、という食い違いが起きるため。
-      ・入力済みの語と、アクロポリスで受け取り済みの語は出さない
+      ・入力済みの語と、デルフォイで受け取り済みの語は出さない
       ・キャンセルした語は出にくくする
       ・難しさは環境設定の既定に従う
-    ジャンルや枚数は指定できるようにしない。細かく選びたいときはアクロポリスへ行けばよく、
+    ジャンルや枚数は指定できるようにしない。細かく選びたいときはデルフォイへ行けばよく、
     ここは入力を一語足すだけの補助に留める。
-    アクロポリスの履歴には残さない（あちらは神託を受けて受け取る一連の流れで、
+    デルフォイの履歴には残さない（あちらは神託を受けて受け取る一連の流れで、
     こちらは入力補助。混ぜると両方の意味が濁る）。
   */
   const consultOracle = async () => {
@@ -839,7 +839,7 @@ export function CreateItemForm({
       </label>
         </OptionGroup>
         <OptionGroup
-          label="整理"
+          label="手動で足す情報"
           summary={optionSummary.organize}
           open={openGroup === 'organize'}
           onToggle={() => setOpenGroup((cur) => (cur === 'organize' ? null : 'organize'))}
@@ -865,7 +865,7 @@ export function CreateItemForm({
       </div>
         </OptionGroup>
         <OptionGroup
-          label="保存する場所"
+          label="デッキへの保存設定"
           summary={optionSummary.place}
           open={openGroup === 'place'}
           onToggle={() => setOpenGroup((cur) => (cur === 'place' ? null : 'place'))}

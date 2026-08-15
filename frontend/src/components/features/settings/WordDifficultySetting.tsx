@@ -14,9 +14,9 @@ import {
 /**
  * 単語を作ってもらうときの、既定の難しさ。
  *
- * アクロポリスとデルフォイの初期値になる。
+ * デルフォイとデルフォイの初期値になる。
  * 同じ水準の語ばかり出ると使い道が狭まるので、学ぶ段階に合わせて選べるようにする。
- * アクロポリス側ではその場で変えられるので、ここは「いつもの設定」にあたる。
+ * デルフォイ側ではその場で変えられるので、ここは「いつもの設定」にあたる。
  */
 export function WordDifficultySetting() {
   const settings = useSettingsStore((s) => s.settings)
@@ -43,8 +43,8 @@ export function WordDifficultySetting() {
     <div className="space-y-2">
       <p className="text-sm font-medium">出してもらう単語の難しさ</p>
       <p className="text-xs text-muted-foreground">
-        神託（アクロポリス／作成画面のデルフォイ）に単語を出してもらうときの既定です。
-        画像の作り方には効きません。アクロポリスではその場で変えられます。
+        神託（デルフォイ／作成画面のデルフォイ）に単語を出してもらうときの既定です。
+        画像の作り方には効きません。デルフォイではその場で変えられます。
       </p>
       <div className="grid gap-2 sm:grid-cols-2">
         {WORD_DIFFICULTIES.map((level) => {

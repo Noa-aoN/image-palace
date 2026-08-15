@@ -60,7 +60,7 @@ class FeatureFlag < ApplicationRecord
     "page.account" => { label: "アカウント管理", group: "palace", path: "/account", stage: "released" },
 
     # ── 市街 ──
-    "page.acropolis" => { label: "アクロポリス", group: "outside", path: "/acropolis", stage: "released" },
+    "page.acropolis" => { label: "デルフォイ", group: "outside", path: "/delphi", stage: "released" },
     "page.agora" => { label: "アゴラ", group: "outside", path: "/agora", stage: "released" },
     "page.stadion" => { label: "スタディオン", group: "outside", path: "/stadion", stage: "released" },
 
