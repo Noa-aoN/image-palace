@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { Crown, Medal, Sparkles, Trophy, Award, Gem, HelpCircle, Route } from 'lucide-react'
+import { Medal, Sparkles, Trophy, Award, Gem, HelpCircle, Route } from 'lucide-react'
 import { Spinner } from '@/components/ui/spinner'
 import { PanelSlotContent } from '@/components/features/panel/PanelSlot'
 import { REWARD_KIND_HELP } from '@/lib/reward-kinds'
@@ -90,7 +90,10 @@ export function AchievementsBoard() {
           <h2 className="text-sm font-semibold text-muted-foreground">記名板</h2>
 
           <div className="flex items-center gap-2">
-            <Crown size={20} style={{ color: 'var(--palace)' }} />
+            {/* 下に並ぶ勲章・宝物・表彰と同じ形にする。
+                ここだけ絵記号だと、**何の行なのかを絵から読み取らせる**ことになり、
+                同じ板の中で読み方が2通りになる */}
+            <span className="w-8 shrink-0 text-xs text-muted-foreground">{KIND_LABELS.title}</span>
             {/* 称号は鉤括弧で囲む。名前の一部なのか説明なのかが、ひと目で分かる */}
             {page.summary.title ? (
               <span className="text-lg font-semibold">「{page.summary.title.name}」</span>
