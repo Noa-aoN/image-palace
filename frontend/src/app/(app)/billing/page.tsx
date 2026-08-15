@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useState } from 'react'
+import { reflected } from '@/lib/billing-reflection'
 import { CreditCard, Coins, Sparkles, Loader2, ExternalLink, Gauge, History, HardDrive, Receipt, RefreshCw } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { CategorySections, type CategorySection } from '@/components/features/myroom/CategorySections'
@@ -92,17 +93,22 @@ export default function BillingPage() {
     let tries = 0
     // subscription.created（プラン）と invoice.paid（クレジット）は別イベントで前後するため、
     // 早期終了せず数回ポーリングして両方の反映を取り込む。ヘッダー等の共有残高も更新する。
-    // 決済前のプランを控え、変化したかどうかで反映を判定する
-    let before: string | null | undefined
+    // 決済前の状態を控え、変化したかどうかで反映を判定する。
+    //
+    // **プラン名だけを見てはいけない。** 買い切りではプランが変わらないので、
+    // 正しく反映されていても「変化なし」と読まれ、5回まわしたあとに
+    // 「反映に時間がかかっています」が出たまま残る（実際にそうなっていた）。
+    // 残高が増えたかどうかも見る。
+    let before: { plan: string | null; credits: number } | undefined
     const poll = async () => {
       tries += 1
       try {
         const s = await getBillingSummary()
         if (cancelled) return
-        if (before === undefined) before = s.plan?.name ?? null
+        if (before === undefined) before = { plan: s.plan?.name ?? null, credits: s.available_credits }
         setSummary(s)
         useBillingStore.getState().fetchSummary()
-        if ((s.plan?.name ?? null) !== before) {
+        if (reflected(before, s)) {
           setApplyState('applied')
           return // 反映を確認できたら止める
         }

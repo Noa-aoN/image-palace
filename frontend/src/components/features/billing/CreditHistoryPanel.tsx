@@ -1,6 +1,8 @@
 'use client'
 
 import { useEffect, useState } from 'react'
+import { withRunningBalance } from '@/lib/billing-running-balance'
+import { useBillingStore } from '@/stores/billing'
 import { History } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { getCreditTransactions } from '@/lib/api/billing'
@@ -20,6 +22,9 @@ const PAGE_SIZE = 10
 
 export function CreditHistoryPanel() {
   const [rows, setRows] = useState<CreditTransaction[]>([])
+  // その時点の残高は、いまの残高から遡って積む（行が持つ *_credits_after は
+  // 古い入れ物のぶんしか無く、そのまま出すと嘘の数字になる）
+  const balance = useBillingStore((s) => s.summary?.available_credits ?? 0)
   const [cursor, setCursor] = useState<string | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(false)
@@ -59,7 +64,7 @@ export function CreditHistoryPanel() {
         <p className="text-sm text-muted-foreground">まだ記録はありません。</p>
       ) : (
         <ul className="divide-y divide-border rounded-lg border border-border">
-          {rows.map((row) => (
+          {withRunningBalance(rows, balance).map((row) => (
             <li key={row.id} className="flex items-center justify-between gap-3 px-3 py-2 text-sm">
               <div className="min-w-0">
                 <p className="truncate">{row.label}</p>
@@ -75,6 +80,10 @@ export function CreditHistoryPanel() {
               >
                 {row.credits > 0 && '+'}
                 {formatCredits(row.credits)} {CREDIT_UNIT_SHORT}
+              </span>
+              {/* その時点の残高。増減だけだと「いくつになったのか」が追えない */}
+              <span className="w-20 shrink-0 text-right tabular-nums text-xs text-muted-foreground">
+                残 {formatCredits(row.balanceAfter)}
               </span>
             </li>
           ))}
