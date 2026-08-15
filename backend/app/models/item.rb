@@ -105,6 +105,20 @@ class Item < ApplicationRecord
     spans.is_a?(Hash) ? spans : {}
   end
 
+  # 列への振り分けを自分で決めるか。**書いていなければ自動**。
+  # 自動＝列の中を上から順に流し、どこで折り返すかは画面が決める
+  def block_auto_flow?
+    (block_view || {})["auto_flow"] != false
+  end
+
+  # 自分で決めるときの、列ごとの個数（左から順）。
+  # 列の数そのものは端末ごとの設定なので、ここには持たない。
+  # **足りないぶんは最後の列へ回す**（数を書き換えても札が消えない）
+  def block_column_counts
+    counts = (block_view || {})["column_counts"]
+    counts.is_a?(Array) ? counts.map { |n| n.to_i.clamp(0, 99) } : []
+  end
+
   # 未指定のカード（旧データ・既定のまま作られたもの）は既定の経路として扱う
   def effective_prompt_source
     prompt_source.presence || DEFAULT_PROMPT_SOURCE
