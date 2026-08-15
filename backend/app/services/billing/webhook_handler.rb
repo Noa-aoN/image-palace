@@ -95,7 +95,13 @@ module Billing
       return unless sub
       return if sub.status == "canceled"
 
-      sub.user.reset_subscription_credits!(0, subscription: sub, forfeit: true)
+      # **没収しない。** クレジットは出どころによらず「付与から3か月」で、
+      # 規約にもそう書いてある。解約を理由に取り上げると、受け取った対価を
+      # こちらの都合で消すことになる。
+      #
+      # 残っているぶんは繰り越しの入れ物へ移し、期限が来たら自然に失効する
+      # （ExpireCreditGrantsJob が拾う）。月々の付与はここで止まる。
+      sub.user.reset_subscription_credits!(0, subscription: sub)
       sub.update!(status: "canceled", canceled_at: Time.current)
     end
 

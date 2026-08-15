@@ -256,8 +256,13 @@ class User < ApplicationRecord
   # 使い残しは**失効させず、期限付きの持ち越しに移す**（CreditExpiryPolicy）。
   # 残高は減らないので、移し替えの台帳記録は残さない（グラント行そのものが記録になる）。
   #
-  # forfeit: true のときだけ、これまでどおり失効させる。解約がこれにあたる。
-  # 解約後も残るようにすると、契約→受け取り→即解約で使い回せてしまう。
+  # forfeit: true を渡すと没収する。**いまは誰も渡していない。**
+  # 解約時に没収していたが、規約は出どころによらず「付与から3か月」と定めていて、
+  # 解約を理由に取り上げるとその約束と食い違う（#704 の次で直した）。
+  #
+  # 「契約→受け取り→即解約」で使い回される心配はある。ただし受け取れるのは
+  # 1か月ぶんで、次の付与は解約と同時に止まる。**約束を曲げてまで塞ぐ穴ではない。**
+  # 逃げ道として引数は残す（不正が実際に出たら、そこで判断できるように）。
   def reset_subscription_credits!(amount, subscription: nil, stripe_event_id: nil, amount_cents: nil,
                                   currency: nil, forfeit: false)
     with_lock do
