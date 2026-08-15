@@ -118,7 +118,53 @@ class AchievementDefinition < ApplicationRecord
       rewards: [ { "type" => "credits", "amount" => 3 } ] },
     { key: "collector_thirty", name: "30個の獲得", category: "整理", position: 52,
       description: "獲得物を30個集める", condition_type: "rewards_earned", condition_target: 30,
-      rewards: [ { "type" => "reward", "key" => "treasure_trophy" } ] }
+      rewards: [ { "type" => "reward", "key" => "treasure_trophy" } ] },
+
+    # ── ここから追加分。**新しい獲得物に、配る道を用意する** ──
+    # 目標値は既にある実績と重ならないものを選んである
+    # （同じ数で2つ達成すると、どちらが何で開いたのか分からない）
+    { key: "twenty_cards", name: "20枚のカード", category: "作成", position: 14,
+      description: "カードを20枚作る", condition_type: "cards_created", condition_target: 20,
+      rewards: [ { "type" => "reward", "key" => "treasure_amphora" } ] },
+    { key: "two_hundred_cards", name: "200枚のカード", category: "作成", position: 15,
+      description: "カードを200枚作る", condition_type: "cards_created", condition_target: 200,
+      rewards: [ { "type" => "reward", "key" => "medal_two_hundred" } ] },
+    { key: "twenty_images", name: "20枚の絵", category: "生成", position: 23,
+      description: "絵を20枚作る", condition_type: "images_generated", condition_target: 20,
+      rewards: [ { "type" => "reward", "key" => "title_illustrator" } ] },
+    { key: "hundred_images", name: "100枚の絵", category: "生成", position: 24,
+      description: "絵を100枚作る", condition_type: "images_generated", condition_target: 100,
+      rewards: [ { "type" => "reward", "key" => "treasure_mask" } ] },
+    { key: "first_review", name: "はじめての見返し", category: "はじめに", position: 16,
+      description: "カードを1回見返す", condition_type: "reviews_total", condition_target: 1,
+      rewards: [ { "type" => "reward", "key" => "medal_first_review" } ] },
+    { key: "hundred_reviews", name: "100回の見返し", category: "学習", position: 34,
+      description: "カードを100回見返す", condition_type: "reviews_total", condition_target: 100,
+      rewards: [ { "type" => "reward", "key" => "medal_reviews_hundred" } ] },
+    { key: "correct_five_hundred", name: "500回の正解", category: "学習", position: 35,
+      description: "500回正解する", condition_type: "reviews_correct", condition_target: 500,
+      rewards: [ { "type" => "reward", "key" => "treasure_owl" } ] },
+    { key: "correct_three_thousand", name: "3000回の正解", category: "学習", position: 36,
+      description: "3000回正解する", condition_type: "reviews_correct", condition_target: 3_000,
+      rewards: [ { "type" => "reward", "key" => "title_sage" } ] },
+    # まとまりを10作ると3つ配る。**同じ節目で種別を揃えて渡す**と、
+    # 記名板が一度に埋まって、集めている実感が出る
+    { key: "ten_containers", name: "10のまとまり", category: "整理", position: 53,
+      description: "ボックス・キャンバス・スペースを合わせて10作る",
+      condition_type: "containers_created", condition_target: 10,
+      rewards: [ { "type" => "reward", "key" => "title_curator" },
+                 { "type" => "reward", "key" => "medal_space" },
+                 { "type" => "reward", "key" => "treasure_compass" } ] },
+    { key: "fifty_containers", name: "50のまとまり", category: "整理", position: 54,
+      description: "ボックス・キャンバス・スペースを合わせて50作る",
+      condition_type: "containers_created", condition_target: 50,
+      rewards: [ { "type" => "reward", "key" => "title_architect" } ] },
+    { key: "streak_twentyone", name: "21日連続", category: "継続", position: 47,
+      description: "21日続けて学習する", condition_type: "streak_days", condition_target: 21,
+      rewards: [ { "type" => "reward", "key" => "treasure_hourglass" } ] },
+    { key: "streak_sixty", name: "60日連続", category: "継続", position: 48,
+      description: "60日続けて学習する", condition_type: "streak_days", condition_target: 60,
+      rewards: [ { "type" => "reward", "key" => "title_disciplined" } ] }
   ].freeze
 
   BUILTIN_KEYS = BUILTINS.map { |b| b[:key] }.freeze

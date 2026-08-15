@@ -86,7 +86,7 @@ module Achievements
 
     # 種別ごとに「持っている数 / ぜんぶの数」。分母が無いと、集め具合が分からない
     def counts_by_kind
-      all = RewardDefinition.registry.select { |d| d.published? || owned.key?(d.id) }
+      all = RewardDefinition.registry.select { |d| (d.published? || owned.key?(d.id)) && visible?(d, owned[d.id]) }
       RewardDefinition::DISPLAY_ORDER.to_h do |kind|
         rows = all.select { |d| d.kind == kind }
         [ kind, { owned: rows.count { |d| owned.key?(d.id) }, total: rows.size } ]
@@ -226,9 +226,19 @@ module Achievements
         held = owned[definition.id]
         # 未公開のものは、持っていない人には見せない
         next if !definition.published? && held.nil?
+        next unless visible?(definition, held)
 
         reward_row(definition, held)
       end
+    end
+
+    # 運営だけのものを、運営でない人の一覧に出さない。
+    # **条件を満たしようがないものが並ぶ**と、埋まらない枠として残り続ける。
+    # 持っている人には出す（万一配られていたら、隠すほうが不親切）
+    def visible?(definition, held)
+      return true unless definition.admin_only
+
+      held.present? || @user.admin?
     end
 
     def achievements
