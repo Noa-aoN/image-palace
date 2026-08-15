@@ -222,7 +222,16 @@ export default function ItemDetailPage() {
             className={`relative overflow-hidden rounded-lg bg-muted ${
               fitHeight ? 'flex w-full justify-center' : 'w-full'
             }`}
-            style={item.media.blur ? { backgroundImage: `url("${item.media.blur}")`, backgroundSize: 'cover', backgroundPosition: 'center' } : undefined}
+            // 画面に収めているときは、絵の左右（または上下）に地が出る。
+            // そこへ**絵をぼかして引き伸ばしたもの**を敷くと、絵の色が滲んで見える。
+            // 額装の台紙と同じで、地は絵と別の色にする
+            style={
+              fitHeight
+                ? { backgroundColor: 'var(--image-mat)' }
+                : item.media.blur
+                  ? { backgroundImage: `url("${item.media.blur}")`, backgroundSize: 'cover', backgroundPosition: 'center' }
+                  : undefined
+            }
           >
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img
