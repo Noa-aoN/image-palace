@@ -120,7 +120,16 @@ export default function ItemDetailPage() {
     return (
       <div className="max-w-lg mx-auto px-6 py-12 text-center space-y-4">
         <p className="text-destructive">{error}</p>
-        <Link href={backHref}><Button variant="outline">{backLabel}</Button></Link>
+        {/* **行き止まりにしない。** 読めなかっただけかもしれないので、
+            その場でやり直せる手を必ず添える（戻るしか無いと、作ったカードが
+            消えたように見える） */}
+        <p className="text-sm text-muted-foreground">
+          通信が途切れただけかもしれません。もう一度お試しください。
+        </p>
+        <div className="flex justify-center gap-2">
+          <Button onClick={() => window.location.reload()}>読み込み直す</Button>
+          <Link href={backHref}><Button variant="outline">{backLabel}</Button></Link>
+        </div>
       </div>
     )
   }
