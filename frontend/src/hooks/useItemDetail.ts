@@ -4,6 +4,9 @@ import { useItemsStore } from '@/stores/items'
 import { POLLING_STATUSES } from '@/lib/item-status'
 import type { Item } from '@/types/item'
 
+// 取り直すまでの間。すぐ叩き直しても同じ結果になりやすい
+const RETRY_DELAY_MS = 800
+
 // カード詳細の共通ロジック（取得・ポーリング・タイトル編集・削除・画像拡大）。
 // 詳細ページ（items/[id]）と右パネル（ItemDetailBody）で共有し、レイアウトは各自が持つ。
 export function useItemDetail(itemId: string, opts?: { onDeleted?: () => void }) {
@@ -32,16 +35,38 @@ export function useItemDetail(itemId: string, opts?: { onDeleted?: () => void })
     setImgError(false)
   }, [item?.media?.url])
 
-  // 本体の取得（itemId 変化時）
+  // 本体の取得（itemId 変化時）。
+  //
+  // **一度の失敗で行き止まりにしない。** 作った直後に開くと、通信の間や
+  // 反映の間に合わなさで1回だけ失敗することがある。そこで諦めると
+  // 「ページが無い」ように見えて、利用者は自分で読み直すしかなくなる。
+  // 一拍おいて1度だけ試し直す（取得は読むだけなので、繰り返しても害が無い）。
   useEffect(() => {
+    let cancelled = false
     setImgError(false)
     setError(null)
-    getItem(itemId)
-      .then((fetched) => {
-        setItem(fetched)
-        upsertItem(fetched)
-      })
-      .catch(() => setError('カードの取得に失敗しました'))
+
+    const load = (retriesLeft: number) => {
+      getItem(itemId)
+        .then((fetched) => {
+          if (cancelled) return
+          setItem(fetched)
+          upsertItem(fetched)
+        })
+        .catch(() => {
+          if (cancelled) return
+          if (retriesLeft > 0) {
+            setTimeout(() => load(retriesLeft - 1), RETRY_DELAY_MS)
+            return
+          }
+          setError('カードを読み込めませんでした')
+        })
+    }
+
+    load(1)
+    return () => {
+      cancelled = true
+    }
   }, [itemId, upsertItem])
 
   // pending/processing 中はポーリング
