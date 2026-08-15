@@ -12,7 +12,8 @@ module Api
       def index
         # 一覧に出すのは縮小版。**本体とは別の添付**なので、両方まとめて読む。
         # 片方を書き忘れると、1行につき1本ずつ問い合わせが増える
-        rows = @item.item_media_generations.recent
+        # いまの見出し語で作ったものだけを出す（語を変えたら前の絵は選べない）
+        rows = @item.item_media_generations.for_title(@item.title).recent
                     .includes(shared_media: [ { file_attachment: :blob }, { thumb_attachment: :blob } ])
 
         render json: { generations: rows.filter_map { |row| serialize(row) } }
@@ -20,7 +21,8 @@ module Api
 
       # 過去の絵に戻す。生成はしない
       def apply
-        row = @item.item_media_generations.find(params[:id])
+        # 一覧に出していないものは、直に叩いても付け替えられない
+        row = @item.item_media_generations.for_title(@item.title).find(params[:id])
         shared = row.shared_media
         return render json: { error: "この絵はもう残っていません" }, status: :gone unless available?(shared)
 

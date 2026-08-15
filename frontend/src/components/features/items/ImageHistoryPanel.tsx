@@ -116,6 +116,11 @@ export function ImageHistoryPanel({
           ) : rows.length === 0 ? (
             <p className="text-sm text-muted-foreground">
               まだ履歴はありません。作り直すと、ここに前の絵が残ります。
+              <br />
+              <span className="text-xs">
+                見出し語を書き換えると、前の語で作った絵は選べなくなります
+                （語と絵の結びつきを保つため）。
+              </span>
             </p>
           ) : (
             <ul className="grid grid-cols-2 gap-2 sm:grid-cols-3">
