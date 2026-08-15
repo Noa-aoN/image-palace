@@ -108,7 +108,8 @@ function NavTree({
         onClick={onNavigate}
         className={linkClass(depth)}
         style={linkStyle(href, node.exact)}
-        title={iconsOnly ? node.label : undefined}
+        // 名前だけでは何の場所か分からないので、説明を持つものはそれを見せる
+        title={iconsOnly ? [node.label, node.description].filter(Boolean).join(' — ') : node.description}
       >
         <span className="shrink-0">{node.icon}</span>
         {!iconsOnly && <span className="truncate">{node.label}</span>}
@@ -129,7 +130,7 @@ function NavTree({
     if (iconsOnly) {
       if (node.href) return renderLink(node, depth)
       return (
-        <div key={node.label} className="flex items-center justify-center py-2.5" title={node.label}>
+        <div key={node.label} className="flex items-center justify-center py-2.5" title={[node.label, node.description].filter(Boolean).join(' — ')}>
           <span className="shrink-0">{node.icon}</span>
         </div>
       )
@@ -147,6 +148,7 @@ function NavTree({
           onClick={onNavigate}
           className={`flex-1 ${linkClass(depth)}`}
           style={linkStyle(node.href)}
+          title={node.description}
         >
           <span className="shrink-0">{node.icon}</span>
           <span className="truncate">{node.label}</span>
@@ -168,6 +170,7 @@ function NavTree({
         onClick={() => toggleGroup(node.label)}
         className={`w-full ${linkClass(depth)}`}
         aria-expanded={!collapsed}
+        title={node.description}
       >
         <span className="shrink-0">{node.icon}</span>
         <span className="flex-1 truncate text-left">{node.label}</span>

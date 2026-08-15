@@ -1,13 +1,13 @@
 'use client'
 
-import { Coins } from 'lucide-react'
+import { AlertTriangle, Coins } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { HelpPopover } from '@/components/ui/help-popover'
 import { Spinner } from '@/components/ui/spinner'
 import { PanelSlotContent } from '@/components/features/panel/PanelSlot'
 import { usePanelForm } from '@/components/features/panel/usePanelForm'
 import { useBillingStore } from '@/stores/billing'
-import { CREDIT_UNIT, CREDIT_UNIT_SHORT, CREDIT_VALIDITY_LABEL } from '@/lib/billing'
+import { CREDIT_UNIT, CREDIT_UNIT_SHORT, CREDIT_VALIDITY_LABEL, expiryUrgencyLabel } from '@/lib/billing'
 
 export const CREDIT_BREAKDOWN_PANEL_KEY = 'credit-breakdown'
 
@@ -76,20 +76,33 @@ export function CreditBreakdownPanel() {
               <p className="text-sm text-muted-foreground">内訳はありません。</p>
             ) : (
               <ol className="space-y-1.5">
-                {buckets.map((bucket, index) => (
+                {buckets.map((bucket, index) => {
+                  // 期限が近いものだけ印を出す。**全部に出すと、どれが急ぎか分からなくなる**
+                  const urgency = expiryUrgencyLabel(bucket.expires_at)
+
+                  return (
                   <li
                     key={`${bucket.kind}-${bucket.expires_at ?? 'none'}-${index}`}
-                    className="flex items-center justify-between gap-3 rounded-lg border border-border/70 bg-background px-3 py-2"
+                    className={`flex items-center justify-between gap-3 rounded-lg border bg-background px-3 py-2 ${
+                      urgency ? 'border-amber-300 bg-amber-50/60' : 'border-border/70'
+                    }`}
                   >
                     <div className="flex min-w-0 items-baseline gap-2">
                       {/* 使われる順に番号を振る。同じラベルが続いても、どれの話か指せる */}
                       <span className="shrink-0 text-xs tabular-nums text-muted-foreground">{index + 1}</span>
                       <div className="min-w-0">
                         {/* 日付を主役にする。同じ種類が並ぶとき、違うのは期限だけ */}
-                        <p className="text-sm font-medium">
+                        <p className="flex items-center gap-1.5 text-sm font-medium">
                           {bucket.expires_at
                             ? `${new Date(bucket.expires_at).toLocaleDateString('ja-JP')} まで`
                             : '期限なし'}
+                          {urgency && (
+                            // 色だけで急ぎを伝えない（色が見分けられない人にも届くように、印と言葉を添える）
+                            <span className="inline-flex shrink-0 items-center gap-1 rounded-full bg-amber-100 px-1.5 py-0.5 text-[11px] font-medium text-amber-900">
+                              <AlertTriangle size={11} aria-hidden />
+                              {urgency}
+                            </span>
+                          )}
                         </p>
                         <p className="truncate text-xs text-muted-foreground">{bucket.label}</p>
                       </div>
@@ -98,7 +111,8 @@ export function CreditBreakdownPanel() {
                       {bucket.credits} {CREDIT_UNIT_SHORT}
                     </span>
                   </li>
-                ))}
+                  )
+                })}
               </ol>
             )}
 
