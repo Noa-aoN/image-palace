@@ -56,6 +56,7 @@ import {
 import { CardDisplayPanel } from '@/components/features/items/CardDisplayPanel'
 import { PanelSlotContent } from '@/components/features/panel/PanelSlot'
 import { usePanelForm } from '@/components/features/panel/usePanelForm'
+import { CREDIT_UNIT_SHORT, CREDIT_VALIDITY_LABEL } from '@/lib/billing'
 
 // 一括AI操作の per-item 結果（完了後の確認ダイアログ用）
 type BulkResultEntry = {
@@ -1067,13 +1068,38 @@ export function ItemList({ initialTag = null }: { initialTag?: string | null }) 
       )
     }
     return (
-      <div className="text-center py-16 space-y-4">
-        <p className="text-muted-foreground">まだカードがありません。単語を入れて、最初の記憶カードを作りましょう。</p>
-        <div className="mx-auto max-w-md rounded-xl border border-border/70 bg-muted/40 px-4 py-4 text-left">
-          <p className="text-sm font-medium">最初に試しやすい例</p>
-          <p className="mt-2 text-sm text-muted-foreground">富士山、光合成、API、細胞分裂</p>
-          <p className="mt-1 text-xs text-muted-foreground">具体的な単語から始めると、画像生成が安定しやすいです。</p>
+      // 何も無い画面は、**説明できる唯一の場所**。ここを逃すと
+      // 「何に使うのか」「1枚いくらか」を知らないまま作り始めることになる
+      <div className="py-16 space-y-5 text-center">
+        <p className="text-muted-foreground">まだカードがありません。言葉を入れて、最初のカードを作りましょう。</p>
+
+        <div className="mx-auto max-w-md space-y-4 rounded-xl border border-border/70 bg-muted/40 px-4 py-4 text-left">
+          <div>
+            <p className="text-sm font-medium">最初に試しやすい例</p>
+            <p className="mt-2 text-sm text-muted-foreground">富士山、光合成、API、細胞分裂</p>
+            <p className="mt-1 text-xs text-muted-foreground">具体的な言葉から始めると、絵が安定しやすいです。</p>
+          </div>
+
+          <div className="border-t border-border/60 pt-3">
+            <p className="text-sm font-medium">こんな使い方ができます</p>
+            <ul className="mt-2 space-y-1 text-sm text-muted-foreground">
+              <li>単語帳として — 覚えたい語を絵で結びつける</li>
+              <li>学習図鑑・用語集として — 分野の言葉をまとめて並べる</li>
+              <li>ビジョンボード・絵日記として — 見たい景色を集める</li>
+            </ul>
+          </div>
+
+          <div className="border-t border-border/60 pt-3">
+            <p className="text-sm font-medium">クレジットについて</p>
+            <p className="mt-2 text-sm text-muted-foreground">
+              絵を1枚つくるたびに 1{CREDIT_UNIT_SHORT} 使います。受け取ってから{CREDIT_VALIDITY_LABEL}有効です。
+            </p>
+            <p className="mt-1 text-xs text-muted-foreground">
+              同じ言葉を誰かが作っていれば、その絵をそのまま使います（待ち時間もかかりません）。
+            </p>
+          </div>
         </div>
+
         <Link href="/items/new">
           <Button>カードを作成する</Button>
         </Link>

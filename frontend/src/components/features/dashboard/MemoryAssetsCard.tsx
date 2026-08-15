@@ -662,7 +662,8 @@ export function MemoryAssetsCard({ summary, className }: { summary: ItemsSummary
                   <AssetStack2D count={c} pal={t.pal} shape={t.shape} />
                 )}
                 <span className="mt-1 text-2xl font-bold tabular-nums leading-none">{c}</span>
-                <span className="mt-1 flex items-center gap-1 text-xs text-muted-foreground">
+                {/* 名前は絵と数の説明。**折り返させない**（2行になると隣の列と高さがずれる） */}
+                <span className="mt-1 flex items-center gap-1 whitespace-nowrap text-xs text-muted-foreground">
                   <span style={{ color: 'var(--palace)' }}>{t.icon}</span>
                   {t.label}
                 </span>
