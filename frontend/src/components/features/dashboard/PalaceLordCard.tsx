@@ -38,6 +38,8 @@ export function PalaceLordCard({ tier }: { tier: string | null }) {
 
   // 勲章は名前の右に絵だけで出す（項目行に混ぜると、増えるたびに縦へ伸びる）
   const medals = honors?.showcase?.medal ?? []
+  // 上の行に置くものがあるか（称号か勲章）。無ければ行ごと出さない
+  const hasTopRow = Boolean(honors?.title) || medals.length > 0
   const displayName = displayNameOf(user)
   const avatar = user?.avatar_thumb_url ?? user?.avatar_url ?? null
   // 入居日＝アカウントを開いた日。取得前でも行の高さが変わらないよう「—」を置く
@@ -80,48 +82,59 @@ export function PalaceLordCard({ tier }: { tier: string | null }) {
               className="h-14 w-14 shrink-0 rounded-full border border-border"
               fallback={<Crown size={20} className="text-muted-foreground/60" />}
             />
-            <div className="min-w-0">
+            {/*
+              2行2列で組む。左が名乗り（称号・名前）、右が勲章。
+
+              **行を格子で揃える。** 見出しは称号の行、絵は名前の行にぴたりと並ぶ。
+              入れ子の縦積みだと、左右の文字の大きさが違うぶん行がずれる
+              （称号は text-xs、名前は text-lg）。
+            */}
+            <div className="grid min-w-0 grid-cols-[minmax(0,1fr)_auto] gap-x-4">
               {/* 称号は名前の上に小さく。名前と同じ大きさで横に並べると、
                   どちらが本人の名前なのか分からなくなる */}
               {/* 称号は鉤括弧で囲む。**与えられた名前**なので、地の文と同じ見た目だと
                   本人が入力した文字列と区別がつかない（記名板と同じ扱いに揃える）。
                   絵は出さない。ここは名乗りであって、品物を見せる場ではない
                   （品物としての姿は栄誉の間で見る） */}
-              {honors?.title && (
-                <p className="flex min-w-0 items-center gap-1 text-xs" style={{ color: 'var(--palace)' }}>
-                  <span className="truncate">「{honors.title.name}」</span>
-                  {/* 手に入れた人ほど「これは何か」を知りたい。
-                      栄誉の間の ? と同じ説明を、ここからも開けるようにする */}
-                  <RewardKindHelpButton kind="title" />
+              {/* 1行目は、称号か勲章のどちらかがあるときだけ置く。
+                  空の行を残すと、何も持っていない人の札にだけ余白が空く */}
+              {hasTopRow && (
+                <p
+                  className="col-start-1 row-start-1 flex min-w-0 items-center gap-1 text-xs"
+                  style={{ color: 'var(--palace)' }}
+                >
+                  {honors?.title && (
+                    <>
+                      <span className="truncate">「{honors.title.name}」</span>
+                      {/* 手に入れた人ほど「これは何か」を知りたい。
+                          栄誉の間の ? と同じ説明を、ここからも開けるようにする */}
+                      <RewardKindHelpButton kind="title" />
+                    </>
+                  )}
                 </p>
               )}
-              {/* 勲章は名前の右に、絵だけを並べる。
-                  項目行（位・入居…）に混ぜると、増えるたびに縦へ伸びていく。
-                  横に流せば、数が増えても札の高さは変わらない */}
-              <div className="flex min-w-0 items-center gap-1.5">
-                <p className="truncate text-lg font-semibold">{displayName}</p>
-                {/* 勲章は名前から離す。くっついていると、名前の続きに見える。
-                    何の並びなのかが分かるよう、絵の上の行に見出しを置く */}
-                {medals.length > 0 && (
-                  <span className="ml-2 flex shrink-0 flex-col items-start gap-0.5 border-l border-border pl-2">
-                    {/* 見出しは絵の上の行に置く。横に並べると、見出しも勲章のひとつに見える */}
-                    <span className="flex items-center gap-1 text-[11px] text-muted-foreground">
-                      勲章
-                      <RewardKindHelpButton kind="medal" />
-                    </span>
-                    <span className="flex items-center gap-1">
-                      {medals.map((reward) =>
-                        reward.image_url ? (
-                          <RewardLink key={reward.key} name={reward.name}>
-                            {/* eslint-disable-next-line @next/next/no-img-element */}
-                            <img src={reward.image_url} alt={reward.name} width={20} height={20} loading="lazy" />
-                          </RewardLink>
-                        ) : null
-                      )}
-                    </span>
-                  </span>
-                )}
-              </div>
+              {medals.length > 0 && (
+                <p className="col-start-2 row-start-1 flex shrink-0 items-center gap-1 border-l border-border pl-3 text-[11px] text-muted-foreground">
+                  勲章
+                  <RewardKindHelpButton kind="medal" />
+                </p>
+              )}
+
+              <p className="col-start-1 row-start-2 truncate text-lg font-semibold">{displayName}</p>
+              {/* 勲章は名前から離す。くっついていると、名前の続きに見える。
+                  区切り線は上下の枡で続くので、1本の線に見える */}
+              {medals.length > 0 && (
+                <span className="col-start-2 row-start-2 flex shrink-0 items-center gap-1 border-l border-border pl-3">
+                  {medals.map((reward) =>
+                    reward.image_url ? (
+                      <RewardLink key={reward.key} name={reward.name}>
+                        {/* eslint-disable-next-line @next/next/no-img-element */}
+                        <img src={reward.image_url} alt={reward.name} width={20} height={20} loading="lazy" />
+                      </RewardLink>
+                    ) : null
+                  )}
+                </span>
+              )}
             </div>
           </div>
 
