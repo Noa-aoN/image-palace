@@ -5,8 +5,6 @@ import Link from 'next/link'
 import { ChevronRight, Crown } from 'lucide-react'
 import { Card, CardContent } from '@/components/ui/card'
 import { CardImage } from '@/components/ui/card-image'
-import { HelpPopover } from '@/components/ui/help-popover'
-import { rewardKindHelp } from '@/lib/reward-kinds'
 import { useAuthStore } from '@/stores/auth'
 import { tierLabel } from '@/lib/billing'
 import { displayNameOf } from '@/lib/display-name'
@@ -104,19 +102,22 @@ export function PalaceLordCard({ tier }: { tier: string | null }) {
                   style={{ color: 'var(--palace)' }}
                 >
                   {honors?.title && (
-                    <>
-                      <span className="truncate">「{honors.title.name}」</span>
-                      {/* 手に入れた人ほど「これは何か」を知りたい。
-                          栄誉の間の ? と同じ説明を、ここからも開けるようにする */}
-                      <RewardKindHelpButton kind="title" />
-                    </>
+                    // 勲章の絵と同じ行き先にする。名乗っているものを押した人が
+                    // 見たいのは**それが何か**であって、この札の説明ではない
+                    <Link
+                      href="/achievements"
+                      title={honors.title.name}
+                      aria-label={`称号「${honors.title.name}」（栄誉の間で見る）`}
+                      className="min-w-0 truncate rounded transition hover:opacity-80 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--palace)]"
+                    >
+                      「{honors.title.name}」
+                    </Link>
                   )}
                 </p>
               )}
               {medals.length > 0 && (
                 <p className="col-start-2 row-start-1 flex shrink-0 items-center gap-1 border-l border-border pl-3 text-[11px] text-muted-foreground">
                   勲章
-                  <RewardKindHelpButton kind="medal" />
                 </p>
               )}
 
@@ -219,13 +220,4 @@ function RewardLink({ name, children }: { name: string; children: React.ReactNod
  * 説明そのものは `lib/reward-kinds` が持つ（栄誉の間の `?` と同じもの）。
  * ここで文言を書くと、同じ語の説明が画面ごとに食い違う。
  */
-function RewardKindHelpButton({ kind }: { kind: 'title' | 'medal' | 'treasure' | 'honor' }) {
-  const help = rewardKindHelp(kind)
-  if (!help) return null
 
-  return (
-    <HelpPopover label={`${help.label}について`} title={`${help.label}（${help.verb}）`}>
-      <p className="text-sm">{help.description}</p>
-    </HelpPopover>
-  )
-}
