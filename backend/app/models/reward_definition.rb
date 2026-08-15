@@ -173,6 +173,55 @@ class RewardDefinition < ApplicationRecord
       description: "特別な達成のしるし。", position: 42,
       metadata: { "motif" => "a two-handled trophy cup crowned with a laurel wreath" } },
 
+
+    # ── 称号（追加分。名乗りは12まで用意する） ──
+    { key: "title_illustrator", kind: "title", name: "幻視の絵師", rarity_level: 2, category: "創作",
+      description: "言葉を絵に変え続けた人へ。", position: 17,
+      metadata: { "motif" => "a stele with a painter's palette and a stylus over a laurel sprig" } },
+    { key: "title_curator", kind: "title", name: "展示の主", rarity_level: 4, category: "整理",
+      description: "並べて見せる術を持つ人へ。", position: 18,
+      metadata: { "motif" => "a stele with a colonnade and small framed tablets between the columns" } },
+    { key: "title_disciplined", kind: "title", name: "不断の徒", rarity_level: 5, category: "継続",
+      description: "途切れさせなかった人へ。", position: 19,
+      metadata: { "motif" => "a stele with an endless meander (Greek key) border and a small hourglass" } },
+    { key: "title_architect", kind: "title", name: "宮殿の設計者", rarity_level: 6, category: "整理",
+      description: "自分の宮殿を組み上げた人へ。", position: 20,
+      metadata: { "motif" => "a stele with a temple floor plan and a pair of dividers" } },
+    { key: "title_sage", kind: "title", name: "記憶の賢者", rarity_level: 7, category: "学習",
+      description: "思い出す力を極めた人へ。", position: 21,
+      metadata: { "motif" => "a stele with an owl above an open scroll and a laurel crown" } },
+
+    # ── 勲章（追加分。12まで用意する） ──
+    { key: "medal_first_review", kind: "medal", name: "初見返しの徽章", rarity_level: 1, category: "学習",
+      description: "はじめて見返した証。", position: 28,
+      metadata: { "motif" => "a small round badge with a single eye over an open tablet" } },
+    { key: "medal_reviews_hundred", kind: "medal", name: "反復の徽章", rarity_level: 4, category: "学習",
+      description: "100回見返した証。", position: 29,
+      metadata: { "motif" => "a round medal with three concentric rings and a small stylus" } },
+    { key: "medal_space", kind: "medal", name: "記憶の宮殿章", rarity_level: 4, category: "整理",
+      description: "覚えるための場所を築いた証。", position: 30,
+      metadata: { "motif" => "a badge shaped as a small temple facade with four columns" } },
+    { key: "medal_two_hundred", kind: "medal", name: "二百枚の勲章", rarity_level: 5, category: "創作",
+      description: "200枚のカードを積み上げた証。", position: 31,
+      metadata: { "motif" => "a medal with a stack of tablets encircled by a laurel ring" } },
+
+    # ── 宝物（追加分。18まで用意する） ──
+    { key: "treasure_amphora", kind: "treasure", name: "彩色のアンフォラ", rarity_level: 2, category: "創作",
+      description: "絵を蓄えた壺。", position: 43,
+      metadata: { "motif" => "a black-figure painted amphora with two handles" } },
+    { key: "treasure_hourglass", kind: "treasure", name: "砂時計", rarity_level: 3, category: "継続",
+      description: "途切れなかった日々のしるし。", position: 44,
+      metadata: { "motif" => "a small bronze-framed hourglass with fine sand" } },
+    { key: "treasure_mask", kind: "treasure", name: "劇の仮面", rarity_level: 4, category: "創作",
+      description: "見せる力の宝物。", position: 45,
+      metadata: { "motif" => "a classical Greek theatre mask" } },
+    { key: "treasure_compass", kind: "treasure", name: "羅針の環", rarity_level: 5, category: "整理",
+      description: "迷わず辿り着くための道具。", position: 46,
+      metadata: { "motif" => "an engraved bronze ring dial with a pointer" } },
+    { key: "treasure_owl", kind: "treasure", name: "知恵のふくろう", rarity_level: 6, category: "学習",
+      description: "思い出す力を見守るもの。", position: 47,
+      metadata: { "motif" => "a small owl figurine perched on a stack of scrolls" } },
+
     # ── 表彰（手動付与のみ。条件では配らない） ──
     { key: "honor_beta", kind: "honor", name: "β参加者", rarity_level: 6, category: "公式",
       description: "初期からこの場所を見てくれた人へ。", position: 40,
@@ -182,7 +231,16 @@ class RewardDefinition < ApplicationRecord
       metadata: { "motif" => "an award plaque with a torch and a laurel wreath" }, image_key: "iuo8g39z6sh1e2l7c52c9fsk2n1m" },
     { key: "honor_featured", kind: "honor", name: "公式推薦", rarity_level: 7, category: "公式",
       description: "運営が選んだ作り手へ。", position: 42,
-      metadata: { "motif" => "an award plaque with a sunburst and a laurel wreath" }, image_key: "cmvez4cmbf1xkb6kajm7cfzni332" }
+      metadata: { "motif" => "an award plaque with a sunburst and a laurel wreath" }, image_key: "cmvez4cmbf1xkb6kajm7cfzni332" },
+    # α の期間に居た人へ。β より前なので、段はひとつ上に置く
+    { key: "honor_alpha", kind: "honor", name: "α参加者", rarity_level: 8, category: "公式",
+      description: "誰よりも早く、この場所を歩いてくれた人へ。", position: 43,
+      metadata: { "motif" => "an award plaque with a rising sun over a laurel wreath and a small alpha-shaped ornament" } },
+    # **運営だけに見える**。持っていない人の一覧に出すと、
+    # 取れないものが並ぶことになる（条件を満たしようがない）
+    { key: "honor_archon", kind: "honor", name: "執政官", rarity_level: 9, category: "公式",
+      description: "この宮殿を運び、守る者へ。", position: 44, admin_only: true,
+      metadata: { "motif" => "an official award plaque with a ceremonial staff crossed with a key, framed by a laurel wreath" } }
   ].freeze
 
   BUILTIN_KEYS = BUILTINS.map { |b| b[:key] }.freeze
