@@ -20,6 +20,7 @@ import { useNotificationsStore } from '@/stores/notifications'
 import { useAdminStore } from '@/stores/admin'
 import { signOut } from '@/lib/api/auth'
 import { CREDIT_UNIT_SHORT } from '@/lib/billing'
+import { showSignUpCta } from '@/lib/auth/header-cta'
 import { MobileNav } from '@/components/features/layout/MobileNav'
 import { NotificationsPanel } from '@/components/features/layout/NotificationsPanel'
 
@@ -57,6 +58,7 @@ export function AppHeader() {
   const [createOpen, setCreateOpen] = useState(false)
   const isAuthPage = pathname?.startsWith('/login') || pathname?.startsWith('/signup') || pathname?.startsWith('/auth/')
   const isLandingPage = pathname === '/'
+  const signUpCtaVisible = showSignUpCta({ hasHydrated, isAuthenticated, pathname })
   const showUserMenu = hasHydrated && isAuthenticated
 
   useEffect(() => {
@@ -257,6 +259,25 @@ export function AppHeader() {
               </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
+        ) : signUpCtaVisible ? (
+          // 検索や共有から公開の読みものに直に降りてきた人には、
+          // **ここが唯一の入口**になる。空けておくと、読んだあと行き場が無い。
+          // 門（login/signup）と最初のページには出さない（どちらも自前の導線を持つ）
+          <div className="flex items-center gap-1.5">
+            <Link
+              href="/login"
+              className="rounded-md px-2 py-1.5 text-sm text-muted-foreground transition-colors hover:text-foreground"
+            >
+              ログイン
+            </Link>
+            <Link
+              href="/signup"
+              className="rounded-md px-3 py-1.5 text-sm font-medium text-white transition-opacity hover:opacity-90"
+              style={{ backgroundColor: 'var(--palace)' }}
+            >
+              はじめる
+            </Link>
+          </div>
         ) : (
           <div className="min-w-9" aria-hidden={isAuthPage || isLandingPage} />
         )}
