@@ -87,7 +87,12 @@ export function AchievementsBoard() {
           1枚に混ぜると、見せるものと数える数字が同じ面に並んで、どちらも薄くなる */}
       <div className="grid gap-4 lg:grid-cols-2 lg:items-stretch">
         <section className="space-y-3 rounded-xl border border-border bg-card p-5">
-          <h2 className="text-sm font-semibold text-muted-foreground">記名板</h2>
+          <div className="flex items-center gap-2">
+            <h2 className="text-sm font-semibold text-muted-foreground">記名板</h2>
+            {/* 称号と勲章が並ぶのはここ。**何が何かを知りたくなるのもここ**。
+                エントランスの札からは説明を外し、種別の意味はこの1か所で開く */}
+            <RewardKindsHelp />
+          </div>
 
           <div className="flex items-center gap-2">
             {/* 下に並ぶ勲章・宝物・表彰と同じ形にする。
