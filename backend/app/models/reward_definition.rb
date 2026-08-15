@@ -10,6 +10,14 @@
 # 消せないのは、コードや他の定義が key を参照しているため（止めたいときは無効にする）。
 class RewardDefinition < ApplicationRecord
   KINDS = %w[title medal treasure honor].freeze
+
+  # 並べる順。**名乗る側から、持ち物側へ。**
+  #   称号 … 名乗り（1つだけ掲げる）
+  #   勲章 … 名乗りに添える証
+  #   表彰 … 運営から贈られたもの
+  #   宝物 … 部屋に置く品物（重ねて持てる）
+  # KINDS とは別に持つ。あちらは「どれが有効な種別か」で、順番の意味は無い
+  DISPLAY_ORDER = %w[title medal honor treasure].freeze
   KIND_LABELS = {
     "title" => "称号", "medal" => "勲章", "treasure" => "宝物", "honor" => "表彰"
   }.freeze

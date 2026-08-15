@@ -1,6 +1,7 @@
 'use client'
 
 import { Crown, Lock, Medal, Award, Gem, Star, HelpCircle } from 'lucide-react'
+import { showQuantity } from '@/lib/achievements/quantity'
 import type { RewardKind, RewardRow } from '@/lib/api/achievements'
 import { rarityStyle } from './rarity'
 
@@ -86,7 +87,7 @@ export function RewardCard({
         <RewardArt reward={reward} size={52} />
         <span className="pointer-events-none absolute inset-x-[-1rem] bottom-full mb-1 hidden rounded-md bg-foreground px-2 py-1 text-[11px] leading-snug text-background shadow-md group-hover:block">
           {reward.name}
-          {reward.quantity > 1 && <span className="ml-1">×{reward.quantity}</span>}
+          {showQuantity(reward) && <span className="ml-1">×{reward.quantity}</span>}
           {!reward.owned && reward.condition && <span className="block opacity-80">{reward.condition}</span>}
         </span>
       </button>
@@ -96,9 +97,10 @@ export function RewardCard({
           <div className="space-y-1">
             <p className={`text-[13px] font-medium leading-tight ${reward.owned ? '' : 'text-muted-foreground'}`}>
             {reward.name}
-            {/* 2つ以上持っているものだけ数を出す。1個のときに ×1 と書くと、
-                重ねられないもの（称号・勲章）まで数える対象に見えてしまう */}
-            {reward.quantity > 1 && (
+            {/* 宝物は重ねて持てるので、1個でも数を出す（増えるものだと分かる）。
+                称号・勲章・表彰は1つきりなので、2つ以上のときだけ出す。
+                重ねられないものに ×1 と書くと、数える対象に見えてしまう */}
+            {showQuantity(reward) && (
               <span className="ml-1 tabular-nums text-muted-foreground">×{reward.quantity}</span>
             )}
           </p>

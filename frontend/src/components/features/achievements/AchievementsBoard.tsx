@@ -15,6 +15,7 @@ import {
 import { RewardCard, RewardArt } from './RewardCard'
 import { RewardDetail } from './RewardDetail'
 import { RewardPreviews } from './RewardPreviews'
+import { KIND_SHOWCASE_ORDER } from '@/lib/achievements/kind-order'
 import { MissionSeriesCard } from './MissionSeriesCard'
 
 /**
@@ -101,7 +102,7 @@ export function AchievementsBoard() {
             <span className="w-8 shrink-0 text-xs text-muted-foreground">{KIND_LABELS.title}</span>
             {/* 称号は鉤括弧で囲む。名前の一部なのか説明なのかが、ひと目で分かる */}
             {page.summary.title ? (
-              <span className="text-lg font-semibold">「{page.summary.title.name}」</span>
+              <span className="text-lg font-semibold">{page.summary.title.name}</span>
             ) : (
               <span className="text-lg font-semibold text-muted-foreground">まだ名乗っていません</span>
             )}
@@ -122,7 +123,7 @@ export function AchievementsBoard() {
           )}
 
           {/* 星を入れたものを種別ごとに並べる。出す場所が種別で違うので、ここでも分ける */}
-          {(['medal', 'treasure', 'honor'] as const).map((kind) => {
+          {KIND_SHOWCASE_ORDER.map((kind) => {
             const rows = page.summary.showcase[kind] ?? []
             if (rows.length === 0) return null
             return (
@@ -182,19 +183,21 @@ export function AchievementsBoard() {
           <SectionTitle icon={<Sparkles size={18} />}>もうすぐ獲得</SectionTitle>
           <ul className="space-y-2">
             {page.upcoming.map((row) => (
-              <li key={row.key} className="space-y-1.5 rounded-xl border border-border bg-card p-4">
-                <div className="flex flex-wrap items-baseline justify-between gap-2">
-                  <span className="font-medium">
-                    あと {row.remaining} で「{row.rewards[0]?.name ?? row.name}」
-                  </span>
-                  <span className="tabular-nums text-sm text-muted-foreground">
-                    {row.progress} / {row.target}
-                  </span>
+              // もらえるものは条件と同じ行の右端に置く。下に別の行で並べると、
+              // 1件あたり4行になって、数が増えるほど読み流す面になる
+              <li key={row.key} className="space-y-1 rounded-xl border border-border bg-card px-4 py-3">
+                <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-1">
+                  <span className="font-medium">あと {row.remaining} で</span>
+                  <div className="flex min-w-0 items-center gap-2">
+                    {/* もうすぐ獲得＝まだ手に入れていない */}
+                    <RewardPreviews rewards={row.rewards} earned={false} />
+                    <span className="shrink-0 tabular-nums text-sm text-muted-foreground">
+                      {row.progress} / {row.target}
+                    </span>
+                  </div>
                 </div>
                 <Bar value={row.progress} max={row.target} />
                 {row.description && <p className="text-xs text-muted-foreground">{row.description}</p>}
-                {/* もうすぐ獲得＝まだ手に入れていない */}
-                <RewardPreviews rewards={row.rewards} earned={false} />
               </li>
             ))}
           </ul>
@@ -261,8 +264,8 @@ export function AchievementsBoard() {
               ['all', 'すべて'],
               ['title', '称号'],
               ['medal', '勲章'],
-              ['treasure', '宝物'],
               ['honor', '表彰'],
+              ['treasure', '宝物'],
             ] as const
           ).map(([value, label]) => (
             <Chip key={value} active={kindFilter === value} onClick={() => setKindFilter(value)}>
@@ -344,20 +347,25 @@ export function AchievementsBoard() {
               </h3>
               <ul className="space-y-2">
                 {rows.map((row) => (
-                  <li key={row.key} className="space-y-1.5 rounded-xl border border-border bg-card p-4">
-                    <div className="flex flex-wrap items-baseline justify-between gap-2">
+                  <li key={row.key} className="space-y-1 rounded-xl border border-border bg-card px-4 py-3">
+                    <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-1">
                       <span className={row.completed_at ? 'font-medium' : 'font-medium text-muted-foreground'}>
                         {row.name}
                       </span>
-                      <span className="tabular-nums text-sm text-muted-foreground">
-                        {row.completed_at
-                          ? `達成（${new Date(row.completed_at).toLocaleDateString('ja-JP')}）`
-                          : `${row.progress} / ${row.condition_target}`}
-                      </span>
+                      <div className="flex min-w-0 items-center gap-2">
+                        <RewardPreviews rewards={row.rewards} earned={Boolean(row.completed_at)} />
+                        <span className="shrink-0 tabular-nums text-sm text-muted-foreground">
+                          {row.completed_at
+                            ? `達成（${new Date(row.completed_at).toLocaleDateString('ja-JP')}）`
+                            : `${row.progress} / ${row.condition_target}`}
+                        </span>
+                      </div>
                     </div>
                     {!row.completed_at && <Bar value={row.progress} max={row.condition_target} />}
-                    {row.description && <p className="text-xs text-muted-foreground">{row.description}</p>}
-                    <RewardPreviews rewards={row.rewards} earned={Boolean(row.completed_at)} />
+                    {/* 達成したものの説明は畳む。**残っているものだけが、これからやること** */}
+                    {row.description && !row.completed_at && (
+                      <p className="text-xs text-muted-foreground">{row.description}</p>
+                    )}
                   </li>
                 ))}
               </ul>
