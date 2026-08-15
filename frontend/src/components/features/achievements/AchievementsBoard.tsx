@@ -100,7 +100,8 @@ export function AchievementsBoard() {
                 ここだけ絵記号だと、**何の行なのかを絵から読み取らせる**ことになり、
                 同じ板の中で読み方が2通りになる */}
             <span className="w-8 shrink-0 text-xs text-muted-foreground">{KIND_LABELS.title}</span>
-            {/* 称号は鉤括弧で囲む。名前の一部なのか説明なのかが、ひと目で分かる */}
+            {/* 括弧は付けない。左に「称号」の文字ラベルがあるので、
+                囲いは二重になる（宮殿の主人カードと同じ扱いに揃えた） */}
             {page.summary.title ? (
               <span className="text-lg font-semibold">{page.summary.title.name}</span>
             ) : (
