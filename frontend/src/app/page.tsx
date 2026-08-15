@@ -1,7 +1,8 @@
 import type { Metadata } from 'next'
 import type { ReactNode } from 'react'
-import { Brain, Layers, Search, GalleryVerticalEnd } from 'lucide-react'
+import { Brain, Layers, Search } from 'lucide-react'
 import { LandingFooter } from '@/components/features/layout/LandingFooter'
+import { LANDING_SHOTS } from '@/lib/landing/gallery'
 import { HeroScrollZoom } from '@/components/features/landing/HeroScrollZoom'
 import { LandingCta } from '@/components/features/landing/LandingCta'
 import { ScrollCue } from '@/components/features/landing/ScrollCue'
@@ -82,6 +83,8 @@ function Section({
 }
 
 export default function TopPage() {
+  const hasShots = LANDING_SHOTS.length > 0
+
   return (
     <div className="flex flex-col flex-1">
       <script
@@ -112,7 +115,7 @@ export default function TopPage() {
       </Section>
 
       {/* 2. 機能（仮） */}
-      <Section id="features" cueTo="gallery" bg="var(--ivory-dark)" topDividerFrom="var(--ivory)">
+      <Section id="features" cueTo={hasShots ? 'gallery' : 'cta'} bg="var(--ivory-dark)" topDividerFrom="var(--ivory)">
         <p className="mb-4 text-sm font-medium tracking-widest" style={{ color: 'var(--palace)' }}>FEATURES</p>
         <h2 className="mb-12 text-3xl font-bold tracking-tight md:text-4xl" style={{ color: '#111111' }}>できること</h2>
         <div className="grid gap-6 text-left md:grid-cols-3">
@@ -128,34 +131,32 @@ export default function TopPage() {
         </div>
       </Section>
 
-      {/* 3. 作例（仮） */}
-      <Section id="gallery" cueTo="cta" bg="#ffffff" topDividerFrom="var(--ivory-dark)">
-        <p className="mb-4 text-sm font-medium tracking-widest" style={{ color: 'var(--palace)' }}>GALLERY</p>
-        <h2 className="mb-6 text-3xl font-bold tracking-tight md:text-4xl" style={{ color: '#111111' }}>画面イメージ</h2>
-        <p className="mx-auto mb-10 max-w-xl text-base leading-relaxed md:text-lg" style={{ color: '#4A4A4A' }}>
-          実際の画面例をここに並べます。（スクリーンショットは準備中）
-        </p>
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-          {['カード生成', 'フリーボード', '接続線・レイヤー', 'スペース（記憶の宮殿）'].map((label) => (
-            <figure key={label} className="overflow-hidden rounded-xl border border-border bg-card text-left shadow-sm">
-              {/* スクショ枠のフェイクタイトルバー */}
-              <div className="flex items-center gap-1.5 border-b border-border bg-muted/50 px-3 py-2">
-                <span className="h-2.5 w-2.5 rounded-full bg-muted-foreground/25" />
-                <span className="h-2.5 w-2.5 rounded-full bg-muted-foreground/25" />
-                <span className="h-2.5 w-2.5 rounded-full bg-muted-foreground/25" />
-              </div>
-              <div className="flex aspect-video flex-col items-center justify-center gap-2 bg-muted/30">
-                <GalleryVerticalEnd size={28} className="text-muted-foreground/40" />
-                <figcaption className="text-sm font-medium text-muted-foreground">{label}</figcaption>
-                <span className="text-xs text-muted-foreground/70">スクリーンショット準備中</span>
-              </div>
-            </figure>
-          ))}
-        </div>
-      </Section>
+      {/* 3. 作例。**絵が無いあいだは節ごと出さない**（LANDING_SHOTS が空なら丸ごと消える） */}
+      {hasShots && (
+        <Section id="gallery" cueTo="cta" bg="#ffffff" topDividerFrom="var(--ivory-dark)">
+          <p className="mb-4 text-sm font-medium tracking-widest" style={{ color: 'var(--palace)' }}>GALLERY</p>
+          <h2 className="mb-6 text-3xl font-bold tracking-tight md:text-4xl" style={{ color: '#111111' }}>画面イメージ</h2>
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+            {LANDING_SHOTS.map((shot) => (
+              <figure key={shot.src} className="overflow-hidden rounded-xl border border-border bg-card text-left shadow-sm">
+                {/* スクショ枠のフェイクタイトルバー */}
+                <div className="flex items-center gap-1.5 border-b border-border bg-muted/50 px-3 py-2">
+                  <span className="h-2.5 w-2.5 rounded-full bg-muted-foreground/25" />
+                  <span className="h-2.5 w-2.5 rounded-full bg-muted-foreground/25" />
+                  <span className="h-2.5 w-2.5 rounded-full bg-muted-foreground/25" />
+                </div>
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img src={shot.src} alt={shot.label} className="aspect-video w-full object-cover" loading="lazy" />
+                <figcaption className="px-3 py-2 text-sm font-medium text-muted-foreground">{shot.label}</figcaption>
+              </figure>
+            ))}
+          </div>
+        </Section>
+      )}
 
       {/* 4. 再度の入り口（仮） */}
-      <Section id="cta" bg="var(--ivory)" topDividerFrom="#ffffff" roadFadeBottom>
+      {/* 区切りの色は、すぐ上の節の地色に合わせる（作例を出さないときは features の地） */}
+      <Section id="cta" bg="var(--ivory)" topDividerFrom={hasShots ? '#ffffff' : 'var(--ivory-dark)'} roadFadeBottom>
         <h2 className="mb-8 text-2xl font-bold md:text-3xl" style={{ color: '#111111' }}>
           今日から、記憶を育てはじめましょう。
         </h2>
