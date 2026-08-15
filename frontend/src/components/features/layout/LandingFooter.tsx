@@ -1,4 +1,5 @@
 import Link from 'next/link'
+import { CONTACT_EMAIL } from '@/lib/contact'
 
 export function LandingFooter() {
   return (
@@ -23,7 +24,12 @@ export function LandingFooter() {
         <span className="mx-2" aria-hidden>|</span>
         <Link href="/cookie-settings" className="hover:underline">Cookie設定</Link>
         <span className="mx-2" aria-hidden>|</span>
-        <span>お問い合わせ</span>
+        {/* 出どころは特商法ページと同じ1か所。設定すれば両方がリンクになる */}
+        {CONTACT_EMAIL ? (
+          <a href={`mailto:${CONTACT_EMAIL}`} className="hover:underline">お問い合わせ</a>
+        ) : (
+          <span>お問い合わせ</span>
+        )}
       </p>
       <p className="mt-2">© 2026 ImagePalace</p>
     </footer>
