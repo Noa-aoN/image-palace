@@ -190,7 +190,14 @@ function NavTree({
           {iconsOnly ? (
             <div className="mx-auto my-1 h-px w-6" style={{ backgroundColor: 'var(--palace)', opacity: 0.4 }} />
           ) : (
-            <p className="px-2 pt-3 pb-1 text-xs font-semibold text-muted-foreground">{section.title}</p>
+            // 見出しは項目より大きく、ヘッダーと同じ濃い金を敷く。
+            // **群の切れ目が一目で分かる**（同じ大きさで並ぶと、どこからが別の群か読めない）
+            <p
+              className="mt-3 mb-1 rounded-lg px-3 py-1.5 text-sm font-semibold"
+              style={{ backgroundColor: 'var(--palace-deep)', color: 'var(--on-palace)' }}
+            >
+              {section.title}
+            </p>
           )}
           {section.items.map((node) => renderNode(node))}
         </div>
