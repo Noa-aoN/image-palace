@@ -20,7 +20,7 @@ interface AcropolisStore {
 
 const HISTORY_LIMIT = 50
 
-// アクロポリス（神託）の履歴。localStorage に永続化する（端末ごと）。
+// デルフォイ（神託）の履歴。localStorage に永続化する（端末ごと）。
 export const useAcropolisStore = create<AcropolisStore>()(
   persist(
     (set) => ({
