@@ -10,23 +10,7 @@ RSpec.describe "運営セッションの問い合わせ本数", type: :request d
   let(:user) { create(:user, :confirmed, role: "admin") }
   let(:headers) { auth_headers_for(user) }
 
-  # 認証まわりは数えない。devise-token-auth はトークンをまとめて更新するので、
-  # 同じ操作でも users への問い合わせが増えたり減ったりする
-  AUTH_TABLES = /"(users|settings)"/
 
-  def count_queries
-    count = 0
-    sub = ActiveSupport::Notifications.subscribe("sql.active_record") do |*, payload|
-      next if payload[:name].to_s.match?(/SCHEMA|TRANSACTION/)
-      next if payload[:sql].to_s.match?(AUTH_TABLES)
-
-      count += 1
-    end
-    yield
-    count
-  ensure
-    ActiveSupport::Notifications.unsubscribe(sub)
-  end
 
   it "求めていない間は、強い確認を調べに行かない" do
     allow(Auth::StrongAuth).to receive(:admin_required?).and_return(false)
