@@ -440,6 +440,10 @@ export interface BlockView {
   omitted: string[]
   /** 札ごとの幅（何列ぶん）。1 は書かない（既定なので、書くと項目の数だけ肥る） */
   spans?: Record<string, number>
+  /** 列への振り分けを自動にするか。送らなければ、いまの値が残る */
+  auto_flow?: boolean
+  /** 自分で決めるときの、列ごとの個数（左から順）。送らなければ、いまの値が残る */
+  column_counts?: number[]
 }
 
 // 種別の設定（どの項目を持つか）とは効く範囲が違う。これはこの1枚だけ

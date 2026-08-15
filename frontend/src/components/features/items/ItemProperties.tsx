@@ -37,6 +37,7 @@ import {
 import { useRightPanelStore } from '@/stores/rightPanel'
 import { useSettingsStore } from '@/stores/settings'
 import { cardDetailGridClass, useCardDetailColumns } from '@/hooks/useCardDetailColumns'
+import { splitIntoColumns, evenColumnCounts } from '@/lib/items/column-split'
 import { getItem, acknowledgeFactCheck, updateBlockView } from '@/lib/api/items'
 import {
   DndContext,
@@ -787,6 +788,27 @@ export function ItemProperties({ item, onUpdated, leadingBlocks = [] }: ItemProp
 
   // 札ごとの幅。1列のときは変えられない（並べる先が無い）
   const spans = item.block_view?.spans ?? {}
+  // 列への振り分け。**このカード1枚の決め方**なので、端末ではなくカードに持つ
+  const autoFlow = item.block_view?.auto_flow !== false
+  const columnCounts = item.block_view?.column_counts ?? []
+
+  // 自動へ戻すときも、決めた数は消さない（また切ったときに戻せる）
+  const changeFlow = async (nextAuto: boolean, nextCounts?: number[]) => {
+    try {
+      onUpdated(
+        await updateBlockView(item.id, {
+          hidden: [...hiddenKeys],
+          order: orderedBlocks.map((b) => b.key),
+          omitted: [...omittedKeys],
+          spans,
+          auto_flow: nextAuto,
+          column_counts: nextCounts ?? columnCounts,
+        })
+      )
+    } catch {
+      // 失敗しても画面は壊さない。次の操作でやり直せる
+    }
+  }
 
   const changeSpan = async (key: string, next: number) => {
     const clamped = Math.max(1, Math.min(next, columns))
@@ -844,19 +866,38 @@ export function ItemProperties({ item, onUpdated, leadingBlocks = [] }: ItemProp
             四角く並べる前提の作法（rectSortingStrategy）だと、
             上下に動かしたつもりが左右に飛ぶ */}
         <SortableContext items={visibleBlocks.map((b) => b.key)} strategy={verticalListSortingStrategy}>
-          <div className={cardDetailGridClass(columns)}>
-            {visibleBlocks.map((b) => (
-              <SortableBlock
-                key={b.key}
-                id={b.key}
-                span={Math.min(spans[b.key] ?? 1, columns)}
-                columns={columns}
-                onSpanChange={(next) => changeSpan(b.key, next)}
-              >
-                {b.node}
-              </SortableBlock>
-            ))}
-          </div>
+          {autoFlow ? (
+            <div className={cardDetailGridClass(columns)}>
+              {visibleBlocks.map((b) => (
+                <SortableBlock
+                  key={b.key}
+                  id={b.key}
+                  span={Math.min(spans[b.key] ?? 1, columns)}
+                  columns={columns}
+                  onSpanChange={(next) => changeSpan(b.key, next)}
+                >
+                  {b.node}
+                </SortableBlock>
+              ))}
+            </div>
+          ) : (
+            // 自分で決めた数で列に分ける。**幅（何列ぶん）はここでは効かない**
+            // （1枚の札は1つの列に属するため）。並べ替えは従来どおり効く
+            <div
+              className="grid gap-3"
+              style={{ gridTemplateColumns: `repeat(${columns}, minmax(0, 1fr))` }}
+            >
+              {splitIntoColumns(visibleBlocks, columnCounts, columns).map((column, index) => (
+                <div key={index} className="space-y-3">
+                  {column.map((b) => (
+                    <SortableBlock key={b.key} id={b.key} span={1} columns={1}>
+                      {b.node}
+                    </SortableBlock>
+                  ))}
+                </div>
+              ))}
+            </div>
+          )}
         </SortableContext>
       </DndContext>
       )}
@@ -867,6 +908,18 @@ export function ItemProperties({ item, onUpdated, leadingBlocks = [] }: ItemProp
         blocks={orderedBlocks.map(({ key, label }) => ({ key, label }))}
         columns={columns}
         onColumnsChange={changeColumns}
+        autoFlow={autoFlow}
+        columnCounts={columnCounts}
+        onFlowChange={(nextAuto) =>
+          changeFlow(
+            nextAuto,
+            // 自分で決める側へ切り替えるときだけ、いまの見え方に近い数から始める
+            nextAuto || columnCounts.length > 0
+              ? undefined
+              : evenColumnCounts(visibleBlocks.length, columns)
+          )
+        }
+        onColumnCountsChange={(next) => changeFlow(false, next)}
         omitted={allBlocks.filter((b) => omittedKeys.has(b.key)).map(({ key, label }) => ({ key, label }))}
         onUpdated={onUpdated}
       />
@@ -911,7 +964,7 @@ function SortableBlock({
   id: string
   span: number
   columns: number
-  onSpanChange: (next: number) => void
+  onSpanChange?: (next: number) => void
   children: React.ReactNode
 }) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id })
@@ -937,7 +990,7 @@ function SortableBlock({
 
     const move = (e: PointerEvent) => {
       const next = Math.round((e.clientX - left) / cell)
-      onSpanChange(Math.max(1, Math.min(next, columns)))
+      onSpanChange?.(Math.max(1, Math.min(next, columns)))
     }
     const end = () => {
       window.removeEventListener('pointermove', move)
@@ -975,7 +1028,7 @@ function SortableBlock({
 
       {/* つまみは常には出さない。触ったときだけ出れば足りるし、
           札ごとに常時出ていると、読むときに邪魔になる */}
-      {columns > 1 && (
+      {columns > 1 && onSpanChange && (
         <span
           onPointerDown={startResize}
           role="separator"

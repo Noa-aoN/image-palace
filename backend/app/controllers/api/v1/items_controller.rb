@@ -215,7 +215,11 @@ module Api
           # **送られてこなかったときは、いまの幅を残す。** 並べ替えは
           # hidden / order / omitted しか送らないので、ここで毎回上書きすると
           # 「動かしたら幅が戻った」という、原因の分かりにくい壊れ方をする
-          "spans" => params.key?(:spans) ? block_spans_param : item.block_spans
+          "spans" => params.key?(:spans) ? block_spans_param : item.block_spans,
+          # 列への振り分けを自分で決めるか、列ごとの個数はいくつか。
+          # spans と同じで、**送られてこなかったときは、いまの値を残す**
+          "auto_flow" => params.key?(:auto_flow) ? ActiveModel::Type::Boolean.new.cast(params[:auto_flow]) : item.block_auto_flow?,
+          "column_counts" => params.key?(:column_counts) ? block_column_counts_param : item.block_column_counts
         })
         render json: serialize_item(item.reload)
       rescue ActiveRecord::RecordInvalid => e
@@ -551,6 +555,13 @@ module Api
         end.first(Item::MAX_BLOCK_KEYS).to_h
       end
 
+      # 列ごとの個数。列は最大3なので、それ以上は受けない。
+      # 1枚のカードが持てる札の数を超える値も意味が無いので抑える
+      def block_column_counts_param
+        Array(params[:column_counts]).first(BLOCK_SPAN_RANGE.max)
+             .map { |n| n.to_i.clamp(0, Item::MAX_BLOCK_KEYS) }
+      end
+
       # 画面から来たキーを整える。長さも件数も抑えて、metadata が肥らないようにする
       def block_keys(name)
         Array(params[name]).map { |k| k.to_s.strip.first(Item::MAX_BLOCK_KEY_LENGTH) }
@@ -778,13 +789,21 @@ module Api
       # （どんなブロックがあるかを知っているのは画面側）。from_preset を立てて、
       # 残りを − に回す判断は画面に任せる。
       def block_view_for(item)
-        base = {
+        # 「このカードは自分で並べたか」の判断に使う4つ。
+        # **auto_flow と column_counts はここに入れない。**
+        # auto_flow は既定でも true が入っていて、常に present になるため、
+        # 混ぜるとどのカードも「自分で並べた」と判定され、ひな型が当たらなくなる
+        arranged = {
           hidden: item.hidden_block_keys,
           order: item.ordered_block_keys,
           omitted: item.omitted_block_keys,
           spans: item.block_spans
         }
-        return base.merge(from_preset: false) if base.values.any?(&:present?)
+        base = arranged.merge(
+          auto_flow: item.block_auto_flow?,
+          column_counts: item.block_column_counts
+        )
+        return base.merge(from_preset: false) if arranged.values.any?(&:present?)
 
         preset_keys = current_user.setting&.default_preset_keys
         return base.merge(from_preset: false) if preset_keys.blank?
