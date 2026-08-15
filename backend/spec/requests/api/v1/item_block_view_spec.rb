@@ -71,4 +71,18 @@ RSpec.describe "カード詳細の項目の並び", type: :request do
 
     expect(response).to have_http_status(:not_found)
   end
+
+  # 列への振り分けは、**既定でも値が入る**（自動 = true）。
+  # 「このカードは自分で並べたか」の判断に混ぜると、
+  # どのカードも「並べた」と見なされ、ひな型が当たらなくなる
+  it "振り分けの既定値だけでは、ひな型由来のままでいる" do
+    user.create_setting!(default_card_preset: "既定", card_property_presets: [
+      { "name" => "既定", "keys" => %w[title image] }
+    ])
+
+    view = block_view
+    expect(view["auto_flow"]).to be(true)
+    expect(view["column_counts"]).to eq([])
+    expect(view["from_preset"]).to be(true)
+  end
 end

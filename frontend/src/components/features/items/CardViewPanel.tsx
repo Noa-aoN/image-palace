@@ -60,18 +60,33 @@ export interface CardBlock {
  *
  * 「項目の設定」（種別ぜんぶに効く）とは混ぜない。あちらは項目そのものの定義。
  */
+// 列の呼び名。数字だけだと、画面のどちら側か考えさせる
+const COLUMN_LABELS: Record<number, string[]> = {
+  2: [ '左', '右' ],
+  3: [ '左', '中', '右' ],
+}
+
 export function CardViewPanel({
   item,
   blocks,
   omitted,
   columns,
   onColumnsChange,
+  autoFlow,
+  columnCounts,
+  onFlowChange,
+  onColumnCountsChange,
   onUpdated,
 }: {
   item: Item
   /** いまの列数（この端末で覚える） */
   columns: number
   onColumnsChange: (next: number) => void
+  /** 列への振り分けを自動にするか。false なら列ごとの個数で決める */
+  autoFlow: boolean
+  columnCounts: number[]
+  onFlowChange: (nextAuto: boolean) => void
+  onColumnCountsChange: (next: number[]) => void
   /** ＋ の段（並べ替え適用後） */
   blocks: CardBlock[]
   /** − の段（このカードでは持たない項目） */
@@ -224,6 +239,49 @@ export function CardViewPanel({
             ))}
           </div>
         </div>
+
+        {/* 列がある時だけ意味がある。1列なら、振り分けようが無い */}
+        {columns > 1 && (
+          <div className="space-y-1.5">
+            <label className="flex items-center gap-2 text-sm">
+              <input
+                type="checkbox"
+                checked={autoFlow}
+                onChange={(e) => onFlowChange(e.target.checked)}
+              />
+              列への振り分けを自動にする
+            </label>
+            <p className="-mt-0.5 text-xs text-muted-foreground">
+              {autoFlow
+                ? '札の高さを見て、どこで列を折り返すかを自動で決めます。'
+                : '列ごとに置く数を決めます。並び順の上から順に詰められ、余ったぶんは最後の列に入ります。'}
+            </p>
+
+            {!autoFlow && (
+              <div className="flex items-end gap-2 pt-1">
+                {Array.from({ length: columns }, (_, index) => (
+                  <label key={index} className="flex-1 space-y-1">
+                    <span className="block text-xs text-muted-foreground">
+                      {COLUMN_LABELS[columns]?.[index] ?? `${index + 1}列目`}
+                    </span>
+                    <input
+                      type="number"
+                      min={0}
+                      max={99}
+                      value={columnCounts[index] ?? 0}
+                      onChange={(e) => {
+                        const next = Array.from({ length: columns }, (_, i) => columnCounts[i] ?? 0)
+                        next[index] = Math.max(0, Math.min(99, Number(e.target.value) || 0))
+                        onColumnCountsChange(next)
+                      }}
+                      className="w-full rounded-lg border border-border bg-background px-2 py-1 text-sm tabular-nums"
+                    />
+                  </label>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
 
         <PresetBar
           current={order}

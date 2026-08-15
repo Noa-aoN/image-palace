@@ -95,6 +95,10 @@ export interface Item {
     omitted?: string[]
     /** 札ごとの幅（何列ぶんを占めるか）。書いていないものは1列 */
     spans?: Record<string, number>
+    /** 列への振り分けを自動にするか。書いていなければ自動 */
+    auto_flow?: boolean
+    /** 自分で決めるときの、列ごとの個数（左から順） */
+    column_counts?: number[]
     /** 既定のひな型を当てた結果か。true なら order に無いものは「持たない」扱い */
     from_preset?: boolean
   }
