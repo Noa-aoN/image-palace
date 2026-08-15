@@ -117,7 +117,13 @@ RSpec.describe "一覧に出す項目", type: :request do
     end
   end
 
-  # 一覧は件数ぶん回る。項目を足したぶんだけ問い合わせが増えると、すぐ効いてくる
+  # 一覧は件数ぶん回る。項目を足したぶんだけ問い合わせが増えると、すぐ効いてくる。
+  #
+  # 数え方は共有の道具（spec/support/query_counting.rb）を使う。
+  # **認証まわりを数に入れると、まれに落ちる。** devise-token-auth は
+  # トークンを一定の窓でまとめて更新するので、同じ操作でも users への
+  # 問い合わせが1本増えたり減ったりする。見たいのは
+  # 「件数に比例して増えるか」だけなので、揺れる分は外す
   it "カードが増えても問い合わせの本数が増えない" do
     definition = define_property!("reading", "読み方")
     setting.update!(card_list_layout: [ { "key" => "reading", "visible" => true } ])
@@ -125,27 +131,12 @@ RSpec.describe "一覧に出す項目", type: :request do
 
     get "/api/v1/items", headers: headers # 温める
 
-    count = 0
-    sub = ActiveSupport::Notifications.subscribe("sql.active_record") do |*, payload|
-      next if payload[:name].to_s.match?(/SCHEMA|TRANSACTION/)
-
-      count += 1
-    end
-    get "/api/v1/items", headers: headers
-    ActiveSupport::Notifications.unsubscribe(sub)
-    few = count
+    few = count_queries { get "/api/v1/items", headers: headers }
 
     5.times { |i| create_item!(title: "追加#{i}", property: "よみ#{i}", definition: definition) }
 
-    count = 0
-    sub = ActiveSupport::Notifications.subscribe("sql.active_record") do |*, payload|
-      next if payload[:name].to_s.match?(/SCHEMA|TRANSACTION/)
+    many = count_queries { get "/api/v1/items", headers: headers }
 
-      count += 1
-    end
-    get "/api/v1/items", headers: headers
-    ActiveSupport::Notifications.unsubscribe(sub)
-
-    expect(count).to eq(few)
+    expect(many).to eq(few)
   end
 end
