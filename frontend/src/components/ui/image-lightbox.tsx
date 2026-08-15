@@ -1,6 +1,6 @@
 'use client'
 
-import { useCallback, useEffect, useRef } from 'react'
+import { useCallback, useEffect, useRef, type ReactNode } from 'react'
 import { Download, X } from 'lucide-react'
 
 /**
@@ -23,6 +23,7 @@ export function ImageLightbox({
   open,
   onClose,
   onDownload,
+  action,
 }: {
   url: string | null | undefined
   /** 読み上げと、画像が出ないときの代わりの文。**空にしない** */
@@ -31,6 +32,8 @@ export function ImageLightbox({
   onClose: () => void
   /** 渡したときだけ、ダウンロードの釦を出す */
   onDownload?: () => void
+  /** 隅に小さく添えるもの（「編集する」など）。渡したときだけ出す */
+  action?: ReactNode
 }) {
   const overlayRef = useRef<HTMLDivElement>(null)
   // 閉じたあと、元いた場所へ焦点を戻すために覚えておく
@@ -115,6 +118,16 @@ export function ImageLightbox({
         onClick={(e) => e.stopPropagation()}
         className="max-h-full max-w-full cursor-default rounded-xl object-contain"
       />
+
+      {/* 添えものは隅に小さく。絵の上に重ねると、見たくて開いたものを隠す */}
+      {action && (
+        <div
+          className="absolute bottom-4 right-4 text-sm text-white/80"
+          onClick={(e) => e.stopPropagation()}
+        >
+          {action}
+        </div>
+      )}
     </div>
   )
 }

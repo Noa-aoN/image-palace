@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from 'react'
 import type { ReactNode } from 'react'
+import { sectionFromHash } from '@/lib/nav/section-hash'
 
 export interface CategorySection<K extends string> {
   key: K
@@ -53,6 +54,29 @@ export function CategorySections<K extends string>({ sections, ariaLabel }: Prop
       if (lockTimer.current) clearTimeout(lockTimer.current)
     }
   }, [])
+
+  // URL が項目を名指ししていたら、そこを開く（`/account#basic` など）。
+  //
+  // ブラウザ任せにできない。**この中身はログインの確認が済んだあとに現れる**ので、
+  // 素の飛び先合わせが走る時点では、まだ行き先の要素が無い。
+  useEffect(() => {
+    const jumpToHash = () => {
+      const key = sectionFromHash(window.location.hash, sections.map((s) => s.key)) as K | null
+      if (!key) return
+
+      setActive(key)
+      // 出来上がるのを1回待つ（現れる前に呼んでも、どこへも動かない）
+      requestAnimationFrame(() => {
+        document.getElementById(key)?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+      })
+    }
+
+    jumpToHash()
+    window.addEventListener('hashchange', jumpToHash)
+    return () => window.removeEventListener('hashchange', jumpToHash)
+    // sections は毎回作り直されるので、鍵の並びだけを見る
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [sections.map((s) => s.key).join(',')])
 
   const handleJump = (key: K) => {
     setActive(key)

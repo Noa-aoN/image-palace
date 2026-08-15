@@ -5,6 +5,7 @@ import Link from 'next/link'
 import { ChevronRight, Crown } from 'lucide-react'
 import { Card, CardContent } from '@/components/ui/card'
 import { CardImage } from '@/components/ui/card-image'
+import { ImageLightbox } from '@/components/ui/image-lightbox'
 import { useAuthStore } from '@/stores/auth'
 import { tierLabel } from '@/lib/billing'
 import { displayNameOf } from '@/lib/display-name'
@@ -24,6 +25,7 @@ export function PalaceLordCard({ tier }: { tier: string | null }) {
   const user = useAuthStore((s) => s.user)
   const [honors, setHonors] = useState<AchievementSummary | null>(null)
   const [palaceName, setPalaceName] = useState<string | null>(null)
+  const [avatarOpen, setAvatarOpen] = useState(false)
 
   useEffect(() => {
     getAchievementSummary()
@@ -74,12 +76,41 @@ export function PalaceLordCard({ tier }: { tier: string | null }) {
           </Link>
 
           <div className="flex items-center gap-3">
-            <CardImage
-              src={avatar}
-              alt=""
-              className="h-14 w-14 shrink-0 rounded-full border border-border"
-              fallback={<Crown size={20} className="text-muted-foreground/60" />}
-            />
+            {/*
+              絵があれば押して大きく見る。無ければ、決めに行く場所へそのまま送る。
+
+              **どちらの状態でも押せる**ようにするのが要。絵が無いときに
+              押しても何も起きないと、ここが設定の入口だと分からない。
+            */}
+            {avatar ? (
+              <button
+                type="button"
+                onClick={() => setAvatarOpen(true)}
+                aria-label="自分の絵を大きく見る"
+                className="shrink-0 rounded-full transition hover:opacity-90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--palace)]"
+              >
+                <CardImage
+                  src={avatar}
+                  alt=""
+                  className="h-14 w-14 rounded-full border border-border"
+                  fallback={<Crown size={20} className="text-muted-foreground/60" />}
+                />
+              </button>
+            ) : (
+              <Link
+                href={AVATAR_SETTINGS_HREF}
+                aria-label="自分の絵を決める"
+                title="自分の絵を決める"
+                className="shrink-0 rounded-full transition hover:opacity-90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--palace)]"
+              >
+                <CardImage
+                  src={null}
+                  alt=""
+                  className="h-14 w-14 rounded-full border border-dashed border-border"
+                  fallback={<Crown size={20} className="text-muted-foreground/60" />}
+                />
+              </Link>
+            )}
             {/*
               2行2列で組む。左が名乗り（称号・名前）、右が勲章。
 
@@ -184,9 +215,25 @@ export function PalaceLordCard({ tier }: { tier: string | null }) {
           </dl>
       </CardContent>
       </Card>
+
+      <ImageLightbox
+        url={avatar}
+        alt="自分の絵"
+        open={avatarOpen}
+        onClose={() => setAvatarOpen(false)}
+        action={
+          <Link href={AVATAR_SETTINGS_HREF} className="underline underline-offset-2 hover:text-white">
+            編集する
+          </Link>
+        }
+      />
     </section>
   )
 }
+
+// 自分の絵を決める場所。**基本プロフィールの枠ごと指す**ので、
+// 画面の中の並びが変わっても行き先は変わらない
+const AVATAR_SETTINGS_HREF = '/account#basic'
 
 // 記名板に出す種別と見出し。称号は名前の上に出すので、ここには含めない
 const SHOWCASE_KINDS: [RewardKind, string][] = [
