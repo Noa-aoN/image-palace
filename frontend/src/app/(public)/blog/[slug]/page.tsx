@@ -4,6 +4,7 @@ import { notFound } from 'next/navigation'
 import { ArrowLeft, Clock } from 'lucide-react'
 import { ARTICLES, getArticle, type ArticleBlock } from '@/lib/blog/articles'
 import { articleJsonLd, breadcrumbJsonLd } from '@/lib/seo/structured-data'
+import { shareImage } from '@/lib/seo/share-image'
 
 export function generateStaticParams() {
   return ARTICLES.map((a) => ({ slug: a.slug }))
@@ -26,7 +27,9 @@ export async function generateMetadata({ params }: { params: Promise<{ slug: str
       url: `/blog/${article.slug}`,
       publishedTime: article.date,
       tags: article.tags,
+      images: [shareImage('blog', article.image)],
     },
+    twitter: { card: 'summary_large_image', images: [shareImage('blog', article.image)] },
   }
 }
 

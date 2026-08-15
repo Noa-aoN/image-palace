@@ -4,6 +4,7 @@ import { BookOpen } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { StartLink } from '@/components/features/shared/StartLink'
 import { absoluteUrl, breadcrumbJsonLd } from '@/lib/seo/structured-data'
+import { shareImage } from '@/lib/seo/share-image'
 import { GUIDE_SECTIONS } from '@/lib/guide/sections'
 import { ListRows } from '@/components/features/posts/ListRows'
 
@@ -14,7 +15,11 @@ export const metadata: Metadata = {
   title: TITLE,
   description: DESCRIPTION,
   alternates: { canonical: '/guide' },
-  openGraph: { type: 'website', title: TITLE, description: DESCRIPTION, url: '/guide' },
+  openGraph: {
+    type: 'website', title: TITLE, description: DESCRIPTION, url: '/guide',
+    images: [shareImage('guide')],
+  },
+  twitter: { card: 'summary_large_image', images: [shareImage('guide')] },
 }
 
 export default function GuidePage() {
