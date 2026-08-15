@@ -33,6 +33,11 @@ class MissionDefinition < ApplicationRecord
       description: "カードをまとめる場所を作ります。", condition_type: "containers_created", condition_target: 1 },
     { key: "start_streak_three", name: "3日続けて使う", cadence: "onboarding", position: 13,
       description: "続けるほど覚えます。", condition_type: "streak_days", condition_target: 3 },
+    # コア機能ではないが、宮殿の主人の顔が決まると自分の場所という感じが出る。
+    # 段のある道のりには入れず、はじめの単発として置く
+    { key: "start_avatar", name: "自分の絵を決める", cadence: "onboarding", position: 14,
+      description: "宮殿の主人の顔になります。",
+      condition_type: "avatar_set", condition_target: 1 },
     { key: "daily_one_review", name: "今日カードを1回見返す", cadence: "daily", position: 20,
       description: "1回でも見返せば達成です。", condition_type: "reviews_total", condition_target: 1 },
     # ── シリーズ「宮殿を建てる」──

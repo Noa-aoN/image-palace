@@ -33,7 +33,12 @@ module Achievements
       },
       "streak_days" => { label: "続いている日数", count: ->(user) { Streak.current(user) } },
       "active_days" => { label: "学習した日数（のべ）", count: ->(user) { Streak.active_days(user) } },
-      "rewards_earned" => { label: "獲得した数", count: ->(user) { UserReward.where(user_id: user.id).count } }
+      "rewards_earned" => { label: "獲得した数", count: ->(user) { UserReward.where(user_id: user.id).count } },
+      # 自分の絵を決めたか。**0 か 1 しか返さない**（他の条件と同じ「数える」形に合わせる）
+      "avatar_set" => {
+        label: "自分の絵を決めたか",
+        count: ->(user) { user.avatar.attached? ? 1 : 0 }
+      }
     }.freeze
 
     # 手動でしか配らないもの（表彰など）に使う。条件では永久に達成しない

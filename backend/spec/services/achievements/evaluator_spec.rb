@@ -233,8 +233,29 @@ RSpec.describe Achievements::Evaluator do
 
       expect(rows["title_traveler"][:rarity_level]).to eq(1)
       expect(rows["medal_laurel"][:rarity_level]).to eq(5)
-      # 8・9 は空けておく（長く続けた人と、特別な表彰のため）
-      expect(rows.values.map { |r| r[:rarity_level] }.max).to be <= 7
+      # 条件で配るものは 7 まで。**8・9 は表彰だけに使う**
+      # （運営が手で贈るもの。積み上げでは届かない段として空けてある）
+      earned_by_condition = rows.values.reject { |r| r[:kind] == "honor" }
+      expect(earned_by_condition.map { |r| r[:rarity_level] }.max).to be <= 7
+    end
+
+    # 取れないものが並ぶと、埋まらない枠として残り続ける
+    it "運営だけの表彰は、運営でない人の一覧に出さない" do
+      RewardDefinition.registry
+
+      keys = Achievements::Presenter.call(user: user)[:rewards].map { |r| r[:key] }
+
+      expect(keys).not_to include("honor_archon")
+      expect(keys).to include("honor_alpha")
+    end
+
+    it "運営には出す" do
+      RewardDefinition.registry
+      admin = create(:user, :confirmed, role: "admin")
+
+      keys = Achievements::Presenter.call(user: admin)[:rewards].map { |r| r[:key] }
+
+      expect(keys).to include("honor_archon")
     end
   end
 end
