@@ -78,11 +78,25 @@ RSpec.describe "獲得物の品揃え" do
     end
   end
 
-  describe "絵の指示" do
+  describe "絵" do
     it "すべての獲得物が、絵のもとになる言葉を持つ" do
       missing = rewards.reject { |r| r.dig(:metadata, "motif").present? }
 
       expect(missing.map { |r| r[:key] }).to be_empty
+    end
+
+    # 絵の実体は1度だけ作って、環境をまたいで同じものを指す。
+    # **鍵をここに書き戻さないと、環境ごとに作り直すことになる**（そのぶん請求が来る）
+    it "すべての獲得物が、作った絵の鍵を持つ" do
+      missing = rewards.reject { |r| r[:image_key].present? }
+
+      expect(missing.map { |r| r[:key] }).to be_empty
+    end
+
+    it "同じ絵を2つの獲得物で指していない" do
+      duplicated = rewards.map { |r| r[:image_key] }.compact.tally.select { |_, n| n > 1 }
+
+      expect(duplicated).to be_empty
     end
   end
 end
