@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
 # テーマ/ジャンルから学習用の単語リストを OpenAI Chat API で生成する。
-# ワードリスト作成（words#generate）とアクロポリス（ガチャ）で共有する。
+# ワードリスト作成（words#generate）とデルフォイ（ガチャ）で共有する。
 # GenerateMeaningService と同じく gpt-4o-mini の Chat Completions（JSON強制）を使う。
 class GenerateWordsService
   class GenerationError < StandardError; end

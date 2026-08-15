@@ -25,7 +25,7 @@ export function RedeemCodePanel({
   withHistory = false,
 }: {
   onRedeemed?: () => void
-  /** 置く場所によって呼び名を変える（アクロポリスでは「引き換え所」） */
+  /** 置く場所によって呼び名を変える（デルフォイでは「引き換え所」） */
   title?: string
   note?: string
   /** これまでに引き換えたものを下に並べるか */

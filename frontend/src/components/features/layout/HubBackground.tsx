@@ -18,7 +18,7 @@ const BACKDROPS: { prefix: string; file: string }[] = [
   { prefix: '/study', file: 'study' },
   { prefix: '/myroom', file: 'myroom' },
   // 市街・公式
-  { prefix: '/acropolis', file: 'acropolis' },
+  { prefix: '/delphi', file: 'acropolis' },
   { prefix: '/delphi', file: 'acropolis' },
   { prefix: '/agora', file: 'agora' },
   { prefix: '/stadion', file: 'stadion' },

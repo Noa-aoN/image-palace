@@ -34,7 +34,7 @@ export const PRIVATE_PATHS = [
   '/myroom',
   '/materials',
   '/wordlists',
-  '/acropolis',
+  '/delphi',
   '/delphi',
   '/search',
   '/agora',

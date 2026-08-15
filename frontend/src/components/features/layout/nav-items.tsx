@@ -134,7 +134,7 @@ export const NAV_SECTIONS: NavSection[] = [
     key: 'outside',
     title: '市街',
     items: [
-      { href: '/acropolis', icon: <Wand2 size={22} />, label: 'アクロポリス' },
+      { href: '/delphi', icon: <Wand2 size={22} />, label: 'デルフォイ' },
       { href: '/agora', icon: <Store size={22} />, label: 'アゴラ' },
       { href: '/stadion', icon: <Swords size={22} />, label: 'スタディオン' },
     ],

@@ -12,7 +12,7 @@ interface GenerateWordsOptions {
 
 // テーマ/ジャンルから単語を生成する（テキストのみ・クレジット消費なし）。
 // count を省略すると「おまかせ（自動）」: テーマに応じた数（有限集合は過不足なく）をAIが返す。
-// ワードリスト作成フォームとアクロポリス（ガチャ）で共有する。
+// ワードリスト作成フォームとデルフォイ（ガチャ）で共有する。
 export async function generateWords(theme: string, count?: number, opts?: GenerateWordsOptions): Promise<string[]> {
   const payload: Record<string, unknown> = { theme }
   if (count != null) payload.count = count
