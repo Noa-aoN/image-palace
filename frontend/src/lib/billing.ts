@@ -5,6 +5,15 @@ export const CREDIT_UNIT = 'クレジット'
 export const CREDIT_UNIT_SHORT = 'cr'
 
 /**
+ * 任意の文章AIを1回使うときの値段。**サーバーの `Ai::UsageLimit::UNIT_COST_POINTS` と揃える**
+ * （向こうは 1pt = 0.01cr で、いまは一律 1pt）。
+ *
+ * 画面のためだけの数なので、実際に引く額はサーバーが決める。
+ * ここを持つのは「押す前にいくらか言う」ためで、ずれたら向こうに合わせること。
+ */
+export const AI_TEXT_COST = 0.01
+
+/**
  * プランの呼び名。
  *
  * 内部の識別名（free / standard / …）と Stripe の商品名はそのまま。ここは**表示だけ**で、

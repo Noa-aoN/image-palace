@@ -8,6 +8,9 @@ import { Input } from '@/components/ui/input'
 import { Spinner } from '@/components/ui/spinner'
 import { WordItems } from '@/components/features/wordlists/WordItems'
 import { generateWords, createWordlist, checkWords, type WordCheckIssue } from '@/lib/api/wordlists'
+import { CreditCostHint } from '@/components/features/billing/CreditCostNote'
+import { AI_TEXT_COST } from '@/lib/billing'
+import { useBillingStore } from '@/stores/billing'
 import type { Wordlist } from '@/types/wordlist'
 
 /**
@@ -19,6 +22,8 @@ import type { Wordlist } from '@/types/wordlist'
  */
 export function CreateWordlistFlow({ onCreated }: { onCreated?: (created: Wordlist) => void }) {
   const router = useRouter()
+  // 押す前に値段を言うためだけに読む。実際に引く額はサーバーが決める
+  const available = useBillingStore((state) => state.summary?.available_credits) ?? null
   const [theme, setTheme] = useState('')
   const [count, setCount] = useState(10)
   // 単語数は既定で「おまかせ」。テーマに応じた自然な数（十二支なら12個など）をAIが決める。
@@ -167,14 +172,20 @@ export function CreateWordlistFlow({ onCreated }: { onCreated?: (created: Wordli
           )}
         </div>
 
-        <Button
-          onClick={handleGenerate}
-          disabled={generating}
-          className="flex w-full items-center justify-center gap-2"
-        >
-          {generating ? <Spinner size={15} /> : <Sparkles size={16} />}
-          {generating ? '生成中...' : '単語を生成'}
-        </Button>
+        <div className="space-y-1.5">
+          <Button
+            onClick={handleGenerate}
+            disabled={generating}
+            className="flex w-full items-center justify-center gap-2"
+          >
+            {generating ? <Spinner size={15} /> : <Sparkles size={16} />}
+            {generating ? '生成中...' : '単語を生成'}
+          </Button>
+          {/* 押す前に、いくら使うかを言う */}
+          <p className="text-center">
+            <CreditCostHint cost={AI_TEXT_COST} available={available} />
+          </p>
+        </div>
       </div>
 
       {error && <p className="mt-4 text-sm text-destructive">{error}</p>}

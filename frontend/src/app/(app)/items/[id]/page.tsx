@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react'
 import Link from 'next/link'
 import { useParams, useRouter, useSearchParams } from 'next/navigation'
-import { Trash2, ChevronLeft, ChevronRight, Pencil, Check, X, ExternalLink, LayoutList } from 'lucide-react'
+import { Trash2, ChevronLeft, ChevronRight, Pencil, Check, X, ExternalLink, LayoutList, Sparkles } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Breadcrumb } from '@/components/ui/breadcrumb'
 import { Input } from '@/components/ui/input'
@@ -367,6 +367,26 @@ export default function ItemDetailPage() {
               <LayoutList size={14} />
               表示
             </Button>
+            {/* 項目の提案。**中身は「表示」パネルと同じもの**を開くだけで、
+                実装は増やさない。ここに出すのは、作った直後の人が
+                「表示」の中まで辿り着けないため（項目を足したいのに、
+                並べ替えの画面の中にあるとは思わない）。
+
+                意味が出来上がるまでは出さない。何を書くべきかは意味で決まるので、
+                揃う前に聞いても当てずっぽうになる */}
+            {item.generation_status === 'completed' && item.meaning?.trim() && (
+              <Tooltip label="意味をもとに、合いそうな項目をAIが挙げます（0.01 cr）">
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => openSection({ key: CARD_VIEW_PANEL_KEY, title: '表示' })}
+                  className="flex items-center gap-1.5 text-sm"
+                >
+                  <Sparkles size={14} />
+                  項目を提案
+                </Button>
+              </Tooltip>
+            )}
             {/* 学習に使わない情報（作成日・状態・ID）はここへ寄せる */}
             <CardInfoButton item={item} />
             <Button
