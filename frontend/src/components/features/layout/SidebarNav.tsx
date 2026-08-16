@@ -187,7 +187,15 @@ function NavTree({
   }
 
   return (
-    <div className={`flex flex-col gap-1 ${iconsOnly ? 'px-1.5' : 'px-2'}`}>
+    // **自分で字の色を決める。** ここは置かれる場所が2つある（サイドバーと、
+    // ヘッダーの中に開くモバイルのドロワー）。ヘッダーは地が濃い金なので
+    // 字を白にしており、その色がドロワーまで継承される。
+    // 受け継いだままだと、明るい地の上に白い字とアイコン（currentColor）が乗り、
+    // 何も見えなくなる。継承に頼らず、ここで地の色に戻す
+    <div
+      className={`flex flex-col gap-1 ${iconsOnly ? 'px-1.5' : 'px-2'}`}
+      style={{ color: 'var(--foreground)' }}
+    >
       {navSectionsFor(isAdmin).map((section) => (
         <div key={section.key} className="flex flex-col">
           {iconsOnly ? (

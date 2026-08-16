@@ -41,7 +41,14 @@ export function MobileNav() {
           {/* ドロワー */}
           <nav
             className="absolute left-0 top-0 h-full w-64 flex flex-col overflow-y-auto py-3 shadow-xl"
-            style={{ backgroundColor: 'var(--ivory)', borderRight: '1px solid var(--palace)' }}
+            // ドロワーはヘッダーの中に置かれる（ハンバーガーの隣に描くため）。
+            // ヘッダーは地が濃い金で字を白にしているので、**その色がここまで届く**。
+            // 地はアイボリーなので、字の色も地に合わせて戻す
+            style={{
+              backgroundColor: 'var(--ivory)',
+              color: 'var(--foreground)',
+              borderRight: '1px solid var(--palace)',
+            }}
             aria-label="ナビゲーション"
           >
             <div className="flex items-center justify-between px-3 pb-2">
