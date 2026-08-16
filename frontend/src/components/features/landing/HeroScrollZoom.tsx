@@ -145,8 +145,11 @@ export function HeroScrollZoom() {
                 順番を入れ替えない。使い道から始めると、何を作る話なのか分からないまま
                 用途だけが並ぶ */}
             <p className="text-[0.9rem] leading-relaxed md:text-lg" style={{ color: 'var(--foreground)' }}>
-              覚えたい言葉や、残しておきたいことを書くと、AI がその言葉とイメージがひとつになった
-              <strong className="font-semibold">カード</strong>を作ってくれます。
+              {/* 鉤括弧は前の行の末尾に置く。次の行の頭に置くと、そこまでが
+                  ひとつのテキストになり、JSX が改行を空白1つに変えて
+                  「した 「記憶のカード」」と空いてしまう */}
+              覚えたい・残したい言葉を書くと、AIが言葉とイメージをひとつにした「
+              <strong className="font-semibold">記憶のカード</strong>」を作ってくれます。
             </p>
             {/* 用途は**それぞれを太字にする**。文のまま流すと、
                 読み飛ばした人に「単語帳のサービス」としてだけ残る。
