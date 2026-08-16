@@ -55,9 +55,15 @@ class Setting < ApplicationRecord
   #
   # 「旧フィールドが空だから、たまたま名前と絵になっていた」のではなく、
   # 新しい設定体系として明示的にこう決める。
+  # 何も決めていない人の既定。
+  #
+  # **意味・説明まで出す。** 見出し語と絵だけだと、絵を見て思い出せなかったときに
+  # 一覧の上では確かめようがなく、1枚ずつ開くことになる。
+  # 3つとも組み込みの項目なので、利用者が項目を作っていなくても必ず出る
   DEFAULT_CARD_LIST_LAYOUT = [
     { "key" => "title", "visible" => true },
-    { "key" => "image", "visible" => true }
+    { "key" => "image", "visible" => true },
+    { "key" => "meaning", "visible" => true }
   ].freeze
 
   # 見出しとして使わない項目。絵は見出しにならないし、

@@ -14,6 +14,7 @@ import { useItemsStore } from '@/stores/items'
 import { useBillingStore } from '@/stores/billing'
 import { CreditCostNote } from '@/components/features/billing/CreditCostNote'
 import { isSubmitEnter } from '@/lib/enter-key'
+import { useOpenCreate } from '@/components/features/layout/CreatePanels'
 
 const MAX_TITLE_LENGTH = 100
 
@@ -45,6 +46,7 @@ export function QuickCreateCard({
   const fetchBilling = useBillingStore((s) => s.fetchSummary)
   // 残高は購読する。生成のたびに減るので、読み捨てると古い数が残る
   const available = useBillingStore((s) => s.summary?.available_credits) ?? null
+  const openCreate = useOpenCreate()
   const [input, setInput] = useState('')
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -146,7 +148,7 @@ export function QuickCreateCard({
               入力欄と行き先の間が遠くなる。
               **入力があれば実際に使う数**を出す。何も書いていないうちは単価だけでよい */}
           {titles.length > 0 ? (
-            <CreditCostNote variant="inline" cost={titles.length} available={available} />
+            <CreditCostNote variant="after" cost={titles.length} available={available} />
           ) : (
             <p className="text-xs text-muted-foreground">1枚 1{CREDIT_UNIT_SHORT}・設定は既定のまま</p>
           )}
@@ -172,14 +174,16 @@ export function QuickCreateCard({
               一覧のほうは字を金にして、隣の「詳しく設定」より先に目へ入るようにする
               （釦にすると、この行でいちばん強いのが「カードを生成」でなくなる） */}
           <div className="ml-auto flex items-center gap-3">
-            <Link href="/items/new" className="text-xs text-muted-foreground underline hover:text-foreground">
-              詳しく設定
-            </Link>
-            <Link
-              href="/items"
-              className="text-xs font-medium underline underline-offset-2 hover:text-foreground"
-              style={{ color: 'var(--palace)' }}
+            {/* ページへ飛ばさずパネルで開く。**ここまで書いた語を捨てさせない**。
+                移ってしまうと、入力欄の中身も、下に出ている作業状況も見えなくなる */}
+            <button
+              type="button"
+              onClick={() => openCreate('item')}
+              className="text-xs text-muted-foreground underline hover:text-foreground"
             >
+              詳しく設定
+            </button>
+            <Link href="/items" className="text-xs font-medium underline underline-offset-2 hover:text-foreground">
               カード一覧をみる
             </Link>
           </div>

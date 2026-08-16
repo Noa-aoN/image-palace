@@ -34,6 +34,8 @@ export interface CreateItemOptions {
   aspectRatio?: string
   /** 絵を作るモデル（未指定はおまかせ＝そのときの既定） */
   imageModel?: string
+  /** 種別（単語・人物・出来事…）を AI に決めさせるか（未指定ならユーザー設定に従う） */
+  detectItemType?: boolean
 }
 
 export async function createItem(
@@ -62,6 +64,7 @@ export async function createItem(
       ...(options?.promptSource ? { prompt_source: options.promptSource } : {}),
       ...(options?.aspectRatio ? { aspect_ratio: options.aspectRatio } : {}),
       ...(options?.imageModel ? { image_model: options.imageModel } : {}),
+      ...(options?.detectItemType !== undefined ? { detect_item_type: options.detectItemType } : {}),
     },
   })
   return res.data
@@ -210,6 +213,8 @@ export interface ImageModelChoice {
   key: string
   label: string
   description: string
+  /** 選ばなかったときに使われるもの。**画面側で当てない**（登録簿と環境変数で動く） */
+  default?: boolean
 }
 
 export async function getImageModels(): Promise<ImageModelChoice[]> {

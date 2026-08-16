@@ -112,6 +112,14 @@ function Section({
           intro={roadIntro}
           fadeUnderDivider={Boolean(topDividerFrom)}
           fadeIntoDivider={roadFadeIntoNext}
+          // 門は、最後の面だけでなく**その手前の面にも**出す。
+          //
+          // 道は面ごとに切り抜いて見せているので、最後の面にしか置かないと、
+          // その面が画面のほとんどを占めるまで門が現れない。行き先が見えるのが
+          // 遅すぎて、光だけが長く続くことになる。
+          //
+          // 「CTA へ送る面」を印にするので、間に面が増えても付け直さずに済む
+          gate={roadFadeBottom || cueTo === 'cta'}
         />
       </div>
       {topDividerFrom && <SectionDivider fill={topDividerFrom} />}

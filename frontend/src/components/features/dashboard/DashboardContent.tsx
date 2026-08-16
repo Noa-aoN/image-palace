@@ -9,7 +9,7 @@ import { MemoryAssetsCard } from '@/components/features/dashboard/MemoryAssetsCa
 import { PalaceFloorplan } from '@/components/features/dashboard/PalaceFloorplan'
 import { PalaceLordCard } from '@/components/features/dashboard/PalaceLordCard'
 import { QuickCreateCard } from '@/components/features/dashboard/QuickCreateCard'
-import { getItemsSummary, type ItemsSummary } from '@/lib/api/items'
+import { getItemsSummary, getImageModels, type ItemsSummary } from '@/lib/api/items'
 import { useBillingStore } from '@/stores/billing'
 import {
   CreditBreakdownPanel,
@@ -35,12 +35,6 @@ const EMPTY_SUMMARY: ItemsSummary = {
   monthly_count: 0,
 }
 
-// クレジットメーターの進捗率（残高 / 今期付与, 0〜100）。付与枠が無い/不明なら null。
-// 1生成＝1クレジットのため、残高がそのまま「あと何枚つくれるか」になる。
-function creditPercent(available: number, perPeriod: number): number | null {
-  if (perPeriod <= 0) return null
-  return Math.min(100, Math.round((available / perPeriod) * 100))
-}
 
 
 // クレジット更新日（次回付与日）を "YYYY/M/D" に整形。null/不正は null。
@@ -60,11 +54,20 @@ export function DashboardContent() {
   // 作り始めた合図。**生成中が無いあいだは見張りを止めている**ので、
   // 作った直後にここを進めて、もう一度見に行かせる
   const [watchToken, setWatchToken] = useState(0)
+  // 既定のモデルの呼び名。**画面に書き写さない**（登録簿と環境変数で動くのでずれる）
+  const [defaultModel, setDefaultModel] = useState<string | null>(null)
   const billing = useBillingStore((s) => s.summary)
   const fetchBilling = useBillingStore((s) => s.fetchSummary)
   // 「作業状況」バッチ進捗：生成中の総数を基準に 成功/失敗/残り をリアルタイム表示。
   const sessionRef = useRef<{ total: number; baseFailed: number } | null>(null)
   const clearTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+
+  useEffect(() => {
+    // 落ちても札は出す。呼び名が出ないだけで、枚数は読める
+    getImageModels()
+      .then((models) => setDefaultModel((models.find((m) => m.default) ?? models[0])?.label ?? null))
+      .catch(() => {})
+  }, [])
 
   useEffect(() => {
     fetchBilling()
@@ -183,7 +186,8 @@ export function DashboardContent() {
   const credits = billing?.available_credits ?? null
   const perPeriod = billing?.plan?.credits_per_period ?? 0
   const cards = credits !== null ? generatableCards(credits) : null
-  const creditPct = cards !== null ? creditPercent(cards, perPeriod) : null
+  // いちばん近い期限。**使い切る判断に要る**（黙って消えるのがいちばん困る）
+  const nextExpiry = formatRenewal(billing?.credit_breakdown?.grant_expires_at)
   // 有料はサブスク期末、無料は次回クレジット回復日（翌月初）。どちらも「M/D に更新」で表示する。
   const renewal = formatRenewal(billing?.subscription?.current_period_end ?? billing?.next_credit_reset)
 
@@ -253,7 +257,9 @@ export function DashboardContent() {
                     何についての内訳なのかが数字から離れる */}
                 <div className="mt-1 flex items-end justify-between gap-2">
                   <p>
-                    <span className="text-2xl font-bold tabular-nums">{credits ?? '—'}</span>
+                    {/* プラン名・表示名と同じ大きさに揃える。
+                        ここだけ大きいと、札の中で残高だけが別の見出しに見える */}
+                    <span className="text-lg font-semibold tabular-nums">{credits ?? '—'}</span>
                     <span className="ml-1 text-sm text-muted-foreground">{CREDIT_UNIT}（{CREDIT_UNIT_SHORT}）</span>
                   </p>
                   {/* 敷いたリンクより手前に出す。押しても位の画面へは飛ばない */}
@@ -263,24 +269,36 @@ export function DashboardContent() {
                 </div>
               </div>
 
-              <div className="space-y-2">
-                {creditPct !== null && (
-                  <>
-                    {/* **分数にも棒にもしない。** 分子は「いまの残高で作れる枚数」、
-                        分母は「プランが毎期くれる量」で、測っているものが違う。
-                        棒で表せるのは上限のある量だけで、残高には上限が無い
-                        （買い足せばプランの付与量を超える）。超えた瞬間に
-                        棒は振り切れ、何も表さなくなる。数だけを言い切る */}
-                    <div className="flex items-baseline justify-between">
-                      <span className="text-sm text-muted-foreground">いまの残高で作れる枚数</span>
-                      <span>
-                        <span className="text-base font-semibold tabular-nums">{cards}</span>
-                        <span className="text-sm text-muted-foreground"> 枚</span>
-                      </span>
-                    </div>
-                  </>
-                )}
-              </div>
+              {/* **分数にも棒にもしない。** 分子は「いまの残高で作れる枚数」、
+                  分母は「プランが毎期くれる量」で、測っているものが違う。
+                  棒で表せるのは上限のある量だけで、残高には上限が無い
+                  （買い足せばプランの付与量を超える）。超えた瞬間に棒は振り切れ、
+                  何も表さなくなる。数だけを言い切る。
+
+                  付与枠の有無で出し分けない。**無料の人ほど残り枚数を知りたい** */}
+              {cards !== null && (
+                <div className="space-y-1.5">
+                  <div className="flex items-baseline justify-between gap-2">
+                    <span className="text-sm text-muted-foreground">
+                      いまの残高で作れる枚数
+                      {/* 枚数は使うモデルで変わる。どれで数えたかを添えないと、
+                          別のモデルを選んだ人には合わない数字になる */}
+                      {defaultModel && <span className="ml-1 text-xs">（{defaultModel}）</span>}
+                    </span>
+                    <span>
+                      <span className="text-base font-semibold tabular-nums">{cards}</span>
+                      <span className="text-sm text-muted-foreground"> 枚</span>
+                    </span>
+                  </div>
+                  {/* 棒を外して空いた場所には、**次に何が起きるか**を置く。
+                      余白のままだと札の下半分が理由もなく空く */}
+                  {nextExpiry && (
+                    <p className="text-xs text-muted-foreground">
+                      期限がいちばん近いぶんは {nextExpiry} まで
+                    </p>
+                  )}
+                </div>
+              )}
 
               {credits !== null && credits <= 0 && (
                 <p className="text-xs text-destructive">

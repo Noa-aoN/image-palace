@@ -45,7 +45,12 @@ export function PropertyBlock({
   const role = category ? propertyCategoryOf(category) : null
 
   return (
-    <section className="space-y-2 rounded-xl border border-border/70 bg-muted/30 px-4 py-3">
+    // 縁は札と同じ金。ただし一段薄く（内側の器のほうが強いと主従が逆になる）。
+    // 地は灰をやめて暖かい白へ。muted の灰は青みがあり、ivory の上では汚れて見える
+    <section
+      className="space-y-2 rounded-xl px-4 py-3 ring-1 ring-[var(--edge-gold-soft)]"
+      style={{ background: 'var(--surface-warm)' }}
+    >
       <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-1">
         <div className="flex items-center gap-2">
           <h3 className="text-sm font-medium">{title}</h3>

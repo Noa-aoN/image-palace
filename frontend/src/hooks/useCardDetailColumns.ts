@@ -89,9 +89,18 @@ export function cardDetailGridClass(columns: number): string {
  */
 const FIT_KEY = 'card-detail-fit'
 
+/**
+ * 既定は入り。開いた瞬間に絵の全体が見えるほうが、カードの用を果たす。
+ *
+ * **「まだ選んでいない」と「自分で切った」を区別する。**
+ * `=== 'true'` で読んでいたころは、保存が無い＝切っている、になっていた。
+ * 既定を入りにするなら、保存が無いときだけ既定へ倒し、
+ * 'false' が保存されていればその通りに切る
+ */
 function readFit(): boolean {
-  if (typeof window === 'undefined') return false
-  return window.localStorage.getItem(FIT_KEY) === 'true'
+  if (typeof window === 'undefined') return true
+  const raw = window.localStorage.getItem(FIT_KEY)
+  return raw === null ? true : raw === 'true'
 }
 
 /**
@@ -101,13 +110,15 @@ function readFit(): boolean {
  */
 const LEAD_KEY = 'card-detail-lead-in-grid'
 
+/** 既定は入り。見出し語と絵も同じ札として扱うほうが、並べ替えの効く範囲が広い */
 function readLeadInGrid(): boolean {
-  if (typeof window === 'undefined') return false
-  return window.localStorage.getItem(LEAD_KEY) === 'true'
+  if (typeof window === 'undefined') return true
+  const raw = window.localStorage.getItem(LEAD_KEY)
+  return raw === null ? true : raw === 'true'
 }
 
 export function useCardDetailLeadInGrid() {
-  const value = useSyncExternalStore(subscribe, readLeadInGrid, () => false)
+  const value = useSyncExternalStore(subscribe, readLeadInGrid, () => true)
 
   const change = useCallback((next: boolean) => {
     window.localStorage.setItem(LEAD_KEY, String(next))
@@ -121,7 +132,7 @@ export function useCardDetailFit() {
   const fit = useSyncExternalStore(
     subscribe,
     readFit,
-    () => false
+    () => true
   )
 
   const change = useCallback((next: boolean) => {
