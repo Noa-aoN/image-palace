@@ -147,7 +147,9 @@ export function LoginForm() {
         )}
 
         <Button type="submit" disabled={loading} className="w-full mt-1">
-          {loading ? 'ログイン中...' : '宮殿に入る'}
+          {/* 見出しは「宮殿に入る」のまま。**釦は何をする釦かを言う。**
+              同じ言葉を見出しと釦の両方に置くと、押す前に何が起きるかが伝わらない */}
+          {loading ? 'ログイン中...' : 'ログインする'}
         </Button>
       </form>
 

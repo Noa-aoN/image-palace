@@ -279,10 +279,15 @@ module Achievements
         rarity_level: definition.rarity_level,
         rarity_tier: definition.rarity_tier,
         category: definition.category,
-        # 未獲得のものに「どうすれば手に入るか」。無いものは手動付与（表彰など）。
-        # 位は実績で配らないので、代わりに「どのプランに付くか」を出す
-        # （空にすると、取りようが無いものが黙って並ぶ）
-        condition: source&.description || (definition.plan_rank? ? definition.description : nil),
+        # 未獲得のものに「どうすれば手に入るか」。
+        #
+        # 実績で配るものは、その実績の条件をそのまま出す。
+        # 実績で配らないものは、代わりの言葉を定義側が持つ
+        #   位   … どのプランに付くか（description）
+        #   表彰 … 誰に・どう配られるか（grant_note）
+        # **空にしない。** 「運営から贈られます」とだけ出すと、
+        # 何をすれば届くのか、待てば届くのかが分からないまま残る
+        condition: source&.description || definition.grant_condition,
         # 位は契約に付いてくるもの。取り方の説明も、外れ方も、他の獲得物とは違う
         plan_rank: definition.plan_rank?,
         progress: progress,

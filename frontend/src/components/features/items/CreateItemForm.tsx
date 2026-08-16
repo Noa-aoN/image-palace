@@ -114,6 +114,9 @@ export function CreateItemForm({
   const [generateMeaning, setGenerateMeaning] = useState(true)
   const [meaningLevel, setMeaningLevel] = useState<string>(DEFAULT_MEANING_LEVEL)
   const [generateTags, setGenerateTags] = useState(true)
+  // 種別（単語・人物・場所・作品・出来事…）の自動判定。
+  // 選ばないと全部が既定の「単語」で溜まり、持てる項目が種別で変わる意味が消える
+  const [detectItemType, setDetectItemType] = useState(true)
   // 項目（読み仮名・別名・発音記号）の自動生成。選んだぶんを1回でまとめて埋める。
   // 既定は空（AI の呼び出しが1回増えるので、明示的に選んでもらう）
   const [propertyKeys, setPropertyKeys] = useState<string[]>([])
@@ -128,11 +131,12 @@ export function CreateItemForm({
    * こうしておくと「全部にしたのに一部が作られない」が起こらない。
    */
   const allEnrichOn =
-    generateMeaning && generateTags && PROPERTY_OPTIONS.every((o) => propertyKeys.includes(o.key))
+    generateMeaning && generateTags && detectItemType && PROPERTY_OPTIONS.every((o) => propertyKeys.includes(o.key))
 
   const toggleAllEnrich = (on: boolean) => {
     setGenerateMeaning(on)
     setGenerateTags(on)
+    setDetectItemType(on)
     setPropertyKeys(on ? PROPERTY_OPTIONS.map((o) => o.key) : [])
   }
   const [deckViews, setDeckViews] = useState<View[]>([])
@@ -313,6 +317,7 @@ export function CreateItemForm({
           generateTags,
           generateProperties: propertyKeys.length > 0,
           generatePropertyKeys: propertyKeys,
+          detectItemType,
         })
         // 作成したカードを選択中のデッキ（deck-view）へ追加する
         for (const viewId of targetViewIds) {
@@ -327,6 +332,7 @@ export function CreateItemForm({
         force_generate: forceGenerate,
         with_meaning: generateMeaning,
         with_tags: generateTags,
+        detect_item_type: detectItemType,
       })
       fetchBilling() // 消費後の残高を更新（ヘッダー等の表示に反映）
       if (inPanel) {
@@ -372,6 +378,7 @@ export function CreateItemForm({
       generateMeaning && '意味',
       propertyKeys.length > 0 && `項目${propertyKeys.length}件`,
       generateTags && 'タグ',
+      detectItemType && '種別',
     ]),
     organize: join([tagNames.length > 0 && `タグ${tagNames.length}件`]),
     place: join([(createNewDeck || selectedDeckIds.length > 0) && 'デッキ']),
@@ -821,6 +828,32 @@ export function CreateItemForm({
           </span>
         </label>
       ))}
+
+      {/* 種別の自動判定。**持てる項目が種別で決まる**ので、意味やタグと同じ列に置く */}
+      <label className="flex items-start gap-3 rounded-xl border border-border/70 bg-background px-4 py-3">
+        <input
+          type="checkbox"
+          className="mt-1 h-4 w-4 rounded border-input"
+          checked={detectItemType}
+          onChange={(e) => setDetectItemType(e.target.checked)}
+          disabled={submitting}
+        />
+        <span className="flex-1">
+          <span className="flex items-center gap-1.5 text-sm font-medium">
+            種別
+            <HelpPopover label="種別について" title="種別">
+              <div className="space-y-2 text-sm">
+                {/* 種別の一覧は書き写さない。増えるたびにここが古くなる */}
+                <p>そのカードが何なのか（人物・場所・作品・出来事など）を AI が選びます。</p>
+                <p>種別で、そのカードが持てる項目（読み仮名・生没年・式など）が変わります。</p>
+                <p className="text-muted-foreground">
+                  外すと「単語」で作られます。あとからカード詳細で直せます。
+                </p>
+              </div>
+            </HelpPopover>
+          </span>
+        </span>
+      </label>
 
       {/* タグの自動生成 */}
       <label className="flex items-start gap-3 rounded-xl border border-border/70 bg-background px-4 py-3">

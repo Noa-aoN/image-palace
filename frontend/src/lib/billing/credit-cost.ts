@@ -69,6 +69,19 @@ export function costLabel(c: CreditCost, unit: string): string | null {
   return `この操作で ${formatCredits(c.cost)} ${unit} 使います`
 }
 
+/**
+ * 「生成後残高：3 cr」。**使ったあとの残りだけ**を言う。
+ *
+ * 押す前から数が動く場所（書きながら枚数が変わるクイック作成）では、
+ * 「いくら使うか」と「いま幾らか」と「いくつ残るか」の3つが同時に動く。
+ * 3つとも出すと目が追えないので、いちばん知りたい**残り**だけに絞る。
+ */
+export function afterBalanceLabel(c: CreditCost, unit: string): string | null {
+  if (c.available === null || c.cost === 0) return null
+
+  return `生成後残高：${formatCredits(c.after ?? 0)} ${unit}`
+}
+
 /** 「残高 4 cr → 3 cr」。残高が分からないときは出さない */
 export function balanceLabel(c: CreditCost, unit: string): string | null {
   if (c.available === null || c.cost === 0) return null

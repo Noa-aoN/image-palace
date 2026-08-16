@@ -10,20 +10,21 @@ RSpec.describe "一覧に出す項目の並び", type: :model do
   let(:setting) { user.setting || Setting.create!(user: user) }
 
   describe "何も設定していない人" do
-    it "これまでどおり「名前と絵」になる" do
-      expect(setting.visible_card_list_keys).to eq(%w[title image])
+    it "名前と絵と意味・説明になる" do
+      expect(setting.visible_card_list_keys).to eq(%w[title image meaning])
     end
   end
 
   # 旧フィールド（card_headline_key / card_list_fields）への依存は #598 で外した。
   # **既定は新しい設定体系が持つ**（旧が空だから、たまたまそう見えていたのではない）
   describe "既定" do
-    it "保存していない人は、名前と絵" do
-      expect(setting.visible_card_list_keys).to eq(%w[title image])
+    # 絵だけでは思い出せなかったときに、一覧の上で確かめられるようにする
+    it "保存していない人は、名前と絵と意味・説明" do
+      expect(setting.visible_card_list_keys).to eq(%w[title image meaning])
     end
 
     it "既定は定数として持つ（画面ごとに書かない）" do
-      expect(Setting::DEFAULT_CARD_LIST_LAYOUT.map { |r| r["key"] }).to eq(%w[title image])
+      expect(Setting::DEFAULT_CARD_LIST_LAYOUT.map { |r| r["key"] }).to eq(%w[title image meaning])
     end
 
     it "読んだだけでは保存しない" do
@@ -82,7 +83,7 @@ RSpec.describe "一覧に出す項目の並び", type: :model do
       setting.update!(card_list_layout: [ { "key" => "meaning", "visible" => true } ])
       setting.update!(card_list_layout: [])
 
-      expect(setting.reload.visible_card_list_keys).to eq(%w[title image])
+      expect(setting.reload.visible_card_list_keys).to eq(%w[title image meaning])
     end
 
     it "出さない指定の項目は、並びには残るが出す対象から外れる" do

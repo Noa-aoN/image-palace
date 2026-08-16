@@ -110,6 +110,45 @@ RSpec.describe "獲得物の品揃え" do
     end
   end
 
+  describe "手に入れ方" do
+    # 「運営から贈られます」とだけ出ていた。待てば届くのか、
+    # 何かすれば届くのかが分からないまま一覧に並び続ける
+    it "実績で配らないものにも、手に入れ方が書いてある" do
+      granted = achievements.flat_map { |a| Array(a[:rewards]) }
+                            .select { |r| r["type"] == "reward" }.map { |r| r["key"] }
+      not_earned = RewardDefinition::BUILTINS.reject { |r| granted.include?(r[:key]) }
+
+      missing = not_earned.reject { |r|
+        r.dig(:metadata, "grant_note").present? || r.dig(:metadata, "source") == "subscription"
+      }
+
+      expect(missing.map { |r| r[:key] }).to be_empty
+    end
+
+    # 行は先に在るので、あとから足した説明が入らないと古いままになる
+    it "既にある行にも、あとから足した説明が入る" do
+      RewardDefinition.registry
+      row = RewardDefinition.find_by(key: "honor_beta")
+      row.update_columns(metadata: row.metadata.except("grant_note"))
+      RewardDefinition.instance_variable_set(:@builtins_checked, false)
+
+      RewardDefinition.registry
+
+      expect(row.reload.metadata["grant_note"]).to be_present
+    end
+
+    it "運営が書き換えた説明は戻さない" do
+      RewardDefinition.registry
+      row = RewardDefinition.find_by(key: "honor_beta")
+      row.update_columns(metadata: row.metadata.merge("grant_note" => "運営が書き換えた説明"))
+      RewardDefinition.instance_variable_set(:@builtins_checked, false)
+
+      RewardDefinition.registry
+
+      expect(row.reload.metadata["grant_note"]).to eq("運営が書き換えた説明")
+    end
+  end
+
   describe "絵" do
     it "すべての獲得物が、絵のもとになる言葉を持つ" do
       missing = rewards.reject { |r| r.dig(:metadata, "motif").present? }

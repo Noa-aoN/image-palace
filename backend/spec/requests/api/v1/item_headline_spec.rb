@@ -134,14 +134,14 @@ RSpec.describe "一覧の見出し語", type: :request do
       expect(setting).not_to be_valid
     end
 
-    # 既定は「名前と絵」。どちらもカードの形そのものとして描かれるので、
-    # 名前の下に出す項目は無い
-    it "設定していなければ空で返す" do
+    # 既定は「名前と絵と意味・説明」。名前と絵はカードの形そのものとして描かれるので、
+    # 名前の下に出るのは意味・説明だけ
+    it "設定していなければ意味・説明だけを返す" do
       item
 
       get "/api/v1/items", headers: headers
 
-      expect(response.parsed_body["items"].first["list_fields"]).to eq([])
+      expect(response.parsed_body["items"].first["list_fields"].map { |f| f["key"] }).to eq([ "meaning" ])
     end
   end
 end

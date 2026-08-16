@@ -5,8 +5,14 @@ import { cn } from '@/lib/utils'
  *
  * AI が作る絵は、思っていたものと違うことがある。学習中に不意打ちで見たくないものを
  * 見てしまわないよう、承認するまでは**なんとなく分かる程度**に抑えて出す。
- * 完全に隠すと「何が来たのか」が分からず、承認するか消すかを決められないため、
- * ぼかしの上に斜めの網を掛けて、輪郭と色味だけが伝わる強さにしている。
+ * 完全に隠すと「何が来たのか」が分からず、承認するか消すかを決められない。
+ *
+ * **隠すのはぼかしの役目。** 以前は黒い斜めの網を強く掛けていたが、
+ * 網は絵の上に別の模様を足すだけで、絵そのものは網の隙間から素通しになる。
+ * 「見えるところは見えてしまう」うえに、絵全体の色味は網に潰されて掴めない。
+ *
+ * 強くぼかせば、細部は読み取れないまま、色と構図の気配だけが残る。
+ * 網は輪郭を拾わせないための薄い補助に留め、白い霞を重ねて直視の圧を下げる。
  *
  * 画像そのものは差し替えない（覆いを外せば元の絵が出る）。ぼかしは呼び出し側で
  * `SAFEGUARD_IMAGE_CLASS` を当てる。
@@ -17,14 +23,21 @@ export function SafeguardVeil({ className }: { className?: string }) {
       aria-hidden
       className={cn('pointer-events-none absolute inset-0 z-10', className)}
       style={{
-        // 斜めの網。線を細く・間隔を広くして、下の絵の形は残す
+        // 白い霞。黒で沈めると何色の絵かも分からなくなるので、明るい側から薄く掛ける
+        backgroundColor: 'rgba(255,255,255,0.34)',
+        // 網はごく薄く、間隔も広く。**模様として読ませない**（気配を消さない程度）
         backgroundImage:
-          'repeating-linear-gradient(45deg, rgba(0,0,0,0.30) 0 3px, rgba(0,0,0,0) 3px 9px)',
-        backgroundColor: 'rgba(0,0,0,0.14)',
+          'repeating-linear-gradient(45deg, rgba(0,0,0,0.07) 0 2px, rgba(0,0,0,0) 2px 14px)',
       }}
     />
   )
 }
 
-/** 覆いを掛けている間の画像の見た目。輪郭と色味だけが残る強さ */
-export const SAFEGUARD_IMAGE_CLASS = 'blur-md scale-105'
+/**
+ * 覆いを掛けている間の画像の見た目。
+ *
+ * 細部が読み取れない強さまでぼかす（blur-md=12px → blur-2xl=40px）。
+ * 拡大は縁のぼけを枠の外へ押し出すため（縮むと角に地が見える）。
+ * 彩度を少し上げるのは、強くぼかすと色が濁って見えるぶんの埋め合わせ
+ */
+export const SAFEGUARD_IMAGE_CLASS = 'blur-2xl scale-110 saturate-125'

@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { Medal, Sparkles, Trophy, Award, Gem, HelpCircle, Route } from 'lucide-react'
+import { Medal, Sparkles, Trophy, Award, Gem, HelpCircle, Route, ScrollText, History } from 'lucide-react'
 import { Spinner } from '@/components/ui/spinner'
 import { PanelSlotContent } from '@/components/features/panel/PanelSlot'
 import { REWARD_KIND_HELP } from '@/lib/reward-kinds'
@@ -87,14 +87,22 @@ export function AchievementsBoard() {
           左は「いま何を掲げているか」、右は「どれだけ積み上げたか」。
           1枚に混ぜると、見せるものと数える数字が同じ面に並んで、どちらも薄くなる */}
       <div className="grid gap-4 lg:grid-cols-2 lg:items-stretch">
-        <section className="space-y-3 rounded-xl border border-border bg-card p-5">
-          <div className="flex items-center gap-2">
-            <h2 className="text-sm font-semibold text-muted-foreground">記名板</h2>
-            {/* 称号と勲章が並ぶのはここ。**何が何かを知りたくなるのもここ**。
-                エントランスの札からは説明を外し、種別の意味はこの1か所で開く */}
-            <RewardKindsHelp />
-          </div>
+        {/* 見出しは札の中ではなく**外**に置く。下に続く「もうすぐ獲得」「獲得物」と
+            同じ形に揃えないと、同じ大きさの話なのに、ここだけ札の中の小見出しに見える */}
+        <section className="flex flex-col gap-3">
+          {/* 王冠はページの見出し（アチーブメント）が使っている。
+              同じ絵を2つ並べると、どちらが上位の見出しなのか読めなくなる。
+              名乗りを書き入れる板なので、巻物にする */}
+          <SectionTitle
+            icon={<ScrollText size={18} />}
+            // 称号と勲章が並ぶのはここ。**何が何かを知りたくなるのもここ**。
+            // エントランスの札からは説明を外し、種別の意味はこの1か所で開く
+            action={<RewardKindsHelp />}
+          >
+            記名板
+          </SectionTitle>
 
+          <div className="flex-1 space-y-3 rounded-xl border border-border bg-card p-5">
           <div className="flex items-center gap-2">
             {/* 下に並ぶ勲章・宝物・表彰と同じ形にする。
                 ここだけ絵記号だと、**何の行なのかを絵から読み取らせる**ことになり、
@@ -146,11 +154,13 @@ export function AchievementsBoard() {
               獲得したものに星を入れると、ここに並びます。
             </p>
           )}
+          </div>
         </section>
 
-        <section className="space-y-3 rounded-xl border border-border bg-card p-5">
-          <h2 className="text-sm font-semibold text-muted-foreground">これまで</h2>
+        <section className="flex flex-col gap-3">
+          <SectionTitle icon={<History size={18} />}>まとめ</SectionTitle>
 
+          <div className="flex-1 space-y-3 rounded-xl border border-border bg-card p-5">
           <dl className="grid grid-cols-2 gap-3 sm:grid-cols-4">
             {(Object.keys(page.summary.counts) as RewardKind[]).map((kind) => {
               const c = page.summary.counts[kind]
@@ -175,6 +185,7 @@ export function AchievementsBoard() {
             <SummaryStat label="学習した日" value={page.summary.active_days} suffix="日" />
             <SummaryStat label="続いている" value={page.summary.streak_days} suffix="日" />
           </dl>
+          </div>
         </section>
       </div>
 
@@ -420,12 +431,24 @@ export function AchievementsBoard() {
  * 行の右端へ寄せる。名前や進捗は左から読むもので、報酬は「その先にあるもの」。
  * 同じ列に混ぜると、どこまでが条件でどこからが報酬なのか分からなくなる。
  */
-function SectionTitle({ icon, children }: { icon: React.ReactNode; children: React.ReactNode }) {
+function SectionTitle({
+  icon,
+  children,
+  action,
+}: {
+  icon: React.ReactNode
+  children: React.ReactNode
+  /** 見出しの右へ置くもの（「?」など）。見出しの文字の中には入れない */
+  action?: React.ReactNode
+}) {
   return (
-    <h2 className="flex items-center gap-2 text-base font-semibold">
-      <span style={{ color: 'var(--palace)' }}>{icon}</span>
-      {children}
-    </h2>
+    <div className="flex items-center gap-2">
+      <h2 className="flex items-center gap-2 text-base font-semibold">
+        <span style={{ color: 'var(--palace)' }}>{icon}</span>
+        {children}
+      </h2>
+      {action}
+    </div>
   )
 }
 
@@ -480,7 +503,7 @@ function Chip({
  * 押したときだけ右パネルで出す。今後、種類が増えてもここに足せる。
  */
 function RewardKindsHelp() {
-  const panel = usePanelForm(REWARD_KINDS_PANEL_KEY, '獲得物の種類')
+  const panel = usePanelForm(REWARD_KINDS_PANEL_KEY, '記名板について')
 
   return (
     <>
@@ -488,13 +511,36 @@ function RewardKindsHelp() {
         type="button"
         onClick={panel.open}
         aria-expanded={panel.isOpen}
-        aria-label="獲得物の種類について"
+        aria-label="記名板について"
         className="text-muted-foreground transition-colors hover:text-foreground"
       >
         <HelpCircle size={16} />
       </button>
 
       <PanelSlotContent sectionKey={REWARD_KINDS_PANEL_KEY}>
+        {/* まず**この板が何か**を書く。種類の説明から始めていたので、
+            「持ち物の一覧」なのか「見せる場所」なのかが分からないままだった。
+            ここで決めたものは他の画面にも出る。**それを知らないと、
+            星を入れる意味が「この板の飾り」で終わる** */}
+        <div className="mb-4 space-y-2 text-sm">
+          <p>
+            記名板は、<strong className="font-medium">いま何を名乗り、何を掲げているか</strong>を出す板です。
+            持っているもの全部ではなく、<strong className="font-medium">自分で選んだものだけ</strong>が並びます。
+          </p>
+          <p className="text-muted-foreground">
+            選ぶのは下の「獲得物」から。札の星を押すと、ここに載ります。
+            称号は1つ、勲章は3つまでのように、種類ごとに数が決まっています。
+          </p>
+          <p className="rounded-lg bg-muted/40 px-3 py-2 text-muted-foreground">
+            ここで選んだものは、<strong className="font-medium text-foreground">エントランスの「宮殿の主人」</strong>にも出ます。
+            この板だけの飾りではなく、<strong className="font-medium text-foreground">名乗りそのもの</strong>を決める場所です。
+          </p>
+        </div>
+
+        {/* 見出しは dl の外へ出す。dl の直下に置けるのは dt / dd / div だけで、
+            p を入れるとブラウザが勝手に閉じ、hydration が食い違う */}
+        <p className="mb-3 border-t border-border pt-4 text-sm font-medium">獲得物の種類</p>
+
         <dl className="space-y-4 text-sm">
           {REWARD_KIND_HELP.map((entry) => (
             <div key={entry.label} className="space-y-1">

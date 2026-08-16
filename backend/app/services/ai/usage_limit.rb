@@ -40,6 +40,7 @@ module Ai
       # 手で押す「意味・説明から書き直す」。こちらは任意の補助なので取る
       "scene_rewrite" => UNIT_COST_POINTS,
       "suggest_properties" => UNIT_COST_POINTS,
+      "detect_item_type" => UNIT_COST_POINTS,
       "fill_properties" => UNIT_COST_POINTS,
       "fact_check" => UNIT_COST_POINTS,
       "words_generate" => UNIT_COST_POINTS,

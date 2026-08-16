@@ -36,10 +36,12 @@ export function PalaceLordCard({ tier }: { tier: string | null }) {
       .catch(() => {})
   }, [])
 
-  // 勲章は名前の右に絵だけで出す（項目行に混ぜると、増えるたびに縦へ伸びる）
+  // 勲章と宝物は項目行に絵で出す。掲げていなければ「—」を置いて、
+  // 持っていない人の札でも行の高さが変わらないようにする
   const medals = honors?.showcase?.medal ?? []
-  // 上の行に置くものがあるか（称号か勲章）。無ければ行ごと出さない
-  const hasTopRow = Boolean(honors?.title) || medals.length > 0
+  const treasures = honors?.showcase?.treasure ?? []
+  // 名前の上に置くものがあるか（いまは称号だけ）。無ければ行ごと出さない
+  const hasTopRow = Boolean(honors?.title)
   const displayName = displayNameOf(user)
   const avatar = user?.avatar_thumb_url ?? user?.avatar_url ?? null
   // 入居日＝アカウントを開いた日。取得前でも行の高さが変わらないよう「—」を置く
@@ -129,7 +131,7 @@ export function PalaceLordCard({ tier }: { tier: string | null }) {
                   空の行を残すと、何も持っていない人の札にだけ余白が空く */}
               {hasTopRow && (
                 <p
-                  className="col-start-1 row-start-1 flex min-w-0 items-center gap-1 text-xs"
+                  className="col-start-1 row-start-1 flex min-w-0 items-center gap-1 text-[13px]"
                   style={{ color: 'var(--palace)' }}
                 >
                   {honors?.title && (
@@ -149,40 +151,64 @@ export function PalaceLordCard({ tier }: { tier: string | null }) {
                   )}
                 </p>
               )}
-              {medals.length > 0 && (
-                <p className="col-start-2 row-start-1 flex shrink-0 items-center gap-1 border-l border-border pl-3 text-[11px] text-muted-foreground">
-                  勲章
-                </p>
-              )}
-
+              {/* 表示名・プラン名・残高は、**同じ大きさ**に揃える。
+                  隣り合う2枚の札で見出しの大きさが違うと、どちらかが格上に見える */}
               <p className="col-start-1 row-start-2 truncate text-lg font-semibold">{displayName}</p>
-              {/* 勲章は名前から離す。くっついていると、名前の続きに見える。
-                  区切り線は上下の枡で続くので、1本の線に見える */}
-              {medals.length > 0 && (
-                <span className="col-start-2 row-start-2 flex shrink-0 items-center gap-1 border-l border-border pl-3">
-                  {medals.map((reward) =>
-                    reward.image_url ? (
-                      <RewardLink key={reward.key} name={reward.name}>
-                        {/* eslint-disable-next-line @next/next/no-img-element */}
-                        <img src={reward.image_url} alt={reward.name} width={20} height={20} loading="lazy" />
-                      </RewardLink>
-                    ) : null
-                  )}
-                </span>
-              )}
             </div>
           </div>
 
           <dl className="grid grid-cols-2 gap-x-4 gap-y-2 text-sm">
+            {/* 並びは「集めたもの」から「素性」へ。
+                上の段に勲章と宝物、下の段に入居日と位を置く。
+                獲得物は絵で出るので目を引く。**先に見えるものを上に**置き、
+                日付や段のような読む情報は下にまとめる */}
+            <div>
+              <dt className="text-xs text-muted-foreground">勲章</dt>
+              <dd className="flex flex-wrap items-center gap-1.5 pt-0.5">
+                {medals.length > 0 ? (
+                  medals.map((reward) => (
+                    <RewardLink key={reward.key} name={reward.name}>
+                      {reward.image_url ? (
+                        // eslint-disable-next-line @next/next/no-img-element
+                        <img src={reward.image_url} alt={reward.name} width={22} height={22} loading="lazy" />
+                      ) : (
+                        <span className="text-xs">{reward.name}</span>
+                      )}
+                    </RewardLink>
+                  ))
+                ) : (
+                  <span className="font-medium">—</span>
+                )}
+              </dd>
+            </div>
+            <div>
+              <dt className="text-xs text-muted-foreground">宝物</dt>
+              <dd className="flex flex-wrap items-center gap-1.5 pt-0.5">
+                {treasures.length > 0 ? (
+                  treasures.map((reward) => (
+                    <RewardLink key={reward.key} name={reward.name}>
+                      {reward.image_url ? (
+                        // eslint-disable-next-line @next/next/no-img-element
+                        <img src={reward.image_url} alt={reward.name} width={22} height={22} loading="lazy" />
+                      ) : (
+                        <span className="text-xs">{reward.name}</span>
+                      )}
+                    </RewardLink>
+                  ))
+                ) : (
+                  <span className="font-medium">—</span>
+                )}
+              </dd>
+            </div>
+            {/* 入居日と位は、本人ではなく**この宮殿**を指す情報。
+                名前の下に埋めると、本人を指す情報と混ざる */}
+            <div>
+              <dt className="text-xs text-muted-foreground">入居日</dt>
+              <dd className="font-medium">{movedInOn}</dd>
+            </div>
             <div>
               <dt className="text-xs text-muted-foreground">位</dt>
               <dd className="font-medium">{tier ? tierLabel(tier) : '—'}</dd>
-            </div>
-            {/* 入居日は「位」と同じ並びに独立して置く。名前の下に埋めると、
-                本人を指す情報と宮殿の情報が混ざる */}
-            <div>
-              <dt className="text-xs text-muted-foreground">入居</dt>
-              <dd className="font-medium">{movedInOn}</dd>
             </div>
             {/* 称号が無い人には、次に取れるものを出す */}
             {!honors?.title && honors?.next_title && (
@@ -243,7 +269,6 @@ const AVATAR_SETTINGS_HREF = '/account#basic'
 // **同じものが2つの画面で違う順に並ぶと、どちらかが間違って見える**
 const SHOWCASE_KINDS: [RewardKind, string][] = [
   ['honor', '表彰'],
-  ['treasure', '宝物'],
 ]
 
 /**

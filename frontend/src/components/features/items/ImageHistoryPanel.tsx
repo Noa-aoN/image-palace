@@ -14,7 +14,8 @@ import {
 } from '@/lib/api/items'
 import type { Item } from '@/types/item'
 
-const PANEL_KEY = 'item-image-history'
+export const IMAGE_HISTORY_PANEL_KEY = 'item-image-history'
+const PANEL_KEY = IMAGE_HISTORY_PANEL_KEY
 
 /**
  * これまでに使った絵。

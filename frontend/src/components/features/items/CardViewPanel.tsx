@@ -665,7 +665,8 @@ function PresetBar({
   if (presets === null) return null
 
   return (
-    <div className="space-y-2 rounded-lg border border-border/70 bg-muted/30 px-3 py-2">
+    <>
+      <div className="space-y-2 rounded-lg border border-border/70 bg-muted/30 px-3 py-2">
       <div className="flex flex-wrap items-center gap-1.5">
         <span className="text-xs text-muted-foreground">ひな型</span>
         {presets.length === 0 ? (
@@ -736,6 +737,43 @@ function PresetBar({
         </div>
       )}
 
+      {naming ? (
+        <div className="flex gap-1.5">
+          <Input
+            value={name}
+            onChange={(e) => setName(e.target.value)}
+            onKeyDown={(e) => {
+              if (isSubmitEnter(e)) {
+                e.preventDefault()
+                remember()
+              }
+              if (e.key === 'Escape') setNaming(false)
+            }}
+            placeholder="ひな型の名前"
+            autoFocus
+            className="h-7 text-xs"
+          />
+          <Button size="sm" onClick={remember} disabled={saving || !name.trim()} className="h-7 text-xs">
+            {saving ? <Spinner size={12} /> : '覚える'}
+          </Button>
+        </div>
+      ) : (
+        <button
+          type="button"
+          onClick={() => setNaming(true)}
+          className="text-xs text-muted-foreground underline-offset-2 hover:underline"
+        >
+          いまの並びをひな型として覚える
+        </button>
+      )}
+      </div>
+
+      {/* AI の提案は**ひな型と別の枠**に置く。
+          ひな型は「自分で作った並びを呼び出す」もの、こちらは「まだ無い項目を探す」もの。
+          同じ枠に並べていたので、提案がひな型の一種に見え、
+          覚えさせた並びが書き換わるように読めた */}
+      <div className="space-y-2 rounded-lg border border-border/70 bg-muted/30 px-3 py-2">
+        <span className="text-xs text-muted-foreground">AI にまかせる</span>
       {/* AI に選ばせるのも「並びをまとめて当てる」操作。ひな型と同じ場所に置く。
           押しても**まだ何も起きない**（候補が並ぶだけ） */}
       <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
@@ -791,36 +829,8 @@ function PresetBar({
         </div>
       )}
 
-      {naming ? (
-        <div className="flex gap-1.5">
-          <Input
-            value={name}
-            onChange={(e) => setName(e.target.value)}
-            onKeyDown={(e) => {
-              if (isSubmitEnter(e)) {
-                e.preventDefault()
-                remember()
-              }
-              if (e.key === 'Escape') setNaming(false)
-            }}
-            placeholder="ひな型の名前"
-            autoFocus
-            className="h-7 text-xs"
-          />
-          <Button size="sm" onClick={remember} disabled={saving || !name.trim()} className="h-7 text-xs">
-            {saving ? <Spinner size={12} /> : '覚える'}
-          </Button>
-        </div>
-      ) : (
-        <button
-          type="button"
-          onClick={() => setNaming(true)}
-          className="text-xs text-muted-foreground underline-offset-2 hover:underline"
-        >
-          いまの並びをひな型として覚える
-        </button>
-      )}
-    </div>
+      </div>
+    </>
   )
 }
 

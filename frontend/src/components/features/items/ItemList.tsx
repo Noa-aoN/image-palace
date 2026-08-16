@@ -69,6 +69,18 @@ type BulkResultEntry = {
   reason?: string
 }
 
+// カードの上に出す「いま何をしているか」。
+//
+// 一覧の見出し（「タグを作り直す」など）をそのまま繋ぐと
+// 「タグを作り直す中」になってしまうので、札に出す言い方は別に持つ。
+// 種別から引くので、操作が増えても言い方がばらけない
+const BULK_BUSY_LABEL: Record<string, string> = {
+  tag: 'タグ付け',
+  meaning: '説明づくり',
+  factcheck: 'AIチェック',
+  regenerate: '作り直し',
+}
+
 const SKIP_REASON_LABEL: Record<string, string> = {
   no_meaning: '説明が無いためスキップ',
   already_has_meaning: '既に説明があるためスキップ',
@@ -168,6 +180,8 @@ type ItemCardProps = {
   sizes: string
   /** いま一括処理の順番が回っているカード。どれを触っているかを見せる */
   working: boolean
+  /** 何をしている最中か。輪だけだと「動いている」ことしか分からない */
+  workingLabel: string | null
   /**
    * 何をどの順で積むか（サーバーの設定から来る）。
    * カード側に固定で書いていたころは、絵を外しても出続け、並べ替えても順が変わらなかった。
@@ -175,7 +189,7 @@ type ItemCardProps = {
   blocks: string[]
 }
 
-function ItemCard({ item, selectionMode, selected, onToggle, fit, sizes, working, blocks }: ItemCardProps) {
+function ItemCard({ item, selectionMode, selected, onToggle, fit, sizes, working, workingLabel, blocks }: ItemCardProps) {
   const router = useRouter()
   const [failedImageUrl, setFailedImageUrl] = useState<string | null>(null)
   const warmedRef = useRef(false)
@@ -307,8 +321,15 @@ function ItemCard({ item, selectionMode, selected, onToggle, fit, sizes, working
           並んでいるカードのどこかが変わるのを待つことになる。
           見え方は大きく変えない。薄い覆いと小さな輪だけ */}
       {working && (
-        <span className="pointer-events-none absolute inset-0 z-10 flex items-center justify-center rounded-xl bg-background/50">
+        <span className="pointer-events-none absolute inset-0 z-10 flex flex-col items-center justify-center gap-1.5 rounded-xl bg-background/60">
           <Spinner size={18} />
+          {/* **何をしている最中かを書く。** 輪だけだと「動いている」ことしか
+              分からず、タグを付けているのか絵を作り直しているのかが読めない */}
+          {workingLabel && (
+            <span className="rounded-full bg-background/90 px-2 py-0.5 text-[11px] font-medium text-muted-foreground">
+              {workingLabel}中
+            </span>
+          )}
         </span>
       )}
       {/* 見出しも台紙の上に置く。**枠の外に文字があると、絵だけが「カード」に見える。**
@@ -445,7 +466,7 @@ export function ItemList({ initialTag = null }: { initialTag?: string | null }) 
   // 一覧の並べ方（サーバーの設定から来る）。既定は「絵だけ」
   const [listBlocks, setListBlocks] = useState<string[]>(['image'])
   // 一括AI操作（タグ再設定・付与・ファクトチェック・説明付与）の進捗とサマリ
-  const [bulkAction, setBulkAction] = useState<{ label: string; done: number; total: number } | null>(null)
+  const [bulkAction, setBulkAction] = useState<{ label: string; kind: BulkKind; done: number; total: number } | null>(null)
   // いま処理しているカード。上の進捗だけだと「どれが対象か」が分からず、
   // 並んでいるカードのどこかが変わるのを待つことになる
   const [bulkCurrentId, setBulkCurrentId] = useState<string | null>(null)
@@ -499,7 +520,7 @@ export function ItemList({ initialTag = null }: { initialTag?: string | null }) 
     setBulkSummary(null)
     setBulkResults(null)
     setResultsOpen(false)
-    setBulkAction({ label, done: 0, total: ids.length })
+    setBulkAction({ label, kind, done: 0, total: ids.length })
 
     const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms))
     const titleOf = (id: string) => items.find((it) => it.id === id)?.title ?? id
@@ -529,7 +550,7 @@ export function ItemList({ initialTag = null }: { initialTag?: string | null }) 
           if (res?.status === 429 && attempt < 30 && !cancelBulkRef.current) {
             attempt += 1
             const retryAfter = Number(res.headers?.['retry-after']) || 5
-            setBulkAction({ label: `${label}（混雑のため待機中）`, done: i, total: ids.length })
+            setBulkAction({ label: `${label}（混雑のため待機中）`, kind, done: i, total: ids.length })
             await sleep(Math.min(retryAfter, 60) * 1000)
             if (cancelBulkRef.current) break
             continue
@@ -539,7 +560,7 @@ export function ItemList({ initialTag = null }: { initialTag?: string | null }) 
           break
         }
       }
-      setBulkAction({ label, done: i + 1, total: ids.length })
+      setBulkAction({ label, kind, done: i + 1, total: ids.length })
     }
 
     setBulkCurrentId(null)
@@ -1213,22 +1234,22 @@ export function ItemList({ initialTag = null }: { initialTag?: string | null }) 
             */}
             <BulkMenu label="タグ" icon={<TagIcon size={14} />} disabled={bulkBusy || selectedIds.size === 0}>
               <DropdownMenuLabel>選択 {selectedIds.size} 件のタグ</DropdownMenuLabel>
-              <DropdownMenuItem onSelect={handleTagFill}>
+              <DropdownMenuItem onClick={handleTagFill}>
                 未設定だけ付ける
               </DropdownMenuItem>
               <DropdownMenuSeparator />
-              <DropdownMenuItem onSelect={handleTagReplace} variant="destructive">
+              <DropdownMenuItem onClick={handleTagReplace} variant="destructive">
                 すべて作り直す（上書き）
               </DropdownMenuItem>
             </BulkMenu>
 
             <BulkMenu label="説明" icon={<FileText size={14} />} disabled={bulkBusy || selectedIds.size === 0}>
               <DropdownMenuLabel>選択 {selectedIds.size} 件の説明</DropdownMenuLabel>
-              <DropdownMenuItem onSelect={handleMeaningFill}>
+              <DropdownMenuItem onClick={handleMeaningFill}>
                 未設定だけ付ける
               </DropdownMenuItem>
               <DropdownMenuSeparator />
-              <DropdownMenuItem onSelect={handleMeaningReplace} variant="destructive">
+              <DropdownMenuItem onClick={handleMeaningReplace} variant="destructive">
                 すべて作り直す（上書き）
               </DropdownMenuItem>
             </BulkMenu>
@@ -1236,11 +1257,11 @@ export function ItemList({ initialTag = null }: { initialTag?: string | null }) 
             <BulkMenu label="画像" icon={<ImageIcon size={14} />} disabled={bulkBusy || selectedIds.size === 0}>
               <DropdownMenuLabel>選択 {selectedIds.size} 件の画像</DropdownMenuLabel>
               {/* 失敗したものだけ作り直せると、成功済みのぶんのクレジットを無駄にしない */}
-              <DropdownMenuItem onSelect={() => handleRegenerate(true)}>
+              <DropdownMenuItem onClick={() => handleRegenerate(true)}>
                 失敗したものだけ作り直す
               </DropdownMenuItem>
               <DropdownMenuSeparator />
-              <DropdownMenuItem onSelect={() => handleRegenerate(false)} variant="destructive">
+              <DropdownMenuItem onClick={() => handleRegenerate(false)} variant="destructive">
                 すべて作り直す（{selectedIds.size} cr）
               </DropdownMenuItem>
             </BulkMenu>
@@ -1249,7 +1270,7 @@ export function ItemList({ initialTag = null }: { initialTag?: string | null }) 
                 チェックの対象はこれから増えるので、最初からメニューにしておく */}
             <BulkMenu label="AIチェック" icon={<ShieldCheck size={14} />} disabled={bulkBusy || selectedIds.size === 0}>
               <DropdownMenuLabel>選択 {selectedIds.size} 件をチェック</DropdownMenuLabel>
-              <DropdownMenuItem onSelect={handleFactCheck}>
+              <DropdownMenuItem onClick={handleFactCheck}>
                 意味・説明が正しいか
               </DropdownMenuItem>
             </BulkMenu>
@@ -1371,6 +1392,7 @@ export function ItemList({ initialTag = null }: { initialTag?: string | null }) 
             blocks={listBlocks}
             sizes={cardImageSizes(display.columns)}
             working={bulkCurrentId === item.id}
+            workingLabel={bulkAction ? (BULK_BUSY_LABEL[bulkAction.kind] ?? null) : null}
           />
         ))}
       </div>

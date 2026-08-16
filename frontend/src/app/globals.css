@@ -76,6 +76,19 @@
   --landing-panel-bg: rgba(255, 255, 255, 0.52);
   --landing-panel-border: color-mix(in srgb, var(--palace) 62%, transparent);
   --landing-panel-radius: 1rem;
+  /* 器の縁。**宮殿の中の面は、灰色ではなく金で縁取る。**
+     灰の細線だと、どの面も同じ「枠線」に見えて、地の ivory から浮かない。
+     金を薄く敷くと、面の縁が地となじんだまま、器としての輪郭だけが残る。
+
+     濃さは2段。**面そのもの**（カード）は控えめに、
+     **面の中に置く器**（プロパティ）はもう一段薄くする。
+     同じ濃さで入れ子にすると、内側の枠のほうが強く見えて主従が逆になる */
+  --edge-gold: color-mix(in srgb, var(--palace) 42%, transparent);
+  --edge-gold-soft: color-mix(in srgb, var(--palace) 26%, transparent);
+  /* プロパティの地。**灰を敷かない。** muted の灰は青みがあり、
+     ivory の地の上では汚れて見える。ほんのり暖かい白にして、
+     字が乗る面としての明るさを上げる */
+  --surface-warm: #FCFAF5;
   --card: oklch(1 0 0);
   --card-foreground: oklch(0.145 0 0);
   --popover: oklch(1 0 0);
@@ -592,11 +605,49 @@
 .hero-content {
   position: relative;
   z-index: 40;
-  opacity: calc(1 - var(--fade, 0));
-  /* ズームに合わせて拡大しながら外へ消える（スクロールでズーム中だと分かりやすく） */
-  transform: translateY(calc(var(--fade, 0) * -12px)) scale(calc(1 + var(--fade, 0) * 0.7));
+
+  /* 消え方。**色と透明度を一緒に動かす。**
+     黒のまま薄くしていくと、下の明るい石や空が字の中に透けて、
+     濁った灰色に見える（半透明の黒は、背景を汚す）。
+     消えるより先にアイボリーへ寄せると、最後は霞と同じ色になって空気に溶ける。
+
+     色は透明度より速く動かす（1.45倍）。黒っぽいまま半透明でいる時間を短くするため。
+     白へ飛ばさないのは、この地の白は光のほうだから。字が光ると読み物でなくなる。 */
+  --dissolve: min(1, calc(var(--fade, 0) * 1.45));
+
+  /* **色そのものを差し替える。** 中の要素は var(--foreground) / var(--palace) を
+     使って字の色を決めているので、ここを溶かせば全部が一緒に溶ける。
+     要素ごとに color を上書きすると、インラインの指定に負けて黒が残る */
+  --foreground: color-mix(in oklab, var(--hero-ink), var(--hero-dissolve-to) calc(var(--dissolve) * 100%));
+  --palace: color-mix(in oklab, var(--hero-gold), var(--hero-dissolve-to) calc(var(--dissolve) * 100%));
+  color: var(--foreground);
+
+  opacity: calc(1 - var(--dissolve));
+  /* 拡大は控えめに。**ズームの主役は絵**で、字はその手前から静かに退く。
+     大きく引き伸ばすと、消えぎわに字が画面いっぱいへ広がって騒がしい */
+  transform: translateY(calc(var(--dissolve) * -6px)) scale(calc(1 + var(--fade, 0) * 0.05));
   transform-origin: center center;
-  will-change: opacity, transform;
+  will-change: opacity, transform, color;
+}
+
+/* 溶ける前と後の色。
+   溶けた先は**この地の霞と同じ暖かいアイボリー**。白にすると、
+   開いた扉から差す光と同じ色になり、字が発光して見える。
+
+   溶ける前の色をここに控えるのは、`--foreground` を自分自身から
+   作り直せない（循環参照になる）ため */
+:root {
+  --hero-ink: oklch(0.27 0.005 60);
+  --hero-gold: #c6a75e;
+  --hero-dissolve-to: #efe3ce;
+}
+
+/* 道の突き当たり（光と門が置かれる高さ）。
+   **1か所で持つ。** 光と門を別々の値で置いていたころは、
+   門が 13.5svh・光が 17.5% と 4% ずれていて、光の中に門が無かった。
+   低い窓では上へ寄せる（縦が詰まると、道の突き当たりではなく道の上に浮いて見える） */
+:root {
+  --road-focus-top: clamp(10svh, calc(13.5svh - (900px - 100svh) * 0.06), 13.5svh);
 }
 
 /* 流れる雲（上空・スクリムの上で視認性確保） */
@@ -1361,26 +1412,37 @@
   position: absolute;
   left: 50%;
   /* 道が集まっていく先（地平線は .road-bg__plane の top: 26%）より、さらに奥。
-     % で持つので、窓の高さが変わっても道との関係は崩れない */
-  top: 13.5%;
+     割合で持つので、窓の高さが変わっても道との関係は崩れない。
+
+     **低い窓では、割合そのものを上げる。** 縦が詰まると、上に空が残らないまま
+     門だけが下がって見え、道の突き当たりではなく道の上に浮いて見える。
+     900px を境に、縮んだぶんだけ少しずつ上へ寄せる（clamp で行き過ぎを止める） */
+  top: var(--road-focus-top);
   /* 大きさも窓に合わせる。px で固定すると、窓を広げたときだけ門が近づいて見える。
      **光より小さく**保つ（同じ大きさだと、光と門のどちらを見ればよいのか決まらない） */
   width: clamp(76px, 8vw, 116px);
   aspect-ratio: 132 / 92;
   pointer-events: none;
   background: url('/auth-gate.webp') center bottom / contain no-repeat;
-  /* 遠くの霞の中なので、彩度を落として明るく飛ばす。
-     ただし**姿が読める程度には残す**（何の建物か分からないと、
-     行き先を示すという役目を果たさない） */
-  filter: blur(1.8px) saturate(0.66) brightness(1.12) opacity(0.72);
-  opacity: calc(0.66 * var(--road-glow, 0));
+  /* 光の手前に置く（光は門を照らすもので、覆うものではない） */
+  z-index: 1;
+  /* 遠くの霞の中だが、**姿が読める程度には残す**。
+     何の建物か分からないと、行き先を示すという役目を果たさない。
+     ぼかしと彩度を落としすぎていたので、輪郭が残る側へ寄せた
+     （blur 1.8→0.9px / saturate 0.66→0.78 / 透過 0.72→0.85） */
+  filter: blur(0.9px) saturate(0.78) brightness(1.1) opacity(0.85);
+  /* **光より早く姿を出す。** 同じ立ち上がりだと、光が十分に育つまで
+     何があるのか分からず、道の先が長いあいだ「ただの明るい点」になる。
+     1.7倍の速さで立ち上げ、光が満ちる前に行き先が読めるようにする */
+  opacity: calc(0.74 * min(1, var(--road-glow, 0) * 1.7));
   /* 中心合わせは margin ではなく translate で。
      大きさが窓に応じて変わるので、負の margin だと中心がずれる */
   transform: translate(-50%, -50%) scale(calc(0.55 + 0.45 * var(--road-glowz, 0)));
   transform-origin: 50% 50%;
   /* 四方を地へ溶かす。矩形の縁が出ると、絵が貼ってあることが分かってしまう */
-  -webkit-mask-image: radial-gradient(60% 62% at 50% 55%, #000 18%, transparent 82%);
-  mask-image: radial-gradient(60% 62% at 50% 55%, #000 18%, transparent 82%);
+  /* 溶かし始めを外側へ寄せる（18%→38%）。中心の姿を残したまま、縁だけを地へ返す */
+  -webkit-mask-image: radial-gradient(62% 64% at 50% 55%, #000 38%, transparent 86%);
+  mask-image: radial-gradient(62% 64% at 50% 55%, #000 38%, transparent 86%);
 }
 :root[data-motion='off'] .road-bg__gate {
   opacity: 0;
@@ -1390,15 +1452,20 @@
 .road-intro__glow {
   position: absolute;
   left: 50%;
-  top: 17.5%;
+  /* 門と同じ高さ。**門の位置に光が重なる**ようにする
+     （別々の値で置くと、光の外に門が浮いて、2つの物に見える） */
+  top: var(--road-focus-top);
+  /* **光は門の後ろ。** 門を照らす光であって、門を覆う光ではない。
+     並び順だけに任せると、あとから要素を足したときに前後が入れ替わる */
+  z-index: 0;
   width: 150px;
   height: 105px;
-  margin: -52px 0 0 -75px;
   filter: blur(4px);
   opacity: calc(0.4 * var(--road-glow, 0));
-  /* スクロールに合わせた微ズーム: 半分サイズから --road-glowz（フェードより
+  /* 中心合わせは負の margin ではなく translate で（門と同じやり方に揃える）。
+     スクロールに合わせた微ズーム: 半分サイズから --road-glowz（フェードより
      長い 0→1）で少しずつ等倍へ近づく＝奥から光が近づいてくる感じ */
-  transform: scale(calc(0.5 + 0.5 * var(--road-glowz, 0)));
+  transform: translate(-50%, -50%) scale(calc(0.5 + 0.5 * var(--road-glowz, 0)));
   transform-origin: 50% 50%;
 }
 /* コア: 開扉フレア（hero-flare__core）を踏襲した 白→暖金 の柔らかい発光。

@@ -19,6 +19,7 @@ import {
   type Segment,
 } from './floorplan-geometry'
 import { useMotion } from '@/hooks/useMotion'
+import { SPIN_PERIOD_MS } from '@/lib/spin'
 
 // 投影：平面の奥（+y）へ進むほど画面では上へ詰まり（KY）、高さ z は上へ持ち上げる。
 // 固定のせん断は入れない（yaw = 0 のとき＝正面向きは、傾かずまっすぐ見える）。
@@ -163,7 +164,7 @@ function Column({ cx, cy, r, h = COLUMN_H, yaw = 0, road = false }: { cx: number
 // 記憶資産カードと同じく「平面で回してから投影する」方式にする。
 // 首振り（反転）ではなく、一周をゆっくり繰り返す連続回転にする（回転中に宮殿の端が
 // カード枠からはみ出して切れるのは許容する）。
-const SPIN_PERIOD_MS = 54000 // 一周にかける時間（速度を 2/3 に＝周期は 1.5 倍でさらにゆっくり）
+
 
 // enabled: アニメーション設定が ON か。paused: ホバー中か（その角度のまま止める）。
 function useYaw(enabled: boolean, paused: boolean): number {

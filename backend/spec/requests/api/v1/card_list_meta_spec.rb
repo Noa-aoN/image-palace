@@ -21,8 +21,8 @@ RSpec.describe "一覧の並べ方（meta.card_list）", type: :request do
 
   before { user.items.create!(title: "語", item_type: item_type) }
 
-  it "既定では見出し語と絵を出す" do
-    expect(meta["blocks"]).to eq([ "image" ])
+  it "既定では見出し語と絵と意味・説明を出す" do
+    expect(meta["blocks"]).to eq(%w[image meaning])
     expect(meta["image"]).to be(true)
   end
 
@@ -58,7 +58,7 @@ RSpec.describe "一覧の並べ方（meta.card_list）", type: :request do
 
   describe "設定を変えた直後" do
     it "次に取り直した一覧へそのまま出る（再読み込みを挟まない）" do
-      expect(meta["blocks"]).to eq([ "image" ])
+      expect(meta["blocks"]).to eq(%w[image meaning])
 
       patch "/api/v1/settings",
             params: { setting: { card_list_layout: [ { key: "title", visible: true },

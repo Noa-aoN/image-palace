@@ -8,6 +8,7 @@ import { useDiagramMode } from '@/hooks/useDiagramMode'
 import { useMotion } from '@/hooks/useMotion'
 import { DiagramModeToggle } from './DiagramModeToggle'
 import type { ItemsSummary } from '@/lib/api/items'
+import { SPIN_PERIOD_MS } from '@/lib/spin'
 
 // 立方体1個分の3面配色（天面・左面・右面）。種類ごとに色を変えて判別しやすくする。
 type Palette = { top: string; left: string; right: string }
@@ -22,6 +23,42 @@ const EY = { x: -0.5, y: 0.25 }
 
 // footprint を包む菱形の半幅（配置や自動縮小の計算に使う）。
 const halfW = (s: UnitShape) => (s.w + s.d) / 2
+
+// 2色のあいだを t（0〜1）で混ぜる。**回っている最中の面の色を作るため**。
+// 明暗を2色から選ぶ形だと、正面を向いた面（いちばん大きく見える面）が
+// 一段で切り替わり、明滅して見える。
+const mixHex = (from: string, to: string, t: number) => {
+  const parse = (hex: string) => [1, 3, 5].map((i) => parseInt(hex.slice(i, i + 2), 16))
+  const [r1, g1, b1] = parse(from)
+  const [r2, g2, b2] = parse(to)
+  const k = Math.min(1, Math.max(0, t))
+  const to2 = (v: number) => Math.round(v).toString(16).padStart(2, '0')
+  return `#${to2(r1 + (r2 - r1) * k)}${to2(g1 + (g2 - g1) * k)}${to2(b1 + (b2 - b1) * k)}`
+}
+
+// 側面の外向き（回転前）。footprint の四隅の並びに対応する
+// （[-hw,-hd] → [hw,-hd] → [hw,hd] → [-hw,hd] の各辺）。
+const FACE_NORMALS = [
+  [0, -1],
+  [1, 0],
+  [0, 1],
+  [-1, 0],
+]
+
+// その面がどれだけ「右」を向いているか（0=左向き / 1=右向き）。
+//
+// 光は右上から当たっている前提。面の向きを画面へ投影して、
+// 横向きの成分をそのまま明るさにする。**角度の連続な関数**なので、
+// 回っても色が跳ばない。
+function faceLight(index: number, cos: number, sin: number) {
+  const [nx, ny] = FACE_NORMALS[index]
+  const rx = nx * cos - ny * sin
+  const ry = nx * sin + ny * cos
+  const sx = rx * EX.x + ry * EY.x
+  const sy = rx * EX.y + ry * EY.y
+  const len = Math.hypot(sx, sy) || 1
+  return (sx / len + 1) / 2
+}
 
 type AssetType = {
   key: string
@@ -119,6 +156,8 @@ function footprint(cx: number, cy: number, s: UnitShape, yaw: number) {
 // 面の向き（画面の左右どちら側か）で陰影を変える。
 function unitPolys(cx: number, cy: number, s: UnitShape, pal: Palette, key: string, yaw = 0, bundled = false) {
   const base = footprint(cx, cy, s, yaw)
+  const cos = Math.cos(yaw)
+  const sin = Math.sin(yaw)
   const d = s.depth
   const top = base.map((pt) => ({ x: pt.x, y: pt.y - d }))
 
@@ -129,8 +168,10 @@ function unitPolys(cx: number, cy: number, s: UnitShape, pal: Palette, key: stri
     return {
       points: `${p(pt.x, pt.y)} ${p(next.x, next.y)} ${p(next.x, next.y - d)} ${p(pt.x, pt.y - d)}`,
       depth: mid.y,
-      // 画面の左半分を向く面は暗く、右半分を向く面は明るくする。
-      fill: mid.x < cx ? pal.left : pal.right,
+      // 左を向くほど暗く、右を向くほど明るい。**面の向きから連続に作る。**
+      // 「中心より左か右か」で2色から選ぶ形だと、正面を向いた面
+      // （いちばん大きく見える面）が一段で切り替わり、明滅して見えた
+      fill: mixHex(pal.left, pal.right, faceLight(i, cos, sin)),
       corners: { a: pt, b: next },
     }
   })
@@ -359,7 +400,7 @@ function lidSeamPolys(cx: number, cy: number, s: UnitShape, yaw: number) {
 }
 
 // 縦軸まわりの回転の周期。アニメーション ON のときだけ回し、ホバー中は止める。
-const SPIN_PERIOD_MS = 18000
+
 
 function useYaw(active: boolean): number {
   const [yaw, setYaw] = useState(0)

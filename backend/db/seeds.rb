@@ -1,10 +1,23 @@
-# ItemTypeのseedデータ
+# ItemType の seed データ。
+#
+# **種別は「何として覚えるか」で分ける。** 持てる項目（読み仮名・生没年・所在地…）が
+# 種別ごとに決まるので、ここが粗いと、人物にも出来事にも語の項目が並ぶことになる。
+#
+# 追加は後ろへ足す（画面の並びは登録順）。既にあるものの名前は変えない
+# （カードが item_type_id で指しているので、名前を変えても実害は無いが、
+#   識別名は AI の判定にも出るため、途中で意味を変えない）。
 item_types_data = [
   { name: "term", label: "単語" },
   { name: "concept", label: "概念" },
   { name: "entity", label: "実体" },
   { name: "person", label: "人物" },
-  { name: "event", label: "出来事" }
+  { name: "event", label: "出来事" },
+  # ここから追加分。「言葉を覚える」以外の使い方（図鑑・年表・タスク・日記）に要る
+  { name: "place", label: "場所" },
+  { name: "work", label: "作品" },
+  { name: "organization", label: "組織" },
+  { name: "task", label: "タスク" },
+  { name: "record", label: "記録" }
 ]
 
 item_types_data.each do |data|

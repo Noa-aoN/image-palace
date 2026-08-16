@@ -73,6 +73,14 @@ function DropdownMenuLabel({
   )
 }
 
+/**
+ * メニューの1項目。**押したときの処理は `onClick` で渡す。**
+ *
+ * `onSelect` は受け取らない。DOM の `onSelect`（文字を選択したときに出るもの）と
+ * 名前が同じで、型は通るのに**何も起きない**。実際、一覧の一括操作
+ * （タグ・説明・画像・AIチェック）が丸ごと無反応になっていた。
+ * 型で弾いて、同じ間違いを二度と通さない。
+ */
 function DropdownMenuItem({
   className,
   inset,
@@ -81,6 +89,8 @@ function DropdownMenuItem({
 }: MenuPrimitive.Item.Props & {
   inset?: boolean
   variant?: "default" | "destructive"
+  /** @deprecated 効きません。`onClick` を使ってください */
+  onSelect?: never
 }) {
   return (
     <MenuPrimitive.Item
