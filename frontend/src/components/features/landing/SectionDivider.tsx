@@ -18,9 +18,12 @@ interface SectionDividerProps {
  * 波はサイン波の近似（半周期ごとに、制御点を 1/3・2/3 の位置へ振幅の 4/3 倍で置く）。
  * 適当な曲線を並べると、山谷の高さや幅が揃わず手描きのように見える。
  *
- * 上辺は直線で前セクションに密着させる。ここに隙間があると帯が宙に浮く。
+ * **上端はぼかす。** ここを不透明のまま置くと、塗りが道（石畳）を直線で切ってしまい、
+ * 波のすぐ上にもう1本の境目ができる。境目が2本あると、波がいくら滑らかでも
+ * 不自然に見える。上端を透明から始めて塗りへ移すと、道は霞んで消え、
+ * 見える境目は波1本になる。ぼかしは CSS 側（mask-image）が持つ。
  */
-const BASE = 30 // 波の中心線（viewBox 0 0 1440 60）
+const BASE = 68 // 波の中心線（viewBox 0 0 1440 90）。ぼかしが明ける下側に置く
 const AMP = 18.7 // 制御点の振れ幅。実際の山は中心線から約14
 
 const WAVE = [
@@ -36,7 +39,7 @@ export function SectionDivider({ fill, flip, className }: SectionDividerProps) {
   return (
     <svg
       aria-hidden
-      viewBox="0 0 1440 60"
+      viewBox="0 0 1440 90"
       preserveAspectRatio="none"
       className={cn('section-divider', flip && 'section-divider--flip', className)}
     >

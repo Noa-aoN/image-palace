@@ -778,10 +778,16 @@
   top: 0;
   left: 0;
   width: 100%;
-  height: 60px;
+  height: 90px;
   z-index: 1;
   display: block;
   pointer-events: none;
+  /* 上端を透明から始める。**塗りが道を直線で切るのを防ぐ**ため。
+     不透明のまま置くと、波のすぐ上にもう1本の境目ができて、
+     波がいくら滑らかでも不自然に見える。
+     波（中心線 y=68）は明けきったところに来るので、輪郭は鈍らない */
+  -webkit-mask-image: linear-gradient(to bottom, transparent 0%, #000 50%);
+  mask-image: linear-gradient(to bottom, transparent 0%, #000 50%);
 }
 .section-divider--flip {
   transform: scaleY(-1);
@@ -802,7 +808,7 @@
 
 @media (max-width: 640px) {
   .section-divider {
-    height: 40px;
+    height: 62px;
   }
 }
 
