@@ -108,7 +108,11 @@ export function HeroDescription({
         覚えたい・残したい言葉を書くと、AIがイメージを生成し、「
         <strong className="font-semibold">記憶のカード</strong>」を作ります。
       </p>
-      {/* 用途は**それぞれを太字にする**。文のまま流すと、
+      {/* 2段目以降も**濃さを落としすぎない**。#5A5348 まで薄くしていたころは
+          実測 3.15 で基準（4.5）に届かず、絵の上で字が溶けていた。
+          1段目とのわずかな差だけ残して、読める濃さに戻す。
+
+          用途は**それぞれを太字にする**。文のまま流すと、
           読み飛ばした人に「単語帳のサービス」としてだけ残る。
           名詞だけを立てて、拾い読みでも用途の広さが目に入るようにする */}
       <p
@@ -117,7 +121,7 @@ export function HeroDescription({
           // そちらのほうが濃くなって字が抜けて見える
           textClass
         }`}
-        style={styled ? { color: '#5A5348' } : undefined}
+        style={styled ? { color: '#3E3830' } : undefined}
       >
         集めたカードは、
         <strong className="font-semibold">単語帳</strong>や
@@ -133,7 +137,7 @@ export function HeroDescription({
       </p>
       <p
         className={`mt-3 text-[0.85rem] leading-relaxed text-balance md:text-base ${textClass}`}
-        style={styled ? { color: '#5A5348' } : undefined}
+        style={styled ? { color: '#3E3830' } : undefined}
       >
         {/* 句点で切る。ここも1文ずつ。
             文の途中で行を折ると JSX が改行を空白1つに変えてしまうので、
