@@ -145,24 +145,27 @@ export function HeroScrollZoom() {
                 順番を入れ替えない。使い道から始めると、何を作る話なのか分からないまま
                 用途だけが並ぶ */}
             <p className="text-[0.9rem] leading-relaxed md:text-lg" style={{ color: 'var(--foreground)' }}>
-              覚えたい言葉や、残しておきたいことを書くと、AI がその内容をイメージにしてくれます。
-              言葉とイメージがひとつになった<strong className="font-semibold">カード</strong>が、
-              ImagePalace の基本単位です。
+              覚えたい言葉や、残しておきたいことを書くと、AI がその言葉とイメージがひとつになった
+              <strong className="font-semibold">カード</strong>を作ってくれます。
             </p>
-            {/* 用途は、書かれた区切りのまま改行する。
-                一続きにすると、暗記の道具にも記録の道具にもなることが読み流される */}
+            {/* 用途は**それぞれを太字にする**。文のまま流すと、
+                読み飛ばした人に「単語帳のサービス」としてだけ残る。
+                名詞だけを立てて、拾い読みでも用途の広さが目に入るようにする */}
             <p className="mt-3 text-[0.85rem] leading-relaxed md:text-base" style={{ color: '#5A5348' }}>
-              使い方は自由。
+              <strong className="font-semibold">単語帳</strong>や
+              <strong className="font-semibold">用語集</strong>での暗記、
+              <strong className="font-semibold">図鑑</strong>・
+              <strong className="font-semibold">相関図</strong>・
+              <strong className="font-semibold">年表</strong>づくり。
               <br />
-              単語帳や用語集での暗記、図鑑・相関図・年表づくり。
-              <br />
-              絵日記、タスク管理、ビジョンボード。
-              <br />
-              学びにも、記録にも、整理にも、思いついた形で使えます。
+              <strong className="font-semibold">絵日記</strong>、
+              <strong className="font-semibold">タスク管理</strong>、
+              <strong className="font-semibold">ビジョンボード</strong>など、使い方は無限大。
             </p>
             <p className="mt-3 text-[0.85rem] leading-relaxed md:text-base" style={{ color: '#5A5348' }}>
-              作ったカードは、自分の「宮殿」に並べて、整理して、組み合わせて、反復練習。
-              集めたカードが、そのまま自分だけの知識と記憶の宮殿になっていきます。
+              {/* 1文で続ける。行を折ると JSX が改行を空白1つに変えるので、
+                  「反復練習。 それが」と不自然な空きが入る */}
+              作ったカードは、自分の「宮殿」に並べて、整理して、組み合わせて、反復練習。それが自分だけの記憶の宮殿になっていきます。
             </p>
           </div>
           <LandingCta className="flex w-full max-w-sm flex-col gap-3 sm:w-auto sm:max-w-none sm:flex-row" />
