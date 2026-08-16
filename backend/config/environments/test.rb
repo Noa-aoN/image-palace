@@ -50,4 +50,16 @@ Rails.application.configure do
 
   # Raise error when a before_action's only/except options reference missing actions.
   config.action_controller.raise_on_missing_callback_actions = true
+
+  # 暗号化する列（User#totp_secret）のための鍵。
+  #
+  # **テストは秘密に依存させない。** 本番の鍵は credentials に入っていて、
+  # 読むには master.key が要る。その鍵は本番イメージに入れていない（.dockerignore）ので、
+  # CI で本番イメージのまま rspec を回すと、鍵が引けず 59 例が落ちる。
+  #
+  # ここに固定の値を置けば、どの機でも・鍵を渡さなくても同じように走る。
+  # **試験専用の値**で、本番の暗号文はこれでは開かない
+  config.active_record.encryption.primary_key = "test_primary_key_for_specs_only_32b"
+  config.active_record.encryption.deterministic_key = "test_deterministic_key_specs_32b"
+  config.active_record.encryption.key_derivation_salt = "test_key_derivation_salt_specs_32b"
 end
