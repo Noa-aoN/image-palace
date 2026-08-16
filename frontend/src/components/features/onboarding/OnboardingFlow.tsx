@@ -2,12 +2,13 @@
 
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { BookImage, Compass, GalleryHorizontal, Layers, Sparkles } from 'lucide-react'
+import { BookImage, Coins, Compass, GalleryHorizontal, Layers, Sparkles } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { getSettings, updateSettings } from '@/lib/api/settings'
 import { getProfile, updateProfile } from '@/lib/api/account'
 import { useSettingsStore } from '@/stores/settings'
 import { DISPLAY_STYLES, DISPLAY_STYLE_KEYS, DEFAULT_DISPLAY_STYLE, type DisplayStyle } from '@/lib/display-style'
+import { CREDIT_UNIT_SHORT, TRIAL_CREDITS, MONTHLY_FREE_CREDITS, INITIAL_CREDITS } from '@/lib/billing'
 import {
   EMPTY_DRAFT,
   ONBOARDING_STEP_COUNT,
@@ -326,6 +327,33 @@ function DisplayStyleStep({ value, onChange }: { value: DisplayStyle; onChange: 
       <p className="text-xs text-muted-foreground">
         ここで決めたものは、あとから環境設定でいつでも変えられます。
       </p>
+
+      {/* 作り始める直前に、**お金の話だけ**を置く。
+          ここを逃すと「押してから消費量を知る」ことになる。
+          並べるのは3行まで — 覚えられない量を出しても読まれない */}
+      <div className="space-y-1.5 rounded-xl border border-border/70 bg-muted/40 px-3 py-3">
+        <p className="flex items-center gap-1.5 text-sm font-medium">
+          <Coins size={15} style={{ color: 'var(--palace)' }} />
+          はじめる前に
+        </p>
+        <ul className="space-y-1 text-xs leading-relaxed text-muted-foreground">
+          <li>絵を1枚つくるたびに 1{CREDIT_UNIT_SHORT} 使います。</li>
+          <li>
+            はじめは {INITIAL_CREDITS}{CREDIT_UNIT_SHORT} あります
+            （お試し {TRIAL_CREDITS}{CREDIT_UNIT_SHORT} ＋ 当月分 {MONTHLY_FREE_CREDITS}{CREDIT_UNIT_SHORT}）。
+          </li>
+          <li>残りはいつでも画面上のヘッダーで確認できます。</li>
+        </ul>
+        {/* 別の窓で開く。ここで移ってしまうと、案内が途中で消えて次回また最初から出る */}
+        <a
+          href="/guide"
+          target="_blank"
+          rel="noopener noreferrer"
+          className="inline-block text-xs underline underline-offset-2 hover:text-foreground"
+        >
+          詳しい使い方を見る
+        </a>
+      </div>
     </div>
   )
 }
