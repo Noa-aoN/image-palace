@@ -1,5 +1,7 @@
 'use client'
 
+import { Plus } from 'lucide-react'
+
 import { useCallback, useEffect, useState } from 'react'
 import { Ticket } from 'lucide-react'
 import { Button } from '@/components/ui/button'
@@ -131,6 +133,8 @@ export function RedeemCodePanel({
               </li>
             ))}
           </ul>
+          {/* 常に出すのは3件まで。ここは主役ではない（主役は入力欄）ので、
+              続きは押したときだけ足す */}
           {hasMore && !expanded && (
             <button
               type="button"
@@ -138,9 +142,10 @@ export function RedeemCodePanel({
                 setExpanded(true)
                 loadHistory(100)
               }}
-              className="text-xs text-muted-foreground hover:underline"
+              aria-label="引き換えた記録をもっと読み込む"
+              className="flex h-6 w-6 items-center justify-center rounded-full border border-border text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
             >
-              もっと見る
+              <Plus size={14} />
             </button>
           )}
         </div>

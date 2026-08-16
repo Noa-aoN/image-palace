@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useMemo, useState, useRef } from 'react'
-import { ChevronRight, Eraser, ListChecks, Sparkles } from 'lucide-react'
+import { ChevronRight, Eraser, ListChecks, Sparkles, HelpCircle } from 'lucide-react'
 import { PanelSlotContent } from '@/components/features/panel/PanelSlot'
 import { useRightPanelStore } from '@/stores/rightPanel'
 import { useSettingsStore } from '@/stores/settings'
@@ -32,6 +32,7 @@ import type { View } from '@/types/view'
 import type { Wordlist } from '@/types/wordlist'
 import { ASPECT_RATIOS, ASPECT_RATIO_KEYS, type AspectRatioKey } from '@/lib/aspect-ratio'
 import { HelpPopover } from '@/components/ui/help-popover'
+import { Tooltip } from '@/components/ui/tooltip'
 import { CreditCostNote } from '@/components/features/billing/CreditCostNote'
 
 const MAX_TITLE_LENGTH = 100
@@ -404,34 +405,42 @@ export function CreateItemForm({
           入力途中の内容が失われるため、その場で開く。
         */}
         <div className="flex flex-wrap items-center gap-2">
+          {/* 名前だけでは何が起きるか分からない。**押す前に説明が出る**ようにする
+              （title 属性は1秒近く待たされ、迷って手が止まってから出るので間に合わない） */}
           {wordlists.length > 0 && (
+            <Tooltip label="前に作った言葉のリストから、まとめて入れます">
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                data-wordlist-toggle
+                onClick={() => (inPanel ? setShowWordlists((v) => !v) : openWordlistPanel())}
+                aria-expanded={inPanel ? showWordlists : undefined}
+                disabled={submitting}
+                className="flex items-center gap-1.5"
+              >
+                <ListChecks size={15} />
+                ワードリスト
+                <HelpCircle size={13} className="text-muted-foreground" aria-hidden />
+              </Button>
+            </Tooltip>
+          )}
+          {/* 「デルフォイ」は世界観の地名で、何が起きるかは名前から読めない。
+              **ランダムに言葉が来る**ことを、押す前に言う */}
+          <Tooltip label="ランダムに言葉をひとつ受け取って、入力欄に足します">
             <Button
               type="button"
               variant="outline"
               size="sm"
-              data-wordlist-toggle
-              onClick={() => (inPanel ? setShowWordlists((v) => !v) : openWordlistPanel())}
-              aria-expanded={inPanel ? showWordlists : undefined}
-              disabled={submitting}
-              title="保存したワードリストから単語をまとめて入れる"
+              onClick={consultOracle}
+              disabled={submitting || consulting}
               className="flex items-center gap-1.5"
             >
-              <ListChecks size={15} />
-              ワードリスト
+              {consulting ? <Spinner size={15} /> : <Sparkles size={15} />}
+              デルフォイ
+              <HelpCircle size={13} className="text-muted-foreground" aria-hidden />
             </Button>
-          )}
-          <Button
-            type="button"
-            variant="outline"
-            size="sm"
-            onClick={consultOracle}
-            disabled={submitting || consulting}
-            title="デルフォイから単語をひとつ受け取る"
-            className="flex items-center gap-1.5"
-          >
-            {consulting ? <Spinner size={15} /> : <Sparkles size={15} />}
-            デルフォイ
-          </Button>
+          </Tooltip>
           {/*
             クリアは常に置く。入力の有無で現れたり消えたりすると、隣のボタンの位置が動く。
             押し間違いで入力が消えないよう 2 段階にするが、確認中も文字は足さない

@@ -98,13 +98,10 @@ export const NAV_SECTIONS: NavSection[] = [
         label: 'ライブラリ', description: 'しまう場所。作ったものを一覧で見て、探して、整理する',
         children: [
           { href: '/items', icon: <GalleryHorizontal size={20} />, label: 'カード一覧' },
-          {
-            href: '/views',
-            icon: <LayoutGrid size={20} />,
-            label: 'キャンバス一覧',
-            // デッキはキャンバスの一種（view_type='deck'）。よく使うので下階層から直接開けるようにする
-            children: [{ href: '/views?type=deck', icon: <Layers size={18} />, label: 'デッキ一覧' }],
-          },
+          // デッキはキャンバスの一種（view_type='deck'）。
+          // 下階層に「デッキ一覧」を置いていたが、キャンバス一覧の中に絞り込みがあるので
+          // 同じ場所への道が2本になっていた。階層を1つ浅くするほうが探しやすい
+          { href: '/views', icon: <LayoutGrid size={20} />, label: 'キャンバス一覧' },
           { href: '/spaces', icon: <Frame size={20} />, label: 'スペース一覧' },
           { href: '/boxes', icon: <Box size={20} />, label: 'ボックス一覧' },
           { href: '/materials', icon: <Boxes size={20} />, label: 'マテリアル一覧' },

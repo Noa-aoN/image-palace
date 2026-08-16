@@ -38,6 +38,8 @@ class GenerateWordsService
     動植物に偏りすぎないようにし、専門用語・固有名詞（歴史的人物を含む）・雑学的な題材の比率を高めてください。
     ありきたりな日常語（りんご・犬など）に偏らず、「新しい出会い」になる語を重視してください。
     各要素は短い単語または語句にし、説明文・記号・番号は含めないでください。
+    **実在するものだけ**を挙げてください。それらしく聞こえる造語、複数の語をつなげただけの言い回し、
+    架空の作品・人物・地名は含めないでください。辞書・事典・百科事典で引ける語に限ります。
     グロテスク・残酷・暴力的・性的・強い不快感を与える題材は避け、安全で健全な語を選んでください。
     どんな場合でも要素数は最大 #{MAX_COUNT} 個までにしてください。
     必ず次の JSON 形式のみで返してください: {"words": ["単語1", "単語2", ...]}
@@ -46,8 +48,9 @@ class GenerateWordsService
   # exclude: 絶対に出さない語（既出＝受け取り済み）。avoid: 出す確率を大きく下げる語（キャンセル済み）。
   # difficulty: 語彙の難しさ（easy / normal / hard / expert）。
   # kind は利用記録（ai_usages）のラベル。呼び出し元ごとに分けると、原価の内訳を用途別に見られる
-  def self.call(theme: nil, count: nil, exclude: [], avoid: [], difficulty: nil, user: nil, kind: "words_generate")
-    new(theme:, count:, exclude:, avoid:, difficulty:, user:, kind:).call
+  def self.call(theme: nil, count: nil, exclude: [], avoid: [], difficulty: nil, user: nil,
+                kind: "words_generate", verify: false)
+    new(theme:, count:, exclude:, avoid:, difficulty:, user:, kind:, verify:).call
   end
 
   def self.normalize_difficulty(value)
@@ -56,9 +59,11 @@ class GenerateWordsService
 
   # count が nil/空のときは「おまかせ（自動）」。AI がテーマに応じた自然な数を返す。
   # 数値指定時は 1〜MAX_COUNT にクランプ。いずれも MAX_COUNT を超えないよう必ず切り詰める。
-  def initialize(theme:, count:, exclude: [], avoid: [], difficulty: nil, user: nil, kind: "words_generate")
+  def initialize(theme:, count:, exclude: [], avoid: [], difficulty: nil, user: nil,
+                 kind: "words_generate", verify: false)
     @user = user
     @kind = kind
+    @verify = verify
     @difficulty = self.class.normalize_difficulty(difficulty)
     @theme = theme.to_s.strip
     @count = count.present? ? count.to_i.clamp(1, MAX_COUNT) : nil
@@ -67,7 +72,13 @@ class GenerateWordsService
   end
 
   def call
-    request
+    words = request
+    return words unless @verify
+
+    verified = existing(words)
+    # 1つも残らないのは、たいてい Wikipedia 側の不調（全滅は不自然）。
+    # **確かめられないことを理由に、何も返さないほうが困る**ので、そのまま返す
+    (verified.presence || words).first(cap)
   end
 
   private
@@ -75,6 +86,14 @@ class GenerateWordsService
   # 切り詰めの上限（おまかせ時はハードキャップ＝MAX_COUNT）。
   def cap
     @count || MAX_COUNT
+  end
+
+  # 実在しないものが混じる前提で、少し多めに作らせる。
+  # ぴったり作らせると、落としたぶんだけ足りなくなる
+  def request_count
+    return @count unless @verify && @count
+
+    [ (@count * 2).clamp(@count + 2, MAX_COUNT), MAX_COUNT ].min
   end
 
   # 難しさの指示を末尾に足す。同じ土台に一段だけ条件を重ねる形にして、
@@ -90,7 +109,7 @@ class GenerateWordsService
         "個数: おまかせ（テーマに最適な数。十二支・曜日・七福神のような有限の集合は過不足なくすべて挙げる。" \
           "それ以外は10〜20程度。ただし最大 #{MAX_COUNT} 個）"
       else
-        "個数: #{@count}"
+        "個数: #{request_count}"
       end
     [ "テーマ: #{theme}", count_line, exclusion_instructions ].reject(&:blank?).join("\n")
   end
@@ -101,6 +120,32 @@ class GenerateWordsService
     lines << "次の語は既出のため絶対に出さないでください: #{@exclude.join('、')}" if @exclude.any?
     lines << "次の語はできるだけ避け、出す確率を大きく下げてください: #{@avoid.join('、')}" if @avoid.any?
     lines.join("\n")
+  end
+
+  # 実在する語だけに絞る。
+  #
+  # 言葉を作らせる仕組みは、それらしく聞こえる造語を平気で混ぜる。
+  # プロンプトで釘は刺すが、守られたかどうかは中を見ないと分からない。
+  # そこで**外の事実に当てる**。Wikipedia に記事があるかで確かめる。
+  #
+  # 判定は CandidateSearch#weak?（題がまるでかすっていない＝無い）に任せる。
+  # ここで自前の一致判定を書くと、表記ゆれの扱いが2か所に分かれる。
+  #
+  # 引けなかったものは**残す**。外の仕組みが落ちているときに、
+  # 実在する語まで消えるほうが害が大きい（モデレーションと同じ fail-open）。
+  # 結果は CandidateSearch 側で1日キャッシュされるので、同じ語の引き直しは安い。
+  def existing(words)
+    words.select { |word| exists?(word) }
+  end
+
+  def exists?(word)
+    result = ::Wikipedia::CandidateSearch.call(word)
+    return true if result.nil?
+
+    !result.weak?(word)
+  rescue StandardError => e
+    Rails.logger.warn "[GenerateWordsService] 実在確認に失敗（残します）: #{word}: #{e.class}: #{e.message}"
+    true
   end
 
   def clean_list(list)
@@ -124,7 +169,7 @@ class GenerateWordsService
     parsed = JSON.parse(content)
     words = Array(parsed["words"]).map { |w| w.to_s.strip }.reject(&:blank?).uniq
     words -= @exclude # 既出（受け取り済み）は確実に除外する
-    words = words.first(cap)
+    words = words.first(@verify && @count ? request_count : cap)
     raise GenerationError, "単語を生成できませんでした" if words.empty?
 
     words
