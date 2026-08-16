@@ -25,6 +25,23 @@ const TIER_LABELS: Record<string, string> = {
   topup: 'クレジット追加',
 }
 
+/**
+ * 世間で通じる呼び方。**位（市民・書記官…）は宮殿の中でだけの呼び名**なので、
+ * 課金の話をするときはこちらを添える。値は Stripe の商品名（free / standard …）と同じ並び。
+ */
+const TIER_PLAIN_LABELS: Record<string, string> = {
+  free: 'フリー',
+  standard: 'スタンダード',
+  pro: 'プロ',
+  creator: 'クリエイター',
+  studio: 'スタジオ',
+  topup: '買い切り',
+}
+
+export function tierPlainLabel(tier: string): string {
+  return TIER_PLAIN_LABELS[tier] ?? tier
+}
+
 /** 呼び名だけでは分かりにくいので、一覧では添え書きを出す */
 export const TIER_NOTES: Record<string, string> = {
   free: 'まずは試す',
