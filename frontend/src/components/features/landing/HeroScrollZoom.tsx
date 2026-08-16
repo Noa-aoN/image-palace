@@ -18,7 +18,7 @@ export function HeroScrollZoom() {
         // 上端に寄せていたころは、画面の上3分の1に文字が固まり、
         // 下の絵だけが広く空いていた。読むものを画面の中心寄りへ下ろす
         // （スクロール誘導は絶対配置なので、下げても押し出さない）
-        className="hero-stage flex flex-col items-center justify-start px-6 pt-[14vh] text-center md:pt-[16vh]"
+        className="hero-stage flex flex-col items-center justify-start px-6 pt-[7vh] text-center sm:pt-[10vh] md:pt-[13vh]"
       >
         {/* 背景画像（ズーム対象・最背面） */}
         {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -117,13 +117,13 @@ export function HeroScrollZoom() {
           {/* 大きさで読む順を決める。**名前 → 何をするか → どう使えるか**。
               いちばん大きいものが名前でないと、初めての人は何を見ているのか分からない */}
           <p
-            className="brand-wordmark mb-4 text-[clamp(2.25rem,10vw,5.25rem)] leading-none"
+            className="brand-wordmark mb-3 text-[clamp(2.25rem,10vw,5.25rem)] leading-none md:mb-4"
             style={{ color: 'var(--palace)' }}
           >
             IMAGE PALACE
           </p>
           <h1
-            className="mb-6 text-[clamp(1.3rem,5vw,2.1rem)] font-bold leading-snug tracking-tight md:text-4xl"
+            className="mb-4 text-[clamp(1.3rem,5vw,2.1rem)] font-bold leading-snug tracking-tight md:mb-6 md:text-4xl"
             style={{ color: 'var(--foreground)' }}
           >
             言葉をイメージに変えて、
@@ -134,21 +134,35 @@ export function HeroScrollZoom() {
               地・縁・角は `--landing-panel-*`（スクロール誘導と同じ紙）。
               白を薄くして絵を透かし、そのぶん縁を金にして輪郭を保つ */}
           <div
-            className="mb-10 max-w-lg px-6 py-5 text-left shadow-sm backdrop-blur-sm"
+            className="mb-6 max-w-lg px-6 py-4 text-left shadow-sm backdrop-blur-sm md:mb-8 md:max-w-xl md:py-5"
             style={{
               background: 'var(--landing-panel-bg)',
               border: '1px solid var(--landing-panel-border)',
               borderRadius: 'var(--landing-panel-radius)',
             }}
           >
-            <p className="text-[0.95rem] leading-relaxed md:text-lg" style={{ color: 'var(--foreground)' }}>
-              覚えたい言葉を書くと、AI がその情景を絵にします。
-              絵と言葉が一枚になった<strong className="font-semibold">メモリーカード</strong>が、
-              記憶の基本の単位です。
+            {/* 3段構え。**何ができるか → どう使えるか → 続けると何になるか**。
+                順番を入れ替えない。使い道から始めると、何を作る話なのか分からないまま
+                用途だけが並ぶ */}
+            <p className="text-[0.9rem] leading-relaxed md:text-lg" style={{ color: 'var(--foreground)' }}>
+              覚えたい言葉や、残しておきたいことを書くと、AI がその内容をイメージにしてくれます。
+              言葉とイメージがひとつになった<strong className="font-semibold">カード</strong>が、
+              ImagePalace の基本単位です。
             </p>
-            <p className="mt-3 text-[0.9rem] leading-relaxed md:text-base" style={{ color: '#5A5348' }}>
-              単語帳・学習図鑑・用語集はもちろん、ビジョンボードや絵日記としても。
-              集めたカードは、自分だけの宮殿として並べて眺められます。
+            {/* 用途は、書かれた区切りのまま改行する。
+                一続きにすると、暗記の道具にも記録の道具にもなることが読み流される */}
+            <p className="mt-3 text-[0.85rem] leading-relaxed md:text-base" style={{ color: '#5A5348' }}>
+              使い方は自由。
+              <br />
+              単語帳や用語集での暗記、図鑑・相関図・年表づくり。
+              <br />
+              絵日記、タスク管理、ビジョンボード。
+              <br />
+              学びにも、記録にも、整理にも、思いついた形で使えます。
+            </p>
+            <p className="mt-3 text-[0.85rem] leading-relaxed md:text-base" style={{ color: '#5A5348' }}>
+              作ったカードは、自分の「宮殿」に並べて、整理して、組み合わせて、反復練習。
+              集めたカードが、そのまま自分だけの知識と記憶の宮殿になっていきます。
             </p>
           </div>
           <LandingCta className="flex w-full max-w-sm flex-col gap-3 sm:w-auto sm:max-w-none sm:flex-row" />
