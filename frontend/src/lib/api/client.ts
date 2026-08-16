@@ -2,6 +2,7 @@ import axios from 'axios'
 import { useAuthStore } from '@/stores/auth'
 import { useItemsStore } from '@/stores/items'
 import { isPublicPath } from '@/lib/auth/public-paths'
+import { buildSessionEndRecord, reportSessionEnd } from '@/lib/auth/session-end'
 
 const AUTH_ERROR_EXCLUDED_PATHS = new Set([
   '/api/v1/auth',
@@ -56,13 +57,31 @@ apiClient.interceptors.response.use(
     const shouldRedirectOnUnauthorized = path ? !AUTH_ERROR_EXCLUDED_PATHS.has(path) : true
 
     if (error.response?.status === 401 && shouldRedirectOnUnauthorized) {
-      useItemsStore.getState().resetItems()
-      useAuthStore.getState().clearAuth()
       // ログイン無しで読めるページからは追い出さない。
       // 印は落とす（ヘッダーは未ログインの姿に変わる）が、いま読んでいるものは残す。
       // 送っていたころは、使い方やコラムを読んでいる最中に期限が切れると、
       // 読みかけの記事からログイン画面へ飛ばされていた
-      if (!isPublicPath(window.location.pathname)) {
+      const pathname = window.location.pathname
+      const redirected = !isPublicPath(pathname)
+
+      // **落とす前に期限を控える。** clearAuth のあとでは、
+      // そのとき何を持っていたのかが分からなくなる
+      const tokenExpiry = useAuthStore.getState().tokens?.expiry ?? null
+
+      useItemsStore.getState().resetItems()
+      useAuthStore.getState().clearAuth()
+
+      reportSessionEnd(
+        buildSessionEndRecord({
+          pathname,
+          api: path ?? requestUrl ?? '(不明)',
+          tokenExpiry,
+          redirected,
+          now: new Date(),
+        })
+      )
+
+      if (redirected) {
         window.location.href = '/login'
       }
     }
