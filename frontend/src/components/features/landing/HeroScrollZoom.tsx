@@ -134,7 +134,11 @@ export function HeroScrollZoom() {
               地・縁・角は `--landing-panel-*`（スクロール誘導と同じ紙）。
               白を薄くして絵を透かし、そのぶん縁を金にして輪郭を保つ */}
           <div
-            className="mb-6 max-w-lg px-6 py-4 text-left shadow-sm backdrop-blur-sm md:mb-8 md:max-w-xl md:py-5"
+            // 幅は「1行の字数」で決める。日本語は40字前後を超えると、
+            // 行の終わりから次の行の頭へ目を戻すのが億劫になる。
+            // 広い画面で 2xl（672px）＝本文16pxでおよそ40字。ここが上限で、
+            // これ以上広げると読みやすさより先に、背景の宮殿が隠れる
+            className="mb-6 max-w-lg px-6 py-4 text-center shadow-sm backdrop-blur-sm sm:max-w-xl md:mb-8 md:max-w-2xl md:px-8 md:py-6"
             style={{
               background: 'var(--landing-panel-bg)',
               border: '1px solid var(--landing-panel-border)',
@@ -143,8 +147,13 @@ export function HeroScrollZoom() {
           >
             {/* 3段構え。**何ができるか → どう使えるか → 続けると何になるか**。
                 順番を入れ替えない。使い道から始めると、何を作る話なのか分からないまま
-                用途だけが並ぶ */}
-            <p className="text-[0.9rem] leading-relaxed md:text-lg" style={{ color: 'var(--foreground)' }}>
+                用途だけが並ぶ。
+
+                **一文ごとに改行する**（句点で切る）。中央寄せの文は、行の切れ目が
+                文の切れ目と揃っていないと、どこまでが一続きなのかを目で追い直すことになる。
+                text-balance は、それでも折り返すほど長い文が出たときに、
+                行の長さを揃えて中央の座りを保つため */}
+            <p className="text-[0.9rem] leading-relaxed text-balance md:text-lg" style={{ color: 'var(--foreground)' }}>
               {/* 鉤括弧は前の行の末尾に置く。次の行の頭に置くと、そこまでが
                   ひとつのテキストになり、JSX が改行を空白1つに変えて
                   「した 「記憶のカード」」と空いてしまう */}
@@ -154,7 +163,7 @@ export function HeroScrollZoom() {
             {/* 用途は**それぞれを太字にする**。文のまま流すと、
                 読み飛ばした人に「単語帳のサービス」としてだけ残る。
                 名詞だけを立てて、拾い読みでも用途の広さが目に入るようにする */}
-            <p className="mt-3 text-[0.85rem] leading-relaxed md:text-base" style={{ color: '#5A5348' }}>
+            <p className="mt-3 text-[0.85rem] leading-relaxed text-balance md:text-base" style={{ color: '#5A5348' }}>
               <strong className="font-semibold">単語帳</strong>や
               <strong className="font-semibold">用語集</strong>での暗記、
               <strong className="font-semibold">図鑑</strong>・
@@ -165,10 +174,13 @@ export function HeroScrollZoom() {
               <strong className="font-semibold">タスク管理</strong>、
               <strong className="font-semibold">ビジョンボード</strong>など、使い方は無限大。
             </p>
-            <p className="mt-3 text-[0.85rem] leading-relaxed md:text-base" style={{ color: '#5A5348' }}>
-              {/* 1文で続ける。行を折ると JSX が改行を空白1つに変えるので、
-                  「反復練習。 それが」と不自然な空きが入る */}
-              作ったカードは、自分の「宮殿」に並べて、整理・組み合わせ・反復練習。それが自分だけの記憶の宮殿になっていきます。
+            <p className="mt-3 text-[0.85rem] leading-relaxed text-balance md:text-base" style={{ color: '#5A5348' }}>
+              {/* 句点で切る。ここも1文ずつ。
+                  文の途中で行を折ると JSX が改行を空白1つに変えてしまうので、
+                  折ってよいのは <br /> を挟む場所だけ */}
+              作ったカードは、自分の「宮殿」に並べて、整理・組み合わせ・反復練習。
+              <br />
+              それが自分だけの記憶の宮殿になっていきます。
             </p>
           </div>
           <LandingCta className="flex w-full max-w-sm flex-col gap-3 sm:w-auto sm:max-w-none sm:flex-row" />
