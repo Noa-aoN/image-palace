@@ -143,7 +143,22 @@ function Shelf({
           )}
           {description && <p className="mt-0.5 text-sm text-muted-foreground">{description}</p>}
         </div>
-        {action && <div className="flex shrink-0 items-center gap-2">{action}</div>}
+        {/* 一覧への行き先は**常に**ここに置く。棚が空のときだけ中に出していたが、
+            あれは「作成」と書いてあって実際は一覧へ飛ぶもので、押した先が食い違っていた。
+            中身の有無で場所が変わると、探し直すことにもなる。
+            作成の左に置くのは、見る（軽い）→作る（重い）の順に並べるため */}
+        {(href || action) && (
+          <div className="flex shrink-0 items-center gap-2">
+            {href && (
+              <Link href={href}>
+                <Button variant="ghost" size="sm" className="text-muted-foreground">
+                  一覧をみる
+                </Button>
+              </Link>
+            )}
+            {action}
+          </div>
+        )}
       </div>
       {/* 宮殿スタイルでは 1 段を棚板の上に載せる（シンプルでは素通し） */}
       <SurfaceBoard surface="library">{children}</SurfaceBoard>
@@ -643,10 +658,7 @@ export default function LibraryPage() {
           }
         >
           {cards.length === 0 ? (
-            <EmptyRail
-              message="まだカードがありません。"
-              cta={<CardCreateButton variant="default" label="カードを作成" />}
-            />
+            <EmptyRail message="まだカードがありません。" />
           ) : (
             <Rail>
               {cards.map((item) => (
@@ -669,10 +681,7 @@ export default function LibraryPage() {
         <Section icon={<LayoutGrid size={22} />} title="キャンバス" description="カードの表示・学習形式">
           <Shelf icon={<Layers size={18} />} title="デッキ" count={deckViews.length} href={selectionMode ? undefined : '/views?type=deck'} action={selectionMode ? undefined : <LibraryCreateButton kind="deck" />}>
             {deckViews.length === 0 ? (
-              <EmptyRail
-                message="まだデッキがありません。"
-                cta={<Link href="/views?type=deck"><Button size="sm">デッキを作成</Button></Link>}
-              />
+              <EmptyRail message="まだデッキがありません。" />
             ) : (
               <Rail onEndReached={() => loadMoreShelf('views', views.length)}>
                 {deckViews.slice(0, PREVIEW_LIMIT).map((view) => (
@@ -689,10 +698,7 @@ export default function LibraryPage() {
           </Shelf>
           <Shelf icon={<LayoutGrid size={18} />} title="フリーボード" count={freeboardViews.length} href={selectionMode ? undefined : '/views?type=freeboard'} action={selectionMode ? undefined : <LibraryCreateButton kind="freeboard" />}>
             {freeboardViews.length === 0 ? (
-              <EmptyRail
-                message="まだフリーボードがありません。"
-                cta={<Link href="/views?type=freeboard"><Button size="sm">作成</Button></Link>}
-              />
+              <EmptyRail message="まだフリーボードがありません。" />
             ) : (
               <Rail onEndReached={() => loadMoreShelf('views', views.length)}>
                 {freeboardViews.slice(0, PREVIEW_LIMIT).map((view) => (
@@ -709,10 +715,7 @@ export default function LibraryPage() {
           </Shelf>
           <Shelf icon={<MapPin size={18} />} title="スペース配置" count={spaceMapViews.length} href={selectionMode ? undefined : '/views?type=space_map'} action={selectionMode ? undefined : <LibraryCreateButton kind="space_map" />}>
             {spaceMapViews.length === 0 ? (
-              <EmptyRail
-                message="まだスペース配置がありません。"
-                cta={<Link href="/views?type=space_map"><Button size="sm">作成</Button></Link>}
-              />
+              <EmptyRail message="まだスペース配置がありません。" />
             ) : (
               <Rail onEndReached={() => loadMoreShelf('views', views.length)}>
                 {spaceMapViews.slice(0, PREVIEW_LIMIT).map((view) => (
@@ -735,15 +738,12 @@ export default function LibraryPage() {
         {/* スペース（記憶の空間：ロード / ルーム） */}
         <Section icon={<Frame size={22} />} title="スペース" description="記憶の空間">
           {spaces.length === 0 ? (
-            <EmptyRail
-              message="まだスペースがありません。"
-              cta={<Link href="/spaces"><Button size="sm">スペースを作成</Button></Link>}
-            />
+            <EmptyRail message="まだスペースがありません。" />
           ) : (
             <>
               <Shelf icon={<Route size={18} />} title="ロード" count={roadSpaces.length} href={selectionMode ? undefined : '/spaces?type=road'} action={selectionMode ? undefined : <LibraryCreateButton kind="road" />}>
                 {roadSpaces.length === 0 ? (
-                  <EmptyRail message="ロードはまだありません。" cta={<Link href="/spaces?type=road"><Button size="sm">作成</Button></Link>} />
+                  <EmptyRail message="ロードはまだありません。" />
                 ) : (
                   <Rail onEndReached={() => loadMoreShelf('spaces', spaces.length)}>
                     {roadSpaces.slice(0, PREVIEW_LIMIT).map((space) => (
@@ -760,7 +760,7 @@ export default function LibraryPage() {
               </Shelf>
               <Shelf icon={<DoorOpen size={18} />} title="ルーム" count={roomSpaces.length} href={selectionMode ? undefined : '/spaces?type=room'} action={selectionMode ? undefined : <LibraryCreateButton kind="room" />}>
                 {roomSpaces.length === 0 ? (
-                  <EmptyRail message="ルームはまだありません。" cta={<Link href="/spaces?type=room"><Button size="sm">作成</Button></Link>} />
+                  <EmptyRail message="ルームはまだありません。" />
                 ) : (
                   <Rail onEndReached={() => loadMoreShelf('spaces', spaces.length)}>
                     {roomSpaces.slice(0, PREVIEW_LIMIT).map((space) => (
@@ -792,10 +792,7 @@ export default function LibraryPage() {
           href={selectionMode ? undefined : '/boxes'}
         >
           {boxes.length === 0 ? (
-            <EmptyRail
-              message="まだボックスがありません。"
-              cta={<Link href="/boxes"><Button size="sm">ボックスを作成</Button></Link>}
-            />
+            <EmptyRail message="まだボックスがありません。" />
           ) : (
             <Rail onEndReached={() => loadMoreShelf('boxes', boxes.length)}>
               {boxes.slice(0, PREVIEW_LIMIT).map((box) => (
@@ -824,10 +821,7 @@ export default function LibraryPage() {
             action={selectionMode ? undefined : <LibraryCreateButton kind="wordlist" />}
           >
             {wordlists.length === 0 ? (
-              <EmptyRail
-                message="まだワードリストがありません。"
-                cta={<Link href="/wordlists/new"><Button size="sm">ワードリストを作成</Button></Link>}
-              />
+              <EmptyRail message="まだワードリストがありません。" />
             ) : (
               <Rail onEndReached={() => loadMoreShelf('wordlists', wordlists.length)}>
                 {wordlists.slice(0, PREVIEW_LIMIT).map((wordlist) => (

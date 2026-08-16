@@ -51,6 +51,19 @@ module Achievements
       user_reward.update!(equipped: false, room_placed: false, featured_at: nil)
     end
 
+    # その種別で、いま星が入っている数。
+    #
+    # 判定の条件は star! / starred? と揃えること。ここだけ別の書き方をすると、
+    # 画面では星が付いているのに実績が進まない、という食い違いになる。
+    # どの種別も featured_at は必ず入るので、それを共通の目印にする
+    # （称号の equipped・宝物の room_placed は、出す場所を決めるための別の印）。
+    def showcased_count(user, kind)
+      UserReward.joins(:reward_definition)
+                .where(user_id: user.id, reward_definitions: { kind: kind })
+                .where.not(featured_at: nil)
+                .count
+    end
+
     # その種別で上限を超えたぶんを、古いものから外す
     def trim!(user, kind)
       starred = UserReward.joins(:reward_definition)
