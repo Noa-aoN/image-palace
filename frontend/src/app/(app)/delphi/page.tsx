@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { HelpPopover } from '@/components/ui/help-popover'
 import Link from 'next/link'
-import { Wand2, X } from 'lucide-react'
+import { Minus, Plus, Wand2, X } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Spinner } from '@/components/ui/spinner'
@@ -33,8 +33,9 @@ function formatDate(ts: number): string {
   return new Date(ts).toLocaleString('ja-JP', { month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit' })
 }
 
-/** 受け取った言葉の履歴に出す件数。これ以上は「もっと見る」で開く */
-const HISTORY_LIMIT = 10
+/** 受け取った言葉の履歴に出す件数。これ以上は「＋」で足す。
+    3件にしているのは、ここが主役ではないから（主役は受け取る操作） */
+const HISTORY_LIMIT = 3
 
 export default function AcropolisPage() {
   const [genre, setGenre] = useState('')
@@ -56,7 +57,7 @@ export default function AcropolisPage() {
   const history = useAcropolisStore((s) => s.history)
   const addRecord = useAcropolisStore((s) => s.addRecord)
   const clearHistory = useAcropolisStore((s) => s.clearHistory)
-  // 履歴は畳んでおく。全部並べると、下のコード引き換えが押し出される
+  // 履歴は畳んでおく。全部並べると、ページがいたずらに長くなる
   const [historyExpanded, setHistoryExpanded] = useState(false)
   const shownHistory = historyExpanded ? history : history.slice(0, HISTORY_LIMIT)
   // アニメーション可否（設定 off / reduced-motion で false）。false のときは素の表示にする。
@@ -177,6 +178,21 @@ export default function AcropolisPage() {
       <p className="mt-2 text-muted-foreground">
         なにかを受け取る場所です。言葉をランダムに受け取るか、配られたコードを引き換えるか、どちらもここで行います。
       </p>
+
+      {/* **コードを持ってきた人を先に通す。** 目的がはっきりしている人ほど
+          用が済むのが早いので、上に置く。言葉をもらいに来た人は、
+          そのまま下へ読み進めればよい。
+          もともと受け取り口は「利用と支払い」の中だけにあったが、そこは支払いを
+          済ませに行く面で、コードを持ってきた人が最初に開く場所ではない。
+          入口は2つでも、扱っているのは同じ1つの仕組み（Billing::RedeemCampaignCode）。 */}
+      <section className="mt-6">
+        <RedeemCodePanel
+          onRedeemed={() => useBillingStore.getState().fetchSummary()}
+          title="キャンペーンコードの受け取り"
+          note="配られたコードをここで引き換えられます。受け取ったぶんは残高に足されます。"
+          withHistory
+        />
+      </section>
 
       {/* 2つの受け取りをカードで分ける。
           言葉をもらうのと、コードを引き換えるのは、来た理由が別。
@@ -313,7 +329,7 @@ export default function AcropolisPage() {
 
       {/* 言葉の受け取りの履歴は、そのカードの中に納める。
           別の節にすると、どちらの記録なのかを探すことになる。
-          出すのは10件まで。全部並べると、下のコード引き換えが押し出される */}
+          出すのは10件まで。全部並べると、ページがいたずらに長くなる */}
       {history.length > 0 && (
         <div className="space-y-2 border-t border-border pt-4">
           <div className="flex items-center justify-between">
@@ -353,30 +369,24 @@ export default function AcropolisPage() {
               </li>
             ))}
           </ul>
+          {/* 引き換えの記録と同じ形にする。同じ役目のものが場所によって
+              違う見た目だと、押せるものだと気づきにくくなる */}
           {history.length > HISTORY_LIMIT && (
             <button
               type="button"
               onClick={() => setHistoryExpanded((v) => !v)}
-              className="text-xs text-muted-foreground hover:underline"
+              aria-label={
+                historyExpanded
+                  ? '受け取った言葉を折りたたむ'
+                  : `受け取った言葉をもっと読み込む（残り ${history.length - HISTORY_LIMIT} 件）`
+              }
+              className="flex h-6 w-6 items-center justify-center rounded-full border border-border text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
             >
-              {historyExpanded ? '折りたたむ' : `もっと見る（残り ${history.length - HISTORY_LIMIT} 件）`}
+              {historyExpanded ? <Minus size={14} /> : <Plus size={14} />}
             </button>
           )}
         </div>
       )}
-      </section>
-
-      {/* キャンペーンコードの受け取り。
-          もともと受け取り口は「利用と支払い」の中だけにあったが、そこは支払いを
-          済ませに行く面で、コードを持ってきた人が最初に開く場所ではない。
-          入口は2つでも、扱っているのは同じ1つの仕組み（Billing::RedeemCampaignCode）。 */}
-      <section className="mt-6">
-        <RedeemCodePanel
-          onRedeemed={() => useBillingStore.getState().fetchSummary()}
-          title="キャンペーンコードの受け取り"
-          note="配られたコードをここで引き換えられます。受け取ったぶんは残高に足されます。"
-          withHistory
-        />
       </section>
 
       </div>

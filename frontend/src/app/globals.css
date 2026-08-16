@@ -669,11 +669,15 @@
   pointer-events: none;
   /* フレームアウトは専用の --bflyout（進捗0.38〜0.80・smoothstep）駆動。
      テキスト消失の少しあとから、なだらかに飛び去り始める */
-  opacity: calc((1 - var(--bflyout, 0)) * 0.82);
+  /* どの退場進捗を見るかは各蝶が決める（--bout）。
+     手前の蝶は早め（--bflyout-fore）、奥の3匹は従来どおり（--bflyout）。
+     手前ほど速く流れて見えるほうが、視差として自然 */
+  --bout: var(--bflyout, 0);
+  opacity: calc((1 - var(--bout)) * 0.82);
   /* スクロールに応じて左右(--bfly-dir)へ緩やかに飛び去り画面外へ抜ける（飛行経路で飛び回りながら） */
   transform: translate3d(
-    calc(var(--bflyout, 0) * var(--bfly-dir, 1) * 72vw),
-    calc(var(--bflyout, 0) * -8vh),
+    calc(var(--bout) * var(--bfly-dir, 1) * 72vw),
+    calc(var(--bout) * -8vh),
     0
   );
   will-change: transform, opacity;
@@ -692,6 +696,15 @@
   will-change: transform;
   /* 羽ばたき（横方向の縮みで翅の開閉を擬似） */
   animation: hero-bfly-flap 0.42s ease-in-out infinite;
+}
+/* 手前の6匹だけ、退場を少し早い進捗で見る */
+.hero-butterfly--1,
+.hero-butterfly--2,
+.hero-butterfly--3,
+.hero-butterfly--4,
+.hero-butterfly--5,
+.hero-butterfly--6 {
+  --bout: var(--bflyout-fore, 0);
 }
 .hero-butterfly--1 { left: 14%; top: 72%; width: 18px; --bfly-dir: -1; }
 .hero-butterfly--2 { left: 86%; top: 80%; width: 15px; --bfly-dir: 1; }
@@ -778,16 +791,14 @@
   top: 0;
   left: 0;
   width: 100%;
-  height: 90px;
+  height: 84px;
   z-index: 1;
   display: block;
   pointer-events: none;
-  /* 上端を透明から始める。**塗りが道を直線で切るのを防ぐ**ため。
-     不透明のまま置くと、波のすぐ上にもう1本の境目ができて、
-     波がいくら滑らかでも不自然に見える。
-     波（中心線 y=68）は明けきったところに来るので、輪郭は鈍らない */
-  -webkit-mask-image: linear-gradient(to bottom, transparent 0%, #000 50%);
-  mask-image: linear-gradient(to bottom, transparent 0%, #000 50%);
+  /* **上端はぼかさない。** ぼかすと次セクションの地（ivory-dark）が透けて、
+     境界に直線が1本出る。前セクションと同じ色でぴったり塞ぐ。
+     道が切られる件は、道側を境目の前後で霞ませることで解いている
+     （road-bg--fade-bottom / --fade-under-divider）。 */
 }
 .section-divider--flip {
   transform: scaleY(-1);
@@ -809,6 +820,10 @@
 @media (max-width: 640px) {
   .section-divider {
     height: 62px;
+  }
+  .road-bg--fade-under-divider {
+    -webkit-mask-image: linear-gradient(to bottom, transparent 50px, #000 104px);
+    mask-image: linear-gradient(to bottom, transparent 50px, #000 104px);
   }
 }
 
@@ -1135,6 +1150,22 @@
   -webkit-mask-image: linear-gradient(to bottom, #000 88%, transparent 100%);
   mask-image: linear-gradient(to bottom, #000 88%, transparent 100%);
 }
+
+/* 区切りのある節では、道を**波より下から**霞ませて出す。
+   区切りは前セクションの色で塞ぐので、その下に道があると波の位置で
+   ぷつりと現れる。波のぶんだけ遅らせて、滲むように現れさせる。
+   px 指定なのは、区切りの高さが px だから（% にすると節の高さで揃わない）。 */
+.road-bg--fade-under-divider {
+  -webkit-mask-image: linear-gradient(to bottom, transparent 68px, #000 138px);
+  mask-image: linear-gradient(to bottom, transparent 68px, #000 138px);
+}
+
+/* 次の節に区切りがある場合、こちら側の道も下端で霞ませる。
+   塞ぎに行き当たって直線で切れるのを避ける */
+.road-bg--fade-into-divider {
+  -webkit-mask-image: linear-gradient(to bottom, #000 calc(100% - 70px), transparent 100%);
+  mask-image: linear-gradient(to bottom, #000 calc(100% - 70px), transparent 100%);
+}
 /* ビューポート固定のステージ。全セクションで同じビューを共有する */
 .road-bg__viewport {
   position: fixed;
@@ -1317,6 +1348,37 @@
    以降の各セクションでは .road-bg__glow（各道ステージ内・道と同じ
    クリップで連続）が同じ位置に描き、最後まで灯り続ける。
    JS 非駆動時は既定 0＝非表示 */
+/* 道の突き当たりに、門をうっすら置く。
+ *
+ * この道の先は登録・ログインの面（同じ門の絵を背景に使っている）。
+ * 光だけだと「どこへ続くのか」が分からないので、行き先の姿を薄く見せる。
+ * 入ったときに同じ門が出てくれば、繋がっていたのだと分かる。
+ *
+ * **絵として読ませない。** 濃く出すと道の遠近が壊れ、遠くにあるはずの門が
+ * 手前に貼り付いて見える。強くぼかし、四方をグラデーションで地に溶かす。
+ * 光と同じ大きさ・同じ位置に置き、光の中に姿がある状態にする。 */
+.road-bg__gate {
+  position: absolute;
+  left: 50%;
+  top: 17.5%;
+  width: 150px;
+  height: 105px;
+  margin: -52px 0 0 -75px;
+  pointer-events: none;
+  background: url('/auth-gate.webp') center bottom / contain no-repeat;
+  /* 遠くの霞の中なので、彩度を落として明るく飛ばす */
+  filter: blur(3.5px) saturate(0.5) brightness(1.22) opacity(0.5);
+  opacity: calc(0.55 * var(--road-glow, 0));
+  transform: scale(calc(0.5 + 0.5 * var(--road-glowz, 0)));
+  transform-origin: 50% 50%;
+  /* 四方を地へ溶かす。矩形の縁が出ると、絵が貼ってあることが分かってしまう */
+  -webkit-mask-image: radial-gradient(60% 62% at 50% 55%, #000 18%, transparent 82%);
+  mask-image: radial-gradient(60% 62% at 50% 55%, #000 18%, transparent 82%);
+}
+:root[data-motion='off'] .road-bg__gate {
+  opacity: 0;
+}
+
 .road-bg__glow,
 .road-intro__glow {
   position: absolute;

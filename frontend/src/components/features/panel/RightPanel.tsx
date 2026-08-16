@@ -4,6 +4,7 @@ import { useCallback, useEffect, useRef, type PointerEvent } from 'react'
 import { usePathname } from 'next/navigation'
 import Link from 'next/link'
 import { ExternalLink } from 'lucide-react'
+import { Tooltip } from '@/components/ui/tooltip'
 import { useRightPanelStore } from '@/stores/rightPanel'
 import { useUiStore } from '@/stores/ui'
 import { ItemDetailBody } from '@/components/features/items/ItemDetailBody'
@@ -123,24 +124,29 @@ export function RightPanel() {
         backLabel={backLabel}
         onClose={close}
         headerAction={
+          // 矢印だけでは**どこへ飛ぶのか**が分からない。行き先を名前で言う
           mode === 'card' && itemId ? (
-            <Link
-              href={viewId ? `/items/${itemId}?board=${viewId}` : `/items/${itemId}`}
-              target="_blank"
-              rel="noopener noreferrer"
-              aria-label="詳細ページを別タブで開く"
-              className="rounded-md p-1 transition-colors hover:bg-black/5 hover:text-foreground"
-            >
-              <ExternalLink size={15} />
-            </Link>
+            <Tooltip label="カードの詳細ページを別タブで開く">
+              <Link
+                href={viewId ? `/items/${itemId}?board=${viewId}` : `/items/${itemId}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                aria-label="詳細ページを別タブで開く"
+                className="rounded-md p-1 transition-colors hover:bg-black/5 hover:text-foreground"
+              >
+                <ExternalLink size={15} />
+              </Link>
+            </Tooltip>
           ) : mode === 'section' && section?.href ? (
-            <Link
-              href={section.href}
-              aria-label={`${section.title ?? 'この操作'}のページへ移動`}
-              className="rounded-md p-1 transition-colors hover:bg-black/5 hover:text-foreground"
-            >
-              <ExternalLink size={15} />
-            </Link>
+            <Tooltip label={`${section.title ?? 'この操作'}のページへ移動`}>
+              <Link
+                href={section.href}
+                aria-label={`${section.title ?? 'この操作'}のページへ移動`}
+                className="rounded-md p-1 transition-colors hover:bg-black/5 hover:text-foreground"
+              >
+                <ExternalLink size={15} />
+              </Link>
+            </Tooltip>
           ) : undefined
         }
       >

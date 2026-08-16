@@ -92,6 +92,8 @@ export interface ItemsPageOptions {
   sort?: string
   direction?: string
   status?: string
+  /** 種別で絞る（複数可）。空なら絞らない */
+  itemTypeIds?: string[]
 }
 
 export async function getItemsPage(page: number, per: number, opts: ItemsPageOptions = {}): Promise<ItemsPage> {
@@ -103,6 +105,8 @@ export async function getItemsPage(page: number, per: number, opts: ItemsPageOpt
   if (opts.sort) params.sort = opts.sort
   if (opts.direction) params.direction = opts.direction
   if (opts.status) params.status = opts.status
+  // 種別は複数選べる（「単語 と 概念」を並べて見たい）
+  if (opts.itemTypeIds?.length) params.item_type_ids = opts.itemTypeIds
   const res = await apiClient.get<ItemsPage>('/api/v1/items', { params })
   return res.data
 }
