@@ -102,7 +102,7 @@ export function HeroDescription({
           text-balance は、狭い画面で折り返すときに行の長さを揃えて
           中央の座りを保つため */}
       <p
-        className={`text-[0.9rem] leading-relaxed text-balance md:text-lg ${textClass}`}
+        className={`text-[0.85rem] leading-relaxed text-balance md:text-[1.0625rem] ${textClass}`}
         style={styled ? { color: 'var(--foreground)' } : undefined}
       >
         {/* 鉤括弧は前の行の末尾に置く。次の行の頭に置くと、そこまでが
@@ -130,12 +130,13 @@ export function HeroDescription({
       >
         集めたカードは、
         <strong className="font-semibold">単語帳</strong>や
-        <strong className="font-semibold">用語集</strong>での暗記、
+        <strong className="font-semibold">用語集</strong>として暗記、
         <strong className="font-semibold">図鑑</strong>・
         <strong className="font-semibold">相関図</strong>・
         <strong className="font-semibold">年表</strong>づくりで理解。
         <br />
         さらに、
+        <strong className="font-semibold">メモ帳</strong>、
         <strong className="font-semibold">絵日記</strong>、
         <strong className="font-semibold">タスク管理</strong>、
         <strong className="font-semibold">ビジョンボード</strong>など、使い方は無限大です。

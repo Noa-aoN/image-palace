@@ -38,6 +38,24 @@ module Achievements
       "avatar_set" => {
         label: "自分の絵を決めたか",
         count: ->(user) { user.avatar.attached? ? 1 : 0 }
+      },
+      # 獲得したものを**実際に出したか**。持っているだけでは 0 のまま。
+      #
+      # 集めることと使うことは別の行いなので、分けて数える。
+      # 星を押して初めて宮殿や名乗りに出るのに、押さないまま気づかない人が多い。
+      # 判定は Showcase の持ち方に合わせる（称号=equipped / 宝物=room_placed /
+      # それ以外=featured_at）。ここを直に書くと、持ち方が変わったとき片方だけ古くなる
+      "title_showcased" => {
+        label: "称号を名乗ったか",
+        count: ->(user) { Achievements::Showcase.showcased_count(user, "title") }
+      },
+      "medal_showcased" => {
+        label: "勲章を掲げたか",
+        count: ->(user) { Achievements::Showcase.showcased_count(user, "medal") }
+      },
+      "treasure_showcased" => {
+        label: "宝物を飾ったか",
+        count: ->(user) { Achievements::Showcase.showcased_count(user, "treasure") }
       }
     }.freeze
 

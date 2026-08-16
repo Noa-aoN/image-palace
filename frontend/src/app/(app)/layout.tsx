@@ -4,6 +4,7 @@ import { RightPanel } from '@/components/features/panel/RightPanel'
 import { HubBackground } from '@/components/features/layout/HubBackground'
 import { OnboardingFlow } from '@/components/features/onboarding/OnboardingFlow'
 import { CardCreatePanelSlot } from '@/components/features/items/CardCreatePanel'
+import { CreatePanelSlots } from '@/components/features/layout/CreatePanels'
 import { PageGate } from '@/components/features/shared/PageGate'
 
 export default function AppLayout({ children }: { children: React.ReactNode }) {
@@ -22,8 +23,10 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
       </main>
       {/* 右パネルはオーバーレイ（絶対配置）。main を押し縮めない。 */}
       <RightPanel />
-      {/* カード作成はどのページからも開けるよう、中身をここに置く */}
+      {/* 作成はどのページからも開けるよう、中身をここに置く
+          （カードだけ別ファイルなのは、ページ側からも同じ入口を使うため） */}
       <CardCreatePanelSlot />
+      <CreatePanelSlots />
       <OnboardingFlow />
     </div>
   )

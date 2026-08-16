@@ -24,6 +24,10 @@ module Api
         elsif Item::GENERATION_STATUSES.include?(params[:status])
           scope = scope.where(generation_status: params[:status])
         end
+        # 種別（単語・概念など）で絞る。**複数を許す**（「単語 と 概念」を並べて見たい）。
+        # 空文字は「指定なし」として無視する（画面のプルダウンが初期値で送ってくる）
+        types = Array(params[:item_type_ids]).map(&:to_s).reject(&:blank?)
+        scope = scope.where(item_type_id: types) if types.any?
         scope = filter_by_tags(scope)
         if params[:q].present?
           like = "%#{ActiveRecord::Base.sanitize_sql_like(params[:q].strip)}%"

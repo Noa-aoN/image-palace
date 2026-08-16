@@ -104,4 +104,44 @@ RSpec.describe GenerateWordsService do
       end
     end
   end
+
+  describe "実在の確認（verify: true）" do
+    # 実在しない語を落とす仕組み。判定は Wikipedia に当てる
+    def stub_wikipedia(missing:)
+      allow(Wikipedia::CandidateSearch).to receive(:call) do |term|
+        instance_double(Wikipedia::CandidateSearch::Result, weak?: missing.include?(term))
+      end
+    end
+
+    it "Wikipedia で引けない語を落とす" do
+      stub_chat({ words: %w[土星 グリンプル 三葉虫] }.to_json)
+      stub_wikipedia(missing: %w[グリンプル])
+      expect(described_class.call(theme: "ランダム", count: 2, verify: true)).to eq(%w[土星 三葉虫])
+    end
+
+    it "落としたぶんを見越して多めに作らせ、要求数まで戻す" do
+      stub_chat({ words: %w[a b c d e] }.to_json)
+      stub_wikipedia(missing: %w[a c])
+      expect(described_class.call(theme: "x", count: 2, verify: true)).to eq(%w[b d])
+    end
+
+    # 外の仕組みが落ちているときに、実在する語まで消えるほうが害が大きい
+    it "全滅したときは、確かめられなかったものとして元の語を返す" do
+      stub_chat({ words: %w[a b] }.to_json)
+      stub_wikipedia(missing: %w[a b])
+      expect(described_class.call(theme: "x", count: 2, verify: true)).to eq(%w[a b])
+    end
+
+    it "引けなかった語は残す（fail-open）" do
+      stub_chat({ words: %w[a b] }.to_json)
+      allow(Wikipedia::CandidateSearch).to receive(:call).and_raise(Faraday::ConnectionFailed, "down")
+      expect(described_class.call(theme: "x", count: 2, verify: true)).to eq(%w[a b])
+    end
+
+    it "verify を指定しなければ Wikipedia は引かない" do
+      stub_chat({ words: %w[a b] }.to_json)
+      expect(Wikipedia::CandidateSearch).not_to receive(:call)
+      expect(described_class.call(theme: "x", count: 2)).to eq(%w[a b])
+    end
+  end
 end

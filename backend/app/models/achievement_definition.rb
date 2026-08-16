@@ -27,6 +27,18 @@ class AchievementDefinition < ApplicationRecord
       rewards: [ { "type" => "reward", "key" => "medal_first_card" },
                  { "type" => "reward", "key" => "title_traveler" },
                  { "type" => "reward", "key" => "treasure_seed" } ] },
+    # 集めることと**出すこと**は別の行い。
+    # 星を押して初めて名乗り・宮殿に出るのに、押さないまま気づかない人が多い。
+    #
+    # ミッションではなく実績に置く。ミッションの「はじめに」は表示数に上限があり、
+    # ここを足すと最初の一歩（カードを作る）が押し出される。
+    # それに、獲得物を持つまで進めようがないので「はじめの手順」でもない。
+    { key: "first_title_showcase", name: "はじめての名乗り", category: "はじめに", position: 16,
+      description: "手に入れた称号を名乗る", condition_type: "title_showcased", condition_target: 1 },
+    { key: "first_medal_showcase", name: "はじめての掲揚", category: "はじめに", position: 17,
+      description: "手に入れた勲章を掲げる", condition_type: "medal_showcased", condition_target: 1 },
+    { key: "first_treasure_showcase", name: "はじめての飾りつけ", category: "はじめに", position: 18,
+      description: "手に入れた宝物を部屋に飾る", condition_type: "treasure_showcased", condition_target: 1 },
     { key: "ten_cards", name: "10枚のカード", category: "作成", position: 11,
       description: "カードを10枚作る", condition_type: "cards_created", condition_target: 10,
       rewards: [ { "type" => "reward", "key" => "treasure_cup" } ] },

@@ -47,9 +47,13 @@ type RoadBackgroundProps = {
   fadeBottom?: boolean
   /** 最初のセクション用: 道の出現前の余白に足跡の誘導アニメーションを出す */
   intro?: boolean
+  /** 上に区切りがある: 波より下から道を霞ませて出す */
+  fadeUnderDivider?: boolean
+  /** 下の節に区切りがある: 塞ぎに当たって直線で切れないよう、下端で霞ませる */
+  fadeIntoDivider?: boolean
 }
 
-export function RoadBackground({ fadeTop, fadeBottom, intro }: RoadBackgroundProps) {
+export function RoadBackground({ fadeTop, fadeBottom, intro, fadeUnderDivider, fadeIntoDivider }: RoadBackgroundProps) {
   const ref = useRef<HTMLDivElement>(null)
   const introRef = useRef<HTMLDivElement>(null)
 
@@ -180,7 +184,10 @@ export function RoadBackground({ fadeTop, fadeBottom, intro }: RoadBackgroundPro
     }
   }, [])
 
-  const modifiers = `${fadeTop ? ' road-bg--fade-top' : ''}${fadeBottom ? ' road-bg--fade-bottom' : ''}`
+  const modifiers =
+    `${fadeTop ? ' road-bg--fade-top' : ''}${fadeBottom ? ' road-bg--fade-bottom' : ''}` +
+    `${fadeUnderDivider ? ' road-bg--fade-under-divider' : ''}` +
+    `${fadeIntoDivider ? ' road-bg--fade-into-divider' : ''}`
 
   return (
     <>
@@ -239,6 +246,9 @@ export function RoadBackground({ fadeTop, fadeBottom, intro }: RoadBackgroundPro
         {/* 道の先に灯る遠くの淡い光。intro インスタンスはクリップ外の
             .road-intro__glow が同位置に描くため二重にしない */}
         {!intro && <span className="road-bg__glow" />}
+        {/* 最後の区画だけ、光の中に門の姿を置く。この道の先は登録・ログインの面で、
+            同じ門を背景に使っている。入ったときに同じものが出れば、繋がりが分かる */}
+        {fadeBottom && <span className="road-bg__gate" aria-hidden />}
         {/* 上端（地平線まわり）を強くぼかして遠くへ霞ませる */}
         <div className="road-blur road-blur--top" />
         {/* 下端の軽いブラー帯（HA ヒーローの hero-blur 踏襲。手前の被写界深度） */}

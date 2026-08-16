@@ -85,6 +85,10 @@ export function useHeroZoom(opts: HeroZoomOptions = {}) {
       // 蝶の退場（進捗0.38〜0.80）。smoothstep で入り・抜けともなだらかに
       const bflyRamp = clamp((progress - 0.38) / 0.42, 0, 1)
       const bflyOut = bflyRamp * bflyRamp * (3 - 2 * bflyRamp)
+      // 手前の蝶はひと足先に抜ける（0.32〜0.74）。
+      // 奥（扉まわりの3匹）は据え置き。手前ほど速く流れるほうが視差として自然
+      const foreRamp = clamp((progress - 0.32) / 0.42, 0, 1)
+      const foreOut = foreRamp * foreRamp * (3 - 2 * foreRamp)
 
       // 書き込み（後でまとめて＝レイアウトスラッシュ回避）
       stage.style.setProperty('--zoom', String(scale))
@@ -95,6 +99,7 @@ export function useHeroZoom(opts: HeroZoomOptions = {}) {
       stage.style.setProperty('--dooropen', String(doorOpen))
       stage.style.setProperty('--doorboost', String(doorBoost))
       stage.style.setProperty('--bflyout', String(bflyOut))
+      stage.style.setProperty('--bflyout-fore', String(foreOut))
     }
 
     const onScroll = () => {

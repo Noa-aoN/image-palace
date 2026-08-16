@@ -633,9 +633,23 @@ export function MemoryAssetsCard({ summary, className }: { summary: ItemsSummary
           <DiagramModeToggle mode={mode} onChange={setMode} label="宮殿の記憶資産" />
         </div>
 
-        {/* 種類が増えても自動で折り返す（4種のときは今まで通り 2列→4列）。
+        {/* **狭くなっても1行を保つ。** 折り返すと、隣に並んでいた資産が下へ回り、
+            数の大小を見比べるという、この図の役目が失われる。
+
+            折り返しの代わりに全体を縮める。絵（SVG）は viewBox で比例縮小するので、
+            字も同じ割合で縮むように cqw（この枠の幅に対する割合）で決める。
+            片方だけ固定だと、狭いときに字が絵からはみ出す。
+
+            clamp の下限は、これ以上小さいと読めなくなる大きさ。
             flex-1＋行を 1fr にして、各アイテムの選択範囲をカード高さいっぱいに伸ばす。 */}
-        <div className="grid flex-1 gap-2" style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(110px, 1fr))', gridTemplateRows: 'minmax(0, 1fr)' }}>
+        <div
+          className="grid flex-1 gap-2"
+          style={{
+            containerType: 'inline-size',
+            gridTemplateColumns: `repeat(${ASSET_TYPES.length}, minmax(0, 1fr))`,
+            gridTemplateRows: 'minmax(0, 1fr)',
+          }}
+        >
           {ASSET_TYPES.map((t) => {
             const c = t.count(summary)
             return (
@@ -661,9 +675,18 @@ export function MemoryAssetsCard({ summary, className }: { summary: ItemsSummary
                   // 2D は横から見た平面の絵なので回さない。
                   <AssetStack2D count={c} pal={t.pal} shape={t.shape} />
                 )}
-                <span className="mt-1 text-2xl font-bold tabular-nums leading-none">{c}</span>
-                {/* 名前は絵と数の説明。**折り返させない**（2行になると隣の列と高さがずれる） */}
-                <span className="mt-1 flex items-center gap-1 whitespace-nowrap text-xs text-muted-foreground">
+                <span
+                  className="mt-1 font-bold tabular-nums leading-none"
+                  style={{ fontSize: 'clamp(0.95rem, 4.4cqw, 1.5rem)' }}
+                >
+                  {c}
+                </span>
+                {/* 名前は絵と数の説明。**折り返させない**（2行になると隣の列と高さがずれる）。
+                    アイコンは 1em にして、字と一緒に縮む */}
+                <span
+                  className="mt-1 flex items-center gap-1 whitespace-nowrap text-muted-foreground [&>span>svg]:size-[1.15em]"
+                  style={{ fontSize: 'clamp(0.5rem, 2.1cqw, 0.75rem)' }}
+                >
                   <span style={{ color: 'var(--palace)' }}>{t.icon}</span>
                   {t.label}
                 </span>
