@@ -827,10 +827,13 @@
   text-shadow:
     0 1px 2px rgba(255, 253, 247, 0.85),
     0 0 8px rgba(255, 253, 247, 0.65);
+  /* 説明文より薄くする。こちらは読ませる本文ではなく合図なので、
+     同じ濃さだと合図のほうが強く出る。
+     **共有値からの比率**で持つので、元（--landing-wash-a）を変えれば両方動く */
   background: radial-gradient(
     50% 50% at 50% 50%,
-    rgba(255, 253, 247, var(--landing-wash-a)) 0%,
-    rgba(255, 253, 247, var(--landing-wash-a)) 52%,
+    rgba(255, 253, 247, calc(var(--landing-wash-a) * 0.72)) 0%,
+    rgba(255, 253, 247, calc(var(--landing-wash-a) * 0.72)) 52%,
     rgba(255, 253, 247, 0) 100%
   );
   font-size: 0.72rem;
