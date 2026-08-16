@@ -34,6 +34,13 @@ export interface RewardRow {
   progress: number | null
   target: number | null
   owned: boolean
+  /**
+   * プランに付く位か。
+   *
+   * 稼いで取るものではなく、契約している間だけ持つもの。
+   * 解約すれば手元から外れるので、他の獲得物と同じ顔で並べない
+   */
+  plan_rank?: boolean
   /** いくつ持っているか。持っていなければ 0。重ねられないもの（称号・勲章・表彰）は 1 */
   quantity: number
   granted_at: string | null

@@ -5,7 +5,13 @@ require "rails_helper"
 # **数と配る道が揃っていないと、埋まらない枠が並ぶ。**
 # 定義だけ増やして条件を用意し忘れると、一覧に「取れないもの」が残る。
 RSpec.describe "獲得物の品揃え" do
-  let(:rewards) { RewardDefinition::BUILTINS }
+  # 位（プランに付く称号）は、ここで見ている品揃えの外。
+  #
+  # ここが確かめているのは「**集めて取るもの**が、取れる道と数と絵を持っているか」。
+  # 位は稼いで取るものではなく、契約している間だけ持つものなので、
+  # 実績から配られないし、段も 8・9 を使う。同じ物差しで測ると必ず落ちる
+  let(:rewards) { RewardDefinition::BUILTINS.reject { |r| r.dig(:metadata, "source") == "subscription" } }
+  let(:ranks) { RewardDefinition::BUILTINS.select { |r| r.dig(:metadata, "source") == "subscription" } }
   let(:achievements) { AchievementDefinition::BUILTINS }
 
   def keys_of(kind) = rewards.select { |r| r[:kind] == kind }.map { |r| r[:key] }
@@ -26,7 +32,7 @@ RSpec.describe "獲得物の品揃え" do
 
     it "同じ種別の中で並び順が重複していない（どちらが先か決まらない）" do
       RewardDefinition::KINDS.each do |kind|
-        positions = rewards.select { |r| r[:kind] == kind }.map { |r| r[:position] }
+        positions = RewardDefinition::BUILTINS.select { |r| r[:kind] == kind }.map { |r| r[:position] }
 
         expect(positions.uniq.size).to eq(positions.size), "#{kind} の position が重複"
       end
@@ -78,6 +84,32 @@ RSpec.describe "獲得物の品揃え" do
     end
   end
 
+  describe "位（プランに付く称号）" do
+    # 5つの段それぞれに1つずつ。どこか1つでも欠けると、
+    # その段の人だけ位が無い（同期は「引けなければ何もしない」ので、静かに欠ける）
+    it "プランの段すべてに、位が1つずつある" do
+      expect(ranks.map { |r| r.dig(:metadata, "tier") }).to eq(%w[free standard pro creator studio])
+    end
+
+    it "位はすべて称号" do
+      expect(ranks.map { |r| r[:kind] }.uniq).to eq([ "title" ])
+    end
+
+    # 同期はこの2つで引く。綴りが変わると、剥奪が効かないまま位が残る
+    it "位は source と tier で引ける" do
+      ranks.each do |rank|
+        expect(RewardDefinition.rank_for_tier(rank.dig(:metadata, "tier"))&.key).to eq(rank[:key])
+      end
+    end
+
+    it "位は実績から配らない（契約で決まるもの）" do
+      granted = achievements.flat_map { |a| Array(a[:rewards]) }
+                            .select { |r| r["type"] == "reward" }.map { |r| r["key"] }
+
+      expect(granted & ranks.map { |r| r[:key] }).to be_empty
+    end
+  end
+
   describe "絵" do
     it "すべての獲得物が、絵のもとになる言葉を持つ" do
       missing = rewards.reject { |r| r.dig(:metadata, "motif").present? }
@@ -94,7 +126,7 @@ RSpec.describe "獲得物の品揃え" do
     end
 
     it "同じ絵を2つの獲得物で指していない" do
-      duplicated = rewards.map { |r| r[:image_key] }.compact.tally.select { |_, n| n > 1 }
+      duplicated = RewardDefinition::BUILTINS.map { |r| r[:image_key] }.compact.tally.select { |_, n| n > 1 }
 
       expect(duplicated).to be_empty
     end

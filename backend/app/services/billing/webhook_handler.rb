@@ -105,6 +105,10 @@ module Billing
       # （ExpireCreditGrantsJob が拾う）。月々の付与はここで止まる。
       sub.user.reset_subscription_credits!(0, subscription: sub)
       sub.update!(status: "canceled", canceled_at: Time.current)
+
+      # 契約が終わったので、位も外れる。この道だけは SubscriptionSync を通らない
+      # （Stripe の姿を写すのではなく、こちらで終わりを確定させている）ので、ここで呼ぶ
+      ::Achievements::SyncPlanTitle.sync_quietly(user: sub.user)
     end
 
     # サブスクの請求成功（初回＋毎月）でクレジットを当月分にリセット付与する。

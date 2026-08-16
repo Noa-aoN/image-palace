@@ -269,6 +269,20 @@ RSpec.describe Billing::WebhookHandler do
       expect(CreditTransaction.where(user:, kind: "subscription_expire").count).to eq(0)
     end
 
+    # この道だけは SubscriptionSync を通らない（こちらで終わりを確定させている）ので、
+    # 位の同期を別に呼んでいる。呼び忘れると、解約後も有料の位が残る
+    it "解約が確定すると、有料の位が外れて市民になる" do
+      RewardDefinition.registry
+      create(:subscription, user:, plan:, status: "active", stripe_subscription_id: "sub_1")
+      Achievements::SyncPlanTitle.call(user: user)
+
+      handle(deleted_event)
+
+      keys = UserReward.held.joins(:reward_definition).where(user_id: user.id).pluck(:key)
+      expect(keys).to include("title_rank_free")
+      expect(keys).not_to include("title_rank_standard")
+    end
+
     it "is idempotent when the subscription is already canceled" do
       create(:subscription, user:, plan:, status: "active", stripe_subscription_id: "sub_1")
       user.update!(subscription_credits: 50 * Billing::POINTS_PER_CREDIT)
