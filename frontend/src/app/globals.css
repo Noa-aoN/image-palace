@@ -70,6 +70,9 @@
   /* LP で絵の上に敷く紙。**説明の箱とスクロール誘導で同じものを使う**。
      別々に持っていたころは、片方の透明度や角だけが変わって面が揃わなかった。
      地を薄くして絵を透かし、そのぶん縁を金にして輪郭を保つ */
+  /* 絵の上で字を読ませる「靄」の濃さ。**説明文とスクロール誘導で同じ値を使う**。
+     別々に持つと、片方だけ濃くなって同じ画面に二種類の靄が並ぶ */
+  --landing-wash-a: 0.55;
   --landing-panel-bg: rgba(255, 255, 255, 0.52);
   --landing-panel-border: color-mix(in srgb, var(--palace) 62%, transparent);
   --landing-panel-radius: 1rem;
@@ -696,17 +699,18 @@
 .hero-butterfly--4 { left: 30%; top: 85%; width: 17px; --bfly-dir: -1; }
 .hero-butterfly--5 { left: 91%; top: 75%; width: 14px; --bfly-dir: 1; }
 .hero-butterfly--6 { left: 9%; top: 82%; width: 17px; --bfly-dir: -1; }
-/* 中央の扉のあたりを舞う3匹。ほかの蝶（14〜20px）よりずっと大きく、
-   渡鴉（96px）より少し大きい。**手前を飛んでいる**ように見せるためで、
-   奥の宮殿と重なっても遠近が壊れないよう、ぼかしを強めて前ボケにする */
-.hero-butterfly--7 { left: 44%; top: 64%; width: 104px; --bfly-dir: -1; }
-.hero-butterfly--8 { left: 55%; top: 70%; width: 100px; --bfly-dir: 1; }
-.hero-butterfly--9 { left: 49%; top: 57%; width: 110px; --bfly-dir: 1; }
+/* 中央の扉のあたりを舞う3匹。ほかの蝶（14〜20px）の半分の大きさにして、
+   左右にばらけさせる。扉は奥なので、小さいほうが遠近に合う */
+.hero-butterfly--7 { left: 38%; top: 64%; width: 9px; --bfly-dir: -1; }
+.hero-butterfly--8 { left: 58%; top: 70%; width: 8px; --bfly-dir: 1; }
+.hero-butterfly--9 { left: 50%; top: 57%; width: 10px; --bfly-dir: 1; }
+/* 扉は奥にあるので、そこを舞う蝶は**手前の蝶より小さい**（ほかの半分）。
+   遠いぶん霞ませる。前ボケではなく空気遠近 */
 .hero-butterfly--7 .hero-butterfly__wing,
 .hero-butterfly--8 .hero-butterfly__wing,
 .hero-butterfly--9 .hero-butterfly__wing {
-  filter: saturate(0.66) brightness(1.06) sepia(0.12) blur(1.4px);
-  opacity: 0.72;
+  filter: saturate(0.6) brightness(1.12) sepia(0.14) blur(0.4px);
+  opacity: 0.66;
 }
 .hero-butterfly--7 .hero-butterfly__path { animation: hero-bfly-path-a 18s ease-in-out infinite; animation-delay: -2s; }
 .hero-butterfly--8 .hero-butterfly__path { animation: hero-bfly-path-b 22s ease-in-out infinite reverse; animation-delay: -9s; }
@@ -807,17 +811,30 @@
   flex-direction: column;
   align-items: center;
   gap: 4px;
-  /* 紙は敷かない。節と節のあいだの案内でしかないものに面を与えると、
-     そのぶん画面に物が増える。
-     ここ（節の中）の地はアイボリーや白なので、金の字がそのまま乗る */
-  background: none;
+  /* **どの節でも同じ見え方にする。** 節ごとに地（絵・アイボリー・白）が違うが、
+     同じ役目のものが場所によって色を変えると、押せるものだと気づきにくくなる。
+
+     面は持たせず、説明文と同じ靄（`--landing-wash-a`）を敷く。
+     縁を作らないので、箱ではなく光の溜まりとして見える。
+     余白を広く取るのは、消え際を字にかけないため（詰めると字の縁が薄くなる）。
+
+     影は**明るい側のにじみ**。暗い字を暗い影で囲っても輪郭は出ない。 */
   border: 0;
-  padding: 2px 6px;
+  padding: 10px 30px 8px;
   cursor: pointer;
-  color: var(--palace);
+  color: #2E2A24;
+  text-shadow:
+    0 1px 2px rgba(255, 253, 247, 0.85),
+    0 0 8px rgba(255, 253, 247, 0.65);
+  background: radial-gradient(
+    50% 50% at 50% 50%,
+    rgba(255, 253, 247, var(--landing-wash-a)) 0%,
+    rgba(255, 253, 247, var(--landing-wash-a)) 52%,
+    rgba(255, 253, 247, 0) 100%
+  );
   font-size: 0.72rem;
   letter-spacing: 0.08em;
-  opacity: 0.85;
+  opacity: 0.9;
   transition: opacity 0.2s;
 }
 .scroll-cue:hover {
@@ -868,7 +885,7 @@
    マスクは自分にしか効かないよう、文字とは別の層に置くこと
    （文字ごとマスクすると、端の字が薄くなる）。 */
 .hero-wash {
-  --hero-wash-a: 0.13;
+  --hero-wash-a: var(--landing-wash-a);
   /* 白い靄が既定。白文字版では黒に差し替える（形と作りは同じ） */
   --hero-wash-rgb: 255, 255, 255;
   /* **文字より後ろに置く。** 絶対配置のこれは、通常フローの段落より後に描かれる
@@ -958,26 +975,8 @@
   animation: scroll-cue-bob 1.8s ease-in-out infinite;
 }
 /* ヒーローの cue だけは**絵の上**に乗る。節の中とは地が違うので、字の色も変える。
-   濃い字に、**明るい側のにじみ**を添える。
-   ここの地は絵そのもの（スクリムがほぼ抜けている高さ）なので、
-   実測ではどの字の色でもコントラストは 1.8 前後にしかならない。
-   面を持たせない以上ここが上限で、読ませるのではなく**気配で示す**もの。
-   影を濃くではなく明るくするのは、暗い字を暗い影で囲っても輪郭が出ないため。 */
+   見た目は `.scroll-cue`（全節共通）が持つ。ここは**置き場所だけ**。 */
 .hero-cue {
-  color: #2E2A24;
-  text-shadow:
-    0 1px 2px rgba(255, 253, 247, 0.85),
-    0 0 8px rgba(255, 253, 247, 0.65);
-  /* 説明文と同じ考えで、**この大きさに合った靄**を敷く。
-     縁を作らないので、面ではなく光の溜まりとして見える。
-     余白を広げてあるのは、消え際を字にかけないため（詰めると字の縁が薄くなる） */
-  padding: 10px 30px 8px;
-  background: radial-gradient(
-    50% 50% at 50% 50%,
-    rgba(255, 253, 247, 0.62) 0%,
-    rgba(255, 253, 247, 0.62) 52%,
-    rgba(255, 253, 247, 0) 100%
-  );
   position: absolute;
   /* ヘッダー(h-14=56px)分だけ上げる */
   bottom: 80px;

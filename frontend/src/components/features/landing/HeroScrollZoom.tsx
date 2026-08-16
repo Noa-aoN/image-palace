@@ -102,8 +102,8 @@ export function HeroScrollZoom() {
             <img src="/hero-butterfly-black.webp" alt="" decoding="async" className="hero-butterfly__wing" />
           </div>
         </div>
-        {/* 中央の扉のあたりを舞う3匹。ほかの蝶より大きく、手前を飛んでいる見立て。
-            大きいぶんぼかしを強めて前ボケにし、奥の宮殿と遠近が喧嘩しないようにする */}
+        {/* 中央の扉のあたりを舞う3匹。扉は奥なので、手前の蝶の半分の大きさにして
+            左右へばらけさせる。小さく霞ませることで空気遠近が保たれる */}
         <div aria-hidden className="hero-butterfly hero-butterfly--7">
           <div className="hero-butterfly__path">
             {/* eslint-disable-next-line @next/next/no-img-element */}
