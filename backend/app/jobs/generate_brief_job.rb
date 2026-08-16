@@ -35,7 +35,7 @@ class GenerateBriefJob < ApplicationJob
     GenerateMeaningService.call(item: item, level: level)
     return if item.reload.brief_edited?
 
-    result = Images::SceneRewriteService.call(item: item, user: item.user)
+    result = Images::SceneRewriteService.call(item: item, user: item.user, internal: true)
     # 作成時は選ぶ人がいない。説明に合う意味が先頭に来るようサービス側で指示してある
     item.update!(scene_prompt: result.options.first.scene_prompt, brief_status: "completed")
     Rails.logger.info "[GenerateBriefJob] RESEARCHED item_id=#{item.id} options=#{result.options.size}"
