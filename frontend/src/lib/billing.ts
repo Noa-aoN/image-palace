@@ -134,3 +134,13 @@ export function expiryUrgencyLabel(expiresAt: string | null | undefined, now: Da
 
   return `あと${days}日`
 }
+
+/**
+ * 登録直後の持ち分。**画面の説明を1か所から出す**ための数。
+ *
+ * 値はサーバー（`Billing::Catalog`）が正本。運営がGrantPolicyで変えられるので、
+ * ここは「既定を説明するための数」であって、残高の計算には使わない。
+ */
+export const TRIAL_CREDITS = 3
+export const MONTHLY_FREE_CREDITS = 1
+export const INITIAL_CREDITS = TRIAL_CREDITS + MONTHLY_FREE_CREDITS

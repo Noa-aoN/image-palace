@@ -2,7 +2,7 @@ import { AuthGuard } from '@/components/features/auth/AuthGuard'
 import { Sidebar } from '@/components/features/layout/Sidebar'
 import { RightPanel } from '@/components/features/panel/RightPanel'
 import { HubBackground } from '@/components/features/layout/HubBackground'
-import { DisplayStyleOnboarding } from '@/components/features/onboarding/DisplayStyleOnboarding'
+import { OnboardingFlow } from '@/components/features/onboarding/OnboardingFlow'
 import { CardCreatePanelSlot } from '@/components/features/items/CardCreatePanel'
 import { PageGate } from '@/components/features/shared/PageGate'
 
@@ -24,7 +24,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
       <RightPanel />
       {/* カード作成はどのページからも開けるよう、中身をここに置く */}
       <CardCreatePanelSlot />
-      <DisplayStyleOnboarding />
+      <OnboardingFlow />
     </div>
   )
 }
