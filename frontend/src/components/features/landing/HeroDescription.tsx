@@ -13,8 +13,14 @@
  *               白い石畳のような明るい場所では縁が効きにくい
  * - `wash`    … 細い白縁＋**縁のない白い靄**。面ではなく光の溜まりとして敷くので、
  *               紙があると気づかれないまま字だけが読みやすくなる（本番候補）
+ * - `white`      … 白文字＋にじむ影だけ。いちばん単純
+ * - `whiteWash`  … 白文字＋**縁のない黒い靄**。wash の明暗を反転したもの
+ *
+ * 白文字系は、本番ヒーローのアイボリースクリム（上端88%）と相性が悪い。
+ * 説明文が置かれる高さは地がほぼアイボリーなので、そこでは白字が消える。
+ * 採るならスクリムのほうを弱める必要がある（`/dev/hero-text` で見比べられる）。
  */
-export type HeroDescriptionVariant = 'panel' | 'outline' | 'wash'
+export type HeroDescriptionVariant = 'panel' | 'outline' | 'wash' | 'white' | 'whiteWash'
 
 export function HeroDescription({
   variant = 'panel',
@@ -26,7 +32,12 @@ export function HeroDescription({
   /** `wash` の白の濃さ。既定は globals.css の `--hero-wash-a`（検討用に外から振る） */
   washOpacity?: number
 }) {
-  const outlined = variant !== 'panel'
+  // 白文字系は影で読ませる。縁取り（hero-outline）は使わない
+  const white = variant === 'white' || variant === 'whiteWash'
+  const outlined = variant === 'outline' || variant === 'wash'
+  // 字の色を CSS 側に任せる版（インラインの色指定を外す）
+  const styled = !white && !outlined
+  const textClass = white ? 'hero-white' : outlined ? 'hero-outline' : ''
 
   return (
     <div
@@ -50,10 +61,10 @@ export function HeroDescription({
       }
     >
       {/* 靄は**文字と別の層**に置く。同じ層でマスクすると、端の字まで薄くなる */}
-      {variant === 'wash' && (
+      {(variant === 'wash' || variant === 'whiteWash') && (
         <span
           aria-hidden
-          className="hero-wash"
+          className={`hero-wash${variant === 'whiteWash' ? ' hero-wash--dark' : ''}`}
           style={washOpacity === undefined ? undefined : ({ '--hero-wash-a': washOpacity } as React.CSSProperties)}
         />
       )}
@@ -70,8 +81,8 @@ export function HeroDescription({
           text-balance は、さらに狭い画面でそれでも折り返すときに、
           行の長さを揃えて中央の座りを保つため */}
       <p
-        className={`text-[0.9rem] leading-relaxed text-balance md:text-lg ${outlined ? 'hero-outline' : ''}`}
-        style={outlined ? undefined : { color: 'var(--foreground)' }}
+        className={`text-[0.9rem] leading-relaxed text-balance md:text-lg ${textClass}`}
+        style={styled ? { color: 'var(--foreground)' } : undefined}
       >
         {/* 鉤括弧は前の行の末尾に置く。次の行の頭に置くと、そこまでが
             ひとつのテキストになり、JSX が改行を空白1つに変えて
@@ -85,11 +96,11 @@ export function HeroDescription({
           名詞だけを立てて、拾い読みでも用途の広さが目に入るようにする */}
       <p
         className={`mt-3 text-[0.85rem] leading-relaxed text-balance md:text-base ${
-          // 縁取り版では字を薄くしない。薄い字に白縁を付けると、
-          // 縁のほうが濃くなって字が抜けて見える
-          outlined ? 'hero-outline' : ''
+          // 紙以外の版では字を薄くしない。薄い字に縁や影を付けると、
+          // そちらのほうが濃くなって字が抜けて見える
+          textClass
         }`}
-        style={outlined ? undefined : { color: '#5A5348' }}
+        style={styled ? { color: '#5A5348' } : undefined}
       >
         <strong className="font-semibold">単語帳</strong>や
         <strong className="font-semibold">用語集</strong>での暗記、
@@ -102,8 +113,8 @@ export function HeroDescription({
         <strong className="font-semibold">ビジョンボード</strong>など、使い方は無限大。
       </p>
       <p
-        className={`mt-3 text-[0.85rem] leading-relaxed text-balance md:text-base ${outlined ? 'hero-outline' : ''}`}
-        style={outlined ? undefined : { color: '#5A5348' }}
+        className={`mt-3 text-[0.85rem] leading-relaxed text-balance md:text-base ${textClass}`}
+        style={styled ? { color: '#5A5348' } : undefined}
       >
         {/* 句点で切る。ここも1文ずつ。
             文の途中で行を折ると JSX が改行を空白1つに変えてしまうので、

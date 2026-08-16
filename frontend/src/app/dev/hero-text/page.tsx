@@ -27,13 +27,20 @@ const WIDTHS = [
   { label: 'モバイル(390px)', width: 390 },
 ]
 
+// 本番ヒーローのアイボリースクリム（globals.css の .hero-scrim と同じ値）。
+// 白文字はこれの有無で結果がまるで変わるので、重ねた場合も見られるようにする
+const HERO_SCRIM =
+  'linear-gradient(180deg, rgba(255,253,247,0.88) 0%, rgba(255,253,247,0.6) 45%, rgba(255,253,247,0.18) 100%)'
+
 function Stage({
   position,
   width,
+  scrim,
   children,
 }: {
   position: string
   width?: number
+  scrim?: boolean
   children: ReactNode
 }) {
   return (
@@ -49,6 +56,7 @@ function Stage({
         className="absolute inset-0 h-full w-full object-cover"
         style={{ objectPosition: position }}
       />
+      {scrim && <div aria-hidden className="absolute inset-0" style={{ background: HERO_SCRIM }} />}
       <div className="relative flex min-h-[300px] items-center justify-center px-4 py-6">{children}</div>
     </div>
   )
@@ -58,9 +66,11 @@ function Stage({
 function Matrix({
   variant,
   washOpacity,
+  scrim,
 }: {
   variant: HeroDescriptionVariant
   washOpacity?: number
+  scrim?: boolean
 }) {
   return (
     <div className="grid gap-4 lg:grid-cols-2">
@@ -70,7 +80,7 @@ function Matrix({
             <p className="text-xs font-medium text-muted-foreground">
               {spot.label} / {w.label}
             </p>
-            <Stage position={spot.position} width={w.width}>
+            <Stage position={spot.position} width={w.width} scrim={scrim}>
               <HeroDescription variant={variant} washOpacity={washOpacity} />
             </Stage>
           </div>
@@ -129,6 +139,52 @@ export default function HeroTextProposalsPage() {
 
       <Section title="案C-18%（前回の濃さ・参考）" body="ここまで来ると、面があることが分かる。">
         <Matrix variant="wash" washOpacity={0.18} />
+      </Section>
+
+      <Section
+        title="案D-白文字（にじむ影のみ）"
+        body="いちばん単純。黒い縁は引かない ── 白字に黒縁は輪郭が硬く、字幕やゲームUIの見え方になる。にじむ影なら輪郭は立たず、字の後ろだけが沈む。"
+      >
+        <Matrix variant="white" />
+      </Section>
+
+      <Section
+        title="案E-白文字＋黒い靄"
+        body="案Cの明暗を反転したもの。靄の作り（縁を作らず外へ消す）は同じ。明部でも字が保つ代わりに、背景がわずかに沈む。"
+      >
+        <Matrix variant="whiteWash" washOpacity={0.22} />
+      </Section>
+
+      <Section
+        title="⚠ 白文字を、本番のスクリムに重ねた場合"
+        body="本番のヒーローは上端88%のアイボリースクリムが掛かっている。説明文が置かれる高さは地がほぼアイボリーなので、そこでは白字が消える。白文字系を採るなら、スクリムのほうを弱めるのが前提になる。"
+      >
+        <div className="grid gap-4 lg:grid-cols-2">
+          <div className="space-y-1.5">
+            <p className="text-xs font-medium text-muted-foreground">案D-白文字 + 本番スクリム</p>
+            <Stage position="center 18%" scrim>
+              <HeroDescription variant="white" />
+            </Stage>
+          </div>
+          <div className="space-y-1.5">
+            <p className="text-xs font-medium text-muted-foreground">案E-白文字＋黒い靄 + 本番スクリム</p>
+            <Stage position="center 18%" scrim>
+              <HeroDescription variant="whiteWash" washOpacity={0.22} />
+            </Stage>
+          </div>
+          <div className="space-y-1.5">
+            <p className="text-xs font-medium text-muted-foreground">案C-15%（比較用）+ 本番スクリム</p>
+            <Stage position="center 18%" scrim>
+              <HeroDescription variant="wash" washOpacity={0.15} />
+            </Stage>
+          </div>
+          <div className="space-y-1.5">
+            <p className="text-xs font-medium text-muted-foreground">案A-現行 + 本番スクリム</p>
+            <Stage position="center 18%" scrim>
+              <HeroDescription variant="panel" />
+            </Stage>
+          </div>
+        </div>
       </Section>
 
       <Section
