@@ -194,8 +194,12 @@ export function DashboardContent() {
         エントランス
       </h1>
 
-      {/* 宮殿の生成資産（残高・生成可能枚数・位）と、宮殿の主人（本人のステータス）を左右に並べる */}
+      {/* 宮殿の主人（本人のありよう）と、宮殿の生成資産（残高・作れる枚数・位）を左右に並べる。
+          主人を先に置くのは、**まず自分の話**だから。残高は「あと何ができるか」の話で、
+          自分が何者かを見てからのほうが読み取りやすい */}
       <div className="grid gap-6 lg:grid-cols-2 lg:items-stretch">
+      <PalaceLordCard tier={billing?.plan?.tier ?? null} />
+
       <section className="flex flex-col space-y-3">
         <h2 className="text-sm font-semibold text-muted-foreground">宮殿の生成資産</h2>
         {/*
@@ -276,8 +280,6 @@ export function DashboardContent() {
             </CardContent>
         </Card>
       </section>
-
-      <PalaceLordCard tier={billing?.plan?.tier ?? null} />
       </div>
 
       {/*
