@@ -113,6 +113,29 @@ export function ImageInfoPanel({
             <p className="mt-0.5 text-xs leading-relaxed text-muted-foreground">{source.note}</p>
           </div>
 
+          {/* **絵がまだ無くても項目ごと消さない。** 消えると、そういう情報が
+              あること自体を知る機会が無くなる（分かれていた頃の不具合の芯） */}
+          <Section title="生成の記録">
+            {info ? (
+              <dl className="space-y-1 text-xs">
+                {info.model && <Row label="モデル">{info.model}</Row>}
+                {provider && <Row label="プロバイダ">{provider}</Row>}
+                {sizeQuality && <Row label="サイズ / 品質">{sizeQuality}</Row>}
+                <Row label="生成日時">{new Date(item.created_at).toLocaleString('ja-JP')}</Row>
+              </dl>
+            ) : (
+              <p className="text-xs text-muted-foreground">
+                まだありません。絵ができると、使ったモデルや日時がここに残ります。
+              </p>
+            )}
+
+            {info?.revised_prompt && (
+              <Field label="revised_prompt（生成時にAIが補正した指示）">
+                <Text value={info.revised_prompt} placeholder="—" />
+              </Field>
+            )}
+          </Section>
+
           <Section title="画像への指示">
             {fromWord ? (
               <Field label="画像への指示">
@@ -153,29 +176,6 @@ export function ImageInfoPanel({
               直すときは「イメージ再生成」から。
               {item.brief_edited && <span className="ml-1">（編集済み）</span>}
             </p>
-          </Section>
-
-          {/* **絵がまだ無くても項目ごと消さない。** 消えると、そういう情報が
-              あること自体を知る機会が無くなる（分かれていた頃の不具合の芯） */}
-          <Section title="生成の記録">
-            {info ? (
-              <dl className="space-y-1 text-xs">
-                {info.model && <Row label="モデル">{info.model}</Row>}
-                {provider && <Row label="プロバイダ">{provider}</Row>}
-                {sizeQuality && <Row label="サイズ / 品質">{sizeQuality}</Row>}
-                <Row label="生成日時">{new Date(item.created_at).toLocaleString('ja-JP')}</Row>
-              </dl>
-            ) : (
-              <p className="text-xs text-muted-foreground">
-                まだありません。絵ができると、使ったモデルや日時がここに残ります。
-              </p>
-            )}
-
-            {info?.revised_prompt && (
-              <Field label="revised_prompt（生成時にAIが補正した指示）">
-                <Text value={info.revised_prompt} placeholder="—" />
-              </Field>
-            )}
           </Section>
 
           {onOpenHistory && (
