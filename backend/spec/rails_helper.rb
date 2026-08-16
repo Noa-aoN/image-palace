@@ -15,6 +15,17 @@ ENV['DATABASE_URL'] = TestDatabaseUrl.resolve(
   ENV['TEST_DATABASE_URL'], ENV['DATABASE_URL']
 )
 
+# 外部 API の鍵は、**テストでは中身を使わないが「在ること」は要る**。
+#
+# 呼び出し側は ENV.fetch で取り出す（鍵の入れ忘れを本番で黙って通さないため）。
+# fetch は引数を組み立てる時点で走るので、client を丸ごと差し替える spec でも、
+# 鍵が無い環境では組み立ての段で落ちる。
+#
+# 手元の docker compose には本物が入っているので気づけない。**CI（本番イメージ）で
+# 初めて落ちる**ので、ここで試験用の値を置いて、秘密に依存させない。
+# 実際の通信は各 spec が差し替えているので、この値が外に出ることはない
+ENV['OPENAI_API_KEY'] ||= 'test-openai-key'
+
 require_relative '../config/environment'
 # Prevent database truncation if the environment is production
 abort("The Rails environment is running in production mode!") if Rails.env.production?
