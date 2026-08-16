@@ -148,7 +148,14 @@ export default function ItemDetailPage() {
     )
   }
 
-  const navBtnBase = 'flex items-center justify-center rounded-full p-2 text-muted-foreground hover:text-foreground hover:bg-black/8 transition-colors'
+  // 送りの釦。**広い画面でも地を敷く。**
+  // 以前は広い画面で地を透明にしていたが、下に何が来るかで見え方が変わり、
+  // 絵や白い札の上では輪郭が消えて、押せる場所だと分からなかった。
+  // 半透明の白と薄い金の縁で、下を透かしたまま輪郭だけ残す
+  const navBtnBase =
+    'flex items-center justify-center rounded-full p-2 text-muted-foreground transition-colors ' +
+    'bg-background/80 backdrop-blur-sm ring-1 ring-[var(--edge-gold)] shadow-sm ' +
+    'hover:bg-background hover:text-foreground'
 
   // 前の画像が残ったまま生成中＝作り直し中
   const regenerating = isRegenerating(item.generation_status, Boolean(item.media?.url) && !imgError)
@@ -305,7 +312,7 @@ export default function ItemDetailPage() {
       {mainBox && prevId && (
         <button
           onClick={() => router.push(itemHref(prevId))}
-          className={`fixed z-10 flex -translate-y-1/2 bg-background/70 backdrop-blur-sm md:bg-transparent md:backdrop-blur-none ${navBtnBase}`}
+          className={`fixed z-10 flex -translate-y-1/2 ${navBtnBase}`}
           style={{ top: mainBox.centerY, left: mainBox.left + NAV_INSET }}
           aria-label="前のカード"
         >
@@ -315,7 +322,7 @@ export default function ItemDetailPage() {
       {mainBox && nextId && (
         <button
           onClick={() => router.push(itemHref(nextId))}
-          className={`fixed z-10 flex -translate-y-1/2 bg-background/70 backdrop-blur-sm md:bg-transparent md:backdrop-blur-none ${navBtnBase}`}
+          className={`fixed z-10 flex -translate-y-1/2 ${navBtnBase}`}
           style={{ top: mainBox.centerY, right: mainBox.right + NAV_INSET }}
           aria-label="次のカード"
         >

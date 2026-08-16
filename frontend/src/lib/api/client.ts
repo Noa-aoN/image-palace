@@ -1,6 +1,7 @@
 import axios from 'axios'
 import { useAuthStore } from '@/stores/auth'
 import { useItemsStore } from '@/stores/items'
+import { isPublicPath } from '@/lib/auth/public-paths'
 
 const AUTH_ERROR_EXCLUDED_PATHS = new Set([
   '/api/v1/auth',
@@ -57,7 +58,13 @@ apiClient.interceptors.response.use(
     if (error.response?.status === 401 && shouldRedirectOnUnauthorized) {
       useItemsStore.getState().resetItems()
       useAuthStore.getState().clearAuth()
-      window.location.href = '/login'
+      // ログイン無しで読めるページからは追い出さない。
+      // 印は落とす（ヘッダーは未ログインの姿に変わる）が、いま読んでいるものは残す。
+      // 送っていたころは、使い方やコラムを読んでいる最中に期限が切れると、
+      // 読みかけの記事からログイン画面へ飛ばされていた
+      if (!isPublicPath(window.location.pathname)) {
+        window.location.href = '/login'
+      }
     }
     return Promise.reject(error)
   }

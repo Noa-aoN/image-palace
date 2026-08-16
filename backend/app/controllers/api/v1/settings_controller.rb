@@ -24,7 +24,8 @@ module Api
 
       def settings_params
         params.require(:setting).permit(
-          :auto_generate_meanings, :auto_generate_tags, :auto_generate_properties, :share_generated_images, :default_image_style, :default_aspect_ratio,
+          :auto_generate_meanings, :auto_generate_tags, :auto_generate_properties, :auto_detect_item_type,
+          :share_generated_images, :default_image_style, :default_aspect_ratio,
           :display_style, :shelf_orientation, :onboarded,
           :regenerate_with_meaning, :image_safeguard, :palace_name,
           :card_detail_columns,
@@ -41,6 +42,7 @@ module Api
         {
           auto_generate_meanings: setting.auto_generate_meanings,
           auto_generate_tags: setting.auto_generate_tags,
+          auto_detect_item_type: setting.auto_detect_item_type,
           auto_generate_properties: setting.auto_generate_properties,
           # 自分が作らせた絵を、ほかの人にも使わせてよいか
           share_generated_images: setting.share_generated_images,

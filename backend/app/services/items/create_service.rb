@@ -72,6 +72,9 @@ module Items
       # タグの自動生成: generate_tags が明示指定されればそれを優先し、
       # 指定がなければユーザー設定（auto_generate_tags）にフォールバックする
       GenerateTagsJob.perform_later(item.id) if generate_tags?
+      # 種別の自動判定。**自分で選んだときは走らせない**（選択を上書きしない）。
+      # 意味やタグと同じ「作ったあとに足す情報」なので、同じ足並みで積む
+      DetectItemTypeJob.perform_later(item.id) if detect_item_type?
       # 項目（読み仮名・別名など）の自動生成。**選んだぶんをまとめて1回で埋める。**
       # 出す項目そのものが無ければ、ここで用意してから積む（決めていない人がほとんどのため）
       enqueue_property_fill(item)
@@ -134,6 +137,20 @@ module Items
     end
 
     # 作成時に generate_tags が渡された場合はその真偽値を、なければユーザー設定を使う
+    # 種別を AI に決めさせるか。
+    #
+    # 自分で選んだ種別があるなら触らない。指定が無いときだけ、既定の「単語」で
+    # 溜め込まずに済むよう判定を挟む。設定で切れる（意味・タグと同じ扱い）
+    def detect_item_type?
+      return false if @params[:item_type_id].present?
+
+      value = @params[:detect_item_type]
+      return value unless value.nil?
+
+      setting = @user.setting&.auto_detect_item_type
+      setting.nil? ? true : setting
+    end
+
     def generate_tags?
       if @params.key?(:generate_tags)
         ActiveModel::Type::Boolean.new.cast(@params[:generate_tags])
@@ -159,7 +176,7 @@ module Items
     end
 
     def default_item_type_id
-      type = ItemType.find_by(name: "term")
+      type = ItemType.find_by(name: ItemType::DEFAULT_NAME)
       unless type
         raise ActiveRecord::RecordNotFound, "Default ItemType 'term' not found. Please run 'rails db:seed'."
       end
