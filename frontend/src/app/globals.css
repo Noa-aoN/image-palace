@@ -699,11 +699,12 @@
 .hero-butterfly--4 { left: 30%; top: 85%; width: 17px; --bfly-dir: -1; }
 .hero-butterfly--5 { left: 91%; top: 75%; width: 14px; --bfly-dir: 1; }
 .hero-butterfly--6 { left: 9%; top: 82%; width: 17px; --bfly-dir: -1; }
-/* 中央の扉のあたりを舞う3匹。ほかの蝶（14〜20px）の半分の大きさにして、
-   左右にばらけさせる。扉は奥なので、小さいほうが遠近に合う */
-.hero-butterfly--7 { left: 38%; top: 64%; width: 9px; --bfly-dir: -1; }
-.hero-butterfly--8 { left: 58%; top: 70%; width: 8px; --bfly-dir: 1; }
-.hero-butterfly--9 { left: 50%; top: 57%; width: 10px; --bfly-dir: 1; }
+/* 中央の扉のあたりを舞う3匹。ほかの蝶（14〜20px）よりわずかに小さく、
+   左右にばらけさせる。扉は奥なので、小さいほうが遠近に合う。
+   高さは扉の下半分あたり。上げすぎると空に浮いて見える */
+.hero-butterfly--7 { left: 38%; top: 71%; width: 13px; --bfly-dir: -1; }
+.hero-butterfly--8 { left: 58%; top: 77%; width: 12px; --bfly-dir: 1; }
+.hero-butterfly--9 { left: 50%; top: 65%; width: 14px; --bfly-dir: 1; }
 /* 扉は奥にあるので、そこを舞う蝶は**手前の蝶より小さい**（ほかの半分）。
    遠いぶん霞ませる。前ボケではなく空気遠近 */
 .hero-butterfly--7 .hero-butterfly__wing,
