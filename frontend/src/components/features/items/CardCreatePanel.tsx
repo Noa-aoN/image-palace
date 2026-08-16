@@ -66,7 +66,7 @@ export function CardCreatePanelSlot() {
       </div>
       {/* 作りに来たついでに「前に作ったもの」を見たくなることがある。
           作るボタンより下・控えめに置く（同じ強さだと目が二択で止まる） */}
-      <div className="mt-4 border-t border-border/60 pt-3 text-center">
+      <div className="mt-2 text-center">
         <Link
           href="/items"
           onClick={() => useRightPanelStore.getState().close()}

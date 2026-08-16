@@ -6,13 +6,17 @@ module Api
       def generate
         # count 未指定（nil/空）は「おまかせ（自動）」としてサービス側に委ねる。
         # exclude=既出（絶対に出さない）, avoid=キャンセル済み（確率を大きく下げる）。
+        # 実在の確認は数の少ない呼び出しだけに掛ける。
+        # 1語ごとに Wikipedia を引くので、50語まとめて作るワードリストで回すと
+        # 待ち時間が現実的でなくなる。デルフォイは最大5語なので確かめられる。
         words = GenerateWordsService.call(
           theme: params[:theme],
           count: params[:count].presence,
           exclude: params[:exclude],
           avoid: params[:avoid],
           difficulty: params[:difficulty].presence || current_user.setting&.word_difficulty,
-          user: current_user
+          user: current_user,
+          verify: verify_existence?
         )
         render json: { words: words }
       rescue Ai::Chat::LimitExceeded => e
@@ -21,6 +25,18 @@ module Api
         Rails.logger.warn "[WordsController#generate] failed: #{e.class}: #{e.message}"
         render json: { error: "単語の生成に失敗しました。時間を置いて再度お試しください。" }, status: :unprocessable_entity
       end
+
+      # 実在を確かめる件数の上限。これ以下なら1語ずつ引いても待たせすぎない
+      VERIFY_MAX_COUNT = 5
+
+      private
+
+      def verify_existence?
+        requested = params[:count].to_i
+        requested.positive? && requested <= VERIFY_MAX_COUNT
+      end
+
+      public
 
       # 単語リストがテーマに沿っているかを点検し、訂正・追加の提案を返す（クレジット消費なし）。
       # 提案の適用はフロント側でユーザーが一件ずつ承認する。

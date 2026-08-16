@@ -25,6 +25,7 @@ import {
 } from '@/components/features/items/RegeneratingOverlay'
 import { SafeguardVeil, SAFEGUARD_IMAGE_CLASS } from '@/components/features/items/SafeguardVeil'
 import { CardCreateButton } from '@/components/features/items/CardCreatePanel'
+import { getItemTypes } from '@/lib/api/items'
 import { STATUS_LABEL, isRegenerating } from '@/lib/item-status'
 import { usePendingRefresh } from '@/hooks/usePendingRefresh'
 import { StatusBadge } from '@/components/features/items/StatusBadge'
@@ -42,7 +43,7 @@ import {
 } from '@/lib/api/items'
 import { getTags } from '@/lib/api/tags'
 import { useItemsStore } from '@/stores/items'
-import type { Item } from '@/types/item'
+import type { Item, ItemType } from '@/types/item'
 import type { Tag } from '@/types/tag'
 import { aspectRatioCss } from '@/lib/aspect-ratio'
 import { CARD_IMAGE_EDGE, CARD_MAT_BG, CARD_MAT_BORDER } from '@/lib/card-frame'
@@ -381,10 +382,11 @@ function ItemCard({ item, selectionMode, selected, onToggle, fit, sizes, working
   )
 }
 
-const TAG_FILTER_PANEL_KEY = 'items-tag-filter'
+// タグだけでなく種別も入るので、鍵と名前は「絞り込み」に寄せる
+const FILTER_PANEL_KEY = 'items-filter'
 
 export function ItemList({ initialTag = null }: { initialTag?: string | null }) {
-  const tagPanel = usePanelForm(TAG_FILTER_PANEL_KEY, 'タグで絞り込む')
+  const tagPanel = usePanelForm(FILTER_PANEL_KEY, '絞り込む')
   const router = useRouter()
   const items = useItemsStore((state) => state.items)
   const setItems = useItemsStore((state) => state.setItems)
@@ -402,6 +404,15 @@ export function ItemList({ initialTag = null }: { initialTag?: string | null }) 
   const [activeTags, setActiveTags] = useState<string[]>(initialTag ? [ initialTag ] : [])
   const [sortKey, setSortKey] = useState('created_at:desc')
   const [statusFilter, setStatusFilter] = useState('')
+  // 種別（単語・概念など）。タグと同じく複数選べる
+  const [itemTypes, setItemTypes] = useState<ItemType[]>([])
+  const [activeTypes, setActiveTypes] = useState<string[]>([])
+  // 種別の一覧。数は多くないので一度に引く
+  useEffect(() => {
+    getItemTypes()
+      .then(setItemTypes)
+      .catch(() => {})
+  }, [])
   const [query, setQuery] = useState('')
   const [appliedQuery, setAppliedQuery] = useState('')
   const [suggestions, setSuggestions] = useState<ItemSuggestion[]>([])
@@ -675,6 +686,7 @@ export function ItemList({ initialTag = null }: { initialTag?: string | null }) 
         sort,
         direction,
         status: statusFilter || undefined,
+        itemTypeIds: activeTypes.length > 0 ? activeTypes : undefined,
       })
       setItems(fetched)
       if (meta.card_list) setListBlocks(meta.card_list.blocks)
@@ -759,7 +771,7 @@ export function ItemList({ initialTag = null }: { initialTag?: string | null }) 
       cancelled = true
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps -- 取得の引き金だけを並べる
-  }, [page, activeTags.join(','), appliedQuery, sortKey, statusFilter, refreshToken, display.columns, display.rows])
+  }, [page, activeTags.join(','), activeTypes.join(','), appliedQuery, sortKey, statusFilter, refreshToken, display.columns, display.rows])
 
   /*
     生成中のカードがある間だけ取り直す。
@@ -803,13 +815,59 @@ export function ItemList({ initialTag = null }: { initialTag?: string | null }) 
         className="h-9 shrink-0 px-3 text-sm"
       >
         <TagIcon size={14} className="mr-1" />
-        タグで絞り込む{activeTags.length > 0 && `（${activeTags.length}）`}
+        絞り込む{activeTags.length + activeTypes.length > 0 && `（${activeTags.length + activeTypes.length}）`}
       </Button>
     ) : null
 
   const tagPanelContent = (
-    <PanelSlotContent sectionKey={TAG_FILTER_PANEL_KEY}>
-      <div className="space-y-3">
+    <PanelSlotContent sectionKey={FILTER_PANEL_KEY}>
+      <div className="space-y-5">
+        {/* 種別をタグより上に置く。**種別は数が少なく、粒も大きい**ので、
+            先に絞ってからタグへ降りるほうが少ない手数で目的に着く。
+            出しっぱなしにするのは、選べる種別が数個しかないため（畳む価値がない） */}
+        {itemTypes.length > 0 && (
+          <div className="space-y-2">
+            <div className="flex items-baseline justify-between gap-3">
+              <p className="text-xs font-medium text-muted-foreground">種別で絞り込む</p>
+              {activeTypes.length > 0 && (
+                <button
+                  type="button"
+                  onClick={() => setActiveTypes([])}
+                  className="shrink-0 text-xs text-muted-foreground hover:underline"
+                >
+                  種別の選択を外す
+                </button>
+              )}
+            </div>
+            <ul className="flex flex-wrap gap-1.5">
+              {itemTypes.map((type) => {
+                const on = activeTypes.includes(type.id)
+                return (
+                  <li key={type.id}>
+                    <button
+                      type="button"
+                      aria-pressed={on}
+                      onClick={() =>
+                        setActiveTypes((prev) =>
+                          prev.includes(type.id) ? prev.filter((id) => id !== type.id) : [ ...prev, type.id ]
+                        )
+                      }
+                      className={`rounded-full border px-2.5 py-1 text-xs transition-colors ${
+                        on
+                          ? 'border-[var(--palace)] bg-[rgba(198,167,94,0.12)] text-foreground'
+                          : 'border-border text-muted-foreground hover:bg-muted'
+                      }`}
+                    >
+                      {type.label || type.name}
+                    </button>
+                  </li>
+                )
+              })}
+            </ul>
+          </div>
+        )}
+
+        <div className="space-y-3">
         {/* 探す窓を一番上に置く。タグが増えると、目で追うより打ったほうが早い */}
         <div className="relative">
           <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
@@ -879,6 +937,7 @@ export function ItemList({ initialTag = null }: { initialTag?: string | null }) 
             {tagQuery ? '見つかりませんでした。' : 'まだタグがありません。'}
           </p>
         )}
+        </div>
       </div>
     </PanelSlotContent>
   )
@@ -1054,7 +1113,7 @@ export function ItemList({ initialTag = null }: { initialTag?: string | null }) 
   }
 
   if (items.length === 0) {
-    if (activeTags.length > 0 || appliedQuery || statusFilter) {
+    if (activeTags.length > 0 || activeTypes.length > 0 || appliedQuery || statusFilter) {
       return (
         <div className="space-y-6">
           {filterBar}

@@ -1,6 +1,9 @@
 'use client'
 
-import type { ReactNode } from 'react'
+import { useLayoutEffect, useRef, useState, type ReactNode } from 'react'
+
+/** 画面の端に残す余白。ここより外へは出さない */
+const EDGE = 8
 
 /**
  * アイコンだけのボタンに、何をするものかを添える。
@@ -9,11 +12,18 @@ import type { ReactNode } from 'react'
  * ブラウザ標準の title 属性は出るまで約1秒かかり、迷って手が止まってから
  * ようやく出るので間に合わない。指を乗せた時点で出す。
  *
- * キーボードで辿ったときにも出す（focus-within）。マウスを持たない人にも
- * 同じ情報が要る。
+ * キーボードで辿ったときにも出す。マウスを持たない人にも同じ情報が要る。
  *
- * 名前付きの group を使うのは、カードの画像枠など既に group を張っている
- * 入れ子の中でも誤って反応しないようにするため。
+ * **画面を基準に置く（position: fixed）。**
+ * 中身の隣に絶対配置すると、右パネルのように `overflow-y-auto` の中では
+ * 枠で切られてしまい、肝心の説明が読めない。z-index を上げても直らない
+ * （切っているのは重なり順ではなく、はみ出しの扱いのほう）。
+ *
+ * **端では折り返さず、内側へ寄せる。**
+ * 中央合わせのままだと画面の端で外へ出る。出た分を詰めようとすると折り返し、
+ * 2行になった説明が指の下に広がって、かえって読みにくい。
+ * 出したあとに幅を測り、収まる位置まで横へずらす（幅は測らないと分からない）。
+ * 画面より広い説明だけは、仕方なく折り返す。
  */
 export function Tooltip({
   label,
@@ -25,17 +35,67 @@ export function Tooltip({
   /** 上に出すか下に出すか。行の一番上にあるものは下、下端にあるものは上 */
   side?: 'top' | 'bottom'
 }) {
+  const anchorRef = useRef<HTMLSpanElement>(null)
+  const tipRef = useRef<HTMLSpanElement>(null)
+  const [pos, setPos] = useState<{ left: number; top: number } | null>(null)
+
+  const show = () => {
+    const el = anchorRef.current
+    if (!el) return
+    const r = el.getBoundingClientRect()
+    setPos({ left: r.left + r.width / 2, top: side === 'top' ? r.top : r.bottom })
+  }
+
+  const hide = () => setPos(null)
+
+  // 出してから測って、収まる位置へ寄せる。
+  //
+  // 測った結果を state に戻すと、出すたびに描き直しが1回増える
+  // （しかも1度目は端からはみ出したまま描かれる）。ここは**要素へ直に書く**。
+  // 見た目を整えるだけで、ほかの描画に影響しない値だから。
+  useLayoutEffect(() => {
+    const tip = tipRef.current
+    if (!pos || !tip) return
+
+    const available = window.innerWidth - EDGE * 2
+    // 画面より広い説明だけは、仕方なく折り返す
+    if (tip.offsetWidth > available) {
+      tip.style.whiteSpace = 'normal'
+      tip.style.maxWidth = `${available}px`
+      return
+    }
+
+    const half = tip.offsetWidth / 2
+    const clamped = Math.min(Math.max(pos.left, half + EDGE), window.innerWidth - half - EDGE)
+    tip.style.left = `${clamped}px`
+  }, [pos])
+
   return (
-    <span className="group/tip relative inline-flex">
+    <span
+      ref={anchorRef}
+      className="relative inline-flex"
+      onMouseEnter={show}
+      onMouseLeave={hide}
+      onFocusCapture={show}
+      onBlurCapture={hide}
+    >
       {children}
-      <span
-        role="tooltip"
-        className={`pointer-events-none absolute left-1/2 z-30 -translate-x-1/2 whitespace-nowrap rounded-md bg-foreground px-2 py-1 text-xs leading-snug text-background opacity-0 shadow-md transition-opacity group-hover/tip:opacity-100 group-focus-within/tip:opacity-100 ${
-          side === 'top' ? 'bottom-full mb-1' : 'top-full mt-1'
-        }`}
-      >
-        {label}
-      </span>
+      {pos && (
+        <span
+          ref={tipRef}
+          role="tooltip"
+          style={{
+            position: 'fixed',
+            left: pos.left,
+            top: pos.top,
+            transform:
+              side === 'top' ? 'translate(-50%, -100%) translateY(-4px)' : 'translate(-50%, 4px)',
+          }}
+          className="pointer-events-none z-[100] whitespace-nowrap rounded-md bg-foreground px-2 py-1 text-xs leading-snug text-background shadow-md"
+        >
+          {label}
+        </span>
+      )}
     </span>
   )
 }

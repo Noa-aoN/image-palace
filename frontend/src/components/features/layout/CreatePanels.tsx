@@ -98,7 +98,7 @@ export function CreatePanelSlots() {
 function ListLink({ href, label }: { href: string; label: string }) {
   const closePanel = useRightPanelStore((s) => s.close)
   return (
-    <div className="mt-4 border-t border-border/60 pt-3 text-center">
+    <div className="mt-2 text-center">
       <Link
         href={href}
         onClick={closePanel}
