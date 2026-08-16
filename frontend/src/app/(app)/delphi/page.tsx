@@ -56,7 +56,7 @@ export default function AcropolisPage() {
   const history = useAcropolisStore((s) => s.history)
   const addRecord = useAcropolisStore((s) => s.addRecord)
   const clearHistory = useAcropolisStore((s) => s.clearHistory)
-  // 履歴は畳んでおく。全部並べると、下のコード引き換えが押し出される
+  // 履歴は畳んでおく。全部並べると、ページがいたずらに長くなる
   const [historyExpanded, setHistoryExpanded] = useState(false)
   const shownHistory = historyExpanded ? history : history.slice(0, HISTORY_LIMIT)
   // アニメーション可否（設定 off / reduced-motion で false）。false のときは素の表示にする。
@@ -177,6 +177,21 @@ export default function AcropolisPage() {
       <p className="mt-2 text-muted-foreground">
         なにかを受け取る場所です。言葉をランダムに受け取るか、配られたコードを引き換えるか、どちらもここで行います。
       </p>
+
+      {/* **コードを持ってきた人を先に通す。** 目的がはっきりしている人ほど
+          用が済むのが早いので、上に置く。言葉をもらいに来た人は、
+          そのまま下へ読み進めればよい。
+          もともと受け取り口は「利用と支払い」の中だけにあったが、そこは支払いを
+          済ませに行く面で、コードを持ってきた人が最初に開く場所ではない。
+          入口は2つでも、扱っているのは同じ1つの仕組み（Billing::RedeemCampaignCode）。 */}
+      <section className="mt-6">
+        <RedeemCodePanel
+          onRedeemed={() => useBillingStore.getState().fetchSummary()}
+          title="キャンペーンコードの受け取り"
+          note="配られたコードをここで引き換えられます。受け取ったぶんは残高に足されます。"
+          withHistory
+        />
+      </section>
 
       {/* 2つの受け取りをカードで分ける。
           言葉をもらうのと、コードを引き換えるのは、来た理由が別。
@@ -313,7 +328,7 @@ export default function AcropolisPage() {
 
       {/* 言葉の受け取りの履歴は、そのカードの中に納める。
           別の節にすると、どちらの記録なのかを探すことになる。
-          出すのは10件まで。全部並べると、下のコード引き換えが押し出される */}
+          出すのは10件まで。全部並べると、ページがいたずらに長くなる */}
       {history.length > 0 && (
         <div className="space-y-2 border-t border-border pt-4">
           <div className="flex items-center justify-between">
@@ -364,19 +379,6 @@ export default function AcropolisPage() {
           )}
         </div>
       )}
-      </section>
-
-      {/* キャンペーンコードの受け取り。
-          もともと受け取り口は「利用と支払い」の中だけにあったが、そこは支払いを
-          済ませに行く面で、コードを持ってきた人が最初に開く場所ではない。
-          入口は2つでも、扱っているのは同じ1つの仕組み（Billing::RedeemCampaignCode）。 */}
-      <section className="mt-6">
-        <RedeemCodePanel
-          onRedeemed={() => useBillingStore.getState().fetchSummary()}
-          title="キャンペーンコードの受け取り"
-          note="配られたコードをここで引き換えられます。受け取ったぶんは残高に足されます。"
-          withHistory
-        />
       </section>
 
       </div>

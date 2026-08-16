@@ -102,7 +102,7 @@ export function HeroDescription({
           text-balance は、狭い画面で折り返すときに行の長さを揃えて
           中央の座りを保つため */}
       <p
-        className={`text-[0.9rem] leading-relaxed text-balance md:text-lg ${textClass}`}
+        className={`text-[0.85rem] leading-relaxed text-balance md:text-[1.0625rem] ${textClass}`}
         style={styled ? { color: 'var(--foreground)' } : undefined}
       >
         {/* 鉤括弧は前の行の末尾に置く。次の行の頭に置くと、そこまでが

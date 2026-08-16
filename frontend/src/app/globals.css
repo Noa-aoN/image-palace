@@ -669,11 +669,15 @@
   pointer-events: none;
   /* フレームアウトは専用の --bflyout（進捗0.38〜0.80・smoothstep）駆動。
      テキスト消失の少しあとから、なだらかに飛び去り始める */
-  opacity: calc((1 - var(--bflyout, 0)) * 0.82);
+  /* どの退場進捗を見るかは各蝶が決める（--bout）。
+     手前の蝶は早め（--bflyout-fore）、奥の3匹は従来どおり（--bflyout）。
+     手前ほど速く流れて見えるほうが、視差として自然 */
+  --bout: var(--bflyout, 0);
+  opacity: calc((1 - var(--bout)) * 0.82);
   /* スクロールに応じて左右(--bfly-dir)へ緩やかに飛び去り画面外へ抜ける（飛行経路で飛び回りながら） */
   transform: translate3d(
-    calc(var(--bflyout, 0) * var(--bfly-dir, 1) * 72vw),
-    calc(var(--bflyout, 0) * -8vh),
+    calc(var(--bout) * var(--bfly-dir, 1) * 72vw),
+    calc(var(--bout) * -8vh),
     0
   );
   will-change: transform, opacity;
@@ -692,6 +696,15 @@
   will-change: transform;
   /* 羽ばたき（横方向の縮みで翅の開閉を擬似） */
   animation: hero-bfly-flap 0.42s ease-in-out infinite;
+}
+/* 手前の6匹だけ、退場を少し早い進捗で見る */
+.hero-butterfly--1,
+.hero-butterfly--2,
+.hero-butterfly--3,
+.hero-butterfly--4,
+.hero-butterfly--5,
+.hero-butterfly--6 {
+  --bout: var(--bflyout-fore, 0);
 }
 .hero-butterfly--1 { left: 14%; top: 72%; width: 18px; --bfly-dir: -1; }
 .hero-butterfly--2 { left: 86%; top: 80%; width: 15px; --bfly-dir: 1; }
@@ -778,16 +791,16 @@
   top: 0;
   left: 0;
   width: 100%;
-  height: 90px;
+  height: 120px;
   z-index: 1;
   display: block;
   pointer-events: none;
   /* 上端を透明から始める。**塗りが道を直線で切るのを防ぐ**ため。
-     不透明のまま置くと、波のすぐ上にもう1本の境目ができて、
-     波がいくら滑らかでも不自然に見える。
-     波（中心線 y=68）は明けきったところに来るので、輪郭は鈍らない */
-  -webkit-mask-image: linear-gradient(to bottom, transparent 0%, #000 50%);
-  mask-image: linear-gradient(to bottom, transparent 0%, #000 50%);
+     不透明のまま置くと、波の上にもう1本の境目ができる。
+     上の波（中心線 y=52 → 山は y=38）より手前の 28% で明けきるので、
+     波の輪郭は鈍らない */
+  -webkit-mask-image: linear-gradient(to bottom, transparent 0%, #000 28%);
+  mask-image: linear-gradient(to bottom, transparent 0%, #000 28%);
 }
 .section-divider--flip {
   transform: scaleY(-1);
@@ -808,7 +821,7 @@
 
 @media (max-width: 640px) {
   .section-divider {
-    height: 62px;
+    height: 84px;
   }
 }
 

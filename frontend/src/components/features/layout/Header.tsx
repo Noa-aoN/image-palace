@@ -21,23 +21,13 @@ import { useAdminStore } from '@/stores/admin'
 import { signOut } from '@/lib/api/auth'
 import { CREDIT_UNIT_SHORT } from '@/lib/billing'
 import { showSignUpCta } from '@/lib/auth/header-cta'
+import { Tooltip } from '@/components/ui/tooltip'
 import { MobileNav } from '@/components/features/layout/MobileNav'
+import { CREATE_ITEMS, useOpenCreate } from '@/components/features/layout/CreatePanels'
 import { NotificationsPanel } from '@/components/features/layout/NotificationsPanel'
 
 // 未読バッジの更新間隔。生成の完了に程よく気づける程度に抑える。
 const UNREAD_POLL_MS = 30_000
-
-/**
- * 作れるもの。**サイドバーの「◯◯を作成」と同じ行き先**にそろえる。
- * ここだけ別の道にすると、同じ操作をしたつもりで違う結果を受け取ることになる。
- */
-const CREATE_ITEMS = [
-  { href: '/items/new', label: 'カードを作成' },
-  { href: '/views/new', label: 'キャンバスを作成' },
-  { href: '/spaces/new', label: 'スペースを作成' },
-  { href: '/boxes/new', label: 'ボックスを作成' },
-  { href: '/materials/new', label: 'マテリアルを作成' },
-]
 
 export function AppHeader() {
   const pathname = usePathname()
@@ -56,6 +46,8 @@ export function AppHeader() {
   const [notificationsOpen, setNotificationsOpen] = useState(false)
   const [menuOpen, setMenuOpen] = useState(false)
   const [createOpen, setCreateOpen] = useState(false)
+  // 「作る」は右パネルで開く。ページへ移ると、いま見ていたものが消える
+  const openCreate = useOpenCreate()
   const isAuthPage = pathname?.startsWith('/login') || pathname?.startsWith('/signup') || pathname?.startsWith('/auth/')
   const isLandingPage = pathname === '/'
   const signUpCtaVisible = showSignUpCta({ hasHydrated, isAuthenticated, pathname })
@@ -151,42 +143,45 @@ export function AppHeader() {
           </Link>
         )}
         {showUserMenu && billingSummary && (
+          <Tooltip label="クレジット残高">
           <Link
             href="/billing"
             className="flex items-center gap-1 rounded-full px-2.5 py-1 text-sm hover:bg-white/15 transition-colors"
-            title="クレジット残高"
           >
             <Coins size={16} style={{ color: 'var(--on-palace)' }} />
             <span className="font-medium tabular-nums">{billingSummary.available_credits}</span>
             <span className="text-xs text-white/75">{CREDIT_UNIT_SHORT}</span>
           </Link>
+          </Tooltip>
         )}
         {/*
           作れるものの入口。
           **アトリエを開いてから選ぶ**までの間に、作る気が薄れることがある。
           どこにいても、作れるものが一覧で見えて、そのまま入れるようにする。
 
-          行き先はページ（右パネルではない）。**サイドバーの「◯◯を作成」と同じ道**に揃える。
-          同じ操作をしたつもりで違う結果を受け取ると、どちらが本当なのか分からなくなる。
+          開くのは**右パネル**。ページへ移ると、いま見ていたものが消える。
+          作りたいのは目の前のものの続きなので、見えたまま作れるほうがよい。
+          中身は CreatePanels が持つ（入口が複数あるので置き場所は1か所）。
         */}
         {showUserMenu && (
           <DropdownMenu open={createOpen} onOpenChange={setCreateOpen}>
-            <DropdownMenuTrigger
-              className="rounded-full p-1.5 transition-colors hover:bg-white/15"
-              title="作る"
-              aria-label="作る"
-            >
-              <Plus size={20} style={{ color: 'var(--on-palace)' }} />
-            </DropdownMenuTrigger>
+            <Tooltip label="作る">
+              <DropdownMenuTrigger
+                className="rounded-full p-1.5 transition-colors hover:bg-white/15"
+                aria-label="作る"
+              >
+                <Plus size={20} style={{ color: 'var(--on-palace)' }} />
+              </DropdownMenuTrigger>
+            </Tooltip>
             <DropdownMenuContent align="end" sideOffset={12} className="min-w-52 translate-x-4">
               <DropdownMenuLabel>作る</DropdownMenuLabel>
               <DropdownMenuGroup>
                 {CREATE_ITEMS.map((row) => (
                   <DropdownMenuItem
-                    key={row.href}
+                    key={row.kind}
                     onClick={() => {
                       setCreateOpen(false)
-                      router.push(row.href)
+                      openCreate(row.kind)
                     }}
                     className="cursor-pointer"
                   >
@@ -200,11 +195,11 @@ export function AppHeader() {
 
         {/* お知らせ（生成結果・運営からの通知）。未読があれば巻物にバッジを付け、クリックで一覧パネルを開く */}
         {showUserMenu && (
+          <Tooltip label={unreadCount > 0 ? `お知らせ（未読${unreadCount}件）` : 'お知らせ'}>
           <button
             type="button"
             onClick={() => setNotificationsOpen(true)}
             className="relative rounded-full p-1.5 transition-colors hover:bg-white/15"
-            title="お知らせ"
             aria-label={unreadCount > 0 ? `お知らせ（未読${unreadCount}件）` : 'お知らせ'}
           >
             <ScrollText size={20} style={{ color: 'var(--on-palace)' }} />
@@ -214,22 +209,28 @@ export function AppHeader() {
               </span>
             )}
           </button>
+          </Tooltip>
         )}
         {showUserMenu ? (
           <DropdownMenu open={menuOpen} onOpenChange={setMenuOpen}>
+            <Tooltip label="アカウント">
             <DropdownMenuTrigger className="rounded-full p-1 hover:bg-white/15 transition-colors">
               {(user?.avatar_thumb_url ?? user?.avatar_url) ? (
                 // eslint-disable-next-line @next/next/no-img-element
                 <img
                   src={(user?.avatar_thumb_url ?? user?.avatar_url) as string}
                   alt="プロフィールアイコン"
-                  className="size-8 rounded-full object-cover"
+                  // 地が濃い金なので、丸の縁が地に溶ける。**細い囲みで輪郭を作る**
+                  // （ヘッダーの文字と同じ色。ここだけ別の色にすると浮く）
+                  className="size-8 rounded-full object-cover ring-1"
+                  style={{ ['--tw-ring-color' as string]: 'var(--on-palace)' }}
                   decoding="async"
                 />
               ) : (
                 <CircleUser size={32} strokeWidth={1.5} />
               )}
             </DropdownMenuTrigger>
+            </Tooltip>
             {/* 幅・余白・位置はお知らせパネルに合わせる。パネルはヘッダー直下 4px・画面右から 8px に出るので、
                 トリガー（アバター）基準のこのメニューも sideOffset と translate-x で同じ位置に揃える。 */}
             <DropdownMenuContent align="end" sideOffset={12} className="min-w-56 translate-x-4">
