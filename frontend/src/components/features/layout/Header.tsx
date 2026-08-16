@@ -113,7 +113,8 @@ export function AppHeader() {
             読み上げには aria-label で常に名前が残る */}
         <Link
           href={isAuthenticated ? '/entrance' : '/'}
-          className="flex items-center gap-1.5"
+          // 紋章と名前の間は半角1つぶん（8px）。詰めると2つで1語のように見える
+          className="flex items-center gap-2"
           aria-label="ImagePalace ホーム"
         >
           {/* ロゴは仮置き（宮殿アイコン）。正式ロゴ確定までのプレースホルダ */}

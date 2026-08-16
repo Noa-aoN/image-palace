@@ -779,15 +779,12 @@
   flex-direction: column;
   align-items: center;
   gap: 4px;
-  /* 絵の上に直に置くと、明るい部分で金の文字が消える。**紙を1枚敷く**。
-     説明の箱と同じ紙にする（`--landing-panel-*`）。丸薬型だったころは、
-     すぐ上の四角い箱と形が揃わず、別々のものが浮いているように見えた */
-  background: var(--landing-panel-bg);
-  backdrop-filter: blur(2px);
-  -webkit-backdrop-filter: blur(2px);
-  border: 1px solid var(--landing-panel-border);
-  border-radius: var(--landing-panel-radius);
-  padding: 6px 14px 4px;
+  /* 紙は敷かない。節と節のあいだの案内でしかないものに面を与えると、
+     そのぶん画面に物が増える。
+     ここ（節の中）の地はアイボリーや白なので、金の字がそのまま乗る */
+  background: none;
+  border: 0;
+  padding: 2px 6px;
   cursor: pointer;
   color: var(--palace);
   font-size: 0.72rem;
@@ -866,6 +863,23 @@
   --hero-wash-rgb: 0, 0, 0;
   --hero-wash-a: 0.22;
 }
+/* アイボリー文字版の soft scrim。黒ではなく**濃い茶**で沈める
+   （黒で沈めると宮殿の暖かい色まで灰色に寄る）。
+   65% は実測値。ヒーローのスクリムで地がアイボリーまで明るくなっているため、
+   これ未満だとアイボリー文字が地に埋もれる（60%で 3.91、55%で 3.36）。 */
+.hero-wash--warm {
+  --hero-wash-rgb: 38, 30, 22;
+  --hero-wash-a: 0.65;
+}
+
+/* やや暖色の明るいアイボリー文字。影は**ごく弱い濃茶**。
+   黒い影だと縁取りに寄って字幕の見え方になるので、地の茶に寄せて沈ませる */
+.hero-ivory {
+  color: #F4EFE6;
+  text-shadow:
+    0 1px 2px rgba(58, 42, 28, 0.45),
+    0 2px 10px rgba(58, 42, 28, 0.3);
+}
 
 /* 白文字。**縁は引かない。**
    白い字に黒い縁を引くと、輪郭が硬くなって字幕やゲームUIの見え方になる。
@@ -894,8 +908,16 @@
 .scroll-cue__chevron {
   animation: scroll-cue-bob 1.8s ease-in-out infinite;
 }
-/* ヒーローの cue は画像下部に固定（他セクションと同位置）。ズームでフェード */
+/* ヒーローの cue だけは**絵の上**に乗る。節の中とは地が違うので、字の色も変える。
+   アイボリーの字に、ごく弱い濃茶の影。
+   ここの地は絵そのもの（スクリムがほぼ抜けている高さ）なので、
+   実測ではどの字の色でもコントラストは 1.8 前後にしかならない。
+   面を持たせない以上ここが上限で、読ませるのではなく**気配で示す**もの。 */
 .hero-cue {
+  color: #F4EFE6;
+  text-shadow:
+    0 1px 2px rgba(58, 42, 28, 0.5),
+    0 2px 8px rgba(58, 42, 28, 0.35);
   position: absolute;
   /* ヘッダー(h-14=56px)分だけ上げる */
   bottom: 80px;
@@ -904,9 +926,10 @@
   transform: translateX(-50%);
   opacity: calc(1 - var(--fade, 0));
 }
+/* 上下の揺れは**ほんの少し**。大きく動かすと、読む前に目がそちらへ取られる */
 @keyframes scroll-cue-bob {
   0%, 100% { transform: translateY(0); }
-  50% { transform: translateY(4px); }
+  50% { transform: translateY(2.5px); }
 }
 
 @media (prefers-reduced-motion: reduce) {

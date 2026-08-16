@@ -16,6 +16,8 @@
  * - `plain`   … **地を一切足さない**。濃い文字をそのまま置く（本番採用）。
  *               ヒーローのスクリムの形を直したことで、追加の地なしで AA を通るようになった
  *               （帯の最小 5.31:1）。実測は globals.css の `.hero-scrim` の注記を見ること
+ * - `ivory`     … やや暖色のアイボリー文字＋ごく弱い濃茶の影＋文字の後ろだけ暗くする soft scrim。
+ *               境界は作らない。**要る暗さは実測で65%**（それ未満だと地に埋もれる）
  * - `white`      … 白文字＋にじむ影だけ。いちばん単純
  * - `whiteWash`  … 白文字＋**縁のない黒い靄**。wash の明暗を反転したもの
  *
@@ -23,7 +25,7 @@
  * 説明文が置かれる高さは地がほぼアイボリーなので、そこでは白字が消える。
  * 採るならスクリムのほうを弱める必要がある（`/dev/hero-text` で見比べられる）。
  */
-export type HeroDescriptionVariant = 'plain' | 'panel' | 'outline' | 'wash' | 'white' | 'whiteWash'
+export type HeroDescriptionVariant = 'plain' | 'panel' | 'outline' | 'wash' | 'white' | 'whiteWash' | 'ivory'
 
 export function HeroDescription({
   variant = 'panel',
@@ -40,10 +42,11 @@ export function HeroDescription({
 }) {
   // 白文字系は影で読ませる。縁取り（hero-outline）は使わない
   const white = variant === 'white' || variant === 'whiteWash'
+  const ivory = variant === 'ivory'
   const outlined = variant === 'outline' || variant === 'wash'
   // 字の色を CSS 側に任せる版（インラインの色指定を外す）
-  const styled = !white && !outlined
-  const textClass = white ? 'hero-white' : outlined ? 'hero-outline' : ''
+  const styled = !white && !outlined && !ivory
+  const textClass = ivory ? 'hero-ivory' : white ? 'hero-white' : outlined ? 'hero-outline' : ''
 
   return (
     <div
@@ -51,7 +54,7 @@ export function HeroDescription({
       // 行の終わりから次の行の頭へ目を戻すのが億劫になる。
       // 広い画面で 2xl（672px）＝本文16pxでおよそ40字。ここが上限で、
       // これ以上広げると読みやすさより先に、背景の宮殿が隠れる
-      className={`relative isolate max-w-lg text-center sm:max-w-xl md:max-w-2xl ${
+      className={`relative isolate max-w-lg text-center sm:max-w-xl md:max-w-2xl lg:max-w-4xl ${
         // 紙を敷かないなら内側の余白は要らない（余白は紙のためのもの）。
         // wash は靄そのものが文字の外へはみ出すので、ここでは足さない
         variant === 'panel' ? 'px-6 py-4 shadow-sm backdrop-blur-sm md:px-8 md:py-6' : 'px-2 py-1'
@@ -69,10 +72,10 @@ export function HeroDescription({
       }
     >
       {/* 靄は**文字と別の層**に置く。同じ層でマスクすると、端の字まで薄くなる */}
-      {(variant === 'wash' || variant === 'whiteWash') && (
+      {(variant === 'wash' || variant === 'whiteWash' || ivory) && (
         <span
           aria-hidden
-          className={`hero-wash${variant === 'whiteWash' ? ' hero-wash--dark' : ''}`}
+          className={`hero-wash${variant === 'whiteWash' ? ' hero-wash--dark' : ''}${ivory ? ' hero-wash--warm' : ''}`}
           style={washOpacity === undefined ? undefined : ({ '--hero-wash-a': washOpacity } as React.CSSProperties)}
         />
       )}
@@ -83,11 +86,10 @@ export function HeroDescription({
           **一文ごとに改行する**（句点で切る）。中央寄せの文は、行の切れ目が
           文の切れ目と揃っていないと、どこまでが一続きなのかを目で追い直すことになる。
 
-          1文目は句点まで44字あって、紙を上限まで広げても1行に入らない。
-          成り行きに任せると読点の無いところで切れるので、
-          **読点（「〜生成し、」の後）で自分で折る**。
-          text-balance は、さらに狭い画面でそれでも折り返すときに、
-          行の長さを揃えて中央の座りを保つため */}
+          1文目（44字）は広い画面で1行に収める。紙を捨てたので幅を広げても
+          覆う量は増えず、**幅が「ただ」になった**（実測: 中央55%→62%で最小 5.31→5.39）。
+          text-balance は、狭い画面で折り返すときに行の長さを揃えて
+          中央の座りを保つため */}
       <p
         className={`text-[0.9rem] leading-relaxed text-balance md:text-lg ${textClass}`}
         style={styled ? { color: 'var(--foreground)' } : undefined}
@@ -95,9 +97,10 @@ export function HeroDescription({
         {/* 鉤括弧は前の行の末尾に置く。次の行の頭に置くと、そこまでが
             ひとつのテキストになり、JSX が改行を空白1つに変えて
             「した 「記憶のカード」」と空いてしまう */}
-        覚えたい・残したい言葉を書くと、AIがイメージを生成し、
-        <br />
-        「<strong className="font-semibold">記憶のカード</strong>」を作ります。
+        {/* ここは折らない。広い画面では1行に収める（そのぶん幅を取る）。
+            紙を捨てたので、幅を広げても覆う量は増えない ── 幅が「ただ」になった */}
+        覚えたい・残したい言葉を書くと、AIがイメージを生成し、「
+        <strong className="font-semibold">記憶のカード</strong>」を作ります。
       </p>
       {/* 用途は**それぞれを太字にする**。文のまま流すと、
           読み飛ばした人に「単語帳のサービス」としてだけ残る。
