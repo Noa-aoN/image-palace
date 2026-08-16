@@ -11,31 +11,20 @@
  * - `panel`   … 半透明の白い紙を敷く（現行）。いちばん読みやすいが、背景を覆う
  * - `outline` … 紙を敷かず、濃い文字に細い白縁。背景を覆わないが、
  *               白い石畳のような明るい場所では縁が効きにくい
- * - `soft`    … 縁取り＋ごく薄い紙。両者の折衷
+ * - `wash`    … 細い白縁＋**縁のない白い靄**。面ではなく光の溜まりとして敷くので、
+ *               紙があると気づかれないまま字だけが読みやすくなる（本番候補）
  */
-export type HeroDescriptionVariant = 'panel' | 'outline' | 'soft'
-
-const PANEL_STYLE: Record<HeroDescriptionVariant, React.CSSProperties> = {
-  panel: {
-    background: 'var(--landing-panel-bg)',
-    border: '1px solid var(--landing-panel-border)',
-    borderRadius: 'var(--landing-panel-radius)',
-  },
-  outline: {},
-  soft: {
-    // 縁取りで読ませるので、紙は「わずかに沈める」だけでよい。
-    // 縁線は引かない（線を引いた時点で、面積の話が戻ってくる）
-    background: 'rgba(255, 255, 255, 0.18)',
-    borderRadius: 'var(--landing-panel-radius)',
-  },
-}
+export type HeroDescriptionVariant = 'panel' | 'outline' | 'wash'
 
 export function HeroDescription({
   variant = 'panel',
   className = '',
+  washOpacity,
 }: {
   variant?: HeroDescriptionVariant
   className?: string
+  /** `wash` の白の濃さ。既定は globals.css の `--hero-wash-a`（検討用に外から振る） */
+  washOpacity?: number
 }) {
   const outlined = variant !== 'panel'
 
@@ -45,17 +34,29 @@ export function HeroDescription({
       // 行の終わりから次の行の頭へ目を戻すのが億劫になる。
       // 広い画面で 2xl（672px）＝本文16pxでおよそ40字。ここが上限で、
       // これ以上広げると読みやすさより先に、背景の宮殿が隠れる
-      className={`max-w-lg text-center sm:max-w-xl md:max-w-2xl ${
+      className={`relative isolate max-w-lg text-center sm:max-w-xl md:max-w-2xl ${
         // 紙を敷かないなら内側の余白は要らない（余白は紙のためのもの）。
-        // わずかに残すのは、縁取りが隣の要素に触れないぶんだけ
-        variant === 'panel'
-          ? 'px-6 py-4 shadow-sm backdrop-blur-sm md:px-8 md:py-6'
-          : variant === 'soft'
-            ? 'px-5 py-3 backdrop-blur-[1px] md:px-6 md:py-4'
-            : 'px-2 py-1'
+        // wash は靄そのものが文字の外へはみ出すので、ここでは足さない
+        variant === 'panel' ? 'px-6 py-4 shadow-sm backdrop-blur-sm md:px-8 md:py-6' : 'px-2 py-1'
       } ${className}`}
-      style={PANEL_STYLE[variant]}
+      style={
+        variant === 'panel'
+          ? {
+              background: 'var(--landing-panel-bg)',
+              border: '1px solid var(--landing-panel-border)',
+              borderRadius: 'var(--landing-panel-radius)',
+            }
+          : undefined
+      }
     >
+      {/* 靄は**文字と別の層**に置く。同じ層でマスクすると、端の字まで薄くなる */}
+      {variant === 'wash' && (
+        <span
+          aria-hidden
+          className="hero-wash"
+          style={washOpacity === undefined ? undefined : ({ '--hero-wash-a': washOpacity } as React.CSSProperties)}
+        />
+      )}
       {/* 3段構え。**何ができるか → どう使えるか → 続けると何になるか**。
           順番を入れ替えない。使い道から始めると、何を作る話なのか分からないまま
           用途だけが並ぶ。

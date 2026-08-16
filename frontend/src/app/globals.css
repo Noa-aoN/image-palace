@@ -796,17 +796,51 @@
    にじみ（text-shadow）は縁の外側の保険。石畳のような明るい場所では
    白い縁が背景に溶けるので、その外にごく淡い影を置いて輪郭を残す。 */
 .hero-outline {
-  --outline-w: 2px;
+  --outline-w: 1.6px;
   color: #2E2A24;
-  -webkit-text-stroke: var(--outline-w) rgba(255, 255, 255, 0.95);
+  -webkit-text-stroke: var(--outline-w) rgba(255, 255, 255, 0.92);
   paint-order: stroke fill;
-  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.18);
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.16);
 }
 /* 大きい字は縁も太くしてよい（内側の隙間が広いので埋まらない） */
 @media (min-width: 768px) {
   .hero-outline {
-    --outline-w: 2.5px;
+    --outline-w: 2.1px;
   }
+}
+
+/* 文字の後ろに敷く「白の靄」。**面ではなく、光の溜まり**として置く。
+   目的は、紙があると気づかれないまま字だけが読みやすくなること。
+
+   矩形の紙をそのまま薄くしても、**縁がある限り箱に見える**。
+   薄さは箱らしさを弱めるだけで、無くしはしない。
+   なので縁を作らない ── 外へ向けて消す。
+
+   - 地は中心がいちばん白く、外へ向けて透明へ抜ける
+   - `backdrop-filter` は要素の矩形に効いてしまうので、
+     同じ形の `mask-image` で外周を消す。これをしないと、
+     地が透明になった先に**ぼかしの切れ目という直線**が残る
+   - 文字より外まで広げて、消え際を文字から離す
+     （消え際が字にかかると、字のほうが霞んで見える）
+
+   マスクは自分にしか効かないよう、文字とは別の層に置くこと
+   （文字ごとマスクすると、端の字が薄くなる）。 */
+.hero-wash {
+  --hero-wash-a: 0.13;
+  position: absolute;
+  /* 文字の外まで広げる。上下は行間があるぶん控えめでよい */
+  inset: -0.9rem -1.6rem;
+  pointer-events: none;
+  background: radial-gradient(
+    115% 100% at 50% 50%,
+    rgba(255, 255, 255, var(--hero-wash-a)) 0%,
+    rgba(255, 255, 255, calc(var(--hero-wash-a) * 0.82)) 46%,
+    rgba(255, 255, 255, 0) 78%
+  );
+  backdrop-filter: blur(1.5px);
+  -webkit-backdrop-filter: blur(1.5px);
+  -webkit-mask-image: radial-gradient(115% 100% at 50% 50%, #000 44%, transparent 80%);
+  mask-image: radial-gradient(115% 100% at 50% 50%, #000 44%, transparent 80%);
 }
 /* paint-order が効かない環境では、縁が字を食って細く見える。
    その場合は縁を引かず、白いにじみだけで背景から浮かせる */
