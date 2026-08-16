@@ -146,7 +146,7 @@ export const NAV_SECTIONS: NavSection[] = [
   },
   {
     key: 'ops',
-    title: '公式',
+    title: '公庁',
     items: [
       {
         // 読みもの3つは同じ性質（運営から届くもの）なので、1つにまとめて畳む。
@@ -165,7 +165,7 @@ export const NAV_SECTIONS: NavSection[] = [
   },
 ]
 
-// 運営メンバーにだけ出す項目。既存の「公式」セクションの末尾へ足す。
+// 運営メンバーにだけ出す項目。既存の「公庁」セクションの末尾へ足す。
 // ここに出す／出さないは見た目の話で、守りはサーバー側の権限判定が行う。
 export const ADMIN_SECTION_KEY = 'ops'
 /**
@@ -223,7 +223,7 @@ export const ADMIN_ITEM: NavNode = {
   ],
 }
 
-/** 運営メンバーなら「公式」セクションの末尾に執務室を足したものを返す */
+/** 運営メンバーなら「公庁」セクションの末尾に執務室を足したものを返す */
 export function navSectionsFor(isAdmin: boolean): NavSection[] {
   if (!isAdmin) return NAV_SECTIONS
 

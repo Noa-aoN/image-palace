@@ -12,11 +12,23 @@
  * 札そのものの形が決まってから足す。いま太くすると、絵より枠が目立つ。
  */
 
-/** 台紙。周囲より少し沈ませて、絵が「載っている」ように見せる */
-export const CARD_MAT_BG = 'bg-[color-mix(in_srgb,var(--card)_92%,var(--foreground))]'
+/**
+ * 台紙。
+ *
+ * **灰で沈ませない。** `--foreground` を混ぜていたころは、青みのある灰になり、
+ * ivory の地の上では紙ではなく汚れに見えた。カード詳細のプロパティ枠と同じ
+ * 暖かい白（`--surface-warm`）に揃える。同じカードなのに、一覧と詳細で
+ * 紙の色が違う状態をなくす。
+ */
+export const CARD_MAT_BG = 'bg-[var(--surface-warm)]'
 
-/** 札の外周。既定の枠線に金を混ぜる（混ぜるだけ。線は太くしない） */
-export const CARD_MAT_BORDER = 'border-[color-mix(in_srgb,var(--palace)_32%,var(--border))]'
+/**
+ * 札の外周。詳細の器と同じ金の縁（`--edge-gold`）にする。
+ *
+ * 既定の枠線に金を混ぜる形だと、混ぜ先の灰が勝って、ほとんど灰の線に見えていた。
+ * 線は太くしない。太くすると絵より枠が目立つ
+ */
+export const CARD_MAT_BORDER = 'border-[var(--edge-gold)]'
 
 /**
  * 絵の縁。台紙の上に絵が置かれている段差を出す。

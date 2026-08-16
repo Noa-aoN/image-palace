@@ -76,6 +76,19 @@
   --landing-panel-bg: rgba(255, 255, 255, 0.52);
   --landing-panel-border: color-mix(in srgb, var(--palace) 62%, transparent);
   --landing-panel-radius: 1rem;
+  /* 器の縁。**宮殿の中の面は、灰色ではなく金で縁取る。**
+     灰の細線だと、どの面も同じ「枠線」に見えて、地の ivory から浮かない。
+     金を薄く敷くと、面の縁が地となじんだまま、器としての輪郭だけが残る。
+
+     濃さは2段。**面そのもの**（カード）は控えめに、
+     **面の中に置く器**（プロパティ）はもう一段薄くする。
+     同じ濃さで入れ子にすると、内側の枠のほうが強く見えて主従が逆になる */
+  --edge-gold: color-mix(in srgb, var(--palace) 42%, transparent);
+  --edge-gold-soft: color-mix(in srgb, var(--palace) 26%, transparent);
+  /* プロパティの地。**灰を敷かない。** muted の灰は青みがあり、
+     ivory の地の上では汚れて見える。ほんのり暖かい白にして、
+     字が乗る面としての明るさを上げる */
+  --surface-warm: #FCFAF5;
   --card: oklch(1 0 0);
   --card-foreground: oklch(0.145 0 0);
   --popover: oklch(1 0 0);

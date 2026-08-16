@@ -158,7 +158,7 @@ export function AchievementsBoard() {
         </section>
 
         <section className="flex flex-col gap-3">
-          <SectionTitle icon={<History size={18} />}>これまで</SectionTitle>
+          <SectionTitle icon={<History size={18} />}>まとめ</SectionTitle>
 
           <div className="flex-1 space-y-3 rounded-xl border border-border bg-card p-5">
           <dl className="grid grid-cols-2 gap-3 sm:grid-cols-4">
@@ -503,7 +503,7 @@ function Chip({
  * 押したときだけ右パネルで出す。今後、種類が増えてもここに足せる。
  */
 function RewardKindsHelp() {
-  const panel = usePanelForm(REWARD_KINDS_PANEL_KEY, '獲得物の種類')
+  const panel = usePanelForm(REWARD_KINDS_PANEL_KEY, '記名板について')
 
   return (
     <>
@@ -511,13 +511,36 @@ function RewardKindsHelp() {
         type="button"
         onClick={panel.open}
         aria-expanded={panel.isOpen}
-        aria-label="獲得物の種類について"
+        aria-label="記名板について"
         className="text-muted-foreground transition-colors hover:text-foreground"
       >
         <HelpCircle size={16} />
       </button>
 
       <PanelSlotContent sectionKey={REWARD_KINDS_PANEL_KEY}>
+        {/* まず**この板が何か**を書く。種類の説明から始めていたので、
+            「持ち物の一覧」なのか「見せる場所」なのかが分からないままだった。
+            ここで決めたものは他の画面にも出る。**それを知らないと、
+            星を入れる意味が「この板の飾り」で終わる** */}
+        <div className="mb-4 space-y-2 text-sm">
+          <p>
+            記名板は、<strong className="font-medium">いま何を名乗り、何を掲げているか</strong>を出す板です。
+            持っているもの全部ではなく、<strong className="font-medium">自分で選んだものだけ</strong>が並びます。
+          </p>
+          <p className="text-muted-foreground">
+            選ぶのは下の「獲得物」から。札の星を押すと、ここに載ります。
+            称号は1つ、勲章は3つまでのように、種類ごとに数が決まっています。
+          </p>
+          <p className="rounded-lg bg-muted/40 px-3 py-2 text-muted-foreground">
+            ここで選んだものは、<strong className="font-medium text-foreground">エントランスの「宮殿の主人」</strong>にも出ます。
+            この板だけの飾りではなく、<strong className="font-medium text-foreground">名乗りそのもの</strong>を決める場所です。
+          </p>
+        </div>
+
+        {/* 見出しは dl の外へ出す。dl の直下に置けるのは dt / dd / div だけで、
+            p を入れるとブラウザが勝手に閉じ、hydration が食い違う */}
+        <p className="mb-3 border-t border-border pt-4 text-sm font-medium">獲得物の種類</p>
+
         <dl className="space-y-4 text-sm">
           {REWARD_KIND_HELP.map((entry) => (
             <div key={entry.label} className="space-y-1">

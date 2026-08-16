@@ -7,4 +7,4 @@
  * ゆっくりなのは、これが操作の対象ではなく眺めるものだから。
  * 速く回すと目が引かれ続け、読むべきものから注意が逸れる。
  */
-export const SPIN_PERIOD_MS = 72000
+export const SPIN_PERIOD_MS = 96000
