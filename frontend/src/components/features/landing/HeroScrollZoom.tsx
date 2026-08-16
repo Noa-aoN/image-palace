@@ -168,7 +168,7 @@ export function HeroScrollZoom() {
             <p className="mt-3 text-[0.85rem] leading-relaxed md:text-base" style={{ color: '#5A5348' }}>
               {/* 1文で続ける。行を折ると JSX が改行を空白1つに変えるので、
                   「反復練習。 それが」と不自然な空きが入る */}
-              作ったカードは、自分の「宮殿」に並べて、整理して、組み合わせて、反復練習。それが自分だけの記憶の宮殿になっていきます。
+              作ったカードは、自分の「宮殿」に並べて、整理・組み合わせ・反復練習。それが自分だけの記憶の宮殿になっていきます。
             </p>
           </div>
           <LandingCta className="flex w-full max-w-sm flex-col gap-3 sm:w-auto sm:max-w-none sm:flex-row" />
