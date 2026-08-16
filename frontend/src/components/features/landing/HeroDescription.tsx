@@ -16,6 +16,8 @@
  * - `plain`   … **地を一切足さない**。濃い文字をそのまま置く（本番採用）。
  *               ヒーローのスクリムの形を直したことで、追加の地なしで AA を通るようになった
  *               （帯の最小 5.31:1）。実測は globals.css の `.hero-scrim` の注記を見ること
+ * - `softWash`  … **白い靄＋濃い文字**（本番採用）。縁取りも影も付けない。
+ *               靄は縁を作らず外へ消すので、境界が出ない
  * - `ivory`     … やや暖色のアイボリー文字＋ごく弱い濃茶の影＋文字の後ろだけ暗くする soft scrim。
  *               境界は作らない。**要る暗さは実測で65%**（それ未満だと地に埋もれる）
  * - `white`      … 白文字＋にじむ影だけ。いちばん単純
@@ -25,7 +27,7 @@
  * 説明文が置かれる高さは地がほぼアイボリーなので、そこでは白字が消える。
  * 採るならスクリムのほうを弱める必要がある（`/dev/hero-text` で見比べられる）。
  */
-export type HeroDescriptionVariant = 'plain' | 'panel' | 'outline' | 'wash' | 'white' | 'whiteWash' | 'ivory'
+export type HeroDescriptionVariant = 'plain' | 'panel' | 'outline' | 'wash' | 'softWash' | 'white' | 'whiteWash' | 'ivory'
 
 export function HeroDescription({
   variant = 'panel',
@@ -44,6 +46,7 @@ export function HeroDescription({
   const white = variant === 'white' || variant === 'whiteWash'
   const ivory = variant === 'ivory'
   const outlined = variant === 'outline' || variant === 'wash'
+  const softWash = variant === 'softWash'
   // 字の色を CSS 側に任せる版（インラインの色指定を外す）
   const styled = !white && !outlined && !ivory
   const textClass = ivory ? 'hero-ivory' : white ? 'hero-white' : outlined ? 'hero-outline' : ''
@@ -72,7 +75,7 @@ export function HeroDescription({
       }
     >
       {/* 靄は**文字と別の層**に置く。同じ層でマスクすると、端の字まで薄くなる */}
-      {(variant === 'wash' || variant === 'whiteWash' || ivory) && (
+      {(variant === 'wash' || variant === 'whiteWash' || ivory || softWash) && (
         <span
           aria-hidden
           className={`hero-wash${variant === 'whiteWash' ? ' hero-wash--dark' : ''}${ivory ? ' hero-wash--warm' : ''}`}
