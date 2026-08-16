@@ -246,6 +246,9 @@ export function RoadBackground({ fadeTop, fadeBottom, intro, fadeUnderDivider, f
         {/* 道の先に灯る遠くの淡い光。intro インスタンスはクリップ外の
             .road-intro__glow が同位置に描くため二重にしない */}
         {!intro && <span className="road-bg__glow" />}
+        {/* 最後の区画だけ、光の中に門の姿を置く。この道の先は登録・ログインの面で、
+            同じ門を背景に使っている。入ったときに同じものが出れば、繋がりが分かる */}
+        {fadeBottom && <span className="road-bg__gate" aria-hidden />}
         {/* 上端（地平線まわり）を強くぼかして遠くへ霞ませる */}
         <div className="road-blur road-blur--top" />
         {/* 下端の軽いブラー帯（HA ヒーローの hero-blur 踏襲。手前の被写界深度） */}

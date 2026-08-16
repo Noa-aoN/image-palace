@@ -1,6 +1,6 @@
 import type { Metadata } from 'next'
 import type { ReactNode } from 'react'
-import { Brain, Layers, Search } from 'lucide-react'
+import { Brain, Gamepad2, Layers } from 'lucide-react'
 import { LandingFooter } from '@/components/features/layout/LandingFooter'
 import { LANDING_SHOTS } from '@/lib/landing/gallery'
 import { HeroScrollZoom } from '@/components/features/landing/HeroScrollZoom'
@@ -32,10 +32,27 @@ const STRUCTURED_DATA = {
   },
 }
 
+/**
+ * できること。**作る → まとめる → 使う**の順に並べる。
+ * 3つ目はまだ無いので、そう書く。あるように見せると、入ってから探すことになる。
+ */
 const FEATURES = [
-  { icon: <Brain size={20} />, title: 'イメージで記憶', body: '無機質な単語を視覚的な手がかりに変え、思い出しやすくします。' },
-  { icon: <Layers size={20} />, title: '自由に整理', body: 'キャンバス・ボックス・スペースで、知識を自分の構造にまとめられます。' },
-  { icon: <Search size={20} />, title: 'すぐ探せる', body: 'タグと検索で、必要なカードをすぐに引き出せます。' },
+  {
+    icon: <Brain size={20} />,
+    title: '記憶カードを作成',
+    body: '覚えたい言葉を書くと、AI がイメージにして一枚のカードにします。',
+  },
+  {
+    icon: <Layers size={20} />,
+    title: '自由に整理・組み合わせ',
+    body: 'キャンバス・ボックス・スペースで、カードを自分の構造にまとめられます。',
+  },
+  {
+    icon: <Gamepad2 size={20} />,
+    title: '練習・遊戯・共有',
+    note: '準備中',
+    body: '繰り返し練習する、遊びながら思い出す、誰かと分け合う。順に用意していきます。',
+  },
 ]
 
 // HA（ヒーロー）と同じく全画面サイズのセクション。内容は仮埋め。
@@ -135,7 +152,15 @@ export default function TopPage() {
               <div className="mb-4 flex h-12 w-12 items-center justify-center rounded-full" style={{ backgroundColor: 'rgba(198,167,94,0.15)', color: 'var(--palace)' }}>
                 {f.icon}
               </div>
-              <h3 className="mb-2 font-semibold" style={{ color: '#111111' }}>{f.title}</h3>
+              <h3 className="mb-2 flex flex-wrap items-center gap-1.5 font-semibold" style={{ color: '#111111' }}>
+                {f.title}
+                {/* まだ無いものは、そう書く。あるように見せると入ってから探すことになる */}
+                {'note' in f && f.note && (
+                  <span className="rounded-full border border-border px-1.5 py-0.5 text-[10px] font-medium leading-none text-muted-foreground">
+                    {f.note}
+                  </span>
+                )}
+              </h3>
               <p className="text-sm leading-relaxed" style={{ color: '#4A4A4A' }}>{f.body}</p>
             </div>
           ))}

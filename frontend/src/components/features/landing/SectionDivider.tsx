@@ -25,12 +25,12 @@ interface SectionDividerProps {
  * 波はサイン波の近似（半周期ごとに、制御点を 1/3・2/3 の位置へ振幅の 4/3 倍で置く）。
  * 適当な曲線を並べると、山谷の高さや幅が揃わず手描きのように見える。
  *
- * **最上部はぼかす**（CSS 側の mask-image）。ここを不透明のまま置くと、
- * 塗りが道（石畳）を直線で切ってしまい、波の上にもう1本境目ができる。
- * ぼかしは上の波より手前で明けきるので、波の輪郭は鈍らない。
+ * **上端はぼかさない。** ぼかすと次セクションの地が透けて、境界に直線が1本出る
+ * （地の色が節ごとに違うため）。前セクションの色でぴったり塞ぐ。
+ * 道が塞ぎに当たって直線で切れる件は、道側を境目の前後で霞ませて解いている。
  */
-const UPPER = 52 // 上の波の中心線（viewBox 0 0 1440 120）
-const LOWER = 86 // 下の波の中心線。UPPER との差が帯の厚み
+const UPPER = 34 // 上の波の中心線（viewBox 0 0 1440 120）。塗る面積を抑えるため上へ寄せる
+const LOWER = 66 // 下の波の中心線。UPPER との差が帯の厚み
 const AMP = 18.7 // 制御点の振れ幅。実際の山は中心線から約14
 
 /** 左→右へ波を描く（先頭に (0,base) がある前提） */
@@ -54,7 +54,7 @@ const waveRTL = (b: number) =>
 /** 最上部から上の波まで（前セクションの色そのまま） */
 const BAND_UPPER = `M0,0 H1440 V${UPPER} ${waveRTL(UPPER)} Z`
 
-/** 上の波から下の波まで（中間の濃さ）。**同じ波を 34 下へずらすだけ** */
+/** 上の波から下の波まで（中間の濃さ）。**同じ波を 32 下へずらすだけ** */
 const BAND_LOWER = `M0,${UPPER} ${waveLTR(UPPER)} V${LOWER} ${waveRTL(LOWER)} Z`
 
 export function SectionDivider({ fill, flip, className }: SectionDividerProps) {

@@ -791,7 +791,7 @@
   top: 0;
   left: 0;
   width: 100%;
-  height: 120px;
+  height: 84px;
   z-index: 1;
   display: block;
   pointer-events: none;
@@ -819,11 +819,11 @@
 
 @media (max-width: 640px) {
   .section-divider {
-    height: 84px;
+    height: 62px;
   }
   .road-bg--fade-under-divider {
-    -webkit-mask-image: linear-gradient(to bottom, transparent 68px, #000 130px);
-    mask-image: linear-gradient(to bottom, transparent 68px, #000 130px);
+    -webkit-mask-image: linear-gradient(to bottom, transparent 50px, #000 104px);
+    mask-image: linear-gradient(to bottom, transparent 50px, #000 104px);
   }
 }
 
@@ -1156,15 +1156,15 @@
    ぷつりと現れる。波のぶんだけ遅らせて、滲むように現れさせる。
    px 指定なのは、区切りの高さが px だから（% にすると節の高さで揃わない）。 */
 .road-bg--fade-under-divider {
-  -webkit-mask-image: linear-gradient(to bottom, transparent 96px, #000 176px);
-  mask-image: linear-gradient(to bottom, transparent 96px, #000 176px);
+  -webkit-mask-image: linear-gradient(to bottom, transparent 68px, #000 138px);
+  mask-image: linear-gradient(to bottom, transparent 68px, #000 138px);
 }
 
 /* 次の節に区切りがある場合、こちら側の道も下端で霞ませる。
    塞ぎに行き当たって直線で切れるのを避ける */
 .road-bg--fade-into-divider {
-  -webkit-mask-image: linear-gradient(to bottom, #000 calc(100% - 90px), transparent 100%);
-  mask-image: linear-gradient(to bottom, #000 calc(100% - 90px), transparent 100%);
+  -webkit-mask-image: linear-gradient(to bottom, #000 calc(100% - 70px), transparent 100%);
+  mask-image: linear-gradient(to bottom, #000 calc(100% - 70px), transparent 100%);
 }
 /* ビューポート固定のステージ。全セクションで同じビューを共有する */
 .road-bg__viewport {
@@ -1348,6 +1348,37 @@
    以降の各セクションでは .road-bg__glow（各道ステージ内・道と同じ
    クリップで連続）が同じ位置に描き、最後まで灯り続ける。
    JS 非駆動時は既定 0＝非表示 */
+/* 道の突き当たりに、門をうっすら置く。
+ *
+ * この道の先は登録・ログインの面（同じ門の絵を背景に使っている）。
+ * 光だけだと「どこへ続くのか」が分からないので、行き先の姿を薄く見せる。
+ * 入ったときに同じ門が出てくれば、繋がっていたのだと分かる。
+ *
+ * **絵として読ませない。** 濃く出すと道の遠近が壊れ、遠くにあるはずの門が
+ * 手前に貼り付いて見える。強くぼかし、四方をグラデーションで地に溶かす。
+ * 光と同じ大きさ・同じ位置に置き、光の中に姿がある状態にする。 */
+.road-bg__gate {
+  position: absolute;
+  left: 50%;
+  top: 17.5%;
+  width: 150px;
+  height: 105px;
+  margin: -52px 0 0 -75px;
+  pointer-events: none;
+  background: url('/auth-gate.webp') center bottom / contain no-repeat;
+  /* 遠くの霞の中なので、彩度を落として明るく飛ばす */
+  filter: blur(3.5px) saturate(0.5) brightness(1.22) opacity(0.5);
+  opacity: calc(0.55 * var(--road-glow, 0));
+  transform: scale(calc(0.5 + 0.5 * var(--road-glowz, 0)));
+  transform-origin: 50% 50%;
+  /* 四方を地へ溶かす。矩形の縁が出ると、絵が貼ってあることが分かってしまう */
+  -webkit-mask-image: radial-gradient(60% 62% at 50% 55%, #000 18%, transparent 82%);
+  mask-image: radial-gradient(60% 62% at 50% 55%, #000 18%, transparent 82%);
+}
+:root[data-motion='off'] .road-bg__gate {
+  opacity: 0;
+}
+
 .road-bg__glow,
 .road-intro__glow {
   position: absolute;

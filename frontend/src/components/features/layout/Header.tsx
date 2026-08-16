@@ -52,6 +52,21 @@ export function AppHeader() {
   const isLandingPage = pathname === '/'
   const signUpCtaVisible = showSignUpCta({ hasHydrated, isAuthenticated, pathname })
   const showUserMenu = hasHydrated && isAuthenticated
+  /**
+   * 面ごとに、ヘッダーへ出すものを決める。
+   *
+   * LP と門（登録・ログイン）は**まだ中に入っていない面**。
+   * 入っている人がそこを開くことはあるが、そこでやることは「入る」か「戻る」だけ。
+   * 作る・残高といった中の操作を並べても押しどころが無く、
+   * 名前とバッジのあいだに知らない記号が増えるだけになる。
+   *
+   * 権限バッジは LP には出す（自分がどの立場で見ているかは、外の面でも意味がある）。
+   * 門には出さない。あそこは入り直す場所で、立場の話ではない。
+   */
+  const isOutsideShell = isLandingPage || isAuthPage
+  const showCreate = showUserMenu && !isOutsideShell
+  const showCredits = showUserMenu && !isOutsideShell
+  const showAdminBadge = showUserMenu && Boolean(adminSession?.admin) && !isAuthPage
 
   useEffect(() => {
     if (showUserMenu) fetchBillingSummary()
@@ -117,32 +132,36 @@ export function AppHeader() {
           >
             IMAGE PALACE
           </span>
-          {/* 開発段階を示すバッジ。正式リリースまで表示する */}
-          <span
-            className="hidden rounded-full border border-white/45 px-1.5 py-0.5 text-[10px] font-medium leading-none text-white/85 sm:inline"
-            aria-label="アルファ版"
-          >
-            α版
-          </span>
+          {/* 開発段階を示すバッジ。正式リリースまで表示する。
+              「α版」だけでは何が違うのか分からないので、指を乗せたら説明を出す */}
+          <Tooltip label="開発中の先行版です。機能や画面は予告なく変わります">
+            <span
+              className="hidden rounded-full border border-white/45 px-1.5 py-0.5 text-[10px] font-medium leading-none text-white/85 sm:inline"
+              aria-label="アルファ版（開発中の先行版）"
+            >
+              α版
+            </span>
+          </Tooltip>
         </Link>
         {showUserMenu && <MobileNav />}
       </div>
 
       <div className="flex items-center gap-1.5">
-        {showUserMenu && adminSession?.admin && (
+        {showAdminBadge && (
           // 運営権限を持つアカウントであることを常に見えるようにする。
           // 権限のある状態に気づかないまま操作するのを防ぐためのもので、守りではない
           // （実際の判定はサーバー側で毎リクエスト行われる）。
-          <Link
-            href="/admin"
-            title={adminSession.owner ? '運営の管理者' : '運営'}
-            className="hidden rounded-full border border-white/45 bg-white/15 px-2 py-0.5 text-xs font-medium text-white transition-colors hover:bg-white/25 sm:inline-flex sm:items-center sm:gap-1"
-          >
-            <ShieldCheck size={12} />
-            管理者
-          </Link>
+          <Tooltip label={adminSession?.owner ? '運営の管理者として見ています' : '運営として見ています'}>
+            <Link
+              href="/admin"
+              className="hidden rounded-full border border-white/45 bg-white/15 px-2 py-0.5 text-xs font-medium text-white transition-colors hover:bg-white/25 sm:inline-flex sm:items-center sm:gap-1"
+            >
+              <ShieldCheck size={12} />
+              管理者
+            </Link>
+          </Tooltip>
         )}
-        {showUserMenu && billingSummary && (
+        {showCredits && billingSummary && (
           <Tooltip label="クレジット残高">
           <Link
             href="/billing"
@@ -163,7 +182,7 @@ export function AppHeader() {
           作りたいのは目の前のものの続きなので、見えたまま作れるほうがよい。
           中身は CreatePanels が持つ（入口が複数あるので置き場所は1か所）。
         */}
-        {showUserMenu && (
+        {showCreate && (
           <DropdownMenu open={createOpen} onOpenChange={setCreateOpen}>
             <Tooltip label="作る">
               <DropdownMenuTrigger

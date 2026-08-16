@@ -1,6 +1,7 @@
 'use client'
 
-import { Plus } from 'lucide-react'
+import Link from 'next/link'
+import { ChevronRight, Plus } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { PanelSlotContent } from '@/components/features/panel/PanelSlot'
 import { useRightPanelStore } from '@/stores/rightPanel'
@@ -62,6 +63,18 @@ export function CardCreatePanelSlot() {
       <div className="[&_.grid]:grid-cols-1">
         {/* 開き直すたびに初期値を取り込ませたいので、指定が変わったら作り直す */}
         <CreateItemForm key={wordlistId ?? 'blank'} inPanel wordlistId={wordlistId} />
+      </div>
+      {/* 作りに来たついでに「前に作ったもの」を見たくなることがある。
+          作るボタンより下・控えめに置く（同じ強さだと目が二択で止まる） */}
+      <div className="mt-4 border-t border-border/60 pt-3 text-center">
+        <Link
+          href="/items"
+          onClick={() => useRightPanelStore.getState().close()}
+          className="inline-flex items-center gap-1 text-xs text-muted-foreground underline-offset-2 hover:text-foreground hover:underline"
+        >
+          カードの一覧をみる
+          <ChevronRight size={13} aria-hidden />
+        </Link>
       </div>
     </PanelSlotContent>
   )

@@ -1,6 +1,8 @@
 'use client'
 
+import Link from 'next/link'
 import { useRouter } from 'next/navigation'
+import { ChevronRight } from 'lucide-react'
 import { PanelSlotContent } from '@/components/features/panel/PanelSlot'
 import { useRightPanelStore } from '@/stores/rightPanel'
 import { useOpenCardCreate } from '@/components/features/items/CardCreatePanel'
@@ -70,13 +72,41 @@ export function CreatePanelSlots() {
     <>
       <PanelSlotContent sectionKey={CREATE_VIEW_KEY}>
         <CreateViewForm onCreated={(view) => go(`/views/${view.id}`)} />
+        <ListLink href="/views" label="キャンバスの一覧をみる" />
       </PanelSlotContent>
       <PanelSlotContent sectionKey={CREATE_SPACE_KEY}>
         <CreateSpaceForm onCreated={(space) => go(`/spaces/${space.id}`)} />
+        <ListLink href="/spaces" label="スペースの一覧をみる" />
       </PanelSlotContent>
       <PanelSlotContent sectionKey={CREATE_BOX_KEY}>
         <CreateBoxForm onCreated={(box) => go(`/boxes/${box.id}`)} />
+        <ListLink href="/boxes" label="ボックスの一覧をみる" />
       </PanelSlotContent>
     </>
+  )
+}
+
+/**
+ * 作成フォームの下に置く、一覧への行き先。
+ *
+ * 作ろうとして開いたが「そういえば前に作ったものを見たい」となることがある。
+ * そのときパネルを閉じて、サイドバーから辿り直すことになっていた。
+ *
+ * **作るボタンより下・控えめに**置く。同じ強さで並べると、
+ * 作りに来た人の目が二択で止まる。
+ */
+function ListLink({ href, label }: { href: string; label: string }) {
+  const closePanel = useRightPanelStore((s) => s.close)
+  return (
+    <div className="mt-4 border-t border-border/60 pt-3 text-center">
+      <Link
+        href={href}
+        onClick={closePanel}
+        className="inline-flex items-center gap-1 text-xs text-muted-foreground underline-offset-2 hover:text-foreground hover:underline"
+      >
+        {label}
+        <ChevronRight size={13} aria-hidden />
+      </Link>
+    </div>
   )
 }
