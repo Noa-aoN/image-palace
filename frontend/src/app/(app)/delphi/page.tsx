@@ -33,7 +33,7 @@ function formatDate(ts: number): string {
   return new Date(ts).toLocaleString('ja-JP', { month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit' })
 }
 
-/** 受けた神託の履歴に出す件数。これ以上は「もっと見る」で開く */
+/** 受け取った言葉の履歴に出す件数。これ以上は「もっと見る」で開く */
 const HISTORY_LIMIT = 10
 
 export default function AcropolisPage() {
@@ -47,7 +47,7 @@ export default function AcropolisPage() {
   const [style, setStyle] = useState('photo')
   const [forging, setForging] = useState(false)
   const [accepting, setAccepting] = useState(false)
-  // 神託で提示された（まだ受け取っていない）単語。受け取るまで画像生成・クレジット消費はしない。
+  // 届いた（まだ受け取っていない）単語。受け取るまで画像生成・クレジット消費はしない。
   const [pending, setPending] = useState<string[] | null>(null)
   const [error, setError] = useState<string | null>(null)
 
@@ -56,7 +56,7 @@ export default function AcropolisPage() {
   const history = useAcropolisStore((s) => s.history)
   const addRecord = useAcropolisStore((s) => s.addRecord)
   const clearHistory = useAcropolisStore((s) => s.clearHistory)
-  // 履歴は畳んでおく。全部並べると、下にあるコードの神託が押し出される
+  // 履歴は畳んでおく。全部並べると、下のコード引き換えが押し出される
   const [historyExpanded, setHistoryExpanded] = useState(false)
   const shownHistory = historyExpanded ? history : history.slice(0, HISTORY_LIMIT)
   // アニメーション可否（設定 off / reduced-motion で false）。false のときは素の表示にする。
@@ -81,7 +81,7 @@ export default function AcropolisPage() {
   const insufficient = available != null && available < needed
   const busy = forging || accepting || pending !== null
 
-  // 神託を受ける: 単語を生成して提示するだけ（クレジット消費なし）。
+  // 言葉を受け取る: 単語を生成して提示するだけ（クレジット消費なし）。
   const handleConsult = async () => {
     setForging(true)
     setError(null)
@@ -92,12 +92,12 @@ export default function AcropolisPage() {
         difficulty: effectiveDifficulty,
       })
       if (words.length === 0) {
-        setError('神託が得られませんでした。もう一度お試しください。')
+        setError('言葉を受け取れませんでした。もう一度お試しください。')
         return
       }
       setPending(words)
     } catch {
-      setError('神託に失敗しました。もう一度お試しください。')
+      setError('受け取りに失敗しました。もう一度お試しください。')
     } finally {
       setForging(false)
     }
@@ -140,7 +140,7 @@ export default function AcropolisPage() {
     }
   }
 
-  // キャンセル: 提示された神託を破棄（履歴には残す。カード・クレジットは発生しない）。
+  // キャンセル: 届いた言葉を破棄（履歴には残す。カード・クレジットは発生しない）。
   const handleCancel = () => {
     if (!pending) return
     addRecord({
@@ -161,8 +161,10 @@ export default function AcropolisPage() {
       <h1 className="flex items-center gap-2.5 text-2xl font-semibold">
         <Wand2 size={26} style={{ color: 'var(--palace)' }} />
         デルフォイ
-        {/* 名前だけでは何の場所か分からない。**初めての人はここで止まる** */}
-        <HelpPopover label="デルフォイについて" title="デルフォイ（神託の場）">
+        {/* 名前だけでは何の場所か分からない。**初めての人はここで止まる**。
+            「神託」という言い方はここでは使わない。世界観の言葉は地名（デルフォイ）に
+            預けて、説明は**何が起きるか**だけを書く */}
+        <HelpPopover label="デルフォイについて" title="デルフォイ（受け取りの場）">
           <p className="text-sm">
             覚えたい言葉が思いつかないときに、こちらから<strong>言葉を見繕ってお渡しする</strong>場所です。
             ジャンルと難しさを選ぶと、その場で候補が並びます。気に入らなければ引き直せます。
@@ -173,20 +175,23 @@ export default function AcropolisPage() {
         </HelpPopover>
       </h1>
       <p className="mt-2 text-muted-foreground">
-        神託を受け取る場所。言葉をもらうか、配られたコードを引き換えるか、どちらもここで行います。
+        なにかを受け取る場所です。言葉をランダムに受け取るか、配られたコードを引き換えるか、どちらもここで行います。
       </p>
 
-      {/* 2つの神託をカードで分ける。
+      {/* 2つの受け取りをカードで分ける。
           言葉をもらうのと、コードを引き換えるのは、来た理由が別。
           地続きに並べると、コードを持ってきた人がジャンル欄から読み始めることになる。
           それぞれの履歴も、そのカードの中に納める（どちらの記録かを探さなくて済む） */}
       <section className="mt-6 space-y-4 rounded-xl border border-border bg-card p-5">
         <div className="flex items-center gap-2">
           <Wand2 size={18} style={{ color: 'var(--palace)' }} />
-          <h2 className="text-lg font-semibold">言葉の神託</h2>
+          <h2 className="text-lg font-semibold">言葉のランダム受け取り</h2>
         </div>
+        {/* 見出しで「ランダムに言葉が来る」と言い切る。
+            前は「言葉の神託」で、何が起きるかは本文を読むまで分からなかった */}
         <p className="text-sm text-muted-foreground">
-          ジャンルを指定するか、空欄のまま完全ランダムで神託を受け、気に入ったら受け取ってカード化します。
+          ジャンルを指定するか、空欄のままにすると、言葉がランダムに届きます。
+          気に入ったものだけ受け取って、カードにできます。
         </p>
 
       <div className="mt-6 flex flex-col gap-3 sm:flex-row sm:items-end">
@@ -251,26 +256,26 @@ export default function AcropolisPage() {
         </div>
         <Button onClick={handleConsult} disabled={busy} className={`flex items-center justify-center gap-2 sm:w-44 ${forging && anim ? 'animate-oracle-aura' : ''}`}>
           {forging ? <Spinner size={15} /> : <Wand2 size={16} />}
-          {forging ? '神託を待っています...' : '神託を受ける'}
+          {forging ? '受け取っています...' : '言葉を受け取る'}
         </Button>
       </div>
 
       <p className="mt-2 text-xs text-muted-foreground">
-        神託の閲覧は無料です。受け取り（カード化）時に1枚につき1クレジット消費します
+        見るだけなら無料です。受け取ってカードにするときに、1枚につき1クレジット使います
         {available != null ? `（残り ${available} cr）` : ''}。
       </p>
       {error && <p className="mt-4 text-sm text-destructive">{error}</p>}
 
-      {/* 提示された神託（受け取り/キャンセルの意思表示） */}
+      {/* 届いた言葉（受け取り/キャンセルの意思表示） */}
       {pending && (
         <div className={`mt-6 rounded-xl border border-border bg-card px-6 py-5 ${anim ? 'animate-in fade-in zoom-in-95 duration-300' : ''}`}>
           <div className="flex items-center justify-between">
-            <p className="text-sm font-semibold text-muted-foreground">神託の結果</p>
+            <p className="text-sm font-semibold text-muted-foreground">届いた言葉</p>
             <button
               type="button"
               onClick={handleCancel}
               disabled={accepting}
-              aria-label="この神託をキャンセル"
+              aria-label="この結果を破棄する"
               className="rounded p-1 text-muted-foreground hover:bg-black/5 hover:text-foreground"
             >
               <X size={18} />
@@ -306,13 +311,13 @@ export default function AcropolisPage() {
         </div>
       )}
 
-      {/* 言葉の神託の履歴は、そのカードの中に納める。
-          別の節にすると、どちらの神託の記録なのかを探すことになる。
-          出すのは10件まで。全部並べると、下にあるコードの神託が押し出される */}
+      {/* 言葉の受け取りの履歴は、そのカードの中に納める。
+          別の節にすると、どちらの記録なのかを探すことになる。
+          出すのは10件まで。全部並べると、下のコード引き換えが押し出される */}
       {history.length > 0 && (
         <div className="space-y-2 border-t border-border pt-4">
           <div className="flex items-center justify-between">
-            <p className="text-xs font-medium text-muted-foreground">受けた神託</p>
+            <p className="text-xs font-medium text-muted-foreground">受け取った言葉</p>
             <button type="button" onClick={clearHistory} className="text-xs text-muted-foreground hover:underline">
               履歴をクリア
             </button>
@@ -361,14 +366,14 @@ export default function AcropolisPage() {
       )}
       </section>
 
-      {/* コードの神託。
+      {/* キャンペーンコードの受け取り。
           もともと受け取り口は「利用と支払い」の中だけにあったが、そこは支払いを
           済ませに行く面で、コードを持ってきた人が最初に開く場所ではない。
           入口は2つでも、扱っているのは同じ1つの仕組み（Billing::RedeemCampaignCode）。 */}
       <section className="mt-6">
         <RedeemCodePanel
           onRedeemed={() => useBillingStore.getState().fetchSummary()}
-          title="コードの神託"
+          title="キャンペーンコードの受け取り"
           note="配られたコードをここで引き換えられます。受け取ったぶんは残高に足されます。"
           withHistory
         />

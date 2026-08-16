@@ -7,15 +7,12 @@ export function LandingFooter() {
       className="py-4 text-center text-xs text-muted-foreground"
       style={{ borderTop: '1px solid var(--palace)' }}
     >
-      {/* 読みものと使い方は、入る前に読める。**入口が無いと、書いても辿り着けない** */}
+      {/* 「使い方」「コラム」「お知らせ」はここに置かない。
+          フッターは規約・問い合わせなど**読み終えたあとの行き先**の場所で、
+          読みものへの入口は本文側（CTA・空の一覧・案内）から入ってもらう。
+          並べると、規約と同じ重みの細字に埋もれて結局押されない。
+          ページ自体は残っているので、/guide・/blog・/news は生きている */}
       <p>
-        <Link href="/guide" className="hover:underline">使い方</Link>
-        <span className="mx-2" aria-hidden>|</span>
-        <Link href="/blog" className="hover:underline">コラム</Link>
-        <span className="mx-2" aria-hidden>|</span>
-        <Link href="/news" className="hover:underline">お知らせ</Link>
-      </p>
-      <p className="mt-1">
         <Link href="/terms" className="hover:underline">利用規約</Link>
         <span className="mx-2" aria-hidden>|</span>
         <Link href="/privacy" className="hover:underline">プライバシーポリシー</Link>

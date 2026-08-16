@@ -5,6 +5,7 @@ import { RefreshCw, Sparkles, Undo2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { useBillingStore } from '@/stores/billing'
 import { CREDIT_UNIT_SHORT } from '@/lib/billing'
+import { CreditCostNote } from '@/components/features/billing/CreditCostNote'
 import { Label } from '@/components/ui/label'
 import { Spinner } from '@/components/ui/spinner'
 import { previewBrief, retryItem, rewriteScenePrompt, updateItem, type SceneOption } from '@/lib/api/items'
@@ -474,9 +475,9 @@ export function RegeneratePanel({ item, onUpdated }: Props) {
             {retrying ? '作り直しています...' : `この内容で作り直す${costsCredit ? `（1 ${CREDIT_UNIT_SHORT}）` : ''}`}
           </Button>
 
-          {insufficient && (
-            <p className="text-sm text-destructive">クレジットが不足しています。</p>
-          )}
+          {/* 失敗からの作り直しは無料なので何も出さない。
+              お金がかかるときだけ、押す前に使う数と残りを置く */}
+          {costsCredit && <CreditCostNote variant="inline" cost={1} available={available} />}
           {error && <p className="text-sm text-destructive">{error}</p>}
         </div>
       </PanelSlotContent>

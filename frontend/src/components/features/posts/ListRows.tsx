@@ -2,7 +2,7 @@ import Link from 'next/link'
 import { Clock, Pin } from 'lucide-react'
 
 /**
- * 読みもの一覧の1行。お知らせ・使い方・コラム・掲示板で共通に使う。
+ * 読みもの一覧の1行。お知らせ・使い方・コラム・公示板で共通に使う。
  */
 export interface ListRowItem {
   key: string

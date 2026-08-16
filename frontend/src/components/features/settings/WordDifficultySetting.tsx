@@ -43,7 +43,7 @@ export function WordDifficultySetting() {
     <div className="space-y-2">
       <p className="text-sm font-medium">出してもらう単語の難しさ</p>
       <p className="text-xs text-muted-foreground">
-        神託（デルフォイ／作成画面のデルフォイ）に単語を出してもらうときの既定です。
+        デルフォイ（と作成画面のデルフォイ）に単語を出してもらうときの既定です。
         画像の作り方には効きません。デルフォイではその場で変えられます。
       </p>
       <div className="grid gap-2 sm:grid-cols-2">

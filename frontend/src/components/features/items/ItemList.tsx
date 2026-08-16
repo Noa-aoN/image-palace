@@ -45,6 +45,7 @@ import { useItemsStore } from '@/stores/items'
 import type { Item } from '@/types/item'
 import type { Tag } from '@/types/tag'
 import { aspectRatioCss } from '@/lib/aspect-ratio'
+import { CARD_IMAGE_EDGE, CARD_MAT_BG, CARD_MAT_BORDER } from '@/lib/card-frame'
 import {
   useCardDisplay,
   CARD_GRID_CLASSES,
@@ -228,7 +229,7 @@ function ItemCard({ item, selectionMode, selected, onToggle, fit, sizes, working
   // 画像側に w/h を張らないのは、張ると縁の影と線が画像ではなく余白の外周に付くため。
   const imageBlock = (
       <div
-        className="relative w-full bg-[color-mix(in_srgb,var(--card)_92%,var(--foreground))] p-[5%] flex items-center justify-center overflow-hidden"
+        className="relative w-full flex items-center justify-center overflow-hidden rounded-[3px]"
         style={{ aspectRatio: fit === 'uniform' ? '1 / 1' : aspectRatioCss(item.aspect_ratio) }}
       >
         {/* 丸型のチェックを画像の右上に。カードの上端はタイトルと状態バッジで
@@ -253,7 +254,7 @@ function ItemCard({ item, selectionMode, selected, onToggle, fit, sizes, working
             <img
               src={resolvedImageUrl}
               alt={item.title}
-              className={`rounded-[2px] shadow-[0_1px_3px_rgba(0,0,0,0.25)] ring-1 ring-black/15 ${
+              className={`${CARD_IMAGE_EDGE} ${
                 fit === 'uniform' ? 'max-h-full max-w-full object-contain' : 'w-full h-full object-cover'
               } ${regenerating ? REGENERATING_IMAGE_CLASS : ''} ${veiled ? SAFEGUARD_IMAGE_CLASS : ''}`}
               loading="lazy"
@@ -309,8 +310,9 @@ function ItemCard({ item, selectionMode, selected, onToggle, fit, sizes, working
           <Spinner size={18} />
         </span>
       )}
-      {/* テキストを上・画像を下に配置 */}
-      <div className="px-3 py-2 flex items-center justify-between gap-2">
+      {/* 見出しも台紙の上に置く。**枠の外に文字があると、絵だけが「カード」に見える。**
+          札の名前欄のつもりで、絵と同じ紙に載せる */}
+      <div className="px-0.5 pb-1.5 flex items-center justify-between gap-2">
         {/* ファクトチェックで「正しい」以外なら単語名に色を付けて気づけるようにする */}
         <span
           className={`text-sm font-medium truncate ${factCheckTitleClass(item)}`}
@@ -328,7 +330,7 @@ function ItemCard({ item, selectionMode, selected, onToggle, fit, sizes, working
         const field = item.list_fields?.find((row) => row.key === block)
         if (!field) return null
         return (
-          <dl key={block} className="space-y-0.5 px-3 pb-1.5 pt-1.5 last:pb-2">
+          <dl key={block} className="space-y-0.5 px-0.5 pt-1.5">
             {renderField(field)}
           </dl>
         )
@@ -342,8 +344,8 @@ function ItemCard({ item, selectionMode, selected, onToggle, fit, sizes, working
       type="button"
       onClick={() => onToggle(item.id)}
       aria-pressed={selected}
-      className={`relative flex w-full flex-col rounded-xl border overflow-hidden bg-card text-left transition-shadow ${
-        selected ? 'border-[var(--palace)] ring-2 ring-[var(--palace)]' : 'border-border hover:shadow-md'
+      className={`relative flex w-full flex-col rounded-xl border p-2 text-left transition-shadow ${CARD_MAT_BG} ${
+        selected ? 'border-[var(--palace)] ring-2 ring-[var(--palace)]' : `${CARD_MAT_BORDER} hover:shadow-md`
       }`}
     >
       {inner}
@@ -351,7 +353,7 @@ function ItemCard({ item, selectionMode, selected, onToggle, fit, sizes, working
   ) : (
     <Link
       href={`/items/${item.id}`}
-      className="relative flex flex-col rounded-xl border border-border overflow-hidden bg-card hover:shadow-md transition-shadow"
+      className={`relative flex flex-col rounded-xl border p-2 transition-shadow hover:shadow-md ${CARD_MAT_BG} ${CARD_MAT_BORDER}`}
       prefetch
       onMouseEnter={warmupDetail}
       onFocus={warmupDetail}
@@ -1097,12 +1099,26 @@ export function ItemList({ initialTag = null }: { initialTag?: string | null }) 
             <p className="mt-1 text-xs text-muted-foreground">
               同じ言葉を誰かが作っていれば、その絵をそのまま使います（待ち時間もかかりません）。
             </p>
+            {/* 残りがどこに出るかまで言う。数だけ説明されても、
+                次に「いま何枚ぶんあるのか」を画面のどこで見るのか分からない */}
+            <p className="mt-1 text-xs text-muted-foreground">
+              残りはいつでも画面上のヘッダーで確認できます。
+            </p>
           </div>
         </div>
 
-        <Link href="/items/new">
-          <Button>カードを作成する</Button>
-        </Link>
+        <div className="space-y-3">
+          <Link href="/items/new">
+            <Button>カードを作成する</Button>
+          </Link>
+          {/* 説明を読み切りたい人の行き先。**釦の下に小さく**置く。
+              ここを目立たせると、最初の1枚より先に読み物へ流れてしまう */}
+          <p className="text-xs text-muted-foreground">
+            <Link href="/guide" className="underline underline-offset-2 hover:text-foreground">
+              使い方を見る
+            </Link>
+          </p>
+        </div>
       </div>
     )
   }

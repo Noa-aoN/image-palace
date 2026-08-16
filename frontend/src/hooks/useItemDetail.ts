@@ -17,6 +17,8 @@ export function useItemDetail(itemId: string, opts?: { onDeleted?: () => void })
 
   const [item, setItem] = useState<Item | null>(() => cachedItem)
   const [error, setError] = useState<string | null>(null)
+  // 読み直しの合図。増やすと取得の effect がもう一度走る
+  const [reloadKey, setReloadKey] = useState(0)
   const [imgError, setImgError] = useState(false)
   const [deleting, setDeleting] = useState(false)
   const [confirmDelete, setConfirmDelete] = useState(false)
@@ -67,7 +69,14 @@ export function useItemDetail(itemId: string, opts?: { onDeleted?: () => void })
     return () => {
       cancelled = true
     }
-  }, [itemId, upsertItem])
+  }, [itemId, upsertItem, reloadKey])
+
+  // 読めなかったときに、その場で取り直す。
+  // ページ全体の再読み込みと違い、開いている一覧や選択位置を捨てずに済む。
+  const reload = () => {
+    setError(null)
+    setReloadKey((current) => current + 1)
+  }
 
   // pending/processing 中はポーリング
   const generationStatus = item?.generation_status
@@ -178,6 +187,7 @@ export function useItemDetail(itemId: string, opts?: { onDeleted?: () => void })
   return {
     item,
     error,
+    reload,
     imgError,
     setImgError,
     deleting,

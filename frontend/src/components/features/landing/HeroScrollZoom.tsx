@@ -3,6 +3,7 @@
 import { useHeroZoom } from '@/hooks/useHeroZoom'
 import { LandingCta } from './LandingCta'
 import { ScrollCue } from './ScrollCue'
+import { HeroDescription } from './HeroDescription'
 
 // LP ヒーロー：スクロールで画像中央のドアへズームし、終盤に次セクションへブレンドする。
 // 構造: track(縦長) → stage(sticky, 100svh) → 画像/ぼかし/スクリム/ブレンド + テキスト。
@@ -15,7 +16,10 @@ export function HeroScrollZoom() {
     <section ref={trackRef} className="hero-track" data-reduced={reduced ? 'true' : 'false'}>
       <div
         ref={stageRef}
-        className="hero-stage flex flex-col items-center justify-start px-6 pt-24 text-center md:pt-28"
+        // 上端に寄せていたころは、画面の上3分の1に文字が固まり、
+        // 下の絵だけが広く空いていた。読むものを画面の中心寄りへ下ろす
+        // （スクロール誘導は絶対配置なので、下げても押し出さない）
+        className="hero-stage flex flex-col items-center justify-start px-6 pt-[7vh] text-center sm:pt-[10vh] md:pt-[13vh]"
       >
         {/* 背景画像（ズーム対象・最背面） */}
         {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -98,6 +102,26 @@ export function HeroScrollZoom() {
             <img src="/hero-butterfly-black.webp" alt="" decoding="async" className="hero-butterfly__wing" />
           </div>
         </div>
+        {/* 中央の扉のあたりを舞う3匹。扉は奥なので、手前の蝶の半分の大きさにして
+            左右へばらけさせる。小さく霞ませることで空気遠近が保たれる */}
+        <div aria-hidden className="hero-butterfly hero-butterfly--7">
+          <div className="hero-butterfly__path">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src="/hero-butterfly-white.webp" alt="" decoding="async" className="hero-butterfly__wing" />
+          </div>
+        </div>
+        <div aria-hidden className="hero-butterfly hero-butterfly--8">
+          <div className="hero-butterfly__path">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src="/hero-butterfly-orange.webp" alt="" decoding="async" className="hero-butterfly__wing" />
+          </div>
+        </div>
+        <div aria-hidden className="hero-butterfly hero-butterfly--9">
+          <div className="hero-butterfly__path">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src="/hero-butterfly-blue.webp" alt="" decoding="async" className="hero-butterfly__wing" />
+          </div>
+        </div>
         {/* 下部のぼかし */}
         <div aria-hidden className="hero-blur" />
         {/* アイボリースクリム（可読性） */}
@@ -114,32 +138,28 @@ export function HeroScrollZoom() {
           {/* 大きさで読む順を決める。**名前 → 何をするか → どう使えるか**。
               いちばん大きいものが名前でないと、初めての人は何を見ているのか分からない */}
           <p
-            className="brand-wordmark mb-4 text-[clamp(2rem,9vw,4.5rem)] leading-none"
+            // 靄は説明文の枠より外まで広がる。名前・見出し・CTA はその前に出す
+            // （指定しないと、位置指定のある説明文の層が上に来て、これらが霞む）
+            className="brand-wordmark relative z-10 mb-3 text-[clamp(2.25rem,10vw,5.25rem)] leading-none md:mb-4"
             style={{ color: 'var(--palace)' }}
           >
             IMAGE PALACE
           </p>
           <h1
-            className="mb-6 text-[clamp(1.15rem,4.5vw,1.75rem)] font-bold leading-snug tracking-tight md:text-3xl"
+            className="relative z-10 mb-4 text-[clamp(1.3rem,5vw,2.1rem)] font-bold leading-snug tracking-tight md:mb-6 md:text-4xl"
             style={{ color: 'var(--foreground)' }}
           >
             言葉をイメージに変えて、
             <br />
             記憶の宮殿をつくる。
           </h1>
-          {/* 絵の上に直接置くと、背景の明暗で読めなくなる。**紙を1枚敷く** */}
-          <div className="mb-10 max-w-lg rounded-2xl border border-white/70 bg-white/72 px-6 py-5 text-left shadow-sm backdrop-blur-sm">
-            <p className="text-sm leading-relaxed md:text-base" style={{ color: 'var(--foreground)' }}>
-              覚えたい言葉を書くと、AI がその情景を絵にします。
-              絵と言葉が一枚になった<strong className="font-semibold">メモリーカード</strong>が、
-              記憶の基本の単位です。
-            </p>
-            <p className="mt-3 text-sm leading-relaxed" style={{ color: '#5A5348' }}>
-              単語帳・学習図鑑・用語集はもちろん、ビジョンボードや絵日記としても。
-              集めたカードは、自分だけの宮殿として並べて眺められます。
-            </p>
-          </div>
-          <LandingCta className="flex w-full max-w-sm flex-col gap-3 sm:w-auto sm:max-w-none sm:flex-row" />
+          {/* 説明文は HeroDescription が持つ（文言は1か所）。
+              **地は足さない**。紙を敷いていたのは、スクリムが帯の下端で
+              抜けきって読めなくなっていたから。スクリムの落ち方を直した結果、
+              追加の地なしで AA を通るようになった（実測は globals.css の
+              `.hero-scrim` の注記）。ほかの案は /dev/hero-text で比較できる */}
+          <HeroDescription variant="softWash" washOpacity={0.55} underlineStrong className="mb-6 md:mb-8" />
+          <LandingCta className="relative z-10 flex w-full max-w-sm flex-col gap-3 sm:w-auto sm:max-w-none sm:flex-row" />
         </div>
 
         {/* スクロール誘導（画像下部・他セクションと同位置） */}

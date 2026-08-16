@@ -67,6 +67,15 @@
   /* フリーボードの既定背景。図形や線を置く面なので、色を持たせず白に寄せる */
   --board-bg: #FCFBF9;
   --palace: #C6A75E;
+  /* LP で絵の上に敷く紙。**説明の箱とスクロール誘導で同じものを使う**。
+     別々に持っていたころは、片方の透明度や角だけが変わって面が揃わなかった。
+     地を薄くして絵を透かし、そのぶん縁を金にして輪郭を保つ */
+  /* 絵の上で字を読ませる「靄」の濃さ。**説明文とスクロール誘導で同じ値を使う**。
+     別々に持つと、片方だけ濃くなって同じ画面に二種類の靄が並ぶ */
+  --landing-wash-a: 0.55;
+  --landing-panel-bg: rgba(255, 255, 255, 0.52);
+  --landing-panel-border: color-mix(in srgb, var(--palace) 62%, transparent);
+  --landing-panel-radius: 1rem;
   --card: oklch(1 0 0);
   --card-foreground: oklch(0.145 0 0);
   --popover: oklch(1 0 0);
@@ -521,15 +530,41 @@
   will-change: opacity;
 }
 
+/* 文字を読ませる地。**説明文に紙を敷かずに済ませるための形**。
+ *
+ * 実測（hero-palace.webp の画素 × このグラデーションを合成して WCAG 比を計算）:
+ *   旧: 3段の直線。説明文の帯（画面の38〜62%）で最小 3.62 → AA(4.5) に届かない。
+ *       **足りないのは地の濃さではなく、落ち方が早すぎること**だった。
+ *       帯の下端で 0.47 まで抜けてしまい、そこだけ読めなくなる。
+ *   新: 帯のあいだ 0.38 前後。
+ *       **全幅を濃くするのをやめ、読ませる仕事は文字の後ろの靄に渡した**。
+ *       0.60 で全幅を覆っていたころは、靄（白15%）を足しても明るさが5%しか
+ *       変わらず、置いたことが見えなかった。地が明るすぎたため。
+ *       弱めたことで靄が効くようになり、絵も出る。
+ *
+ * 実測（靄55%と合わせて）: 説明文の帯 最小 7.11（基準4.5）／見出しの帯 最小 4.65（基準3.0）。
+ * **帯の左右で絵が 65% 残る**（全幅を 0.60 で覆っていたころは 39%）。
+ *
+ * 0.24 まで下げたときは絵が 73% 出たが、**画面全体の靄が薄れて空気が抜けた**。
+ * 靄はこの絵の主題（霞んだ宮殿）でもあるので、読みやすさだけで decide しない。
+ * 0.34 は、絵を出しつつ靄を残す折り合い。
+ * Material の「グラデーションは長く、変化点は濃い側へ寄せる」に沿う形でもある
+ * （早い直線落ちは、境目が線として見えるので避ける）。
+ *
+ * 数値を動かすときは、**帯の最小値**で確かめること。平均は当てにならない
+ * （平均 8.44 でも、最小 3.62 の場所が1か所あればそこが読めない）。 */
 .hero-scrim {
   position: absolute;
   inset: 0;
   z-index: 20;
   background: linear-gradient(
     180deg,
-    rgba(255, 253, 247, 0.88) 0%,
-    rgba(255, 253, 247, 0.6) 45%,
-    rgba(255, 253, 247, 0.18) 100%
+    rgba(255, 253, 247, 0.84) 0%,
+    rgba(255, 253, 247, 0.61) 22%,
+    rgba(255, 253, 247, 0.44) 40%,
+    rgba(255, 253, 247, 0.38) 64%,
+    rgba(255, 253, 247, 0.23) 84%,
+    rgba(255, 253, 247, 0.11) 100%
   );
   opacity: calc(1 - var(--fade, 0));
   will-change: opacity;
@@ -664,6 +699,27 @@
 .hero-butterfly--4 { left: 30%; top: 85%; width: 17px; --bfly-dir: -1; }
 .hero-butterfly--5 { left: 91%; top: 75%; width: 14px; --bfly-dir: 1; }
 .hero-butterfly--6 { left: 9%; top: 82%; width: 17px; --bfly-dir: -1; }
+/* 中央の扉のあたりを舞う3匹。ほかの蝶（14〜20px）よりわずかに小さく、
+   左右にばらけさせる。扉は奥なので、小さいほうが遠近に合う。
+   高さは扉の下半分あたり。上げすぎると空に浮いて見える */
+.hero-butterfly--7 { left: 38%; top: 71%; width: 13px; --bfly-dir: -1; }
+.hero-butterfly--8 { left: 58%; top: 77%; width: 12px; --bfly-dir: 1; }
+.hero-butterfly--9 { left: 50%; top: 65%; width: 14px; --bfly-dir: 1; }
+/* 扉は奥にあるので、そこを舞う蝶は**手前の蝶より小さい**（ほかの半分）。
+   遠いぶん霞ませる。前ボケではなく空気遠近 */
+.hero-butterfly--7 .hero-butterfly__wing,
+.hero-butterfly--8 .hero-butterfly__wing,
+.hero-butterfly--9 .hero-butterfly__wing {
+  filter: saturate(0.6) brightness(1.12) sepia(0.14) blur(0.4px);
+  opacity: 0.66;
+}
+.hero-butterfly--7 .hero-butterfly__path { animation: hero-bfly-path-a 18s ease-in-out infinite; animation-delay: -2s; }
+.hero-butterfly--8 .hero-butterfly__path { animation: hero-bfly-path-b 22s ease-in-out infinite reverse; animation-delay: -9s; }
+.hero-butterfly--9 .hero-butterfly__path { animation: hero-bfly-path-a 25s ease-in-out infinite reverse; animation-delay: -14s; }
+.hero-butterfly--7 .hero-butterfly__wing { animation-duration: 0.62s; }
+.hero-butterfly--8 .hero-butterfly__wing { animation-duration: 0.7s; }
+.hero-butterfly--9 .hero-butterfly__wing { animation-duration: 0.58s; }
+
 .hero-butterfly--1 .hero-butterfly__path { animation: hero-bfly-path-a 15s ease-in-out infinite; }
 .hero-butterfly--2 .hero-butterfly__path { animation: hero-bfly-path-b 19s ease-in-out infinite; }
 .hero-butterfly--3 .hero-butterfly__path { animation: hero-bfly-path-a 13s ease-in-out infinite reverse; animation-delay: -5s; }
@@ -722,10 +778,16 @@
   top: 0;
   left: 0;
   width: 100%;
-  height: 60px;
+  height: 90px;
   z-index: 1;
   display: block;
   pointer-events: none;
+  /* 上端を透明から始める。**塗りが道を直線で切るのを防ぐ**ため。
+     不透明のまま置くと、波のすぐ上にもう1本の境目ができて、
+     波がいくら滑らかでも不自然に見える。
+     波（中心線 y=68）は明けきったところに来るので、輪郭は鈍らない */
+  -webkit-mask-image: linear-gradient(to bottom, transparent 0%, #000 50%);
+  mask-image: linear-gradient(to bottom, transparent 0%, #000 50%);
 }
 .section-divider--flip {
   transform: scaleY(-1);
@@ -746,7 +808,7 @@
 
 @media (max-width: 640px) {
   .section-divider {
-    height: 40px;
+    height: 62px;
   }
 }
 
@@ -756,28 +818,174 @@
   flex-direction: column;
   align-items: center;
   gap: 4px;
-  /* 絵の上に直に置くと、明るい部分で金の文字が消える。**紙を1枚敷く**。
-     見出しの箱と同じ作りにして、面としての揃いも保つ */
-  background: rgba(255, 255, 255, 0.72);
-  backdrop-filter: blur(2px);
-  -webkit-backdrop-filter: blur(2px);
-  border: 1px solid rgba(255, 255, 255, 0.7);
-  border-radius: 999px;
-  padding: 6px 14px 4px;
+  /* **どの節でも同じ見え方にする。** 節ごとに地（絵・アイボリー・白）が違うが、
+     同じ役目のものが場所によって色を変えると、押せるものだと気づきにくくなる。
+
+     面は持たせず、説明文と同じ靄（`--landing-wash-a`）を敷く。
+     縁を作らないので、箱ではなく光の溜まりとして見える。
+     余白を広く取るのは、消え際を字にかけないため（詰めると字の縁が薄くなる）。
+
+     影は**明るい側のにじみ**。暗い字を暗い影で囲っても輪郭は出ない。 */
+  border: 0;
+  padding: 10px 30px 8px;
   cursor: pointer;
-  color: var(--palace);
+  color: #2E2A24;
+  text-shadow:
+    0 1px 2px rgba(255, 253, 247, 0.85),
+    0 0 8px rgba(255, 253, 247, 0.65);
+  /* 説明文より薄くする。こちらは読ませる本文ではなく合図なので、
+     同じ濃さだと合図のほうが強く出る。
+     **共有値からの比率**で持つので、元（--landing-wash-a）を変えれば両方動く */
+  background: radial-gradient(
+    50% 50% at 50% 50%,
+    rgba(255, 253, 247, calc(var(--landing-wash-a) * 0.72)) 0%,
+    rgba(255, 253, 247, calc(var(--landing-wash-a) * 0.72)) 52%,
+    rgba(255, 253, 247, 0) 100%
+  );
   font-size: 0.72rem;
   letter-spacing: 0.08em;
-  opacity: 0.85;
+  opacity: 0.9;
   transition: opacity 0.2s;
 }
 .scroll-cue:hover {
   opacity: 1;
 }
+
+/* 紙を敷かずに、絵の上で字を読ませるための縁取り（`/dev/hero-text` で比較中）。
+   紙は読みやすい代わりに背景を覆う。縁取りなら字のぶんしか隠さない。
+
+   **`paint-order: stroke fill` が要**。これが無いと縁は字の輪郭の中央に引かれ、
+   内側の半分が字を食う。日本語は画数が多いので、そのぶん字が痩せて潰れる。
+   縁を先に描いて字を上から乗せれば、字の太さはそのままで外側にだけ縁が出る。
+
+   太さは字の大きさで変える。小さい字に太い縁を付けると、
+   「憶」「繰」のような字の内側の隙間が白で埋まって、白い塊になる。
+   `--outline-w` を各サイズで上書きすること。
+
+   にじみ（text-shadow）は縁の外側の保険。石畳のような明るい場所では
+   白い縁が背景に溶けるので、その外にごく淡い影を置いて輪郭を残す。 */
+.hero-outline {
+  --outline-w: 1.6px;
+  color: #2E2A24;
+  -webkit-text-stroke: var(--outline-w) rgba(255, 255, 255, 0.92);
+  paint-order: stroke fill;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.16);
+}
+/* 大きい字は縁も太くしてよい（内側の隙間が広いので埋まらない） */
+@media (min-width: 768px) {
+  .hero-outline {
+    --outline-w: 2.1px;
+  }
+}
+
+/* 文字の後ろに敷く「白の靄」。**面ではなく、光の溜まり**として置く。
+   目的は、紙があると気づかれないまま字だけが読みやすくなること。
+
+   矩形の紙をそのまま薄くしても、**縁がある限り箱に見える**。
+   薄さは箱らしさを弱めるだけで、無くしはしない。
+   なので縁を作らない ── 外へ向けて消す。
+
+   - 地は中心がいちばん白く、外へ向けて透明へ抜ける
+   - `backdrop-filter` は要素の矩形に効いてしまうので、
+     同じ形の `mask-image` で外周を消す。これをしないと、
+     地が透明になった先に**ぼかしの切れ目という直線**が残る
+   - 文字より外まで広げて、消え際を文字から離す
+     （消え際が字にかかると、字のほうが霞んで見える）
+
+   マスクは自分にしか効かないよう、文字とは別の層に置くこと
+   （文字ごとマスクすると、端の字が薄くなる）。 */
+.hero-wash {
+  --hero-wash-a: var(--landing-wash-a);
+  /* 白い靄が既定。白文字版では黒に差し替える（形と作りは同じ） */
+  --hero-wash-rgb: 255, 255, 255;
+  /* **文字より後ろに置く。** 絶対配置のこれは、通常フローの段落より後に描かれる
+     ので、指定しないと靄が文字に覆いかぶさる（薄いうちは気づきにくいが、
+     濃くすると文字ごと霞む）。文字側にも z-index を与えて前後を確定させること */
+  z-index: 0;
+  position: absolute;
+  /* **文字よりずっと外まで広げる。** 消え際を文字にかけないため。
+     横は文字幅の1.5倍、縦は2倍強になる（％は親の幅／高さに対する値）。
+     ここを狭くすると、行の端が薄くなって読みにくくなる */
+  inset: -55% -25%;
+  pointer-events: none;
+  /* ぼかしもマスクも使わない。**地の濃さだけで消す**。
+     backdrop-filter は要素の矩形に効くのでマスクで隠す必要が出るが、
+     マスクの半径は要素の幅・高さに対する％なので指定を誤ると
+     ぼかしの切れ目が箱の縁として残る（実際に残っていた）。
+     地のグラデーションだけなら、そもそも縁が生まれようがない。
+
+     中心から 62% までは同じ濃さを保ち、そこから外周へ向けて 0 まで抜く。
+     文字は中心から 47〜67% の範囲に収まるので、字の下は濃さがほぼ一定になる */
+  background: radial-gradient(
+    50% 50% at 50% 50%,
+    rgba(var(--hero-wash-rgb), var(--hero-wash-a)) 0%,
+    rgba(var(--hero-wash-rgb), var(--hero-wash-a)) 62%,
+    rgba(var(--hero-wash-rgb), 0) 100%
+  );
+}
+/* 白文字版の靄。色を黒へ替えるだけ（形も消し方も同じ） */
+.hero-wash--dark {
+  --hero-wash-rgb: 0, 0, 0;
+  --hero-wash-a: 0.22;
+}
+/* アイボリー文字版の soft scrim。黒ではなく**濃い茶**で沈める
+   （黒で沈めると宮殿の暖かい色まで灰色に寄る）。
+   65% は実測値。ヒーローのスクリムで地がアイボリーまで明るくなっているため、
+   これ未満だとアイボリー文字が地に埋もれる（60%で 3.91、55%で 3.36）。 */
+.hero-wash--warm {
+  --hero-wash-rgb: 38, 30, 22;
+  --hero-wash-a: 0.65;
+}
+
+/* やや暖色の明るいアイボリー文字。影は**ごく弱い濃茶**。
+   黒い影だと縁取りに寄って字幕の見え方になるので、地の茶に寄せて沈ませる */
+/* 説明文の太字に金の下線を引く（検討中）。
+   字そのものは黒のまま、下線だけを金にして「拾い読みの手がかり」を強める。
+   線は細く・字から離す。太いと語の下に帯ができ、読む速さが落ちる */
+.hero-desc-underline strong {
+  text-decoration: underline;
+  text-decoration-color: color-mix(in srgb, var(--palace) 85%, transparent);
+  text-decoration-thickness: 1.5px;
+  text-underline-offset: 4px;
+  text-decoration-skip-ink: auto;
+}
+
+.hero-ivory {
+  color: #F4EFE6;
+  text-shadow:
+    0 1px 2px rgba(58, 42, 28, 0.45),
+    0 2px 10px rgba(58, 42, 28, 0.3);
+}
+
+/* 白文字。**縁は引かない。**
+   白い字に黒い縁を引くと、輪郭が硬くなって字幕やゲームUIの見え方になる。
+   にじむ影なら輪郭は立たず、字の後ろだけが沈む。
+   遠い影（8px）で面として持ち上げ、近い影（1px）で輪郭を締める。 */
+.hero-white {
+  /* 影は**ごく弱く**。濃くすれば読めるが、濃い影は字の周りに黒い縁取りを作り、
+     結局それが字幕の見え方になる。読ませる仕事は影より地（局所scrim）に振る */
+  --white-shadow-a: 0.34;
+  color: #FFFFFF;
+  text-shadow:
+    0 1px 2px rgba(0, 0, 0, var(--white-shadow-a)),
+    0 2px 12px rgba(0, 0, 0, calc(var(--white-shadow-a) * 0.62));
+}
+/* paint-order が効かない環境では、縁が字を食って細く見える。
+   その場合は縁を引かず、白いにじみだけで背景から浮かせる */
+@supports not (paint-order: stroke) {
+  .hero-outline {
+    -webkit-text-stroke: 0;
+    text-shadow:
+      0 0 3px rgba(255, 255, 255, 0.95),
+      0 0 6px rgba(255, 255, 255, 0.85),
+      0 1px 2px rgba(0, 0, 0, 0.2);
+  }
+}
 .scroll-cue__chevron {
   animation: scroll-cue-bob 1.8s ease-in-out infinite;
 }
-/* ヒーローの cue は画像下部に固定（他セクションと同位置）。ズームでフェード */
+/* ヒーローの cue だけは**絵の上**に乗る。節の中とは地が違うので、字の色も変える。
+   見た目は `.scroll-cue`（全節共通）が持つ。ここは**置き場所だけ**。 */
 .hero-cue {
   position: absolute;
   /* ヘッダー(h-14=56px)分だけ上げる */
@@ -787,9 +995,10 @@
   transform: translateX(-50%);
   opacity: calc(1 - var(--fade, 0));
 }
+/* 上下の揺れは**ほんの少し**。大きく動かすと、読む前に目がそちらへ取られる */
 @keyframes scroll-cue-bob {
   0%, 100% { transform: translateY(0); }
-  50% { transform: translateY(4px); }
+  50% { transform: translateY(2.5px); }
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -936,6 +1145,28 @@
   inset: 0;
   perspective: 620px;
   perspective-origin: 50% 32%;
+}
+/* 道のいちばん奥を横切る渡鴉（最後の区画だけ）。
+   地平線は .road-bg__plane の top: 26% なので、その少し上を飛ばす。
+   **手前に出さない。** 大きく濃く出すと、道より鴉が主役になる。
+   .road-bg__scene より先に置いて、いちばん奥の柱の裏を通す */
+.road-bg__raven {
+  position: absolute;
+  top: 20%;
+  left: 0;
+  width: clamp(22px, 3.2vw, 44px);
+  height: auto;
+  opacity: 0;
+  pointer-events: none;
+  will-change: transform, opacity;
+  animation: road-raven-cross 34s linear infinite;
+}
+@keyframes road-raven-cross {
+  0% { transform: translate3d(-10vw, 0, 0) scale(0.85); opacity: 0; }
+  10% { opacity: 0.26; }
+  50% { transform: translate3d(50vw, -2.2vh, 0) scale(1); opacity: 0.3; }
+  90% { opacity: 0.24; }
+  100% { transform: translate3d(112vw, 0.8vh, 0) scale(0.82); opacity: 0; }
 }
 .road-bg__plane {
   position: absolute;
@@ -1255,6 +1486,9 @@
   .road-bg__glow::after {
     animation: none;
   }
+  .road-bg__raven {
+    display: none;
+  }
 }
 
 /* ユーザーが環境設定でアニメーションを OFF にしたときも、上と同じ静止状態にする */
@@ -1266,6 +1500,9 @@
   }
 :root[data-motion='off'] .road-bg__glow {
     opacity: 0;
+  }
+:root[data-motion='off'] .road-bg__raven {
+    display: none;
   }
 :root[data-motion='off'] .road-bg__glow::before, :root[data-motion='off'] .road-bg__glow::after {
     animation: none;
@@ -1382,1387 +1619,6 @@
   mask-image: linear-gradient(to top, #000 30%, transparent 100%);
 }
 
-@import "tailwindcss";
-@import "tw-animate-css";
-@import "shadcn/tailwind.css";
-
-@custom-variant dark (&:is(.dark *));
-
-@theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-sans);
-  --font-mono: var(--font-geist-mono);
-  --font-heading: var(--font-sans);
-  --color-sidebar-ring: var(--sidebar-ring);
-  --color-sidebar-border: var(--sidebar-border);
-  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
-  --color-sidebar-accent: var(--sidebar-accent);
-  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
-  --color-sidebar-primary: var(--sidebar-primary);
-  --color-sidebar-foreground: var(--sidebar-foreground);
-  --color-sidebar: var(--sidebar);
-  --color-chart-5: var(--chart-5);
-  --color-chart-4: var(--chart-4);
-  --color-chart-3: var(--chart-3);
-  --color-chart-2: var(--chart-2);
-  --color-chart-1: var(--chart-1);
-  --color-ring: var(--ring);
-  --color-input: var(--input);
-  --color-border: var(--border);
-  --color-destructive: var(--destructive);
-  --color-accent-foreground: var(--accent-foreground);
-  --color-accent: var(--accent);
-  --color-muted-foreground: var(--muted-foreground);
-  --color-muted: var(--muted);
-  --color-secondary-foreground: var(--secondary-foreground);
-  --color-secondary: var(--secondary);
-  --color-primary-foreground: var(--primary-foreground);
-  --color-primary: var(--primary);
-  --color-popover-foreground: var(--popover-foreground);
-  --color-popover: var(--popover);
-  --color-card-foreground: var(--card-foreground);
-  --color-card: var(--card);
-  --radius-sm: calc(var(--radius) * 0.6);
-  --radius-md: calc(var(--radius) * 0.8);
-  --radius-lg: var(--radius);
-  --radius-xl: calc(var(--radius) * 1.4);
-  --radius-2xl: calc(var(--radius) * 1.8);
-  --radius-3xl: calc(var(--radius) * 2.2);
-  --radius-4xl: calc(var(--radius) * 2.6);
-}
-
-:root {
-  --background: oklch(1 0 0);
-  /* 真っ黒にしない。**紙の上のインク**くらいの濃さにして、ivory の地と馴染ませる */
-  --foreground: oklch(0.27 0.005 60);
-  --ivory: #F4EFE6;
-  --ivory-dark: #ECE5D8;
-  /* ヘッダーの地。差し色の金（--palace）より一段深くして、白い文字が乗る濃さにする。
-     **差し色と同じ色を地にしない**（同じだと、その上の金の要素が沈む） */
-  --palace-deep: #8A6D2F;
-  /* ヘッダーに乗る文字・アイコン。地が濃いので白 */
-  --on-palace: #FFFFFF;
-  /* 絵を画面に収めたときに、絵の外側へ出る地色。
-     **絵の色を引き伸ばして敷かない。** 額装の台紙と同じで、
-     地は絵と別のものにしたほうが、絵そのものの色が正しく見える。
-     宮殿の地色（ivory）に合う、わずかに暖かい炭色 */
-  --image-mat: #33302B;
-  --palace: #C6A75E;
-  --card: oklch(1 0 0);
-  --card-foreground: oklch(0.145 0 0);
-  --popover: oklch(1 0 0);
-  --popover-foreground: oklch(0.145 0 0);
-  --primary: oklch(0.205 0 0);
-  --primary-foreground: oklch(0.985 0 0);
-  --secondary: oklch(0.97 0 0);
-  --secondary-foreground: oklch(0.205 0 0);
-  --muted: oklch(0.97 0 0);
-  --muted-foreground: oklch(0.556 0 0);
-  --accent: oklch(0.97 0 0);
-  --accent-foreground: oklch(0.205 0 0);
-  --destructive: oklch(0.577 0.245 27.325);
-  --border: oklch(0.922 0 0);
-  --input: oklch(0.922 0 0);
-  --ring: oklch(0.708 0 0);
-  --chart-1: oklch(0.87 0 0);
-  --chart-2: oklch(0.556 0 0);
-  --chart-3: oklch(0.439 0 0);
-  --chart-4: oklch(0.371 0 0);
-  --chart-5: oklch(0.269 0 0);
-  --radius: 0.625rem;
-  --sidebar: oklch(0.985 0 0);
-  --sidebar-foreground: oklch(0.145 0 0);
-  --sidebar-primary: oklch(0.205 0 0);
-  --sidebar-primary-foreground: oklch(0.985 0 0);
-  --sidebar-accent: oklch(0.97 0 0);
-  --sidebar-accent-foreground: oklch(0.205 0 0);
-  --sidebar-border: oklch(0.922 0 0);
-  --sidebar-ring: oklch(0.708 0 0);
-}
-
-.dark {
-  --background: oklch(0.145 0 0);
-  --foreground: oklch(0.985 0 0);
-  --card: oklch(0.205 0 0);
-  --card-foreground: oklch(0.985 0 0);
-  --popover: oklch(0.205 0 0);
-  --popover-foreground: oklch(0.985 0 0);
-  --primary: oklch(0.922 0 0);
-  --primary-foreground: oklch(0.205 0 0);
-  --secondary: oklch(0.269 0 0);
-  --secondary-foreground: oklch(0.985 0 0);
-  --muted: oklch(0.269 0 0);
-  --muted-foreground: oklch(0.708 0 0);
-  --accent: oklch(0.269 0 0);
-  --accent-foreground: oklch(0.985 0 0);
-  --destructive: oklch(0.704 0.191 22.216);
-  --border: oklch(1 0 0 / 10%);
-  --input: oklch(1 0 0 / 15%);
-  --ring: oklch(0.556 0 0);
-  --chart-1: oklch(0.87 0 0);
-  --chart-2: oklch(0.556 0 0);
-  --chart-3: oklch(0.439 0 0);
-  --chart-4: oklch(0.371 0 0);
-  --chart-5: oklch(0.269 0 0);
-  --sidebar: oklch(0.205 0 0);
-  --sidebar-foreground: oklch(0.985 0 0);
-  --sidebar-primary: oklch(0.488 0.243 264.376);
-  --sidebar-primary-foreground: oklch(0.985 0 0);
-  --sidebar-accent: oklch(0.269 0 0);
-  --sidebar-accent-foreground: oklch(0.985 0 0);
-  --sidebar-border: oklch(1 0 0 / 10%);
-  --sidebar-ring: oklch(0.556 0 0);
-}
-
-@layer base {
-  * {
-    @apply border-border outline-ring/50;
-  }
-  body {
-    @apply bg-background text-foreground;
-  }
-  html {
-    @apply font-sans;
-  }
-}
-
-/* --- LP ヒーロー：スクロール連動ズーム（useHeroZoom が --zoom/--fade/--blend を駆動） --- */
-:root {
-  /* 175vh: 扉全開(進捗0.85)後にも十分なスクロール余韻を残し、
-     ホワイトアウト〜次セクションへの接続をゆっくり馴染ませる */
-  --hero-track-vh: 175vh;
-  /* 扉の青ピクセル解析で実測: 画像内の扉中心 x≈50% / y≈63%。
-     object-position をこの値にすると全画面比で扉が viewport の同位置に出る＝
-     focal point・オーバーレイと一致する。 */
-  --hero-door-x: 50%;
-  --hero-door-y: 67.5%;
-  /* 扉オーバーレイのサイズ（宮殿の開口部に合わせる）と開き角 */
-  --door-h: 9.6vh;
-  --door-aspect: 0.594;
-  --door-open-deg: 138deg; /* 90°超まで大きく開く（裏面が反射トーンで見える） */
-  /* 扉スラブの厚み（片扉幅 約2.85vh の8%程度）。--zoom 拡大に乗って見た目も太る */
-  --door-thick: 0.225vh;
-}
-
-.hero-track {
-  position: relative;
-  height: var(--hero-track-vh);
-}
-
-.hero-stage {
-  position: sticky;
-  top: 0;
-  height: 100vh;
-  height: 100svh;
-  overflow: hidden;
-  isolation: isolate;
-  /* JS 未駆動・reduced 時の既定値 */
-  --zoom: 1;
-  --fade: 0;
-  --blend: 0;
-  --blurpx: 0px;
-  --zoombright: 1;
-  --dooropen: 0;
-  --doorboost: 0;
-  --bflyout: 0;
-}
-
-.hero-zoom {
-  position: absolute;
-  inset: 0;
-  z-index: 0;
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-  object-position: var(--hero-door-x) var(--hero-door-y);
-  /* 扉全開後は --doorboost で中心へ追いズーム（最大1.5倍） */
-  transform: scale(calc(var(--zoom, 1) * (1 + var(--doorboost, 0) * 0.5)));
-  transform-origin: var(--hero-door-x) var(--hero-door-y);
-  filter: blur(var(--blurpx, 0px)) brightness(var(--zoombright, 1));
-  will-change: transform, filter;
-}
-
-/* 宮殿の扉オーバーレイ：focal point に重ね --zoom で一緒に拡大→スクロールで観音開き */
-.hero-doors {
-  position: absolute;
-  left: var(--hero-door-x);
-  top: var(--hero-door-y);
-  /* 高さは背景画像(1656×941, aspect 1.76)の object-fit: cover に追従させる。
-     縦長〜1.76 までは高さ基準（画像の扉高 ∝ vh）で 9.6vh がぴったり。
-     それより横長の大窓では幅基準（扉高 ∝ vw/1.76）に切り替わるため、
-     9.6vh のままだと上下に黒い隙間が出る → max() で 5.46vw(=9.6/1.76 vw) へ
-     自動スイッチして高さだけ伸ばす。幅は従来どおり 9.6vh 基準で固定
-     （開口部より十分広く、全ウィンドウサイズで過不足なし） */
-  height: max(var(--door-h), 5.46vw);
-  /* 宮殿の開口部は細長（幅3.7%×高さ17%＝約0.22）。素材を寄せて充填する */
-  width: calc(var(--door-h) * var(--door-aspect, 0.36));
-  /* 背景と同率で拡大＋全開後の追いズーム（--doorboost）にも同期 */
-  transform: translate(-50%, -50%) scale(calc(var(--zoom, 1) * (1 + var(--doorboost, 0) * 0.5)));
-  transform-origin: center;
-  perspective: 1400px;
-  z-index: 5;
-  pointer-events: none;
-  will-change: transform;
-}
-
-/* 扉パネル＝厚みエッジを持つ3D板。ヒンジ軸で回転し、面（img）とエッジを一緒に運ぶ */
-.hero-door-panel {
-  position: absolute;
-  top: 0;
-  height: 100%;
-  width: 50%;
-  transform-style: preserve-3d;
-  will-change: transform;
-}
-/* 左扉=左ヒンジ。継ぎ目(右端)を中央に寄せ、左軸で手前へ開く（外開き） */
-.hero-door-panel--left {
-  left: 0;
-  transform-origin: left center;
-  transform: rotateY(calc(var(--dooropen, 0) * var(--door-open-deg) * -1));
-}
-/* 右扉=右ヒンジ。継ぎ目(左端)を中央に寄せ、右軸で手前へ開く（外開き） */
-.hero-door-panel--right {
-  right: 0;
-  transform-origin: right center;
-  transform: rotateY(calc(var(--dooropen, 0) * var(--door-open-deg)));
-}
-
-.hero-door-face {
-  position: absolute;
-  inset: 0;
-  width: 100%;
-  height: 100%;
-  /* 細長い開口部にあわせて充填（素材より細く）。継ぎ目側を中央へ */
-  object-fit: fill;
-  backface-visibility: hidden;
-  will-change: filter;
-}
-.hero-door-face--left {
-  object-position: right center;
-}
-.hero-door-face--right {
-  object-position: left center;
-}
-/* 前面: スラブ厚の半分だけ手前へ。
-   背景と同じ blur＋彩度を落とし暖色寄せで風景に馴染ませる＋落ち影で重み＋開くほど面が陰る */
-.hero-door-face--front {
-  transform: translateZ(calc(var(--door-thick) / 2));
-  filter: blur(var(--blurpx, 0px))
-    saturate(0.8) sepia(0.08)
-    brightness(calc(1.04 - var(--dooropen, 0) * 0.28))
-    drop-shadow(0 6px 16px rgba(18, 16, 32, 0.5));
-}
-/* 背面: 180°回転（自動で鏡像）で厚みの奥側に。90°超の外開きで正面から見えるため、
-   彩度を落として暖色に寄せた「光を反射する淡い金」のトーンにする */
-.hero-door-face--back {
-  transform: rotateY(180deg) translateZ(calc(var(--door-thick) / 2));
-  filter: blur(var(--blurpx, 0px)) saturate(0.35) sepia(0.45) brightness(1.05) contrast(0.9);
-}
-
-/* 扉の木口（4辺）。前面(z=+t/2)と背面(z=-t/2)を繋ぐ面で、開くほど見えてくる。
-   閉時は扉画像（青漆＋金）に合わせた濃紺。開くほど背景と同じ blur を受けつつ
-   明るく暖色へ寄せ、裏面の「光を反射する淡い金」トーンに馴染ませる */
-.hero-door-edge {
-  position: absolute;
-  background: linear-gradient(to bottom, #35476b, #22304d 55%, #172239);
-  filter: blur(var(--blurpx, 0px))
-    sepia(calc(var(--dooropen, 0) * 0.45))
-    saturate(calc(1 - var(--dooropen, 0) * 0.55))
-    brightness(calc(1 + var(--dooropen, 0) * 1.1));
-  will-change: filter;
-}
-/* 継ぎ目側の縦木口: 端の外側中心に置いてから90°立てる */
-.hero-door-edge--seam-left {
-  top: 0;
-  right: 0;
-  width: var(--door-thick);
-  height: 100%;
-  transform: translateX(calc(var(--door-thick) / 2)) rotateY(90deg);
-}
-.hero-door-edge--seam-right {
-  top: 0;
-  left: 0;
-  width: var(--door-thick);
-  height: 100%;
-  transform: translateX(calc(var(--door-thick) / -2)) rotateY(90deg);
-}
-/* 上下の木口（視線がほぼ水平なので細く見える程度だが、開いた時の輪郭が締まる） */
-.hero-door-edge--top {
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: var(--door-thick);
-  background: #2b3a5c;
-  transform: translateY(calc(var(--door-thick) / -2)) rotateX(90deg);
-}
-.hero-door-edge--bottom {
-  bottom: 0;
-  left: 0;
-  width: 100%;
-  height: var(--door-thick);
-  background: #172239;
-  transform: translateY(calc(var(--door-thick) / 2)) rotateX(90deg);
-}
-
-/* 開扉に連動するフレア。--flare は扉が1/4開いてから smoothstep で立ち上がる。
-   微小 blur はコンテナの --zoom 拡大に乗って増幅されるため小さい値でよい */
-.hero-flare {
-  position: absolute;
-  inset: 0;
-  z-index: 2;
-  pointer-events: none;
-  --flare: calc(max(0, var(--dooropen, 0) - 0.25) / 0.75);
-  opacity: calc(var(--flare) * var(--flare) * (3 - 2 * var(--flare)));
-}
-/* コア: 白→暖金→透明の多段グラデで柔らかく発光 */
-.hero-flare__core {
-  position: absolute;
-  left: 50%;
-  top: 44%;
-  width: 200%;
-  aspect-ratio: 1;
-  transform: translate(-50%, -50%) scale(calc(0.5 + var(--flare) * 0.9));
-  background: radial-gradient(
-    circle,
-    rgba(255, 255, 252, 0.98) 0%,
-    rgba(255, 248, 228, 0.85) 9%,
-    rgba(255, 234, 178, 0.45) 24%,
-    rgba(255, 216, 130, 0.16) 42%,
-    rgba(255, 210, 120, 0) 60%
-  );
-  filter: blur(0.4px);
-}
-/* リングハロ（レンズの淡い輪） */
-.hero-flare__halo {
-  position: absolute;
-  left: 50%;
-  top: 44%;
-  width: 280%;
-  aspect-ratio: 1;
-  transform: translate(-50%, -50%) scale(calc(0.7 + var(--flare) * 0.5));
-  background: radial-gradient(
-    circle,
-    transparent 38%,
-    rgba(255, 233, 170, 0.1) 46%,
-    rgba(255, 240, 196, 0.16) 50%,
-    rgba(255, 233, 170, 0.08) 54%,
-    transparent 62%
-  );
-  filter: blur(0.6px);
-}
-/* アナモルフィックな光条（水平=ハロ＋芯の2層、垂直=淡い1層） */
-.hero-flare__streak {
-  position: absolute;
-  left: 50%;
-  top: 44%;
-  border-radius: 9999px;
-}
-.hero-flare__streak--h {
-  width: 620%;
-  height: 7%;
-  transform: translate(-50%, -50%) scaleX(calc(0.25 + var(--flare) * 0.75));
-  background: linear-gradient(
-    90deg,
-    transparent 0%,
-    rgba(255, 236, 186, 0.22) 22%,
-    rgba(255, 243, 205, 0.6) 50%,
-    rgba(255, 236, 186, 0.22) 78%,
-    transparent 100%
-  );
-  filter: blur(0.8px);
-}
-.hero-flare__streak--h-core {
-  width: 480%;
-  height: 1.6%;
-  transform: translate(-50%, -50%) scaleX(calc(0.2 + var(--flare) * 0.8));
-  background: linear-gradient(
-    90deg,
-    transparent 0%,
-    rgba(255, 252, 240, 0.55) 28%,
-    rgba(255, 255, 250, 0.95) 50%,
-    rgba(255, 252, 240, 0.55) 72%,
-    transparent 100%
-  );
-  filter: blur(0.3px);
-}
-.hero-flare__streak--v {
-  width: 7%;
-  height: 260%;
-  transform: translate(-50%, -50%) scaleY(calc(0.3 + var(--flare) * 0.7));
-  background: linear-gradient(
-    180deg,
-    transparent 0%,
-    rgba(255, 240, 196, 0.16) 26%,
-    rgba(255, 243, 205, 0.42) 50%,
-    rgba(255, 240, 196, 0.16) 74%,
-    transparent 100%
-  );
-  filter: blur(0.8px);
-}
-/* 放射状の光芒2層。太さ・角度が不規則なスポークを重ね、逆回転させて自然な星型に */
-.hero-flare__rays {
-  position: absolute;
-  left: 50%;
-  top: 44%;
-  aspect-ratio: 1;
-  border-radius: 50%;
-  -webkit-mask-image: radial-gradient(circle, #000 8%, rgba(0, 0, 0, 0.5) 34%, transparent 58%);
-  mask-image: radial-gradient(circle, #000 8%, rgba(0, 0, 0, 0.5) 34%, transparent 58%);
-}
-.hero-flare__rays--a {
-  width: 480%;
-  transform: translate(-50%, -50%) rotate(calc(var(--flare) * 10deg))
-    scale(calc(0.6 + var(--flare) * 0.6));
-  background: conic-gradient(
-    from 0deg,
-    transparent 0deg,
-    rgba(255, 244, 214, 0.4) 2deg,
-    transparent 6deg,
-    transparent 47deg,
-    rgba(255, 238, 196, 0.26) 50deg,
-    transparent 55deg,
-    transparent 86deg,
-    rgba(255, 246, 220, 0.45) 89deg,
-    transparent 92deg,
-    transparent 132deg,
-    rgba(255, 238, 196, 0.2) 136deg,
-    transparent 141deg,
-    transparent 178deg,
-    rgba(255, 244, 214, 0.38) 181deg,
-    transparent 185deg,
-    transparent 226deg,
-    rgba(255, 238, 196, 0.24) 229deg,
-    transparent 234deg,
-    transparent 268deg,
-    rgba(255, 246, 220, 0.42) 271deg,
-    transparent 274deg,
-    transparent 314deg,
-    rgba(255, 238, 196, 0.18) 318deg,
-    transparent 323deg,
-    transparent 360deg
-  );
-  filter: blur(0.5px);
-}
-.hero-flare__rays--b {
-  width: 390%;
-  transform: translate(-50%, -50%) rotate(calc(var(--flare) * -7deg))
-    scale(calc(0.65 + var(--flare) * 0.5));
-  background: conic-gradient(
-    from 21deg,
-    transparent 0deg,
-    rgba(255, 240, 200, 0.18) 4deg,
-    transparent 10deg,
-    transparent 64deg,
-    rgba(255, 240, 200, 0.14) 69deg,
-    transparent 76deg,
-    transparent 118deg,
-    rgba(255, 240, 200, 0.2) 123deg,
-    transparent 129deg,
-    transparent 199deg,
-    rgba(255, 240, 200, 0.16) 204deg,
-    transparent 211deg,
-    transparent 262deg,
-    rgba(255, 240, 200, 0.2) 266deg,
-    transparent 272deg,
-    transparent 360deg
-  );
-  filter: blur(0.9px);
-}
-
-/* 扉の奥から差し込む金色の光（開くほど強く） */
-.hero-door-glow {
-  position: absolute;
-  left: 50%;
-  top: 50%;
-  width: 150%;
-  height: 125%;
-  transform: translate(-50%, -50%);
-  background: radial-gradient(
-    ellipse at center,
-    rgba(255, 244, 214, 0.95) 0%,
-    rgba(255, 216, 134, 0.6) 38%,
-    rgba(255, 200, 90, 0) 72%
-  );
-  opacity: var(--dooropen, 0);
-  z-index: -1;
-  pointer-events: none;
-}
-
-.hero-blur {
-  position: absolute;
-  inset-inline: 0;
-  bottom: 0;
-  z-index: 10;
-  height: 40%;
-  backdrop-filter: blur(10px);
-  -webkit-backdrop-filter: blur(10px);
-  -webkit-mask-image: linear-gradient(to top, #000 35%, transparent 100%);
-  mask-image: linear-gradient(to top, #000 35%, transparent 100%);
-  opacity: calc(1 - var(--fade, 0));
-  will-change: opacity;
-}
-
-.hero-scrim {
-  position: absolute;
-  inset: 0;
-  z-index: 20;
-  background: linear-gradient(
-    180deg,
-    rgba(255, 253, 247, 0.88) 0%,
-    rgba(255, 253, 247, 0.6) 45%,
-    rgba(255, 253, 247, 0.18) 100%
-  );
-  opacity: calc(1 - var(--fade, 0));
-  will-change: opacity;
-}
-
-.hero-blend {
-  position: absolute;
-  inset: 0;
-  z-index: 35;
-  pointer-events: none;
-  background: linear-gradient(to bottom, transparent 55%, var(--ivory) 100%);
-  opacity: var(--blend, 0);
-}
-
-/* 終盤に画面全体が次セクションと同じアイボリーで満ちる＝シームレスに接続（--blend連動） */
-.hero-whiteout {
-  position: absolute;
-  inset: 0;
-  z-index: 36;
-  pointer-events: none;
-  background: var(--ivory);
-  opacity: var(--blend, 0);
-}
-
-.hero-content {
-  position: relative;
-  z-index: 40;
-  opacity: calc(1 - var(--fade, 0));
-  /* ズームに合わせて拡大しながら外へ消える（スクロールでズーム中だと分かりやすく） */
-  transform: translateY(calc(var(--fade, 0) * -12px)) scale(calc(1 + var(--fade, 0) * 0.7));
-  transform-origin: center center;
-  will-change: opacity, transform;
-}
-
-/* 流れる雲（上空・スクリムの上で視認性確保） */
-.hero-clouds {
-  position: absolute;
-  inset-inline: 0;
-  top: 8%;
-  height: 26%;
-  z-index: 21;
-  pointer-events: none;
-  background: url('/hero-clouds.webp') repeat-x;
-  /* タイル幅を 60vw に固定し、ちょうど1タイル分送る＝継ぎ目の分からないシームレスループ */
-  background-size: 60vw 100%;
-  /* ズームとフェードは HAの文字（.hero-content は fade 0 から動き出す）と
-     同時に始まる。フレームアウト（上移動）だけは fade 0.22 まで遅らせ、
-     迫り出し・フェードが進んでから 2.2倍速でゆっくり -40vh 上へ抜ける。
-     ズーム（1→1.75）は4倍速の別ランプで移動より速く変化し、
-     origin を帯の下端に置いて雲が頭上へ迫り出す感じを強調する */
-  opacity: calc((1 - min(1, var(--fade, 0) * 1.8)) * 0.55);
-  transform-origin: 50% 100%;
-  transform: translate3d(0, calc(min(1, max(0, var(--fade, 0) - 0.22) * 2.2) * -40vh), 0)
-    scale(calc(1 + min(1, var(--fade, 0) * 4) * 0.75));
-  will-change: background-position, opacity, transform;
-  animation: hero-cloud-drift 80s linear infinite;
-}
-
-@keyframes hero-cloud-drift {
-  from { background-position: 0 0; }
-  to { background-position: -60vw 0; }
-}
-
-/* 飛び回る渡鴉（スクリムの上・画面内を滑らかに周回） */
-.hero-raven {
-  position: absolute;
-  z-index: 22;
-  top: 0;
-  left: 0;
-  width: 96px;
-  height: auto;
-  /* opacity(ズームフェード)。位置による濃淡(上空ほどアイボリーで霞む)は filter で表現 */
-  opacity: calc(1 - var(--fade, 0));
-  pointer-events: none;
-  transform-origin: 50% 50%;
-  will-change: transform, filter, opacity;
-  animation: hero-raven-fly 26s ease-in-out infinite;
-}
-
-/*
- * 画面内を周回（0%=100% でシームレス）。
- * - 縦：上空ほど小さく(scale小)・霞む(filter opacity小+brightness大)、下ほど大きく・濃く
- * - 進行方向：左移動時は scaleX を負にして左右反転（向きを進行方向に）
- * - 反転は step-end でパッと切り替え（潰れない）
- */
-@keyframes hero-raven-fly {
-  0%   { transform: translate3d(10vw, 14vh, 0) scale(0.78, 0.78) rotate(-3deg);  filter: brightness(1.18) opacity(0.78); }
-  22%  { transform: translate3d(42vw, 9vh, 0)  scale(0.72, 0.72) rotate(3deg);   filter: brightness(1.22) opacity(0.72); }
-  45%  { transform: translate3d(80vw, 20vh, 0) scale(0.9, 0.9)   rotate(-1deg);  filter: brightness(1.06) opacity(0.92); animation-timing-function: step-end; }
-  46%  { transform: translate3d(80vw, 20vh, 0) scale(-0.9, 0.9)  rotate(-1deg);  filter: brightness(1.06) opacity(0.92); }
-  70%  { transform: translate3d(40vw, 34vh, 0) scale(-1, 1)      rotate(3deg);   filter: brightness(1) opacity(1); }
-  90%  { transform: translate3d(14vw, 22vh, 0) scale(-0.82, 0.82) rotate(-2deg); filter: brightness(1.12) opacity(0.84); }
-  98%  { transform: translate3d(10vw, 15vh, 0) scale(-0.78, 0.78) rotate(-3deg); filter: brightness(1.18) opacity(0.78); animation-timing-function: step-end; }
-  100% { transform: translate3d(10vw, 14vh, 0) scale(0.78, 0.78) rotate(-3deg);  filter: brightness(1.18) opacity(0.78); }
-}
-
-/* 下部の植物周りを舞う蝶々（ラッパーが飛行経路、内側imgが羽ばたき） */
-.hero-butterfly {
-  position: absolute;
-  z-index: 30;
-  width: 16px;
-  pointer-events: none;
-  /* フレームアウトは専用の --bflyout（進捗0.38〜0.80・smoothstep）駆動。
-     テキスト消失の少しあとから、なだらかに飛び去り始める */
-  opacity: calc((1 - var(--bflyout, 0)) * 0.82);
-  /* スクロールに応じて左右(--bfly-dir)へ緩やかに飛び去り画面外へ抜ける（飛行経路で飛び回りながら） */
-  transform: translate3d(
-    calc(var(--bflyout, 0) * var(--bfly-dir, 1) * 72vw),
-    calc(var(--bflyout, 0) * -8vh),
-    0
-  );
-  will-change: transform, opacity;
-}
-.hero-butterfly__path {
-  width: 100%;
-  will-change: transform;
-}
-.hero-butterfly__wing {
-  display: block;
-  width: 100%;
-  height: auto;
-  transform-origin: center;
-  /* 渡鴉同様にアイボリー寄りに霞ませる（彩度↓・暖色＆明度↑・ごく弱いぼかし） */
-  filter: saturate(0.72) brightness(1.08) sepia(0.1) blur(0.5px);
-  will-change: transform;
-  /* 羽ばたき（横方向の縮みで翅の開閉を擬似） */
-  animation: hero-bfly-flap 0.42s ease-in-out infinite;
-}
-.hero-butterfly--1 { left: 14%; top: 72%; width: 18px; --bfly-dir: -1; }
-.hero-butterfly--2 { left: 86%; top: 80%; width: 15px; --bfly-dir: 1; }
-.hero-butterfly--3 { left: 68%; top: 68%; width: 20px; --bfly-dir: 1; }
-.hero-butterfly--4 { left: 30%; top: 85%; width: 17px; --bfly-dir: -1; }
-.hero-butterfly--5 { left: 91%; top: 75%; width: 14px; --bfly-dir: 1; }
-.hero-butterfly--6 { left: 9%; top: 82%; width: 17px; --bfly-dir: -1; }
-.hero-butterfly--1 .hero-butterfly__path { animation: hero-bfly-path-a 15s ease-in-out infinite; }
-.hero-butterfly--2 .hero-butterfly__path { animation: hero-bfly-path-b 19s ease-in-out infinite; }
-.hero-butterfly--3 .hero-butterfly__path { animation: hero-bfly-path-a 13s ease-in-out infinite reverse; animation-delay: -5s; }
-.hero-butterfly--4 .hero-butterfly__path { animation: hero-bfly-path-b 16s ease-in-out infinite reverse; animation-delay: -7s; }
-.hero-butterfly--5 .hero-butterfly__path { animation: hero-bfly-path-a 21s ease-in-out infinite; animation-delay: -11s; }
-.hero-butterfly--6 .hero-butterfly__path { animation: hero-bfly-path-b 17s ease-in-out infinite; animation-delay: -3s; }
-.hero-butterfly--2 .hero-butterfly__wing { animation-duration: 0.5s; }
-.hero-butterfly--3 .hero-butterfly__wing { animation-duration: 0.36s; }
-.hero-butterfly--4 .hero-butterfly__wing { animation-duration: 0.44s; }
-.hero-butterfly--5 .hero-butterfly__wing { animation-duration: 0.52s; }
-.hero-butterfly--6 .hero-butterfly__wing { animation-duration: 0.46s; }
-
-@keyframes hero-bfly-flap {
-  0%, 100% { transform: scaleX(1); }
-  50% { transform: scaleX(0.5) scaleY(1.05); }
-}
-
-/* ひらひら・ジグザグに上下しながら漂う（0%=100%でループ） */
-@keyframes hero-bfly-path-a {
-  0%   { transform: translate3d(0, 0, 0) rotate(-5deg); }
-  15%  { transform: translate3d(22px, -30px, 0) rotate(7deg); }
-  30%  { transform: translate3d(50px, -10px, 0) rotate(-3deg); }
-  45%  { transform: translate3d(30px, -44px, 0) rotate(9deg); }
-  60%  { transform: translate3d(64px, -22px, 0) rotate(-6deg); }
-  75%  { transform: translate3d(26px, -48px, 0) rotate(5deg); }
-  90%  { transform: translate3d(8px, -18px, 0) rotate(-7deg); }
-  100% { transform: translate3d(0, 0, 0) rotate(-5deg); }
-}
-@keyframes hero-bfly-path-b {
-  0%   { transform: translate3d(0, 0, 0) rotate(4deg); }
-  18%  { transform: translate3d(-26px, -22px, 0) rotate(-8deg); }
-  36%  { transform: translate3d(-44px, -6px, 0) rotate(5deg); }
-  54%  { transform: translate3d(-20px, -38px, 0) rotate(-4deg); }
-  72%  { transform: translate3d(-54px, -16px, 0) rotate(8deg); }
-  88%  { transform: translate3d(-14px, -30px, 0) rotate(-5deg); }
-  100% { transform: translate3d(0, 0, 0) rotate(4deg); }
-}
-
-@media (max-width: 640px) {
-  :root {
-    --hero-track-vh: 180vh;
-  }
-  .hero-raven {
-    width: 64px;
-  }
-  .hero-clouds {
-    height: 22%;
-    /* デスクトップと同じ1.8倍速フェードに合わせる（等速だと移動とズレる） */
-    opacity: calc((1 - min(1, var(--fade, 0) * 1.8)) * 0.4);
-  }
-}
-
-/* 雲型セクション区切り（前セクション色を上端に垂らす） */
-.section-divider {
-  position: absolute;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 60px;
-  z-index: 1;
-  display: block;
-  pointer-events: none;
-}
-.section-divider--flip {
-  transform: scaleY(-1);
-}
-
-/* ヒーロー下端を下セクション(アイボリー)へ自然にフェード（直線も雲も無く馴染ませる） */
-.hero-bottom-fade {
-  position: absolute;
-  inset-inline: 0;
-  bottom: 0;
-  height: 24%;
-  z-index: 25;
-  pointer-events: none;
-  background: linear-gradient(to bottom, transparent 0%, var(--ivory) 100%);
-  /* 主スクロール中は表示（画像下端を隠す）。終盤は blend が上から覆う */
-  opacity: calc(1 - var(--blend, 0));
-}
-
-@media (max-width: 640px) {
-  .section-divider {
-    height: 40px;
-  }
-}
-
-/* スクロール誘導 cue */
-.scroll-cue {
-  display: inline-flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 4px;
-  /* 絵の上に直に置くと、明るい部分で金の文字が消える。**紙を1枚敷く**。
-     見出しの箱と同じ作りにして、面としての揃いも保つ */
-  background: rgba(255, 255, 255, 0.72);
-  backdrop-filter: blur(2px);
-  -webkit-backdrop-filter: blur(2px);
-  border: 1px solid rgba(255, 255, 255, 0.7);
-  border-radius: 999px;
-  padding: 6px 14px 4px;
-  cursor: pointer;
-  color: var(--palace);
-  font-size: 0.72rem;
-  letter-spacing: 0.08em;
-  opacity: 0.85;
-  transition: opacity 0.2s;
-}
-.scroll-cue:hover {
-  opacity: 1;
-}
-.scroll-cue__chevron {
-  animation: scroll-cue-bob 1.8s ease-in-out infinite;
-}
-/* ヒーローの cue は画像下部に固定（他セクションと同位置）。ズームでフェード */
-.hero-cue {
-  position: absolute;
-  /* ヘッダー(h-14=56px)分だけ上げる */
-  bottom: 80px;
-  left: 50%;
-  z-index: 40;
-  transform: translateX(-50%);
-  opacity: calc(1 - var(--fade, 0));
-}
-@keyframes scroll-cue-bob {
-  0%, 100% { transform: translateY(0); }
-  50% { transform: translateY(4px); }
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .hero-track {
-    height: 100svh;
-  }
-  .scroll-cue__chevron {
-    animation: none;
-  }
-  .hero-zoom {
-    transform: none !important;
-    filter: none !important;
-  }
-  .hero-blur,
-  .hero-scrim,
-  .hero-content {
-    opacity: 1 !important;
-    transform: none !important;
-  }
-  .hero-blend {
-    opacity: 0 !important;
-  }
-  .hero-clouds,
-  .hero-raven {
-    animation: none !important;
-  }
-  .hero-raven {
-    display: none;
-  }
-  .hero-clouds {
-    opacity: calc((1 - var(--fade, 0)) * 0.35);
-  }
-  /* ズーム非駆動のため扉オーバーレイは隠す（貼り付き回避） */
-  .hero-doors {
-    display: none;
-  }
-  .hero-butterfly,
-  .hero-butterfly__path,
-  .hero-butterfly__wing {
-    animation: none !important;
-  }
-  .hero-butterfly {
-    display: none;
-  }
-}
-
-/* ユーザーが環境設定でアニメーションを OFF にしたときも、上と同じ静止状態にする */
-:root[data-motion='off'] .hero-track {
-    height: 100svh;
-  }
-:root[data-motion='off'] .scroll-cue__chevron {
-    animation: none;
-  }
-:root[data-motion='off'] .hero-zoom {
-    transform: none !important;
-    filter: none !important;
-  }
-:root[data-motion='off'] .hero-blur, :root[data-motion='off'] .hero-scrim, :root[data-motion='off'] .hero-content {
-    opacity: 1 !important;
-    transform: none !important;
-  }
-:root[data-motion='off'] .hero-blend {
-    opacity: 0 !important;
-  }
-:root[data-motion='off'] .hero-clouds, :root[data-motion='off'] .hero-raven {
-    animation: none !important;
-  }
-:root[data-motion='off'] .hero-raven {
-    display: none;
-  }
-:root[data-motion='off'] .hero-clouds {
-    opacity: calc((1 - var(--fade, 0)) * 0.35);
-  }
-:root[data-motion='off'] /* ズーム非駆動のため扉オーバーレイは隠す（貼り付き回避） */ .hero-doors {
-    display: none;
-  }
-:root[data-motion='off'] .hero-butterfly, :root[data-motion='off'] .hero-butterfly__path, :root[data-motion='off'] .hero-butterfly__wing {
-    animation: none !important;
-  }
-:root[data-motion='off'] .hero-butterfly {
-    display: none;
-  }
-
-
-/* 生成中カードのシマー（左→右へ光が流れる）。GeneratingOverlay で使用。 */
-@keyframes shimmer {
-  from {
-    transform: translateX(-100%);
-  }
-  to {
-    transform: translateX(100%);
-  }
-}
-.animate-shimmer {
-  background: linear-gradient(100deg, transparent 30%, rgba(255, 255, 255, 0.4) 50%, transparent 70%);
-  animation: shimmer 1.6s ease-in-out infinite;
-}
-@media (prefers-reduced-motion: reduce) {
-  .animate-shimmer {
-    animation: none;
-  }
-}
-
-/* ユーザーが環境設定でアニメーションを OFF にしたときも、上と同じ静止状態にする */
-:root[data-motion='off'] .animate-shimmer {
-    animation: none;
-  }
-
-
-/* LP: 「続く1本の道」（3D遠近版・/dev/road-animations 案A採用）。
-   道のステージ（.road-bg__viewport）は position: fixed でビューポートに固定し、
-   親 .road-bg の clip-path でセクション範囲だけを見せる。全セクションのステージが
-   同一ビューを映すため境界で道が完全に連続し、「1つの道を進み続ける」ように見える。
-   テクスチャは repeat-y のトレッドミル＝継ぎ目レスな無限ループ。
-   RoadBackground が --road-shift(px) を駆動。 */
-.road-bg {
-  position: absolute;
-  inset: 0; /* セクション全体に道を通す */
-  z-index: 0;
-  pointer-events: none;
-  /* overflow: hidden では fixed 子要素を切り抜けないため clip-path を使う */
-  clip-path: inset(0);
-}
-/* 最初のセクションのみ: ヒーローとの境界で道をフェードイン。
-   セクション間の境界はステージが同一ビューのためフェード不要（完全に連続する） */
-.road-bg--fade-top {
-  /* ホワイトアウトが満ちきったあと、無地アイボリーの「間」をしっかり置いてから
-     道が現れる。12%までは完全に無、23%で全開（7-18%からさらに延長） */
-  -webkit-mask-image: linear-gradient(to bottom, transparent 12%, #000 23%);
-  mask-image: linear-gradient(to bottom, transparent 12%, #000 23%);
-}
-/* 最後のセクションのみ: フッターとの境界で道をフェードアウト */
-.road-bg--fade-bottom {
-  -webkit-mask-image: linear-gradient(to bottom, #000 88%, transparent 100%);
-  mask-image: linear-gradient(to bottom, #000 88%, transparent 100%);
-}
-/* ビューポート固定のステージ。全セクションで同じビューを共有する */
-.road-bg__viewport {
-  position: fixed;
-  inset: 0;
-}
-.road-bg__scene {
-  position: absolute;
-  inset: 0;
-  perspective: 620px;
-  perspective-origin: 50% 32%;
-}
-.road-bg__plane {
-  position: absolute;
-  left: 50%;
-  top: 26%; /* この高さが地平線になる */
-  width: 720px;
-  height: 2160px; /* タイル高(1080)の2枚分。柱の折り返し(mod 2160)と同期 */
-  margin-left: -360px;
-  transform-origin: 50% 0;
-  transform: rotateX(72deg);
-  /* 柱を平面上の3D空間に立てる。opacity 等のグルーピングプロパティを
-     ここに置くと preserve-3d が無効化され柱が潰れるので、テクスチャは
-     子レイヤー .road-bg__road に分離して透過させる */
-  transform-style: preserve-3d;
-}
-.road-bg__road {
-  position: absolute;
-  inset: 0;
-  /* 基本 0.55（コンテンツより控えめ）。初回リビールの序盤(0〜30%)は全体を
-     フェードインさせ、遠方の霞から道が「現れる」ようにする */
-  opacity: calc(0.55 * clamp(0, var(--road-reveal, 1) * 3.3, 1));
-  background-image: url('/road.png');
-  background-repeat: repeat-y;
-  background-size: 720px 1080px; /* road.png は 2:3。1タイル=1080px で継ぎ目レス */
-  background-position: center calc(var(--road-shift, 0) * 1px);
-  will-change: background-position;
-  /* 道の果て（平面の上端＝地平線）が硬いエッジで浮かないよう、
-     平面座標で遠端をフェードさせて霞に溶かす。柱には掛けない。
-     さらに --road-reveal(0→1) で「見える範囲の手前側境界」を奥から手前へ進め、
-     最初の道セクションで道が奥からだんだん伸びてくる初回リビールを作る
-     （JS 非駆動・reduced 時は既定 1＝全表示） */
-  /* 注: perspective 620px のため画面に映るのは平面 y≈0〜650px のみ（それより
-     手前はカメラ背後）。リビール前線はこの可視ウィンドウ内で動かす。
-     r=0 では遠方の霞（0-320px のフェード帯）だけが薄く見え、r=1 で全表示 */
-  -webkit-mask-image: linear-gradient(
-    to bottom,
-    transparent 0,
-    #000 320px,
-    #000 calc(-50px + var(--road-reveal, 1) * 750px),
-    transparent calc(200px + var(--road-reveal, 1) * 750px)
-  );
-  mask-image: linear-gradient(
-    to bottom,
-    transparent 0,
-    #000 320px,
-    #000 calc(-50px + var(--road-reveal, 1) * 750px),
-    transparent calc(200px + var(--road-reveal, 1) * 750px)
-  );
-}
-/* 両脇の柱。平面上の点 (left, --pillar-base + --road-shift) に底辺を置き、
-   rotateX(-72deg) で平面の傾きを打ち消して直立させる（底辺を軸に起こす）。
-   道と同じオフセットで手前へ流れ、平面長 2160 で折り返す。 */
-.road-bg__pillar {
-  position: absolute;
-  width: 140px;
-  height: 210px; /* 480x720(2:3) を幅140に合わせた高さ。底辺基準の配置に必要 */
-  top: -210px; /* 底辺を平面 y=0 に置き、translateY で道と同オフセットに送る */
-  transform-origin: 50% 100%;
-  /* 底辺を軸に rotateX(-72deg) で直立させてから、道と同じ量だけ手前へ流す。
-     top ではなく transform で動かしてレイアウトを発生させない */
-  transform: translateY(calc(mod(var(--pillar-base, 0) + var(--road-shift, 0), 2160) * 1px))
-    rotateX(-72deg);
-  /* 出現は霞からゆっくり: 平面位置 0(地平線)〜720px で透明度を 0→0.75 に
-     立ち上げる。遠い柱ほど薄くなり、列全体が距離のグラデーションになる。
-     さらに道のリビール前線（320 + reveal×2200）が自分の位置に到達するまでは
-     透明のまま＝初回は前線が進むにつれ奥の柱から順に現れる */
-  opacity: calc(
-    min(mod(var(--pillar-base, 0) + var(--road-shift, 0), 2160) / 720, 1) * 0.75 *
-      clamp(
-        0,
-        (-50 + var(--road-reveal, 1) * 750 - mod(var(--pillar-base, 0) + var(--road-shift, 0), 2160)) / 150,
-        1
-      )
-  );
-  will-change: transform, opacity;
-}
-/* 柱の実体。下部は sharp→blur のクロスフェードで接地を道に馴染ませ、
-   上部はさらに強いブラー層で空へ霞ませる */
-.road-bg__pillar-img {
-  position: absolute;
-  inset: 0;
-  width: 100%;
-  height: 100%;
-}
-.road-bg__pillar-img--sharp {
-  -webkit-mask-image: linear-gradient(to bottom, transparent 6%, #000 34%, #000 76%, transparent 97%);
-  mask-image: linear-gradient(to bottom, transparent 6%, #000 34%, #000 76%, transparent 97%);
-}
-.road-bg__pillar-img--blur {
-  filter: blur(3px);
-  -webkit-mask-image: linear-gradient(to top, #000 6%, transparent 26%);
-  mask-image: linear-gradient(to top, #000 6%, transparent 26%);
-}
-.road-bg__pillar-img--blur-top {
-  filter: blur(5px);
-  -webkit-mask-image: linear-gradient(to bottom, #000 10%, transparent 38%);
-  mask-image: linear-gradient(to bottom, #000 10%, transparent 38%);
-}
-.road-bg__pillar--l {
-  left: 145px; /* 中心 215px = 道の左端(約240px)のすぐ外 */
-}
-.road-bg__pillar--r {
-  left: 440px; /* 中心 510px = 道の右端(約485px)のすぐ外 */
-}
-/* 下端の軽いブラー帯（HA ヒーローの hero-blur を踏襲）。下ほど強く上へフェード。 */
-.road-blur {
-  position: absolute;
-  inset-inline: 0;
-  bottom: 0;
-  z-index: 1;
-  height: 20%;
-  pointer-events: none;
-  backdrop-filter: blur(4px);
-  -webkit-backdrop-filter: blur(4px);
-  -webkit-mask-image: linear-gradient(to top, #000 0%, transparent 100%);
-  mask-image: linear-gradient(to top, #000 0%, transparent 100%);
-}
-/* 上端（道の一番奥）を強くぼかして遠くへ霞ませる。上ほど強く下へフェード。
-   ステージは画面固定＝画面上の高さがそのまま距離なので、この帯が
-   「遠い柱・道ほど強いブラー」（空気遠近）を最終解像度で実現する */
-.road-blur--top {
-  top: 0;
-  bottom: auto;
-  height: 44%;
-  backdrop-filter: blur(9px);
-  -webkit-backdrop-filter: blur(9px);
-  -webkit-mask-image: linear-gradient(to bottom, #000 0%, rgba(0, 0, 0, 0.55) 55%, transparent 100%);
-  mask-image: linear-gradient(to bottom, #000 0%, rgba(0, 0, 0, 0.55) 55%, transparent 100%);
-}
-/* 道の出現前の誘導演出（足跡）。concept セクションの intro
-   インスタンスだけに描画される。.road-bg のクリップ外・ビューポート固定の
-   兄弟レイヤーなので、ホワイトアウトが満ちる終盤からホワイトアウトの上に
-   全画面で表示できる。レイヤーの可視度は JS が書く --road-intro
-   （ホワイトアウト終盤のフェードインのみ）。退場は --road-walkout で
-   手前から順に消え、concept のテキストが画面に入る頃には消えている。
-   スクロール戻しで再表示（可逆）。JS 非駆動時は既定 0 ＝常に非表示 */
-.road-intro {
-  position: fixed;
-  inset: 0;
-  pointer-events: none;
-  opacity: var(--road-intro, 0);
-}
-
-/* 道の先（消失点の上）に灯る遠くの淡い光。小さなラジアルグラデーションの
-   光暈がゆっくり明滅する。足跡と同じタイミング（ホワイトアウト終盤）から
-   JS が書く --road-glow（0→1・約0.7画面分）でゆっくり浮かび上がる。
-   ホワイトアウト上は .road-intro__glow（クリップ外レイヤー）が、
-   以降の各セクションでは .road-bg__glow（各道ステージ内・道と同じ
-   クリップで連続）が同じ位置に描き、最後まで灯り続ける。
-   JS 非駆動時は既定 0＝非表示 */
-.road-bg__glow,
-.road-intro__glow {
-  position: absolute;
-  left: 50%;
-  top: 17.5%;
-  width: 150px;
-  height: 105px;
-  margin: -52px 0 0 -75px;
-  filter: blur(4px);
-  opacity: calc(0.4 * var(--road-glow, 0));
-  /* スクロールに合わせた微ズーム: 半分サイズから --road-glowz（フェードより
-     長い 0→1）で少しずつ等倍へ近づく＝奥から光が近づいてくる感じ */
-  transform: scale(calc(0.5 + 0.5 * var(--road-glowz, 0)));
-  transform-origin: 50% 50%;
-}
-/* コア: 開扉フレア（hero-flare__core）を踏襲した 白→暖金 の柔らかい発光。
-   不規則なリズムでふわっと強弱する（等間隔サインの単調さを避ける） */
-.road-bg__glow::before,
-.road-intro__glow::before {
-  content: '';
-  position: absolute;
-  inset: 0;
-  background: radial-gradient(
-    closest-side,
-    rgba(255, 253, 246, 0.95),
-    rgba(247, 228, 185, 0.4) 42%,
-    rgba(247, 228, 185, 0) 72%
-  );
-  transform-origin: 50% 50%;
-  animation: road-glow-flicker 7.5s ease-in-out infinite;
-  will-change: transform, opacity;
-}
-/* アナモルフィックな水平光条（hero-flare__streak--h の遠景版）。
-   コアと同じリズムで横に伸縮し、フレアらしさを添える */
-.road-bg__glow::after,
-.road-intro__glow::after {
-  content: '';
-  position: absolute;
-  left: 50%;
-  top: 50%;
-  width: 210%;
-  height: 24%;
-  border-radius: 9999px;
-  background: linear-gradient(
-    90deg,
-    transparent 0%,
-    rgba(252, 240, 210, 0.4) 28%,
-    rgba(255, 252, 242, 0.7) 50%,
-    rgba(252, 240, 210, 0.4) 72%,
-    transparent 100%
-  );
-  filter: blur(3px);
-  transform: translate(-50%, -50%);
-  animation: road-glow-streak 7.5s ease-in-out infinite;
-  will-change: transform, opacity;
-}
-@keyframes road-glow-flicker {
-  0%,
-  100% {
-    transform: scale(1);
-    opacity: 0.82;
-  }
-  18% {
-    transform: scale(1.12);
-    opacity: 1;
-  }
-  38% {
-    transform: scale(1.02);
-    opacity: 0.78;
-  }
-  57% {
-    transform: scale(1.18);
-    opacity: 0.94;
-  }
-  76% {
-    transform: scale(1.04);
-    opacity: 0.75;
-  }
-}
-@keyframes road-glow-streak {
-  0%,
-  100% {
-    transform: translate(-50%, -50%) scaleX(0.72);
-    opacity: 0.45;
-  }
-  18% {
-    transform: translate(-50%, -50%) scaleX(1.06);
-    opacity: 0.85;
-  }
-  38% {
-    transform: translate(-50%, -50%) scaleX(0.86);
-    opacity: 0.5;
-  }
-  57% {
-    transform: translate(-50%, -50%) scaleX(1.16);
-    opacity: 0.78;
-  }
-  76% {
-    transform: translate(-50%, -50%) scaleX(0.8);
-    opacity: 0.45;
-  }
-}
-
-/* 足跡。ゴールドの足形（足裏＋かかとの2楕円 SVG）。
-   道と一緒に流れるトレッドミル: 周回座標 c = mod(--road-walkc + base, 1)
-   （0=最奥 → 1=最手前）から画面上の位置・大きさ・ぼかし・濃さを導出する。
-   スクロールすると c が進み、足跡は道の遠近線に沿って手前へ滑り、
-   下端で薄れて奥へ回り込む無限ループ（戻せば逆流）。
-   - 縦位置: y = 41% + 36.5% × c²（c² で奥ほど詰まる遠近圧縮。高さ幅は従来どおり）
-   - 横位置: 消失点(y≈20%)へ向かう平行線上 dev = (y - 20) × 0.125（左右は --step-side）
-   - 大きさ: 0.3 + 1.1c²（最奥0.3 → 最手前1.4）
-   3D の道の上に付いて見えるよう scaleY(0.52) の遠近押しつぶしと
-   距離連動 blur（手前 約1.0px → 奥 約2.1px）を掛ける。
-   退場ゲートは2系統 — 手前(c大)からの --road-walkout（CONCEPTが重なる頃）と、
-   奥(c小)からの --road-topout（道が十分重なってから）。
-   --road-dim: 石畳が表示され始めたら全体をさらに淡くする（JS書き込み 1→0.55） */
-.road-intro__step {
-  --c: mod(var(--road-walkc, 0) + var(--step-base, 0), 1);
-  --cs: calc(0.3 + 1.1 * var(--c) * var(--c));
-  position: absolute;
-  top: calc((41 + 36.5 * var(--c) * var(--c)) * 1%);
-  left: calc((50 + var(--step-side, 1) * (21 + 36.5 * var(--c) * var(--c)) * 0.125) * 1%);
-  width: 30px;
-  height: 48px;
-  margin: -24px 0 0 -15px;
-  background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 20 32'%3E%3Cellipse cx='10' cy='10.5' rx='6' ry='9.5' fill='%23AF8B48'/%3E%3Cellipse cx='10' cy='26.5' rx='4.4' ry='5' fill='%23AF8B48'/%3E%3C/svg%3E")
-    center / contain no-repeat;
-  filter: blur(calc((1.3 + (1 - var(--cs)) * 1.2) * 1px));
-  /* 手前側の約4足だけ表示: 奥側の表示境界は 1 - --road-grow。
-     --road-grow（JS書き込み 0.13→0.545）で境界が手前から奥へ広がり、
-     最初は1足 → スクロールに応じて1つずつ増えて最大4足になる。
-     以後は c ≈ 0.455 から湧いて手前へ流れ、下端で抜ける。濃さは距離連動で淡く */
-  opacity: calc(
-    clamp(0, (var(--c) - (1 - var(--road-grow, 0.545))) * 8, 1) *
-    clamp(0, (1 - var(--c)) * 8, 1) *
-    (1 - clamp(0, (var(--road-walkout, 0) - (1 - var(--c))) * 3, 1)) *
-    (1 - clamp(0, (var(--road-topout, 0) - var(--c)) * 3, 1)) *
-    (0.15 + var(--cs) * 0.09) *
-    var(--road-dim, 1)
-  );
-  will-change: opacity, transform;
-}
-/* 爪先の向き: 道の遠近線と同じく、先端を中央（消失点）へ向けて内向きにする。
-   遠近線の見かけの傾き ≈ 9°。scaleY(0.52) が回転の後に掛かり見かけの角度が
-   約2倍に増幅される（tanθ/0.52）ため、指定は 4.5deg で見かけ約9°になる */
-.road-intro__step--l {
-  --step-side: -1;
-  transform: scale(var(--cs)) scaleY(0.52) rotate(4.5deg);
-}
-.road-intro__step--r {
-  --step-side: 1;
-  transform: scale(var(--cs)) scaleY(0.52) rotate(-4.5deg) scaleX(-1);
-}
-
-@media (prefers-reduced-motion: reduce) {
-  /* スクロール連動を止め静止（背景・柱は既定位置で表示）。誘導演出も出さない */
-  .road-bg__plane {
-    background-position: center 0;
-  }
-  .road-intro {
-    display: none;
-  }
-  .road-bg__glow {
-    opacity: 0;
-  }
-  .road-bg__glow::before,
-  .road-bg__glow::after {
-    animation: none;
-  }
-}
-
-/* ユーザーが環境設定でアニメーションを OFF にしたときも、上と同じ静止状態にする */
-:root[data-motion='off'] /* スクロール連動を止め静止（背景・柱は既定位置で表示）。誘導演出も出さない */ .road-bg__plane {
-    background-position: center 0;
-  }
-:root[data-motion='off'] .road-intro {
-    display: none;
-  }
-:root[data-motion='off'] .road-bg__glow {
-    opacity: 0;
-  }
-:root[data-motion='off'] .road-bg__glow::before, :root[data-motion='off'] .road-bg__glow::after {
-    animation: none;
-  }
-
-
-/* 認証背景の最奥レイヤー：ギリシャの山と石畳の道。LP の HA（hero）に倣い、
-   blur で遠景化し ivory のスクリムで画面トーンに馴染ませる。門(.auth-arch)より奥に置く */
-.auth-scene {
-  position: fixed;
-  inset: 0;
-  z-index: 0;
-  pointer-events: none;
-  background: url('/auth-scene.webp') center / cover no-repeat;
-  /* 遠景ぼかし＋わずかに持ち上げ。scale で blur のにじみ端を画面外へ逃がす。
-     全体のぼかしは少し弱める（10→8） */
-  filter: blur(8px) saturate(0.92) brightness(1.03);
-  transform: scale(1.08);
-}
-/* 近景レイヤー：同じ風景を弱ぼかしで下側だけ重ね、下へ行くほどシャープにする
-   （手前＝道の足元がくっきり、奥＝山ほど霞む空気遠近） */
-.auth-scene--near {
-  position: fixed;
-  inset: 0;
-  z-index: 0;
-  pointer-events: none;
-  background: url('/auth-scene.webp') center / cover no-repeat;
-  filter: blur(3px) saturate(0.92) brightness(1.03);
-  transform: scale(1.08);
-  -webkit-mask-image: linear-gradient(to top, #000 0%, #000 18%, transparent 60%);
-  mask-image: linear-gradient(to top, #000 0%, #000 18%, transparent 60%);
-}
-/* ivory スクリム（LP .hero-scrim 相当）。風景を palette に寄せ、主張を抑えて門・カードを立てる */
-.auth-scene::after {
-  content: '';
-  position: absolute;
-  inset: 0;
-  /* 暖色スクリム（金を半分ほど戻し、ivory と暖色ゴールドの中間） */
-  background: linear-gradient(
-    180deg,
-    rgba(253, 248, 235, 0.8) 0%,
-    rgba(252, 246, 231, 0.6) 45%,
-    rgba(252, 245, 229, 0.5) 100%
-  );
-}
-
-/* 認証（登録/ログイン）画面の背景。大理石の門付き城壁をカードの背後に薄く敷き、
-   「宮殿の門の前に立つ」構図にする。門がカードを囲み、壁が左右へ画面幅いっぱい
-   に伸びる。下端は霞に溶かして接地の唐突さを消す */
-.auth-arch {
-  /* ビューポート全面に固定。フレックスの高さ制約から切り離し、門の縦のあふれを
-     ヘッダー(z-30,不透明)・フッターの裏へ回り込ませて隠す＝門自体は切れない。
-     風景(.auth-scene)・門・カードは同一スタッキング内で DOM 順に重なる
-     （風景→門→カード）。z-index は 0 のまま（正値にするとカードより前へ出てしまう） */
-  position: fixed;
-  inset: 0;
-  z-index: 0;
-  pointer-events: none;
-  /* 幅100%（比率固定）＝門の左右端がウィンドウ左右端に届く。
-     下端をビューポート底に接地（bottom 合わせ）＝どのウィンドウ比でも柱脚が底まで届き浮かない。
-     縦に余る分は上側（頂部より上）に出てヘッダー裏・空へ抜ける */
-  background: url('/auth-gate.webp') center bottom / 100% auto no-repeat;
-  /* 背後の風景より前に立てるため、壁を実体化（白っぽさ回避＝ivory と混ざりすぎない） */
-  /* 乳白スクリムと重なって白ちゃけるので、わずかに実体側へ戻す（0.92 → 0.95） */
-  opacity: 0.95;
-  /* 下端は blur を主役にするため opacity フェードは浅め（base が唐突に消えないように） */
-  -webkit-mask-image: linear-gradient(to bottom, #000 0, #000 94%, transparent 100%);
-  mask-image: linear-gradient(to bottom, #000 0, #000 94%, transparent 100%);
-}
-/* 左右端＋上端をぼかす帯（弱め blur 5px）。左右は超横長での壁の切れ目を霞に溶かし、
-   上端は門の頂部（ペディメント）付近をわずかにぼかす。2つのマスク層の和集合（既定の add 合成）で
-   「左右エッジ」＋「上端16%の帯」を露出させ、同一 backdrop-filter を適用する */
-.auth-arch::before {
-  content: '';
-  position: absolute;
-  inset: 0;
-  backdrop-filter: blur(5px);
-  -webkit-backdrop-filter: blur(5px);
-  /* 上端の帯は狭くする（30% → 16%）。広く取ると、いちばん見せたい
-     ペディメント・柱頭の彫りにぼかしが乗って「解像度が低い」ように見える。
-     左右の帯は残す（超横長のときに壁の切れ目を隠すため） */
-  -webkit-mask-image:
-    linear-gradient(90deg, #000 0%, transparent 12%, transparent 88%, #000 100%),
-    linear-gradient(to bottom, #000 0%, transparent 16%);
-  mask-image:
-    linear-gradient(90deg, #000 0%, transparent 12%, transparent 88%, #000 100%),
-    linear-gradient(to bottom, #000 0%, transparent 16%);
-}
-/* 乳白色フィルター（HA のようなやわらかい乳白トーン）。門とカードの間に敷き、
-   風景・門を薄いミルク色＋ごく軽いフロストで包んで柔らかく光らせる */
-.auth-veil {
-  position: fixed;
-  inset: 0;
-  z-index: 0;
-  pointer-events: none;
-  background: rgba(255, 251, 244, 0.26);
-  /* 全面に掛けるので、ここのぼかしは門の彫り（ペディメント・柱頭）にそのまま乗る。
-     乳白の柔らかさは背景色で作り、**ぼかしは最小限に留める**（1.2 → 0.6px） */
-  backdrop-filter: blur(0.6px);
-  -webkit-backdrop-filter: blur(0.6px);
-}
-/* 門下部の被写界深度 blur（LP の .hero-blur / .road-blur を踏襲）。
-   下ほど強く、上へフェード＝柱脚が手前でふわっとぼける */
-.auth-arch::after {
-  content: '';
-  position: absolute;
-  inset-inline: 0;
-  bottom: 0;
-  height: 34%;
-  backdrop-filter: blur(8px);
-  -webkit-backdrop-filter: blur(8px);
-  /* 下端側は solid にして柱脚をしっかりぼかし、上へフェード（LP hero-blur 踏襲） */
-  -webkit-mask-image: linear-gradient(to top, #000 30%, transparent 100%);
-  mask-image: linear-gradient(to top, #000 30%, transparent 100%);
-}
 
 
 /* フリーボード: カードのリサイズハンドルはホバー/選択時のみ表示・操作可能にする。

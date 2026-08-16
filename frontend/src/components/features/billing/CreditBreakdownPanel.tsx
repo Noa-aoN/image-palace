@@ -7,7 +7,15 @@ import { Spinner } from '@/components/ui/spinner'
 import { PanelSlotContent } from '@/components/features/panel/PanelSlot'
 import { usePanelForm } from '@/components/features/panel/usePanelForm'
 import { useBillingStore } from '@/stores/billing'
-import { CREDIT_UNIT, CREDIT_UNIT_SHORT, CREDIT_VALIDITY_LABEL, expiryUrgencyLabel } from '@/lib/billing'
+import {
+  CREDIT_UNIT,
+  CREDIT_UNIT_SHORT,
+  CREDIT_VALIDITY_LABEL,
+  INITIAL_CREDITS,
+  MONTHLY_FREE_CREDITS,
+  TRIAL_CREDITS,
+  expiryUrgencyLabel,
+} from '@/lib/billing'
 
 export const CREDIT_BREAKDOWN_PANEL_KEY = 'credit-breakdown'
 
@@ -51,7 +59,12 @@ export function CreditBreakdownPanel() {
                     </div>
                     <div>
                       <dt className="text-xs font-medium text-muted-foreground">どこから来るか</dt>
-                      <dd>登録時のお試し・毎月の無料枠・プランの付与・買い切り・引き換えコード。</dd>
+                      {/* 数を書く。列挙だけだと「登録時いくつ貰えたのか」が最後まで分からず、
+                          初回の {INITIAL_CREDITS} を見て多い/少ないのどちらにも読めてしまう */}
+                      <dd>
+                        登録時のお試し {TRIAL_CREDITS}・毎月の無料枠 {MONTHLY_FREE_CREDITS}
+                        （はじめは合わせて {INITIAL_CREDITS}）。ほかにプランの付与・買い切り・引き換えコード。
+                      </dd>
                     </div>
                     <div>
                       <dt className="text-xs font-medium text-muted-foreground">期限</dt>
@@ -104,7 +117,18 @@ export function CreditBreakdownPanel() {
                             </span>
                           )}
                         </p>
-                        <p className="truncate text-xs text-muted-foreground">{bucket.label}</p>
+                        {/* 出どころと、受け取った日。**日付は小さく添えるだけ**にする。
+                            主役は「いつ消えるか」なので、同じ大きさで並べると
+                            どちらの日付を見ればよいのか分からなくなる。
+                            まとめて持っている残高は受け取り日が決まらないので出さない */}
+                        <p className="truncate text-xs text-muted-foreground">
+                          {bucket.label}
+                          {bucket.granted_at && (
+                            <span className="ml-1.5">
+                              （{new Date(bucket.granted_at).toLocaleDateString('ja-JP')} 受け取り）
+                            </span>
+                          )}
+                        </p>
                       </div>
                     </div>
                     <span className="shrink-0 text-sm font-medium tabular-nums">

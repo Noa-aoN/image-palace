@@ -39,6 +39,8 @@ export interface CreditBucket {
   credits: number
   /** null は期限なし */
   expires_at: string | null
+  /** 受け取った日。まとめて持っている残高（サブスク・古い買い切り）は決まらないので null */
+  granted_at?: string | null
 }
 
 // 使用量（AIの利用・クレジットの消費・カードの作成）。バックエンド /api/v1/billing/ai_usage に対応。

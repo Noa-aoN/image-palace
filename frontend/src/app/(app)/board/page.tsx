@@ -13,10 +13,10 @@ import { NEWS_CATEGORIES, type Post } from '@/types/post'
 const PREVIEW = 5
 
 /**
- * 掲示板。運営から届くもの（お知らせ・使い方・コラム）を一望する面。
+ * 公示板。運営から届くもの（お知らせ・使い方・コラム）を一望する面。
  *
  * 3つを縦に積むと、下の2つは畳まれた扉と変わらない（誰も下までは見ない）。
- * 横に並べて、**それぞれの最新数件が同時に目に入る**ようにする。掲示板の板と同じ形。
+ * 横に並べて、**それぞれの最新数件が同時に目に入る**ようにする。公示板の板と同じ形。
  *
  * 重要なお知らせだけは、欄の中に埋めず上に一段抜き出す。
  * 障害や仕様変更は「探しに来た人」ではなく「たまたま来た人」に届く必要がある。
@@ -61,7 +61,7 @@ export default function BoardPage() {
       <header>
         <h1 className="flex items-center gap-2.5 text-2xl font-semibold">
           <Megaphone size={26} style={{ color: 'var(--palace)' }} />
-          掲示板
+          公示板
         </h1>
         <p className="mt-2 text-muted-foreground">運営からのお知らせ・使い方・コラムをまとめています。</p>
       </header>
