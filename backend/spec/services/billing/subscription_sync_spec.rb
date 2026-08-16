@@ -72,4 +72,25 @@ RSpec.describe Billing::SubscriptionSync do
 
     expect { 2.times { described_class.call(sub, user: user) } }.to change(Subscription, :count).by(1)
   end
+
+  # 位はここを唯一の入口にしている。写した直後に、その契約の位まで揃うこと。
+  # **同じ user で契約を書いた直後**という、いちばん間違えやすい呼ばれ方でもある
+  describe "位の同期" do
+    it "契約を写すと、その段の位が付く" do
+      RewardDefinition.registry
+      described_class.call(stripe_sub(cancel_at_period_end: false), user: user)
+
+      keys = UserReward.held.joins(:reward_definition)
+                       .where(user_id: user.id).pluck(:key)
+      expect(keys).to include("title_rank_standard")
+    end
+
+    # 位のために支払いを止めない。ここが落ちても契約は正しく残る
+    it "位の同期が失敗しても、契約は写る" do
+      allow(Achievements::SyncPlanTitle).to receive(:call).and_raise(StandardError, "boom")
+
+      row = described_class.call(stripe_sub(cancel_at_period_end: false), user: user)
+      expect(row.status).to eq("active")
+    end
+  end
 end

@@ -33,6 +33,46 @@ namespace :achievements do
     puts "作れた: #{made} 件 / 残り: #{RewardDefinition.ordered.reject { |r| r.image.attached? }.size} 件"
   end
 
+  # 位はこれから配り始めるので、いま居る人には誰にも付いていない。
+  # これを1回流して、全員をいまの契約に合わせる。
+  #
+  # **重い処理は worker で流すこと。** app（Web）で回すと、
+  # 全利用者ぶんの問い合わせが API と同じ機で走り、応答が止まる。
+  #
+  #   fly ssh console -a image-palace-api --select   # worker 機を選ぶ
+  #   bundle exec rake achievements:backfill_plan_titles
+  #
+  # 何度流しても同じ結果になる（同期なので、既に合っている人には何もしない）
+  desc "いま居る全員の位を、契約状態に合わせる。dry_run=1 で下見だけ"
+  task backfill_plan_titles: :environment do
+    dry_run = ENV["dry_run"] == "1"
+    # 定義が入っていないと、引けずに何も配らないまま終わる
+    RewardDefinition.registry
+
+    total = User.count
+    counts = Hash.new(0)
+    done = 0
+
+    # **全件を一度に読まない**。find_each が 1000 件ずつに切って進める
+    User.find_each(batch_size: 200) do |user|
+      tier = if dry_run
+               Achievements::SyncPlanTitle.current_tier(user)
+      else
+               Achievements::SyncPlanTitle.call(user: user)
+      end
+      counts[tier] += 1
+      done += 1
+      puts "  #{done}/#{total}" if (done % 500).zero?
+    rescue StandardError => e
+      counts["失敗"] += 1
+      puts "× user_id=#{user.id}: #{e.class}: #{e.message}"
+    end
+
+    puts "-" * 60
+    counts.sort_by { |_, count| -count }.each { |tier, count| puts "#{tier}: #{count} 人" }
+    puts dry_run ? "\n※ 下見のみ。何も変えていません" : "\n合わせた: #{done} 人"
+  end
+
   desc "作った絵に使った指示を一覧する（作り直すときの手がかり）"
   task prompts: :environment do
     RewardDefinition.ordered.each do |reward|

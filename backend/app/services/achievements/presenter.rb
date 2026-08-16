@@ -47,7 +47,7 @@ module Achievements
     end
 
     def owned
-      @owned ||= UserReward.where(user_id: @user.id).index_by(&:reward_definition_id)
+      @owned ||= UserReward.held.where(user_id: @user.id).index_by(&:reward_definition_id)
     end
 
     def states
@@ -55,7 +55,7 @@ module Achievements
     end
 
     public def summary
-      starred = UserReward.where(user_id: @user.id).featured.includes(:reward_definition)
+      starred = UserReward.held.where(user_id: @user.id).featured.includes(:reward_definition)
       by_kind = starred.group_by { |r| r.reward_definition.kind }
       title = by_kind["title"]&.first
 
@@ -279,8 +279,12 @@ module Achievements
         rarity_level: definition.rarity_level,
         rarity_tier: definition.rarity_tier,
         category: definition.category,
-        # 未獲得のものに「どうすれば手に入るか」。無いものは手動付与（表彰など）
-        condition: source&.description,
+        # 未獲得のものに「どうすれば手に入るか」。無いものは手動付与（表彰など）。
+        # 位は実績で配らないので、代わりに「どのプランに付くか」を出す
+        # （空にすると、取りようが無いものが黙って並ぶ）
+        condition: source&.description || (definition.plan_rank? ? definition.description : nil),
+        # 位は契約に付いてくるもの。取り方の説明も、外れ方も、他の獲得物とは違う
+        plan_rank: definition.plan_rank?,
         progress: progress,
         target: source&.condition_target,
         image_url: image_url_for(definition),

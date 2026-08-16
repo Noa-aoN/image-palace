@@ -240,8 +240,65 @@ class RewardDefinition < ApplicationRecord
     # 取れないものが並ぶことになる（条件を満たしようがない）
     { key: "honor_archon", kind: "honor", name: "執政官", rarity_level: 9, category: "公式",
       description: "この宮殿を運び、守る者へ。", position: 44, admin_only: true,
-      metadata: { "motif" => "an official award plaque with a ceremonial staff crossed with a key, framed by a laurel wreath" }, image_key: "85ncj499ri2xr85sx8cs6rbqbuvc" }
+      metadata: { "motif" => "an official award plaque with a ceremonial staff crossed with a key, framed by a laurel wreath" }, image_key: "85ncj499ri2xr85sx8cs6rbqbuvc" },
+
+    # ── 位（プランに付く称号） ──
+    #
+    # **稼いで取るものではなく、契約している間だけ持つもの。**
+    # 実績で配らないので、条件（condition）は出ない。代わりに description で
+    # 「何をすれば持てるか」を言い切る。
+    #
+    # 無料も含めて5つとも定義を置く。無料だけ位が無いと、
+    # 名乗りの棚が「有料の人だけ埋まる場所」に見えてしまう。
+    #
+    # metadata の source / tier が、同期の目印。**この2つで引く**
+    # （鍵の綴りに頼ると、鍵を変えた瞬間に剥奪が効かなくなる）。
+    # 位は先頭に並べる（自分がどこに居るかが、いちばん上で分かるように）
+    { key: "title_rank_free", kind: "title", name: "市民", rarity_level: 1, category: "公式",
+      description: "この宮殿に住まうすべての人へ。", position: 1,
+      metadata: { "source" => "subscription", "tier" => "free",
+                  "motif" => "a plain marble stele with a simple laurel sprig" } },
+    { key: "title_rank_standard", kind: "title", name: "書記官", rarity_level: 3, category: "公式",
+      description: "スタンダードプランを結んでいる間、名乗れる位。", position: 2,
+      metadata: { "source" => "subscription", "tier" => "standard",
+                  "motif" => "a marble stele with a stylus and an open wax tablet" } },
+    { key: "title_rank_pro", kind: "title", name: "学匠", rarity_level: 5, category: "公式",
+      description: "プロプランを結んでいる間、名乗れる位。", position: 3,
+      metadata: { "source" => "subscription", "tier" => "pro",
+                  "motif" => "a marble stele with an open scroll and a laurel border" } },
+    { key: "title_rank_creator", kind: "title", name: "賢者", rarity_level: 7, category: "公式",
+      description: "クリエイタープランを結んでいる間、名乗れる位。", position: 4,
+      metadata: { "source" => "subscription", "tier" => "creator",
+                  "motif" => "a marble stele with an owl above a laurel crown" } },
+    { key: "title_rank_studio", kind: "title", name: "元老", rarity_level: 9, category: "公式",
+      description: "スタジオプランを結んでいる間、名乗れる位。", position: 5,
+      metadata: { "source" => "subscription", "tier" => "studio",
+                  "motif" => "a marble stele with a ceremonial staff and a full laurel wreath" } }
   ].freeze
+
+  # 位（プランに付く称号）の目印。同期はこの2つで引く
+  SUBSCRIPTION_SOURCE = "subscription"
+
+  # いまの段に対応する位。無ければ nil（その段に位を置いていない）
+  def self.rank_for_tier(tier)
+    registry.find { |d|
+      d.kind == "title" && d.metadata.is_a?(Hash) &&
+        d.metadata["source"] == SUBSCRIPTION_SOURCE && d.metadata["tier"] == tier.to_s
+    }
+  end
+
+  # プランに付く位か。**稼いで取るものではない**ので、
+  # 画面では「どうすれば取れるか」ではなく「どのプランに付くか」を出す
+  def plan_rank?
+    kind == "title" && metadata.is_a?(Hash) && metadata["source"] == SUBSCRIPTION_SOURCE
+  end
+
+  # 位すべて。剥奪のときは、いまの段以外を落とす
+  def self.subscription_ranks
+    registry.select { |d|
+      d.kind == "title" && d.metadata.is_a?(Hash) && d.metadata["source"] == SUBSCRIPTION_SOURCE
+    }
+  end
 
   BUILTIN_KEYS = BUILTINS.map { |b| b[:key] }.freeze
 

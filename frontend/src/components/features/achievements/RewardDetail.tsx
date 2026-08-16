@@ -91,7 +91,7 @@ export function RewardDetail({
             )}
           </Row>
           <Row label="分類">{reward.category ?? '—'}</Row>
-          <Row label="条件">
+          <Row label={reward.plan_rank ? '持てる条件' : '条件'}>
             {reward.condition ?? '運営から贈られます'}
             {!reward.owned && reward.target ? (
               <span className="ml-1 tabular-nums text-muted-foreground">
@@ -100,6 +100,16 @@ export function RewardDetail({
             ) : null}
           </Row>
         </dl>
+
+        {/* 位だけは、持ち方が他と違う。**稼いで取るものではなく、契約している間だけ持つ**。
+            ここを書かないと、解約したときに「獲得したものが消えた」と映る。
+            名乗りが自由であることも併せて言う（位＝名乗りだと思われないように） */}
+        {reward.plan_rank && (
+          <p className="rounded-md bg-muted/60 px-3 py-2 text-xs leading-relaxed text-muted-foreground">
+            この位はプランに付いてくるものです。プランを変えると入れ替わり、やめると外れます。
+            名乗りは、持っている称号から自由に選べます。
+          </p>
+        )}
 
         {reward.owned && (
           <div className="space-y-1.5 border-t border-border pt-3">

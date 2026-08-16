@@ -58,7 +58,7 @@ module Achievements
     # どの種別も featured_at は必ず入るので、それを共通の目印にする
     # （称号の equipped・宝物の room_placed は、出す場所を決めるための別の印）。
     def showcased_count(user, kind)
-      UserReward.joins(:reward_definition)
+      UserReward.held.joins(:reward_definition)
                 .where(user_id: user.id, reward_definitions: { kind: kind })
                 .where.not(featured_at: nil)
                 .count
@@ -66,7 +66,7 @@ module Achievements
 
     # その種別で上限を超えたぶんを、古いものから外す
     def trim!(user, kind)
-      starred = UserReward.joins(:reward_definition)
+      starred = UserReward.held.joins(:reward_definition)
                           .where(user_id: user.id, reward_definitions: { kind: kind })
                           .where.not(featured_at: nil)
                           .order(featured_at: :desc)

@@ -34,7 +34,7 @@ module Api
       def find_owned(key)
         return nil if key.blank?
 
-        UserReward.joins(:reward_definition)
+        UserReward.held.joins(:reward_definition)
                   .find_by(user_id: current_user.id, reward_definitions: { key: key })
       end
 

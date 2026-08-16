@@ -233,9 +233,9 @@ RSpec.describe Achievements::Evaluator do
 
       expect(rows["title_traveler"][:rarity_level]).to eq(1)
       expect(rows["medal_laurel"][:rarity_level]).to eq(5)
-      # 条件で配るものは 7 まで。**8・9 は表彰だけに使う**
-      # （運営が手で贈るもの。積み上げでは届かない段として空けてある）
-      earned_by_condition = rows.values.reject { |r| r[:kind] == "honor" }
+      # 条件で配るものは 7 まで。**8・9 は表彰と位だけに使う**
+      # （どちらも積み上げでは届かない。表彰は運営が贈るもの、位は契約に付くもの）
+      earned_by_condition = rows.values.reject { |r| r[:kind] == "honor" || r[:plan_rank] }
       expect(earned_by_condition.map { |r| r[:rarity_level] }.max).to be <= 7
     end
 
