@@ -130,12 +130,13 @@ export function HeroDescription({
       >
         集めたカードは、
         <strong className="font-semibold">単語帳</strong>や
-        <strong className="font-semibold">用語集</strong>での暗記、
+        <strong className="font-semibold">用語集</strong>として暗記、
         <strong className="font-semibold">図鑑</strong>・
         <strong className="font-semibold">相関図</strong>・
         <strong className="font-semibold">年表</strong>づくりで理解。
         <br />
         さらに、
+        <strong className="font-semibold">メモ帳</strong>、
         <strong className="font-semibold">絵日記</strong>、
         <strong className="font-semibold">タスク管理</strong>、
         <strong className="font-semibold">ビジョンボード</strong>など、使い方は無限大です。

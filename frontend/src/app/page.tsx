@@ -48,6 +48,7 @@ function Section({
   roadFadeTop,
   roadFadeBottom,
   roadIntro,
+  roadFadeIntoNext,
   className,
   children,
 }: {
@@ -61,6 +62,8 @@ function Section({
   roadFadeBottom?: boolean
   /** 最初のセクションで指定: 道の出現前の余白に渡鴉＋足跡の誘導演出を出す */
   roadIntro?: boolean
+  /** 次のセクションに区切りがある: こちらの道を下端で霞ませる */
+  roadFadeIntoNext?: boolean
   className?: string
   children: ReactNode
 }) {
@@ -73,7 +76,15 @@ function Section({
       <div aria-hidden data-anim-layer className="pointer-events-none absolute inset-0 z-0">
         {/* 全セクションで同一ビューの道ステージを clip して見せる（1つの道が貫く）。
             ヒーローは Section を通らないため対象外 */}
-        <RoadBackground fadeTop={roadFadeTop} fadeBottom={roadFadeBottom} intro={roadIntro} />
+        {/* 区切りは前セクションの色で塞ぐ。道をそのまま通すと塞ぎに当たって
+            直線で切れるので、境目の前後で霞ませる */}
+        <RoadBackground
+          fadeTop={roadFadeTop}
+          fadeBottom={roadFadeBottom}
+          intro={roadIntro}
+          fadeUnderDivider={Boolean(topDividerFrom)}
+          fadeIntoDivider={roadFadeIntoNext}
+        />
       </div>
       {topDividerFrom && <SectionDivider fill={topDividerFrom} />}
       <div className="relative z-10 mx-auto w-full max-w-4xl">{children}</div>
@@ -97,7 +108,7 @@ export default function TopPage() {
       <HeroScrollZoom />
 
       {/* 1. コンセプト（仮）。ヒーロー終盤へ少しだけ重ね、余白を程よく詰める */}
-      <Section id="concept" cueTo="features" bg="var(--ivory)" roadFadeTop roadIntro className="-mt-[10svh]">
+      <Section id="concept" cueTo="features" bg="var(--ivory)" roadFadeTop roadIntro roadFadeIntoNext className="-mt-[10svh]">
         <p className="mb-4 text-sm font-medium tracking-widest" style={{ color: 'var(--palace)' }}>CONCEPT</p>
         <h2 className="mb-6 text-3xl font-bold tracking-tight md:text-4xl" style={{ color: '#111111' }}>
           イメージで記憶する。
@@ -115,7 +126,7 @@ export default function TopPage() {
       </Section>
 
       {/* 2. 機能（仮） */}
-      <Section id="features" cueTo={hasShots ? 'gallery' : 'cta'} bg="var(--ivory-dark)" topDividerFrom="var(--ivory)">
+      <Section id="features" cueTo={hasShots ? 'gallery' : 'cta'} bg="var(--ivory-dark)" topDividerFrom="var(--ivory)" roadFadeIntoNext>
         <p className="mb-4 text-sm font-medium tracking-widest" style={{ color: 'var(--palace)' }}>FEATURES</p>
         <h2 className="mb-12 text-3xl font-bold tracking-tight md:text-4xl" style={{ color: '#111111' }}>できること</h2>
         <div className="grid gap-6 text-left md:grid-cols-3">
@@ -133,7 +144,7 @@ export default function TopPage() {
 
       {/* 3. 作例。**絵が無いあいだは節ごと出さない**（LANDING_SHOTS が空なら丸ごと消える） */}
       {hasShots && (
-        <Section id="gallery" cueTo="cta" bg="#ffffff" topDividerFrom="var(--ivory-dark)">
+        <Section id="gallery" cueTo="cta" bg="#ffffff" topDividerFrom="var(--ivory-dark)" roadFadeIntoNext>
           <p className="mb-4 text-sm font-medium tracking-widest" style={{ color: 'var(--palace)' }}>GALLERY</p>
           <h2 className="mb-6 text-3xl font-bold tracking-tight md:text-4xl" style={{ color: '#111111' }}>画面イメージ</h2>
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">

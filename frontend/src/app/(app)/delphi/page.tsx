@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { HelpPopover } from '@/components/ui/help-popover'
 import Link from 'next/link'
-import { Wand2, X } from 'lucide-react'
+import { Minus, Plus, Wand2, X } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Spinner } from '@/components/ui/spinner'
@@ -33,8 +33,9 @@ function formatDate(ts: number): string {
   return new Date(ts).toLocaleString('ja-JP', { month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit' })
 }
 
-/** 受け取った言葉の履歴に出す件数。これ以上は「もっと見る」で開く */
-const HISTORY_LIMIT = 10
+/** 受け取った言葉の履歴に出す件数。これ以上は「＋」で足す。
+    3件にしているのは、ここが主役ではないから（主役は受け取る操作） */
+const HISTORY_LIMIT = 3
 
 export default function AcropolisPage() {
   const [genre, setGenre] = useState('')
@@ -368,13 +369,20 @@ export default function AcropolisPage() {
               </li>
             ))}
           </ul>
+          {/* 引き換えの記録と同じ形にする。同じ役目のものが場所によって
+              違う見た目だと、押せるものだと気づきにくくなる */}
           {history.length > HISTORY_LIMIT && (
             <button
               type="button"
               onClick={() => setHistoryExpanded((v) => !v)}
-              className="text-xs text-muted-foreground hover:underline"
+              aria-label={
+                historyExpanded
+                  ? '受け取った言葉を折りたたむ'
+                  : `受け取った言葉をもっと読み込む（残り ${history.length - HISTORY_LIMIT} 件）`
+              }
+              className="flex h-6 w-6 items-center justify-center rounded-full border border-border text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
             >
-              {historyExpanded ? '折りたたむ' : `もっと見る（残り ${history.length - HISTORY_LIMIT} 件）`}
+              {historyExpanded ? <Minus size={14} /> : <Plus size={14} />}
             </button>
           )}
         </div>

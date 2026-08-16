@@ -795,12 +795,10 @@
   z-index: 1;
   display: block;
   pointer-events: none;
-  /* 上端を透明から始める。**塗りが道を直線で切るのを防ぐ**ため。
-     不透明のまま置くと、波の上にもう1本の境目ができる。
-     上の波（中心線 y=52 → 山は y=38）より手前の 28% で明けきるので、
-     波の輪郭は鈍らない */
-  -webkit-mask-image: linear-gradient(to bottom, transparent 0%, #000 28%);
-  mask-image: linear-gradient(to bottom, transparent 0%, #000 28%);
+  /* **上端はぼかさない。** ぼかすと次セクションの地（ivory-dark）が透けて、
+     境界に直線が1本出る。前セクションと同じ色でぴったり塞ぐ。
+     道が切られる件は、道側を境目の前後で霞ませることで解いている
+     （road-bg--fade-bottom / --fade-under-divider）。 */
 }
 .section-divider--flip {
   transform: scaleY(-1);
@@ -822,6 +820,10 @@
 @media (max-width: 640px) {
   .section-divider {
     height: 84px;
+  }
+  .road-bg--fade-under-divider {
+    -webkit-mask-image: linear-gradient(to bottom, transparent 68px, #000 130px);
+    mask-image: linear-gradient(to bottom, transparent 68px, #000 130px);
   }
 }
 
@@ -1147,6 +1149,22 @@
 .road-bg--fade-bottom {
   -webkit-mask-image: linear-gradient(to bottom, #000 88%, transparent 100%);
   mask-image: linear-gradient(to bottom, #000 88%, transparent 100%);
+}
+
+/* 区切りのある節では、道を**波より下から**霞ませて出す。
+   区切りは前セクションの色で塞ぐので、その下に道があると波の位置で
+   ぷつりと現れる。波のぶんだけ遅らせて、滲むように現れさせる。
+   px 指定なのは、区切りの高さが px だから（% にすると節の高さで揃わない）。 */
+.road-bg--fade-under-divider {
+  -webkit-mask-image: linear-gradient(to bottom, transparent 96px, #000 176px);
+  mask-image: linear-gradient(to bottom, transparent 96px, #000 176px);
+}
+
+/* 次の節に区切りがある場合、こちら側の道も下端で霞ませる。
+   塞ぎに行き当たって直線で切れるのを避ける */
+.road-bg--fade-into-divider {
+  -webkit-mask-image: linear-gradient(to bottom, #000 calc(100% - 90px), transparent 100%);
+  mask-image: linear-gradient(to bottom, #000 calc(100% - 90px), transparent 100%);
 }
 /* ビューポート固定のステージ。全セクションで同じビューを共有する */
 .road-bg__viewport {

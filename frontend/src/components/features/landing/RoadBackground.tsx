@@ -47,9 +47,13 @@ type RoadBackgroundProps = {
   fadeBottom?: boolean
   /** 最初のセクション用: 道の出現前の余白に足跡の誘導アニメーションを出す */
   intro?: boolean
+  /** 上に区切りがある: 波より下から道を霞ませて出す */
+  fadeUnderDivider?: boolean
+  /** 下の節に区切りがある: 塞ぎに当たって直線で切れないよう、下端で霞ませる */
+  fadeIntoDivider?: boolean
 }
 
-export function RoadBackground({ fadeTop, fadeBottom, intro }: RoadBackgroundProps) {
+export function RoadBackground({ fadeTop, fadeBottom, intro, fadeUnderDivider, fadeIntoDivider }: RoadBackgroundProps) {
   const ref = useRef<HTMLDivElement>(null)
   const introRef = useRef<HTMLDivElement>(null)
 
@@ -180,7 +184,10 @@ export function RoadBackground({ fadeTop, fadeBottom, intro }: RoadBackgroundPro
     }
   }, [])
 
-  const modifiers = `${fadeTop ? ' road-bg--fade-top' : ''}${fadeBottom ? ' road-bg--fade-bottom' : ''}`
+  const modifiers =
+    `${fadeTop ? ' road-bg--fade-top' : ''}${fadeBottom ? ' road-bg--fade-bottom' : ''}` +
+    `${fadeUnderDivider ? ' road-bg--fade-under-divider' : ''}` +
+    `${fadeIntoDivider ? ' road-bg--fade-into-divider' : ''}`
 
   return (
     <>

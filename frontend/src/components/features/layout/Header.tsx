@@ -174,8 +174,11 @@ export function AppHeader() {
               </DropdownMenuTrigger>
             </Tooltip>
             <DropdownMenuContent align="end" sideOffset={12} className="min-w-52 translate-x-4">
-              <DropdownMenuLabel>作る</DropdownMenuLabel>
+              {/* 見出しは必ず群の中に置く。外に出すと Base UI が
+                  「MenuGroupContext が無い」で落ちる（アカウントメニュー側は
+                  群の中にあったので、こちらだけ開いた瞬間に落ちていた） */}
               <DropdownMenuGroup>
+                <DropdownMenuLabel>作る</DropdownMenuLabel>
                 {CREATE_ITEMS.map((row) => (
                   <DropdownMenuItem
                     key={row.kind}
@@ -266,7 +269,7 @@ export function AppHeader() {
                 環境設定
               </DropdownMenuItem>
               <DropdownMenuItem onClick={() => router.push('/achievements')} className="cursor-pointer">
-                トロフィー
+                アチーブメント
               </DropdownMenuItem>
               <DropdownMenuSeparator />
               <DropdownMenuItem onClick={() => router.push('/')} className="cursor-pointer">

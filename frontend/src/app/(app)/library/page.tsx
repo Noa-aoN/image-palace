@@ -151,7 +151,9 @@ function Shelf({
           <div className="flex shrink-0 items-center gap-2">
             {href && (
               <Link href={href}>
-                <Button variant="ghost" size="sm" className="text-muted-foreground">
+                {/* 隣の「＋作成」と同じ形にする。役目は違っても、
+                    同じ列に並ぶ操作なので見た目が揃っていないと拾いにくい */}
+                <Button variant="outline" size="sm">
                   一覧をみる
                 </Button>
               </Link>
