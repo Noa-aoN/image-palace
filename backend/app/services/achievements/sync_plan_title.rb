@@ -39,9 +39,10 @@ module Achievements
       # 引けなかっただけかもしれないのに剥がすと、位が消える
       return tier if rank.nil?
 
-      grant_rank(user, rank, now)
+      # **手にした瞬間かどうか**を覚えておく。名乗らせてよいのはそのときだけ
+      acquired = grant_rank(user, rank, now)
       revoke_other_ranks(user, rank, now)
-      equip_if_free(user, rank)
+      equip_if_free(user, rank) if acquired
 
       tier
     end
@@ -72,10 +73,13 @@ module Achievements
     end
 
     # 配る。既に持っていれば Granter が黙って諦める（二重に配らない）。
-    # 手放していた行があれば、その行が復帰する（初めて手にした日は変わらない）
+    # 手放していた行があれば、その行が復帰する（初めて手にした日は変わらない）。
+    #
+    # **返り値は「いま手にしたか」**。既に持っていた（＝同期で何も動かなかった）なら false。
+    # 名乗らせるかどうかの判断がこれに乗るので、真偽をはっきり返す
     def grant_rank(user, rank, now)
       held = UserReward.find_by(user_id: user.id, reward_definition_id: rank.id)
-      return if held&.held?
+      return false if held&.held?
 
       Granter.grant(
         user: user, reward: rank, source: "manual", source_ref: "plan_sync",
@@ -88,7 +92,7 @@ module Achievements
         # 位は契約で決まるもの。届いても「獲得しました」とは言わない。
         # 便りの再送で同じ知らせが何度も出るのを避ける意味もある
         notify: false
-      )
+      ).present?
     end
 
     # いまの段以外の位を外す。行は消さない（また契約したときのために履歴を残す）
@@ -101,8 +105,14 @@ module Achievements
       end
     end
 
-    # 名乗りが空いていれば、新しい位を名乗らせる。
-    # 既に何かを名乗っているなら触らない（本人が選んだものを奪わない）
+    # 名乗りが空いていれば、いま手にした位を名乗らせる。
+    #
+    # **呼ぶのは位を手にした瞬間だけ**（初めて／契約し直して取り戻したとき）。
+    # 同期のたびに呼ぶと、本人が「名乗らない」を選んで外したのに、
+    # 次の便り（更新・支払い）で勝手に名乗り直すことになる。
+    # 位は自動で付いてくるが、**名乗るかどうかは本人のもの**。
+    #
+    # 既に何かを名乗っているときも触らない（選んだ称号を奪わない）
     def equip_if_free(user, rank)
       return if UserReward.held.joins(:reward_definition)
                           .where(user_id: user.id, equipped: true).exists?

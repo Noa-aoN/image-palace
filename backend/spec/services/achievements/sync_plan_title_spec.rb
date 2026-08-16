@@ -147,6 +147,37 @@ RSpec.describe Achievements::SyncPlanTitle do
       expect(equipped.map { |r| r.reward_definition.key }).to eq([ "title_traveler" ])
     end
 
+    # **同期は何度でも走る**（更新・支払い・便りの再送）。
+    # そのたびに名乗り直すと、本人が選んだ「名乗らない」を上書きしてしまう
+    it "自分で名乗りを外したら、同期で名乗り直さない" do
+      subscribe!("standard")
+      described_class.call(user: user)
+      reward = UserReward.held.find_by(user_id: user.id, reward_definition_id: rank("standard").id)
+      Achievements::Showcase.unstar!(reward)
+
+      described_class.call(user: user)
+      described_class.call(user: user)
+
+      expect(reward.reload.equipped).to be(false)
+      expect(UserReward.held.where(user_id: user.id, equipped: true)).to be_empty
+    end
+
+    # 名乗らせるのは手にした瞬間だけ。契約し直したときは付け直してよい
+    it "契約し直して位を取り戻したときは、名乗りが空なら名乗る" do
+      sub = subscribe!("standard")
+      described_class.call(user: user)
+      Achievements::Showcase.unstar!(
+        UserReward.held.find_by(user_id: user.id, reward_definition_id: rank("standard").id)
+      )
+      sub.update!(status: "canceled")
+      described_class.call(user: user)
+      sub.update!(status: "active")
+      described_class.call(user: user)
+
+      equipped = UserReward.held.where(user_id: user.id, equipped: true)
+      expect(equipped.map { |r| r.reward_definition.key }).to eq([ "title_rank_standard" ])
+    end
+
     # 外すときは飾りも降ろす。持っていない位を名乗ったままにしない
     it "外れた位は名乗りからも降りる" do
       sub = subscribe!("standard")
@@ -157,6 +188,51 @@ RSpec.describe Achievements::SyncPlanTitle do
       revoked = UserReward.find_by(user_id: user.id, reward_definition_id: rank("standard").id)
       expect(revoked.equipped).to be(false)
       expect(revoked.featured_at).to be_nil
+    end
+  end
+
+  # 名乗っている最中に位が外れる、という**いちばん危ない並び**。
+  # 装備だけが残ると、持っていない位をプロフィールに出し続けることになる
+  describe "名乗っている位が外れるとき" do
+    let!(:other_title) { RewardDefinition.find_by(key: "title_traveler") }
+
+    before do
+      sub = subscribe!("standard")
+      described_class.call(user: user)
+      # 別の称号も持たせておく。巻き添えで外れないことを確かめるため
+      Achievements::Granter.grant(user: user, reward: other_title, source: "manual")
+      sub.update!(status: "canceled")
+      described_class.call(user: user)
+    end
+
+    it "装備も掲示も残さない" do
+      revoked = UserReward.find_by(user_id: user.id, reward_definition_id: rank("standard").id)
+
+      expect(revoked.held?).to be(false)
+      expect(revoked.equipped).to be(false)
+      expect(revoked.featured_at).to be_nil
+      expect(revoked.room_placed).to be(false)
+    end
+
+    # 画面に出る道は summary（プロフィール・エントランス）。
+    # 外れた位がここに残らず、代わりにいまの位（市民）が出ること。
+    # **名乗りを空にしない**のは、解約した人のプロフィールから名前が消えないようにするため
+    it "外れた位ではなく、いまの位が出る" do
+      summary = Achievements::Presenter.summary_only(user: user)
+
+      expect(summary[:title][:key]).to eq("title_rank_free")
+      expect(summary[:showcase]["title"].map { |r| r[:key] }).to eq([ "title_rank_free" ])
+    end
+
+    it "星の付いた数は1つのまま（外れた位は数えない）" do
+      expect(Achievements::Showcase.showcased_count(user, "title")).to eq(1)
+    end
+
+    # 位の付け外しで、本人が持っている別の称号まで動かさない
+    it "ほかの称号は巻き添えにしない" do
+      kept = UserReward.find_by(user_id: user.id, reward_definition_id: other_title.id)
+
+      expect(kept.held?).to be(true)
     end
   end
 
