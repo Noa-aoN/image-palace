@@ -1,14 +1,14 @@
 'use client'
 
 import { useEffect, useState } from 'react'
+import Link from 'next/link'
 import { reflected } from '@/lib/billing-reflection'
-import { CreditCard, Coins, Sparkles, Loader2, ExternalLink, Gauge, History, HardDrive, Receipt, RefreshCw } from 'lucide-react'
+import { CreditCard, ChevronRight, Coins, Sparkles, Loader2, ExternalLink, Gauge, History, HardDrive, Receipt, RefreshCw } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { CategorySections, type CategorySection } from '@/components/features/myroom/CategorySections'
 import { ComingSoon } from '@/components/features/myroom/ComingSoon'
 import { CreditHistoryPanel } from '@/components/features/billing/CreditHistoryPanel'
 import { AiUsagePanel } from '@/components/features/billing/AiUsagePanel'
-import { RedeemCodePanel } from '@/components/features/billing/RedeemCodePanel'
 import {
   getPlans,
   getBillingSummary,
@@ -258,8 +258,26 @@ export default function BillingPage() {
             </dl>
           </section>
 
-          {/* 受け取ったコードの行き先。残高のすぐ下に置く */}
-          <RedeemCodePanel onRedeemed={() => useBillingStore.getState().fetchSummary()} />
+          {/* 引き換えの入口は**デルフォイに1つだけ**置く。
+              ここにも入力欄を出していたが、同じ仕組みの入口が2か所にあると、
+              打ち込んだ記録がどちらに残るのか分からなくなる
+              （記録はデルフォイ側にしか出ない）。
+              ここには行き先だけを残す。コードを持ってきた人が
+              支払いの面から辿れなくなるのは避けたい */}
+          <section className="rounded-xl border border-border bg-card p-5">
+            <p className="text-sm font-medium">引き換えコードをお持ちですか</p>
+            <p className="mt-1 text-sm text-muted-foreground">
+              配られたコードは、デルフォイで引き換えられます。受け取ったぶんは残高に足されます。
+            </p>
+            <Link
+              href="/delphi"
+              className="mt-3 inline-flex items-center gap-1 text-sm underline underline-offset-2"
+              style={{ color: 'var(--palace)' }}
+            >
+              デルフォイで引き換える
+              <ChevronRight size={14} aria-hidden />
+            </Link>
+          </section>
 
           <AiUsagePanel />
 
