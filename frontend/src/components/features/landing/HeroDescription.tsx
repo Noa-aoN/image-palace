@@ -110,7 +110,7 @@ export function HeroDescription({
             「した 「記憶のカード」」と空いてしまう */}
         {/* ここは折らない。広い画面では1行に収める（そのぶん幅を取る）。
             紙を捨てたので、幅を広げても覆う量は増えない ── 幅が「ただ」になった */}
-        覚えたい・残したい言葉を書くと、AIがイメージを生成し、「
+        覚えたい言葉を書くと、AIがイメージを生成し、「
         <strong className="font-semibold">記憶のカード</strong>」を作ります。
       </p>
       {/* 2段目以降も**濃さを落としすぎない**。#5A5348 まで薄くしていたころは
@@ -121,7 +121,7 @@ export function HeroDescription({
           読み飛ばした人に「単語帳のサービス」としてだけ残る。
           名詞だけを立てて、拾い読みでも用途の広さが目に入るようにする */}
       <p
-        className={`mt-3 text-[0.85rem] leading-relaxed text-balance md:text-base ${
+        className={`mt-2.5 text-[0.85rem] leading-relaxed text-balance md:text-base ${
           // 紙以外の版では字を薄くしない。薄い字に縁や影を付けると、
           // そちらのほうが濃くなって字が抜けて見える
           textClass
@@ -142,7 +142,7 @@ export function HeroDescription({
         <strong className="font-semibold">ビジョンボード</strong>など、使い方は無限大です。
       </p>
       <p
-        className={`mt-3 text-[0.85rem] leading-relaxed text-balance md:text-base ${textClass}`}
+        className={`mt-2.5 text-[0.85rem] leading-relaxed text-balance md:text-base ${textClass}`}
         style={styled ? { color: '#3E3830' } : undefined}
       >
         {/* 句点で切る。ここも1文ずつ。

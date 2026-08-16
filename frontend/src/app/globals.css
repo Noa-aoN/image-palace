@@ -1361,14 +1361,17 @@
   position: absolute;
   left: 50%;
   top: 17.5%;
-  width: 150px;
-  height: 105px;
-  margin: -52px 0 0 -75px;
+  /* 光より少し小さくする。同じ大きさだと、光と門のどちらを見ればよいのか決まらない */
+  width: 132px;
+  height: 92px;
+  margin: -46px 0 0 -66px;
   pointer-events: none;
   background: url('/auth-gate.webp') center bottom / contain no-repeat;
-  /* 遠くの霞の中なので、彩度を落として明るく飛ばす */
-  filter: blur(3.5px) saturate(0.5) brightness(1.22) opacity(0.5);
-  opacity: calc(0.55 * var(--road-glow, 0));
+  /* 遠くの霞の中なので、彩度を落として明るく飛ばす。
+     ただし**姿が読める程度には残す**（何の建物か分からないと、
+     行き先を示すという役目を果たさない） */
+  filter: blur(2px) saturate(0.62) brightness(1.14) opacity(0.68);
+  opacity: calc(0.72 * var(--road-glow, 0));
   transform: scale(calc(0.5 + 0.5 * var(--road-glowz, 0)));
   transform-origin: 50% 50%;
   /* 四方を地へ溶かす。矩形の縁が出ると、絵が貼ってあることが分かってしまう */

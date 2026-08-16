@@ -140,13 +140,13 @@ export function HeroScrollZoom() {
           <p
             // 靄は説明文の枠より外まで広がる。名前・見出し・CTA はその前に出す
             // （指定しないと、位置指定のある説明文の層が上に来て、これらが霞む）
-            className="brand-wordmark relative z-10 mb-3 text-[clamp(2.25rem,10vw,5.25rem)] leading-none md:mb-4"
+            className="brand-wordmark relative z-10 mb-5 text-[clamp(2.25rem,10vw,5.25rem)] leading-none md:mb-6"
             style={{ color: 'var(--palace)' }}
           >
             IMAGE PALACE
           </p>
           <h1
-            className="relative z-10 mb-4 text-[clamp(1.3rem,5vw,2.1rem)] font-bold leading-snug tracking-tight md:mb-6 md:text-4xl"
+            className="relative z-10 mb-5 text-[clamp(1.3rem,5vw,2.1rem)] font-bold leading-snug tracking-tight md:mb-6 md:text-4xl"
             style={{ color: 'var(--foreground)' }}
           >
             言葉をイメージに変えて、
@@ -158,7 +158,9 @@ export function HeroScrollZoom() {
               抜けきって読めなくなっていたから。スクリムの落ち方を直した結果、
               追加の地なしで AA を通るようになった（実測は globals.css の
               `.hero-scrim` の注記）。ほかの案は /dev/hero-text で比較できる */}
-          <HeroDescription variant="softWash" washOpacity={0.55} underlineStrong className="mb-6 md:mb-8" />
+          {/* 名前 → 見出し → 説明 → CTA の間隔を等しくする。
+              ばらつくと、どこで話が変わったのかが間隔から読めなくなる */}
+          <HeroDescription variant="softWash" washOpacity={0.55} underlineStrong className="mb-5 md:mb-6" />
           <LandingCta className="relative z-10 flex w-full max-w-sm flex-col gap-3 sm:w-auto sm:max-w-none sm:flex-row" />
         </div>
 
