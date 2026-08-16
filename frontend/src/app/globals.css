@@ -642,6 +642,14 @@
   --hero-dissolve-to: #efe3ce;
 }
 
+/* 道の突き当たり（光と門が置かれる高さ）。
+   **1か所で持つ。** 光と門を別々の値で置いていたころは、
+   門が 13.5svh・光が 17.5% と 4% ずれていて、光の中に門が無かった。
+   低い窓では上へ寄せる（縦が詰まると、道の突き当たりではなく道の上に浮いて見える） */
+:root {
+  --road-focus-top: clamp(10svh, calc(13.5svh - (900px - 100svh) * 0.06), 13.5svh);
+}
+
 /* 流れる雲（上空・スクリムの上で視認性確保） */
 .hero-clouds {
   position: absolute;
@@ -1409,7 +1417,7 @@
      **低い窓では、割合そのものを上げる。** 縦が詰まると、上に空が残らないまま
      門だけが下がって見え、道の突き当たりではなく道の上に浮いて見える。
      900px を境に、縮んだぶんだけ少しずつ上へ寄せる（clamp で行き過ぎを止める） */
-  top: clamp(10svh, calc(13.5svh - (900px - 100svh) * 0.06), 13.5svh);
+  top: var(--road-focus-top);
   /* 大きさも窓に合わせる。px で固定すると、窓を広げたときだけ門が近づいて見える。
      **光より小さく**保つ（同じ大きさだと、光と門のどちらを見ればよいのか決まらない） */
   width: clamp(76px, 8vw, 116px);
@@ -1420,7 +1428,10 @@
      ただし**姿が読める程度には残す**（何の建物か分からないと、
      行き先を示すという役目を果たさない） */
   filter: blur(1.8px) saturate(0.66) brightness(1.12) opacity(0.72);
-  opacity: calc(0.66 * var(--road-glow, 0));
+  /* **光より早く姿を出す。** 同じ立ち上がりだと、光が十分に育つまで
+     何があるのか分からず、道の先が長いあいだ「ただの明るい点」になる。
+     1.7倍の速さで立ち上げ、光が満ちる前に行き先が読めるようにする */
+  opacity: calc(0.66 * min(1, var(--road-glow, 0) * 1.7));
   /* 中心合わせは margin ではなく translate で。
      大きさが窓に応じて変わるので、負の margin だと中心がずれる */
   transform: translate(-50%, -50%) scale(calc(0.55 + 0.45 * var(--road-glowz, 0)));
@@ -1437,15 +1448,17 @@
 .road-intro__glow {
   position: absolute;
   left: 50%;
-  top: 17.5%;
+  /* 門と同じ高さ。**門の位置に光が重なる**ようにする
+     （別々の値で置くと、光の外に門が浮いて、2つの物に見える） */
+  top: var(--road-focus-top);
   width: 150px;
   height: 105px;
-  margin: -52px 0 0 -75px;
   filter: blur(4px);
   opacity: calc(0.4 * var(--road-glow, 0));
-  /* スクロールに合わせた微ズーム: 半分サイズから --road-glowz（フェードより
+  /* 中心合わせは負の margin ではなく translate で（門と同じやり方に揃える）。
+     スクロールに合わせた微ズーム: 半分サイズから --road-glowz（フェードより
      長い 0→1）で少しずつ等倍へ近づく＝奥から光が近づいてくる感じ */
-  transform: scale(calc(0.5 + 0.5 * var(--road-glowz, 0)));
+  transform: translate(-50%, -50%) scale(calc(0.5 + 0.5 * var(--road-glowz, 0)));
   transform-origin: 50% 50%;
 }
 /* コア: 開扉フレア（hero-flare__core）を踏襲した 白→暖金 の柔らかい発光。
