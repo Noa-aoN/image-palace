@@ -34,6 +34,7 @@ export function HeroDescription({
   className = '',
   washOpacity,
   whiteShadow,
+  underlineStrong = false,
 }: {
   variant?: HeroDescriptionVariant
   className?: string
@@ -41,6 +42,8 @@ export function HeroDescription({
   washOpacity?: number
   /** 白文字版の影の濃さ。既定は globals.css の `--white-shadow-a` */
   whiteShadow?: number
+  /** 太字に金の下線を引く（検討中。外すのはこの1語） */
+  underlineStrong?: boolean
 }) {
   // 白文字系は影で読ませる。縁取り（hero-outline）は使わない
   const white = variant === 'white' || variant === 'whiteWash'
@@ -58,6 +61,8 @@ export function HeroDescription({
       // 広い画面で 2xl（672px）＝本文16pxでおよそ40字。ここが上限で、
       // これ以上広げると読みやすさより先に、背景の宮殿が隠れる
       className={`relative isolate max-w-lg text-center sm:max-w-xl md:max-w-2xl lg:max-w-4xl ${
+        underlineStrong ? 'hero-desc-underline ' : ''
+      }${
         // 紙を敷かないなら内側の余白は要らない（余白は紙のためのもの）。
         // wash は靄そのものが文字の外へはみ出すので、ここでは足さない
         variant === 'panel' ? 'px-6 py-4 shadow-sm backdrop-blur-sm md:px-8 md:py-6' : 'px-2 py-1'
