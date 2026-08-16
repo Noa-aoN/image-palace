@@ -32,15 +32,23 @@ const WIDTHS = [
 const HERO_SCRIM =
   'linear-gradient(180deg, rgba(255,253,247,0.88) 0%, rgba(255,253,247,0.6) 45%, rgba(255,253,247,0.18) 100%)'
 
+// スクリムを文字のところだけ抜くためのマスク。中心を消して外へ戻す。
+// **足すのではなく抜く**。明るいアイボリーの上に暗い染みを足すと、
+// それ自体が箱になる。地のほうを局所的に薄くすれば、箱は生まれない
+const SCRIM_HOLE = 'radial-gradient(60% 46% at 50% 50%, transparent 0%, transparent 34%, #000 82%)'
+
 function Stage({
   position,
   width,
   scrim,
+  scrimHole,
   children,
 }: {
   position: string
   width?: number
   scrim?: boolean
+  /** スクリムを文字のところだけ抜く */
+  scrimHole?: boolean
   children: ReactNode
 }) {
   return (
@@ -56,7 +64,18 @@ function Stage({
         className="absolute inset-0 h-full w-full object-cover"
         style={{ objectPosition: position }}
       />
-      {scrim && <div aria-hidden className="absolute inset-0" style={{ background: HERO_SCRIM }} />}
+      {scrim && (
+        <div
+          aria-hidden
+          className="absolute inset-0"
+          style={{
+            background: HERO_SCRIM,
+            ...(scrimHole
+              ? { WebkitMaskImage: SCRIM_HOLE, maskImage: SCRIM_HOLE }
+              : {}),
+          }}
+        />
+      )}
       <div className="relative flex min-h-[300px] items-center justify-center px-4 py-6">{children}</div>
     </div>
   )
@@ -66,11 +85,15 @@ function Stage({
 function Matrix({
   variant,
   washOpacity,
+  whiteShadow,
   scrim,
+  scrimHole,
 }: {
   variant: HeroDescriptionVariant
   washOpacity?: number
+  whiteShadow?: number
   scrim?: boolean
+  scrimHole?: boolean
 }) {
   return (
     <div className="grid gap-4 lg:grid-cols-2">
@@ -80,8 +103,8 @@ function Matrix({
             <p className="text-xs font-medium text-muted-foreground">
               {spot.label} / {w.label}
             </p>
-            <Stage position={spot.position} width={w.width} scrim={scrim}>
-              <HeroDescription variant={variant} washOpacity={washOpacity} />
+            <Stage position={spot.position} width={w.width} scrim={scrim} scrimHole={scrimHole}>
+              <HeroDescription variant={variant} washOpacity={washOpacity} whiteShadow={whiteShadow} />
             </Stage>
           </div>
         )),
@@ -142,34 +165,73 @@ export default function HeroTextProposalsPage() {
       </Section>
 
       <Section
-        title="案D-白文字（にじむ影のみ）"
-        body="いちばん単純。黒い縁は引かない ── 白字に黒縁は輪郭が硬く、字幕やゲームUIの見え方になる。にじむ影なら輪郭は立たず、字の後ろだけが沈む。"
+        title="案F-白文字＋ごく弱い影だけ（地なし）"
+        body="いちばん単純。背景は一切覆わない。黒縁は引かない ── 白字に黒縁は輪郭が硬く、字幕やゲームUIの見え方になる。暗部では上品に決まるが、明部で字が飛ぶかが分かれ目。"
       >
-        <Matrix variant="white" />
+        <Matrix variant="white" whiteShadow={0.3} />
       </Section>
 
       <Section
-        title="案E-白文字＋黒い靄"
-        body="案Cの明暗を反転したもの。靄の作り（縁を作らず外へ消す）は同じ。明部でも字が保つ代わりに、背景がわずかに沈む。"
+        title="案G-白文字＋弱い影＋局所scrim 12%"
+        body="必要なぶんだけ地を沈める。靄は縁を作らず外へ消すので、四角い影は出ない。影を濃くする代わりに地に働かせるのが狙い（影を濃くすると字の周りに黒縁ができる）。"
       >
-        <Matrix variant="whiteWash" washOpacity={0.22} />
+        <Matrix variant="whiteWash" washOpacity={0.12} whiteShadow={0.28} />
       </Section>
 
       <Section
-        title="⚠ 白文字を、本番のスクリムに重ねた場合"
-        body="本番のヒーローは上端88%のアイボリースクリムが掛かっている。説明文が置かれる高さは地がほぼアイボリーなので、そこでは白字が消える。白文字系を採るなら、スクリムのほうを弱めるのが前提になる。"
+        title="案G'-白文字＋弱い影＋局所scrim 18%"
+        body="明部でも確実に読ませたい場合。ここまで来ると、地が沈んでいることは分かる。"
+      >
+        <Matrix variant="whiteWash" washOpacity={0.18} whiteShadow={0.28} />
+      </Section>
+
+      <Section
+        title="案H-本番スクリムを、文字のところだけ抜く（白文字を成立させる案）"
+        body="暗い地を足すのではなく、明るい地を抜く。アイボリーのスクリムを文字のまわりだけ外へ向けて消すと、そこだけ元の絵の濃さが戻り、白文字が乗る。足し算だと明るい地の上に暗い染みができて箱になるが、引き算なら箱は生まれない。左が「抜いた場合」、右が「抜かない場合」。"
       >
         <div className="grid gap-4 lg:grid-cols-2">
           <div className="space-y-1.5">
-            <p className="text-xs font-medium text-muted-foreground">案D-白文字 + 本番スクリム</p>
-            <Stage position="center 18%" scrim>
-              <HeroDescription variant="white" />
+            <p className="text-xs font-medium text-muted-foreground">スクリムを抜く / PC</p>
+            <Stage position="center 18%" scrim scrimHole>
+              <HeroDescription variant="white" whiteShadow={0.3} />
             </Stage>
           </div>
           <div className="space-y-1.5">
-            <p className="text-xs font-medium text-muted-foreground">案E-白文字＋黒い靄 + 本番スクリム</p>
+            <p className="text-xs font-medium text-muted-foreground">抜かない（現状のまま）/ PC</p>
             <Stage position="center 18%" scrim>
-              <HeroDescription variant="whiteWash" washOpacity={0.22} />
+              <HeroDescription variant="white" whiteShadow={0.3} />
+            </Stage>
+          </div>
+          <div className="space-y-1.5">
+            <p className="text-xs font-medium text-muted-foreground">スクリムを抜く / モバイル(390px)</p>
+            <Stage position="center 18%" width={390} scrim scrimHole>
+              <HeroDescription variant="white" whiteShadow={0.3} />
+            </Stage>
+          </div>
+          <div className="space-y-1.5">
+            <p className="text-xs font-medium text-muted-foreground">抜く＋局所scrim 12% / モバイル(390px)</p>
+            <Stage position="center 18%" width={390} scrim scrimHole>
+              <HeroDescription variant="whiteWash" washOpacity={0.12} whiteShadow={0.28} />
+            </Stage>
+          </div>
+        </div>
+      </Section>
+
+      <Section
+        title="⚠ 参考: 白文字を、本番のスクリムにそのまま重ねた場合"
+        body="本番のヒーローは上端88%のアイボリースクリムが掛かっている。説明文が置かれる高さは地がほぼアイボリーなので、そこでは白字が消える。案Hはこれを局所的に抜いて解いている。"
+      >
+        <div className="grid gap-4 lg:grid-cols-2">
+          <div className="space-y-1.5">
+            <p className="text-xs font-medium text-muted-foreground">案F-白文字 + 本番スクリム（抜かない）</p>
+            <Stage position="center 18%" scrim>
+              <HeroDescription variant="white" whiteShadow={0.3} />
+            </Stage>
+          </div>
+          <div className="space-y-1.5">
+            <p className="text-xs font-medium text-muted-foreground">案G-白文字＋局所scrim + 本番スクリム（抜かない）</p>
+            <Stage position="center 18%" scrim>
+              <HeroDescription variant="whiteWash" washOpacity={0.12} whiteShadow={0.28} />
             </Stage>
           </div>
           <div className="space-y-1.5">

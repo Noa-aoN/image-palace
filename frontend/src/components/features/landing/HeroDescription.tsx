@@ -26,11 +26,14 @@ export function HeroDescription({
   variant = 'panel',
   className = '',
   washOpacity,
+  whiteShadow,
 }: {
   variant?: HeroDescriptionVariant
   className?: string
   /** `wash` の白の濃さ。既定は globals.css の `--hero-wash-a`（検討用に外から振る） */
   washOpacity?: number
+  /** 白文字版の影の濃さ。既定は globals.css の `--white-shadow-a` */
+  whiteShadow?: number
 }) {
   // 白文字系は影で読ませる。縁取り（hero-outline）は使わない
   const white = variant === 'white' || variant === 'whiteWash'
@@ -57,7 +60,9 @@ export function HeroDescription({
               border: '1px solid var(--landing-panel-border)',
               borderRadius: 'var(--landing-panel-radius)',
             }
-          : undefined
+          : whiteShadow === undefined
+            ? undefined
+            : ({ '--white-shadow-a': whiteShadow } as React.CSSProperties)
       }
     >
       {/* 靄は**文字と別の層**に置く。同じ層でマスクすると、端の字まで薄くなる */}
@@ -77,7 +82,7 @@ export function HeroDescription({
 
           1文目は句点まで44字あって、紙を上限まで広げても1行に入らない。
           成り行きに任せると読点の無いところで切れるので、
-          **読点（「〜生成して、」の後）で自分で折る**。
+          **読点（「〜生成し、」の後）で自分で折る**。
           text-balance は、さらに狭い画面でそれでも折り返すときに、
           行の長さを揃えて中央の座りを保つため */}
       <p
@@ -87,9 +92,9 @@ export function HeroDescription({
         {/* 鉤括弧は前の行の末尾に置く。次の行の頭に置くと、そこまでが
             ひとつのテキストになり、JSX が改行を空白1つに変えて
             「した 「記憶のカード」」と空いてしまう */}
-        覚えたい・残したい言葉を書くと、AIがイメージを生成して、
+        覚えたい・残したい言葉を書くと、AIがイメージを生成し、
         <br />
-        「<strong className="font-semibold">記憶のカード</strong>」を作ってくれます。
+        「<strong className="font-semibold">記憶のカード</strong>」を作ります。
       </p>
       {/* 用途は**それぞれを太字にする**。文のまま流すと、
           読み飛ばした人に「単語帳のサービス」としてだけ残る。
@@ -102,15 +107,17 @@ export function HeroDescription({
         }`}
         style={styled ? { color: '#5A5348' } : undefined}
       >
+        集めたカードは、
         <strong className="font-semibold">単語帳</strong>や
         <strong className="font-semibold">用語集</strong>での暗記、
         <strong className="font-semibold">図鑑</strong>・
         <strong className="font-semibold">相関図</strong>・
-        <strong className="font-semibold">年表</strong>づくり。
+        <strong className="font-semibold">年表</strong>づくりに。
         <br />
+        さらに、
         <strong className="font-semibold">絵日記</strong>、
         <strong className="font-semibold">タスク管理</strong>、
-        <strong className="font-semibold">ビジョンボード</strong>など、使い方は無限大。
+        <strong className="font-semibold">ビジョンボード</strong>など、使い方は無限大です。
       </p>
       <p
         className={`mt-3 text-[0.85rem] leading-relaxed text-balance md:text-base ${textClass}`}
@@ -119,11 +126,11 @@ export function HeroDescription({
         {/* 句点で切る。ここも1文ずつ。
             文の途中で行を折ると JSX が改行を空白1つに変えてしまうので、
             折ってよいのは <br /> を挟む場所だけ */}
-        作ったカードは、自分の「宮殿」に並べて、整理・組み合わせ・反復練習。
+        作ったカードを、自分の「宮殿」に並べて、整理・組み合わせ・反復練習。
         <br />
         {/* 「記憶のカード」と対になる呼び名なので、同じ太さで置く。
             鉤括弧は前の行の末尾に（次の行の頭だと空白が1つ入る） */}
-        それが自分だけの「
+        それが、自分だけの「
         <strong className="font-semibold">記憶の宮殿</strong>」になっていきます。
       </p>
     </div>
