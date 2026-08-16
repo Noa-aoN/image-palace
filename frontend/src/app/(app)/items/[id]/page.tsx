@@ -329,8 +329,15 @@ export default function ItemDetailPage() {
           狭いままだと、列を増やしても1列が細くなるだけで何も得しない */}
       {/* 札どうしの空きは全部同じにする（space-y-3）。
           見出し語とイメージの間だけ広いと、そこで話が切れているように見える。
-          実際は同じ並びの札なので、間隔で群を作らない */}
-      <div className={`mx-auto w-full px-6 py-12 space-y-3 ${detailColumns >= 2 ? 'max-w-6xl' : 'max-w-lg'}`}>
+          実際は同じ並びの札なので、間隔で群を作らない。
+
+          左右に分けるときは、絵と読むものの両方が要るので本文の幅いっぱいを使う。
+          「同じ列に並べる」を選んだときだけ、これまでどおり列数で幅を決める */}
+      <div
+        className={`mx-auto w-full px-6 py-12 space-y-3 ${
+          !leadInGrid || detailColumns >= 2 ? 'max-w-6xl' : 'max-w-lg'
+        }`}
+      >
 
         {/* パンくずと操作は行を分ける。同じ行に並べると、題名が長いカードで
             操作が押し出され、カードごとにボタンの位置が変わる。
@@ -376,13 +383,36 @@ export default function ItemDetailPage() {
           </div>
         </div>
 
-        {/* 同じ列に並べるときは、下の ItemProperties が描く（二重に出さない） */}
-        {!leadInGrid && titleNode}
-        {!leadInGrid && imageNode}
+        {/* ── 左：カード本体 ／ 右：カードについて ── */}
+        {/*
+            **役割で分ける。**
+            左は所有・鑑賞・記憶。絵そのものを、読むものに削られない大きさで置く。
+            右は理解・編集・学習・共有。見出し語も項目も操作も、そちら側の仕事。
 
-        {/* プロパティ（種別・意味・カードの項目）。
-            見出し語とイメージも、選べば同じ列に並ぶ */}
-        <ItemProperties item={item} onUpdated={applyUpdated} leadingBlocks={leadingBlocks} />
+            1列に積んでいたころは、絵の大きさが「下に何行あるか」で決まっていた。
+            項目の多いカードほど絵が小さく見え、眺めるための画面ではなくなる。
+
+            狭いときは縦積みで、**絵が先**。手が届く範囲に絵を置く。
+
+            これは `card_detail_columns` とは別物。あちらは**項目の中の段組み**
+            （右側で項目を何列に並べるか）で、ここはページ全体の左右。
+            同じ「列」でも指すものが違うので、混ぜない。
+
+            左を貼り付けておく（sticky）のは、右が長いカードでも絵が視界から
+            消えないようにするため。絵を見ながら意味を読むのが、この画面の使い方 */}
+        {leadInGrid ? (
+          // 「同じ列に並べる」を選んだ人は、見出し語も絵もほかの項目と同じ扱いにしたい人。
+          // その意思を左右で割ると、選んだことが打ち消される
+          <ItemProperties item={item} onUpdated={applyUpdated} leadingBlocks={leadingBlocks} />
+        ) : (
+          <div className="grid gap-4 lg:grid-cols-[minmax(0,1.1fr)_minmax(0,1fr)] lg:items-start lg:gap-6">
+            <div className="lg:sticky lg:top-6">{imageNode}</div>
+            <div className="space-y-3">
+              {titleNode}
+              <ItemProperties item={item} onUpdated={applyUpdated} leadingBlocks={leadingBlocks} />
+            </div>
+          </div>
+        )}
 
 
       </div>

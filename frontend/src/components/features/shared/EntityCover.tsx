@@ -3,6 +3,7 @@
 import { useState, type ReactNode } from 'react'
 import { useInEntityFrame } from '@/components/features/display/EntityFrame'
 import { Layers, ChevronLeft, ChevronRight } from 'lucide-react'
+import { CARD_IMAGE_EDGE } from '@/lib/card-frame'
 
 // カバー画像の最小形（ItemMedia / ポイント画像どちらも url/thumb_url を持つ）
 type CoverImageLike = { id?: string; url?: string; thumb_url?: string } | null | undefined
@@ -59,7 +60,7 @@ function FirstImage({ images, name, fallback }: { images: CoverImageLike[]; name
           alt={name}
           loading="lazy"
           className={`h-full w-full object-cover ${
-            framed ? '' : 'rounded-[2px] shadow-[0_1px_3px_rgba(0,0,0,0.25)] ring-1 ring-black/15'
+            framed ? '' : CARD_IMAGE_EDGE
           }`}
         />
       ) : (
