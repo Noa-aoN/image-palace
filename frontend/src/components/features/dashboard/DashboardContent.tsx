@@ -201,7 +201,7 @@ export function DashboardContent() {
       <PalaceLordCard tier={billing?.plan?.tier ?? null} />
 
       <section className="flex flex-col space-y-3">
-        <h2 className="flex items-center gap-1.5 text-sm font-bold text-foreground/70 before:h-3 before:w-0.5 before:rounded-full before:bg-[var(--palace)] before:content-['']">宮殿の生成資産</h2>
+        <h2 className="text-base font-semibold">宮殿の生成資産</h2>
         {/*
           カード全体を /billing への入口にしつつ、中に別のボタンも置く。
           リンクでカードを包むと入れ子になって button を入れられないので、
@@ -306,11 +306,12 @@ export function DashboardContent() {
       */}
       {/* クイック作成と作業状況を左右に並べる。
           作業状況は多くの場合1〜2行で、全幅を取ると**その1行のために画面が1つ流れる**。
-          幅は 3:2。入力欄のほうを広く取るのは、ここが打つ場所だから。
+          幅は等分、高さも揃える。片方だけ低いと、2列に割った意味が薄れて
+          「余ったところに置いた」ように見える。
           狭い画面では従来どおり縦に積む（横に割ると入力欄が打ちにくくなる） */}
-      <div className="grid gap-6 lg:grid-cols-5 lg:items-start">
-      <section className="space-y-3 lg:col-span-3">
-        <h2 className="flex items-center gap-1.5 text-sm font-bold text-foreground/70 before:h-3 before:w-0.5 before:rounded-full before:bg-[var(--palace)] before:content-['']">クイック作成</h2>
+      <div className="grid gap-6 lg:grid-cols-2 lg:items-stretch">
+      <section className="flex flex-col space-y-3">
+        <h2 className="text-base font-semibold">クイック作成</h2>
         <QuickCreateCard onCreated={() => setWatchToken((token) => token + 1)} progress={progress} />
       </section>
 
@@ -320,15 +321,17 @@ export function DashboardContent() {
         下にあるものが上下に動いた。**読んでいる途中で場所が変わるのがいちばん困る。**
         何も動いていないときは、そう書いた1行だけを出す。
       */}
-      <section className="space-y-3 lg:col-span-2">
-        <h2 className="flex items-center gap-1.5 text-sm font-bold text-foreground/70 before:h-3 before:w-0.5 before:rounded-full before:bg-[var(--palace)] before:content-['']">作業状況</h2>
+      <section className="flex flex-col space-y-3">
+        <h2 className="text-base font-semibold">作業状況</h2>
+          {/* 隣のクイック作成と高さを揃える。中身は1〜2行しか無いので、
+              伸ばしたぶんは上下の余白に回して中央へ置く */}
           <Link
             href="/items"
             aria-label="作業状況を見る"
-            className="group block rounded-xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--palace)]"
+            className="group block flex-1 rounded-xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--palace)]"
           >
-            <Card className="cursor-pointer transition hover:border-[var(--palace)] hover:shadow-md">
-              <CardContent>
+            <Card className="h-full cursor-pointer transition hover:border-[var(--palace)] hover:shadow-md">
+              <CardContent className="flex h-full flex-col justify-center">
                 {progress ? (
                   <>
                     <div className="flex items-center justify-between gap-3">
@@ -400,13 +403,13 @@ export function DashboardContent() {
       <div className="grid gap-6 lg:grid-cols-2 lg:items-stretch">
         {/* 記憶資産（種類ごとの積み上げ。各列クリックで一覧へ）。カード高さは間取り図に合わせる */}
         <section className="flex flex-col gap-3">
-          <h2 className="flex items-center gap-1.5 text-sm font-bold text-foreground/70 before:h-3 before:w-0.5 before:rounded-full before:bg-[var(--palace)] before:content-['']">宮殿の記憶資産</h2>
+          <h2 className="text-base font-semibold">宮殿の記憶資産</h2>
           <MemoryAssetsCard summary={summary} className="flex-1" />
         </section>
 
         {/* 宮殿の間取り（主要な場所への地図的な導線） */}
         <section className="flex flex-col gap-3">
-          <h2 className="flex items-center gap-1.5 text-sm font-bold text-foreground/70 before:h-3 before:w-0.5 before:rounded-full before:bg-[var(--palace)] before:content-['']">宮殿の間取り図</h2>
+          <h2 className="text-base font-semibold">宮殿の間取り図</h2>
           <PalaceFloorplan />
         </section>
       </div>

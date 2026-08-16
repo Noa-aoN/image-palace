@@ -197,14 +197,18 @@ export function RarityMarks({
   tierClass: string
   dim?: boolean
 }) {
+  // span で描く。**p にすると入れ子になる場所がある**（獲得物の詳細では
+  // 説明文の p の中に置いており、HTML では p の中に p を入れられない。
+  // ブラウザが勝手に閉じてしまい、hydration が食い違う）。
+  // 星の並びは段落ではなく行内の印なので、意味としても span が合う
   return (
-    <p
-      className={`flex items-center justify-center ${dim ? 'opacity-50' : ''}`}
+    <span
+      className={`inline-flex items-center justify-center ${dim ? 'opacity-50' : ''}`}
       aria-label={`レア度 ${level}`}
     >
       {Array.from({ length: level }).map((_, i) => (
         <Star key={i} size={9} className={tierClass} fill="currentColor" strokeWidth={0} aria-hidden />
       ))}
-    </p>
+    </span>
   )
 }
