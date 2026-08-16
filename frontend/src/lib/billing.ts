@@ -5,6 +5,15 @@ export const CREDIT_UNIT = 'クレジット'
 export const CREDIT_UNIT_SHORT = 'cr'
 
 /**
+ * 任意の文章AIを1回使うときの値段。**サーバーの `Ai::UsageLimit::UNIT_COST_POINTS` と揃える**
+ * （向こうは 1pt = 0.01cr で、いまは一律 1pt）。
+ *
+ * 画面のためだけの数なので、実際に引く額はサーバーが決める。
+ * ここを持つのは「押す前にいくらか言う」ためで、ずれたら向こうに合わせること。
+ */
+export const AI_TEXT_COST = 0.01
+
+/**
  * プランの呼び名。
  *
  * 内部の識別名（free / standard / …）と Stripe の商品名はそのまま。ここは**表示だけ**で、
@@ -23,6 +32,23 @@ const TIER_LABELS: Record<string, string> = {
   creator: '賢者',
   studio: '元老',
   topup: 'クレジット追加',
+}
+
+/**
+ * 世間で通じる呼び方。**位（市民・書記官…）は宮殿の中でだけの呼び名**なので、
+ * 課金の話をするときはこちらを添える。値は Stripe の商品名（free / standard …）と同じ並び。
+ */
+const TIER_PLAIN_LABELS: Record<string, string> = {
+  free: 'フリー',
+  standard: 'スタンダード',
+  pro: 'プロ',
+  creator: 'クリエイター',
+  studio: 'スタジオ',
+  topup: '買い切り',
+}
+
+export function tierPlainLabel(tier: string): string {
+  return TIER_PLAIN_LABELS[tier] ?? tier
 }
 
 /** 呼び名だけでは分かりにくいので、一覧では添え書きを出す */

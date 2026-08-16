@@ -16,7 +16,7 @@ import {
   CreditBreakdownButton,
 } from '@/components/features/billing/CreditBreakdownPanel'
 import { generatableCards } from '@/lib/credits'
-import { tierLabel, CREDIT_UNIT, CREDIT_UNIT_SHORT } from '@/lib/billing'
+import { tierPlainLabel, CREDIT_UNIT, CREDIT_UNIT_SHORT } from '@/lib/billing'
 
 const GETTING_STARTED = [
   { icon: <PenLine size={20} />, text: '覚えたい単語や概念を入力する' },
@@ -194,14 +194,14 @@ export function DashboardContent() {
         エントランス
       </h1>
 
-      {/* 宮殿の主人（本人のありよう）と、宮殿の生成資産（残高・作れる枚数・位）を左右に並べる。
+      {/* 宮殿の主人（本人のありよう）と、宮殿の生成資産（プラン・残高・作れる枚数）を左右に並べる。
           主人を先に置くのは、**まず自分の話**だから。残高は「あと何ができるか」の話で、
           自分が何者かを見てからのほうが読み取りやすい */}
       <div className="grid gap-6 lg:grid-cols-2 lg:items-stretch">
       <PalaceLordCard tier={billing?.plan?.tier ?? null} />
 
       <section className="flex flex-col space-y-3">
-        <h2 className="text-sm font-semibold text-muted-foreground">宮殿の生成資産</h2>
+        <h2 className="text-base font-semibold">宮殿の生成資産</h2>
         {/*
           カード全体を /billing への入口にしつつ、中に別のボタンも置く。
           リンクでカードを包むと入れ子になって button を入れられないので、
@@ -210,7 +210,7 @@ export function DashboardContent() {
         <Card className="group relative h-full flex-1 cursor-pointer transition hover:border-[var(--palace)] hover:shadow-md">
           <Link
             href="/billing"
-            aria-label="位と利用状況を見る"
+            aria-label="プランと利用状況を見る"
             className="absolute inset-0 z-0 rounded-xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--palace)]"
           />
             <CardContent className="space-y-4">
@@ -218,7 +218,7 @@ export function DashboardContent() {
                 <div className="flex items-center justify-between">
                   <p className="flex items-center gap-2 text-sm text-muted-foreground">
                     <CreditCard size={18} style={{ color: 'var(--palace)' }} />
-                    位
+                    プラン
                   </p>
                   <ChevronRight
                     size={18}
@@ -226,13 +226,25 @@ export function DashboardContent() {
                     style={{ color: 'var(--palace)' }}
                   />
                 </div>
-                <div className="mt-1 flex items-baseline justify-between gap-2">
-                  <p className="text-lg font-semibold">{tierLabel(billing?.plan?.tier ?? 'free')}</p>
-                  {renewal && <span className="text-xs text-muted-foreground">{renewal} に更新</span>}
+                {/* **位（市民・書記官…）はここに出さない。** 隣の「宮殿の主人」に同じものが
+                    並んでいて、同じ言葉が2か所にあると、別のことを指しているのかと読ませてしまう。
+                    あちらは自分が何者かの話、こちらはお金と量の話。
+                    ここでは世間で通じる呼び方と、毎期どれだけ届くかを出す */}
+                <div className="mt-1 flex flex-wrap items-baseline justify-between gap-x-2 gap-y-1">
+                  <p className="text-lg font-semibold">
+                    {tierPlainLabel(billing?.plan?.tier ?? 'free')}
+                    {perPeriod > 0 && (
+                      <span className="ml-1.5 text-sm font-normal text-muted-foreground">
+                        毎月 +{perPeriod} {CREDIT_UNIT_SHORT}
+                      </span>
+                    )}
+                  </p>
+                  {/* 「◯◯に更新」だと、済んだことなのかこれからなのかが読めない */}
+                  {renewal && <span className="text-xs text-muted-foreground">次の更新は {renewal}</span>}
                 </div>
               </div>
 
-              <div className="border-t pt-3">
+              <div>
                 <p className="flex items-center gap-2 text-sm text-muted-foreground">
                   <Coins size={18} style={{ color: 'var(--palace)' }} />
                   残高
@@ -241,7 +253,7 @@ export function DashboardContent() {
                     何についての内訳なのかが数字から離れる */}
                 <div className="mt-1 flex items-end justify-between gap-2">
                   <p>
-                    <span className="text-3xl font-bold tabular-nums">{credits ?? '—'}</span>
+                    <span className="text-2xl font-bold tabular-nums">{credits ?? '—'}</span>
                     <span className="ml-1 text-sm text-muted-foreground">{CREDIT_UNIT}（{CREDIT_UNIT_SHORT}）</span>
                   </p>
                   {/* 敷いたリンクより手前に出す。押しても位の画面へは飛ばない */}
@@ -254,18 +266,17 @@ export function DashboardContent() {
               <div className="space-y-2">
                 {creditPct !== null && (
                   <>
+                    {/* **分数にも棒にもしない。** 分子は「いまの残高で作れる枚数」、
+                        分母は「プランが毎期くれる量」で、測っているものが違う。
+                        棒で表せるのは上限のある量だけで、残高には上限が無い
+                        （買い足せばプランの付与量を超える）。超えた瞬間に
+                        棒は振り切れ、何も表さなくなる。数だけを言い切る */}
                     <div className="flex items-baseline justify-between">
-                      <span className="text-sm text-muted-foreground">生成可能カードの枚数目安</span>
+                      <span className="text-sm text-muted-foreground">いまの残高で作れる枚数</span>
                       <span>
                         <span className="text-base font-semibold tabular-nums">{cards}</span>
-                        <span className="text-sm text-muted-foreground"> / {perPeriod} 枚</span>
+                        <span className="text-sm text-muted-foreground"> 枚</span>
                       </span>
-                    </div>
-                    <div className="h-2 w-full overflow-hidden rounded-full bg-muted">
-                      <div
-                        className="h-full rounded-full transition-all"
-                        style={{ width: `${creditPct}%`, backgroundColor: 'var(--palace)' }}
-                      />
                     </div>
                   </>
                 )}
@@ -288,8 +299,14 @@ export function DashboardContent() {
         下にあると、記憶資産や間取りを読み飛ばしてから辿り着くことになる。
         残高と位（上の2枚）を見たすぐ下なら、あと何枚作れるかを見てから書ける。
       */}
-      <section className="space-y-3">
-        <h2 className="text-sm font-semibold text-muted-foreground">クイック作成</h2>
+      {/* クイック作成と作業状況を左右に並べる。
+          作業状況は多くの場合1〜2行で、全幅を取ると**その1行のために画面が1つ流れる**。
+          幅は等分、高さも揃える。片方だけ低いと、2列に割った意味が薄れて
+          「余ったところに置いた」ように見える。
+          狭い画面では従来どおり縦に積む（横に割ると入力欄が打ちにくくなる） */}
+      <div className="grid gap-6 lg:grid-cols-2 lg:items-stretch">
+      <section className="flex flex-col space-y-3">
+        <h2 className="text-base font-semibold">クイック作成</h2>
         <QuickCreateCard onCreated={() => setWatchToken((token) => token + 1)} progress={progress} />
       </section>
 
@@ -299,15 +316,17 @@ export function DashboardContent() {
         下にあるものが上下に動いた。**読んでいる途中で場所が変わるのがいちばん困る。**
         何も動いていないときは、そう書いた1行だけを出す。
       */}
-      <section className="space-y-3">
-        <h2 className="text-sm font-semibold text-muted-foreground">作業状況</h2>
+      <section className="flex flex-col space-y-3">
+        <h2 className="text-base font-semibold">作業状況</h2>
+          {/* 隣のクイック作成と高さを揃える。中身は1〜2行しか無いので、
+              伸ばしたぶんは上下の余白に回して中央へ置く */}
           <Link
             href="/items"
             aria-label="作業状況を見る"
-            className="group block rounded-xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--palace)]"
+            className="group block flex-1 rounded-xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--palace)]"
           >
-            <Card className="cursor-pointer transition hover:border-[var(--palace)] hover:shadow-md">
-              <CardContent>
+            <Card className="h-full cursor-pointer transition hover:border-[var(--palace)] hover:shadow-md">
+              <CardContent className="flex h-full flex-col justify-center">
                 {progress ? (
                   <>
                     <div className="flex items-center justify-between gap-3">
@@ -347,9 +366,16 @@ export function DashboardContent() {
                   </>
                 ) : summary.failed_count > 0 ? (
                   <div className="flex items-center justify-between gap-3">
-                    <span className="text-sm">
-                      <span className="text-destructive">失敗 {summary.failed_count} 件</span>
-                      <span className="ml-1 text-muted-foreground">（タップして再生成）</span>
+                    {/* 数だけでなく、**次に何をすればよいか**まで置く。
+                        隣と高さを揃えたぶん場所はある */}
+                    <span className="space-y-1 text-sm">
+                      <span className="block">
+                        <span className="text-destructive">失敗 {summary.failed_count} 件</span>
+                        <span className="ml-1 text-muted-foreground">が作り直しを待っています</span>
+                      </span>
+                      <span className="block text-xs text-muted-foreground">
+                        押すとカード一覧へ。作り直しは追加のクレジットなしで試せます
+                      </span>
                     </span>
                     <ChevronRight
                       size={16}
@@ -361,7 +387,12 @@ export function DashboardContent() {
                   /* 何も動いていないときも、区画そのものは残す。
                      出したり消したりすると、下にあるものが上下に動く */
                   <div className="flex items-center justify-between gap-3">
-                    <span className="text-sm text-muted-foreground">いま動いているものはありません</span>
+                    <span className="space-y-1 text-sm">
+                      <span className="block text-muted-foreground">いま動いているものはありません</span>
+                      <span className="block text-xs text-muted-foreground">
+                        これまでに作ったカードは {summary.total_count} 枚です
+                      </span>
+                    </span>
                     <ChevronRight
                       size={16}
                       className="transition-transform group-hover:translate-x-0.5"
@@ -373,18 +404,19 @@ export function DashboardContent() {
             </Card>
           </Link>
         </section>
+      </div>
 
       {/* 記憶資産・間取り図（横並びで全幅を使う） */}
       <div className="grid gap-6 lg:grid-cols-2 lg:items-stretch">
         {/* 記憶資産（種類ごとの積み上げ。各列クリックで一覧へ）。カード高さは間取り図に合わせる */}
         <section className="flex flex-col gap-3">
-          <h2 className="text-sm font-semibold text-muted-foreground">宮殿の記憶資産</h2>
+          <h2 className="text-base font-semibold">宮殿の記憶資産</h2>
           <MemoryAssetsCard summary={summary} className="flex-1" />
         </section>
 
         {/* 宮殿の間取り（主要な場所への地図的な導線） */}
         <section className="flex flex-col gap-3">
-          <h2 className="text-sm font-semibold text-muted-foreground">宮殿の間取り図</h2>
+          <h2 className="text-base font-semibold">宮殿の間取り図</h2>
           <PalaceFloorplan />
         </section>
       </div>

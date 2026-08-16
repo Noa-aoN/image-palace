@@ -49,7 +49,7 @@ export function PalaceLordCard({ tier }: { tier: string | null }) {
 
   return (
     <section className="flex flex-col space-y-3">
-      <h2 className="text-sm font-semibold text-muted-foreground">宮殿の主人</h2>
+      <h2 className="text-base font-semibold">宮殿の主人</h2>
       {/*
         札そのものはリンクにしない。**中に釦と別の行き先があるため。**
         全体を包んでいたころは、「?」を押しても獲得物の絵を押しても、

@@ -36,6 +36,17 @@ const STRUCTURED_DATA = {
  * できること。**作る → まとめる → 使う**の順に並べる。
  * 3つ目はまだ無いので、そう書く。あるように見せると、入ってから探すことになる。
  */
+/*
+ * 節の中の大きさは4段。**ラベルと注釈を同じ大きさにしない**。
+ *
+ *   ラベル（CONCEPT 等）  12px … これは分類の札で、読ませる文ではない
+ *   見出し                30/36px … いちばん言いたいこと
+ *   本文                  16/18px
+ *   注釈・出典            14px
+ *
+ * 以前はラベルと注釈がどちらも 14px で、小さいほうが二役になっていた。
+ * 同じ大きさのものが違う役目を持つと、どこから読めばよいのか決まらない。
+ */
 const FEATURES = [
   {
     icon: <Brain size={20} />,
@@ -126,7 +137,7 @@ export default function TopPage() {
 
       {/* 1. コンセプト（仮）。ヒーロー終盤へ少しだけ重ね、余白を程よく詰める */}
       <Section id="concept" cueTo="features" bg="var(--ivory)" roadFadeTop roadIntro roadFadeIntoNext className="-mt-[10svh]">
-        <p className="mb-4 text-sm font-medium tracking-widest" style={{ color: 'var(--palace)' }}>CONCEPT</p>
+        <p className="mb-4 text-xs font-medium tracking-widest" style={{ color: 'var(--palace)' }}>CONCEPT</p>
         <h2 className="mb-6 text-3xl font-bold tracking-tight md:text-4xl" style={{ color: '#111111' }}>
           イメージで記憶する。
         </h2>
@@ -144,7 +155,7 @@ export default function TopPage() {
 
       {/* 2. 機能（仮） */}
       <Section id="features" cueTo={hasShots ? 'gallery' : 'cta'} bg="var(--ivory-dark)" topDividerFrom="var(--ivory)" roadFadeIntoNext>
-        <p className="mb-4 text-sm font-medium tracking-widest" style={{ color: 'var(--palace)' }}>FEATURES</p>
+        <p className="mb-4 text-xs font-medium tracking-widest" style={{ color: 'var(--palace)' }}>FEATURES</p>
         <h2 className="mb-12 text-3xl font-bold tracking-tight md:text-4xl" style={{ color: '#111111' }}>できること</h2>
         <div className="grid gap-6 text-left md:grid-cols-3">
           {FEATURES.map((f) => (
@@ -170,7 +181,7 @@ export default function TopPage() {
       {/* 3. 作例。**絵が無いあいだは節ごと出さない**（LANDING_SHOTS が空なら丸ごと消える） */}
       {hasShots && (
         <Section id="gallery" cueTo="cta" bg="#ffffff" topDividerFrom="var(--ivory-dark)" roadFadeIntoNext>
-          <p className="mb-4 text-sm font-medium tracking-widest" style={{ color: 'var(--palace)' }}>GALLERY</p>
+          <p className="mb-4 text-xs font-medium tracking-widest" style={{ color: 'var(--palace)' }}>GALLERY</p>
           <h2 className="mb-6 text-3xl font-bold tracking-tight md:text-4xl" style={{ color: '#111111' }}>画面イメージ</h2>
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
             {LANDING_SHOTS.map((shot) => (

@@ -23,6 +23,9 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Spinner } from '@/components/ui/spinner'
 import { Tooltip } from '@/components/ui/tooltip'
+import { CreditCostHint } from '@/components/features/billing/CreditCostNote'
+import { AI_TEXT_COST } from '@/lib/billing'
+import { useBillingStore } from '@/stores/billing'
 import { PanelSlotContent } from '@/components/features/panel/PanelSlot'
 import { useCardDetailFit, useCardDetailLeadInGrid } from '@/hooks/useCardDetailColumns'
 import { updateBlockView, suggestItemProperties } from '@/lib/api/items'
@@ -99,6 +102,12 @@ export function CardViewPanel({
   const [suggestError, setSuggestError] = useState<string | null>(null)
   // AI に選ばせる前の並び。1回だけ戻せるようにする
   const [beforeSuggest, setBeforeSuggest] = useState<{ order: string[]; omitted: string[] } | null>(null)
+  // AI が挙げた候補と、そのうち利用者が採るもの。
+  // 候補を持っているあいだは、まだカードには何も起きていない
+  const [candidates, setCandidates] = useState<string[] | null>(null)
+  const [picked, setPicked] = useState<Set<string>>(new Set())
+  // 押す前に値段を言うためだけに読む。実際に引く額はサーバーが決める
+  const available = useBillingStore((state) => state.summary?.available_credits) ?? null
   const hidden = new Set(item.block_view?.hidden ?? [])
   const omittedKeys = new Set(item.block_view?.omitted ?? [])
   // 4px 動かすまでは並べ替えを始めない。表示の入り切りを押すだけのつもりが
@@ -154,9 +163,15 @@ export function CardViewPanel({
 
   // AI に選ばせる。渡すのは「いま定義されている項目」だけで、
   // 新しい項目は作らせない（種別の定義が AI の思いつきで増えるのを避ける）
+  // AI には**選ばせるだけ**で、当てるのは利用者。
+  //
+  // 以前はここで即座に並びを書き換えていた。取り消しは置いてあったが、
+  // 押した瞬間にカードの構造が変わるので、「試しに聞いてみる」ができなかった。
+  // 候補を受け取って並べ、選んだものだけを足す。
   const suggest = async () => {
     setSuggesting(true)
     setSuggestError(null)
+    setCandidates(null)
     try {
       const keys = await suggestItemProperties(item.id, allKeys)
       const wanted = keys.filter((key) => allKeys.includes(key))
@@ -164,14 +179,35 @@ export function CardViewPanel({
         setSuggestError('選べませんでした')
         return
       }
-      setBeforeSuggest({ order, omitted: [...omittedKeys] })
-      await save([...hidden].filter((k) => wanted.includes(k)), wanted, allKeys.filter((k) => !wanted.includes(k)))
+      // 既に出ているものは、足す意味が無いので候補から外す
+      const fresh = wanted.filter((key) => !order.includes(key) || hidden.has(key))
+      setCandidates(fresh.length > 0 ? fresh : wanted)
+      setPicked(new Set(fresh.length > 0 ? fresh : wanted))
     } catch (err: unknown) {
       const detail = (err as { response?: { data?: { error?: string } } })?.response?.data?.error
       setSuggestError(detail ?? '選べませんでした。時間を置いてお試しください。')
     } finally {
       setSuggesting(false)
     }
+  }
+
+  // 選んだものだけを足す。**外すものは触らない**（提案は追加の話であって、
+  // いま出しているものを引っ込める話ではない）
+  const applyPicked = async () => {
+    if (!candidates) return
+    const add = candidates.filter((key) => picked.has(key))
+    if (add.length === 0) {
+      setCandidates(null)
+      return
+    }
+    setBeforeSuggest({ order, omitted: [...omittedKeys] })
+    const nextOrder = [...order, ...add.filter((key) => !order.includes(key))]
+    await save(
+      [...hidden].filter((key) => !add.includes(key)),
+      nextOrder,
+      [...omittedKeys].filter((key) => !add.includes(key))
+    )
+    setCandidates(null)
   }
 
   const handleDragEnd = (event: DragEndEvent) => {
@@ -289,6 +325,13 @@ export function CardViewPanel({
           disabled={busy}
           onSuggest={suggest}
           suggesting={suggesting}
+          candidates={candidates}
+          picked={picked}
+          setPicked={setPicked}
+          onApplyPicked={applyPicked}
+          onCancelSuggest={() => setCandidates(null)}
+          labelOf={(key) => blocks.find((b) => b.key === key)?.label ?? key}
+          available={available}
         />
 
         {/* 当てたあとに戻せるようにする。AI の結果は当たり外れがあるので、
@@ -516,6 +559,13 @@ function PresetBar({
   disabled,
   onSuggest,
   suggesting,
+  candidates,
+  picked,
+  setPicked,
+  onApplyPicked,
+  onCancelSuggest,
+  labelOf,
+  available,
 }: {
   current: string[]
   onApply: (preset: CardPropertyPreset) => void
@@ -523,6 +573,14 @@ function PresetBar({
   /** AI に選ばせる。ひな型と同じ「並びをまとめて当てる」操作なので、ここに置く */
   onSuggest: () => void
   suggesting: boolean
+  /** AI が挙げた候補。持っているあいだは、まだカードには何も起きていない */
+  candidates: string[] | null
+  picked: Set<string>
+  setPicked: React.Dispatch<React.SetStateAction<Set<string>>>
+  onApplyPicked: () => void
+  onCancelSuggest: () => void
+  labelOf: (key: string) => string
+  available: number | null
 }) {
   const [presets, setPresets] = useState<CardPropertyPreset[] | null>(null)
   const [naming, setNaming] = useState(false)
@@ -678,16 +736,60 @@ function PresetBar({
         </div>
       )}
 
-      {/* AI に選ばせるのも「並びをまとめて当てる」操作。ひな型と同じ場所に置く */}
-      <button
-        type="button"
-        onClick={onSuggest}
-        disabled={disabled || suggesting}
-        className="flex items-center gap-1 text-xs text-muted-foreground transition-colors hover:text-foreground disabled:opacity-50"
-      >
-        {suggesting ? <Spinner size={11} /> : <Sparkles size={11} />}
-        このカードに合う項目をAIに選ばせる
-      </button>
+      {/* AI に選ばせるのも「並びをまとめて当てる」操作。ひな型と同じ場所に置く。
+          押しても**まだ何も起きない**（候補が並ぶだけ） */}
+      <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
+        <button
+          type="button"
+          onClick={onSuggest}
+          disabled={disabled || suggesting}
+          className="flex items-center gap-1 text-xs text-muted-foreground transition-colors hover:text-foreground disabled:opacity-50"
+        >
+          {suggesting ? <Spinner size={11} /> : <Sparkles size={11} />}
+          このカードに合う項目をAIで提案
+        </button>
+        <CreditCostHint cost={AI_TEXT_COST} available={available} />
+      </div>
+
+      {/* 候補。**選んだものだけを足す。** 出ているものを引っ込めることはしない */}
+      {candidates && candidates.length > 0 && (
+        <div className="space-y-2 rounded-lg border border-border/70 bg-muted/30 p-2.5">
+          <p className="text-xs text-muted-foreground">足す項目を選んでください</p>
+          <ul className="space-y-1">
+            {candidates.map((key) => (
+              <li key={key}>
+                <label className="flex cursor-pointer items-center gap-2 text-xs">
+                  <input
+                    type="checkbox"
+                    checked={picked.has(key)}
+                    onChange={() =>
+                      setPicked((prev) => {
+                        const next = new Set(prev)
+                        if (next.has(key)) next.delete(key)
+                        else next.add(key)
+                        return next
+                      })
+                    }
+                  />
+                  {labelOf(key)}
+                </label>
+              </li>
+            ))}
+          </ul>
+          <div className="flex items-center gap-2">
+            <Button size="sm" onClick={onApplyPicked} disabled={saving || picked.size === 0}>
+              選んだ項目を足す
+            </Button>
+            <button
+              type="button"
+              onClick={onCancelSuggest}
+              className="text-xs text-muted-foreground hover:underline"
+            >
+              やめる
+            </button>
+          </div>
+        </div>
+      )}
 
       {naming ? (
         <div className="flex gap-1.5">

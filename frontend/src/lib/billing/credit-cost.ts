@@ -30,9 +30,9 @@ export interface CreditCost {
  * 本当に足りなければサーバーが断る。画面の役目は、知らせることであって門番ではない。
  */
 export function creditCost({ cost, available }: { cost: number; available: number | null }): CreditCost {
-  const safeCost = Math.max(0, Math.round(cost))
+  const safeCost = round2(Math.max(0, cost))
   const sufficient = available === null || available >= safeCost
-  const after = available === null ? null : Math.max(0, available - safeCost)
+  const after = available === null ? null : round2(Math.max(0, available - safeCost))
 
   return {
     cost: safeCost,
@@ -43,16 +43,35 @@ export function creditCost({ cost, available }: { cost: number; available: numbe
   }
 }
 
+/**
+ * 小数第2位まで。**文章のAIは 0.01 cr 単位**なので、整数に丸めると全部 0 になり、
+ * 「使ったのに何も減っていない」ように見える。
+ *
+ * 0.1 + 0.2 が 0.30000000000000004 になる類の誤差も、ここで落としておく
+ * （合計を出すときに桁が溢れると、金額の話として読めなくなる）。
+ */
+function round2(value: number): number {
+  return Math.round(value * 100) / 100
+}
+
+/**
+ * 数の書き方。**末尾の 0 は出さない**（`1.00 cr` は読みにくく、
+ * 1 と 1.00 が別のものに見える）。
+ */
+export function formatCredits(value: number): string {
+  return String(round2(value))
+}
+
 /** 「1 cr 使います」。数が 0 のときは何も言わない（無料の操作） */
 export function costLabel(c: CreditCost, unit: string): string | null {
   if (c.cost === 0) return null
 
-  return `この操作で ${c.cost} ${unit} 使います`
+  return `この操作で ${formatCredits(c.cost)} ${unit} 使います`
 }
 
 /** 「残高 4 cr → 3 cr」。残高が分からないときは出さない */
 export function balanceLabel(c: CreditCost, unit: string): string | null {
   if (c.available === null || c.cost === 0) return null
 
-  return `残高 ${c.available} ${unit} → ${c.after} ${unit}`
+  return `残高 ${formatCredits(c.available)} ${unit} → ${formatCredits(c.after ?? 0)} ${unit}`
 }

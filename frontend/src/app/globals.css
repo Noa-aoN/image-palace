@@ -1360,16 +1360,23 @@
 .road-bg__gate {
   position: absolute;
   left: 50%;
-  top: 17.5%;
-  width: 150px;
-  height: 105px;
-  margin: -52px 0 0 -75px;
+  /* 道が集まっていく先（地平線は .road-bg__plane の top: 26%）より、さらに奥。
+     % で持つので、窓の高さが変わっても道との関係は崩れない */
+  top: 13.5%;
+  /* 大きさも窓に合わせる。px で固定すると、窓を広げたときだけ門が近づいて見える。
+     **光より小さく**保つ（同じ大きさだと、光と門のどちらを見ればよいのか決まらない） */
+  width: clamp(76px, 8vw, 116px);
+  aspect-ratio: 132 / 92;
   pointer-events: none;
   background: url('/auth-gate.webp') center bottom / contain no-repeat;
-  /* 遠くの霞の中なので、彩度を落として明るく飛ばす */
-  filter: blur(3.5px) saturate(0.5) brightness(1.22) opacity(0.5);
-  opacity: calc(0.55 * var(--road-glow, 0));
-  transform: scale(calc(0.5 + 0.5 * var(--road-glowz, 0)));
+  /* 遠くの霞の中なので、彩度を落として明るく飛ばす。
+     ただし**姿が読める程度には残す**（何の建物か分からないと、
+     行き先を示すという役目を果たさない） */
+  filter: blur(1.8px) saturate(0.66) brightness(1.12) opacity(0.72);
+  opacity: calc(0.66 * var(--road-glow, 0));
+  /* 中心合わせは margin ではなく translate で。
+     大きさが窓に応じて変わるので、負の margin だと中心がずれる */
+  transform: translate(-50%, -50%) scale(calc(0.55 + 0.45 * var(--road-glowz, 0)));
   transform-origin: 50% 50%;
   /* 四方を地へ溶かす。矩形の縁が出ると、絵が貼ってあることが分かってしまう */
   -webkit-mask-image: radial-gradient(60% 62% at 50% 55%, #000 18%, transparent 82%);

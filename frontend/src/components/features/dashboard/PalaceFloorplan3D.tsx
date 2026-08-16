@@ -271,20 +271,31 @@ export function PalaceFloorplan3D({
         >
           <defs>
             {/* 壁は「日に焼けた石灰岩」の色。面の向きで明るさを変える（天面＝陽が当たる、
-                前面＝中間、側面＝影）。暗い foreground ではなく、宮殿の石の色（--palace 系）で組む。 */}
+                前面＝中間、側面＝影）。
+
+                色は**隣の「宮殿の記憶資産」の積み木と同じ**にする。
+                並んだ2枚のカードで同じ宮殿の石を描いているのに、別々の色を持っていた。
+                同じものが場所によって違う色をしていると、別の素材に見える。
+
+                基準はカードの積み木（top #DCC488 / left #C6A75E / right #A2803B）。
+                4種の中でこれを選ぶのは、left がちょうど差し色の金（--palace）そのもので、
+                画面全体の基準色になっているため。
+
+                根元（offset 0）を積み木の面の色と同じにし、上へ向けて明るく薄くする
+                （壁は上端をぼかして地に溶かすため、ここだけは積み木と違ってよい）。 */}
             <linearGradient id="fp3d-wall-front" x1="0" y1="1" x2="0" y2="0">
-              <stop offset="0" stopColor="#D2B776" stopOpacity={1} />
-              <stop offset="0.6" stopColor="#DECB94" stopOpacity={0.98} />
-              <stop offset="1" stopColor="#EADEB8" stopOpacity={0.62} />
+              <stop offset="0" stopColor="#C6A75E" stopOpacity={1} />
+              <stop offset="0.6" stopColor="#D6C08A" stopOpacity={0.98} />
+              <stop offset="1" stopColor="#E6D8B2" stopOpacity={0.62} />
             </linearGradient>
             <linearGradient id="fp3d-wall-side" x1="0" y1="1" x2="0" y2="0">
-              <stop offset="0" stopColor="#AD9053" stopOpacity={1} />
-              <stop offset="0.6" stopColor="#BFA772" stopOpacity={0.98} />
-              <stop offset="1" stopColor="#D2C296" stopOpacity={0.56} />
+              <stop offset="0" stopColor="#A2803B" stopOpacity={1} />
+              <stop offset="0.6" stopColor="#B99C68" stopOpacity={0.98} />
+              <stop offset="1" stopColor="#D0BC94" stopOpacity={0.56} />
             </linearGradient>
             <linearGradient id="fp3d-wall-top" x1="0" y1="0" x2="0" y2="1">
-              <stop offset="0" stopColor="#F5ECD3" stopOpacity={1} />
-              <stop offset="1" stopColor="#DDCA96" stopOpacity={1} />
+              <stop offset="0" stopColor="#EFE2C0" stopOpacity={1} />
+              <stop offset="1" stopColor="#DCC488" stopOpacity={1} />
             </linearGradient>
             {/* 壁の石積み（目地。段ごとに半個ずらす） */}
             <pattern id="fp3d-wall-stone" width="10" height="5" patternUnits="userSpaceOnUse">

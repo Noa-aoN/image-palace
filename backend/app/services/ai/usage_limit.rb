@@ -32,7 +32,12 @@ module Ai
       "meaning" => UNIT_COST_POINTS,
       "examples" => UNIT_COST_POINTS,
       "tags" => UNIT_COST_POINTS,
-      "brief" => UNIT_COST_POINTS,
+      # 画像生成の**内部工程**。利用者が選べず、画像を作るなら必ず通る。
+      # 画像1枚ぶんの 1cr に含めるので、ここでは取らない。
+      # （brief には共有キャッシュがあり、同じ単語の2人目以降はそもそも呼ばれない）
+      "brief" => 0,
+      "scene_rewrite_internal" => 0,
+      # 手で押す「意味・説明から書き直す」。こちらは任意の補助なので取る
       "scene_rewrite" => UNIT_COST_POINTS,
       "suggest_properties" => UNIT_COST_POINTS,
       "fill_properties" => UNIT_COST_POINTS,

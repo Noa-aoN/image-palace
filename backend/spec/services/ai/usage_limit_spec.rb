@@ -2,11 +2,25 @@ require "rails_helper"
 
 RSpec.describe Ai::UsageLimit do
   describe ".cost_points" do
+    # 画像生成の内部工程。利用者が選べず、画像を作るなら必ず通るので、
+    # 画像1枚ぶんの 1cr に含める（ここで別に取ると二重取りになる）
+    INTERNAL_KINDS = %w[brief scene_rewrite_internal].freeze
+
     # 「AI を使ったのに何も減っていない」を無くすため、文章生成も 1pt = 0.01cr を取る。
     # ここが 0 に戻ると、その種類だけ黙って無料に戻る
-    it "画面から呼ばれる種類はすべて課金対象" do
+    it "利用者が選ぶ種類はすべて課金対象" do
       described_class::DEFAULT_COST_POINTS.each_key do |kind|
+        next if INTERNAL_KINDS.include?(kind)
+
         expect(described_class.cost_points(kind)).to eq(1), "#{kind} が無料になっています"
+      end
+    end
+
+    # 内包したものが、うっかり課金側へ戻らないようにする。
+    # 戻ると画像1枚に対して 1cr + 0.01cr を取ることになる
+    it "画像生成の内部工程は課金しない" do
+      INTERNAL_KINDS.each do |kind|
+        expect(described_class.cost_points(kind)).to eq(0), "#{kind} が課金対象になっています"
       end
     end
 
