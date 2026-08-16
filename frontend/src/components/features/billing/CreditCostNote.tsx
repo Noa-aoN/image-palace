@@ -3,7 +3,7 @@
 import Link from 'next/link'
 import { AlertTriangle, Coins } from 'lucide-react'
 import { CREDIT_UNIT_SHORT } from '@/lib/billing'
-import { balanceLabel, costLabel, creditCost, formatCredits } from '@/lib/billing/credit-cost'
+import { afterBalanceLabel, balanceLabel, costLabel, creditCost, formatCredits } from '@/lib/billing/credit-cost'
 
 /**
  * これから使うクレジットを、**押す前に**置く。
@@ -64,13 +64,30 @@ export function CreditCostNote({
   className?: string
   /**
    * `inline` は枠を持たない1行。**縦に伸ばしたくない場所**（釦の隣など）で使う。
-   * 出す中身は同じで、置き方だけが違う。
+   * `after` は残りだけを言う1行。書きながら数が動く場所で使う。
+   * 出す中身の量だけが違い、計算はどれも同じ。
    */
-  variant?: 'box' | 'inline'
+  variant?: 'box' | 'inline' | 'after'
 }) {
   const c = creditCost({ cost, available })
   const text = costLabel(c, CREDIT_UNIT_SHORT)
   if (!text) return null
+
+  if (variant === 'after') {
+    const after = afterBalanceLabel(c, CREDIT_UNIT_SHORT)
+    if (!after) return null
+
+    return (
+      <p className={`text-xs ${c.sufficient ? 'text-muted-foreground' : 'text-destructive'} ${className ?? ''}`}>
+        <span className={c.sufficient ? 'text-foreground' : undefined}>{after}</span>
+        {!c.sufficient && (
+          <Link href="/billing" className="ml-1.5 underline underline-offset-2">
+            クレジットが足りません
+          </Link>
+        )}
+      </p>
+    )
+  }
 
   const balance = balanceLabel(c, CREDIT_UNIT_SHORT)
   const strong = c.tone !== 'plain'

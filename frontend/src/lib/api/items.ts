@@ -210,6 +210,8 @@ export interface ImageModelChoice {
   key: string
   label: string
   description: string
+  /** 選ばなかったときに使われるもの。**画面側で当てない**（登録簿と環境変数で動く） */
+  default?: boolean
 }
 
 export async function getImageModels(): Promise<ImageModelChoice[]> {

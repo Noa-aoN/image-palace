@@ -41,7 +41,8 @@ export function RewardCard({
 
   return (
     <div
-      className={`group relative flex flex-col gap-1.5 rounded-xl border p-2.5 text-center transition-shadow ${
+      // **h-full。** 並べたときに高さが揃わないと、行ごとに札の大きさが違って見える
+      className={`group relative flex h-full flex-col gap-1.5 rounded-xl border p-2.5 text-center transition-shadow ${
         reward.owned ? `bg-card ${style.frame}` : almost ? 'border-[var(--palace)]/40 bg-card' : 'border-dashed border-border/60 bg-card/40'
       }`}
       style={reward.owned && style.glow ? { boxShadow: style.glow } : undefined}
@@ -110,9 +111,11 @@ export function RewardCard({
         </>
       )}
 
-      {/* もうすぐ取れるものだけ進捗を出す。全部に出すと、遠いものまで急かして見える */}
-      {almost && !imageOnly && (
-        <div className="space-y-1">
+      {/* もうすぐ取れるものだけ進捗を出す。全部に出すと、遠いものまで急かして見える。
+          **場所は常に空けておく。** 出るものだけ背が高いと、並びが凸凹になる
+          （場所を空けずに出し分けていたので、進捗のある札だけ縦に伸びていた） */}
+      {!imageOnly && (
+        <div className={`mt-auto space-y-1 ${almost ? '' : 'invisible'}`} aria-hidden={!almost}>
           <div className="h-1.5 overflow-hidden rounded-full bg-muted">
             <div
               className="h-full rounded-full"

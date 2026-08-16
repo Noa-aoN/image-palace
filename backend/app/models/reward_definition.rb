@@ -225,22 +225,27 @@ class RewardDefinition < ApplicationRecord
     # ── 表彰（手動付与のみ。条件では配らない） ──
     { key: "honor_beta", kind: "honor", name: "β参加者", rarity_level: 6, category: "公式",
       description: "初期からこの場所を見てくれた人へ。", position: 40,
-      metadata: { "motif" => "an award plaque with an olive branch and a small owl" }, image_key: "10izs68me4efp3u34nnxs4sgse1n" },
+      metadata: { "grant_note" => "β期間に参加していた人へ、運営がまとめて贈ります。申し込みはありません。",
+                  "motif" => "an award plaque with an olive branch and a small owl" }, image_key: "10izs68me4efp3u34nnxs4sgse1n" },
     { key: "honor_supporter", kind: "honor", name: "初期支援者", rarity_level: 7, category: "公式",
       description: "早くから支えてくれた人へ。", position: 41,
-      metadata: { "motif" => "an award plaque with a torch and a laurel wreath" }, image_key: "iuo8g39z6sh1e2l7c52c9fsk2n1m" },
+      metadata: { "grant_note" => "早い時期に有料プランで支えてくれた人へ、運営が贈ります。申し込みはありません。",
+                  "motif" => "an award plaque with a torch and a laurel wreath" }, image_key: "iuo8g39z6sh1e2l7c52c9fsk2n1m" },
     { key: "honor_featured", kind: "honor", name: "公式推薦", rarity_level: 7, category: "公式",
       description: "運営が選んだ作り手へ。", position: 42,
-      metadata: { "motif" => "an award plaque with a sunburst and a laurel wreath" }, image_key: "cmvez4cmbf1xkb6kajm7cfzni332" },
+      metadata: { "grant_note" => "運営が選んだ作り手へ贈ります。応募や申請はありません。",
+                  "motif" => "an award plaque with a sunburst and a laurel wreath" }, image_key: "cmvez4cmbf1xkb6kajm7cfzni332" },
     # α の期間に居た人へ。β より前なので、段はひとつ上に置く
     { key: "honor_alpha", kind: "honor", name: "α参加者", rarity_level: 8, category: "公式",
       description: "誰よりも早く、この場所を歩いてくれた人へ。", position: 43,
-      metadata: { "motif" => "an award plaque with a rising sun over a laurel wreath and a small alpha-shaped ornament" }, image_key: "47b1767x9isvd3dlqvzavql3o2p3" },
+      metadata: { "grant_note" => "α期間（本リリース前）に参加していた人へ、運営がまとめて贈ります。申し込みはありません。",
+                  "motif" => "an award plaque with a rising sun over a laurel wreath and a small alpha-shaped ornament" }, image_key: "47b1767x9isvd3dlqvzavql3o2p3" },
     # **運営だけに見える**。持っていない人の一覧に出すと、
     # 取れないものが並ぶことになる（条件を満たしようがない）
     { key: "honor_archon", kind: "honor", name: "執政官", rarity_level: 9, category: "公式",
       description: "この宮殿を運び、守る者へ。", position: 44, admin_only: true,
-      metadata: { "motif" => "an official award plaque with a ceremonial staff crossed with a key, framed by a laurel wreath" }, image_key: "85ncj499ri2xr85sx8cs6rbqbuvc" },
+      metadata: { "grant_note" => "この場所を運んでいる人に付きます。",
+                  "motif" => "an official award plaque with a ceremonial staff crossed with a key, framed by a laurel wreath" }, image_key: "85ncj499ri2xr85sx8cs6rbqbuvc" },
 
     # ── 位（プランに付く称号） ──
     #
@@ -293,6 +298,18 @@ class RewardDefinition < ApplicationRecord
     kind == "title" && metadata.is_a?(Hash) && metadata["source"] == SUBSCRIPTION_SOURCE
   end
 
+  # 実績で配らないものの「どうすれば手に入るか」。
+  #
+  #   位   … どのプランに付くか（説明文がそのまま条件になっている）
+  #   表彰 … 誰に・どう配られるか
+  #
+  # 無ければ nil。画面側が「運営から贈られます」に落とす
+  def grant_condition
+    return description if plan_rank?
+
+    metadata.is_a?(Hash) ? metadata["grant_note"].presence : nil
+  end
+
   # 位すべて。剥奪のときは、いまの段以外を落とす
   def self.subscription_ranks
     registry.select { |d|
@@ -317,13 +334,29 @@ class RewardDefinition < ApplicationRecord
       row = existing[attrs[:key]]
       if row.nil?
         create!(attrs)
-      elsif row.image_key.blank? && attrs[:image_key].present?
-        row.update_columns(image_key: attrs[:image_key])
+      else
+        row.update_columns(image_key: attrs[:image_key]) if row.image_key.blank? && attrs[:image_key].present?
+        fill_missing_metadata!(row, attrs[:metadata])
       end
     rescue ActiveRecord::RecordNotUnique
       nil
     end
     @builtins_checked = true
+  end
+
+  # 組み込みに後から足した metadata を、既にある行にも入れる。
+  #
+  # **足りない鍵だけ**を入れる（運営が書き換えた値は戻さない）。
+  # ここが無いと、新しく足した説明は**まだ配っていない環境にしか出ない**。
+  # 既に動いている場所では行が先に在るので、いつまでも古いままになる
+  def self.fill_missing_metadata!(row, defaults)
+    return if defaults.blank?
+
+    current = row.metadata.is_a?(Hash) ? row.metadata : {}
+    missing = defaults.reject { |key, _| current.key?(key) }
+    return if missing.empty?
+
+    row.update_columns(metadata: current.merge(missing))
   end
 
   # 表示に使う絵の置き場。

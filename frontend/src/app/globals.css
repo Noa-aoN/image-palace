@@ -592,11 +592,41 @@
 .hero-content {
   position: relative;
   z-index: 40;
-  opacity: calc(1 - var(--fade, 0));
-  /* ズームに合わせて拡大しながら外へ消える（スクロールでズーム中だと分かりやすく） */
-  transform: translateY(calc(var(--fade, 0) * -12px)) scale(calc(1 + var(--fade, 0) * 0.7));
+
+  /* 消え方。**色と透明度を一緒に動かす。**
+     黒のまま薄くしていくと、下の明るい石や空が字の中に透けて、
+     濁った灰色に見える（半透明の黒は、背景を汚す）。
+     消えるより先にアイボリーへ寄せると、最後は霞と同じ色になって空気に溶ける。
+
+     色は透明度より速く動かす（1.45倍）。黒っぽいまま半透明でいる時間を短くするため。
+     白へ飛ばさないのは、この地の白は光のほうだから。字が光ると読み物でなくなる。 */
+  --dissolve: min(1, calc(var(--fade, 0) * 1.45));
+
+  /* **色そのものを差し替える。** 中の要素は var(--foreground) / var(--palace) を
+     使って字の色を決めているので、ここを溶かせば全部が一緒に溶ける。
+     要素ごとに color を上書きすると、インラインの指定に負けて黒が残る */
+  --foreground: color-mix(in oklab, var(--hero-ink), var(--hero-dissolve-to) calc(var(--dissolve) * 100%));
+  --palace: color-mix(in oklab, var(--hero-gold), var(--hero-dissolve-to) calc(var(--dissolve) * 100%));
+  color: var(--foreground);
+
+  opacity: calc(1 - var(--dissolve));
+  /* 拡大は控えめに。**ズームの主役は絵**で、字はその手前から静かに退く。
+     大きく引き伸ばすと、消えぎわに字が画面いっぱいへ広がって騒がしい */
+  transform: translateY(calc(var(--dissolve) * -6px)) scale(calc(1 + var(--fade, 0) * 0.05));
   transform-origin: center center;
-  will-change: opacity, transform;
+  will-change: opacity, transform, color;
+}
+
+/* 溶ける前と後の色。
+   溶けた先は**この地の霞と同じ暖かいアイボリー**。白にすると、
+   開いた扉から差す光と同じ色になり、字が発光して見える。
+
+   溶ける前の色をここに控えるのは、`--foreground` を自分自身から
+   作り直せない（循環参照になる）ため */
+:root {
+  --hero-ink: oklch(0.27 0.005 60);
+  --hero-gold: #c6a75e;
+  --hero-dissolve-to: #efe3ce;
 }
 
 /* 流れる雲（上空・スクリムの上で視認性確保） */
@@ -1361,8 +1391,12 @@
   position: absolute;
   left: 50%;
   /* 道が集まっていく先（地平線は .road-bg__plane の top: 26%）より、さらに奥。
-     % で持つので、窓の高さが変わっても道との関係は崩れない */
-  top: 13.5%;
+     割合で持つので、窓の高さが変わっても道との関係は崩れない。
+
+     **低い窓では、割合そのものを上げる。** 縦が詰まると、上に空が残らないまま
+     門だけが下がって見え、道の突き当たりではなく道の上に浮いて見える。
+     900px を境に、縮んだぶんだけ少しずつ上へ寄せる（clamp で行き過ぎを止める） */
+  top: clamp(10svh, calc(13.5svh - (900px - 100svh) * 0.06), 13.5svh);
   /* 大きさも窓に合わせる。px で固定すると、窓を広げたときだけ門が近づいて見える。
      **光より小さく**保つ（同じ大きさだと、光と門のどちらを見ればよいのか決まらない） */
   width: clamp(76px, 8vw, 116px);
