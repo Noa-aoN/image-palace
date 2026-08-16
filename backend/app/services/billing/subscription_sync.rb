@@ -33,6 +33,14 @@ module Billing
       # Stripe 側の値があればそれを、無ければいまの鍵で判断する
       subscription.livemode = stripe_subscription[:livemode].nil? ? Billing::Mode.live? : stripe_subscription[:livemode]
       subscription.save!
+
+      # 位を、いま書き込んだ契約に合わせる。
+      #
+      # **ここが唯一の入口**。作成・更新・決済からの戻り、どの道を通っても
+      # 契約はこの1か所を通るので、位もここで揃う。便りごとに配る／剥がすを
+      # 書き分けない（順番が入れ替わったときに壊れる）
+      ::Achievements::SyncPlanTitle.sync_quietly(user: user)
+
       subscription
     end
 

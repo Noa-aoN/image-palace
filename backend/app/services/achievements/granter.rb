@@ -64,6 +64,13 @@ module Achievements
         )
       end
 
+      # 一度手放したものを、また手にした。
+      # **行を作り直さない**（初めて手にした日を今日にしてしまう）。持ち直すだけ
+      if !existing.held?
+        existing.restore!(now)
+        return existing
+      end
+
       # 重ねられないものは、2つ目を配らない（これまでどおり）
       return nil unless reward.stackable?
 
