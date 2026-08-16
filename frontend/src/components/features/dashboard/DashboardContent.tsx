@@ -244,7 +244,7 @@ export function DashboardContent() {
                 </div>
               </div>
 
-              <div className="border-t pt-3">
+              <div>
                 <p className="flex items-center gap-2 text-sm text-muted-foreground">
                   <Coins size={18} style={{ color: 'var(--palace)' }} />
                   残高
@@ -253,7 +253,7 @@ export function DashboardContent() {
                     何についての内訳なのかが数字から離れる */}
                 <div className="mt-1 flex items-end justify-between gap-2">
                   <p>
-                    <span className="text-3xl font-bold tabular-nums">{credits ?? '—'}</span>
+                    <span className="text-2xl font-bold tabular-nums">{credits ?? '—'}</span>
                     <span className="ml-1 text-sm text-muted-foreground">{CREDIT_UNIT}（{CREDIT_UNIT_SHORT}）</span>
                   </p>
                   {/* 敷いたリンクより手前に出す。押しても位の画面へは飛ばない */}
@@ -266,22 +266,17 @@ export function DashboardContent() {
               <div className="space-y-2">
                 {creditPct !== null && (
                   <>
-                    {/* **分数にしない。** 分子は「いまの残高で作れる枚数」、分母は
-                        「プランが毎期くれる量」で、測っているものが違う。
-                        並べて割ると 691/100 のような、意味の無い比になる。
-                        作れる枚数だけを言い切り、付与量は上のプラン欄に置く */}
+                    {/* **分数にも棒にもしない。** 分子は「いまの残高で作れる枚数」、
+                        分母は「プランが毎期くれる量」で、測っているものが違う。
+                        棒で表せるのは上限のある量だけで、残高には上限が無い
+                        （買い足せばプランの付与量を超える）。超えた瞬間に
+                        棒は振り切れ、何も表さなくなる。数だけを言い切る */}
                     <div className="flex items-baseline justify-between">
                       <span className="text-sm text-muted-foreground">いまの残高で作れる枚数</span>
                       <span>
                         <span className="text-base font-semibold tabular-nums">{cards}</span>
                         <span className="text-sm text-muted-foreground"> 枚</span>
                       </span>
-                    </div>
-                    <div className="h-2 w-full overflow-hidden rounded-full bg-muted">
-                      <div
-                        className="h-full rounded-full transition-all"
-                        style={{ width: `${creditPct}%`, backgroundColor: 'var(--palace)' }}
-                      />
                     </div>
                   </>
                 )}
@@ -371,9 +366,16 @@ export function DashboardContent() {
                   </>
                 ) : summary.failed_count > 0 ? (
                   <div className="flex items-center justify-between gap-3">
-                    <span className="text-sm">
-                      <span className="text-destructive">失敗 {summary.failed_count} 件</span>
-                      <span className="ml-1 text-muted-foreground">（タップして再生成）</span>
+                    {/* 数だけでなく、**次に何をすればよいか**まで置く。
+                        隣と高さを揃えたぶん場所はある */}
+                    <span className="space-y-1 text-sm">
+                      <span className="block">
+                        <span className="text-destructive">失敗 {summary.failed_count} 件</span>
+                        <span className="ml-1 text-muted-foreground">が作り直しを待っています</span>
+                      </span>
+                      <span className="block text-xs text-muted-foreground">
+                        押すとカード一覧へ。作り直しは追加のクレジットなしで試せます
+                      </span>
                     </span>
                     <ChevronRight
                       size={16}
@@ -385,7 +387,12 @@ export function DashboardContent() {
                   /* 何も動いていないときも、区画そのものは残す。
                      出したり消したりすると、下にあるものが上下に動く */
                   <div className="flex items-center justify-between gap-3">
-                    <span className="text-sm text-muted-foreground">いま動いているものはありません</span>
+                    <span className="space-y-1 text-sm">
+                      <span className="block text-muted-foreground">いま動いているものはありません</span>
+                      <span className="block text-xs text-muted-foreground">
+                        これまでに作ったカードは {summary.total_count} 枚です
+                      </span>
+                    </span>
                     <ChevronRight
                       size={16}
                       className="transition-transform group-hover:translate-x-0.5"
