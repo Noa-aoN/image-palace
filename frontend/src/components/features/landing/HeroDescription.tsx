@@ -79,6 +79,9 @@ export function HeroDescription({
           style={washOpacity === undefined ? undefined : ({ '--hero-wash-a': washOpacity } as React.CSSProperties)}
         />
       )}
+      {/* 文字は靄より前面へ。ここで前後を確定させないと、
+          絶対配置の靄が通常フローの段落に覆いかぶさる */}
+      <div className="relative z-10">
       {/* 3段構え。**何ができるか → どう使えるか → 続けると何になるか**。
           順番を入れ替えない。使い道から始めると、何を作る話なのか分からないまま
           用途だけが並ぶ。
@@ -139,6 +142,7 @@ export function HeroDescription({
         それが、自分だけの「
         <strong className="font-semibold">記憶の宮殿</strong>」になっていきます。
       </p>
+      </div>
     </div>
   )
 }

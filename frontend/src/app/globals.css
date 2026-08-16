@@ -843,20 +843,30 @@
   --hero-wash-a: 0.13;
   /* 白い靄が既定。白文字版では黒に差し替える（形と作りは同じ） */
   --hero-wash-rgb: 255, 255, 255;
+  /* **文字より後ろに置く。** 絶対配置のこれは、通常フローの段落より後に描かれる
+     ので、指定しないと靄が文字に覆いかぶさる（薄いうちは気づきにくいが、
+     濃くすると文字ごと霞む）。文字側にも z-index を与えて前後を確定させること */
+  z-index: 0;
   position: absolute;
-  /* 文字の外まで広げる。上下は行間があるぶん控えめでよい */
-  inset: -0.9rem -1.6rem;
+  /* **文字よりずっと外まで広げる。** 消え際を文字にかけないため。
+     横は文字幅の1.5倍、縦は2倍強になる（％は親の幅／高さに対する値）。
+     ここを狭くすると、行の端が薄くなって読みにくくなる */
+  inset: -55% -25%;
   pointer-events: none;
+  /* ぼかしもマスクも使わない。**地の濃さだけで消す**。
+     backdrop-filter は要素の矩形に効くのでマスクで隠す必要が出るが、
+     マスクの半径は要素の幅・高さに対する％なので指定を誤ると
+     ぼかしの切れ目が箱の縁として残る（実際に残っていた）。
+     地のグラデーションだけなら、そもそも縁が生まれようがない。
+
+     中心から 62% までは同じ濃さを保ち、そこから外周へ向けて 0 まで抜く。
+     文字は中心から 47〜67% の範囲に収まるので、字の下は濃さがほぼ一定になる */
   background: radial-gradient(
-    115% 100% at 50% 50%,
+    50% 50% at 50% 50%,
     rgba(var(--hero-wash-rgb), var(--hero-wash-a)) 0%,
-    rgba(var(--hero-wash-rgb), calc(var(--hero-wash-a) * 0.82)) 46%,
-    rgba(var(--hero-wash-rgb), 0) 78%
+    rgba(var(--hero-wash-rgb), var(--hero-wash-a)) 62%,
+    rgba(var(--hero-wash-rgb), 0) 100%
   );
-  backdrop-filter: blur(1.5px);
-  -webkit-backdrop-filter: blur(1.5px);
-  -webkit-mask-image: radial-gradient(115% 100% at 50% 50%, #000 44%, transparent 80%);
-  mask-image: radial-gradient(115% 100% at 50% 50%, #000 44%, transparent 80%);
 }
 /* 白文字版の靄。色を黒へ替えるだけ（形も消し方も同じ） */
 .hero-wash--dark {
