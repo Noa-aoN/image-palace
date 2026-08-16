@@ -1424,21 +1424,25 @@
   aspect-ratio: 132 / 92;
   pointer-events: none;
   background: url('/auth-gate.webp') center bottom / contain no-repeat;
-  /* 遠くの霞の中なので、彩度を落として明るく飛ばす。
-     ただし**姿が読める程度には残す**（何の建物か分からないと、
-     行き先を示すという役目を果たさない） */
-  filter: blur(1.8px) saturate(0.66) brightness(1.12) opacity(0.72);
+  /* 光の手前に置く（光は門を照らすもので、覆うものではない） */
+  z-index: 1;
+  /* 遠くの霞の中だが、**姿が読める程度には残す**。
+     何の建物か分からないと、行き先を示すという役目を果たさない。
+     ぼかしと彩度を落としすぎていたので、輪郭が残る側へ寄せた
+     （blur 1.8→0.9px / saturate 0.66→0.78 / 透過 0.72→0.85） */
+  filter: blur(0.9px) saturate(0.78) brightness(1.1) opacity(0.85);
   /* **光より早く姿を出す。** 同じ立ち上がりだと、光が十分に育つまで
      何があるのか分からず、道の先が長いあいだ「ただの明るい点」になる。
      1.7倍の速さで立ち上げ、光が満ちる前に行き先が読めるようにする */
-  opacity: calc(0.66 * min(1, var(--road-glow, 0) * 1.7));
+  opacity: calc(0.74 * min(1, var(--road-glow, 0) * 1.7));
   /* 中心合わせは margin ではなく translate で。
      大きさが窓に応じて変わるので、負の margin だと中心がずれる */
   transform: translate(-50%, -50%) scale(calc(0.55 + 0.45 * var(--road-glowz, 0)));
   transform-origin: 50% 50%;
   /* 四方を地へ溶かす。矩形の縁が出ると、絵が貼ってあることが分かってしまう */
-  -webkit-mask-image: radial-gradient(60% 62% at 50% 55%, #000 18%, transparent 82%);
-  mask-image: radial-gradient(60% 62% at 50% 55%, #000 18%, transparent 82%);
+  /* 溶かし始めを外側へ寄せる（18%→38%）。中心の姿を残したまま、縁だけを地へ返す */
+  -webkit-mask-image: radial-gradient(62% 64% at 50% 55%, #000 38%, transparent 86%);
+  mask-image: radial-gradient(62% 64% at 50% 55%, #000 38%, transparent 86%);
 }
 :root[data-motion='off'] .road-bg__gate {
   opacity: 0;
@@ -1451,6 +1455,9 @@
   /* 門と同じ高さ。**門の位置に光が重なる**ようにする
      （別々の値で置くと、光の外に門が浮いて、2つの物に見える） */
   top: var(--road-focus-top);
+  /* **光は門の後ろ。** 門を照らす光であって、門を覆う光ではない。
+     並び順だけに任せると、あとから要素を足したときに前後が入れ替わる */
+  z-index: 0;
   width: 150px;
   height: 105px;
   filter: blur(4px);

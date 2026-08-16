@@ -1,9 +1,9 @@
 'use client'
 
-import { GenerationInfo } from '@/components/features/items/GenerationInfo'
-import { PromptInfo } from '@/components/features/items/PromptInfo'
+import { useRightPanelStore } from '@/stores/rightPanel'
+import { ImageInfoPanel } from '@/components/features/items/ImageInfoPanel'
 import { RegeneratePanel } from '@/components/features/items/RegeneratePanel'
-import { ImageHistoryPanel } from '@/components/features/items/ImageHistoryPanel'
+import { ImageHistoryPanel, IMAGE_HISTORY_PANEL_KEY } from '@/components/features/items/ImageHistoryPanel'
 import type { Item } from '@/types/item'
 
 /**
@@ -21,11 +21,20 @@ import type { Item } from '@/types/item'
  */
 export function ItemImageBar({ item, onUpdated }: { item: Item; onUpdated: (item: Item) => void }) {
   const canRegenerate = item.generation_status === 'failed' || item.generation_status === 'completed'
+  const openSection = useRightPanelStore((s) => s.openSection)
 
   return (
     <div className="flex flex-wrap items-center justify-center gap-x-6 gap-y-2 border-t border-border/60 pt-2.5">
-      <GenerationInfo item={item} />
-      <PromptInfo item={item} onUpdated={onUpdated} />
+      {/* 「この絵がどう作られたか」は1つにまとめる。
+          生成情報とプロンプト情報に分けていたころは、出す条件がそれぞれ違い、
+          カードの状態によって片方だけ消えた（出たり出なかったりに見えた） */}
+      <ImageInfoPanel
+        item={item}
+        onUpdated={onUpdated}
+        onOpenHistory={
+          canRegenerate ? () => openSection({ key: IMAGE_HISTORY_PANEL_KEY, title: '生成履歴' }) : undefined
+        }
+      />
       {/*
         これまでに使った絵。**指示の話と、作り直しの間**に置く。
         「どんな指示で出たか」を見て、「前のほうが良かった」と思い、
