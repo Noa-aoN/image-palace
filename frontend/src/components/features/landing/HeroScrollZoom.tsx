@@ -185,7 +185,10 @@ export function HeroScrollZoom() {
                   折ってよいのは <br /> を挟む場所だけ */}
               作ったカードは、自分の「宮殿」に並べて、整理・組み合わせ・反復練習。
               <br />
-              それが自分だけの「記憶の宮殿」になっていきます。
+              {/* 「記憶のカード」と対になる呼び名なので、同じ太さで置く。
+                  鉤括弧は前の行の末尾に（次の行の頭だと空白が1つ入る） */}
+              それが自分だけの「
+              <strong className="font-semibold">記憶の宮殿</strong>」になっていきます。
             </p>
           </div>
           <LandingCta className="flex w-full max-w-sm flex-col gap-3 sm:w-auto sm:max-w-none sm:flex-row" />
