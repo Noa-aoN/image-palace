@@ -13,6 +13,9 @@
  *               白い石畳のような明るい場所では縁が効きにくい
  * - `wash`    … 細い白縁＋**縁のない白い靄**。面ではなく光の溜まりとして敷くので、
  *               紙があると気づかれないまま字だけが読みやすくなる（本番候補）
+ * - `plain`   … **地を一切足さない**。濃い文字をそのまま置く（本番採用）。
+ *               ヒーローのスクリムの形を直したことで、追加の地なしで AA を通るようになった
+ *               （帯の最小 5.31:1）。実測は globals.css の `.hero-scrim` の注記を見ること
  * - `white`      … 白文字＋にじむ影だけ。いちばん単純
  * - `whiteWash`  … 白文字＋**縁のない黒い靄**。wash の明暗を反転したもの
  *
@@ -20,7 +23,7 @@
  * 説明文が置かれる高さは地がほぼアイボリーなので、そこでは白字が消える。
  * 採るならスクリムのほうを弱める必要がある（`/dev/hero-text` で見比べられる）。
  */
-export type HeroDescriptionVariant = 'panel' | 'outline' | 'wash' | 'white' | 'whiteWash'
+export type HeroDescriptionVariant = 'plain' | 'panel' | 'outline' | 'wash' | 'white' | 'whiteWash'
 
 export function HeroDescription({
   variant = 'panel',

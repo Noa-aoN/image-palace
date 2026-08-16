@@ -30,6 +30,10 @@ const WIDTHS = [
 // 本番ヒーローのアイボリースクリム（globals.css の .hero-scrim と同じ値）。
 // 白文字はこれの有無で結果がまるで変わるので、重ねた場合も見られるようにする
 const HERO_SCRIM =
+  'linear-gradient(180deg, rgba(255,253,247,0.88) 0%, rgba(255,253,247,0.72) 22%, rgba(255,253,247,0.62) 40%, rgba(255,253,247,0.6) 64%, rgba(255,253,247,0.3) 84%, rgba(255,253,247,0.12) 100%)'
+
+// 直す前のスクリム。落ち方が早く、帯の下端で抜けきっていた（最小 3.62 → AA 未達）
+const HERO_SCRIM_OLD =
   'linear-gradient(180deg, rgba(255,253,247,0.88) 0%, rgba(255,253,247,0.6) 45%, rgba(255,253,247,0.18) 100%)'
 
 // スクリムを文字のところだけ抜くためのマスク。中心を消して外へ戻す。
@@ -42,6 +46,7 @@ function Stage({
   width,
   scrim,
   scrimHole,
+  oldScrim,
   children,
 }: {
   position: string
@@ -49,6 +54,8 @@ function Stage({
   scrim?: boolean
   /** スクリムを文字のところだけ抜く */
   scrimHole?: boolean
+  /** 直す前のスクリムを使う（比較用） */
+  oldScrim?: boolean
   children: ReactNode
 }) {
   return (
@@ -69,7 +76,7 @@ function Stage({
           aria-hidden
           className="absolute inset-0"
           style={{
-            background: HERO_SCRIM,
+            background: oldScrim ? HERO_SCRIM_OLD : HERO_SCRIM,
             ...(scrimHole
               ? { WebkitMaskImage: SCRIM_HOLE, maskImage: SCRIM_HOLE }
               : {}),
@@ -144,7 +151,59 @@ export default function HeroTextProposalsPage() {
           濃さは <code className="rounded bg-muted px-1">--hero-wash-a</code>、
           白縁の太さは <code className="rounded bg-muted px-1">--outline-w</code>（globals.css）。
         </p>
+        <div className="rounded-lg border border-border bg-card p-4 text-sm leading-relaxed">
+          <p className="font-medium text-foreground">実測（推測ではなく画素から計算）</p>
+          <p className="mt-1 text-muted-foreground">
+            hero-palace.webp の画素にスクリムを合成し、説明文の帯（画面の38〜62%・中央55%）を
+            2,400点標本して WCAG コントラスト比を出した。判定は<strong className="text-foreground">最小値</strong>で見る
+            （平均8.44でも最小3.62の場所が1つあれば、そこが読めない）。
+          </p>
+          <ul className="mt-2 space-y-1 text-muted-foreground">
+            <li>直す前のスクリムのみ … 最小 <strong className="text-foreground">3.62</strong> ✗</li>
+            <li>案A 白い紙72%（旧本番） … 最小 10.35 ○（必要量の2倍以上・覆い87.7%）</li>
+            <li>案C 白い靄13% … 最小 4.51 ○（ぎりぎり）</li>
+            <li>
+              ★ 案I スクリムを直す・地なし … 最小 <strong className="text-foreground">5.31</strong> ○（覆い61.2%）
+            </li>
+            <li>
+              白文字はどの案でも最大 1.8 前後 …{' '}
+              <strong className="text-foreground">この絵の上では成立しない</strong>（明るい石と空のため）
+            </li>
+          </ul>
+        </div>
       </header>
+
+      <Section
+        title="★ 案I-地を足さない（スクリムの形を直す）— 本番に採用"
+        body="紙が要ると思っていたのは、スクリムの落ち方が早すぎて帯の下端で抜けきっていたから。落ち方を直したら、追加の地なしで AA を通った（帯の最小 5.31:1）。左が直した後、右が直す前。右は文字の下のほうが読みにくいはず。"
+      >
+        <div className="grid gap-4 lg:grid-cols-2">
+          <div className="space-y-1.5">
+            <p className="text-xs font-medium text-muted-foreground">直した後 / PC（最小 5.31:1・覆い 61.2%）</p>
+            <Stage position="center 18%" scrim>
+              <HeroDescription variant="plain" />
+            </Stage>
+          </div>
+          <div className="space-y-1.5">
+            <p className="text-xs font-medium text-muted-foreground">直す前 / PC（最小 3.62:1・AA 未達）</p>
+            <Stage position="center 18%" scrim oldScrim>
+              <HeroDescription variant="plain" />
+            </Stage>
+          </div>
+          <div className="space-y-1.5">
+            <p className="text-xs font-medium text-muted-foreground">直した後 / モバイル(390px)</p>
+            <Stage position="center 18%" width={390} scrim>
+              <HeroDescription variant="plain" />
+            </Stage>
+          </div>
+          <div className="space-y-1.5">
+            <p className="text-xs font-medium text-muted-foreground">参考: 案A 現行の紙（覆い 87.7%・最小 10.35:1）</p>
+            <Stage position="center 18%" width={390} scrim>
+              <HeroDescription variant="panel" />
+            </Stage>
+          </div>
+        </div>
+      </Section>
 
       <Section
         title="案C-12%（いちばん薄い）"

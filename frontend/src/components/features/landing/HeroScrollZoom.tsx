@@ -132,8 +132,11 @@ export function HeroScrollZoom() {
             記憶の宮殿をつくる。
           </h1>
           {/* 説明文は HeroDescription が持つ（文言は1か所）。
-              見せ方は variant で切り替える。3案の比較は /dev/hero-text */}
-          <HeroDescription variant="panel" className="mb-6 md:mb-8" />
+              **地は足さない**。紙を敷いていたのは、スクリムが帯の下端で
+              抜けきって読めなくなっていたから。スクリムの落ち方を直した結果、
+              追加の地なしで AA を通るようになった（実測は globals.css の
+              `.hero-scrim` の注記）。ほかの案は /dev/hero-text で比較できる */}
+          <HeroDescription variant="plain" className="mb-6 md:mb-8" />
           <LandingCta className="flex w-full max-w-sm flex-col gap-3 sm:w-auto sm:max-w-none sm:flex-row" />
         </div>
 
