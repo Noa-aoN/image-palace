@@ -107,16 +107,22 @@ export function AppHeader() {
       {/* 左: ロゴ（常に左端）＋ モバイルのハンバーガー（認証時のみ）。
           LP へ戻る導線はアカウントメニュー内「最初のページに戻る」へ移設した。 */}
       <div className="flex items-center gap-1">
-        {/* 名前を常に出す。絵記号だけだと、初めての人には何のアプリか分からない。
-            狭い画面では中央に置く（左に寄せると、ハンバーガーと窮屈に並ぶ） */}
+        {/* 狭い画面では**紋章だけ**にする。名前まで置くと、ハンバーガーと
+            右側の操作に挟まれて収まらず、中央に逃がすとハンバーガーの上に
+            重なりかけていた。名前は広い画面で出す。
+            読み上げには aria-label で常に名前が残る */}
         <Link
           href={isAuthenticated ? '/entrance' : '/'}
-          className="absolute left-1/2 flex -translate-x-1/2 items-center gap-1.5 md:static md:translate-x-0"
+          // 紋章と名前の間は 10px。詰めると2つで1語のように見える
+          className="flex items-center gap-2.5"
           aria-label="ImagePalace ホーム"
         >
           {/* ロゴは仮置き（宮殿アイコン）。正式ロゴ確定までのプレースホルダ */}
           <Castle size={28} style={{ color: 'var(--on-palace)' }} />
-          <span className="brand-wordmark text-base leading-none tracking-wide" style={{ color: 'var(--on-palace)' }}>
+          <span
+            className="brand-wordmark hidden text-base leading-none tracking-wide md:inline"
+            style={{ color: 'var(--on-palace)' }}
+          >
             IMAGE PALACE
           </span>
           {/* 開発段階を示すバッジ。正式リリースまで表示する */}

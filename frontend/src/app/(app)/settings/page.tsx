@@ -426,14 +426,14 @@ export default function SettingsPage() {
           </section>
 
           {/*
-            神託（デルフォイ・デルフォイ）の設定は、カード生成の設定とは別物。
+            デルフォイ（言葉の受け取り）の設定は、カード生成の設定とは別物。
             上は「作ったカードに何を足すか」、こちらは「どんな単語を出してもらうか」で、
             効く相手が違う。同じ箱に入れていると、難しさが画像に効くように読める。
           */}
           <section className="space-y-3 rounded-xl border border-border bg-card p-5">
             <div className="flex items-center gap-2">
               <Wand2 size={18} style={{ color: 'var(--palace)' }} />
-              <h2 className="text-lg font-semibold">神託（デルフォイ）の単語</h2>
+              <h2 className="text-lg font-semibold">デルフォイで受け取る単語</h2>
             </div>
             <WordDifficultySetting />
           </section>

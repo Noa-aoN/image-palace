@@ -53,15 +53,19 @@ module Api
               kind: grant.kind,
               label: ::Billing::CreditLabels.for(grant.kind),
               credits: to_credits(grant.remaining_points),
-              expires_at: grant.expires_at
+              expires_at: grant.expires_at,
+              # 受け取った日。期限だけだと「これはいつ買ったぶんか」が辿れない
+              granted_at: grant.created_at
             }
           end
 
           if current_user.subscription_credits.positive?
+            # まとめて持っている残高なので、受け取った日は1つに決まらない（nil）
             buckets << {
               kind: "subscription", label: ::Billing::CreditLabels.for("subscription"),
               credits: to_credits(current_user.subscription_credits),
-              expires_at: current_user.subscription_expires_at
+              expires_at: current_user.subscription_expires_at,
+              granted_at: nil
             }
           end
 
@@ -69,7 +73,7 @@ module Api
             # 期限を持たない古い買い切り分
             buckets << {
               kind: "topup_legacy", label: ::Billing::CreditLabels.for("topup_legacy"),
-              credits: to_credits(current_user.topup_credits), expires_at: nil
+              credits: to_credits(current_user.topup_credits), expires_at: nil, granted_at: nil
             }
           end
 

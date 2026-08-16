@@ -297,7 +297,7 @@ function DeckFrame({ children }: { children: ReactNode }) {
   )
 }
 
-/** フリーボード＝掲示板。四隅に留め具を置いて、板に留めてある状態にする */
+/** フリーボード＝公示板。四隅に留め具を置いて、板に留めてある状態にする */
 function BoardFrame({ children }: { children: ReactNode }) {
   return (
     <div

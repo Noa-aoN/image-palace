@@ -1,7 +1,7 @@
 'use client'
 
 import { useState } from 'react'
-import Link from 'next/link'
+import { CreditCostNote } from '@/components/features/billing/CreditCostNote'
 import { Sparkles } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -81,17 +81,8 @@ export function CoverGenerator({
         {generating ? '生成中…' : '生成する'}
       </Button>
 
-      <p className="text-xs text-muted-foreground">
-        生成には1クレジット消費します{available != null ? `（残り ${available} cr）` : ''}。
-      </p>
-      {insufficient && (
-        <p className="text-xs text-destructive">
-          クレジットが不足しています。
-          <Link href="/billing" className="ml-1 underline">
-            プランを見る
-          </Link>
-        </p>
-      )}
+      {/* 使う数と、使ったあとの残り。ほかの生成と同じ言い方に揃える */}
+      <CreditCostNote variant="inline" cost={1} available={available} />
       {error && <p className="text-sm text-destructive">{error}</p>}
     </div>
   )

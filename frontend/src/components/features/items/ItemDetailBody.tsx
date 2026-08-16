@@ -31,6 +31,7 @@ export function ItemDetailBody({ itemId, onDeleted }: { itemId: string; onDelete
   const {
     item,
     error,
+    reload,
     imgError,
     setImgError,
     deleting,
@@ -50,8 +51,19 @@ export function ItemDetailBody({ itemId, onDeleted }: { itemId: string; onDelete
     applyUpdated,
   } = useItemDetail(itemId, { onDeleted })
 
+  // **ここも行き止まりにしない。** 詳細ページ側（items/[id]）には復帰の手があるのに、
+  // 右パネルから開いたときだけ文字が出て終わりだった。読めなかった理由は同じなので、
+  // 同じように取り直せるようにする。
   if (error) {
-    return <p className="text-sm text-destructive">{error}</p>
+    return (
+      <div className="space-y-3 py-6 text-center">
+        <p className="text-sm text-destructive">{error}</p>
+        <p className="text-xs text-muted-foreground">
+          通信が途切れただけかもしれません。もう一度お試しください。
+        </p>
+        <Button size="sm" onClick={reload}>読み込み直す</Button>
+      </div>
+    )
   }
 
   if (!item) {

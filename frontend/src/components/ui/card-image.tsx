@@ -3,12 +3,13 @@
 import { useState } from 'react'
 import type { ReactNode } from 'react'
 import { cn } from '@/lib/utils'
+import { CARD_IMAGE_EDGE, CARD_MAT_BG } from '@/lib/card-frame'
 
 // カードの「マット」。余白は画像の短辺に対して控えめに取り、内側に細い枠線を入れる。
 // トレーディングカードの厚紙の縁を意識した見え方にしている。
 // 台紙は周囲より少し明るく／内側に落ち影を入れて、画像が「載っている」ように見せる。
 // 画像側の細い縁と合わせて、背景色が同じ場所でもマットが判別できる。
-const CARD_FRAME = 'p-[5%] bg-[color-mix(in_srgb,var(--card)_92%,var(--foreground))] rounded-[inherit]'
+const CARD_FRAME = `p-[5%] ${CARD_MAT_BG} rounded-[inherit]`
 
 // 画像読み込み中は LQIP（blur）を背景に表示し、読み込み完了で本画像をフェードイン。
 // src が無い場合は fallback を中央表示する。
@@ -48,7 +49,7 @@ export function CardImage({
       <div
         className={cn(
           'relative h-full w-full overflow-hidden',
-          framed && 'rounded-[2px] shadow-[0_1px_3px_rgba(0,0,0,0.25)] ring-1 ring-black/15'
+          framed && CARD_IMAGE_EDGE
         )}
         style={
           blur ? { backgroundImage: `url("${blur}")`, backgroundSize: 'cover', backgroundPosition: 'center' } : undefined

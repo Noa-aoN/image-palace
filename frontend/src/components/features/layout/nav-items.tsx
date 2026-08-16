@@ -154,10 +154,10 @@ export const NAV_SECTIONS: NavSection[] = [
       {
         // 読みもの3つは同じ性質（運営から届くもの）なので、1つにまとめて畳む。
         // 並べたままだと、日々使う項目と同じ重さで場所を取り続ける。
-        // 親自身も面を持つ（3種を一望する掲示板）。畳んだままでも新着に届く
+        // 親自身も面を持つ（3種を一望する公示板）。畳んだままでも新着に届く
         href: '/board',
         icon: <Megaphone size={22} />,
-        label: '掲示板', description: '運営からのお知らせ・使い方・コラムを読む',
+        label: '公示板', description: '運営からのお知らせ・使い方・コラムを読む',
         children: [
           { href: '/news', icon: <Megaphone size={20} />, label: 'お知らせ' },
           { href: '/guide', icon: <BookOpen size={20} />, label: '使い方' },
