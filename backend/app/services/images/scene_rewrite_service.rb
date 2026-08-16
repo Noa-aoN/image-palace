@@ -95,11 +95,15 @@ module Images
     # 根拠と表示がずれると、絵を見て「なぜこうなったか」を辿れなくなる
     Result = Struct.new(:options, :model, :description, keyword_init: true)
 
-    def self.call(item:, user: nil, property_keys: nil)
-      new(item: item, user: user, property_keys: property_keys).call
+    # internal: 画像生成の内部工程として走ったか。
+    # 自動（作成時の連鎖）は画像1枚ぶんの 1cr に含めるので、ここでは課金しない。
+    # 手で押す「意味・説明から書き直す」は任意の補助なので、これまでどおり課金する。
+    def self.call(item:, user: nil, property_keys: nil, internal: false)
+      new(item: item, user: user, property_keys: property_keys, internal: internal).call
     end
 
-    def initialize(item:, user: nil, property_keys: nil)
+    def initialize(item:, user: nil, property_keys: nil, internal: false)
+      @internal = internal
       @item = item
       @user = user || item.user
       @property_keys = Array(property_keys).map(&:to_s).reject(&:blank?).uniq
@@ -211,7 +215,7 @@ module Images
 
     def request
       response = Ai::Chat.call(
-        kind: "scene_rewrite",
+        kind: @internal ? "scene_rewrite_internal" : "scene_rewrite",
         user: @user,
         model: model,
         messages: [

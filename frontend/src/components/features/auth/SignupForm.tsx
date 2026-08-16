@@ -90,7 +90,7 @@ export function SignupForm() {
   return (
     <div className="w-full max-w-sm mx-auto">
       <h1 className="text-2xl font-bold mb-6 text-center" style={{ color: '#111111' }}>
-        パレスを作る
+        宮殿をつくる
       </h1>
 
       <Button
@@ -209,7 +209,7 @@ export function SignupForm() {
         )}
 
         <Button type="submit" disabled={loading} className="w-full mt-1">
-          {/* 釦は**何が起きるか**を書く。見出し（パレスを作る）は世界観、
+          {/* 釦は**何が起きるか**を書く。見出し（宮殿をつくる）は世界観、
               釦は操作の説明、と役割を分ける */}
           {loading ? '登録中...' : 'アカウントを登録する'}
         </Button>

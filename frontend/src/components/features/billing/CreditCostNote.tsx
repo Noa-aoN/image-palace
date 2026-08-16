@@ -3,7 +3,7 @@
 import Link from 'next/link'
 import { AlertTriangle, Coins } from 'lucide-react'
 import { CREDIT_UNIT_SHORT } from '@/lib/billing'
-import { balanceLabel, costLabel, creditCost } from '@/lib/billing/credit-cost'
+import { balanceLabel, costLabel, creditCost, formatCredits } from '@/lib/billing/credit-cost'
 
 /**
  * これから使うクレジットを、**押す前に**置く。
@@ -15,6 +15,44 @@ import { balanceLabel, costLabel, creditCost } from '@/lib/billing/credit-cost'
  * 普段は硬貨の印と平文で置く。印を強めるのは、足りないときと、
  * いちどに沢山使うときだけ。
  */
+/**
+ * 押す釦のすぐ横に添える、ひと言だけの版。
+ *
+ * 文章の AI は 0.01cr と軽いので、残高の増減まで並べると釦より説明のほうが目立つ。
+ * **いくら使うかだけ**を言い、足りないときにだけ色を変える。
+ *
+ * 画面ごとに自前で書かないこと。書き方が散ると、同じ 0.01cr が
+ * 場所によって違う言い方になる。
+ */
+export function CreditCostHint({
+  cost,
+  available,
+  className,
+}: {
+  cost: number
+  available: number | null
+  className?: string
+}) {
+  const c = creditCost({ cost, available })
+  if (c.cost === 0) return null
+
+  return (
+    <span
+      className={`inline-flex items-center gap-1 text-xs ${
+        c.sufficient ? 'text-muted-foreground' : 'text-destructive'
+      } ${className ?? ''}`}
+    >
+      <Coins size={12} aria-hidden />
+      {formatCredits(c.cost)} {CREDIT_UNIT_SHORT}
+      {!c.sufficient && (
+        <Link href="/billing" className="underline underline-offset-2">
+          クレジットが足りません
+        </Link>
+      )}
+    </span>
+  )
+}
+
 export function CreditCostNote({
   cost,
   available,

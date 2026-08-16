@@ -73,7 +73,7 @@ export function LoginForm() {
   return (
     <div className="w-full max-w-sm mx-auto">
       <h1 className="text-2xl font-bold mb-6 text-center" style={{ color: '#111111' }}>
-        パレスに入る
+        宮殿に入る
       </h1>
 
       <Button
@@ -147,7 +147,7 @@ export function LoginForm() {
         )}
 
         <Button type="submit" disabled={loading} className="w-full mt-1">
-          {loading ? 'ログイン中...' : 'パレスに入る'}
+          {loading ? 'ログイン中...' : '宮殿に入る'}
         </Button>
       </form>
 

@@ -167,12 +167,20 @@ export function QuickCreateCard({
           )}
           {/* 行き先は常に出す。作ったあとにだけ出していたため、
               「一覧はどこか」を探すことになっていた */}
-          <div className="ml-auto flex items-center gap-3 text-xs text-muted-foreground">
-            <Link href="/items/new" className="underline hover:text-foreground">
+          {/* 一覧へ行くのは日々の動き、細かく設定するのはたまの動き。
+              同じ細字で並べていたので、よく使うほうが見つけにくかった。
+              一覧のほうは字を金にして、隣の「詳しく設定」より先に目へ入るようにする
+              （釦にすると、この行でいちばん強いのが「カードを生成」でなくなる） */}
+          <div className="ml-auto flex items-center gap-3">
+            <Link href="/items/new" className="text-xs text-muted-foreground underline hover:text-foreground">
               詳しく設定
             </Link>
-            <Link href="/items" className="underline hover:text-foreground">
-              カード一覧へ
+            <Link
+              href="/items"
+              className="text-xs font-medium underline underline-offset-2 hover:text-foreground"
+              style={{ color: 'var(--palace)' }}
+            >
+              カード一覧をみる
             </Link>
           </div>
         </div>

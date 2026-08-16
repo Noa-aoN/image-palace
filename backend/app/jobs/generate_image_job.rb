@@ -220,6 +220,14 @@ class GenerateImageJob < ApplicationJob
       code: error.class.name,
       kind: failure_kind(error)
     )
+    # 無料の作り直しを使い切ってもなお絵が出なかったなら、その注文は終わり。
+    # 先にもらった 1cr を返す（返す条件は RefundFailedGeneration が持つ）。
+    # ここで転んでも、失敗そのものの記録と通知は残す
+    begin
+      ::Billing::RefundFailedGeneration.call(item)
+    rescue StandardError => e
+      Rails.logger.warn "[GenerateImageJob] REFUND FAILED item_id=#{item.id} #{e.class}: #{e.message}"
+    end
     notify_failed!(item, message)
   end
 
