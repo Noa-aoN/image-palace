@@ -1097,12 +1097,26 @@ export function ItemList({ initialTag = null }: { initialTag?: string | null }) 
             <p className="mt-1 text-xs text-muted-foreground">
               同じ言葉を誰かが作っていれば、その絵をそのまま使います（待ち時間もかかりません）。
             </p>
+            {/* 残りがどこに出るかまで言う。数だけ説明されても、
+                次に「いま何枚ぶんあるのか」を画面のどこで見るのか分からない */}
+            <p className="mt-1 text-xs text-muted-foreground">
+              残りはいつでも画面上のヘッダーで確認できます。
+            </p>
           </div>
         </div>
 
-        <Link href="/items/new">
-          <Button>カードを作成する</Button>
-        </Link>
+        <div className="space-y-3">
+          <Link href="/items/new">
+            <Button>カードを作成する</Button>
+          </Link>
+          {/* 説明を読み切りたい人の行き先。**釦の下に小さく**置く。
+              ここを目立たせると、最初の1枚より先に読み物へ流れてしまう */}
+          <p className="text-xs text-muted-foreground">
+            <Link href="/guide" className="underline underline-offset-2 hover:text-foreground">
+              使い方を見る
+            </Link>
+          </p>
+        </div>
       </div>
     )
   }

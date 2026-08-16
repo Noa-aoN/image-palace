@@ -8,7 +8,6 @@ import { useSettingsStore } from '@/stores/settings'
 import { useAcropolisStore } from '@/stores/acropolis'
 import { normalizeWordDifficulty } from '@/lib/word-difficulty'
 import { useRouter } from 'next/navigation'
-import Link from 'next/link'
 import { Button } from '@/components/ui/button'
 import { Label } from '@/components/ui/label'
 import { Spinner } from '@/components/ui/spinner'
@@ -33,6 +32,7 @@ import type { View } from '@/types/view'
 import type { Wordlist } from '@/types/wordlist'
 import { ASPECT_RATIOS, ASPECT_RATIO_KEYS, type AspectRatioKey } from '@/lib/aspect-ratio'
 import { HelpPopover } from '@/components/ui/help-popover'
+import { CreditCostNote } from '@/components/features/billing/CreditCostNote'
 
 const MAX_TITLE_LENGTH = 100
 const WORDLIST_SECTION = 'card-create-wordlist'
@@ -260,7 +260,6 @@ export function CreateItemForm({
   const tagNames = tagsInput.split(/[\s,、]+/).map((s) => s.trim()).filter(Boolean)
   // 残クレジットからおおよその作成可能枚数を出し、入力件数が超える場合は警告する
   const remainingCards = billing ? estimatedCards(billing.available_credits) : null
-  const willExceedCredits = remainingCards !== null && wordCount > remainingCards
 
   /**
    * Cmd / Ctrl + Enter で作る。
@@ -521,11 +520,10 @@ export function CreateItemForm({
             1単語あたり{MAX_TITLE_LENGTH}文字を超えています。区切り直すか短くしてください。
           </p>
         )}
-        {willExceedCredits && (
-          <p className="text-xs text-destructive">
-            クレジットが不足します（残り約{remainingCards}枚 / 入力{wordCount}件）。
-            <Link href="/billing" className="ml-1 underline">プランを見る</Link>
-          </p>
+        {/* **押す前に**、何クレジット使うかを出す。
+            足りないときだけ出す作りだと、足りている人は単価を知らないまま使う */}
+        {wordCount > 0 && (
+          <CreditCostNote cost={wordCount} available={billing?.available_credits ?? null} />
         )}
       </div>
 

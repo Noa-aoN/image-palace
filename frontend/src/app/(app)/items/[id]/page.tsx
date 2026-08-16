@@ -77,6 +77,7 @@ export default function ItemDetailPage() {
   const {
     item,
     error,
+    reload,
     imgError,
     setImgError,
     deleting,
@@ -127,7 +128,7 @@ export default function ItemDetailPage() {
           通信が途切れただけかもしれません。もう一度お試しください。
         </p>
         <div className="flex justify-center gap-2">
-          <Button onClick={() => window.location.reload()}>読み込み直す</Button>
+          <Button onClick={reload}>読み込み直す</Button>
           <Link href={backHref}><Button variant="outline">{backLabel}</Button></Link>
         </div>
       </div>

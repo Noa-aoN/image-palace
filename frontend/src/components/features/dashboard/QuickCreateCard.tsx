@@ -12,6 +12,7 @@ import { DEFAULT_MEANING_LEVEL } from '@/lib/meaning-levels'
 import { CREDIT_UNIT_SHORT } from '@/lib/billing'
 import { useItemsStore } from '@/stores/items'
 import { useBillingStore } from '@/stores/billing'
+import { CreditCostNote } from '@/components/features/billing/CreditCostNote'
 import { isSubmitEnter } from '@/lib/enter-key'
 
 const MAX_TITLE_LENGTH = 100
@@ -42,6 +43,8 @@ export function QuickCreateCard({
 } = {}) {
   const upsertItem = useItemsStore((s) => s.upsertItem)
   const fetchBilling = useBillingStore((s) => s.fetchSummary)
+  // 残高は購読する。生成のたびに減るので、読み捨てると古い数が残る
+  const available = useBillingStore((s) => s.summary?.available_credits) ?? null
   const [input, setInput] = useState('')
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -140,8 +143,13 @@ export function QuickCreateCard({
             {submitting ? '生成中...' : titles.length > 1 ? `${titles.length}枚を生成` : 'カードを生成'}
           </Button>
           {/* 消費の目安は釦の隣に置く。下に1行を足すとその分だけ縦に伸び、
-              入力欄と行き先の間が遠くなる */}
-          <p className="text-xs text-muted-foreground">1枚 1{CREDIT_UNIT_SHORT}・設定は既定のまま</p>
+              入力欄と行き先の間が遠くなる。
+              **入力があれば実際に使う数**を出す。何も書いていないうちは単価だけでよい */}
+          {titles.length > 0 ? (
+            <CreditCostNote variant="inline" cost={titles.length} available={available} />
+          ) : (
+            <p className="text-xs text-muted-foreground">1枚 1{CREDIT_UNIT_SHORT}・設定は既定のまま</p>
+          )}
 
           {/* いまどうなっているか。**費用の案内（変わらない）と行き先の間**に置く。
               数えるのは親（下の作業状況と同じ数字）。ここで数え直すと食い違う */}
