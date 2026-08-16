@@ -133,7 +133,7 @@ export function HeroDescription({
         <strong className="font-semibold">用語集</strong>での暗記、
         <strong className="font-semibold">図鑑</strong>・
         <strong className="font-semibold">相関図</strong>・
-        <strong className="font-semibold">年表</strong>づくりに。
+        <strong className="font-semibold">年表</strong>づくりで理解。
         <br />
         さらに、
         <strong className="font-semibold">絵日記</strong>、
