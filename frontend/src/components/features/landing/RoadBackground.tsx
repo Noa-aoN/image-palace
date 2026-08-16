@@ -187,6 +187,13 @@ export function RoadBackground({ fadeTop, fadeBottom, intro }: RoadBackgroundPro
     <div ref={ref} aria-hidden className={`road-bg${modifiers}`}>
       {/* ビューポート固定のステージ。clip-path でセクション範囲だけ見える */}
       <div className="road-bg__viewport">
+        {/* 最後の区画だけ、道のいちばん奥を渡鴉が横切る。
+            場面より先に置くので、いちばん奥の柱の裏を通っていく。
+            小さく薄いままにする（近づけると、道ではなく鴉を見る絵になる） */}
+        {fadeBottom && (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img src="/hero-raven.webp" alt="" decoding="async" loading="lazy" className="road-bg__raven" />
+        )}
         <div className="road-bg__scene">
           {/* 遠近をかけた道平面。テクスチャ（子レイヤー）の background-position を --road-shift で流す */}
           <div className="road-bg__plane">

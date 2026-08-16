@@ -189,20 +189,34 @@ function NavTree({
   return (
     <div className={`flex flex-col gap-1 ${iconsOnly ? 'px-1.5' : 'px-2'}`}>
       {navSectionsFor(isAdmin).map((section) => (
-        <div key={section.key} className="flex flex-col gap-1">
+        <div key={section.key} className="flex flex-col">
           {iconsOnly ? (
             <div className="mx-auto my-1 h-px w-6" style={{ backgroundColor: 'var(--palace)', opacity: 0.4 }} />
           ) : (
-            // 見出しは項目より大きく、ヘッダーと同じ濃い金を敷く。
-            // **群の切れ目が一目で分かる**（同じ大きさで並ぶと、どこからが別の群か読めない）
-            <p
-              className="mt-3 mb-1 rounded-lg px-3 py-1.5 text-sm font-semibold"
-              style={{ backgroundColor: 'var(--palace-deep)', color: 'var(--on-palace)' }}
-            >
-              {section.title}
-            </p>
+            <>
+              {/* 見出しと中身を**地続きの一枚**にする。
+                  見出しだけが浮いた札だったころは、どの項目がどの群に属するのかを
+                  間隔だけで読み取るしかなかった。
+
+                  見出しは上だけ角を丸め、下は角のまま中身へ繋げる。
+                  中身は白系で塗って、最後の項目の下だけを丸める。
+                  こうすると群が1つの面になり、切れ目を探さなくてよくなる */}
+              <p
+                className="mt-3 rounded-t-lg px-3 py-2 text-center text-base font-semibold"
+                style={{ backgroundColor: 'var(--palace-deep)', color: 'var(--on-palace)' }}
+              >
+                {section.title}
+              </p>
+              <div
+                className="flex flex-col gap-1 rounded-b-lg p-1.5"
+                style={{ backgroundColor: 'color-mix(in srgb, #fff 82%, var(--ivory))' }}
+              >
+                {section.items.map((node) => renderNode(node))}
+              </div>
+            </>
           )}
-          {section.items.map((node) => renderNode(node))}
+          {/* 折りたたみ時は面で括らない（幅が無いので、塗ると線にしか見えない） */}
+          {iconsOnly && <div className="flex flex-col gap-1">{section.items.map((node) => renderNode(node))}</div>}
         </div>
       ))}
     </div>

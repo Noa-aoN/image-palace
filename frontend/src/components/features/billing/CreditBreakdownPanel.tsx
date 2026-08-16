@@ -117,7 +117,18 @@ export function CreditBreakdownPanel() {
                             </span>
                           )}
                         </p>
-                        <p className="truncate text-xs text-muted-foreground">{bucket.label}</p>
+                        {/* 出どころと、受け取った日。**日付は小さく添えるだけ**にする。
+                            主役は「いつ消えるか」なので、同じ大きさで並べると
+                            どちらの日付を見ればよいのか分からなくなる。
+                            まとめて持っている残高は受け取り日が決まらないので出さない */}
+                        <p className="truncate text-xs text-muted-foreground">
+                          {bucket.label}
+                          {bucket.granted_at && (
+                            <span className="ml-1.5">
+                              （{new Date(bucket.granted_at).toLocaleDateString('ja-JP')} 受け取り）
+                            </span>
+                          )}
+                        </p>
                       </div>
                     </div>
                     <span className="shrink-0 text-sm font-medium tabular-nums">

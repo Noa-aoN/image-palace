@@ -15,7 +15,10 @@ export function HeroScrollZoom() {
     <section ref={trackRef} className="hero-track" data-reduced={reduced ? 'true' : 'false'}>
       <div
         ref={stageRef}
-        className="hero-stage flex flex-col items-center justify-start px-6 pt-24 text-center md:pt-28"
+        // 上端に寄せていたころは、画面の上3分の1に文字が固まり、
+        // 下の絵だけが広く空いていた。読むものを画面の中心寄りへ下ろす
+        // （スクロール誘導は絶対配置なので、下げても押し出さない）
+        className="hero-stage flex flex-col items-center justify-start px-6 pt-[14vh] text-center md:pt-[16vh]"
       >
         {/* 背景画像（ズーム対象・最背面） */}
         {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -114,27 +117,36 @@ export function HeroScrollZoom() {
           {/* 大きさで読む順を決める。**名前 → 何をするか → どう使えるか**。
               いちばん大きいものが名前でないと、初めての人は何を見ているのか分からない */}
           <p
-            className="brand-wordmark mb-4 text-[clamp(2rem,9vw,4.5rem)] leading-none"
+            className="brand-wordmark mb-4 text-[clamp(2.25rem,10vw,5.25rem)] leading-none"
             style={{ color: 'var(--palace)' }}
           >
             IMAGE PALACE
           </p>
           <h1
-            className="mb-6 text-[clamp(1.15rem,4.5vw,1.75rem)] font-bold leading-snug tracking-tight md:text-3xl"
+            className="mb-6 text-[clamp(1.3rem,5vw,2.1rem)] font-bold leading-snug tracking-tight md:text-4xl"
             style={{ color: 'var(--foreground)' }}
           >
             言葉をイメージに変えて、
             <br />
             記憶の宮殿をつくる。
           </h1>
-          {/* 絵の上に直接置くと、背景の明暗で読めなくなる。**紙を1枚敷く** */}
-          <div className="mb-10 max-w-lg rounded-2xl border border-white/70 bg-white/72 px-6 py-5 text-left shadow-sm backdrop-blur-sm">
-            <p className="text-sm leading-relaxed md:text-base" style={{ color: 'var(--foreground)' }}>
+          {/* 絵の上に直接置くと、背景の明暗で読めなくなる。**紙を1枚敷く**。
+              地・縁・角は `--landing-panel-*`（スクロール誘導と同じ紙）。
+              白を薄くして絵を透かし、そのぶん縁を金にして輪郭を保つ */}
+          <div
+            className="mb-10 max-w-lg px-6 py-5 text-left shadow-sm backdrop-blur-sm"
+            style={{
+              background: 'var(--landing-panel-bg)',
+              border: '1px solid var(--landing-panel-border)',
+              borderRadius: 'var(--landing-panel-radius)',
+            }}
+          >
+            <p className="text-[0.95rem] leading-relaxed md:text-lg" style={{ color: 'var(--foreground)' }}>
               覚えたい言葉を書くと、AI がその情景を絵にします。
               絵と言葉が一枚になった<strong className="font-semibold">メモリーカード</strong>が、
               記憶の基本の単位です。
             </p>
-            <p className="mt-3 text-sm leading-relaxed" style={{ color: '#5A5348' }}>
+            <p className="mt-3 text-[0.9rem] leading-relaxed md:text-base" style={{ color: '#5A5348' }}>
               単語帳・学習図鑑・用語集はもちろん、ビジョンボードや絵日記としても。
               集めたカードは、自分だけの宮殿として並べて眺められます。
             </p>

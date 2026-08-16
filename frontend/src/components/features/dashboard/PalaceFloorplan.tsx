@@ -56,15 +56,15 @@ export function PalaceFloorplan() {
 
   return (
     <Card className="flex-1">
-      {/* 2D・3D とも、図をカードの上下中央に置く */}
-      <CardContent className="flex h-full flex-col justify-center">
-        {/* トグルは隣の「記憶資産」カードと同じ置き方にする。
-            片方が図に重なり、片方が上に載っていると、並べたときに揃って見えない。
-            2D/3D で高さは変わらないので、流れの中に置いても図はぶれない */}
+      {/* トグルは**カードの上端に固定**し、図だけを上下中央に置く。
+          以前は中身全体をまとめて中央寄せしていたので、カードの高さが変わるたびに
+          トグルの高さも動き、隣の「記憶資産」カードと揃わなかった。
+          並べたときに同じ場所にあることのほうが、カード内での座りより大事 */}
+      <CardContent className="flex h-full flex-col">
         <div className="mb-2 flex justify-end">
           <DiagramModeToggle mode={mode} onChange={setMode} label="宮殿の間取り図" />
         </div>
-        <div className="relative">
+        <div className="relative flex flex-1 flex-col justify-center">
 
           {/* 2D/3D で図の高さを揃える（共通の縦横比で固定）。
               3D のときだけ上下端をグラデーションで馴染ませて回転中の途切れを目立たなくする。2D は素の固定枠。

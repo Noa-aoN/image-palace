@@ -181,17 +181,17 @@ export function CreateItemForm({
   )
 
   /*
-    デルフォイ挿入。神託から単語をひとつ受け取り、入力欄の末尾へ足す。
+    デルフォイ挿入。デルフォイから単語をひとつ受け取り、入力欄の末尾へ足す。
     ここで作るのは単語だけで、クレジットは消費しない（消費はカードを作る段階）。
 
-    出す語の選び方はデルフォイと揃える。あちらだけ賢いと、同じ「神託」なのに
+    出す語の選び方はデルフォイと揃える。あちらだけ賢いと、同じ受け取りなのに
     こちらでは同じような語ばかり出る、という食い違いが起きるため。
       ・入力済みの語と、デルフォイで受け取り済みの語は出さない
       ・キャンセルした語は出にくくする
       ・難しさは環境設定の既定に従う
     ジャンルや枚数は指定できるようにしない。細かく選びたいときはデルフォイへ行けばよく、
     ここは入力を一語足すだけの補助に留める。
-    デルフォイの履歴には残さない（あちらは神託を受けて受け取る一連の流れで、
+    デルフォイの履歴には残さない（あちらは受け取ってカードにする一連の流れで、
     こちらは入力補助。混ぜると両方の意味が濁る）。
   */
   const consultOracle = async () => {
@@ -207,12 +207,12 @@ export function CreateItemForm({
       })
       const word = words[0]?.trim()
       if (!word) {
-        setOracleError('神託が得られませんでした。もう一度お試しください。')
+        setOracleError('言葉を受け取れませんでした。もう一度お試しください。')
         return
       }
       setInput((current) => (current.trim() ? `${current.replace(/\s*$/, '')}\n${word}` : word))
     } catch {
-      setOracleError('神託に失敗しました。もう一度お試しください。')
+      setOracleError('受け取りに失敗しました。もう一度お試しください。')
     } finally {
       setConsulting(false)
     }
@@ -426,7 +426,7 @@ export function CreateItemForm({
             size="sm"
             onClick={consultOracle}
             disabled={submitting || consulting}
-            title="デルフォイの神託から単語をひとつ受け取る"
+            title="デルフォイから単語をひとつ受け取る"
             className="flex items-center gap-1.5"
           >
             {consulting ? <Spinner size={15} /> : <Sparkles size={15} />}
