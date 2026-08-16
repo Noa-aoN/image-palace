@@ -114,7 +114,7 @@ export function CreateItemForm({
   const [generateMeaning, setGenerateMeaning] = useState(true)
   const [meaningLevel, setMeaningLevel] = useState<string>(DEFAULT_MEANING_LEVEL)
   const [generateTags, setGenerateTags] = useState(true)
-  // 種別（単語・概念・実体・人物・出来事）の自動判定。
+  // 種別（単語・人物・場所・作品・出来事…）の自動判定。
   // 選ばないと全部が既定の「単語」で溜まり、持てる項目が種別で変わる意味が消える
   const [detectItemType, setDetectItemType] = useState(true)
   // 項目（読み仮名・別名・発音記号）の自動生成。選んだぶんを1回でまとめて埋める。
@@ -843,7 +843,8 @@ export function CreateItemForm({
             種別
             <HelpPopover label="種別について" title="種別">
               <div className="space-y-2 text-sm">
-                <p>単語・概念・実体・人物・出来事のどれかを AI が選びます。</p>
+                {/* 種別の一覧は書き写さない。増えるたびにここが古くなる */}
+                <p>そのカードが何なのか（人物・場所・作品・出来事など）を AI が選びます。</p>
                 <p>種別で、そのカードが持てる項目（読み仮名・生没年・式など）が変わります。</p>
                 <p className="text-muted-foreground">
                   外すと「単語」で作られます。あとからカード詳細で直せます。
