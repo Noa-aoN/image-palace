@@ -105,7 +105,13 @@ export function RewardCard({
               <span className="ml-1 tabular-nums text-muted-foreground">×{reward.quantity}</span>
             )}
           </p>
-            <RarityMarks level={reward.rarity_level} tierClass={style.text} dim={!reward.owned} />
+            {/* 位は契約に付いてくるもので、集めるものではない。
+                **一言だけ添える**（説明はパネルに置いてある） */}
+            {reward.plan_rank ? (
+              <span className="block text-[10px] text-muted-foreground">プランの位</span>
+            ) : (
+              <RarityMarks level={reward.rarity_level} tierClass={style.text} dim={!reward.owned} />
+            )}
           </div>
 
         </>
@@ -159,7 +165,10 @@ export function RewardArt({ reward, size }: { reward: RewardRow; size: number })
           alt={reward.name}
           width={size}
           height={size}
-          className={reward.owned ? '' : 'opacity-35 grayscale'}
+          // **薄くしすぎない。** 灰色にして 35% まで落としていたころは、
+          // 何の絵かも分からず、集めたいと思う手がかりが消えていた。
+          // 鍵と枠で「まだ持っていない」ことは十分伝わる
+          className={reward.owned ? '' : 'opacity-70'}
           loading="lazy"
         />
         {!reward.owned && (
@@ -176,7 +185,7 @@ export function RewardArt({ reward, size }: { reward: RewardRow; size: number })
   const Icon = KIND_ICONS[reward.kind]
   return (
     <span className="relative inline-flex" style={{ color: reward.owned ? 'var(--palace)' : undefined }}>
-      <Icon size={size} className={reward.owned ? '' : 'text-muted-foreground/35'} />
+      <Icon size={size} className={reward.owned ? '' : 'text-muted-foreground/70'} />
       {!reward.owned && (
         <Lock size={Math.round(size * 0.3)} className="absolute bottom-0 right-0 text-muted-foreground" aria-hidden />
       )}

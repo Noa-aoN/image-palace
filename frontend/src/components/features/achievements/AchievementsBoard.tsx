@@ -11,6 +11,8 @@ import {
   toggleStar,
   type AchievementsPage,
   type RewardKind,
+  type RewardRow,
+  type UpcomingRow,
 } from '@/lib/api/achievements'
 import { RewardCard, RewardArt } from './RewardCard'
 import { RewardDetail } from './RewardDetail'
@@ -34,7 +36,9 @@ export function AchievementsBoard() {
   const [busy, setBusy] = useState<string | null>(null)
   // 種別（何を見るか）と、状態（持っているか）は別の軸。混ぜると
   // 「未獲得の勲章だけ」が選べなくなる
-  const [kindFilter, setKindFilter] = useState<'all' | RewardKind>('all')
+  // 「位」は種別ではなく**出どころ**（プランに付く称号）。
+  // 新しい分類は増やさず、既にある plan_rank で絞る
+  const [kindFilter, setKindFilter] = useState<'all' | 'rank' | RewardKind>('all')
   const [ownFilter, setOwnFilter] = useState<'all' | 'owned' | 'locked'>('all')
   // 押した札の詳細。狭い画面ではホバーが無いので、これが唯一の説明になる
   const [openKey, setOpenKey] = useState<string | null>(null)
@@ -68,7 +72,8 @@ export function AchievementsBoard() {
   }
 
   const rewards = page.rewards.filter((r) => {
-    if (kindFilter !== 'all' && r.kind !== kindFilter) return false
+    if (kindFilter === 'rank' && !r.plan_rank) return false
+    if (kindFilter !== 'all' && kindFilter !== 'rank' && r.kind !== kindFilter) return false
     if (ownFilter === 'owned') return r.owned
     if (ownFilter === 'locked') return !r.owned
     return true
@@ -198,24 +203,13 @@ export function AchievementsBoard() {
       {page.upcoming.length > 0 && (
         <section className="space-y-3">
           <SectionTitle icon={<Sparkles size={18} />}>もうすぐ獲得</SectionTitle>
-          <ul className="space-y-2">
-            {page.upcoming.map((row) => (
-              // もらえるものは条件と同じ行の右端に置く。下に別の行で並べると、
-              // 1件あたり4行になって、数が増えるほど読み流す面になる
-              <li key={row.key} className="space-y-1 rounded-xl border border-border bg-card px-4 py-3">
-                <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-1">
-                  <span className="font-medium">あと {row.remaining} で</span>
-                  <div className="flex min-w-0 items-center gap-2">
-                    {/* もうすぐ獲得＝まだ手に入れていない */}
-                    <RewardPreviews rewards={row.rewards} earned={false} />
-                    <span className="shrink-0 tabular-nums text-sm text-muted-foreground">
-                      {row.progress} / {row.target}
-                    </span>
-                  </div>
-                </div>
-                <Bar value={row.progress} max={row.target} />
-                {row.description && <p className="text-xs text-muted-foreground">{row.description}</p>}
-              </li>
+          {/* **系列をまたいで、いちばん近いものだけを横に並べる。**
+              各系列の「次の段」は下の実績にも出るが、あちらは1本の道の中の話。
+              ここは道をまたいで「今いちばん近いのはどれか」を出す場所。
+              3枚を一望できる密度にするため、横に並べて縦を詰める */}
+          <ul className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
+            {page.upcoming.slice(0, 3).map((row) => (
+              <UpcomingCard key={row.key} row={row} />
             ))}
           </ul>
         </section>
@@ -279,6 +273,7 @@ export function AchievementsBoard() {
           {(
             [
               ['all', 'すべて'],
+              ['rank', '位'],
               ['title', '称号'],
               ['medal', '勲章'],
               ['honor', '表彰'],
@@ -314,33 +309,15 @@ export function AchievementsBoard() {
           <p className="text-sm text-muted-foreground">ここに出せるものがありません。</p>
         ) : (
           groups.map((group) => (
-            <div key={group.kind} className="space-y-2">
-              <h3 className="flex items-baseline gap-2 text-sm font-medium">
-                {group.label}
-                <span className="text-xs tabular-nums text-muted-foreground">
-                  {group.rows.filter((r) => r.owned).length} / {group.rows.length}
-                </span>
-              </h3>
-              <ul
-                className={
-                  imageOnly
-                    ? 'grid grid-cols-5 gap-2 sm:grid-cols-8 lg:grid-cols-10'
-                    : 'grid grid-cols-3 gap-2.5 sm:grid-cols-4 lg:grid-cols-6'
-                }
-              >
-                {group.rows.map((reward) => (
-                  <li key={reward.key}>
-                    <RewardCard
-                      reward={reward}
-                      onOpen={() => setOpenKey(reward.key)}
-                      onToggleStar={() => act(reward.key, () => toggleStar(reward.key))}
-                      busy={busy === reward.key}
-                      imageOnly={imageOnly}
-                    />
-                  </li>
-                ))}
-              </ul>
-            </div>
+            <RewardGroup
+              key={group.kind}
+              label={group.label}
+              rows={group.rows}
+              imageOnly={imageOnly}
+              busyKey={busy}
+              onOpen={setOpenKey}
+              onToggleStar={(key) => act(key, () => toggleStar(key))}
+            />
           ))
         )}
       </section>
@@ -421,6 +398,122 @@ export function AchievementsBoard() {
  * 行の右端へ寄せる。名前や進捗は左から読むもので、報酬は「その先にあるもの」。
  * 同じ列に混ぜると、どこまでが条件でどこからが報酬なのか分からなくなる。
  */
+/**
+ * 種別ごとの棚。**持っているものは常に見え、未獲得は畳む。**
+ *
+ * 獲得物はモバイルで 3377px あり、ページの最大の要因だった。中身の大半は
+ * 未獲得で、遠いものほど数が多い。全部を最初から並べると、
+ * 「集めたもの」を眺める場所が「まだ無いもの」の一覧になってしまう。
+ *
+ * **消しはしない。** 何が待っているか分からなくなると、集める気も起きない。
+ * 数を添えた1行に畳んで、開けばこれまでどおり並ぶ。
+ */
+function RewardGroup({
+  label,
+  rows,
+  imageOnly,
+  busyKey,
+  onOpen,
+  onToggleStar,
+}: {
+  label: string
+  rows: RewardRow[]
+  imageOnly: boolean
+  busyKey: string | null
+  onOpen: (key: string) => void
+  onToggleStar: (key: string) => void
+}) {
+  const [showLocked, setShowLocked] = useState(false)
+  const owned = rows.filter((r) => r.owned)
+  const locked = rows.filter((r) => !r.owned)
+  const shown = showLocked ? rows : owned
+
+  const gridClass = imageOnly
+    ? 'grid grid-cols-5 gap-2 sm:grid-cols-8 lg:grid-cols-10'
+    : 'grid grid-cols-3 gap-2.5 sm:grid-cols-4 lg:grid-cols-6'
+
+  return (
+    <div className="space-y-2">
+      <h3 className="flex items-baseline gap-2 text-sm font-medium">
+        {label}
+        <span className="text-xs tabular-nums text-muted-foreground">
+          {owned.length} / {rows.length}
+        </span>
+      </h3>
+
+      {shown.length > 0 && (
+        <ul className={gridClass}>
+          {shown.map((reward) => (
+            <li key={reward.key}>
+              <RewardCard
+                reward={reward}
+                onOpen={() => onOpen(reward.key)}
+                onToggleStar={() => onToggleStar(reward.key)}
+                busy={busyKey === reward.key}
+                imageOnly={imageOnly}
+              />
+            </li>
+          ))}
+        </ul>
+      )}
+
+      {owned.length === 0 && !showLocked && (
+        <p className="text-xs text-muted-foreground">まだ持っていません。</p>
+      )}
+
+      {locked.length > 0 && (
+        <button
+          type="button"
+          onClick={() => setShowLocked((v) => !v)}
+          aria-expanded={showLocked}
+          className="text-xs text-muted-foreground underline-offset-2 hover:underline"
+        >
+          {showLocked ? '未獲得を畳む' : `未獲得 ${locked.length}件をみる`}
+        </button>
+      )}
+    </div>
+  )
+}
+
+/**
+ * いちばん近い獲得。**報酬から先に見せる。**
+ *
+ * 「あと3で」だけでは、何が手に入るのか分からないまま数字だけが並ぶ。
+ * 欲しいと思わせるのは報酬の姿なので、絵と名前を上に置き、
+ * 何をすれば届くかをその下に添える。
+ */
+function UpcomingCard({ row }: { row: UpcomingRow }) {
+  // 報酬は複数ありうるが、札の顔になるのは最初の1つ。残りは絵だけ添える
+  const rewards = row.rewards
+  const lead = rewards.find((r) => r.type === 'reward') ?? rewards[0]
+  const leadName = lead?.type === 'credits' ? `${lead.amount} クレジット` : lead?.name
+
+  return (
+    <li className="flex flex-col gap-2 rounded-xl border border-border bg-card px-4 py-3">
+      <div className="flex items-center gap-2.5">
+        {/* まだ手に入れていないので、絵は控えめに出す（RewardPreviews と同じ扱い） */}
+        <RewardPreviews rewards={rewards} earned={false} />
+        <span className="min-w-0 flex-1">
+          <span className="block truncate text-sm font-medium">{leadName ?? row.name}</span>
+          {/* 何をすれば届くか。条件文はここに1行で置く */}
+          <span className="block truncate text-xs text-muted-foreground">{row.description ?? row.name}</span>
+        </span>
+      </div>
+
+      <div className="flex items-baseline justify-between gap-2">
+        <span className="whitespace-nowrap text-sm font-semibold tabular-nums">
+          {row.progress} <span className="text-xs font-normal text-muted-foreground">/ {row.target}</span>
+        </span>
+        <span className="whitespace-nowrap text-xs tabular-nums" style={{ color: 'var(--palace)' }}>
+          あと {row.remaining}
+        </span>
+      </div>
+
+      <Bar value={row.progress} max={row.target} />
+    </li>
+  )
+}
+
 /**
  * 1本の道。**段は畳んで、いま登っている段だけを出す。**
  *

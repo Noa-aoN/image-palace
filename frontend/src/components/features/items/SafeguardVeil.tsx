@@ -24,7 +24,7 @@ export function SafeguardVeil({ className }: { className?: string }) {
       className={cn('pointer-events-none absolute inset-0 z-10', className)}
       style={{
         // 白い霞。黒で沈めると何色の絵かも分からなくなるので、明るい側から薄く掛ける
-        backgroundColor: 'rgba(255,255,255,0.34)',
+        backgroundColor: 'rgba(255,255,255,0.26)',
         // 網はごく薄く、間隔も広く。**模様として読ませない**（気配を消さない程度）
         backgroundImage:
           'repeating-linear-gradient(45deg, rgba(0,0,0,0.07) 0 2px, rgba(0,0,0,0) 2px 14px)',
@@ -36,8 +36,11 @@ export function SafeguardVeil({ className }: { className?: string }) {
 /**
  * 覆いを掛けている間の画像の見た目。
  *
- * 細部が読み取れない強さまでぼかす（blur-md=12px → blur-2xl=40px）。
+ * 強さは**細部が読めない／構図は掴める**の境目に置く。
+ * 40px まで上げたときは、色の気配しか残らず「何の絵か」が分からなかった。
+ * 24px なら、人物か風景か、どこに何があるかまでは伝わる。
+ *
  * 拡大は縁のぼけを枠の外へ押し出すため（縮むと角に地が見える）。
- * 彩度を少し上げるのは、強くぼかすと色が濁って見えるぶんの埋め合わせ
+ * 彩度を少し上げるのは、ぼかすと色が濁って見えるぶんの埋め合わせ
  */
-export const SAFEGUARD_IMAGE_CLASS = 'blur-2xl scale-110 saturate-125'
+export const SAFEGUARD_IMAGE_CLASS = 'blur-[24px] scale-110 saturate-125'
