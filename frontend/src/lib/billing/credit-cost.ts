@@ -66,7 +66,10 @@ export function formatCredits(value: number): string {
 export function costLabel(c: CreditCost, unit: string): string | null {
   if (c.cost === 0) return null
 
-  return `この操作で ${formatCredits(c.cost)} ${unit} 使います`
+  // **短く言い切る。** 「この操作で」は、押す釦の隣に置いている以上、
+  // 読まなくても何の費用かは分かる。長い文は狭い場所で折り返し、
+  // 「1 cr 使い / ます」のように数と単位が分かれて読みにくくなる
+  return `${formatCredits(c.cost)} ${unit} 使います`
 }
 
 /**
@@ -82,9 +85,14 @@ export function afterBalanceLabel(c: CreditCost, unit: string): string | null {
   return `生成後残高：${formatCredits(c.after ?? 0)} ${unit}`
 }
 
-/** 「残高 4 cr → 3 cr」。残高が分からないときは出さない */
+/**
+ * 「残高 4 → 3 cr」。残高が分からないときは出さない。
+ *
+ * 単位は末尾に1つだけ置く。両方に付けると、狭い場所では
+ * 「残高 4 cr → / 3 cr」と矢印の前後で折り返してしまう
+ */
 export function balanceLabel(c: CreditCost, unit: string): string | null {
   if (c.available === null || c.cost === 0) return null
 
-  return `残高 ${formatCredits(c.available)} ${unit} → ${formatCredits(c.after ?? 0)} ${unit}`
+  return `残高 ${formatCredits(c.available)} → ${formatCredits(c.after ?? 0)} ${unit}`
 }

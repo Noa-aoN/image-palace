@@ -44,7 +44,7 @@ describe('creditCost', () => {
 
 describe('言葉', () => {
   it('使う数を言う', () => {
-    expect(costLabel(creditCost({ cost: 1, available: 4 }), 'cr')).toBe('この操作で 1 cr 使います')
+    expect(costLabel(creditCost({ cost: 1, available: 4 }), 'cr')).toBe('1 cr 使います')
   })
 
   it('無料の操作には何も言わない', () => {
@@ -53,7 +53,7 @@ describe('言葉', () => {
   })
 
   it('残高の前後を並べる', () => {
-    expect(balanceLabel(creditCost({ cost: 1, available: 4 }), 'cr')).toBe('残高 4 cr → 3 cr')
+    expect(balanceLabel(creditCost({ cost: 1, available: 4 }), 'cr')).toBe('残高 4 → 3 cr')
   })
 
   it('残高が分からなければ、残高の話はしない', () => {
@@ -68,7 +68,7 @@ describe('小数のクレジット', () => {
     const c = creditCost({ cost: 0.01, available: 4 })
     expect(c.cost).toBe(0.01)
     expect(c.after).toBe(3.99)
-    expect(costLabel(c, 'cr')).toBe('この操作で 0.01 cr 使います')
+    expect(costLabel(c, 'cr')).toBe('0.01 cr 使います')
   })
 
   it('合計も桁が溢れない', () => {
