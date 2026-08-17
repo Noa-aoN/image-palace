@@ -2,13 +2,13 @@
 
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { BookImage, Coins, Compass, GalleryHorizontal, Layers, Sparkles } from 'lucide-react'
+import { BookImage, Coins, Compass, GalleryHorizontal, LayoutGrid, Sparkles } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { getSettings, updateSettings } from '@/lib/api/settings'
 import { getProfile, updateProfile } from '@/lib/api/account'
 import { useSettingsStore } from '@/stores/settings'
 import { DISPLAY_STYLES, DISPLAY_STYLE_KEYS, DEFAULT_DISPLAY_STYLE, type DisplayStyle } from '@/lib/display-style'
-import { CREDIT_UNIT_SHORT, TRIAL_CREDITS, MONTHLY_FREE_CREDITS, INITIAL_CREDITS } from '@/lib/billing'
+import { AI_TEXT_COST, CREDIT_UNIT_SHORT, TRIAL_CREDITS, MONTHLY_FREE_CREDITS, INITIAL_CREDITS } from '@/lib/billing'
 import {
   EMPTY_DRAFT,
   ONBOARDING_STEP_COUNT,
@@ -226,10 +226,17 @@ function WelcomeStep() {
 function ConceptsStep() {
   // 独自の呼び名は、ここで一度だけまとめて説明する。
   // 画面のあちこちで初めて出会うと、そのたびに手が止まる
+  //
+  // 小さいものから大きいものへ並べる。1枚（カード）→ 広げる場（キャンバス）→ 全体（宮殿）。
+  // 逆順にすると、まだ中身を知らないうちに入れ物の話から始まる
   const terms = [
-    { icon: <GalleryHorizontal size={18} />, name: 'メモリーカード', text: '絵と言葉が一枚になったもの。すべての基本' },
-    { icon: <Layers size={18} />, name: 'デッキ', text: '目的ごとにカードをまとめた束。学習はここから始める' },
-    { icon: <Compass size={18} />, name: '宮殿', text: 'あなたの持ちもの全部の置き場所。眺めて思い出す' },
+    { icon: <GalleryHorizontal size={18} />, name: 'カード', text: '絵と言葉が一枚になったもの。すべての基本' },
+    {
+      icon: <LayoutGrid size={18} />,
+      name: 'キャンバス',
+      text: 'カードを広げて使う場。線でつないで関係を描く・並べて見比べる・その場で作り足す',
+    },
+    { icon: <Compass size={18} />, name: '宮殿', text: 'あなたの持ちもの全部の置き場所であり、作りかける作業場でもある' },
   ]
 
   return (
@@ -337,7 +344,14 @@ function DisplayStyleStep({ value, onChange }: { value: DisplayStyle; onChange: 
           はじめる前に
         </p>
         <ul className="space-y-1 text-xs leading-relaxed text-muted-foreground">
-          <li>絵を1枚つくるたびに 1{CREDIT_UNIT_SHORT} 使います。</li>
+          <li>
+            画像生成AIで絵を1枚つくるたびに <strong className="font-medium text-foreground">1{CREDIT_UNIT_SHORT}</strong> 使います。
+          </li>
+          {/* 文章のAIは「無料の便利機能」に見える。押す前に、少しでも減ると書いておく */}
+          <li>
+            説明文の下書きなど、小さなAIの自動生成でも
+            1回につき <strong className="font-medium text-foreground">{AI_TEXT_COST}{CREDIT_UNIT_SHORT}</strong> 使います。
+          </li>
           <li>
             はじめは {INITIAL_CREDITS}{CREDIT_UNIT_SHORT} あります
             （お試し {TRIAL_CREDITS}{CREDIT_UNIT_SHORT} ＋ 当月分 {MONTHLY_FREE_CREDITS}{CREDIT_UNIT_SHORT}）。
