@@ -2061,6 +2061,12 @@
   border-style: solid;
   border-color: transparent;
   border-image-repeat: stretch;
+  /* 左右の端を地へ溶かす。
+     棚は横に切り取った一枚絵なので、端が直線で切れて背景に接する。
+     切り口が見えると、棚が続いているのではなく**板が置いてある**ように見える。
+     溶かすのは左右だけ（上下は棚板・台座として端があるほうが自然） */
+  -webkit-mask-image: linear-gradient(90deg, transparent 0, #000 3.5%, #000 96.5%, transparent 100%);
+  mask-image: linear-gradient(90deg, transparent 0, #000 3.5%, #000 96.5%, transparent 100%);
 }
 
 /* 横棚（rows）: 上 / 左右 / 下 */
