@@ -119,7 +119,7 @@ export function KindPreview({
       className={`relative w-full overflow-hidden rounded-lg border border-border/70 bg-muted/30 ${
         // 横に置くときは、上の余白を親が持つ（札の中で二重に空けない）。
         // 縦横比も詰める。16:9 のままだと、横並びの札だけが縦に伸びる
-        compact ? 'aspect-[16/7]' : 'mt-3 aspect-[16/9]'
+        compact ? 'aspect-[16/7]' : 'aspect-[16/9]'
       }`}
     >
       {preview.mode === 'schematic' ? (
