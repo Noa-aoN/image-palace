@@ -161,14 +161,20 @@ export function AppHeader() {
             </Link>
           </Tooltip>
         )}
-        {showCredits && billingSummary && (
+        {/* **残高は届く前から場所を空けておく。**
+            届いてから出していたころは、読み込みのあいだヘッダーの右側が
+            36px → 116px → 200px と三度広がり、そのたびに隣の釦が動いていた。
+            数だけを後から入れれば、位置は動かない */}
+        {showCredits && (
           <Tooltip label="クレジット残高">
           <Link
             href="/billing"
             className="flex items-center gap-1 rounded-full px-2.5 py-1 text-sm hover:bg-white/15 transition-colors"
           >
             <Coins size={16} style={{ color: 'var(--on-palace)' }} />
-            <span className="font-medium tabular-nums">{billingSummary.available_credits}</span>
+            <span className="min-w-[2ch] text-right font-medium tabular-nums">
+              {billingSummary ? billingSummary.available_credits : '—'}
+            </span>
             <span className="text-xs text-white/75">{CREDIT_UNIT_SHORT}</span>
           </Link>
           </Tooltip>

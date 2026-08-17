@@ -87,7 +87,11 @@ export default async function ArticlePage({ params }: { params: Promise<{ slug: 
         コラム一覧へ
       </Link>
 
-      <header className="mt-6">
+      {/* **本文は紙に載せる。** 地が透けたままだと、背後の宮殿の絵の上に
+          字が直に置かれ、長い文章がとても読みにくい。
+          使い方（/guide）の各ブロックと同じ器に揃える */}
+      <div className="mt-6 rounded-xl border border-border bg-card px-6 py-8 sm:px-8">
+      <header>
         <div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
           <time dateTime={article.date}>{new Date(article.date).toLocaleDateString('ja-JP')}</time>
           <span className="flex items-center gap-1">
@@ -119,6 +123,7 @@ export default async function ArticlePage({ params }: { params: Promise<{ slug: 
           </ul>
         </section>
       )}
+      </div>
       </div>
     </article>
   )
