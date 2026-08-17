@@ -1,8 +1,9 @@
 'use client'
 
-import { useEffect } from 'react'
+import { useEffect, useState } from 'react'
 import { Star, X } from 'lucide-react'
 import { Button } from '@/components/ui/button'
+import { ImageLightbox } from '@/components/ui/image-lightbox'
 import type { RewardRow } from '@/lib/api/achievements'
 import { rarityStyle } from './rarity'
 import { RewardArt, RarityMarks, STAR_VERB } from './RewardCard'
@@ -29,6 +30,9 @@ export function RewardDetail({
 }) {
   const style = rarityStyle(reward.rarity_tier)
   const verb = STAR_VERB[reward.kind]
+  // 絵は押すと大きく見られる。**この面がいちばん近い場所**
+  // （一覧の札を押すとこの詳細が開くので、そこから更に一段） */
+  const [zoomed, setZoomed] = useState(false)
 
   // 開いている間は背後を動かさない。閉じ方は Escape も用意する
   useEffect(() => {
@@ -55,7 +59,18 @@ export function RewardDetail({
       >
         <div className="flex items-start justify-between gap-3">
           <div className="flex items-center gap-3">
-            <RewardArt reward={reward} size={56} />
+            {reward.image_url ? (
+              <button
+                type="button"
+                onClick={() => setZoomed(true)}
+                aria-label={`${reward.name}を大きく見る`}
+                className="shrink-0 cursor-zoom-in rounded focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--palace)]"
+              >
+                <RewardArt reward={reward} size={56} />
+              </button>
+            ) : (
+              <RewardArt reward={reward} size={56} />
+            )}
             <div>
               <p className="font-semibold">{reward.name}</p>
               <p className="flex items-center gap-1.5 text-xs text-muted-foreground">
@@ -127,6 +142,14 @@ export function RewardDetail({
           </div>
         )}
       </div>
+
+      {/* 閉じ方（背景・Esc・×）と焦点の戻しは共通の覆いが持つ */}
+      <ImageLightbox
+        url={reward.image_url}
+        alt={reward.name}
+        open={zoomed}
+        onClose={() => setZoomed(false)}
+      />
     </div>
   )
 }
