@@ -29,12 +29,22 @@ class CampaignCode < ApplicationRecord
   validate :item_reward_not_ready
 
   scope :recent, -> { order(created_at: :desc) }
-  # いま受け取れるものだけ。available? と同じ条件を SQL 側にも持つ
-  # （使い切りの判定だけは件数を数えるので、ここには入れない）
+  # いま受け取れるものだけ。**available? と同じ答えになるようにする。**
+  #
+  # 以前ここは使い切りを見ていなかった。件数を数える必要があるからだが、
+  # `redeemable` という名前で使い切り済みが混ざるのは、名前が嘘をついている。
+  # これを唯一の門にした呼び出しが後から生まれると、上限を超えて配れてしまう。
+  #
+  # 受け取り数は相関副問い合わせで数える。コードは多くて数十件で、
+  # 一覧に出すためだけの経路なので、ここで数え直しても差し支えない。
   scope :redeemable, lambda { |now = Time.current|
     where(enabled: true)
       .where(starts_at: [ nil, ..now ])
       .where("expires_at IS NULL OR expires_at > ?", now)
+      .where(
+        "max_redemptions IS NULL OR max_redemptions > " \
+        "(SELECT COUNT(*) FROM campaign_redemptions WHERE campaign_redemptions.campaign_code_id = campaign_codes.id)"
+      )
   }
 
   # 大小を無視して探す。利用者は小文字で打つし、コピペで前後に空白が付く
