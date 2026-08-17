@@ -30,13 +30,43 @@ export type SessionEndRecord = {
 }
 
 /**
- * 次の画面で案内を出すための申し送り。
+ * 次の画面へ「なぜここに居るのか」を渡す印。
  *
- * localStorage ではなく sessionStorage に置く。この知らせは
- * 「いま切れた」ことを次の1画面で伝えるためのもので、
- * 別の日に開いたときにまで残っていてはいけない。
+ * **URL に載せる。** はじめは sessionStorage で渡していたが、
+ * 書き込みと画面の移動が別々に起きるため、途中で落ちても気づけない
+ * （実際、記録の失敗に巻き込まれて申し送りが消え、ログイン画面に
+ *   何の説明も出ない状態になっていた）。
+ *
+ * 行き先の URL に付けてしまえば、全再読み込みでも確実に届く。
+ * 印は読んだら URL から消すので、貼り付けても残らない。
  */
-export const SESSION_END_KEY = 'session-ended'
+export const SESSION_END_PARAM = 'session'
+export const SESSION_END_VALUE = 'expired'
+
+/** 期限切れで送るときの行き先 */
+export function loginPathWithNotice(): string {
+  return `/login?${SESSION_END_PARAM}=${SESSION_END_VALUE}`
+}
+
+/**
+ * いま 401 でセッションを落としたばかりか。
+ *
+ * **ログイン画面へ送るのは、こちらとは別の場所**（AuthGuard）でも起きる。
+ * 認証が外れたことに気づいた側が router で送るため、そちらのほうが先に着く。
+ * どちらが送っても同じ案内を出せるよう、直前に切れたことをここで覚えておく。
+ *
+ * 覚えているのは同じ画面の中だけでよい（送るのは即座に起きる）。
+ * 全再読み込みで消えるが、そのときは URL の印のほうが残る。
+ */
+let endedJustNow = false
+
+export function markSessionEnded() {
+  endedJustNow = true
+}
+
+export function sessionEndedJustNow(): boolean {
+  return endedJustNow
+}
 
 /** devise-token-auth の expiry は**秒**。ミリ秒として読むと1970年になる */
 export function expiryToDate(expiry: string | null | undefined): Date | null {
@@ -94,28 +124,28 @@ export function reportSessionEnd(record: SessionEndRecord) {
         redirected: String(record.redirected),
       },
     })
-
-    // ログイン画面へ送るときだけ、次の画面で理由を出せるように渡す。
-    // 公開ページはそのまま読めるので、毎回の知らせは出さない
-    if (record.redirected && typeof window !== 'undefined') {
-      window.sessionStorage.setItem(SESSION_END_KEY, JSON.stringify(record))
-    }
   } catch {
     // 観測のために画面を壊さない
   }
 }
 
-/** 申し送りを1度だけ読む（読んだら消す。戻ってくるたびに出さない） */
-export function takeSessionEndNotice(): SessionEndRecord | null {
-  if (typeof window === 'undefined') return null
+/**
+ * 期限切れで送られてきたか。**読んだら URL から印を消す。**
+ *
+ * 残したままだと、再読み込みのたびに同じ知らせが出るうえ、
+ * その URL を誰かに渡したときにも出てしまう。
+ */
+export function takeSessionEndNotice(): boolean {
+  if (typeof window === 'undefined') return false
 
   try {
-    const raw = window.sessionStorage.getItem(SESSION_END_KEY)
-    if (!raw) return null
+    const url = new URL(window.location.href)
+    if (url.searchParams.get(SESSION_END_PARAM) !== SESSION_END_VALUE) return false
 
-    window.sessionStorage.removeItem(SESSION_END_KEY)
-    return JSON.parse(raw) as SessionEndRecord
+    url.searchParams.delete(SESSION_END_PARAM)
+    window.history.replaceState(null, '', `${url.pathname}${url.search}${url.hash}`)
+    return true
   } catch {
-    return null
+    return false
   }
 }

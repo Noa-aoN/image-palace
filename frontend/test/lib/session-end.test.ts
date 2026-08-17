@@ -2,7 +2,7 @@ import { beforeEach, describe, expect, it } from 'vitest'
 import {
   buildSessionEndRecord,
   expiryToDate,
-  SESSION_END_KEY,
+  loginPathWithNotice,
   takeSessionEndNotice,
 } from '@/lib/auth/session-end'
 
@@ -81,23 +81,40 @@ describe('セッション終了の記録', () => {
 })
 
 describe('ログイン画面への申し送り', () => {
-  beforeEach(() => window.sessionStorage.clear())
+  const go = (url: string) => window.history.replaceState(null, '', url)
 
-  // 一度きり。戻るたびに出続けると、済んだ話をずっと知らせることになる
-  it('読んだら消える', () => {
-    window.sessionStorage.setItem(SESSION_END_KEY, JSON.stringify({ at: 'x' }))
+  beforeEach(() => go('/login'))
 
-    expect(takeSessionEndNotice()).not.toBeNull()
-    expect(takeSessionEndNotice()).toBeNull()
+  it('期限切れで送られてきたら知らせる', () => {
+    go(loginPathWithNotice())
+
+    expect(takeSessionEndNotice()).toBe(true)
   })
 
-  it('無ければ null', () => {
-    expect(takeSessionEndNotice()).toBeNull()
+  // 残したままだと、再読み込みのたびに同じ知らせが出る。
+  // その URL を誰かに渡したときにも出てしまう
+  it('読んだら URL から印を消す', () => {
+    go(loginPathWithNotice())
+    takeSessionEndNotice()
+
+    expect(window.location.search).toBe('')
+    expect(takeSessionEndNotice()).toBe(false)
   })
 
-  it('壊れていても落ちない', () => {
-    window.sessionStorage.setItem(SESSION_END_KEY, '{壊れている')
+  it('ほかの問い合わせは消さない', () => {
+    go(`/login?next=%2Fitems&${'session'}=expired`)
+    takeSessionEndNotice()
 
-    expect(takeSessionEndNotice()).toBeNull()
+    expect(window.location.search).toBe('?next=%2Fitems')
+  })
+
+  it('印が無ければ知らせない', () => {
+    expect(takeSessionEndNotice()).toBe(false)
+  })
+
+  it('別の値では知らせない', () => {
+    go('/login?session=whatever')
+
+    expect(takeSessionEndNotice()).toBe(false)
   })
 })

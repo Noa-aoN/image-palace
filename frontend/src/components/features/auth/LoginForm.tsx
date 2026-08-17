@@ -28,8 +28,10 @@ export function LoginForm() {
   const [sessionEnded, setSessionEnded] = useState(false)
 
   useEffect(() => {
-    // 一度きり。読んだら消えるので、戻るたびに出続けることはない
-    setSessionEnded(takeSessionEndNotice() !== null)
+    // 印は読んだ時点で URL から消える。**消えたことを「無かった」に書き戻さない。**
+    // 開発時の二重実行では、1回目で受け取ったあと2回目は false が返るので、
+    // そのまま入れると出したはずの案内が消える（実際に消えていた）
+    if (takeSessionEndNotice()) setSessionEnded(true)
   }, [])
 
   function updateFieldError(field: 'email' | 'password', message?: string) {

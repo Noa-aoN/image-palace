@@ -2,7 +2,12 @@ import axios from 'axios'
 import { useAuthStore } from '@/stores/auth'
 import { useItemsStore } from '@/stores/items'
 import { isPublicPath } from '@/lib/auth/public-paths'
-import { buildSessionEndRecord, reportSessionEnd } from '@/lib/auth/session-end'
+import {
+  buildSessionEndRecord,
+  loginPathWithNotice,
+  markSessionEnded,
+  reportSessionEnd,
+} from '@/lib/auth/session-end'
 
 const AUTH_ERROR_EXCLUDED_PATHS = new Set([
   '/api/v1/auth',
@@ -70,11 +75,16 @@ apiClient.interceptors.response.use(
 
       useItemsStore.getState().resetItems()
       useAuthStore.getState().clearAuth()
+      // 認証が外れたことに気づいた側（AuthGuard）が先に送ることがある。
+      // どちらが送っても同じ案内を出せるよう、切れたことを先に印しておく
+      if (redirected) markSessionEnded()
 
       reportSessionEnd(
         buildSessionEndRecord({
           pathname,
-          api: path ?? requestUrl ?? '(不明)',
+          // **pathname だけを載せる。** requestUrl にはクエリが付く。
+          // いまは載る値に秘密は無いが、あとで付いたものが記録へ流れ込む道を作らない
+          api: path ?? '(不明)',
           tokenExpiry,
           redirected,
           now: new Date(),
@@ -82,7 +92,8 @@ apiClient.interceptors.response.use(
       )
 
       if (redirected) {
-        window.location.href = '/login'
+        // なぜログイン画面に居るのかを URL で渡す（読んだ側が印を消す）
+        window.location.href = loginPathWithNotice()
       }
     }
     return Promise.reject(error)

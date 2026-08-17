@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { useAuthStore } from '@/stores/auth'
 import { getProfile } from '@/lib/api/account'
+import { loginPathWithNotice, sessionEndedJustNow } from '@/lib/auth/session-end'
 
 export function AuthGuard({ children }: { children: React.ReactNode }) {
   const router = useRouter()
@@ -27,7 +28,11 @@ export function AuthGuard({ children }: { children: React.ReactNode }) {
   }, [])
 
   useEffect(() => {
-    if (hasHydrated && !isAuthenticated) router.replace('/login')
+    if (!hasHydrated || isAuthenticated) return
+
+    // いま期限切れで落ちたのなら、ログイン画面で理由を出せるようにして送る。
+    // 何も言わずに戻すと、操作を失敗したように見える
+    router.replace(sessionEndedJustNow() ? loginPathWithNotice() : '/login')
   }, [hasHydrated, isAuthenticated, router])
 
   // 認証済みになったら一度プロフィールを取得し、アバターをストアに反映する
