@@ -467,7 +467,6 @@ Obsidianは非常に強力な知識管理ツールであり、
 
 > 実装済みだが本番の鍵を入れていないため休眠中のもの：Sign in with Apple、Google Analytics 4、
 > fal.ai（FLUX。画像生成の代替プロバイダーとして実装済み・既定は OpenAI）。
-> 稼働・休眠の最新状況は `docs/production-snapshot.md` を参照。
 
 ---
 
@@ -511,7 +510,7 @@ Obsidianは非常に強力な知識管理ツールであり、
 - 生成待機時間によるUX低下
   → 非同期ジョブ + ポーリングで、生成中も操作を止めない設計
 
-技術的な詳細は `docs/architecture.md`、本番構成の実態は `docs/production-snapshot.md` を参照。
+設計の詳細と本番構成の記録は、リポジトリに含めていない運用ドキュメント側で管理している。
 
 ---
 
