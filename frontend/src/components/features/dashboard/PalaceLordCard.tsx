@@ -204,11 +204,30 @@ export function PalaceLordCard({ tier }: { tier: string | null }) {
                 名前の下に埋めると、本人を指す情報と混ざる */}
             <div>
               <dt className="text-xs text-muted-foreground">入居日</dt>
-              <dd className="font-medium">{movedInOn}</dd>
+              {/* 隣の「位」には絵が入るので、**絵の高さに合わせて中で上下中央に置く**。
+                  文字だけのまま並べると、隣より一段上に浮いて行が揃わない */}
+              <dd className={`${FACT_ROW} font-medium`}>{movedInOn}</dd>
             </div>
             <div>
               <dt className="text-xs text-muted-foreground">位</dt>
-              <dd className="font-medium">{tier ? tierLabel(tier) : '—'}</dd>
+              {/*
+                名前の前に品物の絵を置く。**位も獲得物のひとつ**で、
+                アチーブメントでは絵で並んでいるのに、ここだけ文字だけだった。
+                同じものが画面によって別の見え方をすると、同じものだと気づけない。
+
+                絵は勲章・宝物と同じ 22px に揃える。ここだけ大きいと、
+                位が上の段のもののように見える。
+                取れないとき（絵が無い・契約が読めない）は、これまでどおり文字だけ。
+              */}
+              <dd className={`${FACT_ROW} gap-1.5 font-medium`}>
+                {honors?.rank?.image_url && (
+                  <RewardLink name={honors.rank.name}>
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img src={honors.rank.image_url} alt="" width={22} height={22} loading="lazy" />
+                  </RewardLink>
+                )}
+                <span className="truncate">{tier ? tierLabel(tier) : (honors?.rank?.name ?? '—')}</span>
+              </dd>
             </div>
             {/* 称号が無い人には、次に取れるものを出す */}
             {!honors?.title && honors?.next_title && (
@@ -259,6 +278,11 @@ export function PalaceLordCard({ tier }: { tier: string | null }) {
     </section>
   )
 }
+
+// 「入居日」と「位」の行。**片方にだけ絵が入るので、高さを絵に合わせて揃える。**
+// 文字だけの側をそのままにすると、隣より一段上に浮いて2列の行が噛み合わない。
+// 22px は勲章・宝物の絵と同じ寸法（ここだけ大きいと位が格上に見える）
+const FACT_ROW = 'flex min-h-[24px] items-center pt-0.5'
 
 // 自分の絵を決める場所。**基本プロフィールの枠ごと指す**ので、
 // 画面の中の並びが変わっても行き先は変わらない

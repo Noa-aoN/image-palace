@@ -129,6 +129,11 @@ export interface NextTitle {
 export interface AchievementsPage {
   summary: {
     title: RewardRow | null
+    /**
+     * いまの契約に付く位。**名乗っている称号（title）とは別**。
+     * 名乗りは自分で選ぶもので、位は契約が決める。名乗っていなくても持っている
+     */
+    rank: RewardRow | null
     next_title: NextTitle | null
     /** 星を入れたもの。種別ごとに出す場所が違う */
     showcase: Record<RewardKind, RewardRow[]>
