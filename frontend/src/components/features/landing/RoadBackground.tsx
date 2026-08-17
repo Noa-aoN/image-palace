@@ -86,6 +86,12 @@ export function RoadBackground({ fadeTop, fadeBottom, gate, intro, fadeUnderDivi
     let growLen = 1
     let glowLen = 1
     let glowZoomLen = 1
+    // 門が現れる区間。**光（--road-glowz）には乗せない。**
+    // あちらはヒーローを抜けて1.6画面ぶんで育ち切るので、
+    // 門を乗せるとページのかなり手前で最大まで出てしまい、
+    // 「道の先に近づいていく」感じにならない
+    let gateStart = 0
+    let gateLen = 1
     const measure = () => {
       const hero = document.querySelector<HTMLElement>('.hero-track')
       const ih = window.innerHeight
@@ -120,6 +126,22 @@ export function RoadBackground({ fadeTop, fadeBottom, gate, intro, fadeUnderDivi
       // 遠くの光のズーム長。半分サイズから、フェードより長くかけて
       // スクロールと共に少しずつ等倍へ近づく
       glowZoomLen = ih * 1.6
+
+      /*
+        門は**最後から1つ前の節**に入ってから現れ、ページの終わりまで育つ。
+
+        節の位置を数えず画面数で決めると、節を1つ足しただけで
+        始まる場所がずれる。最後から2番目の `<section id>` の頭を基準にする。
+        （節が2つに満たない場合は、ページ終端から2画面ぶん手前に倒す）
+      */
+      const sections = Array.from(document.querySelectorAll<HTMLElement>('section[id]'))
+      const secondLast = sections.length >= 2 ? sections[sections.length - 2] : null
+      const pageEnd = document.documentElement.scrollHeight - ih
+      gateStart = secondLast
+        ? secondLast.getBoundingClientRect().top + window.scrollY
+        : Math.max(0, pageEnd - ih * 2)
+      // 終わりまで使い切る。**残りが短すぎると一気に出る**ので、下限を置く
+      gateLen = Math.max(ih * 0.8, pageEnd - gateStart)
     }
 
     let raf = 0
@@ -138,6 +160,9 @@ export function RoadBackground({ fadeTop, fadeBottom, gate, intro, fadeUnderDivi
       // ズーム進行（0=半分 → 1=等倍）。フェードより長くゆっくり
       const glowZoom = Math.min(1, Math.max(0, (window.scrollY - walkStart) / glowZoomLen))
       el.style.setProperty('--road-glowz', glowZoom.toFixed(3))
+      // 門の進行（0=まだ出ていない → 1=いちばん近い）。濃さと大きさの両方に使う
+      const gate = Math.min(1, Math.max(0, (window.scrollY - gateStart) / gateLen))
+      el.style.setProperty('--road-gate', gate.toFixed(3))
       // 誘導演出の可視度（フェードイン × フェードアウト）。道本体とは独立した
       // 専用要素に書き込む（道側の変数・描画には影響しない）。
       // JS 非駆動時は CSS 既定の 0（非表示）

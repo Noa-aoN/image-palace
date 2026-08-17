@@ -17,6 +17,37 @@ RSpec.describe Achievements::Presenter do
     )
   end
 
+  # エントランスの「位」に絵を出すため、契約に付く位を行ごと返している。
+  # **名乗っている称号とは別のもの**なので、名乗りの有無で消えてはいけない
+  describe "契約に付く位" do
+    def summary_for(u) = described_class.new(u).summary
+
+    it "契約が無ければ市民を返す（絵の場所つき）" do
+      rank = summary_for(user)[:rank]
+
+      expect(rank[:key]).to eq("title_rank_free")
+      expect(rank[:name]).to eq("市民")
+      expect(rank[:image_url]).to be_present
+    end
+
+    it "契約している位を返す" do
+      plan = Plan.find_or_create_by!(name: "pro") do |p|
+        p.assign_attributes(tier: "pro", kind: "subscription", interval: "month",
+                            price_cents: 3_980, credits_per_period: 280, active: true)
+      end
+      Subscription.create!(user: user, plan: plan, status: "active", started_at: 1.day.ago)
+
+      expect(summary_for(user)[:rank][:key]).to eq("title_rank_pro")
+    end
+
+    it "何も名乗っていなくても返る（名乗りと位は別のもの）" do
+      s = summary_for(user)
+
+      expect(s[:title]).to be_nil
+      expect(s[:rank]).to be_present
+    end
+  end
+
   describe "ミッションの並びと数" do
     # 既定のミッションが枠を埋めてしまうので、この節では自分で並べたものだけを見る
     before do
