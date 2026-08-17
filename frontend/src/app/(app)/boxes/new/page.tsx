@@ -16,7 +16,7 @@ export default function NewBoxPage() {
             ボックスを作成
           </h1>
           <p className="mt-2 text-muted-foreground">
-            カードをテーマごとにまとめるボックスを作成します。
+            カードやスペース、キャンバスをまとめるボックスを作成します。
           </p>
         </div>
         <CreateBoxForm redirectBase="/boxes" />
