@@ -2,19 +2,7 @@
 // 各セクションは /guide 一覧に並び、/guide/[slug] で個別ページとして表示される。
 
 import type { LucideIcon } from 'lucide-react'
-import {
-  Sparkles,
-  Layers,
-  HelpCircle,
-  BookMarked,
-  Map,
-  GalleryHorizontal,
-  LibraryBig,
-  LayoutGrid,
-  Frame,
-  GraduationCap,
-  Lightbulb,
-} from 'lucide-react'
+import { BookMarked, Frame, GalleryHorizontal, GraduationCap, HelpCircle, Layers, LayoutGrid, LibraryBig, Lightbulb, Map, Sparkles, Trophy } from 'lucide-react'
 
 export type GuideSlug =
   | 'getting-started'
@@ -50,6 +38,35 @@ export const GUIDE_SECTIONS: GuideSection[] = [
   { slug: 'glossary', title: '用語集', excerpt: 'カード・ボックス・キャンバス・スペースなど、用語の意味。', icon: BookMarked },
   { slug: 'sitemap', title: 'サイトマップ', excerpt: 'サービス内の全ページをツリーで一覧。', icon: Map },
 ]
+
+/**
+ * 読み進める順。
+ *
+ * **一方向に一本道**にする。関連するページを何本も並べると、
+ * どれから読めばよいのかが分からなくなり、結局どれも読まれない。
+ *
+ *   はじめ方 → 活用例 → 機能 → よくある質問 → 用語集 → サイトマップ
+ *
+ * 何をするサービスか（はじめ方）→ 何に使えるか（活用例）→ 何ができるか（機能）
+ * → 分からないこと（FAQ）→ 言葉の意味（用語集）→ 全体の地図（サイトマップ）。
+ * 最後は行き止まりにする（そこから先は実際に使うほうがよい）。
+ */
+const READING_ORDER: GuideSlug[] = [
+  'getting-started',
+  'use-cases',
+  'features',
+  'faq',
+  'glossary',
+  'sitemap',
+]
+
+/** 次に読むページ。最後のページなら null */
+export function nextGuideSection(slug: string): GuideSection | undefined {
+  const index = READING_ORDER.indexOf(slug as GuideSlug)
+  if (index < 0 || index === READING_ORDER.length - 1) return undefined
+
+  return getGuideSection(READING_ORDER[index + 1])
+}
 
 export function getGuideSection(slug: string): GuideSection | undefined {
   return GUIDE_SECTIONS.find((s) => s.slug === slug)
@@ -91,7 +108,7 @@ export const FEATURE_GROUPS: FeatureGroup[] = [
     items: [
       { name: 'まとめて作成', desc: '改行・カンマ・読点で区切って、複数の単語を一度にカード化できます。' },
       { name: 'AI画像の自動生成', desc: '単語の意味を表すイメージをAIが生成し、完了したものから順に表示します。' },
-      { name: '再生成', desc: '画像を作り直せます。失敗したカードからの再生成は生成枠を消費しません。' },
+      { name: '再生成', desc: '画像を作り直せます。混雑などで失敗したカードは、3回目まで無料で作り直せます。' },
       { name: 'かしこいキャッシュ', desc: '同じ単語は一度だけ生成して再利用。待ち時間とコストを抑えます。' },
     ],
   },
@@ -133,6 +150,16 @@ export const FEATURE_GROUPS: FeatureGroup[] = [
       { name: 'レコード', desc: '学習履歴や正答率を確認します。' },
     ],
   },
+  {
+    theme: '集める — アチーブメント',
+    icon: Trophy,
+    items: [
+      { name: '実績', desc: '作った枚数や続けた日数などが進むと達成になります。段のあるものは1本の道としてまとまります。' },
+      { name: '獲得物', desc: '称号・勲章・宝物・表彰を受け取れます。称号は自分で選んで名乗れます。' },
+      { name: 'ミッション', desc: '今日・今週の短い目標です。達成すると獲得物やクレジットを受け取れます。' },
+      { name: '位', desc: '契約しているプランに付いてくる呼び名です。プランを変えると入れ替わります。' },
+    ],
+  },
 ]
 
 // よくある質問（FAQ）
@@ -143,10 +170,10 @@ export const FAQ: { q: string; a: string }[] = [
   },
   {
     q: '画像がうまく生成できなかった（失敗した）ときは？',
-    a: 'カードが「失敗」状態のときは、詳細画面から再生成できます。失敗からの再生成では生成枠（クレジット）を消費しません。何度か試しても不安定な場合は、単語の表記を少し変えると改善することがあります。',
+    a: 'カードが「失敗」状態のときは、詳細画面から作り直せます。通信の混雑などが原因の失敗は、同じ内容のまま3回目まで無料で作り直せます。4回目からは通常どおり1クレジット使います。なお、入力そのものが原因で作れなかったときは、そのまま押しても同じ結果になるため、単語を変えるか画像への指示を添えてからお試しください（画面にもその案内が出ます）。',
   },
   {
-    q: '同じ単語をもう一度作ると、生成枠を二重に消費しますか？',
+    q: '同じ単語をもう一度作ると、クレジットを二重に消費しますか？',
     a: 'いいえ。同じ単語の画像はキャッシュされ、世界で一度だけ生成して再利用します。すでに生成済みの単語は、待ち時間もなくすぐに表示されます。',
   },
   {
@@ -170,8 +197,12 @@ export const FAQ: { q: string; a: string }[] = [
 // 用語集
 export const GLOSSARY: { term: string; desc: string }[] = [
   { term: 'カード', desc: '単語や概念に、その意味を表すイメージを結びつけた学習の基本単位です。' },
+  {
+    term: '種別',
+    desc: 'そのカードが何なのかを表す区分です。単語・概念・実体・人物・出来事・場所・作品・組織・タスク・記録の10種類があり、作成時にAIが選びます（あとから変えられます）。カードに持たせる項目（読み仮名・生没年など）は種別ごとに用意するので、人物と単語で別の項目を持てます。',
+  },
   { term: 'イメージ（画像）', desc: 'カードの意味を表す、AIが自動生成する画像です。文字と一緒に記憶を助けます。' },
-  { term: '生成枠（クレジット）', desc: '画像を生成できる残り回数です（1クレジットで1枚）。受け取ってから3か月間有効で、期限の近いものから使われます。' },
+  { term: 'クレジット', desc: '画像を生成できる残り回数です（1クレジットで1枚）。受け取ってから3か月間有効で、期限の近いものから使われます。' },
   { term: 'マテリアル', desc: '単語・用語リストなど、カードを作る元になる素材です。' },
   { term: 'ボックス', desc: 'カードをテーマごとにまとめておく入れ物です。' },
   { term: 'タグ', desc: 'カードに付ける横断的なラベル。分類や絞り込みに使います。' },
@@ -179,7 +210,22 @@ export const GLOSSARY: { term: string; desc: string }[] = [
   { term: '接続線', desc: 'キャンバス上でカード同士をつなぐ線。矢印・ラベル・色で関係を表現できます。' },
   { term: 'レイヤー（重なり順）', desc: 'カードや接続線の前後の重なり順です。右クリックや一覧の並べ替えで調整できます。' },
   { term: 'スペース', desc: '場所に配置して覚えるビューです。「記憶の宮殿」のように空間で記憶を整理します（ルーム／ロード）。' },
-  { term: '再生成', desc: '画像を作り直すことです。失敗したカードからの再生成は生成枠を消費しません。' },
+  {
+    term: '再生成',
+    desc: '画像を作り直すことです。通信の混雑などで失敗したカードは、3回目まで無料で作り直せます（4回目からは1クレジット使います）。入力そのものが原因で作れなかったときは、単語や指示を変えてからでないと作り直せません。',
+  },
+  {
+    term: 'アチーブメント',
+    desc: '使い続けたり、目標を達成したりすると増えていく記録です。実績が進むと、称号・勲章・宝物・表彰といった獲得物を受け取れます。',
+  },
+  {
+    term: '位（くらい）',
+    desc: '契約しているプランに付いてくる呼び名です（市民・書記官・学匠・賢者・元老）。プランを変えると入れ替わり、やめると外れます。自分で選んで名乗る「称号」とは別のものです。',
+  },
+  {
+    term: '称号',
+    desc: '獲得物のひとつで、持っているものから自分で選んで名乗れます。プランに付いてくる「位」とは違い、実績を達成して手に入れます。',
+  },
   { term: 'エントランス', desc: 'ログイン後の入口となるホーム画面です。' },
   { term: 'アトリエ / ライブラリ / スタディ', desc: 'それぞれ「作る」「ためる（一覧）」「学ぶ（復習）」ための場所です。' },
 ]

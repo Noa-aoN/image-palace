@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button'
 import { ListRows } from '@/components/features/posts/ListRows'
 import { getPosts } from '@/lib/api/posts'
 import { NEWS_CATEGORIES, POST_CATEGORY_LABELS, type Post, type PostCategory } from '@/types/post'
+import { BoardBackLink } from '@/components/features/posts/BoardBackLink'
 
 /**
  * お知らせ。**運営からの連絡**（お知らせ・更新情報）だけを並べる。
@@ -39,6 +40,7 @@ export default function NewsPage() {
 
   return (
     <div className="mx-auto max-w-4xl px-6 py-12">
+      <BoardBackLink />
       <header>
         <h1 className="flex items-center gap-2.5 text-2xl font-semibold">
           <Megaphone size={26} style={{ color: 'var(--palace)' }} />

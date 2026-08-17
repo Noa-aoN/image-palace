@@ -7,6 +7,7 @@ import { absoluteUrl, breadcrumbJsonLd } from '@/lib/seo/structured-data'
 import { shareImage } from '@/lib/seo/share-image'
 import { GUIDE_SECTIONS } from '@/lib/guide/sections'
 import { ListRows } from '@/components/features/posts/ListRows'
+import { BoardBackLink } from '@/components/features/posts/BoardBackLink'
 
 const TITLE = '使い方'
 const DESCRIPTION = 'はじめ方・できること・用語・よくある質問。ImagePalace の使い方をまとめています。'
@@ -50,6 +51,7 @@ export default function GuidePage() {
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
       />
+      <BoardBackLink />
       <header>
         <h1 className="flex items-center gap-2.5 text-2xl font-semibold">
           <BookOpen size={26} style={{ color: 'var(--palace)' }} />
