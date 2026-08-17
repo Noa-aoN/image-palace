@@ -142,7 +142,12 @@ function CreateCard({ action, wide }: { action: CreateAction; wide: boolean }) {
       className="group block w-full rounded-xl text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--palace)]"
     >
       <Card className="h-full cursor-pointer transition hover:border-[var(--palace)] hover:shadow-md">
-        <CardContent className={wide ? 'sm:flex sm:items-center sm:gap-6' : undefined}>
+        {/* **図は下端で揃える。** 説明が2行の札と3行の札が隣り合うと、
+            図の位置がばらけて、並びが波打って見える。
+            縦積みのときは高さいっぱいに伸ばし、説明と図の間で余りを吸わせる */}
+        <CardContent
+          className={wide ? 'sm:flex sm:items-center sm:gap-6' : 'flex h-full flex-col'}
+        >
           <div className={wide ? 'sm:min-w-0 sm:flex-1' : undefined}>
             <div className="flex items-center justify-between">
               <span className="flex items-center gap-2 text-sm font-medium">
@@ -159,7 +164,7 @@ function CreateCard({ action, wide }: { action: CreateAction; wide: boolean }) {
           </div>
           {/* 絵は理解の助けなので小さくしすぎない。広い枠では横に置いて、
               札の高さを抑えたまま同じ大きさを保つ */}
-          <div className={wide ? 'mt-3 sm:mt-0 sm:w-72 sm:shrink-0' : undefined}>
+          <div className={wide ? 'mt-3 sm:mt-0 sm:w-72 sm:shrink-0' : 'mt-auto pt-3'}>
             <KindPreview kind={action.kind} label={action.label} compact={wide} />
           </div>
         </CardContent>
