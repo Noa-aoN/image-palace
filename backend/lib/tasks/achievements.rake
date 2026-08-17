@@ -111,4 +111,31 @@ namespace :plans do
     end
     puts "残り: #{Plan.where(kind: "subscription", image_key: nil).count} 件"
   end
+
+  desc "実績の報酬を付け替えた後、達成済みの人へ配り直す。dry_run=1 で下見だけ"
+  task :backfill_reward, [ :achievement_key, :reward_key ] => :environment do |_task, args|
+    achievement_key = args[:achievement_key].presence
+    reward_key = args[:reward_key].presence
+    dry_run = ENV["dry_run"] == "1"
+
+    if achievement_key.nil? || reward_key.nil?
+      abort "使い方: rails 'achievements:backfill_reward[hundred_cards,medal_laurel]' （dry_run=1 で下見）"
+    end
+
+    # 配る相手が多いと通知の書き込みが積み上がる。**app ではなく worker で走らせる**
+    # （app で重い処理を回して本番 API を 503 にしたことがある）
+    result = Achievements::BackfillAchievementReward.call(
+      achievement_key: achievement_key, reward_key: reward_key, dry_run: dry_run
+    )
+
+    puts "実績 #{achievement_key} の達成者: #{result.completed} 人"
+    puts "すでに #{reward_key} を持っている（手放した人も含む）: #{result.already_had} 人"
+    if dry_run
+      puts "配る対象: #{result.completed - result.already_had} 人"
+      puts "\n※ 下見のみ。何も配っていません"
+    else
+      puts "配った: #{result.granted} 人"
+      puts "配らなかった（同じ出来事から既に配布済み等）: #{result.skipped} 人" if result.skipped.positive?
+    end
+  end
 end

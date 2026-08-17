@@ -3,6 +3,8 @@
 # ミッションの定義。「これから取れるもの」を出すためのもので、
 # 実績（積み上がったものを見る）と役割を分けている。
 class MissionDefinition < ApplicationRecord
+  include RewardsValidation
+
   CADENCES = %w[daily weekly onboarding limited event].freeze
   CADENCE_LABELS = {
     "daily" => "今日", "weekly" => "今週", "onboarding" => "はじめに",
