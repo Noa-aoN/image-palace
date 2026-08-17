@@ -262,23 +262,28 @@ class RewardDefinition < ApplicationRecord
     { key: "title_rank_free", kind: "title", name: "市民", rarity_level: 1, category: "公式",
       description: "この宮殿に住まうすべての人へ。", position: 1,
       metadata: { "source" => "subscription", "tier" => "free",
-                  "motif" => "a plain marble stele with a simple laurel sprig" } },
+                  "motif" => "a plain marble stele with a simple laurel sprig" },
+      image_key: "i0clqasd2bjji0cx6bwe35sehjrm" },
     { key: "title_rank_standard", kind: "title", name: "書記官", rarity_level: 3, category: "公式",
       description: "スタンダードプランを結んでいる間、名乗れる位。", position: 2,
       metadata: { "source" => "subscription", "tier" => "standard",
-                  "motif" => "a marble stele with a stylus and an open wax tablet" } },
+                  "motif" => "a marble stele with a stylus and an open wax tablet" },
+      image_key: "o38x3b5luwllo23y5cxusvu90a5r" },
     { key: "title_rank_pro", kind: "title", name: "学匠", rarity_level: 5, category: "公式",
       description: "プロプランを結んでいる間、名乗れる位。", position: 3,
       metadata: { "source" => "subscription", "tier" => "pro",
-                  "motif" => "a marble stele with an open scroll and a laurel border" } },
+                  "motif" => "a marble stele with an open scroll and a laurel border" },
+      image_key: "do8cv90a3pph8c6zq2rkez0jts5c" },
     { key: "title_rank_creator", kind: "title", name: "賢者", rarity_level: 7, category: "公式",
       description: "クリエイタープランを結んでいる間、名乗れる位。", position: 4,
       metadata: { "source" => "subscription", "tier" => "creator",
-                  "motif" => "a marble stele with an owl above a laurel crown" } },
+                  "motif" => "a marble stele with an owl above a laurel crown" },
+      image_key: "u236ur66xf9q4tzxz2xh1d7llhbo" },
     { key: "title_rank_studio", kind: "title", name: "元老", rarity_level: 9, category: "公式",
       description: "スタジオプランを結んでいる間、名乗れる位。", position: 5,
       metadata: { "source" => "subscription", "tier" => "studio",
-                  "motif" => "a marble stele with a ceremonial staff and a full laurel wreath" } }, # rubocop:disable Layout/LineLength
+                  "motif" => "a marble stele with a ceremonial staff and a full laurel wreath" },
+      image_key: "x152ca427d3j3vufkftrsurjwfmn" },
 
     # ── 遠い到達点の埋め合わせ ──
     #
@@ -290,16 +295,20 @@ class RewardDefinition < ApplicationRecord
     # 絵はまだ無いので、種別ごとの既定の絵柄で出る（あとから管理画面で差し替えられる）。
     { key: "title_archivist", kind: "title", name: "大蒐集家", rarity_level: 6, category: "創作",
       description: "500枚のカードを集めた人へ。", position: 22,
-      metadata: { "motif" => "a stele with tall shelves of amphorae and a laurel crown above" } },
+      metadata: { "motif" => "a stele with tall shelves of amphorae and a laurel crown above" },
+      image_key: "13wzvsfmjuoxtmidrfvs243q98vp" },
     { key: "medal_century_streak", kind: "medal", name: "百日連続の勲章", rarity_level: 6, category: "継続",
       description: "100日続けて通った証。", position: 32,
-      metadata: { "motif" => "a medal with one hundred small rays around a laurel ring" } },
+      metadata: { "motif" => "a medal with one hundred small rays around a laurel ring" },
+      image_key: "5ym8h3wlmaghsjslkcmp1unika6c" },
     { key: "medal_collector", kind: "medal", name: "蒐集の徽章", rarity_level: 3, category: "創作",
       description: "獲得物を10個集めた証。", position: 33,
-      metadata: { "motif" => "a badge showing three small display shelves with tiny objects" } },
+      metadata: { "motif" => "a badge showing three small display shelves with tiny objects" },
+      image_key: "wbnwmc9ntu0rei9yephfiivci8cp" },
     { key: "treasure_laurel_crown", kind: "treasure", name: "月桂の冠", rarity_level: 7, category: "継続",
       description: "一年ぶん通った人の部屋に。", position: 48,
-      metadata: { "motif" => "a woven laurel crown resting on a marble stand" } }
+      metadata: { "motif" => "a woven laurel crown resting on a marble stand" },
+      image_key: "wok4118j6wujjedqdlqe8amsdmen" }
   ].freeze
 
   # 位（プランに付く称号）の目印。同期はこの2つで引く
