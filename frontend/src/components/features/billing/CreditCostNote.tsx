@@ -2,8 +2,16 @@
 
 import Link from 'next/link'
 import { AlertTriangle, Coins } from 'lucide-react'
-import { CREDIT_UNIT_SHORT } from '@/lib/billing'
-import { afterBalanceLabel, balanceLabel, costLabel, creditCost, formatCredits } from '@/lib/billing/credit-cost'
+import { AI_TEXT_COST, CREDIT_UNIT_SHORT } from '@/lib/billing'
+import {
+  afterBalanceLabel,
+  balanceLabel,
+  breakdownLabel,
+  costLabel,
+  creditCost,
+  formatCredits,
+  type CostLine,
+} from '@/lib/billing/credit-cost'
 
 /**
  * これから使うクレジットを、**押す前に**置く。
@@ -55,11 +63,33 @@ export function CreditCostHint({
   )
 }
 
+/**
+ * 「0.01 cr／枚」。選ぶと費用が増える項目の名前の隣に置く小さな札。
+ *
+ * **絵以外にもお金がかかることは、選ぶ場所で言わないと伝わらない。**
+ * 合計だけを下に出しても、どの選択が効いているのかが結び付かない。
+ *
+ * 札そのものは注意ではないので、色は付けない（既定でONの項目が
+ * 赤く見えると、間違った設定をしているように読める）。
+ */
+export function AiCostBadge({ perCard = true }: { perCard?: boolean }) {
+  return (
+    <span
+      className="shrink-0 rounded-full bg-muted px-1.5 py-0.5 text-[10px] font-normal tabular-nums text-muted-foreground"
+      title="画像生成とは別に、文章の AI を1回使います"
+    >
+      +{AI_TEXT_COST} {CREDIT_UNIT_SHORT}
+      {perCard && '／枚'}
+    </span>
+  )
+}
+
 export function CreditCostNote({
   cost,
   available,
   className,
   variant = 'box',
+  lines,
 }: {
   cost: number
   available: number | null
@@ -70,8 +100,16 @@ export function CreditCostNote({
    * 出す中身の量だけが違い、計算はどれも同じ。
    */
   variant?: 'box' | 'inline' | 'after'
+  /**
+   * 内訳。**絵ぶん以外の費用があるときは必ず渡す。**
+   *
+   * 「1枚しか作っていないのに 1cr 以上減った」という問い合わせが実際に来ている。
+   * 合計だけでは 1.04 の 0.04 がどこから来たのか読み取れない。
+   */
+  lines?: CostLine[]
 }) {
   const c = creditCost({ cost, available })
+  const breakdown = lines ? breakdownLabel(lines) : null
   const text = costLabel(c, CREDIT_UNIT_SHORT)
   if (!text) return null
 
@@ -129,6 +167,13 @@ export function CreditCostNote({
       <span className="min-w-0">
         <span className={`whitespace-nowrap font-medium ${c.tone === 'plain' ? 'text-foreground' : ''}`}>{text}</span>
         {balance && <span className="ml-1.5 whitespace-nowrap">{balance}</span>}
+        {/* 内訳。**合計の真下に置く。** 離すと、数と出どころが結び付かない */}
+        {breakdown && (
+          <>
+            <br />
+            <span className="opacity-90">{breakdown}</span>
+          </>
+        )}
         {!c.sufficient && (
           <>
             <br />

@@ -11,6 +11,57 @@
 /** これ以上をいちどに使うなら、念のため強めに出す */
 export const BULK_COST_THRESHOLD = 10
 
+/**
+ * 費用の内訳。**合計だけでは「1枚しか作っていないのに 1cr 以上減った」になる。**
+ *
+ * カードを1枚作ると、絵の 1cr のほかに、意味・タグ・種別・項目の
+ * 自動生成がそれぞれ 0.01cr かかる。全部入りなら 1.04cr。
+ * 合計だけを出すと 1.04 という数の出どころが分からず、
+ * 「1枚 = 1cr」と覚えている人には多く引かれたように見える。
+ *
+ * だから**何が何個で幾ら**までを一緒に持つ。
+ */
+export interface CostLine {
+  /** 「絵」「意味」など。何に対する費用か */
+  label: string
+  /** 1回あたりの単価 */
+  unit: number
+  /** 回数 */
+  count: number
+}
+
+export function lineTotal(line: CostLine): number {
+  return round2(line.unit * line.count)
+}
+
+export function sumLines(lines: CostLine[]): number {
+  return round2(lines.reduce((total, line) => total + line.unit * line.count, 0))
+}
+
+/**
+ * 「絵 3枚 ＋ 意味・タグ 各3回」。**単価は書かない。**
+ *
+ * 内訳に単価まで並べると（絵 3×1cr ＋ 意味 3×0.01cr…）4つの数が横に並び、
+ * どれが合計なのか分からなくなる。合計は上の行が言っているので、
+ * ここは「何に使うか」だけを担う。
+ */
+export function breakdownLabel(lines: CostLine[]): string | null {
+  const used = lines.filter((line) => line.count > 0 && line.unit > 0)
+  if (used.length <= 1) return null
+
+  // 同じ回数のものはまとめる（意味・タグ・種別 各3回）
+  const byCount = new Map<number, string[]>()
+  for (const line of used) {
+    byCount.set(line.count, [...(byCount.get(line.count) ?? []), line.label])
+  }
+
+  return [...byCount.entries()]
+    .map(([count, labels]) =>
+      labels.length > 1 ? `${labels.join('・')} 各${count}回` : `${labels[0]} ${count}回`
+    )
+    .join(' ＋ ')
+}
+
 export type CreditCostTone = 'plain' | 'caution' | 'blocked'
 
 export interface CreditCost {

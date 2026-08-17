@@ -1,5 +1,13 @@
 import { describe, expect, it } from 'vitest'
-import { BULK_COST_THRESHOLD, balanceLabel, costLabel, creditCost, formatCredits } from '@/lib/billing/credit-cost'
+import {
+  BULK_COST_THRESHOLD,
+  balanceLabel,
+  breakdownLabel,
+  costLabel,
+  creditCost,
+  formatCredits,
+  sumLines,
+} from '@/lib/billing/credit-cost'
 
 describe('creditCost', () => {
   it('使ったあとの残りを出す', () => {
@@ -88,5 +96,49 @@ describe('小数のクレジット', () => {
   it('残高より多い小数でも、残りをマイナスにしない', () => {
     expect(creditCost({ cost: 0.05, available: 0.01 }).after).toBe(0)
     expect(creditCost({ cost: 0.05, available: 0.01 }).sufficient).toBe(false)
+  })
+})
+
+describe('費用の内訳', () => {
+  // カードを1枚作ると、絵の 1cr のほかに自動生成が 0.01cr ずつかかる。
+  // 合計だけを出していたため「1枚しか作っていないのに 1cr 以上減った」が起きた
+  const lines = (count: number, options: string[]) => [
+    { label: '絵', unit: 1, count },
+    ...options.map((label) => ({ label, unit: 0.01, count })),
+  ]
+
+  it('絵だけなら枚数どおり', () => {
+    expect(sumLines(lines(3, []))).toBe(3)
+  })
+
+  it('自動生成のぶんを合計に足す（1枚 全部入りで 1.04）', () => {
+    expect(sumLines(lines(1, ['意味', 'タグ', '種別', '項目']))).toBe(1.04)
+  })
+
+  it('枚数ぶん掛かる（3枚 全部入りで 3.12）', () => {
+    expect(sumLines(lines(3, ['意味', 'タグ', '種別', '項目']))).toBe(3.12)
+  })
+
+  it('小数の誤差を残さない', () => {
+    // 0.01 を7回足すと 0.07000000000000001 になる
+    expect(sumLines([{ label: 'AI', unit: 0.01, count: 7 }])).toBe(0.07)
+  })
+
+  it('内訳は、同じ回数のものをまとめて出す', () => {
+    expect(breakdownLabel(lines(3, ['意味', 'タグ']))).toBe('絵・意味・タグ 各3回')
+  })
+
+  it('絵だけのときは内訳を出さない（合計と同じことしか言えない）', () => {
+    expect(breakdownLabel(lines(3, []))).toBeNull()
+  })
+
+  it('0 件・無料のものは内訳に出さない', () => {
+    const withZero = [
+      { label: '絵', unit: 1, count: 2 },
+      { label: '下ごしらえ', unit: 0, count: 2 },
+      { label: 'タグ', unit: 0.01, count: 0 },
+    ]
+    expect(breakdownLabel(withZero)).toBeNull()
+    expect(sumLines(withZero)).toBe(2)
   })
 })
