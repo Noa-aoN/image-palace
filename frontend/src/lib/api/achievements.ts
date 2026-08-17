@@ -159,7 +159,7 @@ export interface AchievementsPage {
 export type AchievementSummary = AchievementsPage['summary']
 
 /**
- * 装備中の称号と代表勲章だけ。エントランスなど、栄誉の間の外から呼ぶ。
+ * 装備中の称号と代表勲章だけ。エントランスなど、アチーブメントの外から呼ぶ。
  * 全体を読むと実績の数え直しまで走るので、軽いほうを使う。
  */
 export async function getAchievementSummary(): Promise<AchievementSummary> {

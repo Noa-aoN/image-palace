@@ -14,6 +14,7 @@ import {
   type RewardRow,
   type UpcomingRow,
 } from '@/lib/api/achievements'
+import { CategorySections, type CategorySection } from '@/components/features/myroom/CategorySections'
 import { RewardCard, RewardArt } from './RewardCard'
 import { RewardDetail } from './RewardDetail'
 import { RewardPreviews } from './RewardPreviews'
@@ -22,7 +23,7 @@ import { buildSeries, seriesCategory, type AchievementSeries } from '@/lib/achie
 import { MissionSeriesCard } from './MissionSeriesCard'
 
 /**
- * 栄誉の間。
+ * アチーブメント。
  *
  * 未獲得のものも**名前と条件を出す**。何を目指せるか分からないと目標にならない。
  * ただし持っていないものは色を落とし、鍵を掛けて、持っているものと見分けが付くようにする。
@@ -30,6 +31,9 @@ import { MissionSeriesCard } from './MissionSeriesCard'
  * 並びは「いまの自分 → もうすぐ取れる → 今日やること → 集めたもの → 積み上げた数字」。
  * 眺めて嬉しくなる順ではなく、**次の行動が決まる順**にしてある。
  */
+/** タブの並び。**概要 → 獲得物 → 実績 → 記録**（現在地 → 集めたもの → 達成 → 積み上げ） */
+type TabKey = 'overview' | 'rewards' | 'achievements' | 'records'
+
 export function AchievementsBoard() {
   const [page, setPage] = useState<AchievementsPage | null>(null)
   const [error, setError] = useState(false)
@@ -91,267 +95,311 @@ export function AchievementsBoard() {
     rows: rewards.filter((r) => r.kind === kind),
   })).filter((g) => g.rows.length > 0)
 
-  return (
-    <div className="space-y-8">
-      {/* ── 記名板とサマリー ──
-          左は「いま何を掲げているか」、右は「どれだけ積み上げたか」。
-          1枚に混ぜると、見せるものと数える数字が同じ面に並んで、どちらも薄くなる */}
-      <div className="grid gap-4 lg:grid-cols-2 lg:items-stretch">
-        {/* 見出しは札の中ではなく**外**に置く。下に続く「もうすぐ獲得」「獲得物」と
-            同じ形に揃えないと、同じ大きさの話なのに、ここだけ札の中の小見出しに見える */}
-        <section className="flex flex-col gap-3">
-          {/* 王冠はページの見出し（アチーブメント）が使っている。
-              同じ絵を2つ並べると、どちらが上位の見出しなのか読めなくなる。
-              名乗りを書き入れる板なので、巻物にする */}
-          <SectionTitle
-            icon={<ScrollText size={18} />}
-            // 称号と勲章が並ぶのはここ。**何が何かを知りたくなるのもここ**。
-            // エントランスの札からは説明を外し、種別の意味はこの1か所で開く
-            action={<RewardKindsHelp />}
-          >
-            記名板
-          </SectionTitle>
+  const sections: CategorySection<TabKey>[] = [
+    {
+      key: 'overview',
+      label: '概要',
+      icon: <Sparkles size={16} />,
+      content: (
+        <div className="space-y-8">
+        {/* ── 記名板とサマリー ──
+            左は「いま何を掲げているか」、右は「どれだけ積み上げたか」。
+            1枚に混ぜると、見せるものと数える数字が同じ面に並んで、どちらも薄くなる */}
+        <div className="grid gap-4 lg:grid-cols-2 lg:items-stretch">
+          {/* 見出しは札の中ではなく**外**に置く。下に続く「もうすぐ獲得」「獲得物」と
+              同じ形に揃えないと、同じ大きさの話なのに、ここだけ札の中の小見出しに見える */}
+          <section className="flex flex-col gap-3">
+            {/* 王冠はページの見出し（アチーブメント）が使っている。
+                同じ絵を2つ並べると、どちらが上位の見出しなのか読めなくなる。
+                名乗りを書き入れる板なので、巻物にする */}
+            <SectionTitle
+              icon={<ScrollText size={18} />}
+              // 称号と勲章が並ぶのはここ。**何が何かを知りたくなるのもここ**。
+              // エントランスの札からは説明を外し、種別の意味はこの1か所で開く
+              action={<RewardKindsHelp />}
+            >
+              記名板
+            </SectionTitle>
 
-          <div className="flex-1 space-y-3 rounded-xl border border-border bg-card p-5">
-          <div className="flex items-center gap-2">
-            {/* 下に並ぶ勲章・宝物・表彰と同じ形にする。
-                ここだけ絵記号だと、**何の行なのかを絵から読み取らせる**ことになり、
-                同じ板の中で読み方が2通りになる */}
-            <span className="w-8 shrink-0 text-xs text-muted-foreground">{KIND_LABELS.title}</span>
-            {/* 括弧は付けない。左に「称号」の文字ラベルがあるので、
-                囲いは二重になる（宮殿の主人カードと同じ扱いに揃えた） */}
-            {page.summary.title ? (
-              <span className="text-lg font-semibold">{page.summary.title.name}</span>
-            ) : (
-              <span className="text-lg font-semibold text-muted-foreground">まだ名乗っていません</span>
-            )}
-          </div>
-
-          {/* 「ありません」で終わらせない。次に何をすれば名乗れるかを出す */}
-          {!page.summary.title && page.summary.next_title && (
-            <p className="rounded-lg bg-muted/40 px-3 py-2 text-sm">
-              {page.summary.next_title.condition ?? 'もう少し進める'}と、称号
-              <strong className="mx-1">「{page.summary.next_title.name}」</strong>
-              を獲得できます
-              {page.summary.next_title.remaining > 0 && (
-                <span className="ml-1 tabular-nums text-muted-foreground">
-                  （あと {page.summary.next_title.remaining}）
-                </span>
+            <div className="flex-1 space-y-3 rounded-xl border border-border bg-card p-5">
+            <div className="flex items-center gap-2">
+              {/* 下に並ぶ勲章・宝物・表彰と同じ形にする。
+                  ここだけ絵記号だと、**何の行なのかを絵から読み取らせる**ことになり、
+                  同じ板の中で読み方が2通りになる */}
+              <span className="w-8 shrink-0 text-xs text-muted-foreground">{KIND_LABELS.title}</span>
+              {/* 括弧は付けない。左に「称号」の文字ラベルがあるので、
+                  囲いは二重になる（宮殿の主人カードと同じ扱いに揃えた） */}
+              {page.summary.title ? (
+                <span className="text-lg font-semibold">{page.summary.title.name}</span>
+              ) : (
+                <span className="text-lg font-semibold text-muted-foreground">まだ名乗っていません</span>
               )}
-            </p>
-          )}
+            </div>
 
-          {/* 星を入れたものを種別ごとに並べる。出す場所が種別で違うので、ここでも分ける */}
-          {KIND_SHOWCASE_ORDER.map((kind) => {
-            const rows = page.summary.showcase[kind] ?? []
-            if (rows.length === 0) return null
-            return (
-              <div key={kind} className="flex items-center gap-2">
-                <span className="w-8 shrink-0 text-xs text-muted-foreground">{rows[0].kind_label}</span>
-                <span className="flex flex-wrap items-center gap-1.5">
-                  {rows.map((reward) => (
-                    <span key={reward.key} title={reward.name}>
-                      <RewardArt reward={reward} size={26} />
-                    </span>
-                  ))}
-                </span>
-              </div>
-            )
-          })}
-
-          {page.summary.rewards_earned === 0 && (
-            <p className="text-xs text-muted-foreground">
-              獲得したものに星を入れると、ここに並びます。
-            </p>
-          )}
-          </div>
-        </section>
-
-        <section className="flex flex-col gap-3">
-          <SectionTitle icon={<History size={18} />}>まとめ</SectionTitle>
-
-          <div className="flex-1 space-y-3 rounded-xl border border-border bg-card p-5">
-          <dl className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-            {(Object.keys(page.summary.counts) as RewardKind[]).map((kind) => {
-              const c = page.summary.counts[kind]
-              return (
-                <SummaryStat
-                  key={kind}
-                  label={KIND_LABELS[kind]}
-                  value={c.owned}
-                  suffix={` / ${c.total}`}
-                />
-              )
-            })}
-          </dl>
-
-          <dl className="grid grid-cols-2 gap-3 border-t border-border pt-3 sm:grid-cols-4">
-            <SummaryStat
-              label="達成した実績"
-              value={page.summary.achievements_completed}
-              suffix={` / ${page.summary.achievements_total}`}
-            />
-            <SummaryStat label="入居から" value={page.summary.days_since_joined} suffix="日" />
-            <SummaryStat label="学習した日" value={page.summary.active_days} suffix="日" />
-            <SummaryStat label="続いている" value={page.summary.streak_days} suffix="日" />
-          </dl>
-          </div>
-        </section>
-      </div>
-
-      {/* ── もうすぐ獲得 ── */}
-      {page.upcoming.length > 0 && (
-        <section className="space-y-3">
-          <SectionTitle icon={<Sparkles size={18} />}>もうすぐ獲得</SectionTitle>
-          {/* **系列をまたいで、いちばん近いものだけを横に並べる。**
-              各系列の「次の段」は下の実績にも出るが、あちらは1本の道の中の話。
-              ここは道をまたいで「今いちばん近いのはどれか」を出す場所。
-              3枚を一望できる密度にするため、横に並べて縦を詰める */}
-          <ul className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
-            {page.upcoming.slice(0, 3).map((row) => (
-              <UpcomingCard key={row.key} row={row} />
-            ))}
-          </ul>
-        </section>
-      )}
-
-      {/* ── 道のり（シリーズ） ── */}
-      {page.mission_series.length > 0 && (
-        <section className="space-y-3">
-          <SectionTitle icon={<Route size={18} />}>道のり</SectionTitle>
-          <ul className="space-y-2">
-            {page.mission_series.map((series) => (
-              <MissionSeriesCard key={series.key} series={series} />
-            ))}
-          </ul>
-        </section>
-      )}
-
-      {/* ── 進行中のミッション ── */}
-      {page.missions.length > 0 && (
-        <section className="space-y-3">
-          <SectionTitle icon={<Trophy size={18} />}>ミッション</SectionTitle>
-          <ul className="space-y-2">
-            {page.missions.map((mission) => (
-              <li
-                key={mission.key}
-                className={`space-y-1.5 rounded-xl border p-4 ${
-                  mission.completed ? 'border-[var(--palace)]/40 bg-card' : 'border-border bg-card'
-                }`}
-              >
-                <div className="flex flex-wrap items-baseline justify-between gap-2">
-                  <span className="flex items-center gap-2">
-                    <span className="rounded-full bg-muted px-2 py-0.5 text-[11px] text-muted-foreground">
-                      {mission.cadence_label}
-                    </span>
-                    <span className={mission.completed ? 'text-muted-foreground line-through' : 'font-medium'}>
-                      {mission.name}
-                    </span>
+            {/* 「ありません」で終わらせない。次に何をすれば名乗れるかを出す */}
+            {!page.summary.title && page.summary.next_title && (
+              <p className="rounded-lg bg-muted/40 px-3 py-2 text-sm">
+                {page.summary.next_title.condition ?? 'もう少し進める'}と、称号
+                <strong className="mx-1">「{page.summary.next_title.name}」</strong>
+                を獲得できます
+                {page.summary.next_title.remaining > 0 && (
+                  <span className="ml-1 tabular-nums text-muted-foreground">
+                    （あと {page.summary.next_title.remaining}）
                   </span>
-                  <span className="tabular-nums text-sm text-muted-foreground">
-                    {mission.completed ? '達成' : `${mission.progress} / ${mission.target}`}
+                )}
+              </p>
+            )}
+
+            {/* 星を入れたものを種別ごとに並べる。出す場所が種別で違うので、ここでも分ける */}
+            {KIND_SHOWCASE_ORDER.map((kind) => {
+              const rows = page.summary.showcase[kind] ?? []
+              if (rows.length === 0) return null
+              return (
+                <div key={kind} className="flex items-center gap-2">
+                  <span className="w-8 shrink-0 text-xs text-muted-foreground">{rows[0].kind_label}</span>
+                  <span className="flex flex-wrap items-center gap-1.5">
+                    {rows.map((reward) => (
+                      <span key={reward.key} title={reward.name}>
+                        <RewardArt reward={reward} size={26} />
+                      </span>
+                    ))}
                   </span>
                 </div>
-                {!mission.completed && <Bar value={mission.progress} max={mission.target} />}
-                {/* 「やること」ではなく「報酬への道」に見せる。何が貰えるか分からないと、やる気にならない */}
-                <RewardPreviews rewards={mission.rewards} earned={mission.completed} />
-              </li>
-            ))}
-          </ul>
-        </section>
-      )}
+              )
+            })}
 
-      {/* ── 獲得物 ── */}
-      <section className="space-y-3">
-        <div className="flex items-center gap-2">
-          <SectionTitle icon={<Medal size={18} />}>獲得物</SectionTitle>
-          {/* 種別の意味は毎回は要らないが、初めて見る人には要る。開いたときだけ出す */}
-          <RewardKindsHelp />
+            {page.summary.rewards_earned === 0 && (
+              <p className="text-xs text-muted-foreground">
+                獲得したものに星を入れると、ここに並びます。
+              </p>
+            )}
+            </div>
+          </section>
+
+          <section className="flex flex-col gap-3">
+            <SectionTitle icon={<History size={18} />}>まとめ</SectionTitle>
+
+            <div className="flex-1 space-y-3 rounded-xl border border-border bg-card p-5">
+            <dl className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+              {(Object.keys(page.summary.counts) as RewardKind[]).map((kind) => {
+                const c = page.summary.counts[kind]
+                return (
+                  <SummaryStat
+                    key={kind}
+                    label={KIND_LABELS[kind]}
+                    value={c.owned}
+                    suffix={` / ${c.total}`}
+                  />
+                )
+              })}
+            </dl>
+
+            <dl className="grid grid-cols-2 gap-3 border-t border-border pt-3 sm:grid-cols-4">
+              <SummaryStat
+                label="達成した実績"
+                value={page.summary.achievements_completed}
+                suffix={` / ${page.summary.achievements_total}`}
+              />
+              <SummaryStat label="入居から" value={page.summary.days_since_joined} suffix="日" />
+              <SummaryStat label="学習した日" value={page.summary.active_days} suffix="日" />
+              <SummaryStat label="続いている" value={page.summary.streak_days} suffix="日" />
+            </dl>
+            </div>
+          </section>
         </div>
 
-        <div className="flex flex-wrap items-center gap-1.5">
-          {(
-            [
-              ['all', 'すべて'],
-              ['rank', '位'],
-              ['title', '称号'],
-              ['medal', '勲章'],
-              ['honor', '表彰'],
-              ['treasure', '宝物'],
-            ] as const
-          ).map(([value, label]) => (
-            <Chip key={value} active={kindFilter === value} onClick={() => setKindFilter(value)}>
-              {label}
-            </Chip>
-          ))}
+        {/* ── もうすぐ獲得 ── */}
+        {page.upcoming.length > 0 && (
+          <section className="space-y-3">
+            <SectionTitle icon={<Sparkles size={18} />}>もうすぐ獲得</SectionTitle>
+            {/* **系列をまたいで、いちばん近いものだけを横に並べる。**
+                各系列の「次の段」は下の実績にも出るが、あちらは1本の道の中の話。
+                ここは道をまたいで「今いちばん近いのはどれか」を出す場所。
+                3枚を一望できる密度にするため、横に並べて縦を詰める */}
+            <ul className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
+              {page.upcoming.slice(0, 3).map((row) => (
+                <UpcomingCard key={row.key} row={row} />
+              ))}
+            </ul>
+          </section>
+        )}
 
-          {/* 状態は別の軸なので、行の反対側へ寄せる */}
-          <div className="ml-auto flex items-center gap-1.5">
-            <Chip active={imageOnly} onClick={() => setImageOnly((v) => !v)} subtle>
-              絵だけ
-            </Chip>
-            <span className="mx-0.5 h-4 w-px bg-border" aria-hidden />
+        {/* ── 道のり（シリーズ） ── */}
+        {page.mission_series.length > 0 && (
+          <section className="space-y-3">
+            <SectionTitle icon={<Route size={18} />}>道のり</SectionTitle>
+            <ul className="space-y-2">
+              {page.mission_series.map((series) => (
+                <MissionSeriesCard key={series.key} series={series} />
+              ))}
+            </ul>
+          </section>
+        )}
+
+        {/* ── 進行中のミッション ── */}
+        {page.missions.length > 0 && (
+          <section className="space-y-3">
+            <SectionTitle icon={<Trophy size={18} />}>ミッション</SectionTitle>
+            <ul className="space-y-2">
+              {page.missions.map((mission) => (
+                <li
+                  key={mission.key}
+                  className={`space-y-1.5 rounded-xl border p-4 ${
+                    mission.completed ? 'border-[var(--palace)]/40 bg-card' : 'border-border bg-card'
+                  }`}
+                >
+                  <div className="flex flex-wrap items-baseline justify-between gap-2">
+                    <span className="flex items-center gap-2">
+                      <span className="rounded-full bg-muted px-2 py-0.5 text-[11px] text-muted-foreground">
+                        {mission.cadence_label}
+                      </span>
+                      <span className={mission.completed ? 'text-muted-foreground line-through' : 'font-medium'}>
+                        {mission.name}
+                      </span>
+                    </span>
+                    <span className="tabular-nums text-sm text-muted-foreground">
+                      {mission.completed ? '達成' : `${mission.progress} / ${mission.target}`}
+                    </span>
+                  </div>
+                  {!mission.completed && <Bar value={mission.progress} max={mission.target} />}
+                  {/* 「やること」ではなく「報酬への道」に見せる。何が貰えるか分からないと、やる気にならない */}
+                  <RewardPreviews rewards={mission.rewards} earned={mission.completed} />
+                </li>
+              ))}
+            </ul>
+          </section>
+        )}
+        </div>
+      ),
+    },
+    {
+      key: 'rewards',
+      label: '獲得物',
+      icon: <Medal size={16} />,
+      content: (
+        <section className="space-y-3">
+          <div className="flex items-center gap-2">
+                {/* 種別の意味は毎回は要らないが、初めて見る人には要る。開いたときだけ出す */}
+            <RewardKindsHelp />
+          </div>
+
+          <div className="flex flex-wrap items-center gap-1.5">
             {(
               [
                 ['all', 'すべて'],
-                ['owned', '獲得済み'],
-                ['locked', '未獲得'],
+                ['rank', '位'],
+                ['title', '称号'],
+                ['medal', '勲章'],
+                ['honor', '表彰'],
+                ['treasure', '宝物'],
               ] as const
             ).map(([value, label]) => (
-              <Chip key={value} active={ownFilter === value} onClick={() => setOwnFilter(value)} subtle>
+              <Chip key={value} active={kindFilter === value} onClick={() => setKindFilter(value)}>
                 {label}
               </Chip>
             ))}
-          </div>
-        </div>
 
-        {groups.length === 0 ? (
-          <p className="text-sm text-muted-foreground">ここに出せるものがありません。</p>
-        ) : (
-          groups.map((group) => (
-            <RewardGroup
-              key={group.kind}
-              label={group.label}
-              rows={group.rows}
-              imageOnly={imageOnly}
-              busyKey={busy}
-              onOpen={setOpenKey}
-              onToggleStar={(key) => act(key, () => toggleStar(key))}
-            />
-          ))
-        )}
-      </section>
-
-      {/* ── 実績（分類ごと） ── */}
-      <section className="space-y-4">
-        <SectionTitle icon={<Award size={18} />}>実績</SectionTitle>
-        {/* 分類ごとに分ける。1本の長い列にすると、どこを見ればよいか分からない */}
-        {page.categories.map((category) => {
-          // **畳むのは全体で1度だけ。** 分類ごとに畳むと、分類をまたぐ道
-          // （1枚は「はじめに」、10枚以降は「作成」）が2つに割れる
-          const series = allSeries.filter((s) => (seriesCategory(s) ?? 'その他') === category)
-          if (series.length === 0) return null
-
-          // 数えるのは**段ではなく道**。段で数えると「1 / 9」のように
-          // 進んでいないように見えるが、実際は9段ある道を1つ登り始めただけ
-          const done = series.filter((s) => !s.next).length
-          return (
-            <div key={category} className="space-y-2">
-              <h3 className="flex items-baseline gap-2 text-sm font-medium">
-                {category}
-                <span className="text-xs tabular-nums text-muted-foreground">
-                  {done} / {series.length}
-                </span>
-              </h3>
-              <ul className="space-y-2">
-                {series.map((row) => (
-                  <SeriesRow key={row.key} series={row} />
-                ))}
-              </ul>
+            {/* 状態は別の軸なので、行の反対側へ寄せる */}
+            <div className="ml-auto flex items-center gap-1.5">
+              <Chip active={imageOnly} onClick={() => setImageOnly((v) => !v)} subtle>
+                絵だけ
+              </Chip>
+              <span className="mx-0.5 h-4 w-px bg-border" aria-hidden />
+              {(
+                [
+                  ['all', 'すべて'],
+                  ['owned', '獲得済み'],
+                  ['locked', '未獲得'],
+                ] as const
+              ).map(([value, label]) => (
+                <Chip key={value} active={ownFilter === value} onClick={() => setOwnFilter(value)} subtle>
+                  {label}
+                </Chip>
+              ))}
             </div>
-          )
-        })}
-      </section>
+          </div>
+
+          {groups.length === 0 ? (
+            <p className="text-sm text-muted-foreground">ここに出せるものがありません。</p>
+          ) : (
+            groups.map((group) => (
+              <RewardGroup
+                key={group.kind}
+                label={group.label}
+                rows={group.rows}
+                imageOnly={imageOnly}
+                busyKey={busy}
+                onOpen={setOpenKey}
+                onToggleStar={(key) => act(key, () => toggleStar(key))}
+              />
+            ))
+          )}
+        </section>
+      ),
+    },
+    {
+      key: 'achievements',
+      label: '実績',
+      icon: <Award size={16} />,
+      content: (
+        <section className="space-y-4">
+          {/* 分類ごとに分ける。1本の長い列にすると、どこを見ればよいか分からない */}
+          {page.categories.map((category) => {
+            // **畳むのは全体で1度だけ。** 分類ごとに畳むと、分類をまたぐ道
+            // （1枚は「はじめに」、10枚以降は「作成」）が2つに割れる
+            const series = allSeries.filter((s) => (seriesCategory(s) ?? 'その他') === category)
+            if (series.length === 0) return null
+
+            // 数えるのは**段ではなく道**。段で数えると「1 / 9」のように
+            // 進んでいないように見えるが、実際は9段ある道を1つ登り始めただけ
+            const done = series.filter((s) => !s.next).length
+            return (
+              <div key={category} className="space-y-2">
+                <h3 className="flex items-baseline gap-2 text-sm font-medium">
+                  {category}
+                  <span className="text-xs tabular-nums text-muted-foreground">
+                    {done} / {series.length}
+                  </span>
+                </h3>
+                <ul className="space-y-2">
+                  {series.map((row) => (
+                    <SeriesRow key={row.key} series={row} />
+                  ))}
+                </ul>
+              </div>
+            )
+          })}
+        </section>
+      ),
+    },
+    {
+      key: 'records',
+      label: '記録',
+      icon: <Gem size={16} />,
+      content: (
+        <section className="space-y-3">
+          <dl className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-5">
+            {page.stats.map((row) => (
+              <div
+                key={row.key}
+                className="rounded-xl border border-border bg-[color-mix(in_srgb,var(--card)_92%,var(--foreground))] p-3 text-center"
+              >
+                <dt className="text-[11px] text-muted-foreground">{row.label}</dt>
+                <dd className="text-lg font-semibold tabular-nums">
+                  {row.value.toLocaleString()}
+                  <span className="ml-0.5 text-xs font-normal text-muted-foreground">{row.unit}</span>
+                </dd>
+              </div>
+            ))}
+          </dl>
+        </section>
+      ),
+    },
+  ]
+
+  return (
+    <>
+      <CategorySections sections={sections} ariaLabel="アチーブメントのカテゴリ" />
 
       {/* 押した札の詳細。狭い画面ではホバーが無いので、ここが唯一の説明になる */}
       {openKey && (() => {
@@ -366,26 +414,7 @@ export function AchievementsBoard() {
           />
         )
       })()}
-
-      {/* ── 記録（石板） ── */}
-      <section className="space-y-3">
-        <SectionTitle icon={<Gem size={18} />}>記録</SectionTitle>
-        <dl className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-5">
-          {page.stats.map((row) => (
-            <div
-              key={row.key}
-              className="rounded-xl border border-border bg-[color-mix(in_srgb,var(--card)_92%,var(--foreground))] p-3 text-center"
-            >
-              <dt className="text-[11px] text-muted-foreground">{row.label}</dt>
-              <dd className="text-lg font-semibold tabular-nums">
-                {row.value.toLocaleString()}
-                <span className="ml-0.5 text-xs font-normal text-muted-foreground">{row.unit}</span>
-              </dd>
-            </div>
-          ))}
-        </dl>
-      </section>
-    </div>
+    </>
   )
 }
 

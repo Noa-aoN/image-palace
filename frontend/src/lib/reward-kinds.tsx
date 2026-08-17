@@ -6,7 +6,7 @@ import type { ReactNode } from 'react'
  *
  * **説明は1か所で持つ。** 同じ語の説明が画面ごとに違うと、
  * どれが本当なのかを読む側が考えることになる。
- * 栄誉の間の `?` と、宮殿の主人カードから開く説明は、ここを共有する。
+ * アチーブメントの `?` と、宮殿の主人カードから開く説明は、ここを共有する。
  */
 export type RewardKindHelp = {
   kind: 'title' | 'medal' | 'treasure' | 'honor'
