@@ -73,6 +73,58 @@ namespace :achievements do
     puts dry_run ? "\n※ 下見のみ。何も変えていません" : "\n合わせた: #{done} 人"
   end
 
+  # 同時に貼られて重なった添付を片付ける。
+  #
+  # **既定は下見だけ。** 消すときは apply=1 を付ける。
+  # データを消す作業なので、何を残して何を消すかを先に読めるようにしてある。
+  desc "重なった獲得物の絵を片付ける（既定は下見。apply=1 で実行）"
+  task prune_duplicate_images: :environment do
+    apply = ENV["apply"] == "1"
+    targets = Achievements::RewardImageAttachment.duplicated.to_a
+
+    puts "重なっている獲得物: #{targets.size} 件#{apply ? "" : "（下見のみ）"}"
+    puts "-" * 78
+
+    skipped = []
+    planned = 0
+    targets.each do |reward|
+      rows = Achievements::RewardImageAttachment.attachments_for(reward).to_a
+      keep = Achievements::RewardImageAttachment.keeper(reward)
+      drop = Achievements::RewardImageAttachment.extras(reward)
+      shared = rows.reject { |a| a.id == keep&.id } - drop
+
+      puts "#{reward.key} / #{reward.name}"
+      puts "  いま出ている絵 : #{reward.image_path}"
+      puts "  image_key 列   : #{reward.image_key}"
+      rows.each do |a|
+        mark = if a.id == keep&.id then "残す"
+        elsif drop.any? { |d| d.id == a.id } then "消す"
+        else "共有のため残す"
+        end
+        puts format("    [%s] attachment=%s blob=%s key=%s file=%s %s",
+                    mark, a.id, a.blob_id, a.blob.key, a.blob.filename, a.created_at.strftime("%m/%d %H:%M"))
+      end
+      skipped << reward.key if shared.any?
+      planned += drop.size
+      # 残すものが決められない場合は触らない（機械的に確定できないため）
+      if keep.nil?
+        puts "  ! 残す絵を決められない。飛ばす"
+        skipped << reward.key
+        next
+      end
+
+      next unless apply
+
+      removed = Achievements::RewardImageAttachment.prune_extras!(reward)
+      puts "  → #{removed} 件を消した（残り #{Achievements::RewardImageAttachment.attachments_for(reward).count} 件）"
+    end
+
+    puts "-" * 78
+    puts "消す予定: #{planned} 件"
+    puts "触らないもの（共有・判断できない）: #{skipped.uniq.inspect}" if skipped.any?
+    puts apply ? "実行しました" : "※ 下見のみ。消すには apply=1 を付けてください"
+  end
+
   desc "作った絵に使った指示を一覧する（作り直すときの手がかり）"
   task prompts: :environment do
     RewardDefinition.ordered.each do |reward|
