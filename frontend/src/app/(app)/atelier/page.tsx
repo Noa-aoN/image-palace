@@ -56,7 +56,7 @@ const GROUPS: { title: string; actions: CreateAction[] }[] = [
         kind: 'material',
         icon: <CreateIcon><Boxes size={20} /></CreateIcon>,
         label: 'マテリアル',
-        description: '複数の言葉や素材を、まとめて準備します。',
+        description: 'カードを作るもとになる言葉や素材を、まとめて準備します。',
       },
     ],
   },
