@@ -16,6 +16,7 @@ import { RewardCard, RewardArt } from './RewardCard'
 import { RewardDetail } from './RewardDetail'
 import { RewardPreviews } from './RewardPreviews'
 import { KIND_SHOWCASE_ORDER } from '@/lib/achievements/kind-order'
+import { buildSeries, seriesCategory, type AchievementSeries } from '@/lib/achievements/series'
 import { MissionSeriesCard } from './MissionSeriesCard'
 
 /**
@@ -72,6 +73,10 @@ export function AchievementsBoard() {
     if (ownFilter === 'locked') return !r.owned
     return true
   })
+
+  // 段のある実績を1本の道に畳む。**分類より先に畳む**
+  // （分類ごとに畳むと、分類をまたぐ道が割れる）
+  const allSeries = buildSeries(page.achievements)
 
   // 種別ごとに折り返して並べる。ひと続きにすると、どこから別の種類か分からない
   const KIND_ORDER: RewardKind[] = ['title', 'medal', 'treasure', 'honor']
@@ -345,40 +350,25 @@ export function AchievementsBoard() {
         <SectionTitle icon={<Award size={18} />}>実績</SectionTitle>
         {/* 分類ごとに分ける。1本の長い列にすると、どこを見ればよいか分からない */}
         {page.categories.map((category) => {
-          const rows = page.achievements.filter((a) => (a.category ?? 'その他') === category)
-          if (rows.length === 0) return null
+          // **畳むのは全体で1度だけ。** 分類ごとに畳むと、分類をまたぐ道
+          // （1枚は「はじめに」、10枚以降は「作成」）が2つに割れる
+          const series = allSeries.filter((s) => (seriesCategory(s) ?? 'その他') === category)
+          if (series.length === 0) return null
 
-          const done = rows.filter((r) => r.completed_at).length
+          // 数えるのは**段ではなく道**。段で数えると「1 / 9」のように
+          // 進んでいないように見えるが、実際は9段ある道を1つ登り始めただけ
+          const done = series.filter((s) => !s.next).length
           return (
             <div key={category} className="space-y-2">
               <h3 className="flex items-baseline gap-2 text-sm font-medium">
                 {category}
                 <span className="text-xs tabular-nums text-muted-foreground">
-                  {done} / {rows.length}
+                  {done} / {series.length}
                 </span>
               </h3>
               <ul className="space-y-2">
-                {rows.map((row) => (
-                  <li key={row.key} className="space-y-1 rounded-xl border border-border bg-card px-4 py-3">
-                    <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-1">
-                      <span className={row.completed_at ? 'font-medium' : 'font-medium text-muted-foreground'}>
-                        {row.name}
-                      </span>
-                      <div className="flex min-w-0 items-center gap-2">
-                        <RewardPreviews rewards={row.rewards} earned={Boolean(row.completed_at)} />
-                        <span className="shrink-0 tabular-nums text-sm text-muted-foreground">
-                          {row.completed_at
-                            ? `達成（${new Date(row.completed_at).toLocaleDateString('ja-JP')}）`
-                            : `${row.progress} / ${row.condition_target}`}
-                        </span>
-                      </div>
-                    </div>
-                    {!row.completed_at && <Bar value={row.progress} max={row.condition_target} />}
-                    {/* 達成したものの説明は畳む。**残っているものだけが、これからやること** */}
-                    {row.description && !row.completed_at && (
-                      <p className="text-xs text-muted-foreground">{row.description}</p>
-                    )}
-                  </li>
+                {series.map((row) => (
+                  <SeriesRow key={row.key} series={row} />
                 ))}
               </ul>
             </div>
@@ -431,6 +421,94 @@ export function AchievementsBoard() {
  * 行の右端へ寄せる。名前や進捗は左から読むもので、報酬は「その先にあるもの」。
  * 同じ列に混ぜると、どこまでが条件でどこからが報酬なのか分からなくなる。
  */
+/**
+ * 1本の道。**段は畳んで、いま登っている段だけを出す。**
+ *
+ * 段をすべて並べると、カード作成だけで9行、全体で44行が縦に並び、
+ * ページの半分が「まだ遠い未達成」で埋まる。
+ * 見たいのは「あと何をすれば次が取れるか」なので、それを前に出す。
+ *
+ * 過去の段は開けば見られる。**消さない**（積み上げてきたものが見えなくなる）。
+ */
+function SeriesRow({ series }: { series: AchievementSeries }) {
+  const [open, setOpen] = useState(false)
+  const { next, steps, single } = series
+  const cleared = !next
+
+  return (
+    <li className="space-y-1.5 rounded-xl border border-border bg-card px-4 py-3">
+      <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-1">
+        <span className={`font-medium ${cleared ? '' : 'text-foreground'}`}>
+          {series.name}
+          {/* 何段目まで来たか。**道が何段あるかも一緒に出す**
+              （残りが見えないと、次で終わりなのかが分からない） */}
+          {!single && (
+            <span className="ml-2 text-xs tabular-nums text-muted-foreground">
+              {series.doneCount} / {steps.length} 段
+            </span>
+          )}
+        </span>
+        <div className="flex min-w-0 items-center gap-2">
+          <RewardPreviews rewards={(next ?? steps[steps.length - 1]).rewards} earned={cleared} />
+          <span className="shrink-0 whitespace-nowrap tabular-nums text-sm text-muted-foreground">
+            {cleared ? 'すべて達成' : `${series.progress} / ${next.condition_target}`}
+          </span>
+        </div>
+      </div>
+
+      {next && <Bar value={series.progress} max={next.condition_target} />}
+
+      <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-1">
+        {/* 条件そのものより、**あと何をすれば届くか**を先に出す */}
+        <span className="text-xs text-muted-foreground">
+          {next
+            ? `次: ${next.name}${series.remaining ? `（あと ${series.remaining}）` : ''}`
+            : `最後の段: ${steps[steps.length - 1].name}`}
+        </span>
+        {!single && (
+          <button
+            type="button"
+            onClick={() => setOpen((v) => !v)}
+            aria-expanded={open}
+            className="text-xs text-muted-foreground underline-offset-2 hover:underline"
+          >
+            {open ? '閉じる' : 'これまでの達成を見る'}
+          </button>
+        )}
+      </div>
+
+      {open && !single && (
+        <ol className="space-y-1 border-t border-border pt-2">
+          {steps.map((step) => {
+            const done = Boolean(step.completed_at)
+            const current = step.key === next?.key
+            return (
+              <li
+                key={step.key}
+                className={`flex items-baseline justify-between gap-3 text-xs ${
+                  done ? 'text-foreground' : current ? 'text-foreground' : 'text-muted-foreground'
+                }`}
+              >
+                <span className="min-w-0 truncate">
+                  <span aria-hidden className="mr-1.5">
+                    {done ? '✓' : current ? '→' : '・'}
+                  </span>
+                  {step.name}
+                </span>
+                <span className="shrink-0 whitespace-nowrap tabular-nums">
+                  {done && step.completed_at
+                    ? new Date(step.completed_at).toLocaleDateString('ja-JP')
+                    : `${step.condition_target}`}
+                </span>
+              </li>
+            )
+          })}
+        </ol>
+      )}
+    </li>
+  )
+}
+
 function SectionTitle({
   icon,
   children,

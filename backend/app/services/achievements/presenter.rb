@@ -247,7 +247,11 @@ module Achievements
         next if !definition.published? && state&.completed?.blank?
 
         { key: definition.key, name: definition.name, description: definition.description,
-          category: definition.category, condition_target: definition.condition_target,
+          category: definition.category,
+          # 何を数えているか。**同じものを数える実績は1本の道**（1枚→10枚→50枚…）。
+          # これが無いと、画面側は名前や並び順から系列を当てるしかない
+          condition_type: definition.condition_type,
+          condition_target: definition.condition_target,
           progress: state&.progress.to_i, completed_at: state&.completed_at,
           rewards: reward_previews(definition.rewards) }
       end

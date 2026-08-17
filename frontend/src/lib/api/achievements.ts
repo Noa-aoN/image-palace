@@ -96,6 +96,13 @@ export interface AchievementRow {
   name: string
   description: string | null
   category: string | null
+  /**
+   * 何を数えているか（cards_created など）。
+   *
+   * **同じものを数える実績は、1本の道の段**（1枚 → 10枚 → 50枚 …）。
+   * これで畳めるので、名前や並び順から系列を当てる必要はない
+   */
+  condition_type?: string
   condition_target: number
   progress: number
   completed_at: string | null
