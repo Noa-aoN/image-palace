@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { Search } from 'lucide-react'
 import { getItemsPage } from '@/lib/api/items'
 import { getTags } from '@/lib/api/tags'
@@ -15,6 +15,12 @@ export function AddCardsBody({ viewId }: { viewId: string }) {
   const requestAdd = useRightPanelStore((s) => s.requestAdd)
   const [items, setItems] = useState<Item[]>([])
   const [tags, setTags] = useState<Tag[]>([])
+  // タグは3行までにして、あふれたぶんは「＋」で開く。
+  // **あふれているかは実際に測る。** 個数で決めると、短い名前ばかりのときに
+  // まだ余裕があるのに「＋」が出る
+  const [tagsOpen, setTagsOpen] = useState(false)
+  const [clipped, setClipped] = useState(false)
+  const tagBoxRef = useRef<HTMLDivElement>(null)
   const [placedIds, setPlacedIds] = useState<Set<string>>(new Set())
   const [query, setQuery] = useState('')
   const [appliedQuery, setAppliedQuery] = useState('')
@@ -55,6 +61,24 @@ export function AddCardsBody({ viewId }: { viewId: string }) {
     }
   }, [appliedQuery, activeTag])
 
+  useEffect(() => {
+    const el = tagBoxRef.current
+    if (!el) return
+
+    // 畳んでいる状態の高さで測る。開いている間は判定を変えない
+    // （開いた瞬間に「＋」が消えると、畳む道が無くなる）
+    const check = () => {
+      if (tagsOpen) return
+      setClipped(el.scrollHeight > el.clientHeight + 1)
+    }
+    check()
+
+    // パネルの幅は掴んで変えられる。幅が変われば折り返しも変わる
+    const observer = new ResizeObserver(check)
+    observer.observe(el)
+    return () => observer.disconnect()
+  }, [tags, tagsOpen])
+
   const available = useMemo(() => items.filter((i) => !placedIds.has(i.id)), [items, placedIds])
 
   const handleAdd = (item: Item) => {
@@ -77,7 +101,12 @@ export function AddCardsBody({ viewId }: { viewId: string }) {
       </div>
 
       {tags.length > 0 && (
-        <div className="flex flex-wrap gap-1.5">
+        // **3行までに畳む。** タグが増えるほど札の一覧が下へ押し出され、
+        // 選びに来たカードが見えなくなる。畳んだぶんは「＋◯」で開く
+        <div
+          ref={tagBoxRef}
+          className={`flex flex-wrap gap-1.5 ${tagsOpen ? '' : 'max-h-[5.25rem] overflow-hidden'}`}
+        >
           <button
             type="button"
             onClick={() => setActiveTag(null)}
@@ -105,6 +134,19 @@ export function AddCardsBody({ viewId }: { viewId: string }) {
             )
           })}
         </div>
+      )}
+
+      {/* 畳んでいるときだけ出す。**押せる場所を常に出しておかない**
+          （全部見えているのに「もっと見る」があると、何が隠れているのか分からない） */}
+      {tags.length > 0 && clipped && (
+        <button
+          type="button"
+          onClick={() => setTagsOpen((v) => !v)}
+          aria-expanded={tagsOpen}
+          className="self-start text-xs text-muted-foreground underline-offset-2 hover:underline"
+        >
+          {tagsOpen ? '－ タグを畳む' : `＋ タグをすべて表示（${tags.length}）`}
+        </button>
       )}
 
       {loading ? (
