@@ -96,7 +96,9 @@ module Api
             # 上限を決めていないコードに受け取り率は無い（分母が存在しない）。
             # 0 を返すと「誰も受け取っていない」と読めてしまうので nil で返す
             redemption_rate: code.max_redemptions.present? ? redeemed.fdiv(code.max_redemptions).round(3) : nil,
-            available: code.available?
+            available: code.available?,
+            # 「有効なのに配れない」理由が分かるように、状態も一緒に返す
+            status: code.status
           }
         end
       end
