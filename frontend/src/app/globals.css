@@ -1423,9 +1423,13 @@
   width: clamp(76px, 8vw, 116px);
   /* **近づくほど大きくなる。** 道を進めば行き先は近づくのに、
      大きさが変わらないと、貼り絵が置いてあるように見える。
-     最後の2節を進むあいだに 0.45 倍から等倍まで伸びる
-     （--road-glowz は終わりまで伸びる緩やかなランプ） */
-  --gate-scale: calc(0.45 + 0.55 * var(--road-glowz, 0));
+
+     乗せるのは --road-gate（最後から1つ前の節で始まり、ページの終わりまで伸びる）。
+     以前は --road-glowz に乗せていたが、あれはヒーローを抜けて1.6画面ぶんで
+     育ち切るので、ページのかなり手前で門が最大になっていた。
+
+     **はじめは小さく。** 0.28 倍から等倍まで、最後の2節をかけて近づく */
+  --gate-scale: calc(0.28 + 0.72 * var(--road-gate, 0));
   aspect-ratio: 132 / 92;
   pointer-events: none;
   background: url('/auth-gate.webp') center bottom / contain no-repeat;
@@ -1440,19 +1444,20 @@
      彩度をもう一段落として黄みを抜き、明るさを上げて柱の側へ寄せる */
   filter: blur(1.5px) saturate(0.52) brightness(1.2) opacity(0.8);
   /* **ゆっくり現れる。**
-     光（--road-glow）は最後の2節に入るずっと前に 1 まで育ち切るので、
-     それに合わせると門が出た瞬間に最大の濃さで貼り付く。
-     --road-glowz は終わりまで伸びる緩やかなランプなので、こちらに乗せて
-     最後の2節を進むあいだに少しずつ濃くする（0 → 0.62） */
-  opacity: calc(0.62 * var(--road-glowz, 0));
+     最後から1つ前の節に入ってから、ページの終わりまでかけて少しずつ濃くする。
+     大きさと同じランプに乗せるので、**濃くなるのと近づくのが同じ歩調**になる。
+     出た瞬間に最大の濃さで貼り付く、ということが起きない（0 → 0.62） */
+  opacity: calc(0.62 * var(--road-gate, 0));
   /* 中心合わせは margin ではなく translate で。
      大きさが窓に応じて変わるので、負の margin だと中心がずれる */
   transform: translate(-50%, -50%) scale(var(--gate-scale));
   transform-origin: 50% 50%;
   /* 四方を地へ溶かす。矩形の縁が出ると、絵が貼ってあることが分かってしまう */
-  /* 縁を地へ返す。溶かし始めは少し内側へ戻す（38%→30%）＝霞を厚くする */
-  -webkit-mask-image: radial-gradient(62% 64% at 50% 55%, #000 30%, transparent 84%);
-  mask-image: radial-gradient(62% 64% at 50% 55%, #000 30%, transparent 84%);
+  /* 縁を地へ返す。溶かし始めは少し内側へ戻す（38%→30%）＝霞を厚くする。
+     **横だけ少し広げる**（62%→70%）。門は横長なので、縦と同じ割合で切ると
+     左右の柱が先に霞へ消えて、門というより光の口に見える */
+  -webkit-mask-image: radial-gradient(70% 64% at 50% 55%, #000 30%, transparent 84%);
+  mask-image: radial-gradient(70% 64% at 50% 55%, #000 30%, transparent 84%);
 }
 :root[data-motion='off'] .road-bg__gate {
   opacity: 0;

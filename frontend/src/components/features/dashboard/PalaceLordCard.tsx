@@ -223,7 +223,7 @@ export function PalaceLordCard({ tier }: { tier: string | null }) {
                 {honors?.rank?.image_url && (
                   <RewardLink name={honors.rank.name}>
                     {/* eslint-disable-next-line @next/next/no-img-element */}
-                    <img src={honors.rank.image_url} alt="" width={22} height={22} loading="lazy" />
+                    <img src={honors.rank.image_url} alt="" width={18} height={18} loading="lazy" className={RANK_ICON} />
                   </RewardLink>
                 )}
                 <span className="truncate">{tier ? tierLabel(tier) : (honors?.rank?.name ?? '—')}</span>
@@ -278,6 +278,16 @@ export function PalaceLordCard({ tier }: { tier: string | null }) {
     </section>
   )
 }
+
+// 位の絵。**隣の「入居日」と見た目の中心を合わせるための寸法と位置。**
+//
+// 勲章・宝物は絵だけの行なので 22px でよいが、ここは字の隣に並ぶ。
+// 22px のままだと絵の見える範囲が字より上に1.5px・下に4.5px はみ出して、
+// 行の重心が下がって見える（実測。字の中心と 1.5px ずれる）。
+//
+// 18px にして 1.5px 持ち上げると、中心が一致し、はみ出しも上下対称になる。
+// 数はどれも手元の Chrome で測って決めたもので、目分量ではない。
+const RANK_ICON = 'shrink-0 -translate-y-[1.5px]'
 
 // 「入居日」と「位」の行。**片方にだけ絵が入るので、高さを絵に合わせて揃える。**
 // 文字だけの側をそのままにすると、隣より一段上に浮いて2列の行が噛み合わない。
