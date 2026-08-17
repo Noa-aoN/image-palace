@@ -53,7 +53,7 @@ export function MobileNav() {
           >
             <div className="flex items-center justify-between px-3 pb-2">
               {/* ロゴは仮置き（宮殿アイコン） */}
-              <Castle size={28} style={{ color: 'var(--palace)' }} aria-label="ImagePalace" />
+              <Castle size={28} style={{ color: 'var(--palace)' }} aria-label="IMAGE PALACE" />
               <div className="flex items-center gap-1">
                 <GlobalActions onNavigate={() => setOpen(false)} />
                 <button

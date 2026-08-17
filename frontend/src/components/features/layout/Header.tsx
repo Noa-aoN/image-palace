@@ -122,7 +122,7 @@ export function AppHeader() {
           href={isAuthenticated ? '/entrance' : '/'}
           // 紋章と名前の間は 10px。詰めると2つで1語のように見える
           className="flex items-center gap-2.5"
-          aria-label="ImagePalace ホーム"
+          aria-label="IMAGE PALACE ホーム"
         >
           {/* ロゴは仮置き（宮殿アイコン）。正式ロゴ確定までのプレースホルダ */}
           <Castle size={28} style={{ color: 'var(--on-palace)' }} />

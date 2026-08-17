@@ -14,7 +14,7 @@ test('SITE_URL は絶対 https URL である', () => {
 })
 
 test('SITE_NAME / SITE_DESCRIPTION が設定されている', () => {
-  assert.equal(SITE_NAME, 'ImagePalace')
+  assert.equal(SITE_NAME, 'IMAGE PALACE')
   assert.ok(SITE_DESCRIPTION.length > 0)
 })
 

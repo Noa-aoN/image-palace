@@ -26,7 +26,7 @@ export interface OnboardingStep {
 export const ONBOARDING_STEPS: OnboardingStep[] = [
   { key: 'welcome', title: '宮殿へようこそ', skippable: false },
   { key: 'profile', title: 'あなたについて', skippable: true },
-  { key: 'concepts', title: 'ImagePalace のしくみ', skippable: false },
+  { key: 'concepts', title: 'IMAGE PALACE のしくみ', skippable: false },
   { key: 'palace', title: '宮殿に名前をつける', skippable: true },
   { key: 'settings', title: '最初の設定', skippable: true },
 ]

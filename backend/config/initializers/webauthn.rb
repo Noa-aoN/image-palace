@@ -22,7 +22,7 @@
 WebAuthn.configure do |config|
   config.allowed_origins = ENV.fetch("WEBAUTHN_ORIGIN", "http://localhost:3000").split(",").map(&:strip)
   config.rp_id = ENV.fetch("WEBAUTHN_RP_ID", "localhost")
-  config.rp_name = "ImagePalace"
+  config.rp_name = "IMAGE PALACE"
 
   # 認証器に触れるまでの持ち時間。長いと、配った challenge が
   # 使えるまま残る時間も延びる

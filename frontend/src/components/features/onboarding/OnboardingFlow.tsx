@@ -200,7 +200,7 @@ function WelcomeStep() {
       <p className="text-sm leading-relaxed">
         覚えたいこと・残したいことを書くと、AI がその情景を絵にします。
         絵と言葉が一枚になった<strong className="font-semibold">メモリーカード</strong>が、
-        ImagePalace の記憶の基本の単位です。
+        IMAGE PALACE の記憶の基本の単位です。
       </p>
       <ul className="space-y-2.5">
         {[
@@ -235,7 +235,7 @@ function ConceptsStep() {
   return (
     <div className="space-y-4">
       <p className="text-sm leading-relaxed text-muted-foreground">
-        ImagePalace には、いくつか独自の呼び名があります。3つだけ覚えれば十分です。
+        IMAGE PALACE には、いくつか独自の呼び名があります。3つだけ覚えれば十分です。
       </p>
       <dl className="space-y-3">
         {terms.map((t) => (

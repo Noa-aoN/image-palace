@@ -31,7 +31,7 @@ export const METRIC_GLOSSARY = {
     meaning: '直近24時間のうちに来た人の数。',
     formula: 'users.last_seen_at が直近24時間に入る人を数える。',
     why: '毎日使われているかは、続けて使えているかの一番素直な現れ。',
-    here: 'ImagePalace では「来た」だけを数える。カードを作ったかは Engagement で別に見る。',
+    here: 'IMAGE PALACE では「来た」だけを数える。カードを作ったかは Engagement で別に見る。',
   },
   wau: {
     name: '1週間あたりの利用者',
@@ -69,7 +69,7 @@ export const METRIC_GLOSSARY = {
     fullName: 'Cards Created',
     meaning: '期間内に作られたカードの数。',
     formula: 'items の作成日時が期間内のものを数える。',
-    why: 'ImagePalace で最初に起きる価値ある行動。',
+    why: 'IMAGE PALACE で最初に起きる価値ある行動。',
     here: 'ここが動かないと、画像生成もクレジット消費も起きない。',
   },
   imagesGenerated: {

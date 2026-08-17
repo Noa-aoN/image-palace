@@ -57,7 +57,7 @@ module Auth
 
     # 認証アプリに読ませる URI。QR にするのは画面側の仕事
     # （画像を作る仕事をサーバーに持ち込まない）
-    def provisioning_uri(secret, account:, issuer: "ImagePalace")
+    def provisioning_uri(secret, account:, issuer: "IMAGE PALACE")
       label = ERB::Util.url_encode("#{issuer}:#{account}")
       params = {
         secret: secret, issuer: issuer, algorithm: ALGORITHM,
