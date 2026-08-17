@@ -5,6 +5,7 @@ import { History, Trash2 } from 'lucide-react'
 import { Spinner } from '@/components/ui/spinner'
 import { PanelSlotContent } from '@/components/features/panel/PanelSlot'
 import { usePanelForm } from '@/components/features/panel/usePanelForm'
+import { SafeguardVeil, SAFEGUARD_IMAGE_CLASS } from '@/components/features/items/SafeguardVeil'
 import {
   getItem,
   getMediaGenerations,
@@ -34,6 +35,8 @@ export function ImageHistoryPanel({
   onUpdated: (item: Item) => void
 }) {
   const panel = usePanelForm(PANEL_KEY, '生成履歴')
+  // いま使っている絵が、まだ承認されていないか
+  const veilCurrent = Boolean(item.media?.needs_approval)
   const [rows, setRows] = useState<MediaGeneration[]>([])
   const [loading, setLoading] = useState(false)
   const [busyId, setBusyId] = useState<string | null>(null)
@@ -138,8 +141,21 @@ export function ImageHistoryPanel({
                     }`}
                   >
                     {row.url ? (
-                      // eslint-disable-next-line @next/next/no-img-element
-                      <img src={row.url} alt="" loading="lazy" className="aspect-square w-full object-cover" />
+                      <>
+                        {/* eslint-disable-next-line @next/next/no-img-element */}
+                        <img
+                          src={row.url}
+                          alt=""
+                          loading="lazy"
+                          className={`aspect-square w-full object-cover ${veilCurrent && row.current ? SAFEGUARD_IMAGE_CLASS : ''}`}
+                        />
+                        {/* **覆うのは、まだ承認していない絵の行だけ。**
+                            それが「いま使っている絵」で、カードの上では覆いが掛かっている。
+                            ここだけ素通しだと、覆いを回り込んで見られてしまう。
+                            ほかの行まで覆うと、選び直すための一覧が見えなくなる
+                            （見えない絵は選べない） */}
+                        {veilCurrent && row.current && <SafeguardVeil className="rounded-lg" />}
+                      </>
                     ) : (
                       <span className="flex aspect-square w-full items-center justify-center text-xs text-muted-foreground">
                         画像なし

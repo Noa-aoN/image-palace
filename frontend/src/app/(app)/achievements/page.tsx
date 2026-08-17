@@ -4,10 +4,10 @@ import { Crown } from 'lucide-react'
 import { AchievementsBoard } from '@/components/features/achievements/AchievementsBoard'
 
 /**
- * アチーブメント（栄誉の間）。
+ * アチーブメント。
  *
  * ページ名は「アチーブメント」に統一する。「トロフィー」は宝物アイテムの一種であって、
- * 場所の名前ではない。世界観としての「栄誉の間」は副題に残す。
+ * 場所の名前ではない。
  */
 export default function AchievementsPage() {
   return (
@@ -18,7 +18,7 @@ export default function AchievementsPage() {
           アチーブメント
         </h1>
         <p className="mt-2 text-muted-foreground">
-          栄誉の間 — 積み上げた学びと創作のしるし。次に目指すものもここで選べます。
+          積み上げた学びと創作のしるし。次に目指すものもここで選べます。
         </p>
       </div>
 

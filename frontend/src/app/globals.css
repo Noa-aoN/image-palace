@@ -1426,23 +1426,24 @@
   background: url('/auth-gate.webp') center bottom / contain no-repeat;
   /* 光の手前に置く（光は門を照らすもので、覆うものではない） */
   z-index: 1;
-  /* 遠くの霞の中だが、**姿が読める程度には残す**。
-     何の建物か分からないと、行き先を示すという役目を果たさない。
-     ぼかしと彩度を落としすぎていたので、輪郭が残る側へ寄せた
-     （blur 1.8→0.9px / saturate 0.66→0.78 / 透過 0.72→0.85） */
-  filter: blur(0.9px) saturate(0.78) brightness(1.1) opacity(0.85);
-  /* **光より早く姿を出す。** 同じ立ち上がりだと、光が十分に育つまで
-     何があるのか分からず、道の先が長いあいだ「ただの明るい点」になる。
-     1.7倍の速さで立ち上げ、光が満ちる前に行き先が読めるようにする */
-  opacity: calc(0.74 * min(1, var(--road-glow, 0) * 1.7));
+  /* 遠くの霞の中。**姿は読めるが、輪郭は張り付かない**あたりに置く。
+     0.9px まで下げたときは近くに貼り付いて見えたので、霞を少し戻した
+     （blur 0.9→1.5px / saturate 0.78→0.72 / 透過 0.85→0.8） */
+  filter: blur(1.5px) saturate(0.72) brightness(1.12) opacity(0.8);
+  /* **ゆっくり現れる。**
+     光（--road-glow）は最後の2節に入るずっと前に 1 まで育ち切るので、
+     それに合わせると門が出た瞬間に最大の濃さで貼り付く。
+     --road-glowz は終わりまで伸びる緩やかなランプなので、こちらに乗せて
+     最後の2節を進むあいだに少しずつ濃くする（0 → 0.62） */
+  opacity: calc(0.62 * var(--road-glowz, 0));
   /* 中心合わせは margin ではなく translate で。
      大きさが窓に応じて変わるので、負の margin だと中心がずれる */
   transform: translate(-50%, -50%) scale(calc(0.55 + 0.45 * var(--road-glowz, 0)));
   transform-origin: 50% 50%;
   /* 四方を地へ溶かす。矩形の縁が出ると、絵が貼ってあることが分かってしまう */
-  /* 溶かし始めを外側へ寄せる（18%→38%）。中心の姿を残したまま、縁だけを地へ返す */
-  -webkit-mask-image: radial-gradient(62% 64% at 50% 55%, #000 38%, transparent 86%);
-  mask-image: radial-gradient(62% 64% at 50% 55%, #000 38%, transparent 86%);
+  /* 縁を地へ返す。溶かし始めは少し内側へ戻す（38%→30%）＝霞を厚くする */
+  -webkit-mask-image: radial-gradient(62% 64% at 50% 55%, #000 30%, transparent 84%);
+  mask-image: radial-gradient(62% 64% at 50% 55%, #000 30%, transparent 84%);
 }
 :root[data-motion='off'] .road-bg__gate {
   opacity: 0;
@@ -1715,8 +1716,13 @@
   content: '';
   position: absolute;
   inset: 0;
-  backdrop-filter: blur(5px);
+  /* **-webkit- を先、標準を後**（定石の並び）。
+     圧縮の段で標準の宣言は落ち、本番には -webkit- だけが残る。
+     Chrome はこれを解釈するので効きは変わらない
+     （本番と手元で、上端の細部量 0.25 / 0.28 と同じであることを実測して確認済み）。
+     getComputedStyle では読めないので、効いていないように見えることに注意 */
   -webkit-backdrop-filter: blur(5px);
+  backdrop-filter: blur(5px);
   /* 上端の帯は狭くする（30% → 16%）。広く取ると、いちばん見せたい
      ペディメント・柱頭の彫りにぼかしが乗って「解像度が低い」ように見える。
      左右の帯は残す（超横長のときに壁の切れ目を隠すため） */
@@ -1763,8 +1769,8 @@
   inset-inline: 0;
   bottom: 0;
   height: 34%;
-  backdrop-filter: blur(8px);
   -webkit-backdrop-filter: blur(8px);
+  backdrop-filter: blur(8px);
   /* 下端側は solid にして柱脚をしっかりぼかし、上へフェード（LP hero-blur 踏襲） */
   -webkit-mask-image: linear-gradient(to top, #000 30%, transparent 100%);
   mask-image: linear-gradient(to top, #000 30%, transparent 100%);

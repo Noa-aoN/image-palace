@@ -15,7 +15,7 @@ import { getSettings } from '@/lib/api/settings'
 /**
  * 「宮殿の主人」。生成資産（クレジット）の隣に並べる、本人のステータス面。
  *
- * 名乗っている称号と掲げている勲章は、栄誉の間で選んだものがそのまま出る。
+ * 名乗っている称号と掲げている勲章は、アチーブメントで選んだものがそのまま出る。
  * 選ぶ場所と出る場所が違うと、選んだ意味が伝わらない。
  *
  * 読むのは軽いほう（summary）。全体を読むと実績の数え直しまで走り、
@@ -126,7 +126,7 @@ export function PalaceLordCard({ tier }: { tier: string | null }) {
               {/* 称号は鉤括弧で囲む。**与えられた名前**なので、地の文と同じ見た目だと
                   本人が入力した文字列と区別がつかない（記名板と同じ扱いに揃える）。
                   絵は出さない。ここは名乗りであって、品物を見せる場ではない
-                  （品物としての姿は栄誉の間で見る） */}
+                  （品物としての姿はアチーブメントで見る） */}
               {/* 1行目は、称号か勲章のどちらかがあるときだけ置く。
                   空の行を残すと、何も持っていない人の札にだけ余白が空く */}
               {hasTopRow && (
@@ -143,7 +143,7 @@ export function PalaceLordCard({ tier }: { tier: string | null }) {
                     <Link
                       href="/achievements"
                       title={honors.title.name}
-                      aria-label={`称号「${honors.title.name}」（栄誉の間で見る）`}
+                      aria-label={`称号「${honors.title.name}」（アチーブメントで見る）`}
                       className="min-w-0 truncate rounded font-medium transition hover:opacity-80 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--palace)]"
                     >
                       {honors.title.name}
@@ -265,14 +265,14 @@ export function PalaceLordCard({ tier }: { tier: string | null }) {
 const AVATAR_SETTINGS_HREF = '/account#basic'
 
 // 記名板に出す種別と見出し。称号は名前の上に、勲章は名前の右に出すので含めない。
-// 並びは栄誉の間と同じ（称号 → 勲章 → 表彰 → 宝物）。
+// 並びはアチーブメントと同じ（称号 → 勲章 → 表彰 → 宝物）。
 // **同じものが2つの画面で違う順に並ぶと、どちらかが間違って見える**
 const SHOWCASE_KINDS: [RewardKind, string][] = [
   ['honor', '表彰'],
 ]
 
 /**
- * 獲得物ひとつ。押すと栄誉の間へ行く。
+ * 獲得物ひとつ。押すとアチーブメントへ行く。
  *
  * 絵を押した人が見たいのは**その品物**であって、アカウントの設定ではない。
  * 名前は title で添える（絵だけでは何か分からない）。
@@ -282,7 +282,7 @@ function RewardLink({ name, children }: { name: string; children: React.ReactNod
     <Link
       href="/achievements"
       title={name}
-      aria-label={`${name}（栄誉の間で見る）`}
+      aria-label={`${name}（アチーブメントで見る）`}
       className="inline-flex rounded transition hover:opacity-80 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--palace)]"
     >
       {children}
@@ -293,7 +293,7 @@ function RewardLink({ name, children }: { name: string; children: React.ReactNod
 /**
  * 種類の説明を開く小さな釦。
  *
- * 説明そのものは `lib/reward-kinds` が持つ（栄誉の間の `?` と同じもの）。
+ * 説明そのものは `lib/reward-kinds` が持つ（アチーブメントの `?` と同じもの）。
  * ここで文言を書くと、同じ語の説明が画面ごとに食い違う。
  */
 
