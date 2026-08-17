@@ -142,7 +142,7 @@ class RewardDefinition < ApplicationRecord
       metadata: { "motif" => "a small round badge with a stack of tablets" }, image_key: "s6caz2oq2wis0w2m7m29q7sc7sj8" },
     { key: "medal_quiz", kind: "medal", name: "問答の星章", rarity_level: 3, category: "学習",
       description: "問いに答え続けた証。", position: 25,
-      metadata: { "motif" => "a six-pointed star badge with a question-and-answer scroll" }, image_key: "6lmgbzvtiyypqqbj8u3oi0b1g1ww" },
+      metadata: { "motif" => "a six-pointed star badge with a question-and-answer scroll" }, image_key: "5peupm9okopwlbox3nhzp9sk9rqv" },
     { key: "medal_month", kind: "medal", name: "月の徽章", rarity_level: 4, category: "継続",
       description: "ひと月続けた証。", position: 26,
       metadata: { "motif" => "a crescent moon badge with a laurel sprig" }, image_key: "a1654caaqz0aywwxe79m09wn8byg" },
