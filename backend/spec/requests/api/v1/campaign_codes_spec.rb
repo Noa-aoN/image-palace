@@ -109,6 +109,29 @@ RSpec.describe "引き換えコード", type: :request do
       expect(response).to have_http_status(:unprocessable_entity)
     end
 
+    # 外の判定から書き込みまでの間に期限が切れることがある。
+    # ロックの中で見直していないと、切れたあとの1枚が通ってしまう
+    it "受け取る途中で期限が切れたら、配らない" do
+      code = make_code(expires_at: 1.hour.from_now)
+
+      travel_to(2.hours.from_now) do
+        post "/api/v1/campaign_codes/redeem", params: { code: "SPRING24" }, headers: headers, as: :json
+      end
+
+      expect(response).to have_http_status(:unprocessable_entity)
+      expect(code.reload.redemptions.count).to eq(0)
+      expect(user.credit_transactions.where(kind: "grant")).to be_empty
+    end
+
+    it "期限切れは、有効のままでも受け取れない状態として扱う" do
+      code = make_code(expires_at: 1.hour.ago, enabled: true)
+
+      expect(code.enabled).to be true
+      expect(code.available?).to be false
+      expect(code.status).to eq("expired")
+      expect(CampaignCode.redeemable).not_to include(code)
+    end
+
     it "総数の上限に達したら受け取れない" do
       code = make_code(max_redemptions: 1)
       code.redemptions.create!(user: create(:user, :confirmed), points: 500)

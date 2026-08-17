@@ -29,6 +29,13 @@ class CampaignCode < ApplicationRecord
   validate :item_reward_not_ready
 
   scope :recent, -> { order(created_at: :desc) }
+  # いま受け取れるものだけ。available? と同じ条件を SQL 側にも持つ
+  # （使い切りの判定だけは件数を数えるので、ここには入れない）
+  scope :redeemable, lambda { |now = Time.current|
+    where(enabled: true)
+      .where(starts_at: [ nil, ..now ])
+      .where("expires_at IS NULL OR expires_at > ?", now)
+  }
 
   # 大小を無視して探す。利用者は小文字で打つし、コピペで前後に空白が付く
   def self.lookup(raw)
@@ -62,6 +69,17 @@ class CampaignCode < ApplicationRecord
   # いま受け取れるか。理由は呼び出し側で出し分けるので、ここでは真偽だけ
   def available?(now = Time.current)
     enabled? && started?(now) && !expired?(now) && !exhausted?
+  end
+
+  # 画面に出す状態。**「有効」と「期限内」は別のこと。**
+  # enabled のまま期限が過ぎた行を「有効」とだけ出すと、配れると思い込む
+  def status(now = Time.current)
+    return "disabled" unless enabled?
+    return "expired" if expired?(now)
+    return "scheduled" unless started?(now)
+    return "exhausted" if exhausted?
+
+    "active"
   end
 
   # 配ったクレジットの有効期限
