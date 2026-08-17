@@ -61,6 +61,10 @@ module Achievements
 
       {
         title: title && reward_row(title.reward_definition),
+        # いまの契約に付く位。**名乗っている称号とは別**（名乗りは自分で選ぶもので、
+        # 位は契約が決める）。絵を出したい画面があるので、行ごと渡す。
+        # 名乗っていなくても持っているので、ここは装備状態を見ない
+        rank: rank_row,
         # 称号が無い人に「ありません」とだけ出しても、次に何をすればよいか分からない
         next_title: title ? nil : next_title,
         # 星を入れたものを種別ごとに返す。出す場所が種別で違うため
@@ -91,6 +95,18 @@ module Achievements
         rows = all.select { |d| d.kind == kind }
         [ kind, { owned: rows.count { |d| owned.key?(d.id) }, total: rows.size } ]
       end
+    end
+
+    # いまの契約に付く位。契約が無ければ市民（free）になる。
+    #
+    # **名乗っている称号とは別のもの。** 名乗りは自分で選ぶが、位は契約が決める。
+    # 「位」を文字だけで出していた画面に絵を添えるために、行ごと渡す。
+    def rank_row
+      tier = SyncPlanTitle.current_tier(@user)
+      definition = RewardDefinition.rank_for_tier(tier)
+      return nil if definition.nil?
+
+      reward_row(definition)
     end
 
     # まだ持っていない称号のうち、いちばん近いもの。
