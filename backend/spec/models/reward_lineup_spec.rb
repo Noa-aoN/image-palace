@@ -158,24 +158,18 @@ RSpec.describe "獲得物の品揃え" do
 
     # 絵の実体は1度だけ作って、環境をまたいで同じものを指す。
     # **鍵をここに書き戻さないと、環境ごとに作り直すことになる**（そのぶん請求が来る）
-    # 絵をこれから作るもの。**ここは空に戻すのが正**。
-    #
-    #   fly ssh console -a image-palace-api --select   # worker 機を選ぶ
-    #   bundle exec rake achievements:generate_images
-    #
-    # を流し、出てきた鍵を BUILTINS に書き戻したら、この一覧から消す。
-    # 一致で見ているので、消し忘れても増やし忘れても落ちる
-    PENDING_IMAGE_KEYS = %w[
-      title_archivist
-      medal_century_streak
-      medal_collector
-      treasure_laurel_crown
-    ].freeze
+    it "すべての獲得物が、作った絵の鍵を持つ" do
+      missing = rewards.reject { |r| r[:image_key].present? }
 
-    it "絵の鍵を持たないのは、これから作るぶんだけ" do
-      missing = rewards.reject { |r| r[:image_key].present? }.map { |r| r[:key] }
+      expect(missing.map { |r| r[:key] }).to be_empty
+    end
 
-      expect(missing.sort).to eq(PENDING_IMAGE_KEYS.sort)
+    # 位（プランの称号）は上の `rewards` から外してあるので、別に見る。
+    # **ここが空だと、環境ごとに絵を作り直すことになる**（そのぶん請求が来る）
+    it "位の称号も、作った絵の鍵を持つ" do
+      missing = ranks.reject { |r| r[:image_key].present? }
+
+      expect(missing.map { |r| r[:key] }).to be_empty
     end
 
     it "同じ絵を2つの獲得物で指していない" do
