@@ -60,6 +60,35 @@ RSpec.describe Billing::RedeemCampaignCode do
     end
   end
 
+  # 一覧に使うスコープ。**available? と同じ答えを返すこと。**
+  # ここだけ緩いと、これを門にした呼び出しが後から生まれたときに配りすぎる
+  describe ".redeemable" do
+    it "受け取れるものと、available? の答えが一致する" do
+      cases = {
+        "受け取れる" => make_code(code: "OKCODE1"),
+        "期限切れ" => make_code(code: "EXPIRED1", expires_at: 1.hour.ago),
+        "開始前" => make_code(code: "FUTURE01", starts_at: 1.day.from_now),
+        "止めてある" => make_code(code: "OFFCODE1", enabled: false),
+        "使い切り" => make_code(code: "FULLCODE", max_redemptions: 1)
+      }
+      cases["使い切り"].redemptions.create!(user: create(:user, :confirmed), points: 500)
+
+      redeemable = CampaignCode.redeemable.pluck(:code)
+
+      cases.each do |label, code|
+        expect(redeemable.include?(code.code)).to eq(code.available?), "#{label} がずれている"
+      end
+      expect(redeemable).to eq([ "OKCODE1" ])
+    end
+
+    it "上限に余りがあるものは残る" do
+      code = make_code(code: "ROOMLEFT", max_redemptions: 2)
+      code.redemptions.create!(user: create(:user, :confirmed), points: 500)
+
+      expect(CampaignCode.redeemable.pluck(:code)).to include("ROOMLEFT")
+    end
+  end
+
   # 外の判定を通ったあと、書き込みまでの間に状態が変わる場合。
   # ロックの中でもう一度見ていなければ、ここをすり抜ける
   describe "判定と書き込みのあいだに状態が変わる" do
