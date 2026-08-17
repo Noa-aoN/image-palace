@@ -465,8 +465,9 @@ Obsidianは非常に強力な知識管理ツールであり、
 - テスト・品質管理：
   - RSpec / Vitest / RuboCop / ESLint / Brakeman・bundler-audit
 
-> 実装済みだが本番の鍵を入れていないため休眠中のもの：Sign in with Apple、Google Analytics 4、
-> fal.ai（FLUX。画像生成の代替プロバイダーとして実装済み・既定は OpenAI）。
+> 実装はあるが既定では動かないもの：Sign in with Apple、Google Analytics 4、
+> fal.ai（FLUX。画像生成の代替プロバイダー。既定は OpenAI）。
+> いずれも環境変数の設定で有効になる。
 
 ---
 
@@ -511,6 +512,47 @@ Obsidianは非常に強力な知識管理ツールであり、
   → 非同期ジョブ + ポーリングで、生成中も操作を止めない設計
 
 設計の詳細と本番構成の記録は、リポジトリに含めていない運用ドキュメント側で管理している。
+
+---
+
+## 11. 開発の始め方
+
+```bash
+docker compose up          # backend: 3001 / frontend: 3000 / PostgreSQL
+```
+
+backend（コンテナの中で実行する）:
+
+```bash
+docker compose exec web bundle exec rails db:migrate
+docker compose exec web bundle exec rspec
+docker compose exec web bundle exec rubocop
+```
+
+frontend（`frontend/` で実行する）:
+
+```bash
+npm run dev
+npm run test
+npm run type-check
+npm run lint
+```
+
+### この README に書かないもの
+
+変わりやすい情報は、**コードや自動生成できるものを正本**にする。
+README に写すと、必ず食い違う（実際に一度そうなった）。
+
+| 知りたいこと | 見る場所 |
+|---|---|
+| API エンドポイントの一覧 | `bundle exec rails routes` |
+| 依存パッケージとその版 | `backend/Gemfile.lock` / `frontend/package.json` |
+| テーブル・カラム | `backend/db/schema.rb` |
+| 原価の単価・付与量などの設定値 | 実装の定数（`CostParameter::DEFAULTS` 等）と運営画面 |
+
+この README には、サービス概要・現在の主要技術・基本構成・開発の始め方と、
+公開して差し支えない設計の考え方までを置く。
+運用事情（本番の台数・鍵の状態・障害の記録）は含めない。
 
 ---
 
