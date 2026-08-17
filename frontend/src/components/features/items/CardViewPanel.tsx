@@ -80,8 +80,11 @@ export function CardViewPanel({
   onFlowChange,
   onColumnCountsChange,
   onUpdated,
+  singleColumn = false,
 }: {
   item: Item
+  /** 狭い場所（右パネル）で開くとき。列の選択は出さない */
+  singleColumn?: boolean
   /** いまの列数（この端末で覚える） */
   columns: number
   onColumnsChange: (next: number) => void
@@ -256,7 +259,9 @@ export function CardViewPanel({
           ほかの項目と同じ幅・同じ並びで扱えます（幅を変える・順を入れ替える）。
         </p>
 
-        <div className="space-y-1.5">
+        {/* 狭い場所では列を選ばせない。選べても1列にしかならず、
+            押しても何も変わらない釦が並ぶ */}
+        <div className={`space-y-1.5 ${singleColumn ? 'hidden' : ''}`}>
           <p className="text-xs font-medium">列の数</p>
           <div className="flex gap-1.5">
             {[ 1, 2, 3 ].map((count) => (

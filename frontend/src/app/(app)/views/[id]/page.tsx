@@ -1,6 +1,6 @@
 'use client'
 
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import dynamic from 'next/dynamic'
 import Link from 'next/link'
 import { useParams, useRouter } from 'next/navigation'
@@ -34,6 +34,7 @@ import { useCoverGeneration } from '@/hooks/useCoverGeneration'
 import { AiEditPanel } from '@/components/features/views/AiEditPanel'
 import { CoverLauncher } from '@/components/features/shared/CoverLauncher'
 import { isSubmitEnter } from '@/lib/enter-key'
+import { useItemsStore } from '@/stores/items'
 
 export default function ViewEditorPage() {
   const { id } = useParams<{ id: string }>()
@@ -58,18 +59,47 @@ export default function ViewEditorPage() {
     毎回新しい配列を作ると参照が変わってタイマーが張り直されるので、
     view が変わったときだけ作り直す。
   */
+  // このキャンバスを開いている間に作られたカード。
+  //
+  // **作った直後のカードは、まだ view の中に居ない。** 置くのは作ってからなので、
+  // view だけを見張っていると、絵ができても取り直しが走らず、
+  // 置いたあともずっと「生成中」のままに見える。
+  //
+  // 作成フォームは作ったカードを控えへ入れるので、それも見張りの対象にする。
+  // ただし**この画面を開いてから作られたものだけ**にする。控えには前の画面で
+  // 作ったものも残っていて、その中に生成中で終わったものがあると、
+  // このキャンバスと関係のない取り直しが永久に続く
+  const openedAt = useRef(Date.now())
+  const createdItems = useItemsStore((state) => state.items)
+  const recentlyCreated = useMemo(
+    () => createdItems.filter((item) => new Date(item.created_at).getTime() >= openedAt.current),
+    [createdItems]
+  )
+  const [tick, setTick] = useState(0)
+
   const generatables = useMemo(
     () => [
       ...(view?.items?.map((placement) => placement.item) ?? []),
       ...(view?.points ?? []).flatMap((point) =>
         point.placed_item ? [point, point.placed_item] : [point]
       ),
+      ...recentlyCreated,
     ],
-    [view]
+    // tick は中身に影響しないが、**取り直すたびに参照を新しく**するために要る
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [view, recentlyCreated, tick]
   )
   const refreshView = useCallback(() => {
     getViewDetail(id)
-      .then(setView)
+      .then((data) => {
+        setView(data)
+        // 取り直した回数。**見張りを次へ進めるための目印**。
+        //
+        // 見張りは「渡した並びが変われば次の回を予約する」作りになっている。
+        // このキャンバスに置く前のカード（作った直後）は view の中に居ないので、
+        // view だけを取り直しても並びが変わらず、1回で止まっていた。
+        setTick((n) => n + 1)
+      })
       .catch(() => {
         // 一時的な失敗は次の回で拾う
       })
