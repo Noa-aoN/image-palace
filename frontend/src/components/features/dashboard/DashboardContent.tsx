@@ -148,7 +148,7 @@ export function DashboardContent() {
     return (
       <div className="max-w-2xl mx-auto px-6 py-12 space-y-8">
         <div>
-          <h1 className="text-2xl font-semibold">ようこそ、ImagePalace へ</h1>
+          <h1 className="text-2xl font-semibold">ようこそ、IMAGE PALACE へ</h1>
           <p className="mt-2 text-muted-foreground">
             単語をAI画像のカードに変えて、思い出しやすい記憶をつくりましょう。まずは1枚作ってみてください。
           </p>

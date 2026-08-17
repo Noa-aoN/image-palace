@@ -3,7 +3,8 @@ import { LegalLayout, LegalSection } from '@/components/features/legal/LegalLayo
 
 export const metadata: Metadata = {
   title: '利用規約',
-  description: 'ImagePalace の利用規約です。',
+  description: 'IMAGE PALACE の利用規約です。',
+  alternates: { canonical: '/terms' },
   robots: { index: true, follow: true },
 }
 
@@ -11,7 +12,7 @@ export default function TermsPage() {
   return (
     <LegalLayout title="利用規約" updatedAt="最終更新日: 2026-06-11">
       <p>
-        この利用規約（以下「本規約」といいます）は、ImagePalace（以下「本サービス」といいます）の
+        この利用規約（以下「本規約」といいます）は、IMAGE PALACE（以下「本サービス」といいます）の
         提供条件および本サービスの利用に関する運営者と利用者との間の権利義務関係を定めるものです。
         本サービスを利用する前に、本規約の全文をお読みいただいたうえでご利用ください。
       </p>

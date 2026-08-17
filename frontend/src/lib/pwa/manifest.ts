@@ -17,6 +17,7 @@ export const THEME_COLOR = '#C6A75E'
 export function buildManifest(): MetadataRoute.Manifest {
   return {
     name: `${SITE_NAME} — イメージで覚える`,
+    // ホーム画面のラベル。端末は 12 文字前後で切るので、名前だけにする
     short_name: SITE_NAME,
     description: SITE_DESCRIPTION,
     lang: 'ja',

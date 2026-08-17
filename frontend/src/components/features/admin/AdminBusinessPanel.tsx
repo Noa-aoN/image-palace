@@ -663,7 +663,7 @@ function MetricCard({
             <HelpRow term="意味" description={definition.meaning} />
             <HelpRow term="計算" description={definition.formula} />
             <HelpRow term="なぜ見るか" description={definition.why} />
-            <HelpRow term="ImagePalace では" description={definition.here} />
+            <HelpRow term="IMAGE PALACE では" description={definition.here} />
           </dl>
         </HelpPopover>
       </div>

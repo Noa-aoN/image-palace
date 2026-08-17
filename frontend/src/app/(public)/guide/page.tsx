@@ -5,18 +5,20 @@ import { Button } from '@/components/ui/button'
 import { StartLink } from '@/components/features/shared/StartLink'
 import { absoluteUrl, breadcrumbJsonLd } from '@/lib/seo/structured-data'
 import { shareImage } from '@/lib/seo/share-image'
+import { OG_SITE } from '@/lib/seo/open-graph'
 import { GUIDE_SECTIONS } from '@/lib/guide/sections'
 import { ListRows } from '@/components/features/posts/ListRows'
 import { BoardBackLink } from '@/components/features/posts/BoardBackLink'
 
 const TITLE = '使い方'
-const DESCRIPTION = 'はじめ方・できること・用語・よくある質問。ImagePalace の使い方をまとめています。'
+const DESCRIPTION = 'はじめ方・できること・用語・よくある質問。IMAGE PALACE の使い方をまとめています。'
 
 export const metadata: Metadata = {
   title: TITLE,
   description: DESCRIPTION,
   alternates: { canonical: '/guide' },
   openGraph: {
+    ...OG_SITE,
     type: 'website', title: TITLE, description: DESCRIPTION, url: '/guide',
     images: [shareImage('guide')],
   },
@@ -58,7 +60,7 @@ export default function GuidePage() {
           使い方
         </h1>
         <p className="mt-2 text-muted-foreground">
-          ImagePalace は、覚えたい言葉を「イメージ」に変えて記憶を助けるサービスです。知りたいトピックを選んでください。
+          IMAGE PALACE は、覚えたい言葉を「イメージ」に変えて記憶を助けるサービスです。知りたいトピックを選んでください。
         </p>
       </header>
 

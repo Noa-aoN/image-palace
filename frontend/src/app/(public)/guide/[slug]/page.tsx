@@ -18,6 +18,7 @@ import {
 } from '@/lib/guide/sections'
 import { guideJsonLd, breadcrumbJsonLd } from '@/lib/seo/structured-data'
 import { shareImage } from '@/lib/seo/share-image'
+import { OG_SITE } from '@/lib/seo/open-graph'
 
 export function generateStaticParams() {
   return GUIDE_SECTIONS.map((s) => ({ slug: s.slug }))
@@ -33,6 +34,7 @@ export async function generateMetadata({ params }: { params: Promise<{ slug: str
     description: section.excerpt,
     alternates: { canonical: `/guide/${section.slug}` },
     openGraph: {
+      ...OG_SITE,
       type: 'article',
       title: section.title,
       description: section.excerpt,

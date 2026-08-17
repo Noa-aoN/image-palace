@@ -17,7 +17,7 @@ export function AuthFooter() {
         <span className="mx-2" aria-hidden>|</span>
         <span>お問い合わせ</span>
       </p>
-      <p className="mt-1">© 2026 ImagePalace</p>
+      <p className="mt-1">© 2026 IMAGE PALACE</p>
     </footer>
   )
 }
