@@ -86,7 +86,7 @@ export default function BoxesPage() {
         ボックス一覧
       </h1>
       <p className="text-sm text-muted-foreground mb-6">
-        カードをテーマごとにまとめる入れ物。関連するカードを整理して保存できます。
+        カードやスペース、キャンバスをまとめる入れ物。テーマごとに整理して保存できます。
       </p>
 
       <PanelSlotContent sectionKey="box-create">
@@ -108,7 +108,7 @@ export default function BoxesPage() {
       ) : boxes.length === 0 ? (
         <div className="text-center py-16 space-y-4">
           <p className="text-muted-foreground">
-            まだボックスがありません。カードをテーマごとにまとめてみましょう。
+            まだボックスがありません。カードやスペース、キャンバスをテーマごとにまとめてみましょう。
           </p>
           <Button onClick={() => createForm.open()}>最初のボックスを作成</Button>
         </div>
