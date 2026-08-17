@@ -1,11 +1,21 @@
 import type { Metadata } from 'next'
 import Link from 'next/link'
 import { notFound } from 'next/navigation'
-import { ArrowLeft } from 'lucide-react'
+import { ArrowLeft, ChevronRight } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { StartLink } from '@/components/features/shared/StartLink'
 import { NAV_SECTIONS, GLOBAL_ACTIONS } from '@/components/features/layout/nav-items'
-import { GUIDE_SECTIONS, getGuideSection, STEPS, FEATURE_GROUPS, FAQ, GLOSSARY, USE_CASES, type GuideSlug } from '@/lib/guide/sections'
+import {
+  GUIDE_SECTIONS,
+  getGuideSection,
+  nextGuideSection,
+  STEPS,
+  FEATURE_GROUPS,
+  FAQ,
+  GLOSSARY,
+  USE_CASES,
+  type GuideSlug,
+} from '@/lib/guide/sections'
 import { guideJsonLd, breadcrumbJsonLd } from '@/lib/seo/structured-data'
 import { shareImage } from '@/lib/seo/share-image'
 
@@ -276,6 +286,7 @@ export default async function GuideSectionPage({ params }: { params: Promise<{ s
 
   const Icon = section.icon
   const Content = CONTENT[section.slug]
+  const next = nextGuideSection(section.slug)
 
   // 静的な定数のみ埋め込む（利用者の入力は入らないため XSS の経路にならない）
   const jsonLd = [
@@ -315,7 +326,23 @@ export default async function GuideSectionPage({ params }: { params: Promise<{ s
         <Content />
       </div>
 
-      <div className="mt-10 flex flex-wrap gap-3">
+      {/* **次に読むものを1件だけ置く。** 関連ページを何本も並べると、
+          どれから読めばよいのかが分からず、結局どれも読まれない */}
+      {next && (
+        <Link
+          href={`/guide/${next.slug}`}
+          className="mt-10 flex items-center justify-between gap-4 rounded-xl border border-border bg-card px-4 py-3 transition hover:border-[var(--palace)]"
+        >
+          <span className="min-w-0">
+            <span className="block text-xs text-muted-foreground">次に読む</span>
+            <span className="block font-medium">{next.title}</span>
+            <span className="block truncate text-xs text-muted-foreground">{next.excerpt}</span>
+          </span>
+          <ChevronRight size={18} className="shrink-0" style={{ color: 'var(--palace)' }} />
+        </Link>
+      )}
+
+      <div className="mt-6 flex flex-wrap gap-3">
         <Link href="/guide">
           <Button variant="outline">使い方一覧へ戻る</Button>
         </Link>

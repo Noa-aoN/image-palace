@@ -6,6 +6,7 @@ import { ListRows, type ListRowItem } from '@/components/features/posts/ListRows
 import { getPosts } from '@/lib/api/posts'
 import { ARTICLES } from '@/lib/blog/articles'
 import type { Post } from '@/types/post'
+import { BoardBackLink } from '@/components/features/posts/BoardBackLink'
 
 /**
  * コラム。読みものを1本の列に並べる。
@@ -57,6 +58,7 @@ export function BlogIndex() {
 
   return (
     <div className="mx-auto max-w-4xl px-6 py-12">
+      <BoardBackLink />
       <header>
         <h1 className="flex items-center gap-2.5 text-2xl font-semibold">
           <Newspaper size={26} style={{ color: 'var(--palace)' }} />
