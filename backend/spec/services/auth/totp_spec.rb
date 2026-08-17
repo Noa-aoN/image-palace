@@ -102,7 +102,8 @@ RSpec.describe Auth::Totp do
 
       expect(uri).to start_with("otpauth://totp/")
       expect(uri).to include("secret=#{secret}")
-      expect(uri).to include("issuer=ImagePalace")
+      # 発行者名に空白が入るので、URI 側では %20 に化けているのが正しい
+      expect(uri).to include("issuer=IMAGE%20PALACE")
     end
 
     # 記号を含むアドレスで URI が壊れると、読み取れない QR ができる

@@ -3,7 +3,8 @@ import { LegalLayout, LegalSection } from '@/components/features/legal/LegalLayo
 
 export const metadata: Metadata = {
   title: 'プライバシーポリシー',
-  description: 'ImagePalace のプライバシーポリシーです。取得する個人情報と利用目的を記載しています。',
+  description: 'IMAGE PALACE のプライバシーポリシーです。取得する個人情報と利用目的を記載しています。',
+  alternates: { canonical: '/privacy' },
   robots: { index: true, follow: true },
 }
 
@@ -11,7 +12,7 @@ export default function PrivacyPage() {
   return (
     <LegalLayout title="プライバシーポリシー" updatedAt="最終更新日: 2026-06-11">
       <p>
-        ImagePalace（以下「本サービス」といいます）は、利用者の個人情報を適切に取り扱うことを重要な責務と考え、
+        IMAGE PALACE（以下「本サービス」といいます）は、利用者の個人情報を適切に取り扱うことを重要な責務と考え、
         以下のとおりプライバシーポリシー（以下「本ポリシー」といいます）を定めます。
       </p>
 

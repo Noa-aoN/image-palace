@@ -4,7 +4,8 @@ import { LegalLayout } from '@/components/features/legal/LegalLayout'
 
 export const metadata: Metadata = {
   title: '特定商取引法に基づく表記',
-  description: 'ImagePalace の特定商取引法に基づく表記です。',
+  description: 'IMAGE PALACE の特定商取引法に基づく表記です。',
+  alternates: { canonical: '/tokushoho' },
   robots: { index: true, follow: true },
 }
 

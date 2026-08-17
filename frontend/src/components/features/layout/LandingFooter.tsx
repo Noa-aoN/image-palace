@@ -28,7 +28,7 @@ export function LandingFooter() {
           <span>お問い合わせ</span>
         )}
       </p>
-      <p className="mt-2">© 2026 ImagePalace</p>
+      <p className="mt-2">© 2026 IMAGE PALACE</p>
     </footer>
   )
 }

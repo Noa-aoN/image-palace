@@ -251,7 +251,7 @@ export type UseCase = {
   forWhom: string
   /** どんなカードを作るか。具体語まで書く（抽象語だと真似できない） */
   cards: string
-  /** ImagePalace のどこが役立つか。**実在する機能だけ** */
+  /** IMAGE PALACE のどこが役立つか。**実在する機能だけ** */
   features: string[]
   /** 完成イメージ。出来上がった状態を一言で */
   result: string

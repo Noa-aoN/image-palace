@@ -11,7 +11,9 @@ import { RoadBackground } from '@/components/features/landing/RoadBackground'
 import { SITE_URL, SITE_NAME, SITE_DESCRIPTION } from '@/lib/site'
 
 export const metadata: Metadata = {
-  title: { absolute: 'ImagePalace — 単語をイメージに変換して記憶できるサービス' },
+  // ここだけ `%s | IMAGE PALACE` の型を外す。トップで名前が二度出るのを避ける
+  title: { absolute: 'IMAGE PALACE — 言葉をイメージに変えて、記憶の宮殿をつくる' },
+  alternates: { canonical: '/' },
 }
 
 // 検索エンジン向けの構造化データ（schema.org WebApplication）。

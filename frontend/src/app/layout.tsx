@@ -22,6 +22,8 @@ export const metadata: Metadata = {
     template: `%s | ${SITE_NAME}`,
   },
   description: SITE_DESCRIPTION,
+  // ブラウザが「このアプリの名前」として使う（インストール時の既定名など）
+  applicationName: SITE_NAME,
   openGraph: {
     title: SITE_NAME,
     description: SITE_DESCRIPTION,
@@ -35,6 +37,13 @@ export const metadata: Metadata = {
     title: SITE_NAME,
     description: SITE_DESCRIPTION,
   },
+  // 検索結果に大きな絵を出させる。付けないと縮小版になり、OGP の絵が活きない。
+  // クロールさせない画面は robots.txt 側（PRIVATE_PATHS）で止めている
+  robots: {
+    index: true,
+    follow: true,
+    googleBot: { index: true, follow: true, 'max-image-preview': 'large' },
+  },
   // 端末に入れて使えるようにする。iOS はここを見て、上の帯と起動の見た目を決める
   manifest: '/manifest.webmanifest',
   appleWebApp: {
@@ -42,6 +51,9 @@ export const metadata: Metadata = {
     title: SITE_NAME,
     statusBarStyle: 'default',
   },
+  // iOS が本文中の数字を勝手に電話番号のリンクにするのを止める
+  // （クレジット残高や日付が青くなって押せてしまう）
+  formatDetection: { telephone: false },
 }
 
 export const viewport: Viewport = {

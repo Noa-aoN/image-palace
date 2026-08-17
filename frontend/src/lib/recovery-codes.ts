@@ -13,7 +13,7 @@ export function formatRecoveryCodes(codes: string[], now: Date): string {
   const stamp = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`
 
   return [
-    'ImagePalace 二要素認証の復旧コード',
+    'IMAGE PALACE 二要素認証の復旧コード',
     `発行日: ${stamp}`,
     '',
     '認証アプリを使えなくなったとき、このコードで入れます。',

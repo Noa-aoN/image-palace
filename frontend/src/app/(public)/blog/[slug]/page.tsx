@@ -5,6 +5,7 @@ import { ArrowLeft, Clock } from 'lucide-react'
 import { ARTICLES, getArticle, type ArticleBlock } from '@/lib/blog/articles'
 import { articleJsonLd, breadcrumbJsonLd } from '@/lib/seo/structured-data'
 import { shareImage } from '@/lib/seo/share-image'
+import { OG_SITE } from '@/lib/seo/open-graph'
 
 export function generateStaticParams() {
   return ARTICLES.map((a) => ({ slug: a.slug }))
@@ -21,6 +22,7 @@ export async function generateMetadata({ params }: { params: Promise<{ slug: str
     // 同じ記事が別の URL でも読める形にしない（検索から見て重複になる）
     alternates: { canonical: `/blog/${article.slug}` },
     openGraph: {
+      ...OG_SITE,
       type: 'article',
       title: article.title,
       description: article.excerpt,
