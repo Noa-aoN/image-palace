@@ -13,7 +13,7 @@ export function RewardPreviews({ rewards, earned }: { rewards: RewardPreview[]; 
   if (rewards.length === 0) return null
 
   return (
-    <ul className="flex flex-wrap items-center justify-end gap-1.5 pt-0.5">
+    <ul className="flex min-w-0 flex-wrap items-center justify-end gap-1.5 pt-0.5">
       {rewards.map((reward, index) => (
         <li key={reward.key ?? `credits-${index}`}>
           {reward.type === 'credits' ? (
@@ -26,7 +26,8 @@ export function RewardPreviews({ rewards, earned }: { rewards: RewardPreview[]; 
             </span>
           ) : (
             <span
-              className="flex items-center gap-1 rounded-full bg-muted/60 px-2 py-0.5 text-[11px] text-muted-foreground"
+              // 名前は折り返す。1行に押し込むと、長い名前が途中で消える
+              className="flex min-w-0 items-center gap-1 rounded-full bg-muted/60 px-2 py-0.5 text-[11px] leading-snug text-muted-foreground"
               title={`${reward.name}（${reward.kind_label}）`}
             >
               {reward.image_url ? (

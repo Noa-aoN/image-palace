@@ -1,8 +1,9 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { Medal, Sparkles, Trophy, Award, Gem, HelpCircle, Route, ScrollText, History } from 'lucide-react'
 import { Spinner } from '@/components/ui/spinner'
+import { Tooltip } from '@/components/ui/tooltip'
 import { PanelSlotContent } from '@/components/features/panel/PanelSlot'
 import { REWARD_KIND_HELP } from '@/lib/reward-kinds'
 import { usePanelForm } from '@/components/features/panel/usePanelForm'
@@ -512,35 +513,72 @@ function RewardGroup({
  * 何をすれば届くかをその下に添える。
  */
 function UpcomingCard({ row }: { row: UpcomingRow }) {
-  // 報酬は複数ありうるが、札の顔になるのは最初の1つ。残りは絵だけ添える
   const rewards = row.rewards
-  const lead = rewards.find((r) => r.type === 'reward') ?? rewards[0]
-  const leadName = lead?.type === 'credits' ? `${lead.amount} クレジット` : lead?.name
+
+  const todo = row.description ?? row.name
 
   return (
     <li className="flex flex-col gap-2 rounded-xl border border-border bg-card px-4 py-3">
-      <div className="flex items-center gap-2.5">
-        {/* まだ手に入れていないので、絵は控えめに出す（RewardPreviews と同じ扱い） */}
+      {/* **やること → 手に入るもの → 進み具合** の順。
+          先に「何をすれば」が来て、次に「何が手に入るか」、最後に「あとどれだけか」。
+          報酬から始めていたころは、欲しいものは分かっても、
+          そのために何をするのかが下に隠れていた */}
+      <Clamp text={todo} className="text-sm font-medium leading-snug" />
+
+      {/* 手に入るもの。**名前は RewardPreviews が持っている**ので、
+          ここで並べて書かない（同じ名前が2つ出る） */}
+      <div className="flex min-w-0 flex-wrap items-center gap-1.5">
         <RewardPreviews rewards={rewards} earned={false} />
-        <span className="min-w-0 flex-1">
-          <span className="block truncate text-sm font-medium">{leadName ?? row.name}</span>
-          {/* 何をすれば届くか。条件文はここに1行で置く */}
-          <span className="block truncate text-xs text-muted-foreground">{row.description ?? row.name}</span>
-        </span>
       </div>
 
-      <div className="flex items-baseline justify-between gap-2">
-        <span className="whitespace-nowrap text-sm font-semibold tabular-nums">
-          {row.progress} <span className="text-xs font-normal text-muted-foreground">/ {row.target}</span>
-        </span>
-        <span className="whitespace-nowrap text-xs tabular-nums" style={{ color: 'var(--palace)' }}>
-          あと {row.remaining}
-        </span>
+      <div className="mt-auto space-y-1">
+        <div className="flex items-baseline justify-between gap-2">
+          <span className="whitespace-nowrap text-sm font-semibold tabular-nums">
+            {row.progress} <span className="text-xs font-normal text-muted-foreground">/ {row.target}</span>
+          </span>
+          <span className="whitespace-nowrap text-xs tabular-nums" style={{ color: 'var(--palace)' }}>
+            あと {row.remaining}
+          </span>
+        </div>
+        <Bar value={row.progress} max={row.target} />
       </div>
-
-      <Bar value={row.progress} max={row.target} />
     </li>
   )
+}
+
+/**
+ * 入りきらない文を、**折り返してから**畳む。
+ *
+ * 1行で切ると、短い語でも途中で消える（「カードを10枚作…」）。
+ * まず2行に折り返し、それでも入りきらないときだけ畳む。
+ *
+ * 畳んだときは指を乗せれば全文が出る。**畳んだことに気づけないのがいちばん困る**ので、
+ * 実際に切れているときだけ添える（切れていないのに出すと、指を乗せる意味が無い）。
+ */
+function Clamp({ text, className, lines = 2 }: { text: string; className?: string; lines?: 1 | 2 }) {
+  const ref = useRef<HTMLSpanElement>(null)
+  const [clipped, setClipped] = useState(false)
+
+  useEffect(() => {
+    const el = ref.current
+    if (!el) return
+
+    const check = () => setClipped(el.scrollHeight > el.clientHeight + 1)
+    check()
+
+    // 幅が変われば切れ方も変わる（横並びの列数は画面幅で変わる）
+    const observer = new ResizeObserver(check)
+    observer.observe(el)
+    return () => observer.disconnect()
+  }, [text, lines])
+
+  const span = (
+    <span ref={ref} className={`block ${lines === 1 ? 'line-clamp-1' : 'line-clamp-2'} ${className ?? ''}`}>
+      {text}
+    </span>
+  )
+
+  return clipped ? <Tooltip label={text}>{span}</Tooltip> : span
 }
 
 /**
