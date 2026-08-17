@@ -27,7 +27,13 @@ import { isSubmitEnter } from '@/lib/enter-key'
 // カード詳細の本体（画像・タイトル編集・再生成・プロパティ・生成情報）。
 // 詳細ページと右パネルの両方から使えるよう、前後ナビ・パンくずは含めない。
 // onDeleted を渡した場合のみ削除ボタンを表示する（渡さなければ削除は出さない）。
-export function ItemDetailBody({ itemId, onDeleted }: { itemId: string; onDeleted?: () => void }) {
+export function ItemDetailBody({
+  itemId,
+  onDeleted,
+}: {
+  itemId: string
+  onDeleted?: () => void
+}) {
   const {
     item,
     error,
@@ -200,7 +206,9 @@ export function ItemDetailBody({ itemId, onDeleted }: { itemId: string; onDelete
       </PropertyBlock>
 
       {/* プロパティ */}
-      <ItemProperties item={item} onUpdated={applyUpdated} />
+      {/* 右パネルでしか使わないので、列は選ばせず1列に固定する
+          （パネルの幅では2列にすると1列が半分になり、長い項目が読めない） */}
+      <ItemProperties item={item} onUpdated={applyUpdated} singleColumn />
 
       {/* 詳細ページは「情報」パネルへ寄せたが、右パネルには置き場所が無い
           （パネルの中からパネルを開くことになる）。ここは一行のまま残す */}

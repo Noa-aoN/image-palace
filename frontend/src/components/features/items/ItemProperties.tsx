@@ -77,6 +77,8 @@ type ItemPropertiesProps = {
    * こうすると幅を変えたり、順を入れ替えたりが、ほかの項目とまったく同じに効く。
    */
   leadingBlocks?: { key: string; label: string; node: React.ReactNode }[]
+  /** 狭い場所（右パネル）で開くとき。列を選ばせず1列にする */
+  singleColumn?: boolean
 }
 
 const FACT_CHECK_BADGE: Record<string, { label: string; className: string }> = {
@@ -263,10 +265,18 @@ function FactCheckResult({
  * カードのプロパティ（種別・意味）編集。
  * 種別は選択即保存、意味はインライン編集で保存する。
  */
-export function ItemProperties({ item, onUpdated, leadingBlocks = [] }: ItemPropertiesProps) {
+export function ItemProperties({
+  item,
+  onUpdated,
+  leadingBlocks = [],
+  singleColumn = false,
+}: ItemPropertiesProps) {
   // 既定はアカウントの設定。この端末で選んでいればそちらが勝つ
   const defaultColumns = useSettingsStore((s) => s.settings?.card_detail_columns) ?? 1
-  const { columns, change: changeColumns } = useCardDetailColumns(defaultColumns)
+  const { columns: chosenColumns, change: changeColumns } = useCardDetailColumns(defaultColumns)
+  // **狭い場所では必ず1列。** 右パネルは幅が限られていて、
+  // 2列にすると1列あたりが半分になり、説明のような長い項目が読めなくなる
+  const columns = singleColumn ? 1 : chosenColumns
   const openSection = useRightPanelStore((s) => s.openSection)
   const [itemTypes, setItemTypes] = useState<ItemType[]>([])
   const [savingType, setSavingType] = useState(false)
@@ -908,6 +918,7 @@ export function ItemProperties({ item, onUpdated, leadingBlocks = [] }: ItemProp
         blocks={orderedBlocks.map(({ key, label }) => ({ key, label }))}
         columns={columns}
         onColumnsChange={changeColumns}
+        singleColumn={singleColumn}
         autoFlow={autoFlow}
         columnCounts={columnCounts}
         onFlowChange={(nextAuto) =>
