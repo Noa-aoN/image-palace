@@ -1,0 +1,61 @@
+name: CI (frontend)
+
+# frontend/ が変わったときだけ動かす。分割の経緯は ci-backend.yml のコメントを参照。
+# このジョブは実測1.8分＝課金2分/回。backend だけ触った変更（直近50コミット中16件）で払わずに済む。
+#
+# 検査の中身は分割前（ci.yml）と同一。frontend の検証に要るものが frontend/ の外に出たら、
+# 必ずここの paths に足すこと（漏れると検査が黙って走らなくなる）。
+
+on:
+  pull_request:
+    paths:
+      - "frontend/**"
+      - ".github/workflows/ci-frontend.yml"
+  push:
+    branches: [main]
+    paths:
+      - "frontend/**"
+      - ".github/workflows/ci-frontend.yml"
+
+# 同じブランチで連続 push したとき、古い実行をキャンセルする
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  frontend:
+    name: Frontend (eslint + tsc + test)
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: frontend
+
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          # node 22 は .ts ファイルのネイティブ import をサポート（test/ が .ts を import するため必須）
+          node-version: 22
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Lint (eslint)
+        run: npm run lint
+
+      - name: Type check (tsc --noEmit)
+        run: npm run type-check
+
+      - name: Unit test (node:test)
+        run: npm run test:unit
+
+      - name: Unit test (vitest)
+        run: npm run test
+
+      # 本番に載る依存のみ検査する（devDependencies のノイズを避ける）
+      - name: Audit dependencies (npm audit)
+        run: npm audit --omit=dev --audit-level=high

@@ -1,9 +1,28 @@
-name: CI
+name: CI (backend)
+
+# backend/ が変わったときだけ動かす。
+#
+# ■ 分割した理由（2026-08-16）
+# GitHub Actions の private 無料枠 2,000分/月はアカウント全体の共有で、これを使い切って
+# 同じアカウントの他リポジトリ（personal-rss の日報配信）まで5日間止めてしまった。
+# 課金は**ジョブ単位で分を切り上げ**るので、このジョブは実測4.2分＝毎回5分として数えられる。
+# 直近50コミットのうち backend を触ったのは 24件（frontend だけ 23件、docs 等だけ 3件）。
+# frontend / docs しか触っていない変更でこの5分を払うのをやめるための分割。
+#
+# 検査の中身は分割前（ci.yml）と同一。paths に漏れがあると検査が黙って走らなくなるので、
+# backend の検証に要るものが backend/ の外に出たら、必ずここの paths に足すこと。
+# （fly.toml の静的検査 spec があるが、fly.toml は backend/fly.toml なので paths に含まれている）
 
 on:
   pull_request:
+    paths:
+      - "backend/**"
+      - ".github/workflows/ci-backend.yml"
   push:
     branches: [main]
+    paths:
+      - "backend/**"
+      - ".github/workflows/ci-backend.yml"
 
 # 同じブランチで連続 push したとき、古い実行をキャンセルする
 concurrency:
@@ -81,40 +100,3 @@ jobs:
 
       - name: Static analysis (brakeman)
         run: docker run --rm image-palace-backend:ci bundle exec brakeman -q --no-pager
-
-  frontend:
-    name: Frontend (eslint + tsc + test)
-    runs-on: ubuntu-latest
-    defaults:
-      run:
-        working-directory: frontend
-
-    steps:
-      - uses: actions/checkout@v7
-
-      - name: Set up Node.js
-        uses: actions/setup-node@v4
-        with:
-          # node 22 は .ts ファイルのネイティブ import をサポート（test/ が .ts を import するため必須）
-          node-version: 22
-          cache: npm
-          cache-dependency-path: frontend/package-lock.json
-
-      - name: Install dependencies
-        run: npm ci
-
-      - name: Lint (eslint)
-        run: npm run lint
-
-      - name: Type check (tsc --noEmit)
-        run: npm run type-check
-
-      - name: Unit test (node:test)
-        run: npm run test:unit
-
-      - name: Unit test (vitest)
-        run: npm run test
-
-      # 本番に載る依存のみ検査する（devDependencies のノイズを避ける）
-      - name: Audit dependencies (npm audit)
-        run: npm audit --omit=dev --audit-level=high
