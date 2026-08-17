@@ -112,7 +112,7 @@ export function AppHeader() {
       }}
     >
       {/* 左: ロゴ（常に左端）＋ モバイルのハンバーガー（認証時のみ）。
-          LP へ戻る導線はアカウントメニュー内「最初のページに戻る」へ移設した。 */}
+          LP へ戻る導線はアカウントメニュー内「トップページへ戻る」へ移設した。 */}
       <div className="flex items-center gap-1">
         {/* 狭い画面では**紋章だけ**にする。名前まで置くと、ハンバーガーと
             右側の操作に挟まれて収まらず、中央に逃がすとハンバーガーの上に
@@ -292,7 +292,7 @@ export function AppHeader() {
               </DropdownMenuItem>
               <DropdownMenuSeparator />
               <DropdownMenuItem onClick={() => router.push('/')} className="cursor-pointer">
-                最初のページに戻る
+                トップページへ戻る
               </DropdownMenuItem>
               <DropdownMenuItem onClick={handleLogout} className="cursor-pointer">
                 ログアウト

@@ -11,7 +11,7 @@ import { rewardKindHelp } from '@/lib/reward-kinds'
 /**
  * 部屋に飾ってある宝物。
  *
- * **飾る仕組みは既にあった**（栄誉の間で星を入れると `room_placed` が立つ）。
+ * **飾る仕組みは既にあった**（アチーブメントで星を入れると `room_placed` が立つ）。
  * ただし飾った先が無く、選んでも何も起きないように見えていた。ここがその置き場。
  *
  * 置く位置までは決められない（自由配置は別の話）。まずは「選んだものが、
@@ -55,7 +55,7 @@ export function RoomShowcase() {
           </HelpPopover>
         )}
         <Link href="/achievements" className="ml-auto text-xs text-muted-foreground hover:text-foreground">
-          栄誉の間で選ぶ
+          アチーブメントで選ぶ
         </Link>
       </div>
 
@@ -64,7 +64,7 @@ export function RoomShowcase() {
         <p className="mt-3 rounded-xl border border-dashed border-border px-4 py-6 text-center text-sm text-muted-foreground">
           まだ何も飾っていません。
           <Link href="/achievements" className="mx-1 underline hover:text-foreground">
-            栄誉の間
+            アチーブメント
           </Link>
           で、手に入れた宝物に星を入れると、ここに並びます。
         </p>
