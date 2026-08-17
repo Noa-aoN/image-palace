@@ -89,21 +89,33 @@ module Achievements
 
     # 生成の一次データ（PNG）をそのまま持つ。カード画像の最適化は通さない。
     # 17枚の小さな絵に、切り出しとサムネ生成の仕組みを通す理由が無い
+    #
+    # **貼るのは絵が出来てから。** 先に古いものを消してから作ると、
+    # 生成が落ちた時に絵の無い獲得物ができる。
+    # 置き換え（has_one_attached）は Rails が「新しいものを貼ってから古いものを捨てる」
+    # 順で行うので、この順序のまま任せる。
+    #
+    # 行を掴んでから触るのは、**同じ獲得物を2つの処理が同時に貼ると重ねて残る**ため。
+    # 実際に本番で起きた（生成の指示が二重に走り、1分違いで2件ぶら下がった）。
+    # 掴むのは貼り替えの間だけで、生成（外部API）は外で終わらせてある。
     def attach!(result, prompt)
-      @reward.image.attach(
-        io: StringIO.new(result.image_data),
-        filename: "#{@reward.key}.png",
-        content_type: result.content_type.presence || "image/png"
-      )
-      # 鍵も控える。他の環境から同じ絵を指せるようにするため
-      @reward.update!(
-        image_key: @reward.image.blob.key,
-        metadata: @reward.metadata.merge(
-          "image_prompt" => prompt,
-          "image_model" => result.metadata[:model] || result.metadata["model"],
-          "image_generated_at" => Time.current.iso8601
+      @reward.with_lock do
+        @reward.image.attach(
+          io: StringIO.new(result.image_data),
+          filename: "#{@reward.key}.png",
+          content_type: result.content_type.presence || "image/png"
         )
-      )
+        # 鍵も控える。他の環境から同じ絵を指せるようにするため
+        @reward.update!(
+          image_key: @reward.image.blob.key,
+          metadata: @reward.metadata.merge(
+            "image_prompt" => prompt,
+            "image_model" => result.metadata[:model] || result.metadata["model"],
+            "image_generated_at" => Time.current.iso8601
+          )
+        )
+        RewardImageAttachment.prune_extras!(@reward)
+      end
     end
   end
 end
