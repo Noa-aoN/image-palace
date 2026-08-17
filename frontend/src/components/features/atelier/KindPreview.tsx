@@ -93,7 +93,16 @@ function Schematic({ kind }: { kind: AtelierKind }) {
   )
 }
 
-export function KindPreview({ kind, label }: { kind: AtelierKind; label: string }) {
+export function KindPreview({
+  kind,
+  label,
+  compact = false,
+}: {
+  kind: AtelierKind
+  label: string
+  /** 札の横に置くとき。上の余白を親に任せ、縦横比を詰める */
+  compact?: boolean
+}) {
   const preview = previewFor(kind)
   const count = preview.mode === 'assets' ? preview.sources.length : 0
   const [step, setStep] = useState(0)
@@ -106,7 +115,13 @@ export function KindPreview({ kind, label }: { kind: AtelierKind; label: string 
   }, [count])
 
   return (
-    <div className="relative mt-3 aspect-[16/9] w-full overflow-hidden rounded-lg border border-border/70 bg-muted/30">
+    <div
+      className={`relative w-full overflow-hidden rounded-lg border border-border/70 bg-muted/30 ${
+        // 横に置くときは、上の余白を親が持つ（札の中で二重に空けない）。
+        // 縦横比も詰める。16:9 のままだと、横並びの札だけが縦に伸びる
+        compact ? 'aspect-[16/7]' : 'mt-3 aspect-[16/9]'
+      }`}
+    >
       {preview.mode === 'schematic' ? (
         <Schematic kind={kind} />
       ) : (
