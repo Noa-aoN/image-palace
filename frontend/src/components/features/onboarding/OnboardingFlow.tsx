@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { BookImage, Coins, Compass, GalleryHorizontal, LayoutGrid, Sparkles } from 'lucide-react'
+import { AlertTriangle, BookImage, Coins, Compass, GalleryHorizontal, LayoutGrid, Sparkles } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { getSettings, updateSettings } from '@/lib/api/settings'
 import { getProfile, updateProfile } from '@/lib/api/account'
@@ -347,17 +347,31 @@ function DisplayStyleStep({ value, onChange }: { value: DisplayStyle; onChange: 
           <li>
             画像生成AIで絵を1枚つくるたびに <strong className="font-medium text-foreground">1{CREDIT_UNIT_SHORT}</strong> 使います。
           </li>
-          {/* 文章のAIは「無料の便利機能」に見える。押す前に、少しでも減ると書いておく */}
-          <li>
-            説明文の下書きなど、小さなAIの自動生成でも
-            1回につき <strong className="font-medium text-foreground">{AI_TEXT_COST}{CREDIT_UNIT_SHORT}</strong> 使います。
-          </li>
           <li>
             はじめは {INITIAL_CREDITS}{CREDIT_UNIT_SHORT} あります
             （お試し {TRIAL_CREDITS}{CREDIT_UNIT_SHORT} ＋ 当月分 {MONTHLY_FREE_CREDITS}{CREDIT_UNIT_SHORT}）。
           </li>
           <li>残りはいつでも画面上のヘッダーで確認できます。</li>
         </ul>
+
+        {/*
+          ここだけ⚠を付ける。
+          **「1枚 = 1cr」と覚えたまま作ると、引かれた数が合わなくなる。**
+          意味・タグ・種別・項目の自動生成は、それぞれ別に文章のAIを使う。
+          実際に「1枚しか作っていないのに 1cr 以上減った」という声が届いている。
+          作成画面では選ぶ場所と合計の両方に出しているが、**最初に一度**
+          「絵以外にもかかる」と言っておかないと、数を見た時に驚くことになる。
+        */}
+        <p className="mt-2 flex items-start gap-1.5 rounded-lg border border-amber-300 bg-amber-50/60 px-2.5 py-2 text-xs leading-relaxed text-amber-900">
+          <AlertTriangle size={14} className="mt-0.5 shrink-0" aria-hidden />
+          <span>
+            <strong className="font-medium">絵のほかに、AI を使うオプションにも少しかかります。</strong>
+            {' '}カード作成の「意味・タグ・種別・項目」の自動生成は、
+            画像生成AIとは別に1回 {AI_TEXT_COST}{CREDIT_UNIT_SHORT} 使います。
+            たとえば1枚を全部入りで作ると {1 + AI_TEXT_COST * 4}{CREDIT_UNIT_SHORT}。
+            使う数は作成画面に出るので、押す前に確かめられます。
+          </span>
+        </p>
         {/* 別の窓で開く。ここで移ってしまうと、案内が途中で消えて次回また最初から出る */}
         <a
           href="/guide"
