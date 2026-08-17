@@ -2,7 +2,6 @@
 
 import Link from 'next/link'
 import { ShieldAlert, ShieldCheck } from 'lucide-react'
-import { Button } from '@/components/ui/button'
 import { StrongAuthPrompt } from '@/components/features/account/StrongAuthPrompt'
 
 /**
