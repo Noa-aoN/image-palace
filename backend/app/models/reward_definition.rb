@@ -278,7 +278,28 @@ class RewardDefinition < ApplicationRecord
     { key: "title_rank_studio", kind: "title", name: "元老", rarity_level: 9, category: "公式",
       description: "スタジオプランを結んでいる間、名乗れる位。", position: 5,
       metadata: { "source" => "subscription", "tier" => "studio",
-                  "motif" => "a marble stele with a ceremonial staff and a full laurel wreath" } }
+                  "motif" => "a marble stele with a ceremonial staff and a full laurel wreath" } }, # rubocop:disable Layout/LineLength
+
+    # ── 遠い到達点の埋め合わせ ──
+    #
+    # ここまで、いくつかの到達点には**品物が無く、代わりにクレジットを配っていた**。
+    # だが到達条件のほとんど（見返す・続ける・集める）はクレジットを使わずに満たせる。
+    # 使わずに届く場所からクレジットが出ていくと、人数が増えたぶんだけ持ち出しになる。
+    #
+    # 品物なら何人に配っても原価は増えない。空いていた場所をここで埋める。
+    # 絵はまだ無いので、種別ごとの既定の絵柄で出る（あとから管理画面で差し替えられる）。
+    { key: "title_archivist", kind: "title", name: "大蒐集家", rarity_level: 6, category: "創作",
+      description: "500枚のカードを集めた人へ。", position: 22,
+      metadata: { "motif" => "a stele with tall shelves of amphorae and a laurel crown above" } },
+    { key: "medal_century_streak", kind: "medal", name: "百日連続の勲章", rarity_level: 6, category: "継続",
+      description: "100日続けて通った証。", position: 32,
+      metadata: { "motif" => "a medal with one hundred small rays around a laurel ring" } },
+    { key: "medal_collector", kind: "medal", name: "蒐集の徽章", rarity_level: 3, category: "創作",
+      description: "獲得物を10個集めた証。", position: 33,
+      metadata: { "motif" => "a badge showing three small display shelves with tiny objects" } },
+    { key: "treasure_laurel_crown", kind: "treasure", name: "月桂の冠", rarity_level: 7, category: "継続",
+      description: "一年ぶん通った人の部屋に。", position: 48,
+      metadata: { "motif" => "a woven laurel crown resting on a marble stand" } }
   ].freeze
 
   # 位（プランに付く称号）の目印。同期はこの2つで引く

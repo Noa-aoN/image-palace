@@ -429,29 +429,45 @@ Obsidianは非常に強力な知識管理ツールであり、
 
 ## 10. 技術スタック（手段としての技術）
 
-### 10-1. 使用予定の技術
+### 10-1. 使用している技術
 
-- フレームワーク：
-  - フロントエンド：Next.js（App Router） + TypeScript
-  - バックエンド：Ruby on Rails（APIモード）
+- 言語：
+  - Ruby 3.3.10 / TypeScript 5 / JavaScript / SQL / HTML / CSS
 
-- DB：
-  - PostgreSQL
+- フレームワーク・UI：
+  - Next.js 16（App Router） / React 19
+  - Ruby on Rails 8.1（APIモード）
+  - Tailwind CSS v4 / shadcn/ui
 
-- デプロイ先：
-  - フロントエンド：Cloudflare（CDN最適化を見据えて）
-  - バックエンド：Render
-  - データベース：Neon（PostgreSQLマネージドサービス）
-  - ストレージ：AWS S3
+- DB・ストレージ：
+  - PostgreSQL / Neon（マネージドPostgreSQL）
+  - Cloudflare R2 / Active Storage
 
-- 使用予定ライブラリ：
-  - TailwindCSS（UI構築）
-  - shadcn/ui（UIコンポーネント）
+- インフラ・CI/CD：
+  - Fly.io（バックエンド。app と worker の2プロセス構成）
+  - Cloudflare Workers（フロントエンド。OpenNext経由） / Cloudflare CDN
+  - Docker / GitHub Actions
+
+- 外部API・サービス：
+  - OpenAI API（画像生成 gpt-image-1 / 文章生成 GPT-4o / Moderation）
+  - Stripe（課金） / Wikipedia API / Sentry / Google Analytics 4
+
+- 認証・セキュリティ：
+  - Devise + devise_token_auth（トークン認証）
+  - Google OAuth 2.0 / Sign in with Apple
+  - TOTP二要素認証 / WebAuthn・Passkey / Rack::Attack
+
+- 主要ライブラリ・機能技術：
   - Zustand（状態管理）
-  - ActiveJob（非同期処理）
-  - Redis（ジョブキュー）
-  - dnd-kit（将来の空間配置機能用）
-  - OpenAI Images API（画像生成）
+  - Three.js・React Three Fiber（3D表現） / React Flow（ノードグラフ） / dnd-kit（空間配置）
+  - Solid Queue（非同期ジョブ） / libvips（画像最適化）
+
+- テスト・品質管理：
+  - RSpec / Vitest / RuboCop / ESLint / Brakeman・bundler-audit
+
+> 実装済みだが本番の鍵を入れていないため休眠中のもの：Sign in with Apple、Google Analytics 4、
+> fal.ai（FLUX。画像生成の代替プロバイダーとして実装済み・既定は OpenAI）。
+> 稼働・休眠の最新状況は `docs/production-snapshot.md` を参照。
 
 ---
 
@@ -461,33 +477,41 @@ Obsidianは非常に強力な知識管理ツールであり、
 
 本サービスでは、
 画像生成の非同期処理や将来的な機能拡張を見据え、
-フロントエンドとバックエンドを分離したAPI構成を採用する予定です。
+フロントエンドとバックエンドを分離したAPI構成を採用しました。
 
 バックエンドにはRailsをAPIモードで使用し、
-モデル設計や責務分離を明確にできる構成を目指します。
-また、ActiveJobとRedisを用いて、
-画像生成処理を非同期で実行できる設計にする予定です。
+モデル設計や責務分離を明確にできる構成にしています。
+また、ActiveJobとSolid Queueを用いて、
+画像生成処理を非同期で実行しています。
 
 フロントエンドにはNext.jsを採用し、
-柔軟なUI設計と拡張性を確保したいと考えています。
+柔軟なUI設計と拡張性を確保しています。
 さらに、TypeScriptを用いることで、
 フロントエンドとバックエンド間の型整合性を保ち、
-保守性と安全性を高めていきます。
+保守性と安全性を高めています。
 
-【今回チャレンジしたい点】
+【当初の想定から変えた点】
+
+| 項目 | 当初の想定 | 実際の採用 | 変更理由 |
+|-----|----------|----------|--------|
+| ジョブキュー | Redis | Solid Queue | Rails 8 標準でPostgreSQLをキューに使えるため、Redisという運用対象を1つ減らせた |
+| バックエンドのホスト | Render | Fly.io | リージョンを指定でき、DB（Neon）の隣に寄せられるため。実測でDB往復 70.2ms → 2.4ms |
+| ストレージ | AWS S3 | Cloudflare R2 | S3互換のまま転送（egress）が無料。画像配信が主用途のため差が大きい |
+
+【今回チャレンジした点】
 - AI画像生成の非同期処理設計
 - API設計と責務分離の徹底
 - フロントとバックエンド間のデータ整合性
-- 画像キャッシュ設計
+- 画像キャッシュ設計（同一単語は世界で1回しか生成しない）
 
-【不安な点】
+【懸念点への対応】
 - AI画像生成コストの増加
+  → 正規化した単語をキーにした画像キャッシュ（`shared_medias`）で重複生成を排除
+  → クレジット制（1クレジット = 1枚）と段階的なサブスクリプションで上限を設計
 - 生成待機時間によるUX低下
+  → 非同期ジョブ + ポーリングで、生成中も操作を止めない設計
 
-これらの課題に対しては、
-生成回数制限の導入やキャッシュ再利用の仕組みを検討します。
-また、段階的な課金モデルを設計し、
-持続可能な構造を前提に開発を進める予定です。
+技術的な詳細は `docs/architecture.md`、本番構成の実態は `docs/production-snapshot.md` を参照。
 
 ---
 

@@ -50,7 +50,10 @@ module Billing
       ActiveRecord::Base.transaction do
         # 総数の上限は行ロックの中で数える。外で数えると、同時に押されたぶんが上限を超える
         code.with_lock do
-          raise Unavailable, UNAVAILABLE_MESSAGE if code.exhausted?
+          # 使い切りだけでなく **期限・開始・有効/無効も、ロックの中でもう一度見る**。
+          # 外の判定から書き込みまでの間に期限が切れることがあるし、
+          # 運営が止めた直後に押されたぶんも、ここで止まる
+          raise Unavailable, UNAVAILABLE_MESSAGE unless code.available?(@now)
 
           code.redemptions.create!(user: @user, points: points, created_at: @now)
         end

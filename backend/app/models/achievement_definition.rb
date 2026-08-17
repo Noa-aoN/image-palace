@@ -47,18 +47,19 @@ class AchievementDefinition < ApplicationRecord
       rewards: [ { "type" => "reward", "key" => "title_collector" } ] },
     { key: "hundred_cards", name: "100枚のカード", category: "作成", position: 13,
       description: "カードを100枚作る", condition_type: "cards_created", condition_target: 100,
-      rewards: [ { "type" => "credits", "amount" => 3 } ] },
-    # ここから先は年単位の到達点。品物はまだ用意していないので、当面はクレジットで報いる。
-    # 段に見合う品物は、絵を用意してから管理画面で足す
+      rewards: [ { "type" => "reward", "key" => "medal_laurel" } ] },
     { key: "five_hundred_cards", name: "500枚のカード", category: "作成", position: 14,
       description: "カードを500枚作る", condition_type: "cards_created", condition_target: 500,
-      rewards: [ { "type" => "reward", "key" => "medal_laurel" } ] },
+      rewards: [ { "type" => "reward", "key" => "title_archivist" } ] },
+    # ここから先だけクレジットで報いる。**カードを作るにはクレジットが要る**ので、
+    # ここに立っている人は、その枚数ぶんを既に払っている。返すのはその一部（1%以下）。
+    # 見返す・続ける・集めるといった、払わずに届く到達点には出さない（CREDIT_BACKED_CONDITIONS）
     { key: "thousand_cards", name: "1000枚のカード", category: "作成", position: 15,
       description: "カードを1000枚作る", condition_type: "cards_created", condition_target: 1_000,
-      rewards: [ { "type" => "credits", "amount" => 20 } ] },
+      rewards: [ { "type" => "credits", "amount" => 10 } ] },
     { key: "ten_thousand_cards", name: "10000枚のカード", category: "作成", position: 16,
       description: "カードを10000枚作る", condition_type: "cards_created", condition_target: 10_000,
-      rewards: [ { "type" => "credits", "amount" => 100 } ] },
+      rewards: [ { "type" => "credits", "amount" => 50 } ] },
     { key: "ten_images", name: "10枚の絵", category: "生成", position: 20,
       description: "絵を10枚作る", condition_type: "images_generated", condition_target: 10,
       rewards: [ { "type" => "reward", "key" => "medal_creation_flame" } ] },
@@ -82,10 +83,10 @@ class AchievementDefinition < ApplicationRecord
       rewards: [ { "type" => "reward", "key" => "treasure_laurel_pot" } ] },
     { key: "streak_hundred", name: "100日続ける", category: "継続", position: 42,
       description: "100日続けて学習する", condition_type: "streak_days", condition_target: 100,
-      rewards: [ { "type" => "credits", "amount" => 30 } ] },
+      rewards: [ { "type" => "reward", "key" => "medal_century_streak" } ] },
     { key: "active_year", name: "365日ぶんの学習", category: "継続", position: 43,
       description: "のべ365日学習する", condition_type: "active_days", condition_target: 365,
-      rewards: [ { "type" => "credits", "amount" => 50 } ] },
+      rewards: [ { "type" => "reward", "key" => "treasure_laurel_crown" } ] },
     { key: "five_containers", name: "5つのまとまり", category: "整理", position: 50,
       description: "ボックス・キャンバス・スペースを合わせて5つ作る",
       condition_type: "containers_created", condition_target: 5,
@@ -127,7 +128,7 @@ class AchievementDefinition < ApplicationRecord
       rewards: [ { "type" => "reward", "key" => "treasure_statuette" } ] },
     { key: "collector_ten", name: "10個の獲得", category: "はじめに", position: 18,
       description: "獲得物を10個集める", condition_type: "rewards_earned", condition_target: 10,
-      rewards: [ { "type" => "credits", "amount" => 3 } ] },
+      rewards: [ { "type" => "reward", "key" => "medal_collector" } ] },
     { key: "collector_thirty", name: "30個の獲得", category: "整理", position: 52,
       description: "獲得物を30個集める", condition_type: "rewards_earned", condition_target: 30,
       rewards: [ { "type" => "reward", "key" => "treasure_trophy" } ] },
@@ -192,15 +193,32 @@ class AchievementDefinition < ApplicationRecord
     # 報酬が指す獲得物より先に作ると、参照先が無い状態ができる
     RewardDefinition.ensure_builtins!
 
-    existing = where(key: BUILTIN_KEYS).pluck(:key).to_set
+    existing = where(key: BUILTIN_KEYS).index_by(&:key)
     BUILTINS.each do |attrs|
-      next if existing.include?(attrs[:key])
-
-      create!(attrs)
+      row = existing[attrs[:key]]
+      if row.nil?
+        create!(attrs)
+      else
+        sync_rewards!(row, attrs[:rewards])
+      end
     rescue ActiveRecord::RecordNotUnique
       nil
     end
     @builtins_checked = true
+  end
+
+  # 報酬だけはコードを正本にして、既にある行にも書き戻す。
+  #
+  # ここを「作るときだけ」にしていたため、先に作られた行がコードと食い違ったまま
+  # 本番で動いていた（実績「100枚のカード」がコードでは 3cr、本番では勲章）。
+  # 画面から報酬を変える口は無いので、上書きで消える運営の設定も無い。
+  #
+  # 報酬は原価に直結する。**テストで守れる場所（コード）に一本化する**。
+  def self.sync_rewards!(row, rewards)
+    desired = Array(rewards).map(&:stringify_keys)
+    return if row.rewards.to_a.map(&:stringify_keys) == desired
+
+    row.update_columns(rewards: desired) # rubocop:disable Rails/SkipsModelValidations
   end
 
   def builtin?

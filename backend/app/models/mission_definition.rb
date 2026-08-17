@@ -24,6 +24,15 @@ class MissionDefinition < ApplicationRecord
   scope :ordered, -> { order(:position, :created_at) }
   scope :active, -> { where(enabled: true) }
 
+  # ミッションは**道しるべ**で、報いる場所ではない。
+  #
+  # ここに並ぶ条件は、ほぼ全部が同じ条件の実績と重なっている
+  # （10枚そろえる＝実績「10枚のカード」、7日続ける＝実績「7日続ける」…）。
+  # 両方から配ると、1つの行いに二重で払うことになる。
+  # 品物は実績側に置き、ミッションは「次に何をするか」を示すだけにする。
+  #
+  # **クレジットは置かない。** 見返す・続けるはクレジットを使わずに満たせるので、
+  # ここから配ると人数が増えたぶんだけ持ち出しになる（Achievements::RewardPolicy）。
   BUILTINS = [
     { key: "start_first_card", name: "最初のカードを作る", cadence: "onboarding", position: 10,
       description: "1枚作ってみましょう。", condition_type: "cards_created", condition_target: 1 },
@@ -45,62 +54,49 @@ class MissionDefinition < ApplicationRecord
     # series_key は BUILTINS だけの目印で、列ではない（作るときに id へ引き当てる）
     { key: "palace_ten_cards", name: "カードを10枚そろえる", cadence: "onboarding",
       series_key: "build_palace", series_step: 1, position: 100,
-      description: "まずは10枚。", condition_type: "cards_created", condition_target: 10,
-      rewards: [ { "type" => "credits", "amount" => 1 } ] },
+      description: "まずは10枚。", condition_type: "cards_created", condition_target: 10 },
     { key: "palace_three_containers", name: "しまう場所を3つ作る", cadence: "onboarding",
       series_key: "build_palace", series_step: 2, position: 101,
       description: "ボックス・キャンバス・スペースを合わせて3つ。",
-      condition_type: "containers_created", condition_target: 3,
-      rewards: [ { "type" => "credits", "amount" => 1 } ] },
+      condition_type: "containers_created", condition_target: 3 },
     { key: "palace_fifty_reviews", name: "50回見返す", cadence: "onboarding",
       series_key: "build_palace", series_step: 3, position: 102,
       description: "作るだけでなく、思い出すところまで。",
-      condition_type: "reviews_total", condition_target: 50,
-      rewards: [ { "type" => "credits", "amount" => 2 } ] },
+      condition_type: "reviews_total", condition_target: 50 },
     { key: "palace_thirty_streak", name: "30日続ける", cadence: "onboarding",
       series_key: "build_palace", series_step: 4, position: 103,
       description: "ここまで来れば、宮殿は住まいになります。",
-      condition_type: "streak_days", condition_target: 30,
-      # 最後の段に見合う品物はまだ用意していない（絵から作る必要がある）。
-      # 当面はクレジットで報い、品ができたら管理画面で差し替える
-      rewards: [ { "type" => "credits", "amount" => 5 } ] },
+      condition_type: "streak_days", condition_target: 30 },
     # ── シリーズ「記憶を鍛える」──
     # 作る側（宮殿を建てる）と対になる、思い出す側の道
     { key: "memory_first_review", name: "はじめて見返す", cadence: "onboarding",
       series_key: "train_memory", series_step: 1, position: 110,
-      description: "作ったカードを1回見返します。", condition_type: "reviews_total", condition_target: 1,
-      rewards: [ { "type" => "credits", "amount" => 1 } ] },
+      description: "作ったカードを1回見返します。", condition_type: "reviews_total", condition_target: 1 },
     { key: "memory_hundred_reviews", name: "100回見返す", cadence: "onboarding",
       series_key: "train_memory", series_step: 2, position: 111,
       description: "回数が増えるほど、思い出すのが速くなります。",
-      condition_type: "reviews_total", condition_target: 100,
-      rewards: [ { "type" => "credits", "amount" => 2 } ] },
+      condition_type: "reviews_total", condition_target: 100 },
     { key: "memory_three_hundred_correct", name: "300問正解する", cadence: "onboarding",
       series_key: "train_memory", series_step: 3, position: 112,
       description: "見返すだけでなく、当てられるところまで。",
-      condition_type: "reviews_correct", condition_target: 300,
-      rewards: [ { "type" => "credits", "amount" => 3 } ] },
+      condition_type: "reviews_correct", condition_target: 300 },
     { key: "memory_thousand_reviews", name: "1000回見返す", cadence: "onboarding",
       series_key: "train_memory", series_step: 4, position: 113,
       description: "ここまで来ると、覚えたことは自分のものになっています。",
-      condition_type: "reviews_total", condition_target: 1_000,
-      rewards: [ { "type" => "credits", "amount" => 10 } ] },
+      condition_type: "reviews_total", condition_target: 1_000 },
     # ── シリーズ「通い続ける」──
     # 続けた日数だけが積み上がる。作った量でも正解数でも埋められない道
     { key: "visit_seven_days", name: "7日続ける", cadence: "onboarding",
       series_key: "keep_visiting", series_step: 1, position: 120,
-      description: "まずは1週間。", condition_type: "streak_days", condition_target: 7,
-      rewards: [ { "type" => "credits", "amount" => 1 } ] },
+      description: "まずは1週間。", condition_type: "streak_days", condition_target: 7 },
     { key: "visit_thirty_active", name: "30日おとずれる", cadence: "onboarding",
       series_key: "keep_visiting", series_step: 2, position: 121,
       description: "続けて来なくても構いません。来た日を数えます。",
-      condition_type: "active_days", condition_target: 30,
-      rewards: [ { "type" => "credits", "amount" => 3 } ] },
+      condition_type: "active_days", condition_target: 30 },
     { key: "visit_hundred_days", name: "100日続ける", cadence: "onboarding",
       series_key: "keep_visiting", series_step: 3, position: 122,
       description: "宮殿に住んでいると言える日数です。",
-      condition_type: "streak_days", condition_target: 100,
-      rewards: [ { "type" => "credits", "amount" => 10 } ] }
+      condition_type: "streak_days", condition_target: 100 }
   ].freeze
 
   BUILTIN_KEYS = BUILTINS.map { |b| b[:key] }.freeze
@@ -113,10 +109,15 @@ class MissionDefinition < ApplicationRecord
   def self.ensure_builtins!
     return if @builtins_checked && !Rails.env.local?
 
-    existing = where(key: BUILTIN_KEYS).pluck(:key).to_set
+    existing = where(key: BUILTIN_KEYS).index_by(&:key)
     series_ids = MissionSeries.registry.to_h { |s| [ s.key, s.id ] }
     BUILTINS.each do |attrs|
-      next if existing.include?(attrs[:key])
+      found = existing[attrs[:key]]
+      if found
+        # 報酬はコードが正本（AchievementDefinition.sync_rewards! と同じ理由）
+        AchievementDefinition.sync_rewards!(found, attrs[:rewards])
+        next
+      end
 
       # series_key は BUILTINS の中だけの目印。行を作るときに id へ引き当てる
       row = attrs.except(:series_key)
