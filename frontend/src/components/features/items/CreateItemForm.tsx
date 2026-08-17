@@ -17,7 +17,8 @@ import { getViews, createView, addDeckCard } from '@/lib/api/views'
 import { getSettings } from '@/lib/api/settings'
 import { useItemsStore } from '@/stores/items'
 import { useBillingStore } from '@/stores/billing'
-import { estimatedCards } from '@/lib/billing'
+import { estimatedCards, AI_TEXT_COST } from '@/lib/billing'
+import { sumLines } from '@/lib/billing/credit-cost'
 import {
   STYLE_OPTIONS,
   FRAMING_OPTIONS,
@@ -33,7 +34,7 @@ import type { Wordlist } from '@/types/wordlist'
 import { ASPECT_RATIOS, ASPECT_RATIO_KEYS, type AspectRatioKey } from '@/lib/aspect-ratio'
 import { HelpPopover } from '@/components/ui/help-popover'
 import { Tooltip } from '@/components/ui/tooltip'
-import { CreditCostNote } from '@/components/features/billing/CreditCostNote'
+import { AiCostBadge, CreditCostNote } from '@/components/features/billing/CreditCostNote'
 
 const MAX_TITLE_LENGTH = 100
 const WORDLIST_SECTION = 'card-create-wordlist'
@@ -263,6 +264,38 @@ export function CreateItemForm({
   const wordCount = titles.length
   const hasTooLongTitle = titles.some((t) => t.length > MAX_TITLE_LENGTH)
   const tagNames = tagsInput.split(/[\s,、]+/).map((s) => s.trim()).filter(Boolean)
+
+  /*
+    これから使うクレジット。**絵のぶんだけを数えない。**
+
+    以前ここは `cost={wordCount}` で、絵の 1cr しか見ていなかった。
+    実際には意味・タグ・種別・項目の自動生成がそれぞれ 0.01cr かかるので、
+    1枚作って全部入りなら 1.04cr 減る。画面は「1cr 使います」と言っていたため、
+    **「1枚しか作っていないのに 1cr 以上減った」という問い合わせが実際に来た。**
+
+    どれが幾らかはサーバー（Ai::UsageLimit::DEFAULT_COST_POINTS）が決める。
+    ここはその写しなので、向こうを変えたらこちらも直すこと。
+
+    「調べてから」を選ぶと、意味の生成は自動生成の設定によらず必ず走る
+    （画像の指示を書き直す前段で作るため）。だから checkbox と or で見る。
+    絵の下ごしらえ（brief / 内部の書き直し）はサーバー側で 0cr にしてあるので数えない。
+  */
+  const costLines = useMemo(() => {
+    const meaningCharged = generateMeaning || promptSource === 'research'
+    const perCard: { label: string; on: boolean }[] = [
+      { label: '意味', on: meaningCharged },
+      { label: 'タグ', on: generateTags },
+      { label: '種別', on: detectItemType },
+      { label: '項目', on: propertyKeys.length > 0 },
+    ]
+
+    return [
+      { label: '絵', unit: 1, count: wordCount },
+      ...perCard.filter((o) => o.on).map((o) => ({ label: o.label, unit: AI_TEXT_COST, count: wordCount })),
+    ]
+  }, [generateMeaning, promptSource, generateTags, detectItemType, propertyKeys.length, wordCount])
+
+  const totalCost = sumLines(costLines)
   // 残クレジットからおおよその作成可能枚数を出し、入力件数が超える場合は警告する
   const remainingCards = billing ? estimatedCards(billing.available_credits) : null
 
@@ -539,7 +572,11 @@ export function CreateItemForm({
         {/* **押す前に**、何クレジット使うかを出す。
             足りないときだけ出す作りだと、足りている人は単価を知らないまま使う */}
         {wordCount > 0 && (
-          <CreditCostNote cost={wordCount} available={billing?.available_credits ?? null} />
+          <CreditCostNote
+            cost={totalCost}
+            lines={costLines}
+            available={billing?.available_credits ?? null}
+          />
         )}
       </div>
 
@@ -765,6 +802,7 @@ export function CreateItemForm({
         <span className="flex-1 space-y-2">
           <span className="flex items-center gap-1.5 text-sm font-medium">
             意味・説明
+            <AiCostBadge />
             <HelpPopover label="意味・説明について" title="意味・説明">
               <div className="space-y-2 text-sm">
                 <p>その語が何かを、AI が短くまとめます。</p>
@@ -799,6 +837,13 @@ export function CreateItemForm({
         </span>
       </label>
       {/* 項目（読み仮名・別名・発音記号）。**選んだぶんを1回でまとめて埋める** */}
+      {/* 費用は選んだ数によらず1回ぶん。項目ごとに札を付けると、
+          3つ選ぶと3倍かかるように読めてしまう */}
+      <p className="flex items-center gap-1.5 px-1 text-xs text-muted-foreground">
+        項目（いくつ選んでも、まとめて
+        <AiCostBadge />
+        ）
+      </p>
       {PROPERTY_OPTIONS.map((option) => (
         <label
           key={option.key}
@@ -841,6 +886,7 @@ export function CreateItemForm({
         <span className="flex-1">
           <span className="flex items-center gap-1.5 text-sm font-medium">
             種別
+            <AiCostBadge />
             <HelpPopover label="種別について" title="種別">
               <div className="space-y-2 text-sm">
                 {/* 種別の一覧は書き写さない。増えるたびにここが古くなる */}
@@ -867,6 +913,7 @@ export function CreateItemForm({
         <span className="flex-1">
           <span className="flex items-center gap-1.5 text-sm font-medium">
             タグ
+            <AiCostBadge />
             <HelpPopover label="タグについて" title="タグ">
               <div className="space-y-2 text-sm">
                 <p>分類のタグを AI が付けます。</p>
