@@ -43,7 +43,9 @@ export function CreditCostHint({
       } ${className ?? ''}`}
     >
       <Coins size={12} aria-hidden />
-      {formatCredits(c.cost)} {CREDIT_UNIT_SHORT}
+      <span className="whitespace-nowrap">
+        {formatCredits(c.cost)} {CREDIT_UNIT_SHORT}
+      </span>
       {!c.sufficient && (
         <Link href="/billing" className="underline underline-offset-2">
           クレジットが足りません
@@ -79,7 +81,7 @@ export function CreditCostNote({
 
     return (
       <p className={`text-xs ${c.sufficient ? 'text-muted-foreground' : 'text-destructive'} ${className ?? ''}`}>
-        <span className={c.sufficient ? 'text-foreground' : undefined}>{after}</span>
+        <span className={`whitespace-nowrap ${c.sufficient ? 'text-foreground' : ''}`}>{after}</span>
         {!c.sufficient && (
           <Link href="/billing" className="ml-1.5 underline underline-offset-2">
             クレジットが足りません
@@ -94,9 +96,11 @@ export function CreditCostNote({
 
   if (variant === 'inline') {
     return (
+      /* 折り返すなら句の切れ目で。「1 cr 使い / ます」のように
+         数と単位や語の途中で切れると、読み直すことになる */
       <p className={`text-xs ${c.sufficient ? 'text-muted-foreground' : 'text-destructive'} ${className ?? ''}`}>
-        <span className={c.sufficient ? 'text-foreground' : undefined}>{text}</span>
-        {balance && <span className="ml-1.5">{balance}</span>}
+        <span className={`whitespace-nowrap ${c.sufficient ? 'text-foreground' : ''}`}>{text}</span>
+        {balance && <span className="ml-1.5 whitespace-nowrap">{balance}</span>}
         {!c.sufficient && (
           <>
             <span className="ml-1.5">クレジットが足りません。</span>
@@ -123,8 +127,8 @@ export function CreditCostNote({
         {strong ? <AlertTriangle size={14} aria-hidden /> : <Coins size={14} aria-hidden />}
       </span>
       <span className="min-w-0">
-        <span className={c.tone === 'plain' ? 'font-medium text-foreground' : 'font-medium'}>{text}</span>
-        {balance && <span className="ml-1.5">{balance}</span>}
+        <span className={`whitespace-nowrap font-medium ${c.tone === 'plain' ? 'text-foreground' : ''}`}>{text}</span>
+        {balance && <span className="ml-1.5 whitespace-nowrap">{balance}</span>}
         {!c.sufficient && (
           <>
             <br />

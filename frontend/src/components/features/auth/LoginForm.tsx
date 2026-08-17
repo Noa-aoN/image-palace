@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { Button } from '@/components/ui/button'
@@ -12,6 +12,7 @@ import { signIn, googleOAuthUrl, appleOAuthUrl, APPLE_AUTH_ENABLED } from '@/lib
 import { buildLoginErrorDetail, validateLoginField } from '@/lib/auth-errors'
 import { useAuthStore } from '@/stores/auth'
 import { useItemsStore } from '@/stores/items'
+import { takeSessionEndNotice } from '@/lib/auth/session-end'
 
 export function LoginForm() {
   const router = useRouter()
@@ -22,6 +23,16 @@ export function LoginForm() {
   const [formError, setFormError] = useState<string | null>(null)
   const [fieldErrors, setFieldErrors] = useState<{ email?: string; password?: string }>({})
   const [loading, setLoading] = useState(false)
+  // 期限切れで送られてきたときだけ、なぜここに居るのかを出す。
+  // **何も言わずにログイン画面へ戻すと、操作を失敗したように見える**
+  const [sessionEnded, setSessionEnded] = useState(false)
+
+  useEffect(() => {
+    // 印は読んだ時点で URL から消える。**消えたことを「無かった」に書き戻さない。**
+    // 開発時の二重実行では、1回目で受け取ったあと2回目は false が返るので、
+    // そのまま入れると出したはずの案内が消える（実際に消えていた）
+    if (takeSessionEndNotice()) setSessionEnded(true)
+  }, [])
 
   function updateFieldError(field: 'email' | 'password', message?: string) {
     setFieldErrors((current) => {
@@ -75,6 +86,16 @@ export function LoginForm() {
       <h1 className="text-2xl font-bold mb-6 text-center" style={{ color: '#111111' }}>
         宮殿に入る
       </h1>
+
+      {sessionEnded && (
+        <p
+          role="status"
+          className="mb-5 rounded-lg border px-3 py-2 text-sm leading-relaxed"
+          style={{ borderColor: 'var(--palace)', backgroundColor: 'rgba(198, 167, 94, 0.08)', color: '#4A4A4A' }}
+        >
+          セッションの有効期限が切れたため、ログアウトしました。
+        </p>
+      )}
 
       <Button
         variant="outline"
