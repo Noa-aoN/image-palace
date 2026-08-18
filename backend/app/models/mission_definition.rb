@@ -3,6 +3,8 @@
 # ミッションの定義。「これから取れるもの」を出すためのもので、
 # 実績（積み上がったものを見る）と役割を分けている。
 class MissionDefinition < ApplicationRecord
+  include DefinitionRegistry
+
   include RewardsValidation
 
   CADENCES = %w[daily weekly onboarding limited event].freeze
@@ -102,11 +104,6 @@ class MissionDefinition < ApplicationRecord
   ].freeze
 
   BUILTIN_KEYS = BUILTINS.map { |b| b[:key] }.freeze
-
-  def self.registry
-    ensure_builtins!
-    ordered.to_a
-  end
 
   def self.ensure_builtins!
     return if @builtins_checked && !Rails.env.local?

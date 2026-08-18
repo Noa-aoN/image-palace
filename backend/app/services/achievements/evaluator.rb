@@ -62,6 +62,22 @@ module Achievements
       @period_counts.fetch([ type.to_s, since ]) { |k| @period_counts[k] = PeriodCounts.value_for(type, @user, since) }
     end
 
+    # 進み具合を書く。**変わっていなければ書かない。**
+    #
+    # 以前は毎回 `update!` していたので、まだ届いていない実績（44 の大半）と
+    # ミッション（28）の一つひとつに UPDATE が飛んでいた。中身が同じでも
+    # `updated_at` だけ書き換わるので、必ず DML になる。
+    # 画面を開くたびに 50〜70 本の書き込みが走っていた。
+    def touch_state!(state, value, completed)
+      completed_at = completed ? @now : nil
+      # 達成した瞬間だけ時刻を入れる。既に入っているものは上書きしない
+      # （「いつ達成したか」が開くたびに今になってしまう）
+      completed_at = state.completed_at if completed && state.completed_at.present?
+      return if state.progress == value && state.completed_at == completed_at
+
+      state.update!(progress: value, completed_at: completed_at)
+    end
+
     def evaluate_achievements(result)
       definitions = AchievementDefinition.registry.select { |d| d.available?(@now) }
       states = achievement_states(definitions)
@@ -72,7 +88,7 @@ module Achievements
 
         value = count_for(definition.condition_type)
         completed = value >= definition.condition_target
-        state.update!(progress: value, completed_at: completed ? @now : nil)
+        touch_state!(state, value, completed)
         next unless completed
 
         result.completed_achievements << definition
@@ -151,7 +167,7 @@ module Achievements
 
         value = mission_value(definition)
         completed = value >= definition.condition_target
-        state.update!(progress: value, completed_at: completed ? @now : nil)
+        touch_state!(state, value, completed)
         next unless completed
 
         result.completed_missions << definition

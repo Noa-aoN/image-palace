@@ -9,6 +9,8 @@
 # 組み込み（BUILTINS）は初回の読み出しで行として取り込む。以後は行が正。
 # 消せないのは、コードや他の定義が key を参照しているため（止めたいときは無効にする）。
 class RewardDefinition < ApplicationRecord
+  include DefinitionRegistry
+
   KINDS = %w[title medal treasure honor].freeze
 
   # 並べる順。**名乗る側から、持ち物側へ。**
@@ -349,9 +351,13 @@ class RewardDefinition < ApplicationRecord
 
   BUILTIN_KEYS = BUILTINS.map { |b| b[:key] }.freeze
 
-  def self.registry
-    ensure_builtins!
-    ordered.to_a
+  # 絵を一緒に読む。
+  #
+  # `image_path` は添付を先に見るので、112 件の定義それぞれに
+  # `active_storage_attachments` への問い合わせが飛んでいた
+  # （アチーブメントの画面で 168 本。実測）。
+  def self.registry_scope
+    ordered.with_attached_image
   end
 
   # 足りない組み込みだけ入れる。既にある行は触らない（運営が変えた値を戻さない）。
@@ -359,7 +365,9 @@ class RewardDefinition < ApplicationRecord
   def self.ensure_builtins!
     return if @builtins_checked && !Rails.env.local?
 
-    existing = where(key: BUILTIN_KEYS).index_by(&:key)
+    # 絵も一緒に読む。`sync_image_key!` が1件ずつ `image.attached?` を見るので、
+    # 読まないと組み込みの数だけ問い合わせが飛ぶ（112 本。実測）
+    existing = where(key: BUILTIN_KEYS).with_attached_image.index_by(&:key)
     BUILTINS.each do |attrs|
       row = existing[attrs[:key]]
       if row.nil?

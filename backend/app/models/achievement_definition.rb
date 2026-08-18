@@ -2,6 +2,8 @@
 
 # 実績の定義。条件を満たすと、報酬（獲得物・クレジット）が配られる。
 class AchievementDefinition < ApplicationRecord
+  include DefinitionRegistry
+
   include RewardsValidation
 
   has_many :user_achievements, dependent: :destroy
@@ -183,11 +185,6 @@ class AchievementDefinition < ApplicationRecord
   ].freeze
 
   BUILTIN_KEYS = BUILTINS.map { |b| b[:key] }.freeze
-
-  def self.registry
-    ensure_builtins!
-    ordered.to_a
-  end
 
   def self.ensure_builtins!
     return if @builtins_checked && !Rails.env.local?
