@@ -47,7 +47,11 @@ module Achievements
     end
 
     def owned
-      @owned ||= UserReward.held.where(user_id: @user.id).index_by(&:reward_definition_id)
+      # 定義も一緒に読む。`Showcase.starred?` が持ち物ごとに種別を見るので、
+      # 読まないと持っている数だけ問い合わせが飛ぶ（実測）
+      @owned ||= UserReward.held.where(user_id: @user.id)
+                           .includes(:reward_definition)
+                           .index_by(&:reward_definition_id)
     end
 
     def states
@@ -116,11 +120,11 @@ module Achievements
         next unless definition.available? && definition.published?
 
         title_key = Array(definition.rewards).find { |r|
-          r["type"] == "reward" && RewardDefinition.find_by(key: r["key"])&.kind == "title"
+          r["type"] == "reward" && RewardDefinition.from_registry(r["key"])&.kind == "title"
         }&.dig("key")
         next if title_key.nil?
 
-        title = RewardDefinition.find_by(key: title_key)
+        title = RewardDefinition.from_registry(title_key)
         next if owned.key?(title.id)
 
         progress = states[definition.id]&.progress.to_i
@@ -332,7 +336,7 @@ module Achievements
       Array(rewards).filter_map do |entry|
         case entry["type"]
         when "reward"
-          definition = RewardDefinition.find_by(key: entry["key"])
+          definition = RewardDefinition.from_registry(entry["key"])
           next if definition.nil?
 
           { type: "reward", key: definition.key, name: definition.name,

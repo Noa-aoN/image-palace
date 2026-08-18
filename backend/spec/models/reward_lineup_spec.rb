@@ -131,6 +131,8 @@ RSpec.describe "獲得物の品揃え" do
       row = RewardDefinition.find_by(key: "honor_beta")
       row.update_columns(metadata: row.metadata.except("grant_note"))
       RewardDefinition.instance_variable_set(:@builtins_checked, false)
+      # 覚え書きも捨てる（新しい応答と同じ状態にする）
+      RewardDefinition.forget_registry!
 
       RewardDefinition.registry
 
@@ -142,6 +144,8 @@ RSpec.describe "獲得物の品揃え" do
       row = RewardDefinition.find_by(key: "honor_beta")
       row.update_columns(metadata: row.metadata.merge("grant_note" => "運営が書き換えた説明"))
       RewardDefinition.instance_variable_set(:@builtins_checked, false)
+      # 覚え書きも捨てる（新しい応答と同じ状態にする）
+      RewardDefinition.forget_registry!
 
       RewardDefinition.registry
 

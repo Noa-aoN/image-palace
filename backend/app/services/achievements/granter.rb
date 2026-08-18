@@ -103,7 +103,7 @@ module Achievements
       Array(rewards).filter_map do |entry|
         case entry["type"]
         when "reward"
-          definition = RewardDefinition.find_by(key: entry["key"])
+          definition = RewardDefinition.from_registry(entry["key"])
           next if definition.nil?
 
           # 1回の操作で複数配るときは、獲得物ごとに別の出来事として扱う
