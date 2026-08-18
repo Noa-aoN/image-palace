@@ -8,6 +8,7 @@ import { roomSurfaceLabel, wallViewFloorGrid } from '@/lib/room-surfaces'
 import { gridStroke, shadeSurface, type RoomStyle } from '@/lib/room-style'
 import { pointImageUrl, pointCssTransform } from '@/lib/space-points'
 import { isDoublePress, movedEnough, type PressRecord } from '@/lib/pointer-gestures'
+import { persist } from '@/lib/api/persist'
 
 const clamp01 = (n: number) => Math.min(1, Math.max(0, n))
 const clampScale = (n: number) => Math.min(3, Math.max(0.3, n))
@@ -280,7 +281,9 @@ export function RoomCanvas({
       const p = stagePct(ev.clientX, ev.clientY)
       const r = resolveUV(p.sx, p.sy)
       onMoved?.(pointId, r.surface, r.u, r.v)
-      updateSpacePoint(spaceId, pointId, { surface: r.surface, u: r.u, v: r.v }).catch(() => {})
+      persist(() => updateSpacePoint(spaceId, pointId, { surface: r.surface, u: r.u, v: r.v }), {
+        key: `space:${spaceId}:point:${pointId}:place`,
+      })
     }
     window.addEventListener('pointermove', onMove)
     window.addEventListener('pointerup', onUp)
@@ -307,7 +310,9 @@ export function RoomCanvas({
       const dist = Math.hypot(ev.clientX - cx, ev.clientY - cy)
       const next = clampScale(startScale * (dist / startDist))
       onScaled?.(point.id, next)
-      updateSpacePoint(spaceId, point.id, { scale: next }).catch(() => {})
+      persist(() => updateSpacePoint(spaceId, point.id, { scale: next }), {
+      key: `space:${spaceId}:point:${point.id}:scale`,
+    })
     }
     window.addEventListener('pointermove', onMove)
     window.addEventListener('pointerup', onUp)
