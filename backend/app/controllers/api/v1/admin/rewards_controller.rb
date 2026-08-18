@@ -93,7 +93,12 @@ module Api
         def destroy_reward_image
           definition = RewardDefinition.find(params[:id])
           definition.image.purge if definition.image.attached?
-          definition.update!(image_key: nil)
+          # 外したことを印として残す。**残さないと、組み込みの取り込みが鍵を埋め直す**
+          # （絵が無い状態は「まだ入れていない」と見分けが付かないため）
+          definition.update!(
+            image_key: nil,
+            metadata: definition.metadata.merge(RewardDefinition::IMAGE_REMOVED_AT => Time.current.iso8601)
+          )
           audit!("reward_image_destroy", target: definition, details: { key: definition.key })
 
           render json: { reward: serialize_reward(definition.reload) }

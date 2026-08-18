@@ -382,6 +382,15 @@ class RewardDefinition < ApplicationRecord
     @builtins_checked = true
   end
 
+  # 運営が絵を外したときの印。**metadata に置く**（列は増やさない）。
+  # `image_removed_at` があるものは、組み込みの鍵で埋め直さない
+  IMAGE_REMOVED_AT = "image_removed_at"
+
+  # 運営が意図して絵を外したか
+  def image_removed_by_admin?
+    metadata.is_a?(Hash) && metadata[IMAGE_REMOVED_AT].present?
+  end
+
   # 画像の鍵を、コードの値へ揃える。
   #
   # **絵を自分で作った環境（本番）には触らない。** あちらは添付を持っていて、
@@ -392,9 +401,16 @@ class RewardDefinition < ApplicationRecord
   # ここは**空のときだけ埋める**では足りない。本番で絵を作り直すと古い実体は消えるので、
   # 一度埋まった古い鍵が残り続け、その獲得物だけ絵が割れる
   # （実際に「問答の星章」で起きた）。値が違えば揃える。
+  #
+  # **ただし、運営が外したものは戻さない。**
+  # 「絵が無い」状態は、いまのデータでは3つが同じ形になる。
+  #   ① まだ入れていない ② 運営が外した ③ 新しい環境で初期化前
+  # ②だけは埋めてはいけないのに、添付と列だけでは見分けられない。
+  # 外したときに印を残して、そこで分ける。
   def self.sync_image_key!(row, key)
     return if key.blank?
     return if row.image.attached?
+    return if row.image_removed_by_admin?
     return if row.image_key == key
 
     row.update_columns(image_key: key) # rubocop:disable Rails/SkipsModelValidations

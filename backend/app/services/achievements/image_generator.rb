@@ -108,7 +108,9 @@ module Achievements
         # 鍵も控える。他の環境から同じ絵を指せるようにするため
         @reward.update!(
           image_key: @reward.image.blob.key,
-          metadata: @reward.metadata.merge(
+          # 絵を入れ直したので「外した」印は消す。
+          # 残したままだと、組み込みの取り込みがこの行を素通りし続ける
+          metadata: @reward.metadata.except(RewardDefinition::IMAGE_REMOVED_AT).merge(
             "image_prompt" => prompt,
             "image_model" => result.metadata[:model] || result.metadata["model"],
             "image_generated_at" => Time.current.iso8601
