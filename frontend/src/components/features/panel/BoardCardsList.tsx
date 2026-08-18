@@ -15,6 +15,7 @@ import { CSS } from '@dnd-kit/utilities'
 import { getViewDetail, reorderBoardLayers } from '@/lib/api/views'
 import { useRightPanelStore } from '@/stores/rightPanel'
 import type { ViewItemPlacement } from '@/types/view'
+import { persist } from '@/lib/api/persist'
 
 // 一覧の1行（ドラッグハンドル＋クリックで詳細）。行全体はクリック可能、ハンドルのみドラッグ。
 function SortableRow({ vi, onSelect }: { vi: ViewItemPlacement; onSelect: (itemId: string) => void }) {
@@ -100,7 +101,7 @@ export function BoardCardsList({ viewId }: { viewId: string }) {
     // 先頭＝手前＝最大 z。ボードへ即時反映＋サーバへ順序を永続化。
     const frontToBack = next.map((i) => i.item_id)
     requestLayerPatch(frontToBack.map((id, idx) => ({ id, z: next.length - idx })))
-    reorderBoardLayers(viewId, frontToBack).catch(() => {})
+    persist(() => reorderBoardLayers(viewId, frontToBack), { key: `view:${viewId}:layers` })
   }
 
   return (

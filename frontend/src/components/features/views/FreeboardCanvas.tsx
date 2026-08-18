@@ -45,6 +45,7 @@ import type { Item } from '@/types/item'
 import { BoardActionsContext, CardNode, CARD_DEFAULT_W, CARD_DEFAULT_H, type CardNodeType } from './CardNode'
 import { EditableEdge, EdgeActionsContext } from './EditableEdge'
 import { DraggableMiniMap } from './DraggableMiniMap'
+import { persist } from '@/lib/api/persist'
 
 const nodeTypes = { card: CardNode }
 const edgeTypes = { editable: EditableEdge }
@@ -204,18 +205,32 @@ function Canvas({ viewId, viewName, initialItems, initialEdges, aiEditAction, ai
       setNodes((ns) => ns.filter((n) => n.id !== itemId))
       // そのカードを端点に持つ接続線もローカルから除去（サーバ側は remove_item が掃除する）
       setEdges((es) => es.filter((e) => e.source !== itemId && e.target !== itemId))
-      removeViewItem(viewId, itemId).catch(() => {})
+      persist(() => removeViewItem(viewId, itemId), { key: `view:${viewId}:item:${itemId}:remove` })
     },
     [viewId, setNodes, setEdges]
   )
 
-  // ドラッグ完了時に座標を保存
+  /*
+    ドラッグ完了時に座標を保存。
+
+    **サーバーに入るのは盤面の座標**（React Flow がノードの translate に書く値）で、
+    画面上のピクセル位置ではない。両者は
+      画面位置 = 盤面の左上 + パン量 + 盤面座標 × ズーム
+    の関係にある。実測（zoom 0.9）で
+      盤面座標 (659, 364) → 画面 (755.2, 642.8)  差 0.0px
+    と一致した。読み直したときに数が違って見えても、位置は保たれている。
+  */
   const handleDragStop: OnNodeDrag<CardNodeType> = useCallback(
     (_event, node) => {
-      updateViewItemPosition(viewId, node.id, {
-        x: Math.round(node.position.x),
-        y: Math.round(node.position.y),
-      }).catch(() => {})
+      persist(
+        () =>
+          updateViewItemPosition(viewId, node.id, {
+            x: Math.round(node.position.x),
+            y: Math.round(node.position.y),
+          }),
+        // 同じカードを動かし直したら、**新しい位置だけ**を送る
+        { key: `view:${viewId}:item:${node.id}:pos` }
+      )
     },
     [viewId]
   )
@@ -223,12 +238,16 @@ function Canvas({ viewId, viewName, initialItems, initialEdges, aiEditAction, ai
   // リサイズ確定時にサイズと座標を保存
   const handleResizeEnd = useCallback(
     (itemId: string, size: { x: number; y: number; width: number; height: number }) => {
-      updateViewItemPosition(viewId, itemId, {
-        x: Math.round(size.x),
-        y: Math.round(size.y),
-        width: Math.round(size.width),
-        height: Math.round(size.height),
-      }).catch(() => {})
+      persist(
+        () =>
+          updateViewItemPosition(viewId, itemId, {
+            x: Math.round(size.x),
+            y: Math.round(size.y),
+            width: Math.round(size.width),
+            height: Math.round(size.height),
+          }),
+        { key: `view:${viewId}:item:${itemId}:pos` }
+      )
     },
     [viewId]
   )
@@ -239,7 +258,10 @@ function Canvas({ viewId, viewName, initialItems, initialEdges, aiEditAction, ai
       setNodes((ns) =>
         ns.map((n) => (n.id === node.id ? { ...n, width: CARD_DEFAULT_W, height: CARD_DEFAULT_H } : n))
       )
-      updateViewItemPosition(viewId, node.id, { width: CARD_DEFAULT_W, height: CARD_DEFAULT_H }).catch(() => {})
+      persist(
+          () => updateViewItemPosition(viewId, node.id, { width: CARD_DEFAULT_W, height: CARD_DEFAULT_H }),
+          { key: `view:${viewId}:item:${node.id}:pos` }
+        )
     },
     [viewId, setNodes]
   )
@@ -333,12 +355,16 @@ function Canvas({ viewId, viewName, initialItems, initialEdges, aiEditAction, ai
         const ordered = computeLayerOrder(nodes, (n) => n.zIndex ?? 0, op, targets)
         const map = new Map(ordered.map((n, i) => [n.id, i + 1]))
         setNodes((ns) => ns.map((n) => ({ ...n, zIndex: map.get(n.id) ?? n.zIndex })))
-        reorderBoardLayers(viewId, [...ordered].reverse().map((n) => n.id)).catch(() => {})
+        persist(() => reorderBoardLayers(viewId, [...ordered].reverse().map((n) => n.id)), {
+          key: `view:${viewId}:layers`,
+        })
       } else {
         const ordered = computeLayerOrder(edges, (e) => (typeof e.zIndex === 'number' ? e.zIndex : 0), op, targets)
         const map = new Map(ordered.map((e, i) => [e.id, i + 1]))
         setEdges((es) => es.map((e) => ({ ...e, zIndex: map.get(e.id) ?? e.zIndex })))
-        reorderViewEdges(viewId, [...ordered].reverse().map((e) => e.id)).catch(() => {})
+        persist(() => reorderViewEdges(viewId, [...ordered].reverse().map((e) => e.id)), {
+          key: `view:${viewId}:edgeOrder`,
+        })
       }
       setCtxMenu(null)
     },
@@ -354,7 +380,7 @@ function Canvas({ viewId, viewName, initialItems, initialEdges, aiEditAction, ai
       const ids = new Set(ctxMenu.targetIds)
       setEdges((es) => es.filter((e) => !ids.has(e.id)))
       ctxMenu.targetIds.forEach((id) => {
-        if (!id.startsWith('tmp-')) removeViewEdge(viewId, id).catch(() => {})
+        if (!id.startsWith('tmp-')) persist(() => removeViewEdge(viewId, id), { key: `view:${viewId}:edge:${id}:remove` })
       })
     }
     setCtxMenu(null)
@@ -393,12 +419,16 @@ function Canvas({ viewId, viewName, initialItems, initialEdges, aiEditAction, ai
     (oldEdge: Edge, newConnection: Connection) => {
       setEdges((els) => reconnectEdge(oldEdge, newConnection, els))
       if (oldEdge.id.startsWith('tmp-')) return // 未保存の楽観 edge は保存後に確定
-      updateViewEdge(viewId, oldEdge.id, {
-        source_node_id: newConnection.source ?? undefined,
-        target_node_id: newConnection.target ?? undefined,
-        source_handle: newConnection.sourceHandle ?? null,
-        target_handle: newConnection.targetHandle ?? null,
-      }).catch(() => {})
+      persist(
+        () =>
+          updateViewEdge(viewId, oldEdge.id, {
+            source_node_id: newConnection.source ?? undefined,
+            target_node_id: newConnection.target ?? undefined,
+            source_handle: newConnection.sourceHandle ?? null,
+            target_handle: newConnection.targetHandle ?? null,
+          }),
+        { key: `view:${viewId}:edge:${oldEdge.id}:ends` }
+      )
     },
     [viewId, setEdges]
   )
@@ -407,7 +437,7 @@ function Canvas({ viewId, viewName, initialItems, initialEdges, aiEditAction, ai
   const handleEdgesDelete = useCallback(
     (deleted: Edge[]) => {
       deleted.forEach((e) => {
-        if (!e.id.startsWith('tmp-')) removeViewEdge(viewId, e.id).catch(() => {})
+        if (!e.id.startsWith('tmp-')) persist(() => removeViewEdge(viewId, e.id), { key: `view:${viewId}:edge:${e.id}:remove` })
       })
     },
     [viewId]
@@ -530,7 +560,9 @@ function Canvas({ viewId, viewName, initialItems, initialEdges, aiEditAction, ai
     edges.forEach((e) => {
       if (!idSet.has(e.id) || e.id.startsWith('tmp-')) return
       const prev = (e.data ?? {}) as Partial<EdgeData>
-      updateViewEdge(viewId, e.id, { style: { ...(prev.edgeStyle ?? {}), ...partial } }).catch(() => {})
+      persist(() => updateViewEdge(viewId, e.id, { style: { ...(prev.edgeStyle ?? {}), ...partial } }), {
+        key: `view:${viewId}:edge:${e.id}:style`,
+      })
     })
     consumeBulkStylePatch()
   }, [bulkStylePatch, edges, viewId, setEdges, consumeBulkStylePatch])
@@ -541,7 +573,11 @@ function Canvas({ viewId, viewName, initialItems, initialEdges, aiEditAction, ai
     const { itemIds, width, height } = bulkResize
     const idSet = new Set(itemIds)
     setNodes((ns) => ns.map((n) => (idSet.has(n.id) ? { ...n, width, height } : n)))
-    itemIds.forEach((id) => updateViewItemPosition(viewId, id, { width, height }).catch(() => {}))
+    itemIds.forEach((id) =>
+      persist(() => updateViewItemPosition(viewId, id, { width, height }), {
+        key: `view:${viewId}:item:${id}:pos`,
+      })
+    )
     consumeBulkResize()
   }, [bulkResize, viewId, setNodes, consumeBulkResize])
 
@@ -553,9 +589,9 @@ function Canvas({ viewId, viewName, initialItems, initialEdges, aiEditAction, ai
     const edgeSet = new Set(edgeIds)
     setNodes((ns) => ns.filter((n) => !nodeSet.has(n.id)))
     setEdges((es) => es.filter((e) => !edgeSet.has(e.id) && !nodeSet.has(e.source) && !nodeSet.has(e.target)))
-    itemIds.forEach((id) => removeViewItem(viewId, id).catch(() => {}))
+    itemIds.forEach((id) => persist(() => removeViewItem(viewId, id), { key: `view:${viewId}:item:${id}:remove` }))
     edgeIds.forEach((id) => {
-      if (!id.startsWith('tmp-')) removeViewEdge(viewId, id).catch(() => {})
+      if (!id.startsWith('tmp-')) persist(() => removeViewEdge(viewId, id), { key: `view:${viewId}:edge:${id}:remove` })
     })
     consumeBulkRemove()
   }, [bulkRemove, viewId, setNodes, setEdges, consumeBulkRemove])
@@ -572,7 +608,7 @@ function Canvas({ viewId, viewName, initialItems, initialEdges, aiEditAction, ai
   const commitPoints = useCallback(
     (edgeId: string, points: EdgePoint[]) => {
       if (edgeId.startsWith('tmp-')) return
-      updateViewEdge(viewId, edgeId, { points }).catch(() => {})
+      persist(() => updateViewEdge(viewId, edgeId, { points }), { key: `view:${viewId}:edge:${edgeId}:points` })
     },
     [viewId]
   )
