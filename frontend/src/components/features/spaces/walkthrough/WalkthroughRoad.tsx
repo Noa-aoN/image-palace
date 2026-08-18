@@ -19,7 +19,7 @@ function LociFallback({ stop, index }: { stop: WalkthroughStop; index: number })
 }
 
 /**
- * 一人称の道シーン。地面（road.png トレッドミル）＋両脇の柱＋道の上のロキ点（背景）。
+ * 一人称の道シーン。地面（road.webp トレッドミル）＋両脇の柱＋道の上のロキ点（背景）。
  * すべて --sw-shift(px)（親 .sw-scene に driver が書き込む）から派生して動く。手前のカードは Panel 側。
  */
 export function WalkthroughRoad({
@@ -49,7 +49,7 @@ export function WalkthroughRoad({
               style={{ '--sw-pillar-base': base } as CSSProperties}
             >
               {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img src="/road-pillar.png" alt="" decoding="async" loading="lazy" className="sw-pillar-img" />
+              <img src="/road-pillar.webp" alt="" decoding="async" loading="lazy" className="sw-pillar-img" />
             </div>
           ))
         )}

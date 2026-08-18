@@ -30,9 +30,9 @@
   margin-left: -360px;
   transform-origin: 50% 0;
   transform: rotateX(72deg);
-  background-image: url('/road.png');
+  background-image: url('/road.webp');
   background-repeat: repeat-y;
-  background-size: 720px 1080px; /* road.png は 1024x1536(2:3)。1タイル=1080px で継ぎ目レス */
+  background-size: 720px 1080px; /* road.webp は 1024x1536(2:3)。1タイル=1080px で継ぎ目レス */
   background-position: center 0;
   animation: rad-a-walk 11s linear infinite;
   will-change: background-position;
@@ -79,7 +79,7 @@
   width: 340px;
   transform: translateX(-50%);
   opacity: 0.85;
-  background-image: url('/road.png');
+  background-image: url('/road.webp');
   background-repeat: repeat-y;
   background-size: 340px 510px;
   background-position: center 0;
