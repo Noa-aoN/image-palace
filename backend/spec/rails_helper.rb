@@ -78,6 +78,13 @@ RSpec.configure do |config|
   # instead of true.
   config.use_transactional_fixtures = true
 
+  # 1リクエストの間だけ持つもの（CurrentAttributes）を、例のあいだで持ち越さない。
+  #
+  # 本番では executor が応答ごとに捨てるが、spec には応答の切れ目が無い。
+  # 定義表の覚え書き（DefinitionRegistry）が前の例のまま残ると、
+  # 巻き戻された行を指したまま次の例が動き、外部キー違反になる。
+  config.before { DefinitionRegistry::Store.reset }
+
   # You can uncomment this line to turn off ActiveRecord support entirely.
   # config.use_active_record = false
 
