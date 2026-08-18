@@ -49,8 +49,12 @@ module Achievements
     def owned
       # 定義も一緒に読む。`Showcase.starred?` が持ち物ごとに種別を見るので、
       # 読まないと持っている数だけ問い合わせが飛ぶ（実測）
+      # 定義と**その絵**も一緒に読む。
+      #   定義 … `Showcase.starred?` が持ち物ごとに種別を見る
+      #   絵   … `image_path` が添付を先に見るので、持ち物ごとに取りに行く
+      # （獲得物15個の利用者で 9 本。本番実測）
       @owned ||= UserReward.held.where(user_id: @user.id)
-                           .includes(:reward_definition)
+                           .includes(reward_definition: { image_attachment: :blob })
                            .index_by(&:reward_definition_id)
     end
 
@@ -59,7 +63,8 @@ module Achievements
     end
 
     public def summary
-      starred = UserReward.held.where(user_id: @user.id).featured.includes(:reward_definition)
+      starred = UserReward.held.where(user_id: @user.id).featured
+                          .includes(reward_definition: { image_attachment: :blob })
       by_kind = starred.group_by { |r| r.reward_definition.kind }
       title = by_kind["title"]&.first
 
