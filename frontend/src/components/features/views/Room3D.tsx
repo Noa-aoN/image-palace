@@ -22,6 +22,7 @@ import {
   type SurfaceDef,
   type Surfaces,
 } from './room-geometry'
+import { persist } from '@/lib/api/persist'
 
 const MARKER = 0.55 // 点マーカー（正方形）の一辺（部屋のインテリア程度＝壁の小さな絵くらい）
 // 部屋の大きさから初期カメラ距離を決める（小さい部屋でも画面いっぱいに見えるように）。
@@ -330,7 +331,7 @@ function Scene({
       const d = last.current
       if (d) {
         onMoved(d.id, d.surface, d.u, d.v)
-        updateSpacePoint(spaceId, d.id, { surface: d.surface, u: d.u, v: d.v }).catch(() => {})
+        persist(() => updateSpacePoint(spaceId, d.id, { surface: d.surface, u: d.u, v: d.v }))
       }
       last.current = null
       setPreview(null)
@@ -383,7 +384,7 @@ function Scene({
             onOpen={onOpen}
             onScaled={onScaled}
             onScaleCommit={(id, scale) => {
-              updateSpacePoint(spaceId, id, { scale }).catch(() => {})
+              persist(() => updateSpacePoint(spaceId, id, { scale }))
             }}
             onInteracting={onInteracting}
           />

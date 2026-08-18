@@ -51,6 +51,7 @@ import { PanelSlotContent } from '@/components/features/panel/PanelSlot'
 import { useRightPanelStore } from '@/stores/rightPanel'
 import { Settings2 } from 'lucide-react'
 import type { CoverType } from '@/types/cover'
+import { persist } from '@/lib/api/persist'
 
 // カバー画像が無いスペースのフォールバック（ルーム=部屋 / ロード=道）
 function SpaceCoverFallback({ spaceType }: { spaceType: string }) {
@@ -570,7 +571,7 @@ export default function SpaceDetailPage() {
   const handleSetSurface = useCallback((pointId: string, surface: RoomSurface) => {
     setPoints((ps) => ps.map((p) => (p.id === pointId ? { ...p, surface, u: 0.5, v: 0.5 } : p)))
     setActiveSurface(surface)
-    updateSpacePoint(id, pointId, { surface, u: 0.5, v: 0.5 }).catch(() => {})
+    persist(() => updateSpacePoint(id, pointId, { surface, u: 0.5, v: 0.5 }))
   }, [id, setPoints])
 
   // 2D/3D いずれのドラッグでも、面と面内座標を state へ反映（保存はキャンバス側が行う）
@@ -765,7 +766,7 @@ export default function SpaceDetailPage() {
               selectedPoint={selectedPoint}
               onRotate={handleRotatePointAxis}
               onRotateCommit={(pointId: string, patch: Record<string, number>) => {
-                updateSpacePoint(id, pointId, patch).catch(() => {})
+                persist(() => updateSpacePoint(id, pointId, patch))
               }}
             />
           </PanelSlotContent>

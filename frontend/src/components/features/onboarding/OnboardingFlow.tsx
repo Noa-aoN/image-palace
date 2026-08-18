@@ -20,6 +20,7 @@ import {
   stepAt,
   type OnboardingDraft,
 } from '@/lib/onboarding/steps'
+import { persist } from '@/lib/api/persist'
 
 /**
  * 登録直後に一度だけ出す案内。
@@ -83,7 +84,7 @@ export function OnboardingFlow() {
     const { profile, settings } = draftToPayloads(draft, { name: currentName })
     try {
       // 名前の保存に失敗しても、案内は閉じる。**ここで人を閉じ込めない**
-      if (profile) await updateProfile(profile).catch(() => {})
+      if (profile) await persist(() => updateProfile(profile))
       await updateSettings(settings)
       await useSettingsStore.getState().fetchSettings()
     } catch {

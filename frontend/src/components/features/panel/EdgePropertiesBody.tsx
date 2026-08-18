@@ -9,6 +9,7 @@ import { useRightPanelStore } from '@/stores/rightPanel'
 import { EdgeStyleControls } from './EdgeStyleControls'
 import type { ViewEdge, ViewEdgeStyle } from '@/types/view'
 import { isSubmitEnter } from '@/lib/enter-key'
+import { persist } from '@/lib/api/persist'
 
 function toApiInput(c: Partial<ViewEdge>): ViewEdgeInput {
   const out: ViewEdgeInput = {}
@@ -38,7 +39,7 @@ export function EdgePropertiesBody({ viewId }: { viewId: string }) {
   const applyPatch = (changes: Partial<ViewEdge>) => {
     setCurrent((c) => (c ? { ...c, ...changes } : c))
     requestEdgePatch(current.id, changes)
-    updateViewEdge(viewId, current.id, toApiInput(changes)).catch(() => {})
+    persist(() => updateViewEdge(viewId, current.id, toApiInput(changes)))
   }
 
   // style は毎回フルで送る（jsonb 全体を置換するため、既存フィールドを保持してマージ）
@@ -60,7 +61,7 @@ export function EdgePropertiesBody({ viewId }: { viewId: string }) {
     })
   const del = () => {
     requestEdgeRemove(current.id)
-    removeViewEdge(viewId, current.id).catch(() => {})
+    persist(() => removeViewEdge(viewId, current.id))
     close()
   }
 

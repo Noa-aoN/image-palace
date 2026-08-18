@@ -5,6 +5,7 @@ import './globals.css'
 import { AppHeader } from '@/components/features/layout/Header'
 import { SettingsBootstrap } from '@/components/features/layout/SettingsBootstrap'
 import { CookieConsentBanner } from '@/components/features/consent/CookieConsentBanner'
+import { SaveStatusNotice } from '@/components/features/shared/SaveStatusNotice'
 import { Analytics } from '@/components/features/consent/Analytics'
 import { SITE_URL, SITE_NAME, SITE_DESCRIPTION } from '@/lib/site'
 import { THEME_COLOR } from '@/lib/pwa/manifest'
@@ -80,6 +81,10 @@ export default function RootLayout({
         <div className="flex-1 flex flex-col min-h-0">
           {children}
         </div>
+        {/* 保存が落ちたことを伝える札。**ここに置く。**
+            (app) の中は `isolate` で重なりの世界が閉じており、
+            そこへ置くと Cookie の札より後ろに回って読めなくなる（実測） */}
+        <SaveStatusNotice />
         <CookieConsentBanner />
         <Analytics />
         {/* Cloudflare Web Analytics ビーコンは本番ビルドのみ。

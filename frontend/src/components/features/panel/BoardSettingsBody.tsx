@@ -7,6 +7,7 @@ import { useRightPanelStore } from '@/stores/rightPanel'
 import { DEFAULT_CARD_FONT_SIZE } from '@/components/features/views/CardNode'
 import { cn } from '@/lib/utils'
 import type { BoardSettings } from '@/types/view'
+import { persist } from '@/lib/api/persist'
 
 const BG_COLORS = [
   { label: '既定（白系）', value: '' },
@@ -53,7 +54,7 @@ export function BoardSettingsBody() {
   // 即時反映（store）＋永続化（settings jsonb 全体を送る）
   const patch = (partial: Partial<BoardSettings>) => {
     setSettings(partial)
-    updateView(viewId, { settings: { ...settings, ...partial } }).catch(() => {})
+    persist(() => updateView(viewId, { settings: { ...settings, ...partial } }))
   }
 
   const pattern = settings.bg_pattern ?? 'dots'
