@@ -319,6 +319,21 @@ RSpec.describe "獲得物の管理", type: :request do
         expect(definition.reload.image_key).to be_nil
       end
 
+      # 外した判断が、組み込みの取り込みで覆されないこと。
+      # 「絵が無い」は「まだ入れていない」と同じ形なので、印が無いと埋め直される
+      it "外したあとに組み込みを取り込んでも、絵は戻らない" do
+        delete "/api/v1/admin/rewards/definitions/#{definition.id}/image",
+          headers: admin_headers, as: :json
+        expect(response).to have_http_status(:ok)
+
+        RewardDefinition.instance_variable_set(:@builtins_checked, false)
+        RewardDefinition.forget_registry!
+        RewardDefinition.ensure_builtins!
+
+        expect(definition.reload.image_key).to be_nil
+        expect(definition.image_path).to be_nil
+      end
+
       it "運営でなければ外せない" do
         delete "/api/v1/admin/rewards/definitions/#{definition.id}/image",
           headers: headers, as: :json
