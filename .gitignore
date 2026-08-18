@@ -47,6 +47,14 @@ docs/billing/*
 !docs/billing/BILLING_OPERATIONS.md
 !docs/billing/BILLING_INCIDENTS.md
 
+# 公開リポジトリで「何を考えて作ったか」を示す資料（2026-08-18 追加）。
+# 意思決定ログは、判断の背景・選んだ理由・捨てた案が残っている一次資料で、
+# コードからは復元できない。**運用情報（マシン・鍵の状態・請求実数）は書かない**
+!docs/decisions/
+!docs/architecture.md
+!docs/spec.md
+!docs/concept.md
+
 # Cloudflare Workers ビルド成果物
 frontend/.open-next/
 frontend/.wrangler/

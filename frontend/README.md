@@ -1,36 +1,35 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# frontend — Next.js 16 (App Router)
 
-## Getting Started
+ImagePalace の画面。API は backend が提供します。リポジトリ全体の README を先に読んでください
+→ [../README.md](../README.md)
 
-First, run the development server:
+## 動かす
+
+```bash
+docker compose up      # リポジトリのルートで実行（frontend: 3000 / API: 3001）
+```
+
+このディレクトリで直接動かす場合:
 
 ```bash
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+npm run test         # Vitest（純ロジック中心）
+npm run type-check   # tsc --noEmit
+npm run lint
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+## この中の構成
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+| ディレクトリ | 役割 |
+|---|---|
+| `src/app/` | App Router。`(public)` / `(auth)` / `(app)` でグループ分け |
+| `src/components/ui/` | shadcn/ui ベースの汎用コンポーネント |
+| `src/components/features/` | ドメイン固有のコンポーネント |
+| `src/lib/` | API クライアント・ドメインロジック・CSP 定義 |
+| `src/stores/` | Zustand ストア |
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+Server Components を既定とし、操作が要るところだけ `"use client"` を付けます。
+外部スクリプトを足すときは `src/lib/security/csp.ts` の allowlist を先に更新してください
+（本番の CSP は許可制です）。
 
-## Learn More
-
-To learn more about Next.js, take a look at the following resources:
-
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
-
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
-
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+デプロイは Cloudflare Workers（OpenNext 経由）: `npm run deploy`

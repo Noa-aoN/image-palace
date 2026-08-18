@@ -29,6 +29,22 @@ class Rack::Attack
     req.ip if req.post? && req.path == "/api/v1/auth"
   end
 
+  # パスワード再設定・メール確認: 1 IP あたり 5 分間で 5 回まで。
+  #
+  # **ここは「送らせる」側と「当てにいく」側の両方がある。**
+  #   POST    … 再送を繰り返させると、相手の受信箱を埋められる（メール爆撃）
+  #   PUT/GET … 発行済みトークンの総当たり
+  #
+  # 二要素・パスキー・引き換えコードは個別に絞ってあるのに、ここだけ全体網
+  # （300回/5分）しか無かった。認証の入口なので、同じ強さで扱う。
+  throttle("password_resets/ip", limit: 5, period: 5.minutes) do |req|
+    req.ip if req.path.start_with?("/api/v1/auth/password")
+  end
+
+  throttle("confirmations/ip", limit: 5, period: 5.minutes) do |req|
+    req.ip if req.path.start_with?("/api/v1/auth/confirmation")
+  end
+
   # カード作成（画像生成をトリガーし得る高コスト操作）: 1 IP あたり 60 秒間で 30 回まで。
   throttle("item_creates/ip", limit: 30, period: 60.seconds) do |req|
     req.ip if req.post? && req.path == "/api/v1/items"

@@ -29,6 +29,53 @@ RSpec.describe "Rack::Attack throttling", type: :request do
     end
   end
 
+  # 認証の入口なのに、ここだけ個別のスロットルが無く全体網（300回/5分）に頼っていた。
+  # 送らせる側（メール爆撃）と当てにいく側（トークン総当たり）の両方がある
+  describe "パスワード再設定のスロットル" do
+    it "5 回を超えると 429 を返す" do
+      freeze_time do
+        6.times do
+          post "/api/v1/auth/password", params: { email: "nobody@example.com" }, as: :json
+        end
+      end
+
+      expect(response).to have_http_status(:too_many_requests)
+    end
+
+    it "上限内は通す" do
+      freeze_time do
+        5.times do
+          post "/api/v1/auth/password", params: { email: "nobody@example.com" }, as: :json
+        end
+      end
+
+      expect(response).not_to have_http_status(:too_many_requests)
+    end
+
+    # 発行済みトークンを当てにいく経路も同じ入口として数える
+    it "トークンを当てにいく PUT も同じ枠で数える" do
+      freeze_time do
+        3.times { post "/api/v1/auth/password", params: { email: "nobody@example.com" }, as: :json }
+        3.times do
+          put "/api/v1/auth/password",
+            params: { reset_password_token: "guess", password: "x", password_confirmation: "x" }, as: :json
+        end
+      end
+
+      expect(response).to have_http_status(:too_many_requests)
+    end
+  end
+
+  describe "メール確認のスロットル" do
+    it "5 回を超えると 429 を返す" do
+      freeze_time do
+        6.times { get "/api/v1/auth/confirmation", params: { confirmation_token: "guess" } }
+      end
+
+      expect(response).to have_http_status(:too_many_requests)
+    end
+  end
+
   describe "新規登録のスロットル" do
     it "5 回を超えると 429 を返す" do
       freeze_time do
