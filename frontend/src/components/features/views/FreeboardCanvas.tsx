@@ -210,7 +210,16 @@ function Canvas({ viewId, viewName, initialItems, initialEdges, aiEditAction, ai
     [viewId, setNodes, setEdges]
   )
 
-  // ドラッグ完了時に座標を保存
+  /*
+    ドラッグ完了時に座標を保存。
+
+    **サーバーに入るのは盤面の座標**（React Flow がノードの translate に書く値）で、
+    画面上のピクセル位置ではない。両者は
+      画面位置 = 盤面の左上 + パン量 + 盤面座標 × ズーム
+    の関係にある。実測（zoom 0.9）で
+      盤面座標 (659, 364) → 画面 (755.2, 642.8)  差 0.0px
+    と一致した。読み直したときに数が違って見えても、位置は保たれている。
+  */
   const handleDragStop: OnNodeDrag<CardNodeType> = useCallback(
     (_event, node) => {
       persist(
