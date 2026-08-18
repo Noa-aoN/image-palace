@@ -92,7 +92,7 @@ export function ObjectList({ viewId }: { viewId: string }) {
     const next = arrayMove(edges, oldIndex, newIndex)
     setEdges(next)
     // 先頭＝手前。サーバへ順序を永続化（開いているボードは再読込時に反映）。
-    persist(() => reorderViewEdges(viewId, next.map((e) => e.id)))
+    persist(() => reorderViewEdges(viewId, next.map((e) => e.id)), { key: `view:${viewId}:edgeOrder` })
   }
 
   return (

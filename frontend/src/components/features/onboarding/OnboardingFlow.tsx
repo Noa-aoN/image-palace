@@ -84,7 +84,7 @@ export function OnboardingFlow() {
     const { profile, settings } = draftToPayloads(draft, { name: currentName })
     try {
       // 名前の保存に失敗しても、案内は閉じる。**ここで人を閉じ込めない**
-      if (profile) await persist(() => updateProfile(profile))
+      if (profile) await persist(() => updateProfile(profile), { key: 'profile:name' })
       await updateSettings(settings)
       await useSettingsStore.getState().fetchSettings()
     } catch {

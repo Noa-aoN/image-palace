@@ -39,7 +39,9 @@ export function EdgePropertiesBody({ viewId }: { viewId: string }) {
   const applyPatch = (changes: Partial<ViewEdge>) => {
     setCurrent((c) => (c ? { ...c, ...changes } : c))
     requestEdgePatch(current.id, changes)
-    persist(() => updateViewEdge(viewId, current.id, toApiInput(changes)))
+    persist(() => updateViewEdge(viewId, current.id, toApiInput(changes)), {
+      key: `view:${viewId}:edge:${current.id}:style`,
+    })
   }
 
   // style は毎回フルで送る（jsonb 全体を置換するため、既存フィールドを保持してマージ）
@@ -61,7 +63,7 @@ export function EdgePropertiesBody({ viewId }: { viewId: string }) {
     })
   const del = () => {
     requestEdgeRemove(current.id)
-    persist(() => removeViewEdge(viewId, current.id))
+    persist(() => removeViewEdge(viewId, current.id), { key: `view:${viewId}:edge:${current.id}:remove` })
     close()
   }
 

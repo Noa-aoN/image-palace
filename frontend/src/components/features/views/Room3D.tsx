@@ -331,7 +331,9 @@ function Scene({
       const d = last.current
       if (d) {
         onMoved(d.id, d.surface, d.u, d.v)
-        persist(() => updateSpacePoint(spaceId, d.id, { surface: d.surface, u: d.u, v: d.v }))
+        persist(() => updateSpacePoint(spaceId, d.id, { surface: d.surface, u: d.u, v: d.v }), {
+          key: `space:${spaceId}:point:${d.id}:place`,
+        })
       }
       last.current = null
       setPreview(null)
@@ -384,7 +386,7 @@ function Scene({
             onOpen={onOpen}
             onScaled={onScaled}
             onScaleCommit={(id, scale) => {
-              persist(() => updateSpacePoint(spaceId, id, { scale }))
+              persist(() => updateSpacePoint(spaceId, id, { scale }), { key: `space:${spaceId}:point:${id}:scale` })
             }}
             onInteracting={onInteracting}
           />

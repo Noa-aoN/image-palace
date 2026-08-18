@@ -281,7 +281,9 @@ export function RoomCanvas({
       const p = stagePct(ev.clientX, ev.clientY)
       const r = resolveUV(p.sx, p.sy)
       onMoved?.(pointId, r.surface, r.u, r.v)
-      persist(() => updateSpacePoint(spaceId, pointId, { surface: r.surface, u: r.u, v: r.v }))
+      persist(() => updateSpacePoint(spaceId, pointId, { surface: r.surface, u: r.u, v: r.v }), {
+        key: `space:${spaceId}:point:${pointId}:place`,
+      })
     }
     window.addEventListener('pointermove', onMove)
     window.addEventListener('pointerup', onUp)
@@ -308,7 +310,9 @@ export function RoomCanvas({
       const dist = Math.hypot(ev.clientX - cx, ev.clientY - cy)
       const next = clampScale(startScale * (dist / startDist))
       onScaled?.(point.id, next)
-      persist(() => updateSpacePoint(spaceId, point.id, { scale: next }))
+      persist(() => updateSpacePoint(spaceId, point.id, { scale: next }), {
+      key: `space:${spaceId}:point:${point.id}:scale`,
+    })
     }
     window.addEventListener('pointermove', onMove)
     window.addEventListener('pointerup', onUp)

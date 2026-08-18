@@ -54,7 +54,9 @@ export function BoardSettingsBody() {
   // 即時反映（store）＋永続化（settings jsonb 全体を送る）
   const patch = (partial: Partial<BoardSettings>) => {
     setSettings(partial)
-    persist(() => updateView(viewId, { settings: { ...settings, ...partial } }))
+    persist(() => updateView(viewId, { settings: { ...settings, ...partial } }), {
+      key: `view:${viewId}:settings`,
+    })
   }
 
   const pattern = settings.bg_pattern ?? 'dots'

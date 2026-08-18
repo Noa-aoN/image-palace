@@ -13,11 +13,21 @@ import { useSaveStatusStore } from '@/stores/saveStatus'
  *
  * ここが**その唯一の入口**。書き込みは全部これを通す。
  *
- * ## なぜ1回だけやり直すのか
+ * ## 3段構え
  *
- * この種の失敗はほとんどが一瞬の切断（電車・エレベータ・タブ復帰の直後）で、
- * 少し待てば通る。何度もやり直すと、本当に駄目なときに気づくのが遅れるうえ、
- * 連打された操作の順番が崩れる。**1回試して駄目なら、正直に伝える。**
+ *   1. その場で1回やり直す … ほとんどの失敗は一瞬の切断で、少し待てば通る
+ *   2. 駄目なら取っておく   … 通信が戻ったとき／利用者が押したときに送り直す
+ *   3. 送り直せたら消す     … 札は「まだ残っている失敗」の数だけを出す
+ *
+ * ## 取っておくときの鍵（key）
+ *
+ * **同じものへの後の操作が、前の操作を打ち消す。**
+ * カードを動かして失敗し、もう一度動かして失敗したとき、
+ * 2つとも送ると**古い位置が後から上書きする**。鍵を同じにして、
+ * 新しいほうだけを残す。
+ *
+ * 鍵を渡さない書き込みは取っておかない（送り直すと壊れるものがあるため）。
+ * その場合も失敗は数え、札には出る。
  */
 
 /** やり直しまでの待ち。短すぎると同じ理由で落ちる */
@@ -27,11 +37,16 @@ const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms))
 
 export interface PersistOptions {
   /**
+   * 取っておくときの鍵。**同じ対象の同じ操作には同じ鍵**を付ける。
+   * 渡さなければ取っておかない（数えて札に出すだけ）。
+   */
+  key?: string
+  /**
    * 諦めたときに呼ぶ。**画面を元に戻す**ために使う。
    * 渡さなければ画面はそのまま（食い違いは残るが、知らせはする）。
    */
   onGiveUp?: () => void
-  /** やり直す回数。既定 1。連番が崩れると困る操作は 0 にする */
+  /** その場でやり直す回数。既定 1。連番が崩れると困る操作は 0 にする */
   retries?: number
 }
 
@@ -39,36 +54,55 @@ export interface PersistOptions {
  * 書き込みを1つ残す。**失敗しても投げない**（呼び出し側は描画の途中にいる）。
  *
  * 成功したら結果、駄目なら null を返す。
- * 諦めたことは `useSaveStatusStore` に積まれ、画面の隅に出る。
  */
 export async function persist<T>(
   run: () => Promise<T>,
   options: PersistOptions = {}
 ): Promise<T | null> {
-  const { onGiveUp, retries = 1 } = options
+  const { key, onGiveUp, retries = 1 } = options
   const store = useSaveStatusStore.getState()
 
   store.begin()
-  try {
-    for (let attempt = 0; attempt <= retries; attempt++) {
-      try {
-        const result = await run()
-        store.succeed()
-        return result
-      } catch (error) {
-        // 4xx はやり直しても同じ結果になる（消えたものを消そうとした等）。
-        // 待つだけ無駄なので、その場で諦める
-        if (attempt >= retries || isPermanent(error)) break
-        await sleep(RETRY_DELAY_MS)
-      }
+  for (let attempt = 0; attempt <= retries; attempt++) {
+    try {
+      const result = await run()
+      store.succeed(key)
+      return result
+    } catch (error) {
+      // 4xx はやり直しても同じ結果になる（消えたものを消そうとした等）。
+      // 待つだけ無駄なので、その場で諦める
+      if (attempt >= retries || isPermanent(error)) break
+      await sleep(RETRY_DELAY_MS)
     }
-  } finally {
-    // begin と対で必ず閉じる（途中で投げても保存中のまま残さない）
   }
 
-  store.fail()
+  store.fail(key ? { key, run: run as () => Promise<unknown> } : undefined)
   onGiveUp?.()
   return null
+}
+
+/**
+ * 取ってあるものを送り直す。送れた数を返す。
+ *
+ * **一度に全部投げない。** 落ちた直後は通信が細いことが多く、
+ * まとめて投げると同じ理由でまとめて落ちる。順に送る。
+ */
+export async function flushPending(): Promise<number> {
+  const store = useSaveStatusStore.getState()
+  const queued = store.takePending()
+  let sent = 0
+
+  for (const entry of queued) {
+    try {
+      await entry.run()
+      store.resolvePending(entry.key)
+      sent++
+    } catch {
+      // 送れなかったものは取っておく。**新しい操作があればそちらが勝つ**
+      store.requeue(entry)
+    }
+  }
+  return sent
 }
 
 /**

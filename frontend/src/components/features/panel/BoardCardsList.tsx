@@ -101,7 +101,7 @@ export function BoardCardsList({ viewId }: { viewId: string }) {
     // 先頭＝手前＝最大 z。ボードへ即時反映＋サーバへ順序を永続化。
     const frontToBack = next.map((i) => i.item_id)
     requestLayerPatch(frontToBack.map((id, idx) => ({ id, z: next.length - idx })))
-    persist(() => reorderBoardLayers(viewId, frontToBack))
+    persist(() => reorderBoardLayers(viewId, frontToBack), { key: `view:${viewId}:layers` })
   }
 
   return (

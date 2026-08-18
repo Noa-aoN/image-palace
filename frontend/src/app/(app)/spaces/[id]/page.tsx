@@ -571,7 +571,9 @@ export default function SpaceDetailPage() {
   const handleSetSurface = useCallback((pointId: string, surface: RoomSurface) => {
     setPoints((ps) => ps.map((p) => (p.id === pointId ? { ...p, surface, u: 0.5, v: 0.5 } : p)))
     setActiveSurface(surface)
-    persist(() => updateSpacePoint(id, pointId, { surface, u: 0.5, v: 0.5 }))
+    persist(() => updateSpacePoint(id, pointId, { surface, u: 0.5, v: 0.5 }), {
+        key: `space:${id}:point:${pointId}:place`,
+      })
   }, [id, setPoints])
 
   // 2D/3D いずれのドラッグでも、面と面内座標を state へ反映（保存はキャンバス側が行う）
@@ -766,7 +768,7 @@ export default function SpaceDetailPage() {
               selectedPoint={selectedPoint}
               onRotate={handleRotatePointAxis}
               onRotateCommit={(pointId: string, patch: Record<string, number>) => {
-                persist(() => updateSpacePoint(id, pointId, patch))
+                persist(() => updateSpacePoint(id, pointId, patch), { key: `space:${id}:point:${pointId}:place` })
               }}
             />
           </PanelSlotContent>
