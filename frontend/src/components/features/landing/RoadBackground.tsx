@@ -243,7 +243,7 @@ export function RoadBackground({ fadeTop, fadeBottom, gate, intro, fadeUnderDivi
                 >
                   {/* eslint-disable-next-line @next/next/no-img-element */}
                   <img
-                    src="/road-pillar.png"
+                    src="/road-pillar.webp"
                     alt=""
                     decoding="async"
                     loading="lazy"
@@ -251,7 +251,7 @@ export function RoadBackground({ fadeTop, fadeBottom, gate, intro, fadeUnderDivi
                   />
                   {/* eslint-disable-next-line @next/next/no-img-element */}
                   <img
-                    src="/road-pillar.png"
+                    src="/road-pillar.webp"
                     alt=""
                     decoding="async"
                     loading="lazy"
@@ -259,7 +259,7 @@ export function RoadBackground({ fadeTop, fadeBottom, gate, intro, fadeUnderDivi
                   />
                   {/* eslint-disable-next-line @next/next/no-img-element */}
                   <img
-                    src="/road-pillar.png"
+                    src="/road-pillar.webp"
                     alt=""
                     decoding="async"
                     loading="lazy"
