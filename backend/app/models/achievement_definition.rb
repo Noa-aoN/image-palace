@@ -2,6 +2,8 @@
 
 # 実績の定義。条件を満たすと、報酬（獲得物・クレジット）が配られる。
 class AchievementDefinition < ApplicationRecord
+  include RewardsValidation
+
   has_many :user_achievements, dependent: :destroy
 
   # 実績はすぐ増える。分類が無いと縦に長い1本の列になり、どこを見ればよいか分からない。
@@ -15,7 +17,7 @@ class AchievementDefinition < ApplicationRecord
   # 既にある行は触らない（組み込みを後から足すときに、古い行が落ちないように）
   validate :condition_type_must_be_known, on: :create
   validates :condition_target, numericality: { only_integer: true, greater_than: 0 }
-  validate :rewards_must_be_known
+  # 報酬の検証は RewardsValidation（ミッションと共通）
 
   scope :ordered, -> { order(:position, :created_at) }
   scope :active, -> { where(enabled: true) }
@@ -233,25 +235,6 @@ class AchievementDefinition < ApplicationRecord
   end
 
   private
-
-  # 存在しない獲得物を指したまま保存できると、達成しても何も配られない
-  def rewards_must_be_known
-    Array(rewards).each do |reward|
-      type = reward["type"]
-      case type
-      when "reward"
-        next if RewardDefinition.exists?(key: reward["key"])
-
-        errors.add(:rewards, "に無い獲得物が入っています（#{reward["key"]}）")
-      when "credits"
-        next if reward["amount"].to_i.positive?
-
-        errors.add(:rewards, "のクレジットは1以上にしてください")
-      else
-        errors.add(:rewards, "に知らない種類が入っています（#{type}）")
-      end
-    end
-  end
 
   private
 

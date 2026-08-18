@@ -12,6 +12,7 @@ import {
   type AdminRewardsPage,
 } from '@/lib/api/admin'
 import { Gift, Pencil } from 'lucide-react'
+import { serverErrorMessage } from '@/lib/admin/server-errors'
 import { useRightPanelStore } from '@/stores/rightPanel'
 import {
   groupByOrder,
@@ -99,8 +100,9 @@ export function AdminRewardsPanel() {
     try {
       const next = await updateAdminRewardDefinition(id, patch)
       setPage({ ...page, rewards: page.rewards.map((r) => (r.id === id ? next : r)) })
-    } catch {
-      setError('保存できませんでした')
+    } catch (e) {
+      // 断られた理由をそのまま出す。「保存できません」だけでは直し方が分からない
+      setError(serverErrorMessage(e, '保存できませんでした'))
     } finally {
       setBusy(null)
     }
@@ -111,8 +113,8 @@ export function AdminRewardsPanel() {
     try {
       const next = await updateAdminAchievement(id, patch)
       setPage({ ...page, achievements: page.achievements.map((a) => (a.id === id ? next : a)) })
-    } catch {
-      setError('保存できませんでした')
+    } catch (e) {
+      setError(serverErrorMessage(e, '保存できませんでした'))
     } finally {
       setBusy(null)
     }
@@ -123,8 +125,8 @@ export function AdminRewardsPanel() {
     try {
       const next = await updateAdminMission(id, patch)
       setPage({ ...page, missions: page.missions.map((m) => (m.id === id ? next : m)) })
-    } catch {
-      setError('保存できませんでした')
+    } catch (e) {
+      setError(serverErrorMessage(e, '保存できませんでした'))
     } finally {
       setBusy(null)
     }
