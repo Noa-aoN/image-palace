@@ -142,7 +142,7 @@ class RewardDefinition < ApplicationRecord
       metadata: { "motif" => "a small round badge with a stack of tablets" }, image_key: "s6caz2oq2wis0w2m7m29q7sc7sj8" },
     { key: "medal_quiz", kind: "medal", name: "問答の星章", rarity_level: 3, category: "学習",
       description: "問いに答え続けた証。", position: 25,
-      metadata: { "motif" => "a six-pointed star badge with a question-and-answer scroll" }, image_key: "6lmgbzvtiyypqqbj8u3oi0b1g1ww" },
+      metadata: { "motif" => "a six-pointed star badge with a question-and-answer scroll" }, image_key: "5peupm9okopwlbox3nhzp9sk9rqv" },
     { key: "medal_month", kind: "medal", name: "月の徽章", rarity_level: 4, category: "継続",
       description: "ひと月続けた証。", position: 26,
       metadata: { "motif" => "a crescent moon badge with a laurel sprig" }, image_key: "a1654caaqz0aywwxe79m09wn8byg" },
@@ -355,7 +355,7 @@ class RewardDefinition < ApplicationRecord
   end
 
   # 足りない組み込みだけ入れる。既にある行は触らない（運営が変えた値を戻さない）。
-  # ただし画像の鍵だけは、空なら埋める。環境ごとに絵を作り直さずに済ませるため
+  # ただし画像の鍵は `sync_image_key!` の条件で揃える
   def self.ensure_builtins!
     return if @builtins_checked && !Rails.env.local?
 
@@ -365,13 +365,31 @@ class RewardDefinition < ApplicationRecord
       if row.nil?
         create!(attrs)
       else
-        row.update_columns(image_key: attrs[:image_key]) if row.image_key.blank? && attrs[:image_key].present?
+        sync_image_key!(row, attrs[:image_key])
         fill_missing_metadata!(row, attrs[:metadata])
       end
     rescue ActiveRecord::RecordNotUnique
       nil
     end
     @builtins_checked = true
+  end
+
+  # 画像の鍵を、コードの値へ揃える。
+  #
+  # **絵を自分で作った環境（本番）には触らない。** あちらは添付を持っていて、
+  # `image_path` も添付を優先する。列を書き換えても表示は変わらないが、
+  # 作り直した直後（コードへ書き戻す前）に古い値へ戻してしまう。
+  #
+  # 添付を持たない環境（手元・新しい環境）では、列が唯一の手がかりになる。
+  # ここは**空のときだけ埋める**では足りない。本番で絵を作り直すと古い実体は消えるので、
+  # 一度埋まった古い鍵が残り続け、その獲得物だけ絵が割れる
+  # （実際に「問答の星章」で起きた）。値が違えば揃える。
+  def self.sync_image_key!(row, key)
+    return if key.blank?
+    return if row.image.attached?
+    return if row.image_key == key
+
+    row.update_columns(image_key: key) # rubocop:disable Rails/SkipsModelValidations
   end
 
   # 組み込みに後から足した metadata を、既にある行にも入れる。
