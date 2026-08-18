@@ -134,7 +134,7 @@ function WallBox({ box, h = WALL_H, yaw = 0 }: { box: Rect; h?: number; yaw?: nu
 }
 
 /**
- * 列柱。LP と同じ柱画像（road-pillar.png）の下側だけを使い、
+ * 列柱。LP と同じ柱画像（road-pillar.webp）の下側だけを使い、
  * 壁より高い部分はマスクで透明へ溶かす。
  */
 // road=true（宮殿下・玄関側の柱）は白っぽく薄めに描く。
@@ -147,7 +147,7 @@ function Column({ cx, cy, r, h = COLUMN_H, yaw = 0, road = false }: { cx: number
     <g style={road ? { filter: 'saturate(0.2) brightness(1.7)' } : undefined}>
       <ellipse cx={base.x} cy={base.y} rx={w * 0.55} ry={w * 0.55 * KY} fill={road ? 'white' : 'var(--palace)'} fillOpacity={road ? 0.2 : 0.35} />
       <image
-        href="/road-pillar.png"
+        href="/road-pillar.webp"
         x={base.x - w / 2}
         y={top}
         width={w}
@@ -349,7 +349,7 @@ export function PalaceFloorplan3D({
 
           {/* 現在地（エントランス）の下から手前へ続く道。白っぽく薄めに敷く（彩度を落とし明るく） */}
           <g style={{ filter: 'saturate(0.2) brightness(1.6)' }}>
-            <PlanImage rect={ROAD} href="/road.png" yaw={yaw} opacity={0.24} mask="url(#fp3d-road-fade)" />
+            <PlanImage rect={ROAD} href="/road.webp" yaw={yaw} opacity={0.24} mask="url(#fp3d-road-fade)" />
           </g>
 
           {/* 基壇 → 建物の床（石畳）→ 中庭 → 玄関（現在地） */}

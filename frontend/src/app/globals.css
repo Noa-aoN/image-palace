@@ -1270,9 +1270,9 @@
   /* 基本 0.55（コンテンツより控えめ）。初回リビールの序盤(0〜30%)は全体を
      フェードインさせ、遠方の霞から道が「現れる」ようにする */
   opacity: calc(0.55 * clamp(0, var(--road-reveal, 1) * 3.3, 1));
-  background-image: url('/road.png');
+  background-image: url('/road.webp');
   background-repeat: repeat-y;
-  background-size: 720px 1080px; /* road.png は 2:3。1タイル=1080px で継ぎ目レス */
+  background-size: 720px 1080px; /* road.webp は 1024x1536(2:3)。1タイル=1080px で継ぎ目レス */
   background-position: center calc(var(--road-shift, 0) * 1px);
   will-change: background-position;
   /* 道の果て（平面の上端＝地平線）が硬いエッジで浮かないよう、
@@ -1432,7 +1432,10 @@
   --gate-scale: calc(0.28 + 0.72 * var(--road-gate, 0));
   aspect-ratio: 132 / 92;
   pointer-events: none;
-  background: url('/auth-gate.webp') center bottom / contain no-repeat;
+  /* **遠景専用の小さい版**を使う。ここは最大 115x80 でしか出ないのに、
+     ログイン画面と同じ 3072px の絵（200KB）を LP・使い方・読みものの
+     全ページで運んでいた。480px あれば DPR4 まで持つ */
+  background: url('/auth-gate-far.webp') center bottom / contain no-repeat;
   /* 光の手前に置く（光は門を照らすもので、覆うものではない） */
   z-index: 1;
   /* 遠くの霞の中。**姿は読めるが、輪郭は張り付かない**あたりに置く。
@@ -1921,7 +1924,7 @@
   position: absolute;
   inset: 0;
   opacity: 0.6;
-  background-image: url('/road.png');
+  background-image: url('/road.webp');
   background-repeat: repeat-y;
   background-size: 720px 1080px;
   background-position: center calc(var(--sw-shift, 0) * 1px);
