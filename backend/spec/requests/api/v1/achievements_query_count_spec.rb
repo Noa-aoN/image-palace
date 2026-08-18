@@ -77,6 +77,34 @@ RSpec.describe "アチーブメントの問い合わせ本数", type: :request d
     expect(reads).to be <= 5, "獲得物の定義を #{reads} 回読んでいる"
   end
 
+  # 覚え書きは**1つの応答の中だけ**のもの。
+  #
+  # プロセスに溜め込むと「管理画面で直したのに反映されない」が起きる。
+  # 応答が終わったら捨てられていることを、実際のリクエストで確かめる
+  # （`ActionDispatch::Executor` が境目で `CurrentAttributes` を捨てる）。
+  it "応答が終わったら覚え書きを持ち越さない" do
+    warm_up
+
+    expect(DefinitionRegistry::Store.rows).to be_blank
+
+    get "/api/v1/achievements", headers: headers
+
+    expect(response).to have_http_status(:ok)
+    expect(DefinitionRegistry::Store.rows).to be_blank,
+                                              "応答のあとに #{DefinitionRegistry::Store.rows&.keys.inspect} が残っている"
+  end
+
+  # 定義を直した直後の応答が、古い表を返さないこと
+  it "定義を作り替えたら覚え書きを捨てる" do
+    warm_up
+    before = RewardDefinition.registry.size
+
+    RewardDefinition.create!(key: "probe_reward", kind: "medal", name: "確認用",
+                             rarity_level: 1, category: "確認", position: 999)
+
+    expect(RewardDefinition.registry.size).to eq(before + 1)
+  end
+
   # 進み具合が変わっていないのに書き込むと、開くたびに 50〜70 本の UPDATE が走る
   it "進み具合が変わっていなければ書き込まない" do
     warm_up
