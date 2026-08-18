@@ -1,8 +1,8 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useCallback } from 'react'
 import Link from 'next/link'
-import { Download, Sparkles, Loader2, Share2, Plug, SlidersHorizontal, Bell, Database, Image as ImageIcon, Boxes, Zap, Settings, Wand2 } from 'lucide-react'
+import { AlertTriangle, Download, Sparkles, Loader2, RotateCw, Share2, Plug, SlidersHorizontal, Bell, Database, Image as ImageIcon, Boxes, Zap, Settings, Wand2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { CategorySections, type CategorySection } from '@/components/features/myroom/CategorySections'
 import { ComingSoon } from '@/components/features/myroom/ComingSoon'
@@ -29,6 +29,15 @@ export default function SettingsPage() {
   const [shareImages, setShareImages] = useState<boolean | null>(null)
   const [cardDetailColumns, setCardDetailColumns] = useState(1)
   const [savingSettings, setSavingSettings] = useState(false)
+  /*
+    設定が読めなかったこと。
+
+    **読めないと、この画面のつまみは全部が黙って効かなくなる。**
+    どのつまみも `値が null なら何もしない` で守られていて、
+    値は読み込みでしか入らない（実測：16個中11個が無効、表示は何も出ない）。
+    押しても反応しない理由が画面のどこにも無いのが、いちばん困る。
+  */
+  const [loadFailed, setLoadFailed] = useState(false)
   // デフォルト画像スタイル（null = 読み込み中）
   const [defaultStyle, setDefaultStyle] = useState<string | null>(null)
   const [savingStyle, setSavingStyle] = useState(false)
@@ -64,11 +73,10 @@ export default function SettingsPage() {
   const [savingDisplay, setSavingDisplay] = useState(false)
   const [savingMotion, setSavingMotion] = useState(false)
 
-  useEffect(() => {
-    let cancelled = false
-    getSettings()
+  const loadSettings = useCallback(() => {
+    setLoadFailed(false)
+    return getSettings()
       .then((s) => {
-        if (cancelled) return
         setAutoMeanings(s.auto_generate_meanings)
         setAutoTags(s.auto_generate_tags)
         setRegenWithMeaning(s.regenerate_with_meaning)
@@ -80,11 +88,12 @@ export default function SettingsPage() {
         setListStyle(s.display_style)
         setShelfOrientation(s.shelf_orientation)
       })
-      .catch(() => {})
-    return () => {
-      cancelled = true
-    }
+      .catch(() => setLoadFailed(true))
   }, [])
+
+  useEffect(() => {
+    loadSettings()
+  }, [loadSettings])
 
   // 設定ストアが空（直リンクで開いた等）なら読み込む。
   useEffect(() => {
@@ -765,6 +774,31 @@ export default function SettingsPage() {
             生成・共有・連携・通知・データ管理など、利用環境を整えます。
           </p>
         </div>
+
+        {/* **読めなかったことを言う。** 黙っていると、つまみが効かない理由が
+            画面のどこにも無い（実測：16個中11個が無効のまま無反応だった） */}
+        {loadFailed && (
+          <div
+            role="alert"
+            className="flex items-start gap-2.5 rounded-xl border border-amber-300 bg-amber-50 px-4 py-3 text-sm text-amber-900"
+          >
+            <AlertTriangle size={16} className="mt-0.5 shrink-0" aria-hidden />
+            <div className="min-w-0">
+              <p className="font-medium">設定を読み込めませんでした</p>
+              <p className="mt-0.5 text-xs leading-relaxed">
+                いまは各項目を変えられません。通信を確かめて、もう一度お試しください。
+              </p>
+              <button
+                type="button"
+                onClick={() => loadSettings()}
+                className="mt-2 inline-flex items-center gap-1 rounded-md border border-amber-400 bg-white/70 px-2.5 py-1 text-xs font-medium transition hover:bg-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-500"
+              >
+                <RotateCw size={12} aria-hidden />
+                読み込み直す
+              </button>
+            </div>
+          </div>
+        )}
 
         <CategorySections sections={sections} ariaLabel="環境設定カテゴリ" />
       </div>

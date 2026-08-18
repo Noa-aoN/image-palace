@@ -20,6 +20,13 @@ import type { WikipediaValue, FreeTextValue, FreeImageValue } from '@/lib/api/pr
 import { generateFreeImage } from '@/lib/api/properties'
 import { CREDIT_UNIT_SHORT } from '@/lib/billing'
 
+/** 出来上がりを待つ間隔。生成は数十秒かかるので、これ以上細かくしても意味がない */
+const POLL_INTERVAL_MS = 3000
+/** 見えていないタブでの間隔。止めずに緩める（戻ったときに待たせない） */
+const POLL_HIDDEN_MS = 15000
+/** 諦めるまでの回数。3秒 × 100 = 5分 */
+const POLL_MAX_TRIES = 100
+
 /**
  * 項目の道具立て（未記入の数・まとめてAIで埋める・項目の設定への入口）。
  *
@@ -669,13 +676,49 @@ function FreeImageField({
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
-  // 作っている間は、出来上がりを待って取り直す
+  /*
+    作っている間は、出来上がりを待って取り直す。
+
+    **setInterval では止まらない。** 前の呼び出しが返る前に次が飛ぶし、
+    途中で落ちても回り続ける。実際ここは
+      ・裏のタブでも3秒ごとに叩く
+      ・`await` が落ちても捕まえない（次の tick がまた来る）
+      ・止まる条件が `generating` だけ
+    で、親が旗を落とし損ねると**永久に回る**形だった。
+
+    1回ずつ次を約束する形にして、見えていない間は休み、
+    数えた回数で必ず終わる（3秒 × 100 = 5分）ようにする。
+  */
   useEffect(() => {
     if (!generating) return
-    const timer = setInterval(async () => {
-      onUpdated(await getItem(item.id))
-    }, 3000)
-    return () => clearInterval(timer)
+
+    let alive = true
+    let timer: ReturnType<typeof setTimeout> | undefined
+    let tries = 0
+
+    const tick = async () => {
+      if (!alive) return
+      // 見えていないタブでは取りに行かない（戻ってきたら次の tick で拾う）
+      if (typeof document !== 'undefined' && document.hidden) {
+        timer = setTimeout(tick, POLL_HIDDEN_MS)
+        return
+      }
+      try {
+        onUpdated(await getItem(item.id))
+      } catch {
+        // 取れなくても回り続ける（生成そのものはサーバー側で進んでいる）
+      }
+      if (!alive) return
+      tries += 1
+      // **必ず終わる。** 5分待って出来ていないなら、開き直したほうが早い
+      if (tries < POLL_MAX_TRIES) timer = setTimeout(tick, POLL_INTERVAL_MS)
+    }
+
+    timer = setTimeout(tick, POLL_INTERVAL_MS)
+    return () => {
+      alive = false
+      if (timer) clearTimeout(timer)
+    }
   }, [generating, item.id, onUpdated])
 
   const generate = async () => {

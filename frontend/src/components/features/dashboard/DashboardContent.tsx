@@ -47,6 +47,10 @@ function formatRenewal(iso: string | null | undefined): string | null {
 
 type BatchProgress = { total: number; success: number; failed: number; remaining: number; done: boolean }
 const WORK_POLL_MS = 3000
+/** 取り直しに失敗したときの間隔。落ちている相手を細かく叩いても直らない */
+const WORK_POLL_RETRY_MS = 8000
+/** 続けて落ちたら諦める回数。ここまでで約1分見る */
+const WORK_POLL_MAX_FAILURES = 8
 
 export function DashboardContent() {
   const [summary, setSummary] = useState<ItemsSummary | null>(null)
@@ -102,16 +106,38 @@ export function DashboardContent() {
       }
     }
 
+    /*
+      進み具合を取り直す。
+
+      **一度失敗したら二度と取りに行かない**形だった（実測：失敗後は12秒
+      待っても再開しない）。通信が一瞬切れただけで、進捗バーが途中で
+      止まったまま、エラーも出ないまま残る。
+
+      落ちても次を約束する。ただし**間隔は空ける**（落ちている相手を
+      3秒ごとに叩いても直らない）。続けて落ちるなら諦める。
+    */
+    let failures = 0
+
     const tick = async () => {
       if (cancelled) return
+      // 見えていないタブでは取りに行かない。戻ったら次の tick で拾う
+      if (typeof document !== 'undefined' && document.hidden) {
+        timer = setTimeout(tick, WORK_POLL_MS * 3)
+        return
+      }
       const data = await getItemsSummary().catch(() => null)
       if (cancelled) return
+
       if (data) {
+        failures = 0
         apply(data)
         if (data.pending_count + data.processing_count > 0) timer = setTimeout(tick, WORK_POLL_MS)
-      } else {
-        setSummary((prev) => prev ?? EMPTY_SUMMARY)
+        return
       }
+
+      setSummary((prev) => prev ?? EMPTY_SUMMARY)
+      failures += 1
+      if (failures <= WORK_POLL_MAX_FAILURES) timer = setTimeout(tick, WORK_POLL_RETRY_MS)
     }
     tick()
 
