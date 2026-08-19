@@ -2,6 +2,8 @@ module Api
   module V1
     # 引き換えコードの受け取り。
     class CampaignCodesController < BaseController
+      before_action -> { deny_for_demo!(:redeem_code) }, only: :redeem
+
       # 引き換えの履歴に出す件数。これ以上は画面の「＋」で足す。
       # 3件にしているのは、ここが主役ではないから（主役は入力欄）。
       # 長い記録が常に開いていると、次に打つ場所が下へ押し出される

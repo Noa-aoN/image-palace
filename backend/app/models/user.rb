@@ -398,6 +398,56 @@ class User < ApplicationRecord
 
   # == クラスメソッド =========================================================
   # OAuthプロバイダーからユーザーを見出し作成
+  # == 中の人の口座 ============================================================
+  #
+  # 普通の利用者ではない口座が2種類ある。
+  #
+  #   体験用 … ログイン不要で入れる、使い捨ての宮殿の持ち主
+  #   公式   … 公式コンテンツの原本を持つ口座
+  #
+  # **役割（user / support / operator / admin）には足さない。**
+  # あちらは「上位が下位を含む」順位で、体験用は一般より下ではないし、
+  # 公式は権限の話ですらない（原本がどこにあるか、という話）。
+  # `bootstrap_admin?` が役割と別の軸で ENV を見ているのと同じ形にする。
+  #
+  # 目印はメールの後ろ側。**列を足さずに済み、消せば痕跡も残らない。**
+  # `.invalid` は誰も持てないと決まっている綴りなので、
+  # 普通の登録とぶつかることがない
+  DEMO_EMAIL_DOMAIN = "demo.invalid"
+
+  # 体験用の口座か
+  def demo?
+    email.to_s.downcase.end_with?("@#{DEMO_EMAIL_DOMAIN}")
+  end
+
+  # 公式コンテンツの原本を持つ口座か。**誰が編集してよいか、ではない**
+  def official_content_account?
+    configured = ENV["OFFICIAL_CONTENT_EMAIL"].to_s.strip.downcase
+    configured.present? && email.to_s.downcase == configured
+  end
+
+  # 公式工房を使える資格があるか。こちらは役割で決める（DB が正）
+  def can_manage_official_content?
+    at_least?("operator")
+  end
+
+  # 中の人の口座（体験用・公式）。**数えるときは外す**
+  def internal?
+    demo? || official_content_account?
+  end
+
+  # 数を出すときの母集団。
+  #
+  # **各所の SQL に条件を散らさない。** ここを直せば全部に効く。
+  # 将来 `internal` の列や種別を足しても、呼ぶ側は変わらない
+  scope :external, lambda {
+    scope = where.not("LOWER(email) LIKE ?", "%@#{DEMO_EMAIL_DOMAIN}")
+    official = ENV["OFFICIAL_CONTENT_EMAIL"].to_s.strip.downcase
+    official.present? ? scope.where.not("LOWER(email) = ?", official) : scope
+  }
+
+  scope :demo_accounts, -> { where("LOWER(email) LIKE ?", "%@#{DEMO_EMAIL_DOMAIN}") }
+
   # == 認証の応答に載せる項目 ==================================================
   #
   # devise_token_auth の既定は `as_json(except: [:tokens, :created_at, :updated_at])`。

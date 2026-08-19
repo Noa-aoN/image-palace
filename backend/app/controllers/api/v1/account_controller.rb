@@ -2,6 +2,9 @@ module Api
   module V1
     # GDPR / 個人情報保護法対応: 自分のデータのエクスポートとアカウント削除
     class AccountController < BaseController
+      before_action -> { deny_for_demo!(:export_data) }, only: :export
+      before_action -> { deny_for_demo!(:delete_account) }, only: :destroy
+
       include ItemSerialization
 
       # アカウント削除後は認証ヘッダ更新（削除済みユーザーの reload）を行わない

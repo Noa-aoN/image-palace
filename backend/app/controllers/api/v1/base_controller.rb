@@ -1,6 +1,8 @@
 module Api
   module V1
     class BaseController < ApplicationController
+      include DemoRestriction
+
       before_action :authenticate_user!
       after_action :record_visit
 

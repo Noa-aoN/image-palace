@@ -60,7 +60,7 @@ module Admin
     # last_seen_at は後から足した列で、入れる前の来訪は残っていない。
     # 「いつからの数字か」を出さないと、少ない DAU を実態と読み違える。
     def measurement_note
-      started_at = User.minimum(:last_seen_at)
+      started_at = User.external.minimum(:last_seen_at)
 
       {
         last_seen_since: started_at,
@@ -76,12 +76,12 @@ module Admin
     # 昨日や先週その人が来ていたかは、あとから復元できないため。
     # 推移が要るようになったら、日次の集計行を別に持つ（Phase 2）。
     def active_users
-      measured = User.where.not(last_seen_at: nil).exists?
+      measured = User.external.where.not(last_seen_at: nil).exists?
 
       counts = ACTIVE_WINDOWS.transform_values do |days|
         next nil unless measured
 
-        User.where(last_seen_at: (@now - days.days)..@now).count
+        User.external.where(last_seen_at: (@now - days.days)..@now).count
       end
 
       counts.merge(
@@ -129,13 +129,13 @@ module Admin
     end
 
     def users_summary
-      total = User.count
+      total = User.external.count
       paying = paying_users
 
       {
         total: total,
-        new_in_period: User.where(created_at: @period.range).count,
-        new_in_previous: User.where(created_at: @previous_range).count,
+        new_in_period: User.external.where(created_at: @period.range).count,
+        new_in_previous: User.external.where(created_at: @previous_range).count,
         paying: paying,
         # 有料に至った割合。母数は登録した全員（期間で切らない＝累積の転換率）
         free_to_paid_cvr: ratio(paying, total)
@@ -170,7 +170,7 @@ module Admin
         mrr_jpy: mrr_jpy,
         arr_jpy: mrr_jpy * 12,
         # 1人あたり。母数を取り違えると意味が変わるので、両方出して画面で並べる
-        arpu_jpy: divide(revenue, User.count),
+        arpu_jpy: divide(revenue, User.external.count),
         arppu_jpy: divide(revenue, paying),
         test_revenue_jpy: current[:test_revenue]
       }
@@ -263,7 +263,7 @@ module Admin
     # その日数ぶん経った人（＝答えの出せる人）だけを母数にする
     def retention_for(days, started_on)
       # 「N 日後」が計測開始日以降にあり、かつ今日より前（＝もう過ぎている）人
-      cohort = User.where(created_at: ...(@now - days.days))
+      cohort = User.external.where(created_at: ...(@now - days.days))
                    .where("users.created_at >= ?", started_on.to_time - days.days)
       total = cohort.count
       return immature(0) if total.zero?
@@ -296,7 +296,7 @@ module Admin
 
       {
         ai_cost_jpy: ai_cost,
-        ai_cost_per_user_jpy: divide(ai_cost, User.count),
+        ai_cost_per_user_jpy: divide(ai_cost, User.external.count),
         gross_profit_jpy: finance[:profit],
         gross_margin: finance[:margin],
         cost_breakdown: cost_breakdown(finance),
@@ -402,7 +402,7 @@ module Admin
       free = by_kind.slice(*FREE_GRANT_KINDS).values.sum
       paid = by_kind.except(*FREE_GRANT_KINDS).values.sum
       # 期限を持たない古い入れ物は有料由来（買い切り・月額の当月分）
-      legacy = User.sum(:subscription_credits) + User.sum(:topup_credits)
+      legacy = User.external.sum(:subscription_credits) + User.external.sum(:topup_credits)
 
       { total: credits(free + paid + legacy), free: credits(free), paid: credits(paid + legacy) }
     end

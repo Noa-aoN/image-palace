@@ -9,6 +9,8 @@ module Api
     # 解除は自分の分だけ。他人の二要素を画面から外せるようにすると、
     # 権限を取られたときに二要素ごと剥がされる（他人の分は rake task で扱う）。
     class TotpController < BaseController
+      before_action -> { deny_for_demo!(:manage_totp) }
+
       # 総当たりを許さない。コードは6桁しかない
       before_action :throttle_guard!, only: [ :confirm ]
       # 外すのと配り直すのは、乗っ取った人が守りを剥がす道になる

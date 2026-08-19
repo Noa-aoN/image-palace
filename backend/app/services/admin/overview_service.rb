@@ -42,7 +42,7 @@ module Admin
         finance: finance_summary,
         series: {
           days: @days,
-          new_users: daily_counts(User.all),
+          new_users: daily_counts(User.external),
           new_items: daily_counts(Item.all)
         },
         top_creators: top_creators
@@ -53,10 +53,10 @@ module Admin
 
     def users_summary
       {
-        total: User.count,
-        confirmed: User.where.not(confirmed_at: nil).count,
-        new_last_7d: User.where(created_at: (@now - 7.days)..).count,
-        new_in_period: User.where(created_at: @period.range).count,
+        total: User.external.count,
+        confirmed: User.external.where.not(confirmed_at: nil).count,
+        new_last_7d: User.external.where(created_at: (@now - 7.days)..).count,
+        new_in_period: User.external.where(created_at: @period.range).count,
         # 直近30日に1枚でもカードを作った人。「使われているか」を見るための数
         active_in_period: Item.where(created_at: @period.range).distinct.count(:user_id),
         # ENV 由来の owner も数える。role だけを見ると「運営メンバー 0」と出てしまう
@@ -98,7 +98,7 @@ module Admin
       # テストで作った契約を本物と混ぜない。決済側（credit_transactions.livemode）と同じ扱いで、
       # 目印を持たない古い行は「本番の決済がまだ無かった時期のもの」＝テストとみなす
       live = scope.where(livemode: true).count
-      total = User.count
+      total = User.external.count
       consumed = CreditTransaction.where(kind: "consumption", created_at: @period.range).sum(:delta)
       trialing = scope.where(status: "trialing").count
 
