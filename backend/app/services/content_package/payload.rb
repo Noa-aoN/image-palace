@@ -23,8 +23,13 @@ module ContentPackage
   # だけなので、何人に配っても保存領域は増えない。
   # 獲得物（`RewardDefinition#image_path`）が既に同じ持ち方をしている。
   module Payload
-    # 形を変えたら上げる。取り込む側が、読めない形を黙って通さないようにするため
-    SCHEMA_VERSION = 1
+    # 形を変えたら上げる。取り込む側が、読めない形を黙って通さないようにするため。
+    #
+    #   1 … 箱ひとつ（"box"）＋キャンバス。箱に無いカードがキャンバスにあると失敗した
+    #   2 … 箱は0個以上（"boxes"）。キャンバス単独でも配れる。
+    #       足りないカードは書き出し側が引き込む。
+    #       カードごとに origin_key（荷物をまたいで変わらない目印）を持つ
+    SCHEMA_VERSION = 2
 
     class Error < StandardError; end
 
@@ -55,17 +60,33 @@ module ContentPackage
       dup = keys.tally.select { |_, n| n > 1 }.keys
       raise ImportError, "local_key が重複しています: #{dup.join(', ')}" if dup.any?
 
+      # 荷物をまたいで同じカードだと分かるための目印。
+      # 欠けていると、受け取るたびに同じカードが増える
+      origins = items.map { |i| i["origin_key"] }
+      raise ImportError, "origin_key の無いカードがあります" if origins.any?(&:blank?)
+
+      dup_origins = origins.tally.select { |_, n| n > 1 }.keys
+      raise ImportError, "origin_key が重複しています: #{dup_origins.join(', ')}" if dup_origins.any?
+
       validate_references!(payload, keys.to_set)
       payload
+    end
+
+    # 「箱1つ」だった頃の形を、うっかり通さないための目印。
+    # v1 は `"box"`（単数）を持っていた
+    def legacy_shape?(payload)
+      payload.is_a?(Hash) && payload.key?("box")
     end
 
     # 荷物の中の参照が、荷物の中で閉じているか。
     # **外を指す参照が1つでもあれば、取り込んだ先で壊れる**
     def validate_references!(payload, keys)
-      Array(payload.dig("box", "entries")).each do |entry|
-        next if keys.include?(entry["local_key"])
+      Array(payload["boxes"]).each do |box|
+        Array(box["entries"]).each do |entry|
+          next if keys.include?(entry["local_key"])
 
-        raise ImportError, "箱が知らないカードを指しています: #{entry['local_key'].inspect}"
+          raise ImportError, "箱「#{box['name']}」が知らないカードを指しています: #{entry['local_key'].inspect}"
+        end
       end
 
       Array(payload["views"]).each do |view|

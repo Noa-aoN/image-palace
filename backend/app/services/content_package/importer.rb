@@ -4,6 +4,7 @@ module ContentPackage
   # 持ち運べる形を、その人の宮殿へ入れる。
   #
   #   ContentPackage::Importer.call(user: user, payload: payload)
+  #   ContentPackage::Importer.call(user: user, payload: payload, owned: { origin_key => item })
   #
   # デモの宮殿づくりも、Starter の受け取りも、デルフォイの「受け取る」も、
   # 最後はここを呼ぶ。**入れる相手が違うだけで、やることは同じ。**
@@ -13,22 +14,50 @@ module ContentPackage
   # `image_key` から blob を引いて、**同じ実体を付け替える**。
   # 何人に配っても保存領域は増えず、生成 API も1回も呼ばない。
   #
+  # ## 同じカードは、2枚にしない
+  #
+  # 2つ目の荷物が、1つ目にも入っていたカードを必要とすることがある。
+  # （「ネットワーク」と「IT一般」の両方に DNS が入っている、など）
+  #
+  # そのときは**すでに持っているカードを使い回す**。箱もキャンバスも、
+  # そのカードを指すだけ。1枚の DNS を2つのキャンバスが参照する形になる。
+  #
+  # 判定は `origin_key`（元のカードの id）で行う。**題では見ない。**
+  # 題は重複するし、利用者が変えるし、表記も揺れる。
+  # 使い回す相手は**公式の荷物から来たカードだけ**で、
+  # 利用者が自分で作った同名のカードには手を触れない
+  # （`owned` に何を渡すかは、由来を記録している側が決める）。
+  #
   # ## 全部入るか、1つも入らないか
   #
   # 途中で失敗したら、そこまで作ったものごと戻す。
   # **半分だけ入った宮殿**を残さない。
   class Importer
-    Result = Struct.new(:box, :views, :items, keyword_init: true)
-
-    def self.call(user:, payload:)
-      new(user: user, payload: payload).call
+    # 作ったものを返す。`items_by_local_key` は**由来を記録する側**が使う
+    # （どの定義から生まれた実体か、荷物の鍵で辿れるようにするため）
+    Result = Struct.new(:boxes, :views, :items, :created_items, :reused_items,
+                        :items_by_local_key, :origin_keys, keyword_init: true) do
+      # 由来として残す実体を、種類を問わず1列に並べる
+      def records
+        Array(boxes) + Array(views) + Array(items)
+      end
     end
 
-    def initialize(user:, payload:)
+    def self.call(user:, payload:, owned: {})
+      new(user: user, payload: payload, owned: owned).call
+    end
+
+    # @param owned [Hash] origin_key → その人が既に持っているカード。
+    #   公式の荷物から来たものだけを渡すこと
+    def initialize(user:, payload:, owned: {})
       @user = user
       @payload = payload.deep_stringify_keys
-      # 荷物の鍵 → 作ったカード
+      @owned = owned.transform_keys(&:to_s)
+      # 荷物の鍵 → カード（作ったものと、使い回したものの両方）
       @items = {}
+      @origin_keys = {}
+      @created = []
+      @reused = []
     end
 
     def call
@@ -36,9 +65,11 @@ module ContentPackage
 
       ActiveRecord::Base.transaction do
         create_items!
-        box = create_box!
+        boxes = Array(@payload["boxes"]).map { |box| create_box!(box) }
         views = Array(@payload["views"]).map { |view| create_view!(view) }
-        Result.new(box: box, views: views, items: @items.values)
+        Result.new(boxes: boxes, views: views, items: @items.values,
+                   created_items: @created, reused_items: @reused,
+                   items_by_local_key: @items.dup, origin_keys: @origin_keys.dup)
       end
     end
 
@@ -46,6 +77,15 @@ module ContentPackage
 
     def create_items!
       @payload["items"].each do |attrs|
+        @origin_keys[attrs["local_key"]] = attrs["origin_key"]
+
+        existing = @owned[attrs["origin_key"].to_s]
+        if existing
+          @items[attrs["local_key"]] = existing
+          @reused << existing
+          next
+        end
+
         item = @user.items.create!(
           title: attrs["title"],
           item_type: item_type!(attrs),
@@ -58,6 +98,7 @@ module ContentPackage
         create_properties!(item, attrs["properties"])
 
         @items[attrs["local_key"]] = item
+        @created << item
       end
     end
 
@@ -124,10 +165,7 @@ module ContentPackage
       )
     end
 
-    def create_box!
-      attrs = @payload["box"]
-      return nil if attrs.blank?
-
+    def create_box!(attrs)
       box = @user.boxes.create!(name: attrs["name"], description: attrs["description"])
       Array(attrs["entries"]).each_with_index do |entry, i|
         box.box_entries.create!(

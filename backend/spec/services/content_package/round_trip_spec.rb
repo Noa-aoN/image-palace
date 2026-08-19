@@ -89,7 +89,16 @@ RSpec.describe "公式コンテンツの往復", type: :service do
   end
 
   def export
-    ContentPackage::Exporter.call(box: box.reload, views: [ view.reload ])
+    ContentPackage::Exporter.call(boxes: [ box.reload ], views: [ view.reload ])
+  end
+
+  # 往復を比べるときは `origin_key` を外す。
+  #
+  # あれは**元のカードを指す目印**なので、受け取った人から書き出せば
+  # その人のカードを指す。違って当然で、構造の一致とは別の話。
+  # 目印そのものは「同じカードを2枚にしない」の節で別に確かめる
+  def structure(payload)
+    payload.merge("items" => payload["items"].map { |i| i.except("origin_key") })
   end
 
   describe "往復" do
@@ -97,9 +106,9 @@ RSpec.describe "公式コンテンツの往復", type: :service do
       first = export
 
       result = ContentPackage::Importer.call(user: receiver, payload: first)
-      second = ContentPackage::Exporter.call(box: result.box.reload, views: result.views.map(&:reload))
+      second = ContentPackage::Exporter.call(boxes: result.boxes.map(&:reload), views: result.views.map(&:reload))
 
-      expect(second).to eq(first)
+      expect(structure(second)).to eq(structure(first))
     end
 
     it "取り込む相手が違っても中身は変わらない" do
@@ -107,8 +116,8 @@ RSpec.describe "公式コンテンツの往復", type: :service do
       a = ContentPackage::Importer.call(user: receiver, payload: payload)
       b = ContentPackage::Importer.call(user: create(:user, :confirmed), payload: payload)
 
-      expect(ContentPackage::Exporter.call(box: a.box.reload, views: a.views.map(&:reload)))
-        .to eq(ContentPackage::Exporter.call(box: b.box.reload, views: b.views.map(&:reload)))
+      expect(structure(ContentPackage::Exporter.call(boxes: a.boxes.map(&:reload), views: a.views.map(&:reload))))
+        .to eq(structure(ContentPackage::Exporter.call(boxes: b.boxes.map(&:reload), views: b.views.map(&:reload))))
     end
   end
 
@@ -120,12 +129,12 @@ RSpec.describe "公式コンテンツの往復", type: :service do
 
     it "カードと箱ができる" do
       expect(result.items.size).to eq(3)
-      expect(result.box.name).to eq("ネットワークのことば")
+      expect(result.boxes.first.name).to eq("ネットワークのことば")
       expect(receiver.items.count).to eq(3)
     end
 
     it "箱の並び順が保たれる" do
-      titles = result.box.box_entries.order(:position).map { |e| e.entry.title }
+      titles = result.boxes.first.box_entries.order(:position).map { |e| e.entry.title }
       expect(titles).to eq(%w[DNS ルーター ルーター])
     end
 
@@ -181,6 +190,194 @@ RSpec.describe "公式コンテンツの往復", type: :service do
     end
   end
 
+  # 「神々の系図」だけを配る場面。
+  #
+  # **キャンバスを受け取った結果、中身の無い枠が並ぶことがあってはならない。**
+  # 箱を選ばなくても、キャンバスに置かれているカードは荷物に入る
+  describe "キャンバスだけを配る" do
+    subject(:result) { ContentPackage::Importer.call(user: receiver, payload: payload) }
+
+    let(:payload) { ContentPackage::Exporter.call(views: [ view.reload ]) }
+
+    it "置かれているカードが一緒に来る" do
+      expect(payload["items"].size).to eq(3)
+      expect(payload["boxes"]).to be_empty
+
+      expect(result.items.size).to eq(3)
+      expect(result.boxes).to be_empty
+      expect(receiver.items.pluck(:title)).to contain_exactly("DNS", "ルーター", "ルーター")
+    end
+
+    it "配置も線も復元される" do
+      canvas = result.views.first
+
+      expect(canvas.view_items.count).to eq(3)
+      expect(canvas.view_edges.count).to eq(2)
+      canvas.view_edges.each do |edge|
+        expect(receiver.items.pluck(:id)).to include(edge.source_node_id, edge.target_node_id)
+      end
+    end
+
+    it "往復しても同じ" do
+      first = payload
+      second = ContentPackage::Exporter.call(views: result.views.map(&:reload))
+
+      expect(structure(second)).to eq(structure(first))
+    end
+  end
+
+  # 箱に入っていないカードがキャンバスにあっても止めない。**引き込む**
+  describe "箱とキャンバスで、中身が食い違うとき" do
+    let!(:stray) do
+      make_item(title: "はぐれ", type: word, tags: %w[IT], meanings: [ { definition: "箱に入っていない" } ])
+    end
+
+    before { view.view_items.create!(item: stray, x: 900, y: 200, position: 3) }
+
+    it "キャンバスにしか無いカードも荷物に入る" do
+      payload = ContentPackage::Exporter.call(boxes: [ box.reload ], views: [ view.reload ])
+
+      expect(payload["items"].map { |i| i["title"] }).to include("はぐれ")
+      # 箱の中身は増えない（キャンバスにあるだけなので）
+      expect(payload["boxes"].first["entries"].size).to eq(3)
+    end
+
+    it "受け取ってもキャンバスに空の枠ができない" do
+      payload = ContentPackage::Exporter.call(boxes: [ box.reload ], views: [ view.reload ])
+      result = ContentPackage::Importer.call(user: receiver, payload: payload)
+
+      placed = result.views.first.view_items.map { |vi| vi.item.title }
+      expect(placed).to contain_exactly("DNS", "ルーター", "ルーター", "はぐれ")
+      expect(result.views.first.view_items.count { |vi| vi.item.nil? }).to eq(0)
+    end
+  end
+
+  # キャンバスから外したのに線の行だけ残ることは起こりうる。
+  # 運んだ先で行き先の無い線にしない
+  describe "置かれていないカードを指す線" do
+    it "運ばない" do
+      ghost = make_item(title: "幽霊", type: word, tags: [], meanings: [ { definition: "…" } ])
+      box.box_entries.create!(entry: ghost, position: 4)
+      view.view_edges.create!(source_node_id: dns.id, target_node_id: ghost.id, z_index: 9)
+
+      payload = ContentPackage::Exporter.call(boxes: [ box.reload ], views: [ view.reload ])
+
+      expect(payload["views"].first["edges"].size).to eq(2)
+    end
+  end
+
+  describe "宮殿に結びついたキャンバス" do
+    it "いまは、はっきり断る" do
+      space = author.spaces.create!(name: "宮殿", space_type: "road")
+      view.update!(space_id: space.id)
+
+      expect { export }.to raise_error(ContentPackage::Payload::ExportError, /宮殿に結びついています/)
+    end
+  end
+
+  describe "何も選ばれていないとき" do
+    it "書き出さない" do
+      expect { ContentPackage::Exporter.call }
+        .to raise_error(ContentPackage::Payload::ExportError, /選ばれていません/)
+    end
+  end
+
+  # 2つの公式コンテンツを続けて受け取る場面。
+  #
+  #   荷物A: DNS / ルーター  ＋ キャンバスA
+  #   荷物B: DNS / TCP/IP    ＋ キャンバスB
+  #
+  # **DNS は1枚だけ。** 箱もキャンバスも別々にでき、
+  # 両方のキャンバスが同じ DNS を指す
+  describe "同じカードを含む荷物を、続けて受け取る" do
+    let!(:tcp) do
+      make_item(title: "TCP/IP", type: word, tags: %w[ネットワーク],
+                meanings: [ { definition: "通信の約束ごと" } ])
+    end
+
+    let!(:box_b) { author.boxes.create!(name: "IT一般") }
+    let!(:view_b) do
+      v = author.views.create!(name: "積み重ね", view_type: "freeboard")
+      v.view_items.create!(item: dns, x: 0,   y: 0, position: 0)
+      v.view_items.create!(item: tcp, x: 300, y: 0, position: 1)
+      v.view_edges.create!(source_node_id: tcp.id, target_node_id: dns.id, z_index: 1)
+      v
+    end
+
+    before do
+      box_b.box_entries.create!(entry: dns, position: 1)
+      box_b.box_entries.create!(entry: tcp, position: 2)
+    end
+
+    let(:package_a) { ContentPackage::Exporter.call(boxes: [ box.reload ], views: [ view.reload ]) }
+    let(:package_b) { ContentPackage::Exporter.call(boxes: [ box_b.reload ], views: [ view_b.reload ]) }
+
+    # 由来を記録する側がやることを、ここでは手で組み立てる
+    def owned_from(*results)
+      results.flat_map { |r| r.origin_keys.map { |local, origin| [ origin, r.items_by_local_key[local] ] } }.to_h
+    end
+
+    it "同じカードは2枚にならない" do
+      a = ContentPackage::Importer.call(user: receiver, payload: package_a)
+      b = ContentPackage::Importer.call(user: receiver, payload: package_b, owned: owned_from(a))
+
+      expect(receiver.items.where(title: "DNS").count).to eq(1)
+      expect(receiver.items.count).to eq(4) # DNS / ルーター×2 / TCP/IP
+      expect(b.reused_items.map(&:title)).to eq([ "DNS" ])
+      expect(b.created_items.map(&:title)).to eq([ "TCP/IP" ])
+    end
+
+    it "箱とキャンバスは荷物ごとに別々にできる" do
+      a = ContentPackage::Importer.call(user: receiver, payload: package_a)
+      b = ContentPackage::Importer.call(user: receiver, payload: package_b, owned: owned_from(a))
+
+      expect(receiver.boxes.pluck(:name)).to contain_exactly("ネットワークのことば", "IT一般")
+      expect(receiver.views.pluck(:name)).to contain_exactly("通り道", "積み重ね")
+      expect(b.boxes.first.box_entries.count).to eq(2)
+    end
+
+    # ここが肝。**両方のキャンバスが、同じ1枚の DNS を指している**
+    it "2つのキャンバスが同じカードを指す" do
+      a = ContentPackage::Importer.call(user: receiver, payload: package_a)
+      b = ContentPackage::Importer.call(user: receiver, payload: package_b, owned: owned_from(a))
+
+      dns_copy = receiver.items.find_by(title: "DNS")
+
+      expect(a.views.first.view_items.map(&:item_id)).to include(dns_copy.id)
+      expect(b.views.first.view_items.map(&:item_id)).to include(dns_copy.id)
+      expect(b.views.first.view_edges.first.target_node_id).to eq(dns_copy.id)
+    end
+
+    # 題を変えても、目印で同じカードだと分かる
+    it "受け取ったあと題を変えても、使い回せる" do
+      a = ContentPackage::Importer.call(user: receiver, payload: package_a)
+      receiver.items.find_by(title: "DNS").update!(title: "わたしのDNS")
+
+      b = ContentPackage::Importer.call(user: receiver, payload: package_b, owned: owned_from(a))
+
+      expect(receiver.items.where(title: "TCP/IP").count).to eq(1)
+      # 使い回したのは、題を変えたあの1枚（読み直して確かめる）
+      expect(b.reused_items.map { |i| i.reload.title }).to eq([ "わたしのDNS" ])
+      expect(receiver.items.count).to eq(4)
+    end
+
+    # 自分で作った同名のカードには手を触れない
+    it "自分で作った同名のカードとは混ぜない" do
+      mine = receiver.items.create!(title: "DNS", item_type: word, generation_status: "completed")
+
+      result = ContentPackage::Importer.call(user: receiver, payload: package_a)
+
+      expect(receiver.items.where(title: "DNS").count).to eq(2)
+      expect(result.created_items.map(&:id)).not_to include(mine.id)
+      expect(result.reused_items).to be_empty
+    end
+
+    it "目印が同じなら、同じカードを指す" do
+      expect(package_a["items"].find { |i| i["title"] == "DNS" }["origin_key"])
+        .to eq(package_b["items"].find { |i| i["title"] == "DNS" }["origin_key"])
+    end
+  end
+
   describe "絵" do
     it "同じ実体を付け替える（複製しない）" do
       expect { ContentPackage::Importer.call(user: receiver, payload: export) }
@@ -219,14 +416,6 @@ RSpec.describe "公式コンテンツの往復", type: :service do
       end
 
       expect { export }.to raise_error(ContentPackage::Payload::ExportError, /意味がありません/)
-    end
-
-    # キャンバスに載っているのに箱へ入っていないカードは、荷物の外を指すことになる
-    it "箱に入っていないカードがキャンバスにあると止める" do
-      stray = make_item(title: "はぐれ", type: word, tags: [], meanings: [ { definition: "…" } ])
-      view.view_items.create!(item: stray, x: 0, y: 0, position: 9)
-
-      expect { export }.to raise_error(ContentPackage::Payload::ExportError, /箱へ入っていない/)
     end
 
     it "読めない形式は取り込まない" do
