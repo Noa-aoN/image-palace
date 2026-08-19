@@ -75,6 +75,30 @@ class User < ApplicationRecord
   has_many :notifications, dependent: :destroy
   has_many :credit_transactions, dependent: :destroy
   has_many :credit_grants, dependent: :destroy
+  # 公式コンテンツを受け取った履歴
+  has_many :content_installations, dependent: :destroy
+
+  # == 退会したときに、何を消して何を残すか ====================================
+  #
+  # **どれも外部キーが張ってある。** 後片付けを書き忘れると、
+  # 消そうとした瞬間に落ちる（実際、実績を1つでも持っていると
+  # `DELETE /account` が 500 になっていた）。
+  #
+  # 本人のものは一緒に消す。**記録として要るものは、持ち主だけ外して残す**
+  # （誰がやったかは消えるが、何が起きたかは残る）。
+  has_many :user_reward_grants, dependent: :destroy
+  has_many :campaign_redemptions, dependent: :destroy
+  has_many :webauthn_challenges, dependent: :destroy
+
+  # 原価の記録。金額は残さないと、過去の集計が変わってしまう
+  has_many :ai_usages, dependent: :nullify
+  # 運営の記録。**誰がやったかは消えるが、何が起きたかは残す**
+  has_many :admin_audit_logs, foreign_key: :actor_id, inverse_of: :actor, dependent: :nullify
+  has_many :admin_briefs, foreign_key: :generated_by_id, inverse_of: :generated_by, dependent: :nullify
+  has_many :authored_posts, class_name: "Post", foreign_key: :author_id,
+                            inverse_of: :author, dependent: :nullify
+  has_many :created_campaign_codes, class_name: "CampaignCode", foreign_key: :created_by_id,
+                                    inverse_of: :created_by, dependent: :nullify
   has_many :user_activity_days, dependent: :delete_all
 
   # == プロフィールアイコン（AI生成）========================================

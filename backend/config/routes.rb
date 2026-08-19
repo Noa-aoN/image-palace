@@ -8,6 +8,8 @@ Rails.application.routes.draw do
           registrations: "api/v1/auth/registrations",
           omniauth_callbacks: "api/v1/auth/omniauth_callbacks"
         }
+      # 体験用の宮殿。**認証が要らない、ただ1つの書き込み口**
+      post "demo", to: "demo#create"
       get "health", to: "health#show"
       get "health/authenticated", to: "health#show_authenticated"
       get "search", to: "search#index"

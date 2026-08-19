@@ -54,6 +54,16 @@ class Rack::Attack
     req.client_ip if req.post? && req.path == "/api/v1/auth"
   end
 
+  # 体験用の宮殿を建てる: 1 IP あたり 10 分間で 40 回まで。
+  #
+  # **粗くてよい。** 同じ端末からの連打は Cookie が止める（生きている宮殿へ戻す）ので、
+  # ここが効くのは「Cookie を毎回捨ててくる」相手だけ。
+  # 逆に絞りすぎると、40人の教室で一斉に押したときに巻き込む。
+  # 1日と同時の上限は DB で数える（プロセスをまたいで正確に効かせるため）
+  throttle("demo_sessions/ip", limit: 40, period: 10.minutes) do |req|
+    req.client_ip if req.post? && req.path == "/api/v1/demo"
+  end
+
   # パスワード再設定・メール確認: 1 IP あたり 5 分間で 5 回まで。
   #
   # **ここは「送らせる」側と「当てにいく」側の両方がある。**
