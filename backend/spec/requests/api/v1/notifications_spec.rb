@@ -5,6 +5,37 @@ RSpec.describe "Api::V1::Notifications", type: :request do
   let(:headers) { auth_headers_for(user) }
   let(:other_user) { create(:user, :confirmed) }
 
+  # 並びの鍵が同着だと、LIMIT/OFFSET はページごとに違う順を返し得る。
+  # お知らせは一括で作られるので作成時刻が揃いやすい。
+  # カード一覧で実際に起きた（#630）ので、こちらにも同じ手当てをしている
+  describe "ページをまたいだときの並び" do
+    it "作成時刻が同じでも、全ページを合わせると過不足が無い" do
+      at = Time.zone.local(2026, 8, 13, 9, 0, 0)
+      created = 10.times.map { |i| create(:notification, user: user, title: "お知らせ#{i}", created_at: at) }
+
+      collected = (1..3).flat_map do |page|
+        get "/api/v1/notifications", params: { page: page, per: 4 }, headers: headers
+        json_response["notifications"].map { |n| n["id"] }
+      end
+
+      expect(collected.size).to eq(10)
+      expect(collected.uniq.size).to eq(10)
+      expect(collected.to_set).to eq(created.map(&:id).to_set)
+    end
+
+    it "作成時刻が同じでも、何度読んでも順が変わらない" do
+      at = Time.zone.local(2026, 8, 13, 9, 0, 0)
+      5.times { |i| create(:notification, user: user, title: "お知らせ#{i}", created_at: at) }
+
+      ids = 2.times.map do
+        get "/api/v1/notifications", headers: headers
+        json_response["notifications"].map { |n| n["id"] }
+      end
+
+      expect(ids.first).to eq(ids.last)
+    end
+  end
+
   describe "認証ガード" do
     it "未認証では 401 を返す" do
       notification = create(:notification, user: user)
