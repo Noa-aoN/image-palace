@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { useRouter, useSearchParams } from 'next/navigation'
+import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { Button } from '@/components/ui/button'
 import { Label } from '@/components/ui/label'
@@ -15,28 +15,10 @@ import {
 } from '@/lib/auth-errors'
 import { useAuthStore } from '@/stores/auth'
 import { useItemsStore } from '@/stores/items'
-
-type ResetTokens = {
-  accessToken: string
-  client: string
-  uid: string
-}
-
-// devise-token-auth は password reset の redirect でクエリパラメータに
-// access-token / client / uid を含めて返す（OAuth callback のフラグメント方式とは異なる仕様）。
-// クエリパラメータはサーバーログ等に残るため、リセット完了後はトークンを再発行する流れを想定。
-function readResetTokens(searchParams: URLSearchParams): ResetTokens | null {
-  const accessToken = searchParams.get('access-token')
-  const client = searchParams.get('client')
-  const uid = searchParams.get('uid')
-
-  if (!accessToken || !client || !uid) return null
-  return { accessToken, client, uid }
-}
+import { parseResetTokens, type ResetTokens } from '@/lib/auth/reset-tokens'
 
 export function ResetPasswordForm() {
   const router = useRouter()
-  const searchParams = useSearchParams()
   const setAuth = useAuthStore((s) => s.setAuth)
   const resetItems = useItemsStore((s) => s.resetItems)
 
@@ -50,9 +32,13 @@ export function ResetPasswordForm() {
   const [loading, setLoading] = useState(false)
 
   useEffect(() => {
-    setTokens(readResetTokens(searchParams))
+    setTokens(parseResetTokens(window.location.hash))
     setTokensChecked(true)
-  }, [searchParams])
+    // 読み終えたらアドレス欄から消す。履歴・ブックマークに合鍵を残さない
+    if (window.location.hash) {
+      window.history.replaceState(null, '', window.location.pathname)
+    }
+  }, [])
 
   function updateFieldError(field: keyof PasswordResetFieldErrors, message?: string) {
     setFieldErrors((current) => {

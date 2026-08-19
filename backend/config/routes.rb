@@ -6,7 +6,8 @@ Rails.application.routes.draw do
       mount_devise_token_auth_for "User", at: "auth",
         controllers: {
           registrations: "api/v1/auth/registrations",
-          omniauth_callbacks: "api/v1/auth/omniauth_callbacks"
+          omniauth_callbacks: "api/v1/auth/omniauth_callbacks",
+          passwords: "api/v1/auth/passwords"
         }
       get "health", to: "health#show"
       get "health/authenticated", to: "health#show_authenticated"
