@@ -2,6 +2,7 @@ module Api
   module V1
     class ItemsController < BaseController
       include ItemSerialization
+      include PromptModeration
 
       before_action :set_item,
                     only: [ :show, :update, :destroy, :retry, :approve_image, :meaning, :examples, :brief, :scene_rewrite,
@@ -129,8 +130,8 @@ module Api
         # 単語名を変えたら、説明への以前のファクトチェック判定は無効化する
         title_changed = item_update_params.key?(:title) && item_update_params[:title].to_s != item.title
         brief_edited = brief_edited_in_update?
-        # 情景プロンプトはそのまま画像生成 API に渡るユーザー入力なので、保存前に検査する
-        moderate_instruction!(item_update_params[:scene_prompt]) if brief_edited
+        # 単語も説明も情景も、そのまま OpenAI へ渡るユーザー入力。保存前に検査する
+        moderate_update_params!
 
         Item.transaction do
           item.update!(item_update_params)
@@ -140,8 +141,6 @@ module Api
           clear_fact_check!(item.primary_meaning) if title_changed
         end
         render json: serialize_item(item.reload)
-      rescue Items::CreateService::ContentBlocked => e
-        render json: { error: e.message }, status: :unprocessable_entity
       rescue ActiveRecord::RecordInvalid => e
         render json: { errors: e.record.errors.full_messages }, status: :unprocessable_entity
       end
@@ -329,8 +328,6 @@ module Api
         render json: serialize_item(current_item.reload), status: :accepted
       rescue User::InsufficientCredits
         render json: { error: "クレジットが不足しています" }, status: :unprocessable_entity
-      rescue Items::CreateService::ContentBlocked => e
-        render json: { error: e.message }, status: :unprocessable_entity
       rescue ActiveRecord::RecordInvalid => e
         render json: { errors: e.record.errors.full_messages }, status: :unprocessable_entity
       end
@@ -511,7 +508,7 @@ module Api
       def apply_regeneration_instructions!(target, instructions)
         return if instructions.empty?
 
-        moderate_instruction!(instructions[:custom_prompt])
+        moderate_prompt!(instructions[:custom_prompt], as: "custom_prompt")
         target.update!(instructions)
       end
 
@@ -573,17 +570,28 @@ module Api
                            .reject(&:blank?).uniq.first(Item::MAX_BLOCK_KEYS)
       end
 
-      def moderate_instruction!(text)
-        return if text.blank?
+      # 更新で検査する項目。**どれも最後は OpenAI へ届く。**
+      #
+      #   title             作り直しの注文そのもの（PromptBuilderService / BriefResolver）
+      #   image_description 説明から情景を書き起こす入力
+      #   scene_prompt      画像生成 API へ渡る文
+      #
+      # 以前は `scene_prompt` だけを見ていた。作成時に弾かれる語でも、
+      # 素通しの語で作ってから `title` を書き換えれば通せてしまっていた。
+      MODERATED_UPDATE_KEYS = %w[title image_description scene_prompt].freeze
 
-        result = Moderation::PromptModerator.call(text)
-        return if result.allowed?
+      # **変わった値だけ**を見る。
+      # 元から入っている値で弾くと、ブロックリストを足した日に
+      # 既存カードが編集できなくなる（作り直しは別の口で止まる）。
+      def moderate_update_params!
+        MODERATED_UPDATE_KEYS.each do |key|
+          next unless item_update_params.key?(key)
 
-        Rails.logger.warn(
-          "[Moderation] BLOCKED user_id=#{current_user.id} category=#{result.category} term=#{result.term}"
-        )
-        raise Items::CreateService::ContentBlocked,
-              "入力に利用できない表現が含まれているため再生成できませんでした。別の表現でお試しください。"
+          value = item_update_params[key].to_s
+          next if value == item.public_send(key).to_s
+
+          moderate_prompt!(value, as: key)
+        end
       end
 
       def item_update_params

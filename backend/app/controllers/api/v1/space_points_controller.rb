@@ -4,6 +4,7 @@ module Api
     # road は序数順、room は間取り（x/y）で配置する想定。カードの割当も保持する（暫定）。
     class SpacePointsController < BaseController
       include ItemSerialization
+      include PromptModeration
 
       before_action :set_space
       before_action :set_point, only: [ :update, :destroy ]
@@ -11,6 +12,9 @@ module Api
       # 末尾にポイントを追加。name があればそのポイントの画像生成を開始する。
       def create
         name = stripped_name
+        # ポイント名は GeneratePointImageJob がそのまま画像プロンプトに使う。
+        # クレジットを取る前に検査する（弾くものに課金しない）
+        moderate_prompt!(name, as: "point_name")
         return render_insufficient_credits if name.present? && insufficient_credits?
 
         point = @space.space_points.create!(position: next_position, name: name)
@@ -26,6 +30,11 @@ module Api
       # カードの割当/クリア（item_id）・序数の変更（position）・ポイント名の変更（name）・
       # 間取り座標の変更（x/y、room のドラッグ配置）。名前が新たに付く/変わると画像を（再）生成する。
       def update
+        # 名前が変わったときだけ見る。座標だけ動かす更新でも毎回外部 API を
+        # 叩くことになるし、ブロックリストを足した日に既存ポイントが動かせなくなる。
+        # `@point.name` はまだ古い値（代入は下）
+        moderate_prompt!(stripped_name, as: "point_name") if name_changed?
+
         assign_item if params.key?(:item_id)
         @point.position = params[:position] if params.key?(:position)
         @point.x = params[:x] if params.key?(:x)
