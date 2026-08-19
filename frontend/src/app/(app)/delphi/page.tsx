@@ -11,6 +11,7 @@ import { generateWords } from '@/lib/api/wordlists'
 import { createItem } from '@/lib/api/items'
 import { STYLE_OPTIONS } from '@/lib/item-styles'
 import { RedeemCodePanel } from '@/components/features/billing/RedeemCodePanel'
+import { OfficialContentSection } from '@/components/features/delphi/OfficialContentSection'
 import { useBillingStore } from '@/stores/billing'
 import { useSettingsStore } from '@/stores/settings'
 import {
@@ -185,6 +186,11 @@ export default function AcropolisPage() {
           もともと受け取り口は「利用と支払い」の中だけにあったが、そこは支払いを
           済ませに行く面で、コードを持ってきた人が最初に開く場所ではない。
           入口は2つでも、扱っているのは同じ1つの仕組み（Billing::RedeemCampaignCode）。 */}
+      {/* 受け取りは3つ並ぶ。**公式コンテンツを先に置く。**
+          あれは押せば必ず何か届くもので、コードは持っている人にしか関係がない。
+          配るものが無いときは、この節ごと出ない */}
+      <OfficialContentSection />
+
       <section className="mt-6">
         <RedeemCodePanel
           onRedeemed={() => useBillingStore.getState().fetchSummary()}
