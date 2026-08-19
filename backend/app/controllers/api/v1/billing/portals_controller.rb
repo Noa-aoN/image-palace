@@ -3,6 +3,8 @@ module Api
     module Billing
       # 解約・支払い変更のための Stripe Customer Portal を開く。URLを返す。
       class PortalsController < Api::V1::BaseController
+        before_action -> { deny_for_demo!(:billing_portal) }
+
         def create
           session = ::Billing::PortalSession.call(
             user: current_user,

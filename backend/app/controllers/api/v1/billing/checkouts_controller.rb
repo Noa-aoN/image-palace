@@ -3,6 +3,8 @@ module Api
     module Billing
       # プランを選んで Stripe Checkout を開始する。決済画面のURLを返す。
       class CheckoutsController < Api::V1::BaseController
+        before_action -> { deny_for_demo!(:billing_checkout) }
+
         def create
           plan = Plan.active.find_by!(name: params.require(:plan))
           session = ::Billing::CheckoutSession.call(

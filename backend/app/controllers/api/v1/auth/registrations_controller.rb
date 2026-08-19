@@ -4,7 +4,12 @@ module Api
   module V1
     module Auth
       class RegistrationsController < DeviseTokenAuth::RegistrationsController
+        include DemoRestriction
+
         before_action :set_default_confirm_success_url, only: :create
+        # 体験用の口座では、メールもパスワードも変えさせない。
+        # 変えられると、その宮殿が特定の誰かのものになってしまう
+        before_action -> { deny_for_demo!(:change_password) }, only: [ :update, :destroy ]
 
         # メールアドレス変更は現状サポートしない（正式なアカウント管理画面は #80 で別途設計）。
         # devise-token-auth の update はメール変更を許容し、Confirmable のメール変更レース脆弱性

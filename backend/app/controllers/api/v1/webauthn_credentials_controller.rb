@@ -8,6 +8,8 @@ module Api
     # 栓（PASSKEY_ENABLED）が閉じているときは、画面を消すだけでなく
     # ここも閉じる。API を直に叩けば通ってしまうため。
     class WebauthnCredentialsController < BaseController
+      before_action -> { deny_for_demo!(:manage_passkey) }
+
       # 秘密が通る経路。どこにも溜めさせない（弾かれた応答も含める）
       prepend_before_action :do_not_store!
       before_action :require_passkey_enabled!

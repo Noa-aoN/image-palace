@@ -57,16 +57,20 @@ module Api
         # 折れ線に出す月数
         TREND_MONTHS = 12
 
-        # 利用者の伸び。絞り込みに関係なく全体の数字を返す（一覧の下に出す前提）
+        # 利用者の伸び。絞り込みに関係なく全体の数字を返す（一覧の下に出す前提）。
+        #
+        # **中の人の口座は数えない。** 体験用と公式コンテンツ用が混ざると、
+        # 伸びているように見えて実は増えていない、が起きる。
+        # 一覧そのものには出す（運営から見えないほうが困る）
         def stats
           now = Time.current
-          this_month = User.where(created_at: now.beginning_of_month..).count
-          last_month = User.where(created_at: (now - 1.month).beginning_of_month...now.beginning_of_month).count
-          total = User.count
+          this_month = User.external.where(created_at: now.beginning_of_month..).count
+          last_month = User.external.where(created_at: (now - 1.month).beginning_of_month...now.beginning_of_month).count
+          total = User.external.count
 
           {
             total: total,
-            confirmed: User.where.not(confirmed_at: nil).count,
+            confirmed: User.external.where.not(confirmed_at: nil).count,
             admins: User.effective_admins.count,
             new_this_month: this_month,
             new_last_month: last_month,
