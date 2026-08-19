@@ -79,6 +79,121 @@
 > fal.ai（FLUX。画像生成の代替プロバイダー。既定は OpenAI）。
 > いずれも環境変数の設定で有効になる。
 
+## 構成
+
+```mermaid
+flowchart LR
+    U["利用者<br/>ブラウザ / PWA"]
+
+    subgraph CF["Cloudflare"]
+        FE["Workers<br/>Next.js 16 (OpenNext)"]
+        CDN["CDN<br/>cdn.imagepalace.app"]
+        R2[("R2<br/>画像の実体")]
+    end
+
+    subgraph FLY["Fly.io (sin)"]
+        API["app<br/>Rails 8.1 API / Puma"]
+        WK["worker<br/>Solid Queue"]
+    end
+
+    DB[("Neon<br/>PostgreSQL")]
+    OAI["OpenAI<br/>画像 / 文章 / Moderation"]
+    STR["Stripe<br/>決済"]
+
+    U --> FE
+    U --> CDN
+    FE -->|"REST"| API
+    API --> DB
+    WK --> DB
+    API -.->|"ジョブを積む"| DB
+    DB -.->|"ジョブを取る"| WK
+    WK --> OAI
+    WK -->|"WebP に変換して保存"| R2
+    CDN --> R2
+    API <--> STR
+```
+
+**キューを PostgreSQL に置いている**ので、Redis を持たずに非同期処理ができます（Solid Queue）。
+生成は worker が担い、Web を止めません。アプリを DB と同じリージョンに置いているのは、
+往復の本数がそのまま待ち時間になっていたためです（[performance-history](docs/performance-history.md)）。
+
+## データモデル（中核）
+
+76 テーブルのうち、学習体験の中心にあるものだけを抜き出しています。
+
+```mermaid
+erDiagram
+    users ||--o{ items : "持つ"
+    users ||--o{ tags : "作る"
+    users ||--o{ views : "作る"
+    users ||--o{ credit_transactions : "増減する"
+
+    items ||--o{ medias : "絵を持つ"
+    items ||--o{ meanings : "意味・説明"
+    items ||--o{ item_tags : ""
+    tags ||--o{ item_tags : ""
+    item_types ||--o{ items : "種別"
+
+
+    spaces ||--o{ views : "置き場"
+    views ||--o{ view_items : "配置"
+    items ||--o{ view_items : ""
+
+    users {
+        uuid id PK
+        string email
+        string role "user / support / operator / admin"
+    }
+    items {
+        uuid id PK
+        string title "見出し語"
+        string generation_status "pending → processing → completed / failed"
+        jsonb metadata "失敗の理由など"
+    }
+    shared_medias {
+        uuid id PK
+        string normalized_prompt UK "★ここが UNIQUE"
+        jsonb metadata "revised_prompt"
+    }
+    shared_briefs {
+        uuid id PK
+        string normalized_source "見出し語を正規化した鍵"
+        text description "単語の説明"
+        text scene_prompt "情景の指示"
+    }
+    medias {
+        uuid id PK
+        integer position
+        string media_type
+    }
+    views {
+        uuid id PK
+        string view_type "deck / freeboard / space_map"
+        jsonb settings
+    }
+    view_items {
+        uuid id PK
+        integer position
+        integer z_index
+    }
+    credit_transactions {
+        uuid id PK
+        integer delta "＋付与 / −消費"
+        string kind
+        boolean livemode "テスト決済と混ぜない"
+    }
+```
+
+**`shared_medias.normalized_prompt` の UNIQUE 制約がこのアプリの要**です。
+同じ単語の画像は世界で1枚しか生成せず、以後は全員がそれを使い回します。
+体験の都合ではなく、画像生成 API のコストが利用者数に比例して増えないようにするための設計です。
+その代わり「同じ単語で複数案を並べる」ことは原理的にできません。
+
+`shared_medias` と `shared_briefs` に**外部キーはありません**。
+利用者のカードから伸びる線ではなく、**正規化した文字列を鍵に引く共有の置き場**だからです
+（`shared_briefs` は「単語 → 説明文 → 情景」の2段階生成の中間物で、これも語ごとに使い回します）。
+図で線を引かずに独立させているのは、そのためです。
+
 ## 設計で考えたこと
 
 ### 当初の想定から変えたこと
@@ -183,7 +298,3 @@ README に写すと、必ず食い違う（実際に一度そうなった）。
 着手前に書いた企画書を [docs/concept.md](docs/concept.md) に残しています。
 誰のどんな課題を、なぜこの形で解こうとしたのかを書いたものです。
 
-## 設計資料
-
-- 画面遷移図（Figma）: https://www.figma.com/design/NHzX8vJUfrjjzulCK1qYXl/3.%E5%90%84%E7%94%BB%E9%9D%A2%E3%81%AEUI%E3%82%92%E3%83%87%E3%82%B6%E3%82%A4%E3%83%B3%E3%81%99%E3%82%8B?node-id=0-1&t=SO7b0sDugHUNHiOk-1
-- ER図（dbdiagram）: https://dbdiagram.io/d/image-palace-69bb5a9778c6c4bc7a1b13be
