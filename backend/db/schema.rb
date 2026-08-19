@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_08_19_144500) do
+ActiveRecord::Schema[8.1].define(version: 2026_08_20_030000) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
   enable_extension "pg_trgm"
@@ -230,6 +230,32 @@ ActiveRecord::Schema[8.1].define(version: 2026_08_19_144500) do
     t.index ["campaign_code_id", "user_id"], name: "index_campaign_redemptions_on_campaign_code_id_and_user_id", unique: true
     t.index ["campaign_code_id"], name: "index_campaign_redemptions_on_campaign_code_id"
     t.index ["user_id"], name: "index_campaign_redemptions_on_user_id"
+  end
+
+  create_table "content_installation_entries", id: :uuid, default: -> { "gen_random_uuid()" }, force: :cascade do |t|
+    t.uuid "content_installation_id", null: false
+    t.datetime "created_at", null: false
+    t.string "origin_key"
+    t.string "package_local_key"
+    t.uuid "record_id", null: false
+    t.string "record_type", null: false
+    t.datetime "updated_at", null: false
+    t.index ["content_installation_id", "record_type", "record_id"], name: "index_cie_uniqueness", unique: true
+    t.index ["content_installation_id"], name: "index_cie_on_installation"
+    t.index ["record_type", "record_id"], name: "index_cie_on_record"
+  end
+
+  create_table "content_installations", id: :uuid, default: -> { "gen_random_uuid()" }, force: :cascade do |t|
+    t.datetime "created_at", null: false
+    t.datetime "installed_at", null: false
+    t.string "package_key", null: false
+    t.integer "package_version", null: false
+    t.string "source", null: false
+    t.datetime "updated_at", null: false
+    t.uuid "user_id", null: false
+    t.index ["package_key", "package_version"], name: "index_content_installations_on_package_key_and_package_version"
+    t.index ["user_id", "package_key"], name: "index_content_installations_on_user_id_and_package_key", unique: true
+    t.index ["user_id"], name: "index_content_installations_on_user_id"
   end
 
   create_table "content_packages", id: :uuid, default: -> { "gen_random_uuid()" }, force: :cascade do |t|
@@ -1161,6 +1187,8 @@ ActiveRecord::Schema[8.1].define(version: 2026_08_19_144500) do
   add_foreign_key "campaign_codes", "users", column: "created_by_id"
   add_foreign_key "campaign_redemptions", "campaign_codes"
   add_foreign_key "campaign_redemptions", "users"
+  add_foreign_key "content_installation_entries", "content_installations"
+  add_foreign_key "content_installations", "users"
   add_foreign_key "credit_grants", "users"
   add_foreign_key "credit_transactions", "users", on_delete: :cascade
   add_foreign_key "item_media_generations", "items"
