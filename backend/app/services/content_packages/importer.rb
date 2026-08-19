@@ -1,10 +1,10 @@
 # frozen_string_literal: true
 
-module ContentPackage
+module ContentPackages
   # 持ち運べる形を、その人の宮殿へ入れる。
   #
-  #   ContentPackage::Importer.call(user: user, payload: payload)
-  #   ContentPackage::Importer.call(user: user, payload: payload, owned: { origin_key => item })
+  #   ContentPackages::Importer.call(user: user, payload: payload)
+  #   ContentPackages::Importer.call(user: user, payload: payload, owned: { origin_key => item })
   #
   # デモの宮殿づくりも、Starter の受け取りも、デルフォイの「受け取る」も、
   # 最後はここを呼ぶ。**入れる相手が違うだけで、やることは同じ。**

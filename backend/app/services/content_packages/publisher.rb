@@ -1,0 +1,44 @@
+# frozen_string_literal: true
+
+module ContentPackages
+  # 原本を選んで、新しい版として公開する。
+  #
+  #   ContentPackages::Publisher.call(
+  #     key: "starter_it", kind: "starter", name: "ITのことば",
+  #     boxes: [box], views: [view]
+  #   )
+  #
+  # **rake も、いずれ作る公式工房の「公開する」も、ここを呼ぶ。**
+  # 押す場所が違うだけで、やることは同じにしておく。
+  #
+  # 書き出し（Exporter）が欠けを見つけたら、そこで止まる。
+  # 半端なものを公開して、配ってから気づくことにならないようにするため。
+  class Publisher
+    Result = Struct.new(:package, :counts, keyword_init: true)
+
+    def self.call(...)
+      new(...).call
+    end
+
+    def initialize(key:, kind:, name:, boxes: [], views: [], summary: nil, cover_image_key: nil)
+      @key = key
+      @kind = kind
+      @name = name
+      @boxes = Array(boxes)
+      @views = Array(views)
+      @summary = summary
+      @cover_image_key = cover_image_key
+    end
+
+    def call
+      payload = Exporter.call(boxes: @boxes, views: @views)
+
+      package = ContentPackage.publish!(
+        key: @key, kind: @kind, name: @name, payload: payload,
+        summary: @summary, cover_image_key: @cover_image_key
+      )
+
+      Result.new(package: package, counts: package.summary_counts)
+    end
+  end
+end
