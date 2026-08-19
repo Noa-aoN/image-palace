@@ -1,11 +1,11 @@
 # frozen_string_literal: true
 
-module ContentPackage
+module ContentPackages
   # 箱とキャンバスを、持ち運べる形にする。
   #
-  #   ContentPackage::Exporter.call(boxes: [box], views: [view])
-  #   ContentPackage::Exporter.call(views: [view])          # キャンバスだけでもよい
-  #   ContentPackage::Exporter.call(boxes: [box])           # 箱だけでもよい
+  #   ContentPackages::Exporter.call(boxes: [box], views: [view])
+  #   ContentPackages::Exporter.call(views: [view])          # キャンバスだけでもよい
+  #   ContentPackages::Exporter.call(boxes: [box])           # 箱だけでもよい
   #
   # 公式工房の「公開する」も rake も、最後はここを呼ぶ。
   #

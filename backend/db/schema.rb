@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_08_17_000100) do
+ActiveRecord::Schema[8.1].define(version: 2026_08_19_144500) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
   enable_extension "pg_trgm"
@@ -230,6 +230,22 @@ ActiveRecord::Schema[8.1].define(version: 2026_08_17_000100) do
     t.index ["campaign_code_id", "user_id"], name: "index_campaign_redemptions_on_campaign_code_id_and_user_id", unique: true
     t.index ["campaign_code_id"], name: "index_campaign_redemptions_on_campaign_code_id"
     t.index ["user_id"], name: "index_campaign_redemptions_on_user_id"
+  end
+
+  create_table "content_packages", id: :uuid, default: -> { "gen_random_uuid()" }, force: :cascade do |t|
+    t.string "cover_image_key"
+    t.datetime "created_at", null: false
+    t.string "key", null: false
+    t.string "kind", null: false
+    t.string "name", null: false
+    t.jsonb "payload", default: {}, null: false
+    t.datetime "published_at"
+    t.string "status", default: "draft", null: false
+    t.text "summary"
+    t.datetime "updated_at", null: false
+    t.integer "version", null: false
+    t.index ["key", "version"], name: "index_content_packages_on_key_and_version", unique: true
+    t.index ["kind", "status"], name: "index_content_packages_on_kind_and_status"
   end
 
   create_table "cost_parameters", id: :uuid, default: -> { "gen_random_uuid()" }, force: :cascade do |t|

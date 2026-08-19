@@ -1,6 +1,6 @@
 # frozen_string_literal: true
 
-module ContentPackage
+module ContentPackages
   # 公式コンテンツの、持ち運べる形。
   #
   # 書き出し（Exporter）と取り込み（Importer）は、**同じ形に対する逆の操作**。
