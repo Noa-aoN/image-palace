@@ -5,12 +5,15 @@ require "rails_helper"
 # **数と配る道が揃っていないと、埋まらない枠が並ぶ。**
 # 定義だけ増やして条件を用意し忘れると、一覧に「取れないもの」が残る。
 RSpec.describe "獲得物の品揃え" do
-  # 位（プランに付く称号）は、ここで見ている品揃えの外。
+  # 集めて取るもの以外は、ここで見ている品揃えの外。
   #
   # ここが確かめているのは「**集めて取るもの**が、取れる道と数と絵を持っているか」。
-  # 位は稼いで取るものではなく、契約している間だけ持つものなので、
-  # 実績から配られないし、段も 8・9 を使う。同じ物差しで測ると必ず落ちる
-  let(:rewards) { RewardDefinition::BUILTINS.reject { |r| r.dig(:metadata, "source") == "subscription" } }
+  #
+  #   subscription … 位。稼いで取るのではなく、契約している間だけ持つ。段も 8・9 を使う
+  #   demo         … 体験用の宮殿を訪れた記念。条件では配らない
+  #
+  # どちらも同じ物差しで測ると必ず落ちる。**`metadata["source"]` を持つものは外す**
+  let(:rewards) { RewardDefinition::BUILTINS.reject { |r| r.dig(:metadata, "source").present? } }
   let(:ranks) { RewardDefinition::BUILTINS.select { |r| r.dig(:metadata, "source") == "subscription" } }
   let(:achievements) { AchievementDefinition::BUILTINS }
 

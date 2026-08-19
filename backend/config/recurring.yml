@@ -29,3 +29,8 @@ production:
   recover_stuck_generations:
     class: RecoverStuckGenerationsJob
     schedule: every 5 minutes
+  # 寿命の切れた体験用の宮殿。1時間おきにすると、1回の削除量が小さく保たれる
+  # （まとめて1日1回にすると、その1回が本番の DB に効いてしまう）
+  sweep_demo_palaces:
+    class: DemoCleanupJob
+    schedule: every hour at minute 25

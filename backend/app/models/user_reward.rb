@@ -14,7 +14,10 @@
 #
 # 「いつ・なぜ受け取ったか」は UserRewardGrant が1回ぶんずつ持つ。
 class UserReward < ApplicationRecord
-  SOURCES = %w[achievement mission manual campaign].freeze
+  # なぜ受け取ったか。**ここに無い理由で配ろうとすると、静かに配られない**
+  # （`Achievements::Granter` が競合の失敗と一緒に握りつぶすため）。
+  # demo は、体験用の宮殿を訪れた記念
+  SOURCES = %w[achievement mission manual campaign demo].freeze
 
   belongs_to :user
   belongs_to :reward_definition

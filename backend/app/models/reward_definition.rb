@@ -92,6 +92,16 @@ class RewardDefinition < ApplicationRecord
       metadata: { "motif" => "a stele with an eye motif surrounded by geometric constellation lines" }, image_key: "bp2ryglac07hq39s4euu9qj8j2dj" },
 
     # ── 勲章 ──
+    # 体験用の宮殿を訪れた記念。**報酬のクレジットは付けない**。
+    # 世界観を伝え、実績という仕組みの作例を見せるためのもの。
+    # 絵はまだ無い（`image_key` 無しでも、絵の無い獲得物として表示される）
+    { key: "medal_first_visit", kind: "medal", name: "はじまりの旅人", rarity_level: 1, category: "学習",
+      description: "はじまりの宮殿を訪れました。", position: 19,
+      # **集めて取るものではない**ので、品揃え（数・配る道・絵）の物差しの外に置く。
+      # 位（プランに付く称号）と同じ扱い。絵はまだ無い
+      metadata: { "source" => "demo",
+                  "grant_note" => "はじまりの宮殿を訪れた方へ贈られます。",
+                  "motif" => "a small round bronze medal with an open gate and a single footprint" } },
     { key: "medal_first_card", kind: "medal", name: "初回作成の徽章", rarity_level: 1, category: "創作",
       description: "はじめてカードを作った証。", position: 20,
       metadata: { "motif" => "an eight-pointed star badge with a single small amphora at the center" }, image_key: "ssqpdgzifoxylf6b5569h4zse5wz" },
