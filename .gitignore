@@ -54,6 +54,7 @@ docs/billing/*
 !docs/architecture.md
 !docs/spec.md
 !docs/concept.md
+!docs/development.md
 
 # Cloudflare Workers ビルド成果物
 frontend/.open-next/
