@@ -398,6 +398,45 @@ class User < ApplicationRecord
 
   # == クラスメソッド =========================================================
   # OAuthプロバイダーからユーザーを見出し作成
+  # == 認証の応答に載せる項目 ==================================================
+  #
+  # devise_token_auth の既定は `as_json(except: [:tokens, :created_at, :updated_at])`。
+  # **列を足すたびに、それがそのまま画面へ流れる。**
+  #
+  # 実際、二要素認証の秘密鍵と復旧コードが平文で返っていた。
+  # トークンは localStorage に置いているので、XSS ひとつで
+  # **入る鍵と、二要素の鍵の両方**が同時に渡る。二要素が二要素でなくなる。
+  # ほかに Stripe の顧客 ID・クレジット残高・Passkey の識別子も出ていた。
+  #
+  # **出すものを数え上げる。** 除くものを並べる形だと、
+  # 次に足した列が既定で漏れる側に入る。
+  #
+  # 残高は /billing/summary、二要素の状態は /totp、
+  # アバターは /account/profile が返す。ここに要らない。
+  PUBLIC_ATTRIBUTES = %w[
+    id uid email name provider role
+    avatar_generation_status avatar_generation_error
+    allow_password_change
+  ].freeze
+
+  # **既定を安全側に倒す。**
+  #
+  # `token_validation_response` を絞るだけでは足りなかった。
+  # devise_token_auth は登録・パスワード変更・OAuth の応答で
+  # `@resource.as_json` を素で呼んでおり、そちらから同じものが漏れていた
+  # （spec で捕まえた）。入口ごとに塞ぐと、gem が経路を増やすたびに追う羽目になる。
+  #
+  # 指定して呼んだときは、その指定に従う（調べもの・書き出しのため）。
+  def as_json(options = nil)
+    return super if options.present?
+
+    super(only: PUBLIC_ATTRIBUTES)
+  end
+
+  def token_validation_response
+    as_json
+  end
+
   # == 役割の判定 =============================================================
   # 環境変数の入口は「確認済みのアドレス」にだけ効かせる。
   # 未確認のうちから権限を持てると、アドレスを騙るだけで入れてしまうため。
