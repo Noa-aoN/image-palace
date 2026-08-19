@@ -6,6 +6,7 @@ import { AppHeader } from '@/components/features/layout/Header'
 import { SettingsBootstrap } from '@/components/features/layout/SettingsBootstrap'
 import { CookieConsentBanner } from '@/components/features/consent/CookieConsentBanner'
 import { SaveStatusNotice } from '@/components/features/shared/SaveStatusNotice'
+import { DemoBanner } from '@/components/features/demo/DemoBanner'
 import { Analytics } from '@/components/features/consent/Analytics'
 import { SITE_URL, SITE_NAME, SITE_DESCRIPTION } from '@/lib/site'
 import { THEME_COLOR } from '@/lib/pwa/manifest'
@@ -84,6 +85,7 @@ export default function RootLayout({
         {/* 保存が落ちたことを伝える札。**ここに置く。**
             (app) の中は `isolate` で重なりの世界が閉じており、
             そこへ置くと Cookie の札より後ろに回って読めなくなる（実測） */}
+        <DemoBanner />
         <SaveStatusNotice />
         <CookieConsentBanner />
         <Analytics />

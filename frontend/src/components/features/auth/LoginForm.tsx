@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { PasswordField } from '@/components/features/auth/PasswordField'
+import { DemoEntryButton } from '@/components/features/landing/DemoEntryButton'
 import { AppleIcon } from '@/components/features/auth/AppleIcon'
 import { signIn, googleOAuthUrl, appleOAuthUrl, APPLE_AUTH_ENABLED } from '@/lib/api/auth'
 import { buildLoginErrorDetail, validateLoginField } from '@/lib/auth-errors'
@@ -186,6 +187,12 @@ export function LoginForm() {
           新規登録
         </Link>
       </p>
+
+      {/* 入れなくて困っている人の逃げ道。**ここでは「登録せずに」と先に言う**
+          （LP では「宮殿を見てみる」だけでよいが、この面では登録との対比が要る） */}
+      <div className="mt-6 border-t pt-5" style={{ borderColor: 'var(--ivory-dark)' }}>
+        <DemoEntryButton label="登録せずに宮殿を見てみる" />
+      </div>
     </div>
   )
 }
