@@ -183,6 +183,9 @@ Rails.application.routes.draw do
       get "wikipedia/summary", to: "wikipedia#summary"
       # 題が一致しなかったときの候補。選ぶのは利用者なので、ここでは保存しない
       get "wikipedia/search", to: "wikipedia#search"
+      # 公式コンテンツの受け取り（デルフォイ）
+      get "content_packages", to: "content_packages#index"
+      post "content_packages/:key/install", to: "content_packages#install", as: :install_content_package
       get "campaign_codes", to: "campaign_codes#index"
       post "campaign_codes/redeem", to: "campaign_codes#redeem"
       # アチーブメント（栄誉の間）
