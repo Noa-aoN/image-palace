@@ -4,7 +4,7 @@ import { Brain, Gamepad2, Layers } from 'lucide-react'
 import { LandingFooter } from '@/components/features/layout/LandingFooter'
 import { LANDING_SHOTS } from '@/lib/landing/gallery'
 import { HeroScrollZoom } from '@/components/features/landing/HeroScrollZoom'
-import { LandingCta } from '@/components/features/landing/LandingCta'
+import { LandingCtaGroup } from '@/components/features/landing/LandingCta'
 import { ScrollCue } from '@/components/features/landing/ScrollCue'
 import { SectionDivider } from '@/components/features/landing/SectionDivider'
 import { RoadBackground } from '@/components/features/landing/RoadBackground'
@@ -217,8 +217,9 @@ export default function TopPage() {
         <h2 className="mb-8 text-2xl font-bold md:text-3xl" style={{ color: '#111111' }}>
           今日から、記憶を育てはじめましょう。
         </h2>
-        {/* ヒーローと同じくログイン有無で出し分ける */}
-        <LandingCta className="flex w-full max-w-sm flex-col items-center gap-3 sm:mx-auto sm:max-w-none sm:flex-row sm:justify-center" />
+        {/* ヒーローと同じくログイン有無で出し分ける。
+            下に「宮殿を見てみる」を小さく添える（並びは変えない） */}
+        <LandingCtaGroup className="flex w-full max-w-sm flex-col items-center gap-3 sm:mx-auto sm:max-w-none sm:flex-row sm:justify-center" />
       </Section>
 
       <LandingFooter />
