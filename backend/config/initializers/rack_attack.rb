@@ -10,23 +10,48 @@
 # カウンタは専用の MemoryStore に保持する。MVP は Fly.io 単一インスタンス想定のため
 # プロセスローカルで十分。将来スケールアウトする場合は共有ストア（Solid Cache 等）へ差し替える。
 class Rack::Attack
+  # 数えるときに使う「相手」。
+  #
+  # **Rack や Rails が出す IP をそのまま使ってはいけない。** どちらも X-Forwarded-For から相手を割り出すが、
+  # この値は呼ぶ側が自由に付けられる。信頼するプロキシを設定していないと、
+  # ヘッダーを差し替えるだけで、ここの上限を全部すり抜けられる。
+  #
+  # api.imagepalace.app は Cloudflare を通さず、Fly のプロキシが直接受けている
+  # （2026-08 時点。`cf-ray` が付かず、DNS も fly.dev を指す）。
+  # Fly は受けた接続元を `Fly-Client-IP` に**上書きして**渡すので、こちらは詐称できない。
+  #
+  # ヘッダーが無いとき（手元・テスト・Fly を通らない経路）は、**接続元そのもの**を見る。
+  # ここで `ip` に落としてはいけない。あれも X-Forwarded-For を見るので、
+  # ヘッダーを外して叩くだけで詐称が復活する。REMOTE_ADDR は TCP の相手なので偽れない。
+  #
+  # 経路が変わったら（Cloudflare を api の前に置く等）、ここを見直すこと。
+  # そのときは `CF-Connecting-IP` が正になるが、**fly.dev の直の口を閉じるのが先**。
+  # 閉じないまま CF のヘッダーを信じると、直接叩いて詐称できてしまう。
+  class Request < ::Rack::Request
+    def client_ip
+      get_header("HTTP_FLY_CLIENT_IP").presence || get_header("REMOTE_ADDR")
+    end
+  end
+end
+
+class Rack::Attack
   self.cache.store = ActiveSupport::Cache::MemoryStore.new
 
   ### スロットル設定 ###
 
   # 全体の安全網: 1 IP あたり 5 分間で 300 リクエストまで。ヘルスチェックは除外する。
   throttle("req/ip", limit: 300, period: 5.minutes) do |req|
-    req.ip unless req.path.start_with?("/api/v1/health", "/up")
+    req.client_ip unless req.path.start_with?("/api/v1/health", "/up")
   end
 
   # ログイン試行: ブルートフォース対策。1 IP あたり 20 秒間で 10 回まで。
   throttle("logins/ip", limit: 10, period: 20.seconds) do |req|
-    req.ip if req.post? && req.path == "/api/v1/auth/sign_in"
+    req.client_ip if req.post? && req.path == "/api/v1/auth/sign_in"
   end
 
   # 新規登録: 大量アカウント作成の抑制。1 IP あたり 60 秒間で 5 回まで。
   throttle("signups/ip", limit: 5, period: 60.seconds) do |req|
-    req.ip if req.post? && req.path == "/api/v1/auth"
+    req.client_ip if req.post? && req.path == "/api/v1/auth"
   end
 
   # パスワード再設定・メール確認: 1 IP あたり 5 分間で 5 回まで。
@@ -38,50 +63,50 @@ class Rack::Attack
   # 二要素・パスキー・引き換えコードは個別に絞ってあるのに、ここだけ全体網
   # （300回/5分）しか無かった。認証の入口なので、同じ強さで扱う。
   throttle("password_resets/ip", limit: 5, period: 5.minutes) do |req|
-    req.ip if req.path.start_with?("/api/v1/auth/password")
+    req.client_ip if req.path.start_with?("/api/v1/auth/password")
   end
 
   throttle("confirmations/ip", limit: 5, period: 5.minutes) do |req|
-    req.ip if req.path.start_with?("/api/v1/auth/confirmation")
+    req.client_ip if req.path.start_with?("/api/v1/auth/confirmation")
   end
 
   # カード作成（画像生成をトリガーし得る高コスト操作）: 1 IP あたり 60 秒間で 30 回まで。
   throttle("item_creates/ip", limit: 30, period: 60.seconds) do |req|
-    req.ip if req.post? && req.path == "/api/v1/items"
+    req.client_ip if req.post? && req.path == "/api/v1/items"
   end
 
   # 意味生成（OpenAI Chat 呼び出しの高コスト操作）: 1 IP あたり 60 秒間で 30 回まで。
   # 一覧での一括「説明を付与」（1ページ=24件）を1パスで通せるようにしつつ上限は維持。
   # 超過分はフロントが 429 を待って再試行する。
   throttle("item_meaning/ip", limit: 30, period: 60.seconds) do |req|
-    req.ip if req.post? && req.path.match?(%r{\A/api/v1/items/[^/]+/meaning\z})
+    req.client_ip if req.post? && req.path.match?(%r{\A/api/v1/items/[^/]+/meaning\z})
   end
 
   # タグ生成（OpenAI Chat 呼び出しの高コスト操作）: 1 IP あたり 60 秒間で 30 回まで。
   throttle("item_tags/ip", limit: 30, period: 60.seconds) do |req|
-    req.ip if req.post? && req.path.match?(%r{\A/api/v1/items/[^/]+/tags\z})
+    req.client_ip if req.post? && req.path.match?(%r{\A/api/v1/items/[^/]+/tags\z})
   end
 
   # ファクトチェック（OpenAI Chat 呼び出しの高コスト操作）: 1 IP あたり 60 秒間で 30 回まで。
   throttle("item_fact_check/ip", limit: 30, period: 60.seconds) do |req|
-    req.ip if req.post? && req.path.match?(%r{\A/api/v1/items/[^/]+/fact_check\z})
+    req.client_ip if req.post? && req.path.match?(%r{\A/api/v1/items/[^/]+/fact_check\z})
   end
 
   # 失敗カードの再生成（画像生成ジョブを再投入）: 1 IP あたり 60 秒間で 20 回まで。
   throttle("item_retry/ip", limit: 20, period: 60.seconds) do |req|
-    req.ip if req.post? && req.path.match?(%r{\A/api/v1/items/[^/]+/retry\z})
+    req.client_ip if req.post? && req.path.match?(%r{\A/api/v1/items/[^/]+/retry\z})
   end
 
   # データエクスポート（全データを返す重い操作）: 1 IP あたり 5 分間で 10 回まで。
   # 単語の生成・点検（AI 呼び出し）。ワードリスト作成・アクロポリスから叩かれる。
   throttle("words_generate/ip", limit: 30, period: 60.seconds) do |req|
-    req.ip if req.post? && req.path == "/api/v1/words/generate"
+    req.client_ip if req.post? && req.path == "/api/v1/words/generate"
   end
   throttle("words_check/ip", limit: 20, period: 60.seconds) do |req|
-    req.ip if req.post? && req.path == "/api/v1/words/check"
+    req.client_ip if req.post? && req.path == "/api/v1/words/check"
   end
   throttle("account_export/ip", limit: 10, period: 5.minutes) do |req|
-    req.ip if req.get? && req.path == "/api/v1/account/export"
+    req.client_ip if req.get? && req.path == "/api/v1/account/export"
   end
 
   # 画像アップロード（1件最大 10MB を libvips でデコードする高コスト操作）:
@@ -91,69 +116,69 @@ class Rack::Attack
   UPLOAD_PATH = %r{\A/api/v1/(boxes|views|spaces)/[^/]+/(cover_image|background_image)\z|
                    \A/api/v1/admin/posts/[^/]+/cover\z}x
   throttle("image_uploads/ip", limit: 20, period: 60.seconds) do |req|
-    req.ip if req.post? && UPLOAD_PATH.match?(req.path)
+    req.client_ip if req.post? && UPLOAD_PATH.match?(req.path)
   end
 
   # 運営（管理）エンドポイント。総当たりで権限の有無を探られないよう、個別に絞る。
   # 正規の運営が普通に使う限り当たらない値にする。
   throttle("admin/ip", limit: 60, period: 60.seconds) do |req|
-    req.ip if req.path.start_with?("/api/v1/admin/")
+    req.client_ip if req.path.start_with?("/api/v1/admin/")
   end
 
   # キャンバスの AI 編集（1回の呼び出しが他より大きい）
   AI_EDIT_PATH = %r{\A/api/v1/views/[^/]+/ai_edit\z}
   throttle("canvas_ai_edit/ip", limit: 20, period: 60.seconds) do |req|
-    req.ip if req.post? && AI_EDIT_PATH.match?(req.path)
+    req.client_ip if req.post? && AI_EDIT_PATH.match?(req.path)
   end
 
   # カバー画像の生成（画像生成＝高コスト）
   COVER_GENERATE_PATH = %r{\A/api/v1/(boxes|views|spaces)/[^/]+/cover_image/generate\z}
   throttle("cover_generate/ip", limit: 10, period: 60.seconds) do |req|
-    req.ip if req.post? && COVER_GENERATE_PATH.match?(req.path)
+    req.client_ip if req.post? && COVER_GENERATE_PATH.match?(req.path)
   end
 
   # アバターの生成（画像生成＝高コスト）。自分の顔は何度も作り直すものではない。
   throttle("avatar_generate/ip", limit: 10, period: 60.seconds) do |req|
-    req.ip if req.post? && req.path == "/api/v1/account/avatar"
+    req.client_ip if req.post? && req.path == "/api/v1/account/avatar"
   end
 
   # 記憶資産の点（作成・更新とも画像生成をトリガーし得る）。
   # 並べ替え（reorder）は画像を作らないうえドラッグで連続するので、ここには含めない。
   SPACE_POINT_PATH = %r{\A/api/v1/spaces/[^/]+/points(/(?!reorder\z)[^/]+)?\z}
   throttle("space_points/ip", limit: 20, period: 60.seconds) do |req|
-    req.ip if (req.post? || req.patch? || req.put?) && SPACE_POINT_PATH.match?(req.path)
+    req.client_ip if (req.post? || req.patch? || req.put?) && SPACE_POINT_PATH.match?(req.path)
   end
 
   # 説明文・情景の作り直し（OpenAI Chat 呼び出し）
   throttle("item_brief/ip", limit: 20, period: 60.seconds) do |req|
-    req.ip if req.post? && req.path.match?(%r{\A/api/v1/items/[^/]+/brief\z})
+    req.client_ip if req.post? && req.path.match?(%r{\A/api/v1/items/[^/]+/brief\z})
   end
 
   # カードの項目まわり（値・定義）。AI は通らないが、書き込みなので歯止めは要る
   PROPERTY_PATH = %r{\A/api/v1/(items/[^/]+/properties/[^/]+|property_definitions(/.*)?)\z}
   throttle("item_properties/ip", limit: 120, period: 60.seconds) do |req|
-    req.ip if !req.get? && PROPERTY_PATH.match?(req.path)
+    req.client_ip if !req.get? && PROPERTY_PATH.match?(req.path)
   end
 
   # 意味・説明の追加・書き換え（AI は通らないが、書き込みなので歯止めは要る）
   MEANING_PATH = %r{\A/api/v1/items/[^/]+/meanings(/.*)?\z}
   throttle("item_meanings/ip", limit: 60, period: 60.seconds) do |req|
-    req.ip if (req.post? || req.patch? || req.put? || req.delete?) && MEANING_PATH.match?(req.path)
+    req.client_ip if (req.post? || req.patch? || req.put? || req.delete?) && MEANING_PATH.match?(req.path)
   end
 
   # 項目のAI一括入力（OpenAI Chat 呼び出し）
   throttle("item_fill_properties/ip", limit: 20, period: 60.seconds) do |req|
-    req.ip if req.post? && req.path.match?(%r{\A/api/v1/items/[^/]+/fill_properties\z})
+    req.client_ip if req.post? && req.path.match?(%r{\A/api/v1/items/[^/]+/fill_properties\z})
   end
 
   # 項目の選定（OpenAI Chat 呼び出し）
   throttle("item_suggest_properties/ip", limit: 20, period: 60.seconds) do |req|
-    req.ip if req.post? && req.path.match?(%r{\A/api/v1/items/[^/]+/suggest_properties\z})
+    req.client_ip if req.post? && req.path.match?(%r{\A/api/v1/items/[^/]+/suggest_properties\z})
   end
 
   # 意味・説明からの情景の書き直し（OpenAI Chat 呼び出し）
   throttle("item_scene_rewrite/ip", limit: 20, period: 60.seconds) do |req|
-    req.ip if req.post? && req.path.match?(%r{\A/api/v1/items/[^/]+/scene_rewrite\z})
+    req.client_ip if req.post? && req.path.match?(%r{\A/api/v1/items/[^/]+/scene_rewrite\z})
   end
 
   # Wikipedia の引き当て。
@@ -162,16 +187,16 @@ class Rack::Attack
   # 相手の迷惑になる叩き方をこちらで止める。キャッシュが効くぶんは通る
   # Passkey の登録も、繰り返し叩かれる理由がない。網の側で止める
   throttle("passkeys/ip", limit: 20, period: 5.minutes) do |req|
-    req.ip if (req.post? || req.patch? || req.delete?) && req.path.start_with?("/api/v1/passkeys")
+    req.client_ip if (req.post? || req.patch? || req.delete?) && req.path.start_with?("/api/v1/passkeys")
   end
 
   # 二要素のコードは6桁しかない。総当たりを網の側でも止める
   throttle("totp/ip", limit: 20, period: 5.minutes) do |req|
-    req.ip if req.post? && req.path.start_with?("/api/v1/totp")
+    req.client_ip if req.post? && req.path.start_with?("/api/v1/totp")
   end
 
   throttle("wikipedia/ip", limit: 30, period: 60.seconds) do |req|
-    req.ip if req.get? && req.path.in?([ "/api/v1/wikipedia/summary", "/api/v1/wikipedia/search" ])
+    req.client_ip if req.get? && req.path.in?([ "/api/v1/wikipedia/summary", "/api/v1/wikipedia/search" ])
   end
 
   # 引き換えコードの入力。
@@ -180,12 +205,12 @@ class Rack::Attack
   # 当てられるとクレジットがそのまま出ていくので、試せる回数を絞る。
   # 手で打つぶんには足りる回数にしてある（打ち間違いの数回は通る）。
   throttle("code_redeem/ip", limit: 10, period: 10.minutes) do |req|
-    req.ip if req.post? && req.path == "/api/v1/campaign_codes/redeem"
+    req.client_ip if req.post? && req.path == "/api/v1/campaign_codes/redeem"
   end
 
   # 供給側の疎通確認（OpenAI へ実際に1回投げる）。運営しか叩けないが、連打で外へ投げ続けないよう抑える
   throttle("admin_provider_check/ip", limit: 10, period: 5.minutes) do |req|
-    req.ip if req.post? && req.path == "/api/v1/admin/provider_check"
+    req.client_ip if req.post? && req.path == "/api/v1/admin/provider_check"
   end
 
   ### スロットル時のレスポンス ###
