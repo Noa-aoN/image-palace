@@ -19,6 +19,7 @@ import { AdminStrongAuthGate } from '@/components/features/admin/AdminStrongAuth
  */
 const TABS = [
   { href: '/studio', label: '概要', exact: true },
+  { href: '/studio/items', label: 'カード' },
   { href: '/studio/publish', label: '公開する' },
   { href: '/studio/settings', label: '設定' },
 ]

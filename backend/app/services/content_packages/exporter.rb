@@ -86,17 +86,28 @@ module ContentPackages
       items
     end
 
+    # **「出さない」と決めたカードは、ここで落とす。**
+    #
+    # 入口をこの2つに絞ってあるので、集めるところ・箱の中身・配置・線の
+    # すべてが同じ判断で揃う。どれか1つで落とし忘れると、
+    # 席次の無いカードを参照して壊れる
     def box_entries(box)
       @box_entries ||= {}
-      @box_entries[box.id] ||= box.box_entries.where(entry_type: "Item").order(:position, :created_at).includes(
-        entry: item_includes
-      ).to_a
+      @box_entries[box.id] ||= box.box_entries.where(entry_type: "Item").order(:position, :created_at)
+                                  .includes(entry: item_includes)
+                                  .reject { |entry| excluded?(entry.entry_id) }
     end
 
     def view_placements(view)
       @view_placements ||= {}
       @view_placements[view.id] ||= view.view_items.order(:position, :created_at)
-                                       .includes(item: item_includes).to_a
+                                       .includes(item: item_includes)
+                                       .reject { |placement| excluded?(placement.item_id) }
+    end
+
+    def excluded?(item_id)
+      @excluded_ids ||= ContentExclusion.item_id_set
+      @excluded_ids.include?(item_id)
     end
 
     def item_includes
