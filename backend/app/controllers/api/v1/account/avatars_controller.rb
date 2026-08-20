@@ -4,6 +4,8 @@ module Api
       # プロフィールアイコン（avatar）の生成トリガと削除。
       # 生成は非同期（GenerateAvatarJob）。クレジットは生成トリガ時に前払い消費する。
       class AvatarsController < BaseController
+        before_action -> { deny_for_demo!(:generate_image) }, only: :create
+
         include AvatarSerialization
 
         MAX_PROMPT = 300

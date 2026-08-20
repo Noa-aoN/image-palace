@@ -11,9 +11,8 @@ import { isDemoUser, remainingLabel } from '@/lib/demo/session'
  * **消えることを隠さない。** 残り時間を出すのは急かすためではなく、
  * あとで「保存されていなかった」と気づく形にしないため。
  *
- * 置き方は保存失敗の知らせに揃える（root の layout に置く）。
- * `(app)` の layout は `relative isolate` を持っていて、
- * そこに置くと重なりの順が閉じ込められる。
+ * **浮かせない。** ヘッダーは `relative` なので、上に浮かせると隠してしまう。
+ * root の layout で、ヘッダーの上に流れの中で置く（全体が1行ぶん下がる）。
  */
 export function DemoBanner() {
   const user = useAuthStore((s) => s.user)
@@ -42,7 +41,7 @@ export function DemoBanner() {
 
   return (
     <div
-      className="fixed inset-x-0 top-0 z-[60] flex flex-wrap items-center justify-center gap-x-3 gap-y-1
+      className="flex shrink-0 flex-wrap items-center justify-center gap-x-3 gap-y-1
                  px-4 py-1.5 text-center text-xs"
       style={{ backgroundColor: 'var(--palace)', color: '#fff' }}
       role="status"

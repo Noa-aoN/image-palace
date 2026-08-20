@@ -74,6 +74,70 @@ RSpec.describe "体験用の宮殿で禁じている操作", type: :request do
     end
   end
 
+  # 絵を1枚作る操作は、登録への誘いに置き換える。
+  #
+  # 配ると自由に絵を作れてしまい、**不快な生成・荒らし・原価**が
+  # ログイン不要の入口から入ってくる
+  describe "絵を作る操作" do
+    let(:item_type) { create(:item_type) }
+    let!(:item) { demo.items.create!(title: "見本", item_type: item_type, generation_status: "completed") }
+
+    it "無料枠が配られない（残高は 0 のまま）" do
+      demo.ensure_free_credits!
+
+      expect(demo.reload.available_credit_points).to eq(0)
+      expect(demo.credit_grants).to be_empty
+    end
+
+    it "普通の利用者には、今までどおり配られる" do
+      normal.ensure_free_credits!
+
+      expect(normal.reload.available_credit_points).to be > 0
+    end
+
+    it "カードを作れない" do
+      post "/api/v1/items", params: { item: { title: "つくる", item_type_id: item_type.id } },
+                            headers: headers_for(demo), as: :json
+
+      expect(response).to have_http_status(:forbidden)
+      expect(json_response["code"]).to eq("demo_forbidden")
+      expect(demo.items.count).to eq(1)
+    end
+
+    it "作り直せない" do
+      post "/api/v1/items/#{item.id}/retry", headers: headers_for(demo), as: :json
+
+      expect(response).to have_http_status(:forbidden)
+    end
+
+    it "自由な絵も作れない" do
+      post "/api/v1/account/avatar", params: { prompt: "ねこ" }, headers: headers_for(demo), as: :json
+
+      expect(response).to have_http_status(:forbidden)
+    end
+
+    # **座標を動かすだけの更新は通す。** 名前を付けたときだけ絵が作られる
+    it "スペースの点は、名前を付けるときだけ断る" do
+      space = demo.spaces.create!(name: "宮殿", space_type: "road")
+      point = space.space_points.create!(position: 1)
+
+      patch "/api/v1/spaces/#{space.id}/points/#{point.id}", params: { x: 10, y: 20 },
+                                                             headers: headers_for(demo), as: :json
+      expect(response).to have_http_status(:success)
+
+      patch "/api/v1/spaces/#{space.id}/points/#{point.id}", params: { name: "玄関" },
+                                                             headers: headers_for(demo), as: :json
+      expect(response).to have_http_status(:forbidden)
+    end
+
+    it "普通の利用者はカードを作れる" do
+      post "/api/v1/items", params: { item: { title: "つくる", item_type_id: item_type.id } },
+                            headers: headers_for(normal), as: :json
+
+      expect(response).not_to have_http_status(:forbidden)
+    end
+  end
+
   # 中心の体験は残す。**ここが通らなくなったら、デモの意味が無い**
   describe "体験用でもできること" do
     let(:item_type) { create(:item_type) }

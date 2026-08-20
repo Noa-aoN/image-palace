@@ -4,6 +4,10 @@ module Api
       include ItemSerialization
       include PromptModeration
 
+      # 絵を1枚作る操作。体験用では登録への誘いに置き換える。
+      # **見る・直す・並べるは通す**（そちらが体験の中身なので）
+      before_action -> { deny_for_demo!(:generate_image) }, only: [ :create, :retry ]
+
       before_action :set_item,
                     only: [ :show, :update, :destroy, :retry, :approve_image, :meaning, :examples, :brief, :scene_rewrite,
                             :generate_tags, :fact_check, :fill_properties, :usages, :update_block_view,
