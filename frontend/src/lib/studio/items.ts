@@ -54,6 +54,18 @@ export function stateFor(item: StudioItem): ItemState {
 }
 
 /**
+ * 外したせいで、下書きを起こせなくなる1枚。
+ *
+ * **箱は袋、キャンバスは構造。** 箱なら1枚抜いても小さい袋のままでよいが、
+ * キャンバスは節を抜くと穴が開き、線も落ちる。
+ * サーバー側はそのキャンバスを選んだ時点で止めるので、
+ * **押した場所で先に言っておく**
+ */
+export function blocksDraft(item: StudioItem): boolean {
+  return item.excluded && item.views.length > 0
+}
+
+/**
  * 状態に添える一言。**次に何が起きるかを言う。**
  *
  * すでに出した荷物は動かない決まりなので、外しても消えない。
@@ -61,10 +73,17 @@ export function stateFor(item: StudioItem): ItemState {
  */
 export function noteFor(item: StudioItem): string {
   switch (stateFor(item)) {
-    case 'excluded':
-      return item.packages.length > 0
-        ? `次に起こす下書きから外れます（出した荷物 ${item.packages.join('・')} には残ります）`
-        : '次に起こす下書きから外れます'
+    case 'excluded': {
+      const caveats: string[] = []
+      if (blocksDraft(item)) {
+        caveats.push(`${item.views.join('・')} を選ぶと下書きが止まります`)
+      }
+      if (item.packages.length > 0) {
+        caveats.push(`出した荷物 ${item.packages.join('・')} には残ります`)
+      }
+      const head = '次に起こす下書きから外れます'
+      return caveats.length === 0 ? head : `${head}（${caveats.join(' / ')}）`
+    }
     case 'blocked':
       return item.blockers.join(' / ')
     case 'shipped':

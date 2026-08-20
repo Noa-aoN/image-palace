@@ -5,6 +5,7 @@ import { Input } from '@/components/ui/input'
 import { Spinner } from '@/components/ui/spinner'
 import { fetchStudioItems, setItemExclusion, type StudioItem } from '@/lib/api/studio'
 import {
+  blocksDraft,
   countByState,
   filterItems,
   ITEM_STATE_LABEL,
@@ -204,7 +205,7 @@ function Row({
       </div>
 
       <div className="min-w-0 flex-1 sm:max-w-xs">
-        <StateChip state={state} />
+        <StateChip state={state} warn={blocksDraft(item)} />
         <p className="mt-1 truncate text-xs text-muted-foreground" title={noteFor(item)}>
           {noteFor(item)}
         </p>
@@ -223,8 +224,14 @@ function Row({
   )
 }
 
-function StateChip({ state }: { state: ItemState }) {
-  const tone = ITEM_STATE_TONE[state]
+/**
+ * 状態の印。
+ *
+ * **外したのにキャンバスに置いたままなら、注意の色にする。**
+ * そのキャンバスを選ぶと下書きが止まるので、静かな印では気づけない
+ */
+function StateChip({ state, warn = false }: { state: ItemState; warn?: boolean }) {
+  const tone = warn ? 'warn' : ITEM_STATE_TONE[state]
   const style =
     tone === 'active'
       ? { backgroundColor: 'var(--palace)', color: '#fff' }

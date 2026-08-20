@@ -1,5 +1,6 @@
 import { describe, it, expect } from 'vitest'
 import {
+  blocksDraft,
   countByState,
   filterItems,
   ITEM_STATE_LABEL,
@@ -79,12 +80,49 @@ describe('添える一言', () => {
     expect(note).toContain('残ります')
   })
 
+  // **箱は袋、キャンバスは構造。**
+  // キャンバスは節を抜くと穴が開くので、サーバー側はそこで止める。
+  // 押した場所で先に言っておかないと、下書きを起こしてから気づくことになる
+  it('キャンバスに置いたまま外したら、下書きが止まると言う', () => {
+    const note = noteFor(item({ excluded: true, views: ['神々の系図'] }))
+
+    expect(note).toContain('神々の系図')
+    expect(note).toContain('止まります')
+  })
+
+  it('箱に入っているだけなら、止まるとは言わない', () => {
+    expect(noteFor(item({ excluded: true, boxes: ['ITのことば'] }))).not.toContain('止まります')
+  })
+
+  it('キャンバスにも荷物にも入っていたら、両方言う', () => {
+    const note = noteFor(item({ excluded: true, views: ['神々の系図'], packages: ['starter_it'] }))
+
+    expect(note).toContain('止まります')
+    expect(note).toContain('残ります')
+  })
+
   it('欠けは理由をそのまま言う', () => {
     expect(noteFor(item({ blockers: ['絵がありません', '意味がありません'] }))).toContain('絵がありません')
   })
 
   it('出しているものは、どの荷物かを言う', () => {
     expect(noteFor(item({ packages: ['starter_it', 'demo_showcase'] }))).toContain('demo_showcase')
+  })
+})
+
+// 外したのにキャンバスに置いたままなら、そのキャンバスを選ぶと止まる
+describe('下書きを止めてしまう1枚', () => {
+  it('外して、キャンバスに置いたままなら、止める側', () => {
+    expect(blocksDraft(item({ excluded: true, views: ['神々の系図'] }))).toBe(true)
+  })
+
+  it('外していなければ、止めない', () => {
+    expect(blocksDraft(item({ views: ['神々の系図'] }))).toBe(false)
+  })
+
+  // 箱は袋なので、抜いても小さい袋のままでよい
+  it('箱に入っているだけなら、止めない', () => {
+    expect(blocksDraft(item({ excluded: true, boxes: ['ITのことば'] }))).toBe(false)
   })
 })
 

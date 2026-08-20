@@ -454,68 +454,122 @@ RSpec.describe "公式コンテンツの往復", type: :service do
     end
   end
 
-  # 「この1枚は出さない」。**箱の中に1枚だけ出したくないカードが混じるとき。**
+  # 「この1枚は出さない」。
   #
-  # そのために箱を分けるのは、原本の作りを配布の都合で歪める。
-  # 落とすのは書き出しの入口ひとつなので、集めるところ・箱の中身・
-  # 配置・線のすべてが同じ判断で揃う
+  # **箱は袋、キャンバスは構造。** 扱いを変える。
+  # 箱は1枚抜いても小さい袋のままでよい。
+  # キャンバスは節を抜くと穴が開き、繋がっていた線も落ちる
   describe "出さないと決めたカード" do
-    before { ContentExclusion.set!(item: router_a, excluded: true, note: "作り直し中") }
-
-    it "荷物に入らない" do
-      expect(export["items"].map { |i| i["title"] }).to eq(%w[DNS ルーター])
-      expect(export["items"].map { |i| i["origin_key"] }).not_to include(router_a.id)
+    # 箱にだけ入っているカード。**キャンバスには置かない**
+    let!(:solo) do
+      item = make_item(title: "袋だけ", type: word, tags: %w[IT],
+                       meanings: [ { definition: "箱にだけ入っている" } ])
+      box.box_entries.create!(entry: item, position: 4)
+      item
     end
 
-    # **席次の無いカードを箱が指したままにしない。** 残ると取り込む側で壊れる
-    it "箱の中身からも消える" do
-      keys = export["boxes"].first["entries"].map { |e| e["local_key"] }
-
-      expect(keys.size).to eq(2)
-      expect(keys).to all(be_in(export["items"].map { |i| i["local_key"] }))
+    def export_box_only
+      ContentPackages::Exporter.call(boxes: [ box.reload ])
     end
 
-    it "キャンバスの配置からも消える" do
-      keys = export["views"].first["placements"].map { |p| p["local_key"] }
+    # ── 箱は袋 ─────────────────────────────────
+    #
+    # 箱の中に1枚だけ出したくないカードが混じることがある。
+    # そのために箱を分けるのは、原本の作りを配布の都合で歪める
+    describe "箱に入っているだけなら、落とす" do
+      before { ContentExclusion.set!(item: solo, excluded: true, note: "作り直し中") }
 
-      expect(keys.size).to eq(2)
-      expect(keys).to all(be_in(export["items"].map { |i| i["local_key"] }))
+      it "荷物に入らない" do
+        expect(export["items"].map { |i| i["title"] }).not_to include("袋だけ")
+        expect(export["items"].map { |i| i["origin_key"] }).not_to include(solo.id)
+      end
+
+      # **席次の無いカードを箱が指したままにしない。** 残ると取り込む側で壊れる
+      it "箱の中身からも消える" do
+        keys = export["boxes"].first["entries"].map { |e| e["local_key"] }
+
+        expect(keys.size).to eq(3)
+        expect(keys).to all(be_in(export["items"].map { |i| i["local_key"] }))
+      end
+
+      it "キャンバスは何も変わらない" do
+        expect(export["views"].first["placements"].size).to eq(3)
+        expect(export["views"].first["edges"].size).to eq(2)
+      end
+
+      it "取り込んでも壊れない" do
+        result = ContentPackages::Importer.call(user: receiver, payload: export)
+
+        expect(result.items.size).to eq(3)
+        expect(receiver.items.pluck(:title)).not_to include("袋だけ")
+      end
+
+      it "外すと、また入る" do
+        ContentExclusion.set!(item: solo, excluded: false)
+
+        expect(export["items"].size).to eq(4)
+      end
+
+      it "押し直しても行が増えない" do
+        3.times { ContentExclusion.set!(item: solo, excluded: true) }
+
+        expect(ContentExclusion.where(item_id: solo.id).count).to eq(1)
+      end
+
+      # **空の荷物は作らせない。** 出してから気づくことになる
+      it "箱の中身を全部外したら、そうと言って止まる" do
+        [ dns, router_a, router_b ].each { |item| ContentExclusion.set!(item: item, excluded: true) }
+
+        expect { export_box_only }
+          .to raise_error(ContentPackages::Payload::ExportError, /カードが1枚も/)
+      end
     end
 
-    # 外したカードに繋がっていた線は、行き先が無くなる
-    it "その節に繋がっていた線も落ちる" do
-      expect(export["views"].first["edges"]).to be_empty
-    end
+    # ── キャンバスは構造 ────────────────────────
+    #
+    # 節を抜けば、そこに繋がっていた線も落ちる。
+    # 「神々の系図」から神が1柱消えた系図が、黙って荷物になってはいけない
+    describe "キャンバスに置かれていたら、止める" do
+      before { ContentExclusion.set!(item: router_a, excluded: true) }
 
-    it "取り込んでも壊れない" do
-      result = ContentPackages::Importer.call(user: receiver, payload: export)
+      it "キャンバスも一緒に出そうとすると、止まる" do
+        expect { export }.to raise_error(ContentPackages::Payload::ExportError)
+      end
 
-      expect(result.items.size).to eq(2)
-      expect(receiver.items.pluck(:title)).to contain_exactly("DNS", "ルーター")
-    end
+      # **どのキャンバスの、どのカードかを言う。** 直しにいける形で断る
+      it "どこが引っかかっているかを言う" do
+        expect { export }.to raise_error(/キャンバス「通り道」/)
+        expect { export }.to raise_error(/ルーター/)
+        expect { export }.to raise_error(/外すか、このキャンバスを選ばずに/)
+      end
 
-    it "外すと、また入る" do
-      ContentExclusion.set!(item: router_a, excluded: false)
+      # 穴の開いたキャンバスを作らない。**中途半端に運ぶより、止める**
+      it "節の抜けたキャンバスは作られない" do
+        expect { export }.to raise_error(ContentPackages::Payload::ExportError)
+        expect(ContentPackage.count).to eq(0)
+      end
 
-      expect(export["items"].size).to eq(3)
-    end
+      # そのキャンバスを選ばなければ出せる（箱では落ちるだけ）
+      it "箱だけを出すなら、通る" do
+        payload = export_box_only
 
-    it "押し直しても行が増えない" do
-      3.times { ContentExclusion.set!(item: router_a, excluded: true) }
+        expect(payload["items"].map { |i| i["title"] }).to eq(%w[DNS ルーター 袋だけ])
+        expect(payload["views"]).to be_empty
+      end
 
-      expect(ContentExclusion.where(item_id: router_a.id).count).to eq(1)
-    end
+      it "外せば、また出せる" do
+        ContentExclusion.set!(item: router_a, excluded: false)
 
-    # **空の荷物は作らせない。** 出してから気づくことになる
-    it "全部外したら、そうと言って止まる" do
-      [ dns, router_b ].each { |item| ContentExclusion.set!(item: item, excluded: true) }
-
-      expect { export }.to raise_error(ContentPackages::Payload::ExportError, /カードが1枚も/)
+        expect(export["items"].size).to eq(4)
+        expect(export["views"].first["edges"].size).to eq(2)
+      end
     end
 
     # カードを消したら、外した記録も一緒に消える（迷子の行を残さない）
     it "カードを消すと、記録も消える" do
-      expect { router_a.destroy! }.to change(ContentExclusion, :count).by(-1)
+      ContentExclusion.set!(item: solo, excluded: true)
+
+      expect { solo.destroy! }.to change(ContentExclusion, :count).by(-1)
     end
   end
 end
