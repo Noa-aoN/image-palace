@@ -114,6 +114,18 @@ RSpec.describe "公式工房", type: :request do
       expect(json_response["error"]).to match(/パスキーか認証アプリ/)
     end
 
+    # **入口をひとつ足すたびに関門を付け直さない。**
+    # 門は `only:` を付けずに全部へ掛けてある。ここが崩れたら気づけるように
+    it "カードを見る口も、書き換える口も、同じ関門の内側にある" do
+      get "/api/v1/admin/studio/items", headers: headers, as: :json
+      expect(response).to have_http_status(:forbidden)
+
+      patch "/api/v1/admin/studio/items/#{official.items.first.id}/exclusion",
+            params: { excluded: true }, headers: headers, as: :json
+      expect(response).to have_http_status(:forbidden)
+      expect(ContentExclusion.count).to eq(0)
+    end
+
     # **入る場所の名前で言う。** 執務室の話をされていると読まれないように
     it "断り方が、工房室の話になっている" do
       get "/api/v1/admin/studio", headers: headers, as: :json
