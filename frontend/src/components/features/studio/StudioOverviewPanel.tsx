@@ -1,20 +1,33 @@
 'use client'
 
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { Button } from '@/components/ui/button'
 import { Spinner } from '@/components/ui/spinner'
 import {
   changeStatus,
-  discardPreview,
+  endPreview,
+  fetchCurrentPreview,
   fetchStudio,
   previewPackage,
   setDelivery,
   type Delivery,
+  type PreviewState,
   type StudioOverview,
   type StudioPackage,
 } from '@/lib/api/studio'
-import { actionsFor, canPreview, STATUS_LABEL, STATUS_NOTE, STATUS_TONE } from '@/lib/studio/status'
+import {
+  actionsFor,
+  canPreview,
+  countByStatus,
+  filterPackages,
+  PACKAGE_FILTERS,
+  STATUS_LABEL,
+  STATUS_NOTE,
+  STATUS_TONE,
+  type PackageFilter,
+} from '@/lib/studio/status'
+import { previewEntryPath } from '@/lib/studio/preview'
 
 /**
  * 工房室の概要。**いま何を配っているかと、原本の様子。**
@@ -25,6 +38,8 @@ import { actionsFor, canPreview, STATUS_LABEL, STATUS_NOTE, STATUS_TONE } from '
 export function StudioOverviewPanel() {
   const router = useRouter()
   const [data, setData] = useState<StudioOverview | null>(null)
+  const [preview, setPreview] = useState<PreviewState>({ active: false })
+  const [filter, setFilter] = useState<PackageFilter>('all')
   const [busy, setBusy] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
 
@@ -32,9 +47,58 @@ export function StudioOverviewPanel() {
     fetchStudio()
       .then(setData)
       .catch(() => setError('工房を開けませんでした'))
+    fetchCurrentPreview()
+      .then(setPreview)
+      .catch(() => setPreview({ active: false }))
   }, [])
 
   useEffect(load, [load])
+
+  const counts = useMemo(() => (data ? countByStatus(data.packages) : null), [data])
+  const shown = useMemo(
+    () => (data ? filterPackages(data.packages, filter) : []),
+    [data, filter]
+  )
+
+  /**
+   * 下見を始めて、**新しいタブで普通の画面を開く。**
+   *
+   * 工房室を閉じずに、受け取った人と同じ見え方を確かめられるようにする。
+   * タブは押した瞬間に開ける（返事を待ってから開くと、覗き窓の妨げに止められる）。
+   */
+  async function openPreview(pkg: StudioPackage) {
+    if (busy) return
+    const tab = window.open('about:blank', '_blank', 'noopener')
+
+    setBusy(`${pkg.id}-preview`)
+    setError(null)
+    try {
+      const result = await previewPackage(pkg.key, pkg.version)
+      setPreview(result)
+
+      const path = previewEntryPath(result)
+      if (tab) tab.location.href = path
+      else router.push(path)
+    } catch (e) {
+      tab?.close()
+      const message = (e as { response?: { data?: { error?: string } } }).response?.data?.error
+      setError(message ?? '下見を始められませんでした')
+    } finally {
+      setBusy(null)
+    }
+  }
+
+  async function stopPreview() {
+    if (busy) return
+    setBusy('preview-end')
+    try {
+      await endPreview()
+      setPreview({ active: false })
+      load()
+    } finally {
+      setBusy(null)
+    }
+  }
 
   async function act(pkg: StudioPackage, fn: () => Promise<unknown>, key: string) {
     if (busy) return
@@ -104,6 +168,30 @@ export function StudioOverviewPanel() {
         </section>
       ) : null}
 
+      {/* 下見中であることは、工房室でも見えたほうがよい。
+          ただし「工房室へ戻る」は要らない（いまそこ）ので、帯とは別の形で出す */}
+      {preview.active ? (
+        <section
+          className="flex flex-wrap items-center gap-3 rounded-xl border p-4 text-sm"
+          style={{ borderColor: '#4A3B6B', backgroundColor: 'color-mix(in srgb, #4A3B6B 6%, transparent)' }}
+        >
+          <span className="flex-1">
+            いま <strong>{preview.name ?? preview.key}</strong> v{preview.version} を下見しています
+            （カード {preview.items} 枚）
+          </span>
+          <Button
+            size="sm"
+            variant="outline"
+            onClick={() => window.open(previewEntryPath(preview), '_blank', 'noopener')}
+          >
+            下見を開く
+          </Button>
+          <Button size="sm" variant="ghost" disabled={busy !== null} onClick={stopPreview}>
+            {busy === 'preview-end' ? '片付けています…' : '下見を終了'}
+          </Button>
+        </section>
+      ) : null}
+
       <section className="space-y-3">
         <div className="flex items-baseline justify-between gap-2">
           <h2 className="text-base font-semibold">荷物</h2>
@@ -112,13 +200,45 @@ export function StudioOverviewPanel() {
           </Button>
         </div>
 
+        {/* 扱いで絞る。**大きな検索は要らない。** 数が見えれば、どこを見ればよいか分かる */}
+        {data.packages.length > 0 && counts ? (
+          <div className="flex flex-wrap gap-2">
+            {PACKAGE_FILTERS.map((f) => {
+              const n = f.value === 'all' ? data.packages.length : counts[f.value]
+              return (
+                <button
+                  key={f.value}
+                  type="button"
+                  onClick={() => setFilter(f.value)}
+                  aria-pressed={filter === f.value}
+                  disabled={n === 0 && f.value !== 'all'}
+                  className={`rounded-full border px-3 py-1 text-xs transition disabled:opacity-40 ${
+                    filter === f.value
+                      ? 'border-[var(--palace)] font-medium'
+                      : 'border-border text-muted-foreground'
+                  }`}
+                  style={
+                    filter === f.value ? { backgroundColor: 'var(--palace)', color: '#fff' } : undefined
+                  }
+                >
+                  {f.label} <span className="tabular-nums">{n}</span>
+                </button>
+              )
+            })}
+          </div>
+        ) : null}
+
         {data.packages.length === 0 ? (
           <p className="rounded-lg border border-dashed border-border py-10 text-center text-sm text-muted-foreground">
             まだ1つもありません。「新しく作る」から、公式宮殿の中身を選んでください
           </p>
+        ) : shown.length === 0 ? (
+          <p className="rounded-lg border border-dashed border-border py-10 text-center text-sm text-muted-foreground">
+            あてはまる荷物がありません
+          </p>
         ) : (
           <ul className="space-y-2">
-            {data.packages.map((pkg) => (
+            {shown.map((pkg) => (
               <li
                 key={pkg.id}
                 className="flex flex-wrap items-center gap-x-4 gap-y-2 rounded-lg border border-border bg-background p-4"
@@ -143,16 +263,7 @@ export function StudioOverviewPanel() {
                       size="sm"
                       variant="outline"
                       disabled={busy !== null}
-                      onClick={() =>
-                        act(
-                          pkg,
-                          async () => {
-                            const result = await previewPackage(pkg.key, pkg.version)
-                            if (result.box_id) router.push(`/boxes/${result.box_id}`)
-                          },
-                          `${pkg.id}-preview`
-                        )
-                      }
+                      onClick={() => openPreview(pkg)}
                     >
                       {busy === `${pkg.id}-preview` ? '入れています…' : '下見する'}
                     </Button>
@@ -173,15 +284,6 @@ export function StudioOverviewPanel() {
                     </Button>
                   ))}
 
-                  <Button
-                    size="sm"
-                    variant="ghost"
-                    disabled={busy !== null}
-                    onClick={() => act(pkg, () => discardPreview(pkg.key, pkg.version), `${pkg.id}-discard`)}
-                    title="下見で自分の宮殿に入れたものを片付けます"
-                  >
-                    下見を片付ける
-                  </Button>
                 </div>
 
                 {/* 届け先。**どこで配るか。**

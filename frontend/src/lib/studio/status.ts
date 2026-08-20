@@ -103,3 +103,34 @@ export const DEMO_STAGE_NOTE: Record<DemoStage, string> = {
   prototype: 'ボタンは見えますが、押せません',
   released: '誰でも体験用の宮殿に入れます',
 }
+
+/** 荷物の絞り込み。**大きな検索は要らない。** 扱いで分かれれば足りる */
+export type PackageFilter = 'all' | PackageStatus
+
+export const PACKAGE_FILTERS: { value: PackageFilter; label: string }[] = [
+  { value: 'all', label: 'すべて' },
+  { value: 'draft', label: STATUS_LABEL.draft },
+  { value: 'published', label: STATUS_LABEL.published },
+  { value: 'suspended', label: STATUS_LABEL.suspended },
+  { value: 'archived', label: STATUS_LABEL.archived },
+]
+
+export function countByStatus<T extends { status: PackageStatus }>(
+  packages: T[]
+): Record<PackageStatus, number> {
+  const counts: Record<PackageStatus, number> = {
+    draft: 0,
+    published: 0,
+    suspended: 0,
+    archived: 0,
+  }
+  for (const pkg of packages) counts[pkg.status] += 1
+  return counts
+}
+
+export function filterPackages<T extends { status: PackageStatus }>(
+  packages: T[],
+  filter: PackageFilter
+): T[] {
+  return filter === 'all' ? packages : packages.filter((p) => p.status === filter)
+}

@@ -62,6 +62,25 @@ export type StudioItems = {
   truncated: boolean
 }
 
+/**
+ * いま見ている下見。
+ *
+ * 下見は自分の口座に入るので、**見た目は本物と変わらない**。
+ * 何を見ているのかが分からなくなるので、いつでも引ける形にしてある
+ */
+export type PreviewState =
+  | { active: false }
+  | {
+      active: true
+      key: string
+      version: number
+      name: string | null
+      box_id: string | null
+      view_id: string | null
+      items: number
+      expires_at: string
+    }
+
 export type StudioOwner = {
   email: string
   boxes: number
@@ -125,6 +144,16 @@ export type DraftInput = {
 }
 
 /** 選んだものを下書きとして起こす。**ここで欠けが見つかれば、公開の前に止まる** */
+export async function fetchCurrentPreview(): Promise<PreviewState> {
+  const res = await apiClient.get<PreviewState>('/api/v1/admin/studio/preview')
+  return res.data
+}
+
+/** 下見を終える。**荷物を問わず、いま入っている下見を片付ける** */
+export async function endPreview(): Promise<void> {
+  await apiClient.delete('/api/v1/admin/studio/preview')
+}
+
 export async function fetchStudioItems(): Promise<StudioItems> {
   const res = await apiClient.get<StudioItems>('/api/v1/admin/studio/items')
   return res.data
@@ -144,20 +173,10 @@ export async function createDraft(input: DraftInput): Promise<StudioPackage> {
   return res.data.package
 }
 
-export type PreviewResult = {
-  box_id: string | null
-  view_id: string | null
-  items: number
-}
-
 /** 下見。自分の宮殿へ入れて、受け取った人と同じ画面で見る */
-export async function previewPackage(key: string, version: number): Promise<PreviewResult> {
-  const res = await apiClient.post<PreviewResult>(`/api/v1/admin/studio/${key}/${version}/preview`)
+export async function previewPackage(key: string, version: number): Promise<PreviewState> {
+  const res = await apiClient.post<PreviewState>(`/api/v1/admin/studio/${key}/${version}/preview`)
   return res.data
-}
-
-export async function discardPreview(key: string, version: number): Promise<void> {
-  await apiClient.delete(`/api/v1/admin/studio/${key}/${version}/preview`)
 }
 
 /** 届け先を入れ替える。**版ではなく鍵に付く**ので、出し直しても引き継がれる */

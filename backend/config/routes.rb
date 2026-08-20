@@ -68,6 +68,8 @@ Rails.application.routes.draw do
         get "studio/items", to: "studio#items"
         patch "studio/items/:id/exclusion", to: "studio#update_exclusion"
         post "studio/draft", to: "studio#draft"
+        get "studio/preview", to: "studio#current_preview"
+        delete "studio/preview", to: "studio#end_preview"
         post "studio/:key/:version/preview", to: "studio#preview"
         delete "studio/:key/:version/preview", to: "studio#discard_preview"
         patch "studio/:key/:version/status", to: "studio#update_status"

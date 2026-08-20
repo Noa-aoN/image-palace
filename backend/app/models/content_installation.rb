@@ -30,7 +30,14 @@ class ContentInstallation < ApplicationRecord
   validates :package_key, presence: true
   validates :package_version, numericality: { only_integer: true, greater_than: 0 }
   validates :source, inclusion: { in: SOURCES }
-  validates :package_key, uniqueness: { scope: :user_id }
+  # **下見は受け取りではない。** すでに受け取っている荷物でも下見できる
+  # （v1 を持ったまま v3 を下見する、はやりたいことそのもの）。
+  # 索引も2つに割ってある（受け取りは鍵ごと1つ / 下見は1人1つ）
+  validates :package_key, uniqueness: { scope: :user_id }, unless: :preview?
+
+  def preview?
+    source == PREVIEW_SOURCE
+  end
 
   scope :free, -> { where(source: FREE_SOURCES) }
   scope :real, -> { where.not(source: PREVIEW_SOURCE) }
