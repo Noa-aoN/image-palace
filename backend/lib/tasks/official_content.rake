@@ -280,6 +280,95 @@ namespace :official do
     end
   end
 
+
+  # 何を、どの鍵で公開するか。
+  #
+  # **箱ひとつ＝荷物ひとつ**を基本にする。受け取る人は1つだけ選ぶので、
+  # 中身がひとまとまりで説明できる大きさがよい。
+  #
+  # 体験用（demo_showcase）だけは、全部を束ねた別の荷物として出す。
+  # 「6つを合成する」仕組みは作らない——**公式宮殿で実際に並べたものを、そのまま出す**
+  # ほうが単純で、見た目も保証される。
+  PACKAGES = {
+    "starter_network" => {
+      kind: "starter", name: "ネットワークの通り道",
+      summary: "通信が届くまでに、どこを通るのか。キャンバスで順に辿れます",
+      boxes: [ "ネットワークの通り道" ], views: [ "ネットワークの通り道" ]
+    },
+    "starter_mythology" => {
+      kind: "starter", name: "ギリシャ神話の人びと",
+      summary: "神々の顔ぶれを、絵で覚える。系図のキャンバス付き",
+      boxes: [ "ギリシャ神話の人びと" ], views: [ "神々の系図" ]
+    },
+    "starter_words" => {
+      kind: "starter", name: "ことばの標本箱",
+      summary: "絵にすると、急に分かることば",
+      boxes: [ "ことばの標本箱" ], views: []
+    },
+    "starter_it" => {
+      kind: "starter", name: "ITのことば",
+      summary: "言葉だけでは掴みにくい、技術のことば",
+      boxes: [ "ITのことば" ], views: []
+    },
+    "starter_history" => {
+      kind: "starter", name: "歴史のことば",
+      summary: "出来事は、場面として覚える",
+      boxes: [ "歴史のことば" ], views: []
+    },
+    "starter_english" => {
+      kind: "starter", name: "英単語の標本",
+      summary: "絵にすると忘れない、英単語",
+      boxes: [ "英単語の標本" ], views: []
+    },
+    "starter_light" => {
+      kind: "starter", name: "光のことば",
+      summary: "一日の光の移ろいに、名前がある",
+      boxes: [ "光のことば" ], views: []
+    },
+    "starter_rodents" => {
+      kind: "starter", name: "齧歯類の分類",
+      summary: "分類の樹を、そのまま並べる。樹のキャンバス付き",
+      boxes: [ "齧歯類の分類" ], views: [ "齧歯類の分類" ]
+    },
+    "demo_showcase" => {
+      kind: "demo", name: "はじまりの宮殿",
+      summary: "ImagePalace でできることを、ひととおり",
+      boxes: :all, views: :all
+    }
+  }.freeze
+
+  desc "公式宮殿の中身を、荷物として公開する（KEY= で1つだけも可）"
+  task publish: :environment do
+    target = official_user!
+    only = ENV["KEY"].presence
+
+    PACKAGES.each do |key, spec|
+      next if only && key != only
+
+      boxes = spec[:boxes] == :all ? target.boxes.order(:created_at).to_a
+                                   : target.boxes.where(name: spec[:boxes]).to_a
+      views = spec[:views] == :all ? target.views.order(:created_at).to_a
+                                   : target.views.where(name: spec[:views]).to_a
+
+      if boxes.empty? && views.empty?
+        puts "#{key}: **原本が見つからない**"
+        next
+      end
+
+      begin
+        result = ContentPackages::Publisher.call(
+          key: key, kind: spec[:kind], name: spec[:name], summary: spec[:summary],
+          boxes: boxes, views: views, actor: target
+        )
+        c = result.counts
+        puts format("%-20s v%-2d カード %2d / 箱 %d / キャンバス %d / タグ %2d",
+                    key, result.package.version, c[:items], c[:boxes], c[:views], c[:tags])
+      rescue ContentPackages::Payload::Error => e
+        puts "#{key}: **出せない** #{e.message}"
+      end
+    end
+  end
+
   desc "いまの公式宮殿の様子"
   task status: :environment do
     target = official_user!
