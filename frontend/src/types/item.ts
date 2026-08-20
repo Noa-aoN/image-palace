@@ -103,6 +103,8 @@ export interface Item {
     from_preset?: boolean
   }
   /** 説明のAIファクトチェック結果 */
+  /** 公式コンテンツの下見で入ったカード。**自分のものと混ざらないように印を出す** */
+  from_preview?: boolean
   fact_check_status?: 'correct' | 'doubtful' | 'incorrect' | null
   fact_check_comment?: string | null
   /** doubtful/incorrect 時の訂正案（説明の書き換え候補） */

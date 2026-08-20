@@ -87,6 +87,34 @@ module Studio
         count
       end
 
+      # 下見で入ったカードの id。**印を付けるためだけに使う。**
+      #
+      # ふつうの利用者には問い合わせを1本も増やさない。
+      # 下見に入れる人でなければ、引くまでもなく空で返す
+      def item_ids_for(user)
+        return Set.new unless user&.can_access_official_studio?
+
+        installation = current(user)
+        return Set.new if installation.nil?
+
+        installation.entries.where(record_type: "Item").pluck(:record_id).to_set
+      end
+
+      # 原本が、下見を始めたあとに作り直されたか。
+      #
+      # **下見は作った時点で固まっている。** それは狙いどおりだが、
+      # 原本を直したあと「直ったはずなのに変わらない」と見えるのは困る。
+      # 作り直しを促せるように、ずれていることだけ伝える。
+      #
+      # 出したものは中身が変わらない決まりなので、ずれるのは下書きだけ。
+      # `draft!` は作り直すたびに行ごと入れ替わるので、生まれた時刻で見分けられる
+      def stale?(installation)
+        package = installation.package
+        return true if package.nil?
+
+        package.created_at > installation.installed_at
+      end
+
       # 下見で入れた箱とキャンバス。**開く先を示すため**
       def entry_points(installation)
         records = installation.entries.where(record_type: %w[Box View]).includes(:record)

@@ -2,6 +2,8 @@
 
 import { useCallback, useEffect, useState } from 'react'
 import Link from 'next/link'
+import { PreviewEndedNotice } from '@/components/features/studio/PreviewEndedNotice'
+import { wasEndedPreview } from '@/lib/studio/previewTombstone'
 import { useParams, useRouter } from 'next/navigation'
 import { Trash2, Pencil, Check, X, Plus, GalleryHorizontal, LayoutGrid, Frame } from 'lucide-react'
 import { Button } from '@/components/ui/button'
@@ -264,6 +266,10 @@ export default function BoxDetailPage() {
   }
 
   if (error && !box) {
+    // 終えた下見の行き先なら、汎用の「見つかりません」ではなく
+    // **意図して終えたことが分かる形**で言う
+    if (wasEndedPreview(id)) return <PreviewEndedNotice id={id} />
+
     return (
       <div className="max-w-lg mx-auto px-6 py-12 text-center space-y-4">
         <p className="text-destructive">{error}</p>

@@ -236,6 +236,178 @@ RSpec.describe "公式コンテンツの下見", type: :request do
     end
   end
 
+  # ── 作った時点で固まっている ──────────────────
+  #
+  # **下見は、押した瞬間の姿を見るもの。**
+  # 見ている最中に原本を直したら中身が変わる、では確かめたことにならない。
+  # 直した姿を見たいなら、下見を作り直す
+  describe "作った時点で固まっている" do
+    before { start_preview }
+
+    def preview_titles
+      ids = ContentInstallation.find_by(source: "preview")
+                               .entries.where(record_type: "Item").pluck(:record_id)
+      Item.where(id: ids).pluck(:title).sort
+    end
+
+    it "原本のカードを直しても、下見は変わらない" do
+      official.items.find_by(title: "DNS").update!(title: "DNS（直した）")
+
+      expect(preview_titles).to eq(%w[DNS ルーター])
+    end
+
+    it "原本にカードを足しても、下見は増えない" do
+      box = official.boxes.first
+      item = official.items.create!(title: "あとから足した", item_type: word,
+                                    generation_status: "completed")
+      item.medias.create!(media_type: "image", position: 0)
+          .file.attach(io: StringIO.new(png), filename: "x.png", content_type: "image/png")
+      item.meanings.create!(definition: "説明", language_code: "ja", position: 0)
+      box.box_entries.create!(entry: item, position: 9)
+
+      expect(preview_titles).to eq(%w[DNS ルーター])
+    end
+
+    it "原本のカードを消しても、下見は欠けない" do
+      official.items.find_by(title: "ルーター").destroy!
+
+      expect(preview_titles).to eq(%w[DNS ルーター])
+    end
+
+    # 下書きを作り直しても、いま見ているものは変わらない
+    it "下書きを作り直しても、下見は変わらない" do
+      official.items.find_by(title: "DNS").update!(title: "DNS（直した）")
+      ContentPackage.draft!(key: "starter_it", kind: "starter", name: "ITのことば",
+                            payload: ContentPackages::Exporter.call(boxes: [ official.boxes.first ]))
+
+      expect(preview_titles).to eq(%w[DNS ルーター])
+    end
+
+    # **ずれていることは伝える。**
+    # 「直したのに変わらない」と見えたままにしない。
+    #
+    # ずれるのは下書きだけ。`draft!` は作り直すたびに行ごと入れ替わるので、
+    # 生まれた時刻で見分けられる
+    it "下見中の下書きが作り直されたら、そうと分かる" do
+      draft = ContentPackage.draft!(key: "starter_it", kind: "starter", name: "ITのことば",
+                                    payload: package.payload)
+      start_preview(version: draft.version)
+
+      get "/api/v1/admin/studio/preview", headers: headers, as: :json
+      expect(json_response["status"]).to eq("draft")
+      expect(json_response["stale"]).to be(false)
+
+      # 同じ鍵の下書きは作り直される（版の番号も同じところへ戻る）
+      travel_to(1.minute.from_now) do
+        ContentPackage.draft!(key: "starter_it", kind: "starter", name: "ITのことば",
+                              payload: package.payload)
+      end
+
+      get "/api/v1/admin/studio/preview", headers: headers, as: :json
+      expect(json_response["stale"]).to be(true)
+    end
+
+    # 別の版の下書きを起こしても、いま見ている版には関わりが無い
+    it "別の版が起こされても、いま見ている版はずれない" do
+      ContentPackage.draft!(key: "starter_it", kind: "starter", name: "ITのことば",
+                            payload: package.payload)
+
+      get "/api/v1/admin/studio/preview", headers: headers, as: :json
+
+      expect(json_response["stale"]).to be(false)
+    end
+
+    # 出したものは中身が変わらない決まりなので、ずれようがない
+    it "出しているものの下見は、ずれない" do
+      get "/api/v1/admin/studio/preview", headers: headers, as: :json
+
+      expect(json_response["status"]).to eq("published")
+      expect(json_response["stale"]).to be(false)
+    end
+
+    it "作り直せば、直した姿になる" do
+      official.items.find_by(title: "DNS").update!(title: "DNS（直した）")
+      newer = ContentPackage.publish!(
+        key: "starter_it", kind: "starter", name: "ITのことば",
+        payload: ContentPackages::Exporter.call(boxes: [ official.boxes.first ])
+      )
+
+      start_preview(version: newer.version)
+
+      expect(preview_titles).to eq([ "DNS（直した）", "ルーター" ])
+    end
+  end
+
+  # ── 下見のカードだと分かる ──────────────────
+  #
+  # 下見は自分の口座に入るので、見た目が本物と変わらない。
+  # 印が無いと、自分で作ったカードと混ざる
+  describe "下見のカードに付く印" do
+    it "下見で入ったカードには印が付く" do
+      start_preview
+
+      get "/api/v1/items", headers: auth_headers_for(studio_user), as: :json
+
+      rows = (json_response["items"] || json_response)
+      expect(rows).not_to be_empty
+      expect(rows.map { |i| i["from_preview"] }).to all(be(true))
+    end
+
+    it "詳細にも印が付く" do
+      start_preview
+      item = studio_user.items.first
+
+      get "/api/v1/items/#{item.id}", headers: auth_headers_for(studio_user), as: :json
+
+      expect(json_response["from_preview"]).to be(true)
+    end
+
+    # **自分で作ったカードには付かない。** 混ぜたら印の意味が無くなる
+    it "自分で作ったカードには付かない" do
+      mine = studio_user.items.create!(title: "自分のカード", item_type: word,
+                                       generation_status: "completed")
+      start_preview
+
+      get "/api/v1/items/#{mine.id}", headers: auth_headers_for(studio_user), as: :json
+
+      expect(json_response["from_preview"]).to be(false)
+    end
+
+    # **ふつうの利用者のカードには、絶対に付かない**
+    it "工房に入れない人のカードには付かない" do
+      outsider = create(:user, :confirmed)
+      outsider.items.create!(title: "よそのカード", item_type: word, generation_status: "completed")
+
+      get "/api/v1/items", headers: auth_headers_for(outsider), as: :json
+
+      rows = (json_response["items"] || json_response)
+      expect(rows.map { |i| i["from_preview"] }).to all(be(false))
+    end
+
+    # デルフォイで受け取ったカードは本物。**印は付かない**
+    it "受け取ったカードには付かない" do
+      ContentDelivery.set!(package_key: "starter_it", channel: "delphi", enabled: true)
+      receiver = create(:user, :confirmed)
+      ContentPackages::Distributor.call(user: receiver, key: "starter_it", source: "delphi")
+
+      get "/api/v1/items", headers: auth_headers_for(receiver), as: :json
+
+      rows = (json_response["items"] || json_response)
+      expect(rows).not_to be_empty
+      expect(rows.map { |i| i["from_preview"] }).to all(be(false))
+    end
+
+    # 下見を終えたら、印もカードも残らない
+    it "終えたあとは残らない" do
+      start_preview
+      delete "/api/v1/admin/studio/preview", headers: headers, as: :json
+
+      get "/api/v1/items", headers: auth_headers_for(studio_user), as: :json
+
+      expect((json_response["items"] || json_response)).to be_empty
+    end
+  end
+
   # ── 触れる人 ───────────────────────────────
   describe "触れる人" do
     it "工房の権限が無ければ、始めることも見ることも終えることもできない" do

@@ -7,7 +7,8 @@ import { useAuthStore } from '@/stores/auth'
 import { useItemsStore } from '@/stores/items'
 import { can } from '@/lib/auth/capabilities'
 import { remainingLabel } from '@/lib/demo/session'
-import { showsPreviewBanner } from '@/lib/studio/preview'
+import { previewSubject, showsPreviewBanner, STALE_NOTE } from '@/lib/studio/preview'
+import { rememberEnded } from '@/lib/studio/previewTombstone'
 import { endPreview, fetchCurrentPreview, type PreviewState } from '@/lib/api/studio'
 
 /**
@@ -52,11 +53,13 @@ export function PreviewBanner() {
   }, [mayPreview, load])
 
   async function handleEnd() {
-    if (ending) return
+    if (ending || !preview.active) return
     if (!window.confirm('下見で入れたカードを片付けます。よろしいですか。')) return
 
     setEnding(true)
     try {
+      // 終える前に行き先を覚える。**あとから開いたときに、そうと言えるように**
+      rememberEnded({ boxId: preview.box_id, viewId: preview.view_id })
       await endPreview()
       setPreview({ active: false })
       // 下見のカードは消えたので、手元に持っている一覧も捨てる
@@ -71,6 +74,7 @@ export function PreviewBanner() {
   if (!showsPreviewBanner(pathname)) return null
 
   const remaining = remainingLabel(preview.expires_at)
+  const subject = previewSubject(preview)
 
   return (
     <div
@@ -79,11 +83,14 @@ export function PreviewBanner() {
       style={{ backgroundColor: '#4A3B6B', color: '#fff' }}
       role="status"
     >
+      {/* **色だけに頼らない。** 何を見ているのかを文字で言う */}
       <span>
-        公式コンテンツの下見中です
-        {preview.name ? `（${preview.name} v${preview.version}）` : ''}
+        公式コンテンツの{subject.label}
         {remaining ? ` ${remaining}で消えます` : ''}
       </span>
+
+      {subject.note ? <span className="opacity-80">{subject.note}</span> : null}
+      {preview.stale ? <span className="opacity-80">{STALE_NOTE}</span> : null}
 
       <button
         type="button"

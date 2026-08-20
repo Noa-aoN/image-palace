@@ -407,10 +407,15 @@ module Api
             key: installation.package_key,
             version: installation.package_version,
             name: package&.name,
+            # **何を見ているのかを、色ではなく文字で言えるように。**
+            # 下書きの下見と、出しているものの下見は、意味がまるで違う
+            status: package&.status,
             box_id: points[:box_id],
             view_id: points[:view_id],
             items: installation.entries.where(record_type: "Item").count,
-            expires_at: ::Studio::Preview.expires_at(installation)
+            expires_at: ::Studio::Preview.expires_at(installation),
+            # 原本が作り直されている＝いま見ているものは古い
+            stale: ::Studio::Preview.stale?(installation)
           }
         end
 

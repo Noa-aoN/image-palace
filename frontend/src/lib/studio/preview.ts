@@ -24,3 +24,39 @@ export function showsPreviewBanner(pathname: string | null | undefined): boolean
   if (!pathname) return false
   return !pathname.startsWith('/studio')
 }
+
+/**
+ * 何を下見しているのか。**色だけに頼らず、文字で言う。**
+ *
+ * 下書きの下見と、出しているものの下見は意味がまるで違う。
+ * 前者はまだ誰にも届いていないので、そう書き添える。
+ */
+export function previewSubject(preview: PreviewState): {
+  label: string
+  note: string | null
+} {
+  if (!preview.active) return { label: '', note: null }
+
+  const name = preview.name ?? preview.key
+  const version = `v${preview.version}`
+
+  switch (preview.status) {
+    case 'draft':
+      return {
+        label: `下書き ${version}「${name}」の下見中です`,
+        note: 'この内容は、まだ一般には配布されていません',
+      }
+    case 'published':
+      return { label: `公開版 ${version}「${name}」の下見中です`, note: null }
+    case 'suspended':
+      return { label: `止めている ${version}「${name}」の下見中です`, note: 'いまは配っていません' }
+    case 'archived':
+      return { label: `終了した ${version}「${name}」の下見中です`, note: 'もう配りません' }
+    default:
+      // 原本の行がもう無い（下書きを作り直した等）。中身は固まったままなので見られる
+      return { label: `${version}「${name}」の下見中です`, note: '元の荷物はもうありません' }
+  }
+}
+
+/** 原本が作り直されたときの促し。**「直したのに変わらない」と見えたままにしない** */
+export const STALE_NOTE = '原本が作り直されています。いま見ているのは作った時点の姿です'

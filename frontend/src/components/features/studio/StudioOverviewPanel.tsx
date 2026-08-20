@@ -27,7 +27,8 @@ import {
   STATUS_TONE,
   type PackageFilter,
 } from '@/lib/studio/status'
-import { previewEntryPath } from '@/lib/studio/preview'
+import { previewEntryPath, previewSubject } from '@/lib/studio/preview'
+import { rememberEnded } from '@/lib/studio/previewTombstone'
 
 /**
  * 工房室の概要。**いま何を配っているかと、原本の様子。**
@@ -92,6 +93,8 @@ export function StudioOverviewPanel() {
     if (busy) return
     setBusy('preview-end')
     try {
+      // 終える前に行き先を覚える。**あとから開いたときに、そうと言えるように**
+      if (preview.active) rememberEnded({ boxId: preview.box_id, viewId: preview.view_id })
       await endPreview()
       setPreview({ active: false })
       load()
@@ -176,8 +179,10 @@ export function StudioOverviewPanel() {
           style={{ borderColor: '#4A3B6B', backgroundColor: 'color-mix(in srgb, #4A3B6B 6%, transparent)' }}
         >
           <span className="flex-1">
-            いま <strong>{preview.name ?? preview.key}</strong> v{preview.version} を下見しています
-            （カード {preview.items} 枚）
+            <strong>{previewSubject(preview).label}</strong>（カード {preview.items} 枚）
+            {previewSubject(preview).note ? (
+              <span className="block text-xs text-muted-foreground">{previewSubject(preview).note}</span>
+            ) : null}
           </span>
           <Button
             size="sm"
@@ -189,6 +194,14 @@ export function StudioOverviewPanel() {
           <Button size="sm" variant="ghost" disabled={busy !== null} onClick={stopPreview}>
             {busy === 'preview-end' ? '片付けています…' : '下見を終了'}
           </Button>
+          {/* **下見は作った時点で固まっている。** それは狙いどおりだが、
+              原本を直したあと「直ったはずなのに変わらない」と見えるのは困る */}
+          {preview.stale ? (
+            <span className="w-full text-xs" style={{ color: '#8A6210' }}>
+              原本が作り直されています。いま見ているのは作った時点の姿です。
+              直した姿を見るには、その荷物の「下見する」をもう一度押してください
+            </span>
+          ) : null}
         </section>
       ) : null}
 

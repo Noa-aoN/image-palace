@@ -75,10 +75,14 @@ export type PreviewState =
       key: string
       version: number
       name: string | null
+      /** 下書きの下見か、出しているものの下見か。**色ではなく文字で言うため** */
+      status: PackageStatus | null
       box_id: string | null
       view_id: string | null
       items: number
       expires_at: string
+      /** 原本が作り直されている＝いま見ているものは古い */
+      stale: boolean
     }
 
 export type StudioOwner = {
