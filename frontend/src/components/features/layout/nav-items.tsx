@@ -237,9 +237,9 @@ export const STUDIO_ITEM: NavNode = {
   icon: <Hammer size={22} />,
   label: '公式工房', description: '公式コンテンツを選んで、確かめて、公開する',
   children: [
-    { href: '/studio', icon: <House size={20} />, label: '概要', exact: true },
-    { href: '/studio/packages', icon: <Package size={20} />, label: '荷物' },
+    { href: '/studio', icon: <Package size={20} />, label: '荷物', exact: true },
     { href: '/studio/publish', icon: <Upload size={20} />, label: '公開する' },
+    { href: '/studio/settings', icon: <Settings size={20} />, label: '設定' },
   ],
 }
 

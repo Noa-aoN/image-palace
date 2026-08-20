@@ -291,17 +291,27 @@ RSpec.describe "体験用の宮殿で禁じている操作", type: :request do
     #
     # **当面は admin だけ。** 招待の仕組みがまだ無い段階で operator へ開くと、
     # 運営業務の担当者が公式コンテンツを触れることになり、職務が分かれない
-    it "工房を使えるのは、いまは admin だけ" do
+    it "役割で使えるのは、いまは admin だけ" do
       expect(normal.can_manage_official_content?).to be(false)
       expect(create(:user, :confirmed, role: "support").can_manage_official_content?).to be(false)
       expect(create(:user, :confirmed, role: "operator").can_manage_official_content?).to be(false)
       expect(create(:user, :confirmed, role: "admin").can_manage_official_content?).to be(true)
     end
 
-    # 原本の口座でも、権限が無ければ工房は開けない
-    it "原本を持っていても、役割が無ければ工房は使えない" do
+    # **原本を持つ口座は、役割が user でも工房を使える。**
+    #
+    # その口座が既に公式コンテンツを全部所有しているので、
+    # 公開の可否だけを分けても守れる範囲はさほど増えない。
+    # 代わりに、工房へ入るときはもう一度ご本人か確かめる
+    it "原本を持っていれば、役割が user でも工房を使える" do
       expect(official).to be_official_content_account
-      expect(official.can_manage_official_content?).to be(false)
+      expect(official.can_manage_official_content?).to be(true)
+    end
+
+    # 持ち主だからといって、人やお金は触れない
+    it "原本を持っていても、運営の入口は開かない" do
+      expect(official.can_access_ops_room?).to be(false)
+      expect(official.can_manage_billing?).to be(false)
     end
 
     # **原本の持ち主は1つ、触れる人は将来複数。** この形を壊さない

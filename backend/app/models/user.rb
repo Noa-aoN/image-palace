@@ -12,6 +12,11 @@ class User < ApplicationRecord
   # 将来「宮殿ごとの一員か」を判断に足せるようにするため
   include UserCapabilities
 
+  # == 公式制作枠 ============================================================
+  # 公式コンテンツを作るときは、買ったクレジットを減らさない。
+  # ただし無制限にはせず、月ごとの枠で数える
+  include StudioAllowance
+
   # == 役割 ==================================================================
   #   user     … 一般。/admin には入れない
   #   support  … 閲覧・調査。見るだけで、配ったり変えたりはできない
@@ -373,7 +378,20 @@ class User < ApplicationRecord
   # 結果として消えなくてよかったぶんを失っていた。
   #
   # 種類ではなく期限で並べる。期限が無いものは最後（いくらでも待てるため）。
-  def consume_credits!(amount, item: nil, space_point_id: nil)
+  # クレジットを使う。
+  #
+  # **公式コンテンツを作る人は、枠のほうから使う。**
+  # 運営の仕事であって、その人の買い物ではないため。
+  # 枠を使い切ったら普通のクレジットへ戻る（作業が止まるより、
+  # 気づいてから上げてもらうほうがよい）。
+  #
+  # 分岐はここ1か所。呼んでいる8か所は1文字も変わらない
+  def consume_credits!(amount, item: nil, space_point_id: nil, kind: "image")
+    if studio_allowance_covers?(amount)
+      consume_studio_allowance!(amount, kind: kind, item: item)
+      return
+    end
+
     with_lock do
       raise InsufficientCredits, "クレジットが不足しています" if available_credit_points < amount
 

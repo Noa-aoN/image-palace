@@ -36,11 +36,19 @@ module Api
       # 中身は何も返さない。開いているかどうかだけ。
       # これがあると、閉じているときに**押せる見た目のまま断る**のを避けられる
       def show
-        render json: { open: ::Demo::Session.open? }
+        # 名乗っていれば、その人が入れるかを返す。
+        # **確かめる人には「押せる」と伝える**（一般には準備中のまま）
+        set_user_by_token
+        render json: {
+          open: ::Demo::Session.open_for?(current_user),
+          public: ::Demo::Session.open?
+        }
       end
 
       def create
-        result = ::Demo::Session.call(resume_token: params[:resume_token])
+        # 名乗っていれば見る（準備中でも、制作の権限があれば入れる）
+        set_user_by_token
+        result = ::Demo::Session.call(resume_token: params[:resume_token], viewer: current_user)
         user = result.user
 
         render json: {

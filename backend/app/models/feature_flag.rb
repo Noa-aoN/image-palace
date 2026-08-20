@@ -67,6 +67,10 @@ class FeatureFlag < ApplicationRecord
     # ── 公式 ──
     "page.board" => { label: "公示板", group: "ops", path: "/board", stage: "released" },
     "page.news" => { label: "お知らせ", group: "ops", path: "/news", stage: "released" },
+    "page.studio" => {
+      label: "公式工房", group: "ops", path: "/studio", stage: "released",
+      note: "公式コンテンツを選んで、確かめて、公開する。**権限のある人にしか見えない**"
+    },
     "page.guide" => { label: "使い方", group: "ops", path: "/guide", stage: "released" },
     "page.blog" => { label: "コラム", group: "ops", path: "/blog", stage: "released" },
 

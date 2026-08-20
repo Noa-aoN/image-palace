@@ -12,7 +12,12 @@ class ContentInstallation < ApplicationRecord
   SOURCES = %w[
     starter_free demo_signup delphi
     mission campaign gift purchase admin_grant
+    preview
   ].freeze
+
+  # 下見。**受け取りとして数えない**（配布数にも無料枠にも入らない）。
+  # 印を付けておくと、あとで片付けられる
+  PREVIEW_SOURCE = "preview"
 
   # 無料で受け取れる本数。**DB の制約にはしない。**
   # 部分索引で焼き付けると、数を変えたいときに migration が要る
@@ -28,6 +33,7 @@ class ContentInstallation < ApplicationRecord
   validates :package_key, uniqueness: { scope: :user_id }
 
   scope :free, -> { where(source: FREE_SOURCES) }
+  scope :real, -> { where.not(source: PREVIEW_SOURCE) }
   scope :recent, -> { order(installed_at: :desc) }
 
   def package

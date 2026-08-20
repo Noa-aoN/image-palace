@@ -63,6 +63,37 @@ RSpec.describe UserCapabilities do
     expect(user.capabilities.values).to all(be(true))
   end
 
+  # 原本を持つ口座は、役割が user でも工房を使える。
+  # **その口座が既に全部を所有している**ので、公開の可否だけを分けても
+  # 守れる範囲はさほど増えない。代わりに、入るときはもう一度本人か確かめる
+  describe "原本を持つ口座" do
+    let(:owner) { create(:user, :confirmed, role: "user") }
+
+    around do |example|
+      original = ENV["OFFICIAL_CONTENT_USER_ID"]
+      ENV["OFFICIAL_CONTENT_USER_ID"] = owner.id
+      example.run
+      ENV["OFFICIAL_CONTENT_USER_ID"] = original
+    end
+
+    it "役割が user でも、工房を使える" do
+      expect(owner.can_access_official_studio?).to be(true)
+      expect(owner.can_edit_official_content?).to be(true)
+      expect(owner.can_publish_official_content?).to be(true)
+    end
+
+    # **運営の側は開かない。** 持ち主だからといって、人やお金は触れない
+    it "運営の入口は開かない" do
+      expect(owner.can_access_ops_room?).to be(false)
+      expect(owner.can_manage_billing?).to be(false)
+      expect(owner.can_manage_members?).to be(false)
+    end
+
+    it "ほかの一般の人には何も起きない" do
+      expect(create(:user, :confirmed).capabilities.values).to all(be(false))
+    end
+  end
+
   describe "知らない名前" do
     it "問い合わせても false（例外にしない）" do
       expect(build(:user, role: "admin").capability?(:fly_to_the_moon)).to be(false)

@@ -65,8 +65,10 @@ module Demo
     end
 
     # @param resume_token [String, nil] 画面が持っている合鍵
-    def initialize(resume_token: nil)
+    # @param viewer [User, nil] いま名乗っている人。**準備中でも入れるかの判断に使う**
+    def initialize(resume_token: nil, viewer: nil)
       @resume_token = resume_token
+      @viewer = viewer
     end
 
     # 入口が開いているか。**画面の出し分けは守りではない**ので、ここでも見る
@@ -74,8 +76,20 @@ module Demo
       FeatureFlag.stages["demo_entry"] == "released"
     end
 
+    # 準備中でも入れる人。
+    #
+    # **確かめられないまま開くことになるのを避ける。**
+    # 制作の権限を持つ人だけが、閉じている間も中を見られる。
+    # 一般の人は今までどおり断られる（入口は認証が要らないので、
+    # 名乗らない相手はここに来ない）。
+    def self.open_for?(user)
+      open? || user&.can_access_official_studio? || false
+    end
+
     def call
-      raise Unavailable, "体験版は現在準備中です" unless self.class.open?
+      unless self.class.open_for?(@viewer)
+        raise Unavailable, "体験版は現在準備中です"
+      end
 
       reused = find_living(self.class.user_from_resume_token(@resume_token))
       return Result.new(user: reused, created: false, package: nil) if reused
