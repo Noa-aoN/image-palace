@@ -68,4 +68,19 @@ export function badgeFor(
   return null
 }
 
+/**
+ * 本人確認（パスキー・認証アプリ）が要る人か。
+ *
+ * **執務室と工房は、どちらも入るときに確かめる。**
+ * だから、どちらかに入れる人には設定が要る。
+ *
+ * ここを役割で見ると、工房だけを使う口座（役割は `user`）が
+ * **設定できないまま閉め出される**。実際にそうなった。
+ */
+export function needsStrongAuth(
+  session: Pick<AdminSession, 'capabilities'> | null | undefined
+): boolean {
+  return canAny(session, ['access_ops_room', 'access_official_studio'])
+}
+
 export type { Capabilities, Capability }
