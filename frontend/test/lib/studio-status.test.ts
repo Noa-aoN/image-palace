@@ -22,13 +22,15 @@ describe('荷物の扱い', () => {
     }
   })
 
+  // **扱いと届け先は別のこと。**
+  // 出していても届け先がゼロなら、誰にも届かない
   describe('次にできること', () => {
-    it('下書きは、公開できる', () => {
+    it('下書きは、外へ出せる', () => {
       expect(actionsFor('draft').map((a) => a.action)).toEqual(['publish'])
     })
 
     // **誤って出したときは、削除ではなく止める**
-    it('配布中は、止めるか終えるか', () => {
+    it('出しているものは、止めるか終えるか', () => {
       expect(actionsFor('published').map((a) => a.action)).toEqual(['suspend', 'archive'])
     })
 

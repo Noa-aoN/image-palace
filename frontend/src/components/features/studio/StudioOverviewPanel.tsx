@@ -9,6 +9,8 @@ import {
   discardPreview,
   fetchStudio,
   previewPackage,
+  setDelivery,
+  type Delivery,
   type StudioOverview,
   type StudioPackage,
 } from '@/lib/api/studio'
@@ -135,7 +137,7 @@ export function StudioOverviewPanel() {
                   </p>
                 </div>
 
-                <div className="flex flex-wrap gap-2">
+                <div className="flex w-full flex-wrap gap-2 sm:w-auto">
                   {canPreview(pkg.status) ? (
                     <Button
                       size="sm"
@@ -181,6 +183,30 @@ export function StudioOverviewPanel() {
                     下見を片付ける
                   </Button>
                 </div>
+
+                {/* 届け先。**どこで配るか。**
+                    版ではなく鍵に付くので、出し直しても引き継がれる。
+                    配布中でなければ、入れても届かないので添えて言う */}
+                <div className="w-full border-t pt-3" style={{ borderColor: 'var(--ivory-dark)' }}>
+                  <p className="mb-2 text-xs text-muted-foreground">
+                    届け先
+                    {pkg.status !== 'published'
+                      ? '（この荷物はいま配っていないので、入れても届きません）'
+                      : ''}
+                  </p>
+                  <div className="flex flex-wrap gap-2">
+                    {pkg.deliveries.map((d) => (
+                      <DeliveryToggle
+                        key={d.channel}
+                        delivery={d}
+                        busy={busy !== null}
+                        onToggle={() =>
+                          act(pkg, () => setDelivery(pkg.key, d.channel, !d.enabled), `${pkg.id}-${d.channel}`)
+                        }
+                      />
+                    ))}
+                  </div>
+                </div>
               </li>
             ))}
           </ul>
@@ -216,5 +242,40 @@ function StatusChip({ status }: { status: StudioPackage['status'] }) {
     >
       {STATUS_LABEL[status]}
     </span>
+  )
+}
+
+/**
+ * 届け先ひとつ。
+ *
+ * **受け取る側の仕組みがまだ無いものは、そうと言う。**
+ * 設定できるのに届かない、を黙って起こさない。
+ */
+function DeliveryToggle({
+  delivery,
+  busy,
+  onToggle,
+}: {
+  delivery: Delivery
+  busy: boolean
+  onToggle: () => void
+}) {
+  const disabled = busy || delivery.pending
+
+  return (
+    <button
+      type="button"
+      onClick={onToggle}
+      disabled={disabled}
+      aria-pressed={delivery.enabled}
+      title={delivery.pending ? '受け取る側の仕組みがまだありません' : delivery.note}
+      className={`rounded-full border px-3 py-1 text-xs transition disabled:cursor-not-allowed disabled:opacity-50 ${
+        delivery.enabled ? 'border-[var(--palace)] font-medium' : 'border-border text-muted-foreground'
+      }`}
+      style={delivery.enabled ? { backgroundColor: 'var(--palace)', color: '#fff' } : undefined}
+    >
+      {delivery.label}
+      {delivery.pending ? '（準備中）' : ''}
+    </button>
   )
 }

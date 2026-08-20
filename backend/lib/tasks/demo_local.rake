@@ -42,12 +42,14 @@ namespace :demo do
     box, view = build_sample!(official)
 
     result = ContentPackages::Publisher.call(
-      key: Demo::Session::PACKAGE_KEY, kind: "demo", name: "はじまりの宮殿",
+      key: "demo_showcase", kind: "demo", name: "はじまりの宮殿",
       summary: "ImagePalace でできることを、ひととおり",
       boxes: [ box ], views: [ view ], actor: official
     )
     package = result.package
 
+    # 届け先に「体験の宮殿に置く」を入れる。**入れないと宮殿が組めない**
+    ContentDelivery.set!(package_key: package.key, channel: "demo", enabled: true)
     FeatureFlag.find_or_initialize_by(key: "demo_entry").update!(stage: "released")
 
     puts

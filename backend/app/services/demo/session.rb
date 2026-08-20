@@ -35,8 +35,13 @@ module Demo
     # 同時に立っていられる数。届いたら異常
     CONCURRENT_CAP = 300
 
-    # 配る中身。公式コンテンツの荷物をそのまま使う
-    PACKAGE_KEY = "demo_showcase"
+    # 配る中身は、**届け先が「体験」の荷物を全部**。
+    #
+    # 1つの荷物に固定していたころは、中身を変えるのに
+    # 荷物ごと作り直すことになった。届け先で選ぶようにすると、
+    # 工房室で「IT を外す」「神話を足す」がその場でできる。
+    #
+    # `demo_showcase` という鍵はもう特別扱いしない
     # 体験の記念に1つだけ渡す
     MEDAL_KEY = "medal_first_visit"
 
@@ -124,15 +129,24 @@ module Demo
       raise Unavailable, "いまは混み合っています。しばらくしてからお試しください" if living >= CONCURRENT_CAP
     end
 
+    # 体験の宮殿に置くもの。**届け先が「体験」で、いま配れるもの**
+    def self.packages
+      ContentDelivery.packages_for("demo")
+    end
+
     def build!
-      package = ContentPackage.latest_published(PACKAGE_KEY)
-      raise Unavailable, "体験用の宮殿がまだ用意されていません" if package.nil?
+      packages = self.class.packages
+      raise Unavailable, "体験用の宮殿がまだ用意されていません" if packages.empty?
 
       user = create_user!
-      ContentPackages::Distributor.call(user: user, package: package, source: "demo_signup")
+      # **順に入れる。** 同じカードが2つの荷物に入っていても、2枚にはならない
+      # （`Distributor` が既に持っているものを使い回す）
+      packages.each do |package|
+        ContentPackages::Distributor.call(user: user, package: package, source: "demo_signup")
+      end
       grant_medal(user)
 
-      Result.new(user: user, created: true, package: package)
+      Result.new(user: user, created: true, package: packages.first)
     end
 
     def create_user!

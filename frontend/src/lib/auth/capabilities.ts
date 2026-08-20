@@ -63,7 +63,7 @@ export function badgeFor(
       : { label: '運営', hint: '運営として見ています' }
   }
   if (can(session, 'access_official_studio')) {
-    return { label: '公式制作', hint: '公式コンテンツの制作権限があります' }
+    return { label: '公式工房', hint: '公式コンテンツの制作権限があります' }
   }
   return null
 }

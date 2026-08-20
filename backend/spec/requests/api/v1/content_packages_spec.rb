@@ -29,8 +29,12 @@ RSpec.describe "公式コンテンツの受け取り", type: :request do
       item.tags << (author.tags.find_by(name: "タグ-#{key}") || author.tags.create!(name: "タグ-#{key}"))
       box.box_entries.create!(entry: item, position: i + 1)
     end
-    ContentPackage.publish!(key: key, kind: kind, name: name, summary: "#{name}の紹介",
-                            payload: ContentPackages::Exporter.call(boxes: [ box ]))
+    package = ContentPackage.publish!(key: key, kind: kind, name: name, summary: "#{name}の紹介",
+                                      payload: ContentPackages::Exporter.call(boxes: [ box ]))
+    # **届け先に入れないと、デルフォイには並ばない。**
+    # 種別（starter / demo）で決めるのをやめたため
+    ContentDelivery.set!(package_key: package.key, channel: "delphi", enabled: true) if kind == "starter"
+    package
   end
 
   describe "GET /api/v1/content_packages" do
@@ -74,7 +78,7 @@ RSpec.describe "公式コンテンツの受け取り", type: :request do
     end
 
     it "配るのをやめたものは並ばない" do
-      myth.archive!
+      myth.suspend!
 
       get "/api/v1/content_packages", headers: headers, as: :json
 
@@ -82,12 +86,22 @@ RSpec.describe "公式コンテンツの受け取り", type: :request do
     end
 
     # 体験用の宮殿ぶんは、受け取る一覧に混ぜない
-    it "体験用の中身は並ばない" do
+    it "届け先がデルフォイでないものは並ばない" do
       publish(key: "demo_showcase", name: "はじまりの宮殿", titles: %w[見本], kind: "demo")
 
       get "/api/v1/content_packages", headers: headers, as: :json
 
       expect(json_response["packages"].map { |p| p["key"] }).not_to include("demo_showcase")
+    end
+
+    # **一覧に出ていなくても、鍵さえ知っていれば取れる、が起きないように**
+    it "届け先に入っていないものは、鍵を知っていても受け取れない" do
+      publish(key: "demo_showcase", name: "はじまりの宮殿", titles: %w[見本], kind: "demo")
+
+      post "/api/v1/content_packages/demo_showcase/install", headers: headers, as: :json
+
+      expect(response).to have_http_status(:not_found)
+      expect(user.items.count).to eq(0)
     end
 
     it "ログインしていないと見られない" do

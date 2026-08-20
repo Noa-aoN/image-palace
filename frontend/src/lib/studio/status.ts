@@ -5,17 +5,24 @@ import type { PackageStatus, StatusAction } from '@/lib/api/studio'
 // **止めるのと終えるのを分けてある。**
 // 誤って出したときに「削除」で応えると、何を出していたのかが分からなくなる。
 
+// **扱いと届け先は別のこと。**
+//
+//   扱い   … その荷物を外へ出しているか（下書き / 出している / 止めた / 終えた）
+//   届け先 … 出しているものが、どこへ届くか（体験 / デルフォイ / コード…）
+//
+// 出していても届け先がゼロなら、誰にも届かない。
+// 逆に届け先を入れても、止めていれば届かない。**両方そろって初めて届く。**
 export const STATUS_LABEL: Record<PackageStatus, string> = {
   draft: '下書き',
-  published: '配布中',
-  suspended: '停止中',
+  published: '出している',
+  suspended: '止めた',
   archived: '終了',
 }
 
 export const STATUS_NOTE: Record<PackageStatus, string> = {
-  draft: 'まだ誰にも配っていません。下見はできます',
-  published: 'いま配っています',
-  suspended: '配るのを止めています。**戻せます**',
+  draft: 'まだ外へ出していません。下見はできます',
+  published: '外へ出しています。あとは届け先しだいです',
+  suspended: '外へ出すのを止めています。戻せます',
   archived: '役目を終えました。戻せません',
 }
 
@@ -43,16 +50,16 @@ export type ActionSpec = {
 export function actionsFor(status: PackageStatus): ActionSpec[] {
   switch (status) {
     case 'draft':
-      return [{ action: 'publish', label: '公開する' }]
+      return [{ action: 'publish', label: '外へ出す' }]
     case 'published':
       return [
-        { action: 'suspend', label: '配るのを止める' },
-        { action: 'archive', label: '終了する', confirm: '終了すると、もう配り直せません。よろしいですか。' },
+        { action: 'suspend', label: '出すのを止める' },
+        { action: 'archive', label: '終了する', confirm: '終了すると、もう出し直せません。よろしいですか。' },
       ]
     case 'suspended':
       return [
-        { action: 'resume', label: 'もう一度配る' },
-        { action: 'archive', label: '終了する', confirm: '終了すると、もう配り直せません。よろしいですか。' },
+        { action: 'resume', label: 'もう一度出す' },
+        { action: 'archive', label: '終了する', confirm: '終了すると、もう出し直せません。よろしいですか。' },
       ]
     case 'archived':
       return []
