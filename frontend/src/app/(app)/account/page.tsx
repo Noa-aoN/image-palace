@@ -10,6 +10,7 @@ import { AvatarGenerator } from '@/components/features/account/AvatarGenerator'
 import { PasswordEditor } from '@/components/features/account/PasswordEditor'
 import { DisplayNameEditor } from '@/components/features/account/DisplayNameEditor'
 import { SecuritySettings } from '@/components/features/account/SecuritySettings'
+import { needsStrongAuth } from '@/lib/auth/capabilities'
 import { PalaceNameEditor } from '@/components/features/account/PalaceNameEditor'
 import { deleteAccount } from '@/lib/api/account'
 import { useAdminStore } from '@/stores/admin'
@@ -57,7 +58,9 @@ export default function AccountPage() {
 
   // セキュリティの項目を出すかどうかの判断にだけ使う。
   // 出し分けは見た目の話で、守りはサーバー側にある
-  const isAdmin = useAdminStore((s) => s.session?.admin ?? false)
+  // **役割ではなく、できることの名前で決める。**
+  // 執務室と工房のどちらかに入れる人には、本人確認の設定が要る
+  const showSecurity = needsStrongAuth(useAdminStore((s) => s.session))
 
   const sections: CategorySection<TabKey>[] = [
     {
@@ -122,11 +125,14 @@ export default function AccountPage() {
     // 退会の直前に置く。どちらも「アカウントそのもの」を扱う項目で、
     // 見え方や公開範囲の設定とは性質が違う。
     //
-    // 中身（パスキー・二要素認証）が運営の運用のためのものなので、
+    // 中身（パスキー・二要素認証）が運営・制作の運用のためのものなので、
     // 一般の人には見出しごと出さない。**空の項目を置くと、
     // 何か設定し忘れているのかと考えさせてしまう。**
+    //
+    // **役割では決めない。** 工房は役割が `user` の口座も使うので、
+    // 役割で見ていると設定できないまま閉め出される
     // ログイン方法とメールアドレスは「登録情報」にある
-    ...(isAdmin
+    ...(showSecurity
       ? [
           {
             key: 'security' as const,

@@ -18,7 +18,7 @@ import { useItemsStore } from '@/stores/items'
 import { useBillingStore } from '@/stores/billing'
 import { useNotificationsStore } from '@/stores/notifications'
 import { useAdminStore } from '@/stores/admin'
-import { badgeFor } from '@/lib/auth/capabilities'
+import { badgeFor, can } from '@/lib/auth/capabilities'
 import { isDemoUser } from '@/lib/demo/session'
 import { leaveDemo } from '@/lib/api/demo'
 import { signOut } from '@/lib/api/auth'
@@ -297,9 +297,17 @@ export function AppHeader() {
                 </DropdownMenuLabel>
               </DropdownMenuGroup>
               <DropdownMenuSeparator />
-              {adminSession?.admin && (
+              {/* 奥の部屋への近道。**それぞれの能力で出す。**
+                  工房だけを使う口座（役割は user）もあるので、
+                  片方の条件でまとめると、その人に入口が出ない */}
+              {can(adminSession, 'access_ops_room') && (
                 <DropdownMenuItem onClick={() => router.push('/admin')} className="cursor-pointer">
                   執務室
+                </DropdownMenuItem>
+              )}
+              {can(adminSession, 'access_official_studio') && (
+                <DropdownMenuItem onClick={() => router.push('/studio')} className="cursor-pointer">
+                  公式工房
                 </DropdownMenuItem>
               )}
               <DropdownMenuItem onClick={() => router.push('/account')} className="cursor-pointer">

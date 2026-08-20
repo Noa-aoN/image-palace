@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { badgeFor, can, canAny, opsEntriesFor } from '@/lib/auth/capabilities'
+import { badgeFor, can, canAny, needsStrongAuth, opsEntriesFor } from '@/lib/auth/capabilities'
 
 // できることの名前で、画面の出し分けを決める。
 //
@@ -87,5 +87,35 @@ describe('ヘッダーの肩書き', () => {
   it('何も持っていなければ出さない', () => {
     expect(badgeFor(plain)).toBeNull()
     expect(badgeFor(null)).toBeNull()
+  })
+})
+
+// 執務室と工房は、どちらも入るときに本人確認を求める。
+// だから、どちらかに入れる人には設定が要る。
+//
+// **ここを役割で見ると、工房だけを使う口座が閉め出される。**
+// 実際そうなった: studio@ は役割が user なので、
+// セキュリティの設定が画面に出ず、パスキーを登録できなかった。
+describe('本人確認が要る人', () => {
+  it('運営には要る', () => {
+    expect(needsStrongAuth(ops)).toBe(true)
+  })
+
+  // ここが肝
+  it('制作だけの人にも要る', () => {
+    expect(needsStrongAuth(studio)).toBe(true)
+  })
+
+  it('両方持っていれば、もちろん要る', () => {
+    expect(needsStrongAuth(admin)).toBe(true)
+  })
+
+  it('一般の人には要らない（使わせないものを見せない）', () => {
+    expect(needsStrongAuth(plain)).toBe(false)
+  })
+
+  it('分からないときは出さない', () => {
+    expect(needsStrongAuth(null)).toBe(false)
+    expect(needsStrongAuth(undefined)).toBe(false)
   })
 })
