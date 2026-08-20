@@ -151,6 +151,135 @@ namespace :official do
     puts "公式の口座: カード #{target.items.count} / 箱 #{target.boxes.count}"
   end
 
+
+  # キャンバス。**線に意味がある題材だけ**に付ける。
+  #
+  # 並べただけの板は、カードの一覧と変わらない。
+  # 「つなぐと分かる」ものにだけ置くから、受け取った人に値打ちが伝わる。
+  #
+  # 座標は手で決める。あとで公式の口座にログインして、画面から直せる
+  # （そちらが本来の作り方。ここは最初の1回を用意するだけ）
+  CANVASES = {
+    "ネットワークの通り道" => {
+      box: "ネットワークの通り道",
+      # 左から右へ、通信が流れる順に並べる
+      layout: {
+        "クライアント" => [ 0, 260 ],
+        "IPアドレス" => [ 260, 60 ],
+        "DNS" => [ 260, 460 ],
+        "ルーター" => [ 520, 260 ],
+        "スイッチ" => [ 780, 60 ],
+        "サブネット" => [ 780, 460 ],
+        "ファイアウォール" => [ 1040, 260 ],
+        "ゲートウェイ" => [ 1300, 260 ],
+        "サーバー" => [ 1560, 260 ],
+        "パケット" => [ 780, 700 ],
+        "プロトコル" => [ 1040, 700 ],
+        "帯域幅" => [ 520, 700 ]
+      },
+      edges: [
+        [ "クライアント", "IPアドレス", "自分の住所" ],
+        [ "クライアント", "DNS", "名前を引く" ],
+        [ "IPアドレス", "ルーター", nil ],
+        [ "DNS", "ルーター", nil ],
+        [ "ルーター", "スイッチ", "道を選ぶ" ],
+        [ "ルーター", "サブネット", "区画" ],
+        [ "スイッチ", "ファイアウォール", nil ],
+        [ "サブネット", "ファイアウォール", nil ],
+        [ "ファイアウォール", "ゲートウェイ", "外へ出る" ],
+        [ "ゲートウェイ", "サーバー", "届く" ],
+        [ "帯域幅", "ルーター", "どれだけ通せるか" ],
+        [ "パケット", "スイッチ", "運ばれる単位" ],
+        [ "プロトコル", "ファイアウォール", "約束ごと" ]
+      ]
+    },
+    "神々の系図" => {
+      box: "ギリシャ神話の人びと",
+      # ゼウスを中心に、放射状に広げる
+      layout: {
+        "ゼウス" => [ 640, 340 ],
+        "ヘラ" => [ 1040, 340 ],
+        "ポセイドン" => [ 240, 340 ],
+        "デメテル" => [ 240, 700 ],
+        "アテナ" => [ 640, 40 ],
+        "アポロン" => [ 1040, 40 ],
+        "トリトン" => [ 0, 40 ],
+        "ディオスクーロイ" => [ 640, 700 ],
+        "パエトーン（古希: Φαέθων, Phaëthōn）" => [ 1040, 700 ],
+        "リュカーオーン" => [ 1440, 340 ]
+      },
+      edges: [
+        [ "ゼウス", "ヘラ", "妻" ],
+        [ "ゼウス", "ポセイドン", "兄" ],
+        [ "ゼウス", "デメテル", "姉" ],
+        [ "ゼウス", "アテナ", "娘" ],
+        [ "ゼウス", "アポロン", "子" ],
+        [ "ゼウス", "ディオスクーロイ", "子" ],
+        [ "ポセイドン", "トリトン", "子" ],
+        [ "アポロン", "パエトーン（古希: Φαέθων, Phaëthōn）", "太陽の車" ],
+        [ "ゼウス", "リュカーオーン", "罰した" ]
+      ]
+    },
+    "齧歯類の分類" => {
+      box: "齧歯類の分類",
+      # 上から下へ、分類の樹
+      layout: {
+        "齧歯目" => [ 640, 0 ],
+        "ネズミ亜目" => [ 160, 340 ],
+        "リス亜目" => [ 560, 340 ],
+        "ヤマアラシ亜目" => [ 960, 340 ],
+        "ビーバー亜目" => [ 1360, 340 ],
+        "ウロコオリス亜目" => [ 1760, 340 ],
+        "ネズミ" => [ 160, 680 ],
+        "ウッドチャック" => [ 560, 680 ]
+      },
+      edges: [
+        [ "齧歯目", "ネズミ亜目", nil ],
+        [ "齧歯目", "リス亜目", nil ],
+        [ "齧歯目", "ヤマアラシ亜目", nil ],
+        [ "齧歯目", "ビーバー亜目", nil ],
+        [ "齧歯目", "ウロコオリス亜目", nil ],
+        [ "ネズミ亜目", "ネズミ", nil ],
+        [ "リス亜目", "ウッドチャック", nil ]
+      ]
+    }
+  }.freeze
+
+  desc "キャンバスを組む"
+  task canvases: :environment do
+    target = official_user!
+
+    CANVASES.each do |name, spec|
+      view = target.views.find_by(name: name) || target.views.create!(name: name, view_type: "freeboard")
+      items = target.items.where(title: spec[:layout].keys).index_by(&:title)
+
+      spec[:layout].each_with_index do |(title, (x, y)), index|
+        item = items[title]
+        unless item
+          puts "  見つからない: #{title}"
+          next
+        end
+        placement = view.view_items.find_or_initialize_by(item: item)
+        placement.assign_attributes(x: x, y: y, width: 240, height: 300, z_index: index, position: index)
+        placement.save!
+      end
+
+      view.view_edges.destroy_all
+      spec[:edges].each_with_index do |(from, to, label), index|
+        source = items[from]
+        dest = items[to]
+        next if source.nil? || dest.nil?
+
+        view.view_edges.create!(
+          source_node_id: source.id, target_node_id: dest.id,
+          label: label, z_index: index
+        )
+      end
+
+      puts format("%-22s カード %2d / 線 %2d", name, view.view_items.count, view.view_edges.count)
+    end
+  end
+
   desc "いまの公式宮殿の様子"
   task status: :environment do
     target = official_user!
