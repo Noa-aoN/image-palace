@@ -55,6 +55,8 @@ RSpec.describe "運営の段階ごとに触れる範囲", type: :request do
     [ :put, "/api/v1/admin/finance/parameters/image_cost" ],
     [ :put, "/api/v1/admin/finance/actuals/2026/8" ],
     [ :get, "/api/v1/admin/studio" ],
+    [ :get, "/api/v1/admin/studio/settings" ],
+    [ :patch, "/api/v1/admin/studio/settings" ],
     [ :get, "/api/v1/admin/studio/sources" ],
     [ :post, "/api/v1/admin/studio/draft" ],
     [ :post, "/api/v1/admin/studio/starter_x/1/preview" ],

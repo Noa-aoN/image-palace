@@ -134,6 +134,71 @@ RSpec.describe "公式工房", type: :request do
     end
   end
 
+  describe "設定" do
+    it "いまの様子が分かる" do
+      get "/api/v1/admin/studio/settings", headers: headers, as: :json
+
+      expect(response).to have_http_status(:success)
+      expect(json_response.dig("official_account", "configured")).to be(true)
+      expect(json_response["allowance_limit_credits"]).to be_a(Integer)
+      expect(json_response["demo_entry_stage"]).to be_present
+    end
+
+    # **制作だけの人は執務室に入れない。** 同じ栓をここにも出す
+    it "枠の上限を変えられる" do
+      patch "/api/v1/admin/studio/settings",
+            params: { allowance_limit_credits: 250 }, headers: headers, as: :json
+
+      expect(json_response["allowance_limit_credits"]).to eq(250)
+      expect(GrantPolicy.amount_for(StudioAllowance::POLICY_KEY)).to eq(250)
+    end
+
+    it "体験の入口を開け閉めできる" do
+      patch "/api/v1/admin/studio/settings",
+            params: { demo_entry_stage: "released" }, headers: headers, as: :json
+
+      expect(json_response["demo_entry_stage"]).to eq("released")
+      expect(Demo::Session.open?).to be(true)
+
+      patch "/api/v1/admin/studio/settings",
+            params: { demo_entry_stage: "development" }, headers: headers, as: :json
+
+      expect(Demo::Session.open?).to be(false)
+    end
+
+    # **一般に開ける操作**なので、記録に残す
+    it "入口を開けたことが記録に残る" do
+      expect {
+        patch "/api/v1/admin/studio/settings",
+              params: { demo_entry_stage: "released" }, headers: headers, as: :json
+      }.to change { AdminAuditLog.where(action: "studio.demo_entry").count }.by(1)
+    end
+
+    it "知らない段階は受け付けない" do
+      before_stage = FeatureFlag.stages["demo_entry"]
+
+      patch "/api/v1/admin/studio/settings",
+            params: { demo_entry_stage: "wide_open" }, headers: headers, as: :json
+
+      expect(FeatureFlag.stages["demo_entry"]).to eq(before_stage)
+    end
+
+    it "配る中身があるかも分かる（開ける前に気づけるように）" do
+      get "/api/v1/admin/studio/settings", headers: headers, as: :json
+
+      expect(json_response.dig("demo_package", "published")).to be(false)
+    end
+
+    it "権限が無ければ触れない" do
+      patch "/api/v1/admin/studio/settings",
+            params: { demo_entry_stage: "released" },
+            headers: create(:user, :confirmed, role: "operator").create_new_auth_token, as: :json
+
+      expect(response).to have_http_status(:forbidden)
+      expect(Demo::Session.open?).to be(false)
+    end
+  end
+
   describe "下書きを起こす" do
     def draft!(box_ids: [ published_box.id ], key: "starter_test", **extra)
       post "/api/v1/admin/studio/draft",

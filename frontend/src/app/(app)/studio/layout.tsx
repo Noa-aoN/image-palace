@@ -19,6 +19,7 @@ import { can } from '@/lib/auth/capabilities'
 const TABS = [
   { href: '/studio', label: '概要', exact: true },
   { href: '/studio/publish', label: '公開する' },
+  { href: '/studio/settings', label: '設定' },
 ]
 
 export default function StudioLayout({ children }: { children: React.ReactNode }) {

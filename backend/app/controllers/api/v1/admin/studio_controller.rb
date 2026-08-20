@@ -26,6 +26,32 @@ module Api
           }
         end
 
+        # 工房の設定。**ここだけで完結する**ようにする。
+        #
+        # 枠の上限も体験の入口も、執務室（`/admin`）の奥にある。
+        # だが制作だけの人は執務室に入れないので、**同じ栓をここにも出す**。
+        # 触っているのは同じ行なので、どちらから変えても効く
+        def settings
+          render json: {
+            official_account: official_account_state,
+            allowance_limit_credits: GrantPolicy.amount_for(StudioAllowance::POLICY_KEY),
+            demo_entry_stage: FeatureFlag.stages["demo_entry"],
+            demo_entry_stages: FeatureFlag::STAGES,
+            demo_package: demo_package_state
+          }
+        end
+
+        def update_settings
+          if params.key?(:allowance_limit_credits)
+            update_allowance_limit!(params[:allowance_limit_credits].to_i)
+          end
+          update_demo_stage!(params[:demo_entry_stage]) if params.key?(:demo_entry_stage)
+
+          settings
+        rescue ActiveRecord::RecordInvalid => e
+          render json: { errors: e.record.errors.full_messages }, status: :unprocessable_entity
+        end
+
         # 選べる原本。公式の口座にある箱とキャンバス
         def sources
           render json: {
@@ -171,6 +197,42 @@ module Api
             end
             installation.destroy!
           end
+        end
+
+        def update_allowance_limit!(credits)
+          return if credits.negative?
+
+          policy = GrantPolicy.find_or_initialize_by(key: StudioAllowance::POLICY_KEY)
+          policy.assign_attributes(reward_type: "credits", amount: credits, enabled: true)
+          policy.save!
+
+          AdminAuditLog.record!(actor: current_user, action: "studio.allowance_limit",
+                                details: { "credits" => credits })
+        end
+
+        def update_demo_stage!(stage)
+          return unless FeatureFlag::STAGES.include?(stage)
+
+          flag = FeatureFlag.find_or_initialize_by(key: "demo_entry")
+          flag.update!(stage: stage)
+
+          # **一般に開ける操作**なので、記録に残す
+          AdminAuditLog.record!(actor: current_user, action: "studio.demo_entry",
+                                details: { "stage" => stage })
+        end
+
+        def official_account_state
+          return { configured: false } unless official
+
+          { configured: true, email: official.email, items: official.items.count }
+        end
+
+        # 体験用に配っている荷物。**入口を開ける前に、中身があるか分かるように**
+        def demo_package_state
+          package = ContentPackage.latest_published(::Demo::Session::PACKAGE_KEY)
+          return { published: false } unless package
+
+          { published: true, key: package.key, version: package.version, counts: package.summary_counts }
         end
 
         def audit!(action, package)

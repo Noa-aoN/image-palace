@@ -272,6 +272,35 @@ RSpec.describe "体験用の宮殿", type: :request do
       expect(json_response["error"]).to match(/準備中/)
     end
 
+    # **確かめられないまま開くことになるのを避ける。**
+    # 制作の権限を持つ人だけが、閉じている間も中を見られる
+    it "制作の権限があれば、閉じていても入れる" do
+      studio = create(:user, :confirmed, role: "admin")
+
+      post "/api/v1/demo", headers: studio.create_new_auth_token, as: :json
+
+      expect(response).to have_http_status(:created)
+      expect(User.demo_accounts.count).to eq(1)
+    end
+
+    it "運営でも、制作の権限が無ければ入れない" do
+      operator = create(:user, :confirmed, role: "operator")
+
+      post "/api/v1/demo", headers: operator.create_new_auth_token, as: :json
+
+      expect(response).to have_http_status(:service_unavailable)
+    end
+
+    it "可否は、その人にとってどうかを返す" do
+      studio = create(:user, :confirmed, role: "admin")
+
+      get "/api/v1/demo", as: :json
+      expect(json_response).to eq({ "open" => false, "public" => false })
+
+      get "/api/v1/demo", headers: studio.create_new_auth_token, as: :json
+      expect(json_response).to eq({ "open" => true, "public" => false })
+    end
+
     it "入口ごと出さないときも、建てない" do
       FeatureFlag.find_or_initialize_by(key: "demo_entry").update!(stage: "hidden")
 

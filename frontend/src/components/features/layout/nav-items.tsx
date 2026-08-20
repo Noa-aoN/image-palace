@@ -239,6 +239,7 @@ export const STUDIO_ITEM: NavNode = {
   children: [
     { href: '/studio', icon: <Package size={20} />, label: '荷物', exact: true },
     { href: '/studio/publish', icon: <Upload size={20} />, label: '公開する' },
+    { href: '/studio/settings', icon: <Settings size={20} />, label: '設定' },
   ],
 }
 

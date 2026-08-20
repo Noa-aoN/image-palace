@@ -116,3 +116,24 @@ export async function changeStatus(
   )
   return res.data.package
 }
+
+/** 工房の設定。**枠の上限と、体験の入口** */
+export type StudioSettings = {
+  official_account: { configured: boolean; email?: string; items?: number }
+  allowance_limit_credits: number
+  demo_entry_stage: string
+  demo_entry_stages: string[]
+  demo_package: { published: boolean; key?: string; version?: number; counts?: ContentPackageCounts }
+}
+
+export async function fetchStudioSettings(): Promise<StudioSettings> {
+  const res = await apiClient.get<StudioSettings>('/api/v1/admin/studio/settings')
+  return res.data
+}
+
+export async function updateStudioSettings(
+  patch: { allowance_limit_credits?: number; demo_entry_stage?: string }
+): Promise<StudioSettings> {
+  const res = await apiClient.patch<StudioSettings>('/api/v1/admin/studio/settings', patch)
+  return res.data
+}

@@ -77,3 +77,22 @@ export function validateKey(key: string): string | null {
   }
   return null
 }
+
+// 体験用の宮殿の入口を、どこまで開けるか。
+//
+// **一般の方に対しての見え方。** 制作の権限があれば、準備中でも確かめられる。
+export type DemoStage = 'hidden' | 'development' | 'prototype' | 'released'
+
+export const DEMO_STAGE_LABEL: Record<DemoStage, string> = {
+  hidden: '入口ごと出さない',
+  development: '準備中と伝える',
+  prototype: '準備中と伝える',
+  released: '一般に開く',
+}
+
+export const DEMO_STAGE_NOTE: Record<DemoStage, string> = {
+  hidden: 'ボタンそのものを出しません',
+  development: 'ボタンは見えますが、押せません',
+  prototype: 'ボタンは見えますが、押せません',
+  released: '誰でも体験用の宮殿に入れます',
+}

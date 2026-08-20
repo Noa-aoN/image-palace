@@ -62,6 +62,8 @@ Rails.application.routes.draw do
         resources :campaign_codes, only: [ :index, :create, :update, :destroy ]
         # 公式工房。**選んで・確かめて・出す**（編集は本体側で行う）
         get "studio", to: "studio#show"
+        get "studio/settings", to: "studio#settings"
+        patch "studio/settings", to: "studio#update_settings"
         get "studio/sources", to: "studio#sources"
         post "studio/draft", to: "studio#draft"
         post "studio/:key/:version/preview", to: "studio#preview"
