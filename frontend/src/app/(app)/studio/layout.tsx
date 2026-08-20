@@ -6,6 +6,7 @@ import { usePathname } from 'next/navigation'
 import { Hammer, Loader2 } from 'lucide-react'
 import { useAdminStore } from '@/stores/admin'
 import { can } from '@/lib/auth/capabilities'
+import { AdminStrongAuthGate } from '@/components/features/admin/AdminStrongAuthGate'
 
 /**
  * 公式工房の枠。
@@ -53,6 +54,15 @@ export default function StudioLayout({ children }: { children: React.ReactNode }
 
   if (!can(session, 'access_official_studio')) {
     return <div className="py-24 text-center text-muted-foreground">公式工房は制作の権限を持つ方のみが開けます。</div>
+  }
+
+  // 一次認証のうえで、もう一度ご本人か確かめる。**執務室と同じ関門を使う。**
+  //
+  // ここは公開まで届く場所。合鍵ひとつで公開まで開くのを避ける。
+  // まだ求めない設定（既定）のときは、この節ごと素通りする
+  const strongAuth = session.strong_auth
+  if (strongAuth?.required && !strongAuth.satisfied) {
+    return <AdminStrongAuthGate prepared={strongAuth.prepared ?? false} onDone={fetchSession} />
   }
 
   return (

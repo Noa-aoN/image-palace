@@ -12,6 +12,7 @@ module Api
       # 宮殿は原本・制作の場として自由に使い、その中から出すものだけをここで選ぶ。
       class StudioController < Api::V1::BaseController
         before_action :require_studio!
+        before_action :require_studio_strong_auth!
         # 原本の口座が無いと、**選ぶことも起こすこともできない**。
         # 落ちるのではなく、そうと言って断る
         before_action :require_owner_account!, only: [ :sources, :draft ]
@@ -139,6 +140,35 @@ module Api
 
           Rails.logger.warn "[Studio] FORBIDDEN user_id=#{current_user&.id} path=#{request.path}"
           render json: { error: "公式工房を使う権限がありません" }, status: :forbidden
+        end
+
+        # 工房に入る前に、もう一度ご本人か確かめる。**執務室と同じ考え方。**
+        #
+        # ここは公開まで届く場所で、原本の持ち主も入れるようにした。
+        # **合鍵ひとつで公開まで開くのを避ける。**
+        # 一次認証の情報は漏れうるが、手元の鍵（Passkey・認証アプリ）まで
+        # 同時に奪うのは桁違いに難しい。
+        #
+        # 求めない設定（既定）のときは、これまでどおり素通りする
+        def require_studio_strong_auth!
+          return unless ::Auth::StrongAuth.admin_required?
+          return if strongly_authenticated?(within: StrongAuthSession::ADMIN_WINDOW)
+
+          methods = ::Auth::StrongAuth.available_methods(current_user)
+
+          if methods.any?
+            render json: {
+              error: "公式工房に入る前に、もう一度ご本人か確かめさせてください。",
+              code: "strong_auth_required",
+              methods: methods
+            }, status: :forbidden
+          else
+            render json: {
+              error: "公式工房に入るには、パスキーか認証アプリの設定が必要です。",
+              code: "strong_auth_setup_required",
+              methods: []
+            }, status: :forbidden
+          end
         end
 
         # 原本が無いと、選ぶ画面は出せない

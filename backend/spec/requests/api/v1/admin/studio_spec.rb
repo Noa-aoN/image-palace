@@ -72,6 +72,66 @@ RSpec.describe "公式工房", type: :request do
 
       expect(response).to have_http_status(:unauthorized)
     end
+
+    # **原本を持つ口座は、役割が user でも入れる。**
+    # その口座が既に全部を所有しているので、公開の可否だけを分けても
+    # 守れる範囲はさほど増えない
+    it "原本を持つ口座は、役割が user でも入れる" do
+      get "/api/v1/admin/studio", headers: official.create_new_auth_token, as: :json
+
+      expect(response).to have_http_status(:success)
+    end
+
+    # 持ち主だからといって、人やお金は触れない
+    it "原本を持つ口座でも、執務室には入れない" do
+      get "/api/v1/admin/overview", headers: official.create_new_auth_token, as: :json
+
+      expect(response).to have_http_status(:forbidden)
+    end
+  end
+
+  # 工房は公開まで届く場所。**合鍵ひとつで公開まで開くのを避ける。**
+  # 執務室と同じ関門を使う
+  describe "本人確認を求めるとき" do
+    around do |example|
+      original = ENV["ADMIN_STRONG_AUTH_ENABLED"]
+      ENV["ADMIN_STRONG_AUTH_ENABLED"] = "true"
+      example.run
+      ENV["ADMIN_STRONG_AUTH_ENABLED"] = original
+    end
+
+    it "確かめていなければ、入口で止まる" do
+      get "/api/v1/admin/studio", headers: headers, as: :json
+
+      expect(response).to have_http_status(:forbidden)
+      expect(json_response["code"]).to be_in(%w[strong_auth_required strong_auth_setup_required])
+    end
+
+    it "手立てが無ければ、設定を促す" do
+      get "/api/v1/admin/studio", headers: headers, as: :json
+
+      expect(json_response["code"]).to eq("strong_auth_setup_required")
+      expect(json_response["error"]).to match(/パスキーか認証アプリ/)
+    end
+
+    it "確かめていれば、通る" do
+      studio_user.update!(totp_secret: Auth::Totp.generate_secret, totp_confirmed_at: Time.current)
+      client = headers["client"]
+      StrongAuthSession.record!(user: studio_user, client_id: client, method: "totp")
+
+      get "/api/v1/admin/studio", headers: headers, as: :json
+
+      expect(response).to have_http_status(:success)
+    end
+
+    # 求めない設定（既定）のときは、これまでどおり素通りする
+    it "求めない設定なら、素通りする" do
+      ENV["ADMIN_STRONG_AUTH_ENABLED"] = "false"
+
+      get "/api/v1/admin/studio", headers: headers, as: :json
+
+      expect(response).to have_http_status(:success)
+    end
   end
 
   describe "原本を選ぶ" do

@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useState } from 'react'
+import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -10,6 +11,7 @@ import { fetchStudioSettings, updateStudioSettings, type StudioSettings } from '
 import { enterDemo } from '@/lib/api/demo'
 import { useAuthStore } from '@/stores/auth'
 import { useItemsStore } from '@/stores/items'
+import { useAdminStore } from '@/stores/admin'
 import { DEMO_STAGE_LABEL, DEMO_STAGE_NOTE, type DemoStage } from '@/lib/studio/status'
 
 /**
@@ -21,6 +23,7 @@ import { DEMO_STAGE_LABEL, DEMO_STAGE_NOTE, type DemoStage } from '@/lib/studio/
  */
 export function StudioSettingsPanel() {
   const router = useRouter()
+  const adminSession = useAdminStore((s) => s.session)
   const [settings, setSettings] = useState<StudioSettings | null>(null)
   const [limit, setLimit] = useState('')
   const [saving, setSaving] = useState(false)
@@ -97,6 +100,16 @@ export function StudioSettingsPanel() {
         </p>
       ) : null}
       {saved ? <p className="text-sm text-muted-foreground">変えました</p> : null}
+
+      {/* 工房は公開まで届く場所。**合鍵ひとつで公開まで開くのを避ける。**
+          執務室と同じ関門を使っているので、案内も同じ場所へ向ける */}
+      <section className="space-y-2 rounded-xl border border-border bg-card p-5">
+        <h2 className="text-base font-semibold">本人確認</h2>
+        <p className="text-xs text-muted-foreground">
+          工房に入るときは、もう一度ご本人か確かめます。**執務室と同じ仕組みです**
+        </p>
+        <StrongAuthState session={adminSession} />
+      </section>
 
       <section className="space-y-2 rounded-xl border border-border bg-card p-5">
         <h2 className="text-base font-semibold">公式コンテンツの口座</h2>
@@ -194,5 +207,46 @@ export function StudioSettingsPanel() {
         </div>
       </section>
     </div>
+  )
+}
+
+/**
+ * 本人確認の状態。
+ *
+ * **求めていないときも、そうと言う。** 何も出さないと
+ * 「設定できていないのか、求められていないのか」が分からない。
+ */
+function StrongAuthState({ session }: { session: { strong_auth?: { required: boolean; prepared?: boolean } } | null }) {
+  const strongAuth = session?.strong_auth
+
+  if (!strongAuth?.required) {
+    return (
+      <p className="text-sm text-muted-foreground">
+        いまは求めていません。
+        <Link href="/account#security" className="ml-1 underline underline-offset-2">
+          パスキー・認証アプリを設定する
+        </Link>
+      </p>
+    )
+  }
+
+  if (!strongAuth.prepared) {
+    return (
+      <p className="text-sm" style={{ color: '#8A6210' }}>
+        手立てがありません。
+        <Link href="/account#security" className="ml-1 underline underline-offset-2">
+          パスキーか認証アプリを設定してください
+        </Link>
+      </p>
+    )
+  }
+
+  return (
+    <p className="text-sm text-muted-foreground">
+      設定済みです。
+      <Link href="/account#security" className="ml-1 underline underline-offset-2">
+        設定を見る
+      </Link>
+    </p>
   )
 }

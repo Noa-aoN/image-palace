@@ -31,7 +31,10 @@ module Api
         # 求めていないときも同じ。**見ない値のために問い合わせを増やすと、
         # その分だけ全員が待つ**（画面は admin が false の時点で読むのをやめる）
         def strong_auth_state
-          return { required: false } unless ::Auth::StrongAuth.admin_required? && current_user.admin?
+          # 執務室と工房、どちらかに入れる人にだけ調べる。
+          # **見ない値のために問い合わせを増やすと、その分だけ全員が待つ**
+          gated = current_user.can_access_ops_room? || current_user.can_access_official_studio?
+          return { required: false } unless ::Auth::StrongAuth.admin_required? && gated
 
           # 一度だけ調べる。prepared? は中で available_methods を呼ぶので、
           # 両方を呼ぶと同じことを二度聞くことになる

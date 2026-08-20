@@ -78,22 +78,31 @@ module UserCapabilities
 
   # ── 公式コンテンツ ──────────────────────────────────
   #
-  # **当面は admin だけ。** 招待の仕組みがまだ無い段階で `operator` へ開くと、
+  # **admin と、原本を持つ口座。**
+  #
+  # `operator` へは開かない。招待の仕組みがまだ無い段階で開くと、
   # 運営業務の担当者が公式コンテンツを触れることになり、職務が分かれない。
+  #
+  # 原本の持ち主を入れているのは、**その口座が既に全部を所有している**から。
+  # 奪われた時点で原本は書き換え放題なので、公開の可否だけを分けても
+  # 守れる範囲はさほど増えない。一方、分けると原本を直すたびに
+  # 口座を行き来することになる。
+  #
+  # （代わりに、工房へ入るときは**もう一度ご本人か確かめる**。執務室と同じ）
   #
   # 編集・公開を今から名前で分けてある。今日は同じ判定だが、
   # 公開だけを任せる人を招くとき、**その1行だけ**変えれば済む。
 
   def can_access_official_studio?
-    at_least?("admin")
+    at_least?("admin") || official_content_account?
   end
 
   def can_edit_official_content?
-    at_least?("admin")
+    can_access_official_studio?
   end
 
   def can_publish_official_content?
-    at_least?("admin")
+    can_access_official_studio?
   end
 
   # ── まとめ ──────────────────────────────────────────
