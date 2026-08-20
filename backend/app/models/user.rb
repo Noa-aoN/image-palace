@@ -500,7 +500,7 @@ class User < ApplicationRecord
     id.present? && id.to_s.downcase == self.class.official_content_account_id
   end
 
-  # 公式工房を使える資格があるか。
+  # 工房室を使える資格があるか。
   # **`UserCapabilities` の言い換え**（呼んでいる場所が既にあるので残す）
   def can_manage_official_content?
     can_access_official_studio?

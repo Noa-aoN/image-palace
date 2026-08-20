@@ -8,7 +8,7 @@ module ContentPackages
   #     boxes: [box], views: [view], actor: current_user
   #   )
   #
-  # **rake も、いずれ作る公式工房の「公開する」も、ここを呼ぶ。**
+  # **rake も、いずれ作る工房室の「公開する」も、ここを呼ぶ。**
   # 押す場所が違うだけで、やることは同じにしておく。
   #
   # 書き出し（Exporter）が欠けを見つけたら、そこで止まる。

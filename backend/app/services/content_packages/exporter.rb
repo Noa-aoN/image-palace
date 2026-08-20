@@ -7,7 +7,7 @@ module ContentPackages
   #   ContentPackages::Exporter.call(views: [view])          # キャンバスだけでもよい
   #   ContentPackages::Exporter.call(boxes: [box])           # 箱だけでもよい
   #
-  # 公式工房の「公開する」も rake も、最後はここを呼ぶ。
+  # 工房室の「公開する」も rake も、最後はここを呼ぶ。
   #
   # ## 足りないものは、こちらで引き込む
   #

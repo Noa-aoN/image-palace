@@ -307,7 +307,7 @@ export function AppHeader() {
               )}
               {can(adminSession, 'access_official_studio') && (
                 <DropdownMenuItem onClick={() => router.push('/studio')} className="cursor-pointer">
-                  公式工房
+                  工房室
                 </DropdownMenuItem>
               )}
               <DropdownMenuItem onClick={() => router.push('/account')} className="cursor-pointer">

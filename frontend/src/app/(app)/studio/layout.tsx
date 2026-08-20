@@ -9,7 +9,7 @@ import { can } from '@/lib/auth/capabilities'
 import { AdminStrongAuthGate } from '@/components/features/admin/AdminStrongAuthGate'
 
 /**
- * 公式工房の枠。
+ * 工房室の枠。
  *
  * **執務室とは別の場所にする。** あちらは運営の仕事（人・お金・設定）で、
  * ここは制作。同じ枠に入れると、デザイナーに利用者一覧が見えることになる。
@@ -53,7 +53,7 @@ export default function StudioLayout({ children }: { children: React.ReactNode }
   }
 
   if (!can(session, 'access_official_studio')) {
-    return <div className="py-24 text-center text-muted-foreground">公式工房は制作の権限を持つ方のみが開けます。</div>
+    return <div className="py-24 text-center text-muted-foreground">工房室は制作の権限を持つ方のみが開けます。</div>
   }
 
   // 一次認証のうえで、もう一度ご本人か確かめる。**執務室と同じ関門を使う。**
@@ -62,7 +62,15 @@ export default function StudioLayout({ children }: { children: React.ReactNode }
   // まだ求めない設定（既定）のときは、この節ごと素通りする
   const strongAuth = session.strong_auth
   if (strongAuth?.required && !strongAuth.satisfied) {
-    return <AdminStrongAuthGate prepared={strongAuth.prepared ?? false} onDone={fetchSession} />
+    return (
+      <AdminStrongAuthGate
+        prepared={strongAuth.prepared ?? false}
+        onDone={fetchSession}
+        room="工房室"
+        reason="公式コンテンツを扱うため、もう一度ご本人か確かめさせてください。"
+        preparation="工房室は公開まで届く場所なので、ログインに加えてもう一度ご本人か確かめています。"
+      />
+    )
   }
 
   return (
@@ -72,7 +80,7 @@ export default function StudioLayout({ children }: { children: React.ReactNode }
       <header className="border-b border-[var(--palace)]/40 bg-[color-mix(in_srgb,var(--palace)_8%,var(--background))]">
         <div className="mx-auto flex max-w-6xl flex-wrap items-center gap-x-3 gap-y-1 px-6 py-3">
           <Hammer size={20} style={{ color: 'var(--palace)' }} />
-          <h1 className="text-lg font-semibold">公式工房</h1>
+          <h1 className="text-lg font-semibold">工房室</h1>
           <span className="text-xs text-muted-foreground">
             公式コンテンツを選んで、確かめて、公開する
           </span>
