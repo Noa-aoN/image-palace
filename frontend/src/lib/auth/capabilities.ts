@@ -33,7 +33,7 @@ export function canAny(
 export type OpsEntries = {
   /** 執務室 */
   opsRoom: boolean
-  /** 公式工房 */
+  /** 工房室 */
   officialStudio: boolean
 }
 

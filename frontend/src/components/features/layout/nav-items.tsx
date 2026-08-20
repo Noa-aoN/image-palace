@@ -227,7 +227,7 @@ export const ADMIN_ITEM: NavNode = {
 }
 
 /**
- * 公式工房。**公式コンテンツを、選んで・確かめて・出す場所。**
+ * 工房室。**公式コンテンツを、選んで・確かめて・出す場所。**
  *
  * ここに編集の道具は置かない。カードを足したいなら公式の口座で普通に足せばよく、
  * 同じものをもう一度作ることになる。
@@ -235,7 +235,7 @@ export const ADMIN_ITEM: NavNode = {
 export const STUDIO_ITEM: NavNode = {
   href: '/studio',
   icon: <Hammer size={22} />,
-  label: '公式工房', description: '公式コンテンツを選んで、確かめて、公開する',
+  label: '工房室', description: '公式コンテンツを選んで、確かめて、公開する',
   children: [
     { href: '/studio', icon: <Package size={20} />, label: '荷物', exact: true },
     { href: '/studio/publish', icon: <Upload size={20} />, label: '公開する' },

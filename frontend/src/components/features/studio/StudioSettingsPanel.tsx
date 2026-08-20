@@ -173,7 +173,7 @@ export function StudioSettingsPanel() {
           </p>
         ) : (
           <p className="text-xs" style={{ color: '#8A6210' }}>
-            配る中身がありません。開いても入れません（公式工房で <code>demo_showcase</code> を公開してください）
+            配る中身がありません。開いても入れません（工房室で <code>demo_showcase</code> を公開してください）
           </p>
         )}
 

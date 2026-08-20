@@ -58,7 +58,7 @@ RSpec.describe "公式工房", type: :request do
       get "/api/v1/admin/studio", headers: operator.create_new_auth_token, as: :json
 
       expect(response).to have_http_status(:forbidden)
-      expect(json_response["error"]).to match(/公式工房/)
+      expect(json_response["error"]).to match(/工房室/)
     end
 
     it "一般の人は入れない" do
@@ -112,6 +112,14 @@ RSpec.describe "公式工房", type: :request do
 
       expect(json_response["code"]).to eq("strong_auth_setup_required")
       expect(json_response["error"]).to match(/パスキーか認証アプリ/)
+    end
+
+    # **入る場所の名前で言う。** 執務室の話をされていると読まれないように
+    it "断り方が、工房室の話になっている" do
+      get "/api/v1/admin/studio", headers: headers, as: :json
+
+      expect(json_response["error"]).to match(/工房室/)
+      expect(json_response["error"]).not_to match(/執務室/)
     end
 
     it "確かめていれば、通る" do

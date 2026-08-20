@@ -1,7 +1,7 @@
 module Api
   module V1
     module Admin
-      # 公式工房。**公式コンテンツを、選んで・確かめて・出す場所。**
+      # 工房室。**公式コンテンツを、選んで・確かめて・出す場所。**
       #
       # ここに編集の道具は置かない。カードを足したいなら公式の口座で普通に足せばよく、
       # 同じものをもう一度作ることになる。
@@ -139,7 +139,7 @@ module Api
           return if current_user&.can_access_official_studio?
 
           Rails.logger.warn "[Studio] FORBIDDEN user_id=#{current_user&.id} path=#{request.path}"
-          render json: { error: "公式工房を使う権限がありません" }, status: :forbidden
+          render json: { error: "工房室を使う権限がありません" }, status: :forbidden
         end
 
         # 工房に入る前に、もう一度ご本人か確かめる。**執務室と同じ考え方。**
@@ -158,13 +158,13 @@ module Api
 
           if methods.any?
             render json: {
-              error: "公式工房に入る前に、もう一度ご本人か確かめさせてください。",
+              error: "工房室に入る前に、もう一度ご本人か確かめさせてください。",
               code: "strong_auth_required",
               methods: methods
             }, status: :forbidden
           else
             render json: {
-              error: "公式工房に入るには、パスキーか認証アプリの設定が必要です。",
+              error: "工房室に入るには、パスキーか認証アプリの設定が必要です。",
               code: "strong_auth_setup_required",
               methods: []
             }, status: :forbidden

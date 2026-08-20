@@ -15,7 +15,7 @@ import {
 import { actionsFor, canPreview, STATUS_LABEL, STATUS_NOTE, STATUS_TONE } from '@/lib/studio/status'
 
 /**
- * 公式工房の概要。**いま何を配っているかと、原本の様子。**
+ * 工房室の概要。**いま何を配っているかと、原本の様子。**
  *
  * 荷物ごとにできることを並べる。
  * 戻せない操作（終える）だけ、押す前に確かめる。
