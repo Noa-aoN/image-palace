@@ -27,7 +27,20 @@ export type StudioPackage = {
   updated_at: string
   /** どこへ届けるか */
   deliveries: Delivery[]
+  /** いま実際に配られている版。この行の版とずれることがある（下書きを起こした直後など） */
+  delivering_version: number | null
   /** 何人が受け取ったか（下見は数えない） */
+  installs: number
+  /** 前の版。**一覧は鍵ごとに1行**なので、古いものはここに畳む */
+  history: PackageHistory[]
+}
+
+/** 前の版。もう押せることは無いので、記録として見せるだけ */
+export type PackageHistory = {
+  id: string
+  version: number
+  status: PackageStatus
+  published_at: string | null
   installs: number
 }
 

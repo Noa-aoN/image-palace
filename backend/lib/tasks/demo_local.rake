@@ -34,11 +34,11 @@ namespace :demo do
     [ "ルーター", "サーバー", "届く" ]
   ].freeze
 
-  desc "手元で体験用の宮殿を試せるようにする（開発環境のみ）"
+  desc "手元で工房室と体験用の宮殿を試せるようにする（開発環境のみ）"
   task setup_local: :environment do
     abort "本番では走らせません" if Rails.env.production?
 
-    official = find_or_create_official!
+    official, secret = find_or_create_official!
     box, view = build_sample!(official)
 
     result = ContentPackages::Publisher.call(
@@ -56,23 +56,47 @@ namespace :demo do
     puts "用意できました。"
     puts "  公式の口座 : #{official.email}"
     puts "  荷物       : #{package.key} v#{package.version}（カード #{package.summary_counts[:items]}）"
+    puts "  届け先     : 体験の宮殿に置く"
     puts "  入口       : 開いています"
     puts
-    puts "  OFFICIAL_CONTENT_USER_ID=#{official.id}"
-    puts "  ↑ backend/.env に入れて `docker compose restart backend` すると、工房も使えます"
+    puts "  工房室へは、この口座で入ります:"
+    puts "    #{official.email}"
+    puts "    #{secret}   ← 走らせるたびに作り直します"
+    puts
+    puts "  ふだんの口座（運営）とは分けてあります。執務室とはぶつかりません。"
+    puts "  `.env` に id を書き写す必要はありません。"
   end
 
+  # 公式コンテンツの口座を用意して、入り方ごと返す。
+  #
+  # **合言葉は毎回その場で作り直して表示する。** 決め打ちを置くと
+  # そのまま本番へ持っていける形になるし、手元で「入れない」に詰まる時間も無くなる。
+  #
+  # ふだんの口座（運営）とは分けてある。役割は `user` のままでよく、
+  # 工房室へは「公式の口座であること」で入れる
   def find_or_create_official!
-    existing = User.official_content_account
-    return existing if existing
+    email = User::LOCAL_OFFICIAL_EMAIL
+    secret = SecureRandom.alphanumeric(20)
+    user = User.official_content_account || User.find_by(email: email) || rename_old_local_official(email)
 
-    email = "studio@local.invalid"
-    found = User.find_by(email: email)
-    return found if found
+    if user
+      user.update!(password: secret, password_confirmation: secret)
+      return [ user, secret ]
+    end
 
-    secret = SecureRandom.hex(16)
-    User.create!(email: email, password: secret, password_confirmation: secret,
-                 confirmed_at: Time.current, name: "公式")
+    [ User.create!(email: email, password: secret, password_confirmation: secret,
+                   confirmed_at: Time.current, name: "公式"), secret ]
+  end
+
+  # 前のアドレス（手元だけで使っていたもの）で作ってあった口座を引き継ぐ。
+  # 作り直すと、そこに作った宮殿の中身が置き去りになる
+  def rename_old_local_official(email)
+    old = User.find_by(email: "studio@local.invalid")
+    return nil if old.nil?
+
+    old.update!(email: email, uid: email)
+    puts "  前の公式の口座を #{email} へ移しました（宮殿の中身はそのまま）"
+    old
   end
 
   def build_sample!(official)
