@@ -60,6 +60,13 @@ Rails.application.routes.draw do
         post "provider_check", to: "provider_checks#create"
         resources :ai_models, only: [ :index, :create, :update, :destroy ]
         resources :campaign_codes, only: [ :index, :create, :update, :destroy ]
+        # 公式工房。**選んで・確かめて・出す**（編集は本体側で行う）
+        get "studio", to: "studio#show"
+        get "studio/sources", to: "studio#sources"
+        post "studio/draft", to: "studio#draft"
+        post "studio/:key/:version/preview", to: "studio#preview"
+        delete "studio/:key/:version/preview", to: "studio#discard_preview"
+        patch "studio/:key/:version/status", to: "studio#update_status"
         get "feature_flags", to: "feature_flags#index"
         # キーに「.」が入る（page.trophy）。制約を付けないと拡張子として切り落とされる
         put "feature_flags/:key", to: "feature_flags#upsert", constraints: { key: %r{[^/]+} }

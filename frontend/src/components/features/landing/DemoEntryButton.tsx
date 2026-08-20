@@ -68,15 +68,17 @@ export function DemoEntryButton({ label = '宮殿を見てみる' }: { label?: s
       >
         {loading ? 'ご案内しています…' : label}
       </button>
+      {/* 添える一行は、**伝えることがあるときだけ**。
+          「登録は要りません」は釦が既に言っているので置かない */}
       {error ? (
         <p role="alert" className="text-xs" style={{ color: '#9E3226' }}>
           {error}
         </p>
-      ) : (
+      ) : open === false ? (
         <p className="text-xs" style={{ color: '#6B6B6B' }}>
-          {open === false ? PREPARING : '登録は要りません'}
+          {PREPARING}
         </p>
-      )}
+      ) : null}
     </div>
   )
 }

@@ -19,10 +19,22 @@ class ContentPackage < ApplicationRecord
   # advance  … 将来の本格教材（有料の候補）
   KINDS = %w[demo starter advance].freeze
 
-  # draft     … 作りかけ。配らない
-  # published … 配れる
-  # archived  … もう配らない。既に受け取った人のものはそのまま
-  STATUSES = %w[draft published archived].freeze
+  # 荷物の扱い。**4つある。**
+  #
+  #   draft     … 下書き。**まだ誰にも配らない。** 下見はできる
+  #   published … 配っている
+  #   suspended … 止めている。**戻せる。** 誤って出したときの受け皿
+  #   archived  … 役目を終えた。**戻さない**（古い版）
+  #
+  # 止めるのと終えるのを分けるのは、**誤公開に「削除」で応えないため**。
+  # 消してしまうと、何を出していたのかが分からなくなる。
+  #
+  # **どの扱いにしても、既に受け取った人の手元は変わらない。**
+  # 受け取った時点でその人のものになっており、こちらから取り上げることはしない。
+  STATUSES = %w[draft published suspended archived].freeze
+
+  # もう配らないもの（止めている／終えた）
+  INACTIVE_STATUSES = %w[suspended archived].freeze
 
   # 鍵は URL や rake の引数に出るので、扱いやすい字だけにする
   KEY_FORMAT = /\A[a-z][a-z0-9_]{2,49}\z/
@@ -56,6 +68,32 @@ class ContentPackage < ApplicationRecord
     scope.order(:key, version: :desc).to_a.uniq(&:key)
   end
 
+  # 書き出したものを、**下書きとして起こす。**
+  #
+  # 出す前に、下見して確かめられるようにするため。
+  # 同じ鍵に下書きが2つあっても困るので、既にあれば作り直す
+  def self.draft!(key:, kind:, name:, payload:, summary: nil, cover_image_key: nil)
+    existing = where(key: key, status: "draft").first
+    existing&.destroy!
+
+    create!(
+      key: key, version: next_version_for(key), kind: kind, status: "draft",
+      name: name, summary: summary, cover_image_key: cover_image_key, payload: payload
+    )
+  end
+
+  def self.next_version_for(key)
+    where(key: key).maximum(:version).to_i + 1
+  end
+
+  # 下書きを、配れる状態にする
+  def publish_draft!
+    raise ArgumentError, "下書きだけ公開できます" unless draft?
+
+    update!(status: "published", published_at: Time.current)
+    self
+  end
+
   # 書き出したものを、新しい版として公開する。
   #
   # 版は「いまある最大 + 1」。同時に2回押されると同じ番号を狙うが、
@@ -65,7 +103,7 @@ class ContentPackage < ApplicationRecord
     begin
       attempts += 1
       create!(
-        key: key, version: (where(key: key).maximum(:version).to_i + 1),
+        key: key, version: next_version_for(key),
         kind: kind, status: "published", name: name, summary: summary,
         cover_image_key: cover_image_key, payload: payload, published_at: Time.current
       )
@@ -97,6 +135,24 @@ class ContentPackage < ApplicationRecord
     status == "published"
   end
 
+  def draft?
+    status == "draft"
+  end
+
+  # 配るのを止める。**戻せる。** 誤って出したときはこれ
+  def suspend!
+    update!(status: "suspended")
+  end
+
+  # 止めていたものを、もう一度配る。**下書きからは出せない**
+  # （下書きはまだ誰にも見せていないので、`publish!` で版を起こす）
+  def resume!
+    raise ArgumentError, "止めている荷物だけ、配り直せます" unless status == "suspended"
+
+    update!(status: "published")
+  end
+
+  # 役目を終える。**戻さない**（古い版を片付けるとき）
   def archive!
     update!(status: "archived")
   end
@@ -109,8 +165,10 @@ class ContentPackage < ApplicationRecord
     errors.add(:payload, e.message)
   end
 
+  # 一度でも外へ出したものは、中身を動かさない。
+  # **止めたあとに書き換えて出し直す**と、同じ版が別物になる
   def refuse_changes_after_publish
-    return unless status_was == "published"
+    return if status_was == "draft" || status_was.nil?
 
     changed_columns = changed & IMMUTABLE_AFTER_PUBLISH
     return if changed_columns.empty?

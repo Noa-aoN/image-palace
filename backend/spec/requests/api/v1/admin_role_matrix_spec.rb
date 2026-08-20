@@ -47,10 +47,19 @@ RSpec.describe "運営の段階ごとに触れる範囲", type: :request do
     [ :post, "/api/v1/admin/brief" ]
   ].freeze
 
-  # お金と権限。admin でないと通らない
+  # お金と権限。admin でないと通らない。
+  #
+  # 公式工房もここ。**招待の仕組みがまだ無い段階で operator へ開くと、
+  # 運営業務の担当者が公式コンテンツを触れることになり、職務が分かれない**
   ADMIN_ONLY = [
     [ :put, "/api/v1/admin/finance/parameters/image_cost" ],
-    [ :put, "/api/v1/admin/finance/actuals/2026/8" ]
+    [ :put, "/api/v1/admin/finance/actuals/2026/8" ],
+    [ :get, "/api/v1/admin/studio" ],
+    [ :get, "/api/v1/admin/studio/sources" ],
+    [ :post, "/api/v1/admin/studio/draft" ],
+    [ :post, "/api/v1/admin/studio/starter_x/1/preview" ],
+    [ :delete, "/api/v1/admin/studio/starter_x/1/preview" ],
+    [ :patch, "/api/v1/admin/studio/starter_x/1/status" ]
   ].freeze
 
   describe "一般利用者" do

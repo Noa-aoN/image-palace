@@ -25,6 +25,9 @@ module Api
 
           render json: {
             available_credits: current_user.available_credits,
+            # 公式制作枠。**枠を持つ人にだけ出す**（通常の残高とは別の勘定）。
+            # 公式の絵を作っても、ここが減って買った残高は減らない
+            studio_allowance: current_user.studio_allowance_summary,
             # 残高の内訳（クレジット単位）。bonus=期限付きグラント（最も近い期限も返す）。
             credit_breakdown: {
               grant: current_user.grant_credit_points.fdiv(::Billing::POINTS_PER_CREDIT),
