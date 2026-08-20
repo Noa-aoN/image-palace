@@ -6,6 +6,9 @@ module Api
       include ItemSerialization
       include PromptModeration
 
+      # 名前を付けると絵が作られる。体験用では、その一手前で断る
+      before_action -> { deny_for_demo!(:generate_image) }, only: [ :create, :update ], if: :naming?
+
       before_action :set_space
       before_action :set_point, only: [ :update, :destroy ]
 
@@ -103,6 +106,11 @@ module Api
 
       def stripped_name
         params[:name].to_s.strip if params.key?(:name)
+      end
+
+      # 名前を付けようとしているか。**座標だけ動かす更新は通す**
+      def naming?
+        params.key?(:name) && params[:name].to_s.strip.present?
       end
 
       # 画像生成を走らせるか。

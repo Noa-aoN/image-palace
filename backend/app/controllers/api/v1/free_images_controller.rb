@@ -5,6 +5,8 @@ module Api
     # カードの見出し語には縛られない。そのカードの中の一場面・対比・図解などを持てる。
     # 絵を1枚作るので、カードの絵と同じだけクレジットを使う。
     class FreeImagesController < BaseController
+      before_action -> { deny_for_demo!(:generate_image) }
+
       MAX_PROMPT = ItemProperty::MAX_FREE_IMAGE_PROMPT
 
       def create

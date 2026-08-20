@@ -78,6 +78,9 @@ export default function RootLayout({
         suppressHydrationWarning
       >
         <SettingsBootstrap />
+        {/* 体験中の帯は**ヘッダーの上**に、流れの中で置く。
+            ヘッダーは `relative` なので、浮かせると上に乗って隠してしまう */}
+        <DemoBanner />
         <AppHeader />
         <div className="flex-1 flex flex-col min-h-0">
           {children}
@@ -85,7 +88,6 @@ export default function RootLayout({
         {/* 保存が落ちたことを伝える札。**ここに置く。**
             (app) の中は `isolate` で重なりの世界が閉じており、
             そこへ置くと Cookie の札より後ろに回って読めなくなる（実測） */}
-        <DemoBanner />
         <SaveStatusNotice />
         <CookieConsentBanner />
         <Analytics />
