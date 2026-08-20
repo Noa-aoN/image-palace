@@ -213,6 +213,62 @@ RSpec.describe ContentPackage do
     end
   end
 
+  # 原本を持つ口座は1つだが、**それを触る人はいずれ増える**。
+  # そのとき「この版を出したのは誰か」が分からないと、中身の食い違いを追えない
+  describe "誰が出したか" do
+    let(:editor) { create(:user, :confirmed, role: "operator") }
+
+    # 自前の箱を用意する。**他の例と共有しない**（走る順で中身が変わる）
+    let(:audited_box) do
+      box = author.boxes.create!(name: "監査の箱")
+      item = author.items.create!(title: "監査用", item_type: word, generation_status: "completed")
+      item.medias.create!(media_type: "image", position: 0)
+          .file.attach(io: StringIO.new(png), filename: "a.png", content_type: "image/png")
+      item.meanings.create!(definition: "説明", language_code: "ja", position: 0)
+      box.box_entries.create!(entry: item, position: 1)
+      box
+    end
+
+    def publish_via_service(actor: nil)
+      ContentPackages::Publisher.call(
+        key: "audited", kind: "starter", name: "監査",
+        boxes: [ audited_box ], actor: actor
+      )
+    end
+
+    it "運営の記録に残る" do
+      expect { publish_via_service(actor: editor) }
+        .to change { AdminAuditLog.where(action: "content_package.publish").count }.by(1)
+
+      log = AdminAuditLog.where(action: "content_package.publish").last
+      expect(log.actor_id).to eq(editor.id)
+      expect(log.details["key"]).to eq("audited")
+      expect(log.details["version"]).to eq(1)
+    end
+
+    # 退会したあとも、誰だったかは分かる（メールを一緒に持っている）
+    it "退会しても、誰が出したかは残る" do
+      publish_via_service(actor: editor)
+      email = editor.email
+      editor.destroy!
+
+      log = AdminAuditLog.where(action: "content_package.publish").last
+      expect(log.reload.actor_id).to be_nil
+      expect(log.actor_email).to eq(email)
+    end
+
+    # 記録のために公開を止めない
+    it "記録に失敗しても、公開そのものは通る" do
+      allow(AdminAuditLog).to receive(:create!).and_raise(StandardError, "書けません")
+
+      expect { publish_via_service(actor: editor) }.to change(described_class, :count).by(1)
+    end
+
+    it "誰が押したか分からなくても公開できる（rake から）" do
+      expect { publish_via_service(actor: nil) }.to change(described_class, :count).by(1)
+    end
+  end
+
   describe "鍵の形" do
     it "扱いにくい字は受け付けない" do
       %w[ST Starter\ IT あ x 名前に空白].each do |bad|

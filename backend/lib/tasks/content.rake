@@ -62,9 +62,14 @@ namespace :content do
     owners = (boxes + views).map(&:user_id).uniq
     abort "原本が複数の利用者にまたがっています" if owners.size > 1
 
+    # 誰が押したか。手元から叩くときは ACTOR= で渡す
+    # （画面から押すときは、その人が入る）
+    actor = ENV["ACTOR"].present? ? User.find_by(email: ENV["ACTOR"]) : nil
+
     result = ContentPackages::Publisher.call(
       key: key, kind: kind, name: name, boxes: boxes, views: views,
-      summary: ENV["SUMMARY"].presence, cover_image_key: ENV["COVER"].presence
+      summary: ENV["SUMMARY"].presence, cover_image_key: ENV["COVER"].presence,
+      actor: actor
     )
     c = result.counts
     puts "公開しました: #{result.package.key} v#{result.package.version}"

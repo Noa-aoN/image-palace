@@ -444,10 +444,30 @@ class User < ApplicationRecord
     email.to_s.downcase.end_with?("@#{DEMO_EMAIL_DOMAIN}")
   end
 
+  # 公式コンテンツの原本を持つ口座の id。
+  #
+  # **メールではなく id で指す。** メールは変えられるし、
+  # 「そのアドレスで先に登録した人が公式になる」という取り違えも起きない。
+  # 口座を作ってから、その id を環境変数に入れる（1回きりの手順）。
+  #
+  # 形が UUID でなければ無いものとして扱う。
+  # 打ち間違いで問い合わせが落ちるより、公式が居ないほうがまだ静か
+  UUID_FORMAT = /\A[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\z/i
+
+  def self.official_content_account_id
+    value = ENV["OFFICIAL_CONTENT_USER_ID"].to_s.strip
+    value.match?(UUID_FORMAT) ? value.downcase : nil
+  end
+
+  # 原本を持つ口座そのもの。居なければ nil
+  def self.official_content_account
+    id = official_content_account_id
+    id && find_by(id: id)
+  end
+
   # 公式コンテンツの原本を持つ口座か。**誰が編集してよいか、ではない**
   def official_content_account?
-    configured = ENV["OFFICIAL_CONTENT_EMAIL"].to_s.strip.downcase
-    configured.present? && email.to_s.downcase == configured
+    id.present? && id.to_s.downcase == self.class.official_content_account_id
   end
 
   # 公式工房を使える資格があるか。こちらは役割で決める（DB が正）
@@ -466,8 +486,8 @@ class User < ApplicationRecord
   # 将来 `internal` の列や種別を足しても、呼ぶ側は変わらない
   scope :external, lambda {
     scope = where.not("LOWER(email) LIKE ?", "%@#{DEMO_EMAIL_DOMAIN}")
-    official = ENV["OFFICIAL_CONTENT_EMAIL"].to_s.strip.downcase
-    official.present? ? scope.where.not("LOWER(email) = ?", official) : scope
+    official = official_content_account_id
+    official.present? ? scope.where.not(id: official) : scope
   }
 
   scope :demo_accounts, -> { where("LOWER(email) LIKE ?", "%@#{DEMO_EMAIL_DOMAIN}") }

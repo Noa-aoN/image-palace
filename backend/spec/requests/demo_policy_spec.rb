@@ -157,16 +157,16 @@ RSpec.describe "体験用の宮殿で禁じている操作", type: :request do
   # 中の人の口座が混ざると、伸びているように見えて実は増えていない、が起きる。
   # **各所の SQL に条件を散らさず、scope 1つで効かせている**ことを確かめる
   describe "数えるとき、中の人は外れる" do
-    around do |example|
-      original = ENV["OFFICIAL_CONTENT_EMAIL"]
-      ENV["OFFICIAL_CONTENT_EMAIL"] = "official@example.com"
-      example.run
-      ENV["OFFICIAL_CONTENT_EMAIL"] = original
-    end
-
     let!(:real_people) { create_list(:user, 2, :confirmed) }
     let!(:demo_account) { create(:user, :confirmed, email: "d-#{SecureRandom.hex(4)}@#{User::DEMO_EMAIL_DOMAIN}") }
-    let!(:official_account) { create(:user, :confirmed, email: "official@example.com") }
+    let!(:official_account) { create(:user, :confirmed, email: "studio@example.com") }
+
+    around do |example|
+      original = ENV["OFFICIAL_CONTENT_USER_ID"]
+      ENV["OFFICIAL_CONTENT_USER_ID"] = official_account.id
+      example.run
+      ENV["OFFICIAL_CONTENT_USER_ID"] = original
+    end
 
     it "利用者の数から外れる" do
       expect(User.count).to eq(4)
@@ -198,23 +198,27 @@ RSpec.describe "体験用の宮殿で禁じている操作", type: :request do
   end
 
   describe "公式コンテンツの口座" do
+    let!(:official) { create(:user, :confirmed, email: "studio@example.com") }
+
     around do |example|
-      original = ENV["OFFICIAL_CONTENT_EMAIL"]
-      ENV["OFFICIAL_CONTENT_EMAIL"] = "official@example.com"
+      original = ENV["OFFICIAL_CONTENT_USER_ID"]
+      ENV["OFFICIAL_CONTENT_USER_ID"] = official.id
       example.run
-      ENV["OFFICIAL_CONTENT_EMAIL"] = original
+      ENV["OFFICIAL_CONTENT_USER_ID"] = original
     end
 
     it "指した口座だけが、原本の持ち主になる" do
-      official = create(:user, :confirmed, email: "official@example.com")
-
       expect(official).to be_official_content_account
       expect(normal).not_to be_official_content_account
     end
 
-    it "数えるときは外れる" do
-      official = create(:user, :confirmed, email: "official@example.com")
+    # **メールで指さない。** 同じアドレスで先に登録した人が公式になってしまう
+    it "同じメールの別の口座は、公式にならない" do
+      expect(User.official_content_account).to eq(official)
+      expect(official.id).to eq(ENV["OFFICIAL_CONTENT_USER_ID"])
+    end
 
+    it "数えるときは外れる" do
       expect(User.external).not_to include(official)
       expect(User.external).to include(normal)
     end
@@ -228,10 +232,47 @@ RSpec.describe "体験用の宮殿で禁じている操作", type: :request do
 
     # 原本の口座でも、権限が無ければ工房は開けない
     it "原本を持っていても、役割が無ければ工房は使えない" do
-      official = create(:user, :confirmed, email: "official@example.com")
-
       expect(official).to be_official_content_account
       expect(official.can_manage_official_content?).to be(false)
+    end
+
+    # **原本の持ち主は1つ、触れる人は将来複数。** この形を壊さない
+    it "原本の持ち主でなくても、役割があれば工房を使える" do
+      editor = create(:user, :confirmed, role: "operator")
+
+      expect(editor).not_to be_official_content_account
+      expect(editor.can_manage_official_content?).to be(true)
+    end
+  end
+
+  describe "指し方が壊れているとき" do
+    around do |example|
+      original = ENV["OFFICIAL_CONTENT_USER_ID"]
+      example.run
+      ENV["OFFICIAL_CONTENT_USER_ID"] = original
+    end
+
+    # 打ち間違いで問い合わせが落ちるより、公式が居ないほうがまだ静か
+    it "形が違えば、公式は居ないものとして扱う" do
+      ENV["OFFICIAL_CONTENT_USER_ID"] = "not-a-uuid"
+
+      expect(User.official_content_account_id).to be_nil
+      expect(User.official_content_account).to be_nil
+      expect { User.external.count }.not_to raise_error
+    end
+
+    it "空でも落ちない" do
+      ENV["OFFICIAL_CONTENT_USER_ID"] = ""
+
+      expect(User.official_content_account).to be_nil
+      expect(User.external).to include(normal)
+    end
+
+    it "居ない id を指していても落ちない" do
+      ENV["OFFICIAL_CONTENT_USER_ID"] = SecureRandom.uuid
+
+      expect(User.official_content_account).to be_nil
+      expect { User.external.count }.not_to raise_error
     end
   end
 end
