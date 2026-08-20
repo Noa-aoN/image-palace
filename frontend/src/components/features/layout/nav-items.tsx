@@ -28,6 +28,9 @@ import {
   Megaphone,
   ShieldCheck,
   Compass,
+  Hammer,
+  Package,
+  Upload,
 } from 'lucide-react'
 import { CreateIcon } from './CreateIcon'
 
@@ -223,11 +226,36 @@ export const ADMIN_ITEM: NavNode = {
   ],
 }
 
-/** 運営メンバーなら「公庁」セクションの末尾に執務室を足したものを返す */
-export function navSectionsFor(isAdmin: boolean): NavSection[] {
-  if (!isAdmin) return NAV_SECTIONS
+/**
+ * 公式工房。**公式コンテンツを、選んで・確かめて・出す場所。**
+ *
+ * ここに編集の道具は置かない。カードを足したいなら公式の口座で普通に足せばよく、
+ * 同じものをもう一度作ることになる。
+ */
+export const STUDIO_ITEM: NavNode = {
+  href: '/studio',
+  icon: <Hammer size={22} />,
+  label: '公式工房', description: '公式コンテンツを選んで、確かめて、公開する',
+  children: [
+    { href: '/studio', icon: <House size={20} />, label: '概要', exact: true },
+    { href: '/studio/packages', icon: <Package size={20} />, label: '荷物' },
+    { href: '/studio/publish', icon: <Upload size={20} />, label: '公開する' },
+  ],
+}
+
+/**
+ * 「公庁」の末尾に、その人に見せてよい入口を足す。
+ *
+ * **役割では決めない。** できることの名前で決める
+ * （`opsEntriesFor` が能力から組み立てる）。
+ */
+export function navSectionsFor(entries: { opsRoom: boolean; officialStudio: boolean }): NavSection[] {
+  const extra: NavNode[] = []
+  if (entries.opsRoom) extra.push(ADMIN_ITEM)
+  if (entries.officialStudio) extra.push(STUDIO_ITEM)
+  if (extra.length === 0) return NAV_SECTIONS
 
   return NAV_SECTIONS.map((section) =>
-    section.key === ADMIN_SECTION_KEY ? { ...section, items: [...section.items, ADMIN_ITEM] } : section
+    section.key === ADMIN_SECTION_KEY ? { ...section, items: [...section.items, ...extra] } : section
   )
 }

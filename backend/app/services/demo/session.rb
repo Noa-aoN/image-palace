@@ -69,7 +69,14 @@ module Demo
       @resume_token = resume_token
     end
 
+    # 入口が開いているか。**画面の出し分けは守りではない**ので、ここでも見る
+    def self.open?
+      FeatureFlag.stages["demo_entry"] == "released"
+    end
+
     def call
+      raise Unavailable, "体験版は現在準備中です" unless self.class.open?
+
       reused = find_living(self.class.user_from_resume_token(@resume_token))
       return Result.new(user: reused, created: false, package: nil) if reused
 

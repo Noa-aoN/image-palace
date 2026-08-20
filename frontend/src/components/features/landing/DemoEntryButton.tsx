@@ -1,8 +1,8 @@
 'use client'
 
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { enterDemo, DemoUnavailableError } from '@/lib/api/demo'
+import { enterDemo, fetchDemoOpen, DemoUnavailableError } from '@/lib/api/demo'
 import { useAuthStore } from '@/stores/auth'
 import { useItemsStore } from '@/stores/items'
 
@@ -15,6 +15,9 @@ import { useItemsStore } from '@/stores/items'
  * 押すとその場で宮殿が建ち、通常の画面へそのまま入る。
  * 一度入った人がまた押したときは、**新しく建てずにさっきの宮殿へ戻る**。
  */
+/** 閉じているときの言い方。**どこでも同じにする** */
+const PREPARING = '体験版は現在準備中です'
+
 export function DemoEntryButton({ label = '宮殿を見てみる' }: { label?: string }) {
   const router = useRouter()
   const setAuth = useAuthStore((s) => s.setAuth)
@@ -22,9 +25,16 @@ export function DemoEntryButton({ label = '宮殿を見てみる' }: { label?: s
 
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  // 入口が開いているか。**分かるまでは押せない**
+  // （押せる見た目のまま断ると、押した人に無駄足を踏ませる）
+  const [open, setOpen] = useState<boolean | null>(null)
+
+  useEffect(() => {
+    fetchDemoOpen().then(setOpen)
+  }, [])
 
   async function handleClick() {
-    if (loading) return
+    if (loading || !open) return
 
     setLoading(true)
     setError(null)
@@ -48,9 +58,11 @@ export function DemoEntryButton({ label = '宮殿を見てみる' }: { label?: s
       <button
         type="button"
         onClick={handleClick}
-        disabled={loading}
+        disabled={loading || open !== true}
+        title={open === false ? PREPARING : undefined}
+        aria-disabled={open !== true}
         className="rounded-full border px-5 py-1.5 text-sm transition-colors
-                   hover:bg-[color:var(--ivory-dark)] disabled:opacity-60
+                   hover:bg-[color:var(--ivory-dark)] disabled:cursor-not-allowed disabled:opacity-60
                    focus-visible:outline-2 focus-visible:outline-offset-2"
         style={{ borderColor: 'var(--palace)', color: '#4A4A4A' }}
       >
@@ -62,7 +74,7 @@ export function DemoEntryButton({ label = '宮殿を見てみる' }: { label?: s
         </p>
       ) : (
         <p className="text-xs" style={{ color: '#6B6B6B' }}>
-          登録は要りません
+          {open === false ? PREPARING : '登録は要りません'}
         </p>
       )}
     </div>

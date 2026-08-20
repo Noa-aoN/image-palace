@@ -9,6 +9,7 @@ import { Label } from '@/components/ui/label'
 import { PasswordField } from '@/components/features/auth/PasswordField'
 import { AppleIcon } from '@/components/features/auth/AppleIcon'
 import { signUp, googleOAuthUrl, appleOAuthUrl, APPLE_AUTH_ENABLED } from '@/lib/api/auth'
+import { DemoEntryButton } from '@/components/features/landing/DemoEntryButton'
 import {
   buildSignupErrorDetail,
   type AuthFieldErrors,
@@ -221,6 +222,12 @@ export function SignupForm() {
           ログイン
         </Link>
       </p>
+
+      {/* 迷っている人の逃げ道。**ログイン画面と同じものを置く**
+          （片方にしか無いと、たまたま開いた面によって選べる道が変わる） */}
+      <div className="mt-6 border-t pt-5" style={{ borderColor: 'var(--ivory-dark)' }}>
+        <DemoEntryButton label="登録せずに宮殿を見てみる" />
+      </div>
     </div>
   )
 }

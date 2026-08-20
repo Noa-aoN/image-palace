@@ -1,9 +1,12 @@
 'use client'
 
 import { useEffect, useState } from 'react'
+import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { useAuthStore } from '@/stores/auth'
 import { isDemoUser, remainingLabel } from '@/lib/demo/session'
+import { leaveDemo } from '@/lib/api/demo'
+import { useItemsStore } from '@/stores/items'
 
 /**
  * 体験中であることを、いつも1本だけ出す帯。
@@ -15,9 +18,11 @@ import { isDemoUser, remainingLabel } from '@/lib/demo/session'
  * root の layout で、ヘッダーの上に流れの中で置く（全体が1行ぶん下がる）。
  */
 export function DemoBanner() {
+  const router = useRouter()
   const user = useAuthStore((s) => s.user)
   const hasHydrated = useAuthStore((s) => s.hasHydrated)
   const [remaining, setRemaining] = useState<string | null>(null)
+  const [leaving, setLeaving] = useState(false)
 
   const isDemo = hasHydrated && isDemoUser(user)
 
@@ -37,6 +42,19 @@ export function DemoBanner() {
     return () => clearInterval(timer)
   }, [isDemo, user?.created_at])
 
+  async function handleLeave() {
+    if (leaving) return
+    // 中身は毎回まったく同じなので、押し間違えても失うものは無い。
+    // それでも「消える」と分かってから押せるようにする
+    if (!window.confirm('この体験用の宮殿を片付けます。よろしいですか。')) return
+
+    setLeaving(true)
+    await leaveDemo().catch(() => {})
+    useItemsStore.getState().resetItems()
+    useAuthStore.getState().clearAuth()
+    router.replace('/')
+  }
+
   if (!isDemo) return null
 
   return (
@@ -53,6 +71,16 @@ export function DemoBanner() {
       >
         自分の宮殿を作る
       </Link>
+      {/* 出口。**主役は「自分の宮殿を作る」のまま**なので、控えめに置く */}
+      <button
+        type="button"
+        onClick={handleLeave}
+        disabled={leaving}
+        className="rounded-full px-2 py-0.5 underline underline-offset-2 opacity-80
+                   hover:opacity-100 disabled:opacity-50"
+      >
+        {leaving ? '片付けています…' : '体験を終える'}
+      </button>
     </div>
   )
 }

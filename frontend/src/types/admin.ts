@@ -14,12 +14,34 @@ import type { AdminPeriod } from '@/components/features/admin/PeriodSelect'
  */
 export type AdminRole = 'user' | 'support' | 'operator' | 'admin'
 
+/**
+ * できることの名前。**これからの出し分けはこちらを見る。**
+ *
+ * 役割の文字列で書くと、条件が役割で書かれ始めて、
+ * 役割が増えたときに全部を見直すことになる。
+ */
+export type Capability =
+  | 'access_ops_room'
+  | 'support_users'
+  | 'view_analytics'
+  | 'operate_service'
+  | 'manage_billing'
+  | 'manage_members'
+  | 'manage_security'
+  | 'access_official_studio'
+  | 'edit_official_content'
+  | 'publish_official_content'
+
+export type Capabilities = Partial<Record<Capability, boolean>>
+
 export interface AdminSession {
-  /** 運営の入口に入れるか（support 以上） */
+  /** 運営の入口に入れるか（support 以上）。据え置き（画面側の参照が多いため） */
   admin: boolean
-  /** 権限・お金を触れるか（admin のみ）。名前は据え置き（画面側の参照が多いため） */
+  /** 権限・お金を触れるか（admin のみ）。据え置き */
   owner: boolean
   role: AdminRole
+  /** できることの名前。**新しく書くところはこちらを使う** */
+  capabilities?: Capabilities
   strong_auth: AdminStrongAuth
 }
 

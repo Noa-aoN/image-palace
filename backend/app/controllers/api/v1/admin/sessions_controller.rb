@@ -13,9 +13,13 @@ module Api
       class SessionsController < Api::V1::BaseController
         def show
           render json: {
+            # 据え置き。画面の参照が多く、消すと差分が大きくなる
             admin: current_user.admin?,
             owner: current_user.owner?,
             role: current_user.effective_role,
+            # **これからの出し分けはこちらを見る。**
+            # 役割の文字列を画面へ持ち込むと、条件が役割で書かれ始める
+            capabilities: current_user.capabilities,
             strong_auth: strong_auth_state
           }
         end

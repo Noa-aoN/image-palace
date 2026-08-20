@@ -7,6 +7,11 @@ class User < ApplicationRecord
   # == devise-token-auth設定 ================================================
   include DeviseTokenAuth::Concerns::User
 
+  # == できることの名前 ======================================================
+  # 役割を直に見ず、`can_*?` を通す。呼ぶ側を変えずに、
+  # 将来「宮殿ごとの一員か」を判断に足せるようにするため
+  include UserCapabilities
+
   # == 役割 ==================================================================
   #   user     … 一般。/admin には入れない
   #   support  … 閲覧・調査。見るだけで、配ったり変えたりはできない
@@ -477,9 +482,10 @@ class User < ApplicationRecord
     id.present? && id.to_s.downcase == self.class.official_content_account_id
   end
 
-  # 公式工房を使える資格があるか。こちらは役割で決める（DB が正）
+  # 公式工房を使える資格があるか。
+  # **`UserCapabilities` の言い換え**（呼んでいる場所が既にあるので残す）
   def can_manage_official_content?
-    at_least?("operator")
+    can_access_official_studio?
   end
 
   # 中の人の口座（体験用・公式）。**数えるときは外す**
