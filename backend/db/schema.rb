@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_08_20_150000) do
+ActiveRecord::Schema[8.1].define(version: 2026_08_21_010000) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
   enable_extension "pg_trgm"
@@ -240,6 +240,14 @@ ActiveRecord::Schema[8.1].define(version: 2026_08_20_150000) do
     t.datetime "updated_at", null: false
     t.index ["channel", "enabled"], name: "index_content_deliveries_on_channel_and_enabled"
     t.index ["package_key", "channel"], name: "index_content_deliveries_on_package_key_and_channel", unique: true
+  end
+
+  create_table "content_exclusions", id: :uuid, default: -> { "gen_random_uuid()" }, force: :cascade do |t|
+    t.datetime "created_at", null: false
+    t.uuid "item_id", null: false
+    t.string "note"
+    t.datetime "updated_at", null: false
+    t.index ["item_id"], name: "index_content_exclusions_on_item_id", unique: true
   end
 
   create_table "content_installation_entries", id: :uuid, default: -> { "gen_random_uuid()" }, force: :cascade do |t|
@@ -1208,6 +1216,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_08_20_150000) do
   add_foreign_key "campaign_codes", "users", column: "created_by_id"
   add_foreign_key "campaign_redemptions", "campaign_codes"
   add_foreign_key "campaign_redemptions", "users"
+  add_foreign_key "content_exclusions", "items", on_delete: :cascade
   add_foreign_key "content_installation_entries", "content_installations"
   add_foreign_key "content_installations", "users"
   add_foreign_key "credit_grants", "users"

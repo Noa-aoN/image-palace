@@ -31,6 +31,37 @@ export type StudioPackage = {
   installs: number
 }
 
+/**
+ * 公式宮殿の1枚。**何が出ていて、何が出ていないか**を見るための形。
+ *
+ * 出すかどうかは箱とキャンバスの選択から導けるので、
+ * こちらが持つのは「出さない」と決めた例外だけ
+ */
+export type StudioItem = {
+  id: string
+  title: string
+  item_type: string | null
+  thumb_url: string | null
+  /** 入っている箱 */
+  boxes: string[]
+  /** 置かれているキャンバス */
+  views: string[]
+  /** すでに入って出ている荷物の鍵 */
+  packages: string[]
+  /** 出さないと決めた */
+  excluded: boolean
+  /** 出せない理由（絵・意味・種別の欠け）。**下書きを起こす前に分かるように** */
+  blockers: string[]
+}
+
+export type StudioItems = {
+  items: StudioItem[]
+  /** 出さないと決めた枚数 */
+  excluded: number
+  /** 上限で切ったか */
+  truncated: boolean
+}
+
 export type StudioOwner = {
   email: string
   boxes: number
@@ -94,6 +125,20 @@ export type DraftInput = {
 }
 
 /** 選んだものを下書きとして起こす。**ここで欠けが見つかれば、公開の前に止まる** */
+export async function fetchStudioItems(): Promise<StudioItems> {
+  const res = await apiClient.get<StudioItems>('/api/v1/admin/studio/items')
+  return res.data
+}
+
+/** 1枚だけ、出す・出さないを切り替える。**効くのは次に起こす下書きから** */
+export async function setItemExclusion(id: string, excluded: boolean, note?: string) {
+  const res = await apiClient.patch<{ id: string; excluded: boolean }>(
+    `/api/v1/admin/studio/items/${id}/exclusion`,
+    { excluded, note }
+  )
+  return res.data
+}
+
 export async function createDraft(input: DraftInput): Promise<StudioPackage> {
   const res = await apiClient.post<{ package: StudioPackage }>('/api/v1/admin/studio/draft', input)
   return res.data.package

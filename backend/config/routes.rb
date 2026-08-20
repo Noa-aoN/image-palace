@@ -65,6 +65,8 @@ Rails.application.routes.draw do
         get "studio/settings", to: "studio#settings"
         patch "studio/settings", to: "studio#update_settings"
         get "studio/sources", to: "studio#sources"
+        get "studio/items", to: "studio#items"
+        patch "studio/items/:id/exclusion", to: "studio#update_exclusion"
         post "studio/draft", to: "studio#draft"
         post "studio/:key/:version/preview", to: "studio#preview"
         delete "studio/:key/:version/preview", to: "studio#discard_preview"

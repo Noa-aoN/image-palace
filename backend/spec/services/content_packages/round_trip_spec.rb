@@ -453,4 +453,69 @@ RSpec.describe "公式コンテンツの往復", type: :service do
       }.not_to change { [ receiver.items.count, receiver.boxes.count, receiver.views.count ] }
     end
   end
+
+  # 「この1枚は出さない」。**箱の中に1枚だけ出したくないカードが混じるとき。**
+  #
+  # そのために箱を分けるのは、原本の作りを配布の都合で歪める。
+  # 落とすのは書き出しの入口ひとつなので、集めるところ・箱の中身・
+  # 配置・線のすべてが同じ判断で揃う
+  describe "出さないと決めたカード" do
+    before { ContentExclusion.set!(item: router_a, excluded: true, note: "作り直し中") }
+
+    it "荷物に入らない" do
+      expect(export["items"].map { |i| i["title"] }).to eq(%w[DNS ルーター])
+      expect(export["items"].map { |i| i["origin_key"] }).not_to include(router_a.id)
+    end
+
+    # **席次の無いカードを箱が指したままにしない。** 残ると取り込む側で壊れる
+    it "箱の中身からも消える" do
+      keys = export["boxes"].first["entries"].map { |e| e["local_key"] }
+
+      expect(keys.size).to eq(2)
+      expect(keys).to all(be_in(export["items"].map { |i| i["local_key"] }))
+    end
+
+    it "キャンバスの配置からも消える" do
+      keys = export["views"].first["placements"].map { |p| p["local_key"] }
+
+      expect(keys.size).to eq(2)
+      expect(keys).to all(be_in(export["items"].map { |i| i["local_key"] }))
+    end
+
+    # 外したカードに繋がっていた線は、行き先が無くなる
+    it "その節に繋がっていた線も落ちる" do
+      expect(export["views"].first["edges"]).to be_empty
+    end
+
+    it "取り込んでも壊れない" do
+      result = ContentPackages::Importer.call(user: receiver, payload: export)
+
+      expect(result.items.size).to eq(2)
+      expect(receiver.items.pluck(:title)).to contain_exactly("DNS", "ルーター")
+    end
+
+    it "外すと、また入る" do
+      ContentExclusion.set!(item: router_a, excluded: false)
+
+      expect(export["items"].size).to eq(3)
+    end
+
+    it "押し直しても行が増えない" do
+      3.times { ContentExclusion.set!(item: router_a, excluded: true) }
+
+      expect(ContentExclusion.where(item_id: router_a.id).count).to eq(1)
+    end
+
+    # **空の荷物は作らせない。** 出してから気づくことになる
+    it "全部外したら、そうと言って止まる" do
+      [ dns, router_b ].each { |item| ContentExclusion.set!(item: item, excluded: true) }
+
+      expect { export }.to raise_error(ContentPackages::Payload::ExportError, /カードが1枚も/)
+    end
+
+    # カードを消したら、外した記録も一緒に消える（迷子の行を残さない）
+    it "カードを消すと、記録も消える" do
+      expect { router_a.destroy! }.to change(ContentExclusion, :count).by(-1)
+    end
+  end
 end

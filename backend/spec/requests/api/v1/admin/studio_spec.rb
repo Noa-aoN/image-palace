@@ -202,6 +202,118 @@ RSpec.describe "公式工房", type: :request do
     end
   end
 
+  # 工房室のカード一覧。**何が出ていて、何が出ていないか。**
+  #
+  # 出すものは箱とキャンバスで決める。ここはその結果を見る場所で、
+  # 出したくない1枚だけを外すための栓を添えてある
+  describe "カード一覧" do
+    it "公式宮殿のカードが、入っている箱と一緒に並ぶ" do
+      get "/api/v1/admin/studio/items", headers: headers, as: :json
+
+      expect(response).to have_http_status(:success)
+      row = json_response["items"].find { |i| i["title"] == "DNS" }
+      expect(row["boxes"]).to include("出すもの")
+      expect(row["excluded"]).to be(false)
+    end
+
+    # **まだ出していないものも並べる。**
+    # 公式宮殿にあるもの全部が公開物ではないので、その区別が見えないと選べない
+    it "まだ出していないカードも並ぶ" do
+      get "/api/v1/admin/studio/items", headers: headers, as: :json
+
+      titles = json_response["items"].map { |i| i["title"] }
+      expect(titles).to include("つくりかけ")
+    end
+
+    it "どの荷物に入って出ているかが分かる" do
+      post "/api/v1/admin/studio/draft",
+           params: { key: "starter_it", kind: "starter", name: "ITのことば",
+                     box_ids: [ published_box.id ] },
+           headers: headers, as: :json
+      patch "/api/v1/admin/studio/starter_it/1/status",
+            params: { status_action: "publish" }, headers: headers, as: :json
+
+      get "/api/v1/admin/studio/items", headers: headers, as: :json
+
+      rows = json_response["items"].index_by { |i| i["title"] }
+      expect(rows["DNS"]["packages"]).to eq([ "starter_it" ])
+      expect(rows["つくりかけ"]["packages"]).to be_empty
+    end
+
+    # **下書きを起こしてから止まるより、並べた時点で分かるほうがよい**
+    it "出せない理由も一緒に返す" do
+      naked = official.items.create!(title: "絵も意味も無い", item_type: word,
+                                     generation_status: "completed")
+
+      get "/api/v1/admin/studio/items", headers: headers, as: :json
+
+      row = json_response["items"].find { |i| i["id"] == naked.id }
+      expect(row["blockers"]).to contain_exactly("絵がありません", "意味がありません")
+    end
+
+    describe "1枚だけ外す" do
+      let(:dns) { official.items.find_by(title: "DNS") }
+
+      it "外すと、そう返る" do
+        patch "/api/v1/admin/studio/items/#{dns.id}/exclusion",
+              params: { excluded: true }, headers: headers, as: :json
+
+        expect(response).to have_http_status(:success)
+        expect(json_response["excluded"]).to be(true)
+      end
+
+      it "外したあとに起こした下書きには、入らない" do
+        patch "/api/v1/admin/studio/items/#{dns.id}/exclusion",
+              params: { excluded: true, note: "作り直し中" }, headers: headers, as: :json
+
+        post "/api/v1/admin/studio/draft",
+             params: { key: "starter_it", kind: "starter", name: "ITのことば",
+                       box_ids: [ published_box.id ] },
+             headers: headers, as: :json
+
+        expect(response).to have_http_status(:created)
+        expect(json_response["package"]["counts"]["items"]).to eq(1)
+      end
+
+      it "戻すと、また入る" do
+        patch "/api/v1/admin/studio/items/#{dns.id}/exclusion",
+              params: { excluded: true }, headers: headers, as: :json
+        patch "/api/v1/admin/studio/items/#{dns.id}/exclusion",
+              params: { excluded: false }, headers: headers, as: :json
+
+        get "/api/v1/admin/studio/items", headers: headers, as: :json
+        row = json_response["items"].find { |i| i["title"] == "DNS" }
+        expect(row["excluded"]).to be(false)
+      end
+
+      # **一般に配るものを変える操作**なので、記録に残す
+      it "記録に残る" do
+        expect {
+          patch "/api/v1/admin/studio/items/#{dns.id}/exclusion",
+                params: { excluded: true }, headers: headers, as: :json
+        }.to change { AdminAuditLog.where(action: "studio.item_exclusion").count }.by(1)
+      end
+
+      # 公式宮殿の外のカードは触らせない
+      it "よその宮殿のカードは外せない" do
+        other = create(:user, :confirmed).items.create!(title: "よそのカード", item_type: word,
+                                                        generation_status: "completed")
+
+        patch "/api/v1/admin/studio/items/#{other.id}/exclusion",
+              params: { excluded: true }, headers: headers, as: :json
+
+        expect(response).to have_http_status(:not_found)
+      end
+    end
+
+    it "工房に入れない人は見られない" do
+      get "/api/v1/admin/studio/items",
+          headers: create(:user, :confirmed).create_new_auth_token, as: :json
+
+      expect(response).to have_http_status(:forbidden)
+    end
+  end
+
   describe "設定" do
     it "いまの様子が分かる" do
       get "/api/v1/admin/studio/settings", headers: headers, as: :json
