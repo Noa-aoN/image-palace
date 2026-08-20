@@ -4,6 +4,16 @@ import type { ContentPackageCounts } from '@/lib/api/contentPackages'
 /** 荷物の扱い。**止めるのと終えるのを分ける** */
 export type PackageStatus = 'draft' | 'published' | 'suspended' | 'archived'
 
+/** 届け先。**どこで配るか**（種別とは別） */
+export type Delivery = {
+  channel: 'demo' | 'delphi' | 'campaign' | 'mission' | 'purchase'
+  label: string
+  note: string
+  enabled: boolean
+  /** 受け取る側の仕組みがまだ無い */
+  pending: boolean
+}
+
 export type StudioPackage = {
   id: string
   key: string
@@ -15,6 +25,8 @@ export type StudioPackage = {
   counts: ContentPackageCounts
   published_at: string | null
   updated_at: string
+  /** どこへ届けるか */
+  deliveries: Delivery[]
   /** 何人が受け取ったか（下見は数えない） */
   installs: number
 }
@@ -103,6 +115,19 @@ export async function discardPreview(key: string, version: number): Promise<void
   await apiClient.delete(`/api/v1/admin/studio/${key}/${version}/preview`)
 }
 
+/** 届け先を入れ替える。**版ではなく鍵に付く**ので、出し直しても引き継がれる */
+export async function setDelivery(
+  key: string,
+  channel: Delivery['channel'],
+  enabled: boolean
+): Promise<Delivery[]> {
+  const res = await apiClient.patch<{ deliveries: Delivery[] }>(
+    `/api/v1/admin/studio/${key}/delivery`,
+    { channel, enabled }
+  )
+  return res.data.deliveries
+}
+
 export type StatusAction = 'publish' | 'suspend' | 'resume' | 'archive'
 
 export async function changeStatus(
@@ -123,7 +148,11 @@ export type StudioSettings = {
   allowance_limit_credits: number
   demo_entry_stage: string
   demo_entry_stages: string[]
-  demo_package: { published: boolean; key?: string; version?: number; counts?: ContentPackageCounts }
+  demo_package: {
+    published: boolean
+    packages?: { key: string; name: string; version: number; items: number }[]
+    items?: number
+  }
 }
 
 export async function fetchStudioSettings(): Promise<StudioSettings> {

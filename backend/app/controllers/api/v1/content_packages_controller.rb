@@ -8,7 +8,10 @@ module Api
     class ContentPackagesController < BaseController
       # 受け取れるもの。**中身を開かずに数だけ分かる**ようにして返す
       def index
-        packages = ContentPackage.distributable(kind: "starter")
+        # **届け先が「デルフォイ」のものだけ。**
+        # 種別（starter / demo / advance）で決めない。
+        # 種別は「何であるか」で、どこへ出るかとは別の話
+        packages = ContentDelivery.packages_for("delphi")
         received = ContentInstallation.where(user_id: current_user.id).pluck(:package_key).to_set
 
         render json: {
@@ -19,6 +22,13 @@ module Api
       end
 
       def install
+        # **届け先に入っていないものは、ここからは渡さない。**
+        # 一覧に出ていなくても、鍵さえ知っていれば取れる、が起きないように
+        unless ContentDelivery.keys_for("delphi").include?(params[:key])
+          return render json: { error: "この公式コンテンツは、いまここでは配っていません" },
+                        status: :not_found
+        end
+
         result = ContentPackages::Distributor.call(
           user: current_user, key: params[:key], source: "delphi"
         )

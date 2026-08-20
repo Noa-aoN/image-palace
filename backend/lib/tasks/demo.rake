@@ -21,14 +21,13 @@ namespace :demo do
     puts "寿命          : #{Demo::Session::LIFETIME.inspect}"
     puts
 
-    package = ContentPackage.latest_published(Demo::Session::PACKAGE_KEY)
-    if package
-      c = package.summary_counts
-      puts "配っている中身: #{package.name} v#{package.version}"
-      puts "  カード #{c[:items]} / 箱 #{c[:boxes]} / キャンバス #{c[:views]}"
+    packages = Demo::Session.packages
+    if packages.any?
+      puts "体験の宮殿に置いているもの: #{packages.size} 件 / カード #{packages.sum { |p| p.summary_counts[:items] }}"
+      packages.each { |p| puts "  #{p.name}（#{p.key} v#{p.version}）" }
     else
-      puts "配っている中身: **まだ無い**（この状態では宮殿を建てられない）"
-      puts "  bin/rails content:publish KEY=#{Demo::Session::PACKAGE_KEY} KIND=demo ... で用意する"
+      puts "体験の宮殿に置いているもの: **まだ無い**（この状態では宮殿を建てられない）"
+      puts "  工房室で、荷物の届け先に「体験の宮殿に置く」を入れる"
     end
   end
 

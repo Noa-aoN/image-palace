@@ -68,8 +68,8 @@ describe('ヘッダーの肩書き', () => {
     expect(badgeFor(ops)?.label).toBe('運営')
   })
 
-  it('制作だけの人には「公式制作」', () => {
-    expect(badgeFor(studio)?.label).toBe('公式制作')
+  it('制作だけの人には「公式工房」', () => {
+    expect(badgeFor(studio)?.label).toBe('公式工房')
     expect(badgeFor(studio)?.hint).toMatch(/公式コンテンツ/)
   })
 

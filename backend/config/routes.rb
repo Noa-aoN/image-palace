@@ -69,6 +69,7 @@ Rails.application.routes.draw do
         post "studio/:key/:version/preview", to: "studio#preview"
         delete "studio/:key/:version/preview", to: "studio#discard_preview"
         patch "studio/:key/:version/status", to: "studio#update_status"
+        patch "studio/:key/delivery", to: "studio#update_delivery"
         get "feature_flags", to: "feature_flags#index"
         # キーに「.」が入る（page.trophy）。制約を付けないと拡張子として切り落とされる
         put "feature_flags/:key", to: "feature_flags#upsert", constraints: { key: %r{[^/]+} }

@@ -114,6 +114,28 @@ module Api
           head :no_content
         end
 
+        # 届け先を変える。**どこで配るか。**
+        #
+        # 版ではなく鍵に付ける。出し直しても設定は引き継がれる
+        def update_delivery
+          channel = params.require(:channel)
+          enabled = ActiveModel::Type::Boolean.new.cast(params[:enabled])
+
+          unless ContentDelivery::CHANNELS.include?(channel)
+            return render json: { error: "その届け先は知りません" }, status: :unprocessable_entity
+          end
+
+          ContentDelivery.set!(package_key: params[:key], channel: channel, enabled: enabled)
+
+          # **一般に届く先が変わる操作**なので、記録に残す
+          AdminAuditLog.record!(
+            actor: current_user, action: "content_package.delivery",
+            details: { "key" => params[:key], "channel" => channel, "enabled" => enabled }
+          )
+
+          render json: { deliveries: ContentDelivery.state_for(params[:key]) }
+        end
+
         # 扱いを変える。publish / suspend / resume / archive
         def update_status
           package = find_package!
@@ -257,12 +279,17 @@ module Api
           { configured: true, email: official.email, items: official.items.count }
         end
 
-        # 体験用に配っている荷物。**入口を開ける前に、中身があるか分かるように**
+        # 体験用に置いている荷物。**入口を開ける前に、中身があるか分かるように**
         def demo_package_state
-          package = ContentPackage.latest_published(::Demo::Session::PACKAGE_KEY)
-          return { published: false } unless package
+          packages = ::Demo::Session.packages
+          return { published: false, packages: [] } if packages.empty?
 
-          { published: true, key: package.key, version: package.version, counts: package.summary_counts }
+          {
+            published: true,
+            packages: packages.map { |p| { key: p.key, name: p.name, version: p.version,
+                                           items: p.summary_counts[:items] } },
+            items: packages.sum { |p| p.summary_counts[:items] }
+          }
         end
 
         def audit!(action, package)
@@ -293,6 +320,8 @@ module Api
             counts: package.summary_counts,
             published_at: package.published_at,
             updated_at: package.updated_at,
+            # どこへ届けるか。**種別とは別**（種別は「何であるか」）
+            deliveries: ContentDelivery.state_for(package.key),
             # 何人が受け取ったか（下見は数えない）
             installs: ContentInstallation.where(package_key: package.key, package_version: package.version)
                                          .where.not(source: "preview").count

@@ -443,6 +443,71 @@ RSpec.describe "公式工房", type: :request do
     end
   end
 
+  describe "届け先" do
+    before do
+      post "/api/v1/admin/studio/draft",
+           params: { key: "starter_test", kind: "starter", name: "ためし", box_ids: [ published_box.id ] },
+           headers: headers, as: :json
+      patch "/api/v1/admin/studio/starter_test/1/status",
+            params: { status_action: "publish" }, headers: headers, as: :json
+    end
+
+    def set_delivery(channel, enabled)
+      patch "/api/v1/admin/studio/starter_test/delivery",
+            params: { channel: channel, enabled: enabled }, headers: headers, as: :json
+    end
+
+    it "はじめは、どこへも出ていない" do
+      get "/api/v1/admin/studio", headers: headers, as: :json
+      pkg = json_response["packages"].find { |p| p["key"] == "starter_test" }
+
+      expect(pkg["deliveries"].map { |d| d["enabled"] }).to all(be(false))
+    end
+
+    it "デルフォイへ出せる" do
+      set_delivery("delphi", true)
+
+      expect(response).to have_http_status(:success)
+      expect(ContentDelivery.keys_for("delphi")).to eq([ "starter_test" ])
+    end
+
+    # ここが分けた値打ち
+    it "デルフォイには出さず、体験の宮殿にだけ置ける" do
+      set_delivery("demo", true)
+
+      expect(ContentDelivery.keys_for("demo")).to eq([ "starter_test" ])
+      expect(ContentDelivery.keys_for("delphi")).to be_empty
+    end
+
+    it "止められる" do
+      set_delivery("delphi", true)
+      set_delivery("delphi", false)
+
+      expect(ContentDelivery.keys_for("delphi")).to be_empty
+    end
+
+    it "知らない届け先は断る" do
+      set_delivery("carrier_pigeon", true)
+
+      expect(response).to have_http_status(:unprocessable_content)
+    end
+
+    # **一般に届く先が変わる操作**なので、記録に残す
+    it "運営の記録に残る" do
+      expect { set_delivery("delphi", true) }
+        .to change { AdminAuditLog.where(action: "content_package.delivery").count }.by(1)
+    end
+
+    it "権限が無ければ触れない" do
+      patch "/api/v1/admin/studio/starter_test/delivery",
+            params: { channel: "delphi", enabled: true },
+            headers: create(:user, :confirmed, role: "operator").create_new_auth_token, as: :json
+
+      expect(response).to have_http_status(:forbidden)
+      expect(ContentDelivery.keys_for("delphi")).to be_empty
+    end
+  end
+
   # ここが「Draft / Snapshot / Published を分ける」ことの中身
   describe "原本を編集しても、出したものは変わらない" do
     before do

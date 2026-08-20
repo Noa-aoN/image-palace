@@ -61,7 +61,8 @@ RSpec.describe "運営の段階ごとに触れる範囲", type: :request do
     [ :post, "/api/v1/admin/studio/draft" ],
     [ :post, "/api/v1/admin/studio/starter_x/1/preview" ],
     [ :delete, "/api/v1/admin/studio/starter_x/1/preview" ],
-    [ :patch, "/api/v1/admin/studio/starter_x/1/status" ]
+    [ :patch, "/api/v1/admin/studio/starter_x/1/status" ],
+    [ :patch, "/api/v1/admin/studio/starter_x/delivery" ]
   ].freeze
 
   describe "一般利用者" do

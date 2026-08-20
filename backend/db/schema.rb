@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_08_20_120000) do
+ActiveRecord::Schema[8.1].define(version: 2026_08_20_150000) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
   enable_extension "pg_trgm"
@@ -230,6 +230,16 @@ ActiveRecord::Schema[8.1].define(version: 2026_08_20_120000) do
     t.index ["campaign_code_id", "user_id"], name: "index_campaign_redemptions_on_campaign_code_id_and_user_id", unique: true
     t.index ["campaign_code_id"], name: "index_campaign_redemptions_on_campaign_code_id"
     t.index ["user_id"], name: "index_campaign_redemptions_on_user_id"
+  end
+
+  create_table "content_deliveries", id: :uuid, default: -> { "gen_random_uuid()" }, force: :cascade do |t|
+    t.string "channel", null: false
+    t.datetime "created_at", null: false
+    t.boolean "enabled", default: false, null: false
+    t.string "package_key", null: false
+    t.datetime "updated_at", null: false
+    t.index ["channel", "enabled"], name: "index_content_deliveries_on_channel_and_enabled"
+    t.index ["package_key", "channel"], name: "index_content_deliveries_on_package_key_and_channel", unique: true
   end
 
   create_table "content_installation_entries", id: :uuid, default: -> { "gen_random_uuid()" }, force: :cascade do |t|

@@ -166,14 +166,26 @@ export function StudioSettingsPanel() {
           </p>
         </div>
 
+        {/* 体験の宮殿は「届け先が体験の荷物を全部」入れて組む。
+            **何が入るのかを、ここで見えるようにする** */}
         {settings.demo_package.published ? (
-          <p className="text-xs text-muted-foreground">
-            配る中身: {settings.demo_package.key} v{settings.demo_package.version}（カード{' '}
-            {settings.demo_package.counts?.items} 枚）
-          </p>
+          <div className="text-xs text-muted-foreground">
+            <p>
+              いま置いているもの: {settings.demo_package.packages?.length} 件 / カード{' '}
+              {settings.demo_package.items} 枚
+            </p>
+            <ul className="mt-1 list-disc pl-5">
+              {settings.demo_package.packages?.map((p) => (
+                <li key={p.key}>
+                  {p.name}（{p.key} v{p.version} / {p.items} 枚）
+                </li>
+              ))}
+            </ul>
+          </div>
         ) : (
           <p className="text-xs" style={{ color: '#8A6210' }}>
-            配る中身がありません。開いても入れません（工房室で <code>demo_showcase</code> を公開してください）
+            置いているものがありません。開いても入れません
+            （荷物の届け先に「体験の宮殿に置く」を入れてください）
           </p>
         )}
 

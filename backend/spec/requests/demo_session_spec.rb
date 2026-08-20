@@ -34,10 +34,14 @@ RSpec.describe "体験用の宮殿", type: :request do
       view.view_items.create!(item: item, x: i * 300, y: 0, position: i)
     end
 
-    ContentPackage.publish!(
-      key: Demo::Session::PACKAGE_KEY, kind: "demo", name: "はじまりの宮殿",
+    package = ContentPackage.publish!(
+      key: "demo_showcase", kind: "demo", name: "はじまりの宮殿",
       payload: ContentPackages::Exporter.call(boxes: [ box ], views: [ view ])
     )
+    # **届け先に入れないと、宮殿は組めない。**
+    # 体験の宮殿は「届け先が体験の荷物を全部」入れて作る
+    ContentDelivery.set!(package_key: package.key, channel: "demo", enabled: true)
+    package
   end
 
   describe "POST /api/v1/demo" do
@@ -188,7 +192,7 @@ RSpec.describe "体験用の宮殿", type: :request do
     end
 
     it "配る中身が無ければ、建てずに断る" do
-      package.archive!
+      ContentDelivery.set!(package_key: package.key, channel: "demo", enabled: false)
 
       post "/api/v1/demo", as: :json
 
