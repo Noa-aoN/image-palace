@@ -6,6 +6,10 @@ require "rails_helper"
 #
 # **認証が要らない、ただ1つの書き込み口**なので、守りをここで固める。
 RSpec.describe "体験用の宮殿", type: :request do
+  # 入口の栓。**既定は「準備中」**（作りかけのまま外に開かないように）。
+  # ここを開けた状態で、中の動きを確かめる
+  before { FeatureFlag.find_or_initialize_by(key: "demo_entry").update!(stage: "released") }
+
   let(:author) { create(:user, :confirmed) }
   let(:word) { create(:item_type, name: "word", label: "単語") }
 
@@ -207,6 +211,73 @@ RSpec.describe "体験用の宮殿", type: :request do
 
     it "数えるときは外れる" do
       expect(User.external.count).to eq(1) # 見本を作った人だけ
+    end
+  end
+
+  # 「出る」に実体を持たせる。中身は毎回まったく同じなので、
+  # 押し間違えても失うものが無い
+  describe "体験を終える" do
+    before { post "/api/v1/demo", as: :json }
+
+    let(:tokens) { json_response["tokens"] }
+
+    it "宮殿ごと片付く" do
+      user = User.demo_accounts.last
+
+      expect { delete "/api/v1/demo", headers: tokens, as: :json }
+        .to change(User, :count).by(-1)
+
+      expect(response).to have_http_status(:no_content)
+      expect(User.find_by(id: user.id)).to be_nil
+    end
+
+    it "中身も一緒に落ちる" do
+      expect { delete "/api/v1/demo", headers: tokens, as: :json }
+        .to change(Item, :count).by(-2)
+      expect(Box.where(user_id: User.demo_accounts.pluck(:id))).to be_empty
+    end
+
+    # 次に来た人がまた同じ絵を使う
+    it "共有している絵は消さない" do
+      expect { perform_enqueued_jobs { delete "/api/v1/demo", headers: tokens, as: :json } }
+        .not_to change { author.items.map { |i| i.primary_media.file.attached? } }
+    end
+
+    # **体験用の口座しか消せない。** ここが緩いと、退会の禁止を回り込める
+    it "普通の利用者は、ここでは消えない" do
+      normal = create(:user, :confirmed)
+
+      expect { delete "/api/v1/demo", headers: normal.create_new_auth_token, as: :json }
+        .not_to change(User, :count)
+
+      expect(response).to have_http_status(:no_content)
+      expect(User.find_by(id: normal.id)).to be_present
+    end
+
+    it "ログインしていなければ断る" do
+      delete "/api/v1/demo", as: :json
+
+      expect(response).to have_http_status(:unauthorized)
+    end
+  end
+
+  # **画面の出し分けは守りではない。** サーバー側でも栓を見る
+  describe "入口が準備中のとき" do
+    before { FeatureFlag.find_or_initialize_by(key: "demo_entry").update!(stage: "development") }
+
+    it "宮殿を建てない" do
+      expect { post "/api/v1/demo", as: :json }.not_to change(User, :count)
+
+      expect(response).to have_http_status(:service_unavailable)
+      expect(json_response["error"]).to match(/準備中/)
+    end
+
+    it "入口ごと出さないときも、建てない" do
+      FeatureFlag.find_or_initialize_by(key: "demo_entry").update!(stage: "hidden")
+
+      post "/api/v1/demo", as: :json
+
+      expect(response).to have_http_status(:service_unavailable)
     end
   end
 

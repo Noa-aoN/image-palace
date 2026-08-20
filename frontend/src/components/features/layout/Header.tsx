@@ -18,6 +18,9 @@ import { useItemsStore } from '@/stores/items'
 import { useBillingStore } from '@/stores/billing'
 import { useNotificationsStore } from '@/stores/notifications'
 import { useAdminStore } from '@/stores/admin'
+import { badgeFor } from '@/lib/auth/capabilities'
+import { isDemoUser } from '@/lib/demo/session'
+import { leaveDemo } from '@/lib/api/demo'
 import { signOut } from '@/lib/api/auth'
 import { CREDIT_UNIT_SHORT } from '@/lib/billing'
 import { showSignUpCta } from '@/lib/auth/header-cta'
@@ -66,7 +69,11 @@ export function AppHeader() {
   const isOutsideShell = isLandingPage || isAuthPage
   const showCreate = showUserMenu && !isOutsideShell
   const showCredits = showUserMenu && !isOutsideShell
-  const showAdminBadge = showUserMenu && Boolean(adminSession?.admin) && !isAuthPage
+  // **役割ではなく、できることの名前で決める。**
+  // 運営と公式制作の両方を持つことがあるので、出す肩書きは1つに絞る
+  const isDemo = isDemoUser(user)
+  const badge = badgeFor(adminSession)
+  const showAdminBadge = showUserMenu && badge !== null && !isAuthPage
 
   useEffect(() => {
     if (showUserMenu) fetchBillingSummary()
@@ -99,6 +106,17 @@ export function AppHeader() {
     resetItems()
     clearAuth()
     router.push('/login')
+  }
+
+  // 体験を終える。**宮殿ごと片付けて、LP へ戻る。**
+  // ログアウトと違い、次に入ると新しい宮殿が建つ（中身は同じ）
+  const handleLeaveDemo = async () => {
+    if (!window.confirm('この体験用の宮殿を片付けます。よろしいですか。')) return
+
+    await leaveDemo().catch(() => {})
+    resetItems()
+    clearAuth()
+    router.push('/')
   }
 
   return (
@@ -151,13 +169,13 @@ export function AppHeader() {
           // 運営権限を持つアカウントであることを常に見えるようにする。
           // 権限のある状態に気づかないまま操作するのを防ぐためのもので、守りではない
           // （実際の判定はサーバー側で毎リクエスト行われる）。
-          <Tooltip label={adminSession?.owner ? '運営の管理者として見ています' : '運営として見ています'}>
+          <Tooltip label={badge?.hint ?? ''}>
             <Link
-              href="/admin"
+              href={badge?.label === '運営' ? '/admin' : '/studio'}
               className="hidden rounded-full border border-white/45 bg-white/15 px-2 py-0.5 text-xs font-medium text-white transition-colors hover:bg-white/25 sm:inline-flex sm:items-center sm:gap-1"
             >
               <ShieldCheck size={12} />
-              管理者
+              {badge?.label}
             </Link>
           </Tooltip>
         )}
@@ -300,8 +318,11 @@ export function AppHeader() {
               <DropdownMenuItem onClick={() => router.push('/')} className="cursor-pointer">
                 トップページへ戻る
               </DropdownMenuItem>
-              <DropdownMenuItem onClick={handleLogout} className="cursor-pointer">
-                ログアウト
+              {/* 体験用の口座に「ログアウト」という概念は要らない。
+                  押しても宮殿は残り、次に入ると同じ場所へ戻るので、
+                  「出た」つもりの人と食い違う。**言い方も動きも1つに揃える** */}
+              <DropdownMenuItem onClick={isDemo ? handleLeaveDemo : handleLogout} className="cursor-pointer">
+                {isDemo ? '体験を終える' : 'ログアウト'}
               </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>

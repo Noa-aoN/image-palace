@@ -25,6 +25,20 @@ module Api
     # **IP だけに頼らない。** 学校・会場・会社は全員が同じ IP なので、
     # IP で絞ると、いちばん来てほしい人たちを巻き込む。
     class DemoController < ApplicationController
+      # 終わるときだけ、誰なのかが要る（作るときは認証が無い）
+      before_action :authenticate_user!, only: :destroy
+      # 消したあとに認証ヘッダーを付け直そうとすると、
+      # **もう居ない利用者を読みに行って落ちる**（404 になっていた）
+      skip_after_action :update_auth_header, only: :destroy
+
+      # 入口が開いているか。**認証が要らない**（LP から読むため）。
+      #
+      # 中身は何も返さない。開いているかどうかだけ。
+      # これがあると、閉じているときに**押せる見た目のまま断る**のを避けられる
+      def show
+        render json: { open: ::Demo::Session.open? }
+      end
+
       def create
         result = ::Demo::Session.call(resume_token: params[:resume_token])
         user = result.user
@@ -38,6 +52,22 @@ module Api
         }, status: result.created ? :created : :ok
       rescue ::Demo::Session::Unavailable => e
         render json: { error: e.message, code: "demo_unavailable" }, status: :service_unavailable
+      end
+
+      # 体験を終える。**宮殿ごと片付ける。**
+      #
+      # 「出る」に実体を持たせる。中身は毎回まったく同じなので、
+      # 押し間違えても失うものが無い。同時に立てられる数の枠も戻る。
+      #
+      # 体験用の口座しか消せない。**普通の利用者がここへ来ても、何も起きない**
+      # （退会は `DELETE /account` の側で、体験用には禁じてある）。
+      def destroy
+        user = current_user
+        return head(:no_content) unless user&.demo?
+
+        Rails.logger.info "[Demo] 体験を終える user_id=#{user.id}"
+        user.destroy!
+        head :no_content
       end
     end
   end

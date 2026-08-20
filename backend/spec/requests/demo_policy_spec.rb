@@ -287,10 +287,14 @@ RSpec.describe "体験用の宮殿で禁じている操作", type: :request do
       expect(User.external).to include(normal)
     end
 
-    # 原本を持つことと、工房を使えることは別。**役割で決まる**
-    it "工房を使えるかは、役割で決まる" do
+    # 原本を持つことと、工房を使えることは別。**役割で決まる**。
+    #
+    # **当面は admin だけ。** 招待の仕組みがまだ無い段階で operator へ開くと、
+    # 運営業務の担当者が公式コンテンツを触れることになり、職務が分かれない
+    it "工房を使えるのは、いまは admin だけ" do
       expect(normal.can_manage_official_content?).to be(false)
-      expect(create(:user, :confirmed, role: "operator").can_manage_official_content?).to be(true)
+      expect(create(:user, :confirmed, role: "support").can_manage_official_content?).to be(false)
+      expect(create(:user, :confirmed, role: "operator").can_manage_official_content?).to be(false)
       expect(create(:user, :confirmed, role: "admin").can_manage_official_content?).to be(true)
     end
 
@@ -302,7 +306,7 @@ RSpec.describe "体験用の宮殿で禁じている操作", type: :request do
 
     # **原本の持ち主は1つ、触れる人は将来複数。** この形を壊さない
     it "原本の持ち主でなくても、役割があれば工房を使える" do
-      editor = create(:user, :confirmed, role: "operator")
+      editor = create(:user, :confirmed, role: "admin")
 
       expect(editor).not_to be_official_content_account
       expect(editor.can_manage_official_content?).to be(true)

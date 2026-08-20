@@ -8,6 +8,7 @@ import { useUiStore } from '@/stores/ui'
 import { useAdminStore } from '@/stores/admin'
 import { isNavItemActive } from '@/lib/nav-active'
 import { navSectionsFor, type NavNode } from './nav-items'
+import { opsEntriesFor } from '@/lib/auth/capabilities'
 import { useFeaturesStore } from '@/stores/features'
 
 interface Props {
@@ -59,7 +60,8 @@ function NavTree({
   }, [loadFeatures])
   const collapsedGroups = useUiStore((s) => s.collapsedGroups)
   // 運営だけに「運営」を出す。見た目の出し分けであって守りではない
-  const isAdmin = useAdminStore((s) => s.session?.admin ?? false)
+  // **役割ではなく、できることの名前で出し分ける**
+  const adminSession = useAdminStore((s) => s.session)
   const toggleGroup = useUiStore((s) => s.toggleGroup)
 
   const isActive = (href: string, exact = false) =>
@@ -196,7 +198,7 @@ function NavTree({
       className={`flex flex-col gap-1 ${iconsOnly ? 'px-1.5' : 'px-2'}`}
       style={{ color: 'var(--foreground)' }}
     >
-      {navSectionsFor(isAdmin).map((section) => (
+      {navSectionsFor(opsEntriesFor(adminSession)).map((section) => (
         <div key={section.key} className="flex flex-col">
           {iconsOnly ? (
             <div className="mx-auto my-1 h-px w-6" style={{ backgroundColor: 'var(--palace)', opacity: 0.4 }} />

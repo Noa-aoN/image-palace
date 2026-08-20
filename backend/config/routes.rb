@@ -9,7 +9,10 @@ Rails.application.routes.draw do
           omniauth_callbacks: "api/v1/auth/omniauth_callbacks"
         }
       # 体験用の宮殿。**認証が要らない、ただ1つの書き込み口**
+      get "demo", to: "demo#show"
       post "demo", to: "demo#create"
+      # 体験を終える。こちらは認証が要る（自分の宮殿しか片付けられない）
+      delete "demo", to: "demo#destroy"
       get "health", to: "health#show"
       get "health/authenticated", to: "health#show_authenticated"
       get "search", to: "search#index"

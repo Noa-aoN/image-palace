@@ -74,6 +74,18 @@ class FeatureFlag < ApplicationRecord
     "material_picture_list" => {
       label: "ピクチャーリスト", group: "other", path: nil, stage: "development",
       note: "マテリアルの種類のひとつ。ページではないので個別に持つ"
+    },
+    # 体験用の宮殿の入口。**ここが「一般に開いているか」の栓**。
+    #
+    # ページではないので個別に持つ。段階の意味はこう読む。
+    #   hidden      … 入口ごと出さない
+    #   development … 入口は見えるが「準備中」と伝えて、入れない
+    #   released    … 入れる
+    #
+    # デプロイ無しで開け閉めできる。**公開の判断を、運営の手に置くため**
+    "demo_entry" => {
+      label: "体験用の宮殿の入口", group: "other", path: nil, stage: "development",
+      note: "はじまりの宮殿へ入れるかどうか。準備中にすると、入口は見えるが入れない"
     }
   }.freeze
 
