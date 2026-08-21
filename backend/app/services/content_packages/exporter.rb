@@ -86,17 +86,49 @@ module ContentPackages
       items
     end
 
+    # **箱は袋。1枚抜いても、小さい袋のままでよい。**
+    #
+    # 箱の中に1枚だけ出したくないカードが混じることがある。
+    # そのために箱を分けるのは、原本の作りを配布の都合で歪める。
+    # ここで落とすのが「出さない」の値打ち
     def box_entries(box)
       @box_entries ||= {}
-      @box_entries[box.id] ||= box.box_entries.where(entry_type: "Item").order(:position, :created_at).includes(
-        entry: item_includes
-      ).to_a
+      @box_entries[box.id] ||= box.box_entries.where(entry_type: "Item").order(:position, :created_at)
+                                  .includes(entry: item_includes)
+                                  .reject { |entry| excluded?(entry.entry_id) }
     end
 
+    # **キャンバスは構造。1枚抜くと穴が開く。**
+    #
+    # 節を抜けば、そこに繋がっていた線も落ちる。
+    # 「神々の系図」から神が1柱消えた系図が、黙って荷物になる。
+    #
+    # 受け取った人のキャンバスに、中身の無い枠や切れた線が並ぶことがあってはならない。
+    # **黙って落とさず、下書きを起こす前に止める。**
+    # 直すのは元のカードなので、配る前に気づけば直せる
     def view_placements(view)
       @view_placements ||= {}
-      @view_placements[view.id] ||= view.view_items.order(:position, :created_at)
-                                       .includes(item: item_includes).to_a
+      @view_placements[view.id] ||= begin
+        placements = view.view_items.order(:position, :created_at).includes(item: item_includes).to_a
+        refuse_excluded_placements!(view, placements)
+        placements
+      end
+    end
+
+    def refuse_excluded_placements!(view, placements)
+      excluded = placements.select { |placement| excluded?(placement.item_id) }
+      return if excluded.empty?
+
+      titles = excluded.filter_map { |placement| placement.item&.title }
+
+      raise Payload::ExportError,
+            "キャンバス「#{view.name}」に置かれている「#{titles.join('」「')}」を「出さない」にしています。" \
+            "外すか、このキャンバスを選ばずに出してください"
+    end
+
+    def excluded?(item_id)
+      @excluded_ids ||= ContentExclusion.item_id_set
+      @excluded_ids.include?(item_id)
     end
 
     def item_includes

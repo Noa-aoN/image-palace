@@ -11,11 +11,13 @@ module Api
       # **公式宮殿にあるもの全部が、公開物ではない。**
       # 宮殿は原本・制作の場として自由に使い、その中から出すものだけをここで選ぶ。
       class StudioController < Api::V1::BaseController
+        include ItemSerialization
+
         before_action :require_studio!
         before_action :require_studio_strong_auth!
         # 原本の口座が無いと、**選ぶことも起こすこともできない**。
         # 落ちるのではなく、そうと言って断る
-        before_action :require_owner_account!, only: [ :sources, :draft ]
+        before_action :require_owner_account!, only: [ :sources, :draft, :items, :update_exclusion ]
 
         # いまの様子。荷物と、原本の一覧
         def show
@@ -59,6 +61,46 @@ module Api
             boxes: official.boxes.order(:created_at).map { |b| serialize_box(b) },
             views: official.views.order(:created_at).map { |v| serialize_view(v) }
           }
+        end
+
+        # 公式宮殿のカード一覧。**1枚ずつ、出ているかどうかが分かる場所。**
+        #
+        # ふだん出すものは箱とキャンバスで決める。ここはその結果を見る場所で、
+        # 出したくない1枚だけを外すための栓を添えてある。
+        #
+        # **「出す」ではなく「出さない」だけを持つ。**
+        # 出すかどうかは箱の選択から導けるので、両方持つと食い違う
+        def items
+          rows = official.items.includes(
+            :item_type, :meanings, { box_entries: :box }, { view_items: :view },
+            # サムネは別の添付。**先に読まないと1枚ごとに1本増える**
+            { medias: [ { file_attachment: :blob }, { thumb_attachment: :blob } ] }
+          ).order(:created_at).limit(ITEM_LIMIT + 1).to_a
+
+          truncated = rows.size > ITEM_LIMIT
+          rows = rows.first(ITEM_LIMIT)
+
+          excluded = ContentExclusion.item_id_set
+          shipped = package_keys_by_origin
+
+          render json: {
+            items: rows.map { |item| serialize_studio_item(item, excluded, shipped) },
+            excluded: excluded.size,
+            truncated: truncated
+          }
+        end
+
+        # 1枚だけ、出す・出さないを切り替える。
+        # **効くのは次に起こす下書きから**（出した荷物は動かさない決まり）
+        def update_exclusion
+          item = official.items.find(params[:id])
+          excluded = ActiveModel::Type::Boolean.new.cast(params[:excluded])
+          ContentExclusion.set!(item: item, excluded: excluded, note: params[:note].presence)
+
+          AdminAuditLog.record!(actor: current_user, action: "studio.item_exclusion", target: item,
+                                details: { "title" => item.title, "excluded" => excluded })
+
+          render json: { id: item.id, excluded: excluded }
         end
 
         # 選んだものを、下書きとして起こす。
@@ -205,6 +247,53 @@ module Api
 
         def official
           @official ||= User.official_content_account
+        end
+
+        # 一度に返す上限。公式宮殿は自分たちで作る場所なので普段は届かないが、
+        # **際限なく返す口は作らない**
+        ITEM_LIMIT = 500
+
+        # そのカードが、どの荷物に入って出ているか。
+        #
+        # 荷物の中身は `origin_key`（＝元のカードの id）で繋がっている。
+        # 1枚ずつ探すと荷物の数だけ引くことになるので、**先に対応表を作る**
+        def package_keys_by_origin
+          map = Hash.new { |h, k| h[k] = [] }
+
+          ContentPackage.published.order(:key, version: :desc).to_a.uniq(&:key).each do |package|
+            Array(package.payload["items"]).each do |entry|
+              key = entry["origin_key"]
+              map[key] << package.key if key.present?
+            end
+          end
+
+          map
+        end
+
+        # **出せない理由も一緒に返す。**
+        # 下書きを起こしてから止まるより、並べた時点で分かるほうがよい
+        def serialize_studio_item(item, excluded, shipped)
+          media = item.primary_media
+
+          {
+            id: item.id,
+            title: item.title,
+            item_type: item.item_type&.label || item.item_type&.name,
+            thumb_url: media && serialize_media(media)&.dig(:thumb_url),
+            boxes: item.box_entries.filter_map { |e| e.box&.name }.uniq,
+            views: item.view_items.filter_map { |v| v.view&.name }.uniq,
+            packages: shipped[item.id],
+            excluded: excluded.include?(item.id),
+            blockers: blockers_for(item, media)
+          }
+        end
+
+        def blockers_for(item, media)
+          blockers = []
+          blockers << "絵がありません" if media.nil? || !media.file.attached?
+          blockers << "意味がありません" if item.meanings.empty?
+          blockers << "種別がありません" if item.item_type&.name.blank?
+          blockers
         end
 
         def find_package!
