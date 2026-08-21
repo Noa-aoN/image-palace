@@ -103,11 +103,31 @@ RSpec.describe ContentPackage do
       expect(described_class.latest_published("starter_it")).to eq(latest)
     end
 
-    it "配るのをやめた版は返さない" do
-      first = publish!
+    # **止めたら止まる。古い版へは落ちない。**
+    #
+    # 前は「公開中のうち一番新しいもの」を返していた。
+    # そうすると v2 を終えたときに v1 が配られ、
+    # 押した人は止めたつもりなのに古い中身が配られ続ける
+    it "いちばん新しい版を終えたら、何も返さない" do
+      publish!
       publish!.archive!
 
-      expect(described_class.latest_published("starter_it")).to eq(first)
+      expect(described_class.latest_published("starter_it")).to be_nil
+    end
+
+    it "いちばん新しい版を止めたときも、何も返さない" do
+      publish!
+      publish!.suspend!
+
+      expect(described_class.latest_published("starter_it")).to be_nil
+    end
+
+    # 下書きは「まだ出していない」。いま出しているものを引っ込めない
+    it "新しい下書きがあっても、いま出している版を返す" do
+      live = publish!
+      described_class.draft!(key: "starter_it", kind: "starter", name: "ITのことば", payload: payload)
+
+      expect(described_class.latest_published("starter_it")).to eq(live)
     end
 
     it "鍵ごとに1つずつ返す" do

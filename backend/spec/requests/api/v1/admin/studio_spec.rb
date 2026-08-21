@@ -214,6 +214,70 @@ RSpec.describe "公式工房", type: :request do
     end
   end
 
+  # **一覧は鍵ごとに1行。**
+  #
+  # 届け先も受け取りも鍵に付くので、版ごとに並べると
+  # 同じ届け先の設定が何行も出て、どれを押せばよいのか分からなくなる
+  describe "荷物の一覧" do
+    def publish_version!
+      post "/api/v1/admin/studio/draft",
+           params: { key: "starter_it", kind: "starter", name: "ITのことば",
+                     box_ids: [ published_box.id ] },
+           headers: headers, as: :json
+      version = json_response["package"]["version"]
+      patch "/api/v1/admin/studio/starter_it/#{version}/status",
+            params: { status_action: "publish" }, headers: headers, as: :json
+      version
+    end
+
+    it "同じ鍵を3回出しても、1行にまとまる" do
+      3.times { publish_version! }
+
+      get "/api/v1/admin/studio", headers: headers, as: :json
+
+      rows = json_response["packages"].select { |p| p["key"] == "starter_it" }
+      expect(rows.size).to eq(1)
+      expect(rows.first["version"]).to eq(3)
+    end
+
+    it "前の版は畳んで持つ" do
+      3.times { publish_version! }
+
+      get "/api/v1/admin/studio", headers: headers, as: :json
+
+      row = json_response["packages"].find { |p| p["key"] == "starter_it" }
+      expect(row["history"].map { |h| h["version"] }).to eq([ 2, 1 ])
+    end
+
+    # **いま実際に何が届くのかを、行の版とは別に持つ。**
+    # 下書きを起こしただけで「配っていません」と出すと嘘になる
+    it "下書きを起こしても、いま届く版が分かる" do
+      publish_version!
+      post "/api/v1/admin/studio/draft",
+           params: { key: "starter_it", kind: "starter", name: "ITのことば",
+                     box_ids: [ published_box.id ] },
+           headers: headers, as: :json
+
+      get "/api/v1/admin/studio", headers: headers, as: :json
+
+      row = json_response["packages"].find { |p| p["key"] == "starter_it" }
+      expect(row["status"]).to eq("draft")
+      expect(row["version"]).to eq(2)
+      expect(row["delivering_version"]).to eq(1)
+    end
+
+    it "いちばん新しい版を止めたら、いま届く版は無くなる" do
+      version = publish_version!
+      patch "/api/v1/admin/studio/starter_it/#{version}/status",
+            params: { status_action: "suspend" }, headers: headers, as: :json
+
+      get "/api/v1/admin/studio", headers: headers, as: :json
+
+      row = json_response["packages"].find { |p| p["key"] == "starter_it" }
+      expect(row["delivering_version"]).to be_nil
+    end
+  end
+
   # 工房室のカード一覧。**何が出ていて、何が出ていないか。**
   #
   # 出すものは箱とキャンバスで決める。ここはその結果を見る場所で、

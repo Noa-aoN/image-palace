@@ -25,7 +25,7 @@ module Api
             owner: owner_summary,
             # 公式制作枠。**通常のクレジットとは別**なので、ここに出す
             allowance: current_user.studio_allowance_summary,
-            packages: ContentPackage.ordered.map { |p| serialize_package(p) }
+            packages: packages_by_key
           }
         end
 
@@ -401,6 +401,19 @@ module Api
           }
         end
 
+        # 一覧は**鍵ごとに1行**。版ごとに並べない。
+        #
+        # 届け先も受け取りも鍵に付くので、版ごとに並べると
+        # 同じ設定が何行も出て、どれを押せばよいのか分からなくなる。
+        # 前の版は `history` に畳む
+        def packages_by_key
+          ContentPackage.ordered.group_by(&:key).map do |_key, versions|
+            serialize_package(versions.first).merge(
+              history: versions.drop(1).map { |p| serialize_history(p) }
+            )
+          end
+        end
+
         def serialize_package(package)
           {
             id: package.id, key: package.key, version: package.version,
@@ -411,10 +424,23 @@ module Api
             updated_at: package.updated_at,
             # どこへ届けるか。**種別とは別**（種別は「何であるか」）
             deliveries: ContentDelivery.state_for(package.key),
+            # いま実際に配られている版。下書きを起こした直後は、この行の版とずれる
+            delivering_version: ContentPackage.latest_published(package.key)&.version,
             # 何人が受け取ったか（下見は数えない）
-            installs: ContentInstallation.where(package_key: package.key, package_version: package.version)
-                                         .where.not(source: "preview").count
+            installs: installs_for(package)
           }
+        end
+
+        def serialize_history(package)
+          {
+            id: package.id, version: package.version, status: package.status,
+            published_at: package.published_at, installs: installs_for(package)
+          }
+        end
+
+        def installs_for(package)
+          ContentInstallation.where(package_key: package.key, package_version: package.version)
+                             .where.not(source: "preview").count
         end
 
         def serialize_box(box)
