@@ -100,6 +100,24 @@ module Studio
         installation.entries.where(record_type: "Item").pluck(:record_id).to_set
       end
 
+      # 下見でできた実体の id（Item / Box / View）。
+      #
+      # **原本として選ばせないために使う。**
+      # 公式の口座で下見すると、複製が公式宮殿そのものに入る。
+      # 名前まで同じなので、選ぶ画面では見分けが付かない。
+      # 下見の複製から公式コンテンツを作ってしまえる。
+      #
+      # 寿命が切れたものも数える。掃除が回るまでは実体が残っているため
+      # （`current` は寿命切れを無いものとして返すので、ここでは使わない）
+      def record_ids_for(user, type)
+        return Set.new if user.nil?
+
+        installation = ContentInstallation.find_by(user_id: user.id, source: SOURCE)
+        return Set.new if installation.nil?
+
+        installation.entries.where(record_type: type).pluck(:record_id).to_set
+      end
+
       # 原本が、下見を始めたあとに作り直されたか。
       #
       # **下見は作った時点で固まっている。** それは狙いどおりだが、

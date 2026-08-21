@@ -55,11 +55,22 @@ module Api
           render json: { errors: e.record.errors.full_messages }, status: :unprocessable_entity
         end
 
-        # 選べる原本。公式の口座にある箱とキャンバス
+        # 選べる原本。公式の口座にある箱とキャンバス。
+        #
+        # **下見の複製は外す。** 公式の口座で下見すると、複製が公式宮殿そのものに入る。
+        # 名前まで同じなので選ぶ画面では見分けが付かず、
+        # **下見の複製から公式コンテンツを作ってしまえる**
         def sources
+          preview_boxes = ::Studio::Preview.record_ids_for(official, "Box")
+          preview_views = ::Studio::Preview.record_ids_for(official, "View")
+
           render json: {
-            boxes: official.boxes.order(:created_at).map { |b| serialize_box(b) },
-            views: official.views.order(:created_at).map { |v| serialize_view(v) }
+            boxes: official.boxes.order(:created_at)
+                           .reject { |b| preview_boxes.include?(b.id) }
+                           .map { |b| serialize_box(b) },
+            views: official.views.order(:created_at)
+                           .reject { |v| preview_views.include?(v.id) }
+                           .map { |v| serialize_view(v) }
           }
         end
 
@@ -76,6 +87,10 @@ module Api
             # サムネは別の添付。**先に読まないと1枚ごとに1本増える**
             { medias: [ { file_attachment: :blob }, { thumb_attachment: :blob } ] }
           ).order(:created_at).limit(ITEM_LIMIT + 1).to_a
+
+          # 下見の複製はここに出さない。**ここは原本の一覧**
+          preview_items = ::Studio::Preview.record_ids_for(official, "Item")
+          rows = rows.reject { |item| preview_items.include?(item.id) }
 
           truncated = rows.size > ITEM_LIMIT
           rows = rows.first(ITEM_LIMIT)
@@ -106,8 +121,13 @@ module Api
         # 選んだものを、下書きとして起こす。
         # **ここで欠けが見つかれば、公開の前に止まる**
         def draft
-          boxes = official.boxes.where(id: params[:box_ids])
-          views = official.views.where(id: params[:view_ids])
+          # **下見の複製は選べない。** 画面から外してあるが、
+          # id を直に送れば通ってしまうので、こちらでも閉じる
+          preview_boxes = ::Studio::Preview.record_ids_for(official, "Box")
+          preview_views = ::Studio::Preview.record_ids_for(official, "View")
+
+          boxes = official.boxes.where(id: params[:box_ids]).reject { |b| preview_boxes.include?(b.id) }
+          views = official.views.where(id: params[:view_ids]).reject { |v| preview_views.include?(v.id) }
 
           if boxes.empty? && views.empty?
             return render json: { error: "箱かキャンバスを1つ以上選んでください" }, status: :unprocessable_entity

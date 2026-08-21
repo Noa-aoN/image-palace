@@ -19,6 +19,27 @@
 # 別の荷物を下見したら前のは片付く、を取りこぼしても二重にはならない。
 class AllowPreviewAlongsideRealInstallation < ActiveRecord::Migration[8.1]
   def up
+    # **先に、余っている下見を落とす。**
+    #
+    # 前の作りでは荷物ごとに1つずつ下見を残せたので、1人が複数持っていることがある。
+    # 本番に実際そういう行があり、そのままだと下の一意索引が張れず
+    # `release_command` で止まる（＝デプロイが落ちる）。
+    #
+    # 実体（カード・箱）まではここで消さない。**移行で人のデータを消さない。**
+    # 実体の片付けは `bin/rails studio:discard_previews` で、
+    # デプロイの前に model 経由で行う（そちらを先に走らせれば、ここは何もしない）
+    surplus = <<~SQL.squish
+      SELECT id FROM content_installations
+      WHERE source = 'preview'
+        AND id NOT IN (
+          SELECT DISTINCT ON (user_id) id FROM content_installations
+          WHERE source = 'preview' ORDER BY user_id, installed_at DESC
+        )
+    SQL
+
+    execute "DELETE FROM content_installation_entries WHERE content_installation_id IN (#{surplus})"
+    execute "DELETE FROM content_installations WHERE id IN (#{surplus})"
+
     remove_index :content_installations, column: [ :user_id, :package_key ]
 
     add_index :content_installations, [ :user_id, :package_key ],

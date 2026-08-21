@@ -408,6 +408,91 @@ RSpec.describe "公式コンテンツの下見", type: :request do
     end
   end
 
+  # ── 原本を汚さない ────────────────────────
+  #
+  # **公式の口座で下見すると、複製が公式宮殿そのものに入る。**
+  # 名前まで同じなので、選ぶ画面では見分けが付かない。
+  # そのまま並べると、下見の複製から公式コンテンツを作ってしまえる。
+  #
+  # 本番で実際に起きていた（公式宮殿にカード 74 → 124、同名の箱が2つずつ）。
+  describe "公式の口座が自分で下見したとき" do
+    let(:headers) { official.create_new_auth_token }
+
+    before { start_preview }
+
+    it "下見の複製は、原本として選べない" do
+      get "/api/v1/admin/studio/sources", headers: headers, as: :json
+
+      names = json_response["boxes"].map { |b| b["name"] }
+      expect(names).to eq([ "starter_it の箱" ])
+      expect(official.boxes.count).to eq(2)
+    end
+
+    it "下見の複製は、カード一覧にも出ない" do
+      get "/api/v1/admin/studio/items", headers: headers, as: :json
+
+      titles = json_response["items"].map { |i| i["title"] }
+      expect(titles).to contain_exactly("DNS", "ルーター")
+      expect(official.items.count).to eq(4)
+    end
+
+    # **画面から外すだけでは足りない。** id を直に送れば通ってしまう
+    it "下見の複製の id を直に送っても、荷物にならない" do
+      copy = official.boxes.order(:created_at).last
+
+      post "/api/v1/admin/studio/draft",
+           params: { key: "starter_new", kind: "starter", name: "新しい", box_ids: [ copy.id ] },
+           headers: headers, as: :json
+
+      expect(response).to have_http_status(:unprocessable_entity)
+      expect(json_response["error"]).to match(/1つ以上選/)
+    end
+
+    it "本物の箱は、これまでどおり選べる" do
+      original = official.boxes.order(:created_at).first
+
+      post "/api/v1/admin/studio/draft",
+           params: { key: "starter_new", kind: "starter", name: "新しい", box_ids: [ original.id ] },
+           headers: headers, as: :json
+
+      expect(response).to have_http_status(:created)
+      expect(json_response["package"]["counts"]["items"]).to eq(2)
+    end
+
+    it "下見を終えれば、宮殿は元どおり" do
+      delete "/api/v1/admin/studio/preview", headers: headers, as: :json
+
+      expect(official.reload.items.count).to eq(2)
+      expect(official.boxes.count).to eq(1)
+    end
+
+    # 寿命が切れていても、掃除が回るまで実体は残っている。**その間も外す**
+    it "寿命が切れていても、原本には混ざらない" do
+      ContentInstallation.where(source: "preview")
+                         .update_all(installed_at: Studio::Preview::LIFETIME.ago - 1.minute)
+
+      get "/api/v1/admin/studio/sources", headers: headers, as: :json
+
+      expect(json_response["boxes"].size).to eq(1)
+    end
+  end
+
+  # 工房に入れる運営が下見しても、公式宮殿は何も変わらない
+  describe "公式ではない人が下見したとき" do
+    before { start_preview }
+
+    it "公式宮殿は増えない" do
+      expect(official.items.count).to eq(2)
+      expect(official.boxes.count).to eq(1)
+    end
+
+    it "原本の一覧も変わらない" do
+      get "/api/v1/admin/studio/sources", headers: headers, as: :json
+
+      expect(json_response["boxes"].size).to eq(1)
+    end
+  end
+
   # ── 触れる人 ───────────────────────────────
   describe "触れる人" do
     it "工房の権限が無ければ、始めることも見ることも終えることもできない" do
