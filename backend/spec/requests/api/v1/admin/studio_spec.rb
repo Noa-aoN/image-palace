@@ -327,6 +327,75 @@ RSpec.describe "公式工房", type: :request do
       expect(row["blockers"]).to contain_exactly("絵がありません", "意味がありません")
     end
 
+    # **カードだけではない。** 箱・キャンバス・宮殿も原本
+    describe "箱・キャンバス・宮殿" do
+      it "箱が、中身の数と一緒に並ぶ" do
+        get "/api/v1/admin/studio/items", headers: headers, as: :json
+
+        box = json_response["boxes"].find { |b| b["name"] == "出すもの" }
+        expect(box["items"]).to eq(2)
+        expect(box["excluded"]).to eq(0)
+        expect(box["blocked"]).to eq(0)
+      end
+
+      it "外したカードが何枚あるかが分かる" do
+        patch "/api/v1/admin/studio/items/#{official.items.find_by(title: 'DNS').id}/exclusion",
+              params: { excluded: true }, headers: headers, as: :json
+
+        get "/api/v1/admin/studio/items", headers: headers, as: :json
+
+        box = json_response["boxes"].find { |b| b["name"] == "出すもの" }
+        expect(box["excluded"]).to eq(1)
+      end
+
+      it "出せないカードが何枚あるかが分かる" do
+        naked = official.items.create!(title: "絵も意味も無い", item_type: word,
+                                       generation_status: "completed")
+        published_box.box_entries.create!(entry: naked, position: 9)
+
+        get "/api/v1/admin/studio/items", headers: headers, as: :json
+
+        box = json_response["boxes"].find { |b| b["name"] == "出すもの" }
+        expect(box["blocked"]).to eq(1)
+      end
+
+      it "キャンバスが、配れるかどうかと一緒に並ぶ" do
+        view = official.views.create!(name: "神々の系図", view_type: "freeboard")
+        view.view_items.create!(item: official.items.first, x: 0, y: 0, position: 0)
+
+        get "/api/v1/admin/studio/items", headers: headers, as: :json
+
+        row = json_response["views"].find { |v| v["name"] == "神々の系図" }
+        expect(row["items"]).to eq(1)
+        expect(row["portable"]).to be(true)
+        expect(row["blocking"]).to be_empty
+      end
+
+      # **選ぶ前に言う。** キャンバスは節を抜くと穴が開くので、下書きが止まる
+      it "外したカードが置かれているキャンバスは、そうと分かる" do
+        view = official.views.create!(name: "神々の系図", view_type: "freeboard")
+        dns = official.items.find_by(title: "DNS")
+        view.view_items.create!(item: dns, x: 0, y: 0, position: 0)
+        patch "/api/v1/admin/studio/items/#{dns.id}/exclusion",
+              params: { excluded: true }, headers: headers, as: :json
+
+        get "/api/v1/admin/studio/items", headers: headers, as: :json
+
+        row = json_response["views"].find { |v| v["name"] == "神々の系図" }
+        expect(row["blocking"]).to eq([ "DNS" ])
+      end
+
+      it "宮殿は、まだ配れないと分かる" do
+        official.spaces.create!(name: "記憶の宮殿")
+
+        get "/api/v1/admin/studio/items", headers: headers, as: :json
+
+        row = json_response["spaces"].first
+        expect(row["name"]).to eq("記憶の宮殿")
+        expect(row["portable"]).to be(false)
+      end
+    end
+
     describe "1枚だけ外す" do
       let(:dns) { official.items.find_by(title: "DNS") }
 

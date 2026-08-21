@@ -3,7 +3,15 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { Input } from '@/components/ui/input'
 import { Spinner } from '@/components/ui/spinner'
-import { fetchStudioItems, setItemExclusion, type StudioItem } from '@/lib/api/studio'
+import { StudioContainers } from './StudioContainers'
+import {
+  fetchStudioItems,
+  setItemExclusion,
+  type StudioBox,
+  type StudioItem,
+  type StudioSpace,
+  type StudioView,
+} from '@/lib/api/studio'
 import {
   blocksDraft,
   countByState,
@@ -34,8 +42,11 @@ const FILTERS: { value: ItemFilter; label: string }[] = [
  * 添えてあるのは「出さない」の栓ひとつだけ。
  * 出すかどうかは箱の選択から導けるので、両方を手で持つと必ず食い違う。
  */
+type Containers = { boxes: StudioBox[]; views: StudioView[]; spaces: StudioSpace[] }
+
 export function StudioItemsPanel() {
   const [items, setItems] = useState<StudioItem[] | null>(null)
+  const [containers, setContainers] = useState<Containers>({ boxes: [], views: [], spaces: [] })
   const [truncated, setTruncated] = useState(false)
   const [filter, setFilter] = useState<ItemFilter>('all')
   const [query, setQuery] = useState('')
@@ -46,6 +57,7 @@ export function StudioItemsPanel() {
     fetchStudioItems()
       .then((data) => {
         setItems(data.items)
+        setContainers({ boxes: data.boxes, views: data.views, spaces: data.spaces })
         setTruncated(data.truncated)
       })
       .catch((e) => {
@@ -97,10 +109,10 @@ export function StudioItemsPanel() {
   return (
     <div className="space-y-5">
       <div>
-        <h2 className="text-base font-semibold">カード</h2>
+        <h2 className="text-base font-semibold">原本</h2>
         <p className="mt-1 text-sm text-muted-foreground">
-          公式宮殿にある {items.length} 枚。出すものは「公開する」で箱ごと選びます。
-          ここでは、その中から出したくない1枚を外せます。
+          公式宮殿の中身。**ここにあるもの全部が公開物ではありません。**
+          出すものは箱やキャンバスごと選び、出したくない1枚だけをここで外せます。
         </p>
       </div>
 
@@ -145,6 +157,10 @@ export function StudioItemsPanel() {
         />
       </div>
 
+      <h3 className="text-sm font-medium">
+        カード <span className="text-xs font-normal text-muted-foreground">{items.length}</span>
+      </h3>
+
       {shown.length === 0 ? (
         <p className="rounded-lg border border-dashed border-border py-10 text-center text-sm text-muted-foreground">
           あてはまるカードがありません
@@ -156,6 +172,12 @@ export function StudioItemsPanel() {
           ))}
         </ul>
       )}
+
+      <StudioContainers
+        boxes={containers.boxes}
+        views={containers.views}
+        spaces={containers.spaces}
+      />
     </div>
   )
 }

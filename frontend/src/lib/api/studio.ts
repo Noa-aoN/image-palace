@@ -67,8 +67,43 @@ export type StudioItem = {
   blockers: string[]
 }
 
+/** 原本の箱。**選んだときに何が起きるかを、選ぶ前に出す** */
+export type StudioBox = {
+  id: string
+  name: string
+  items: number
+  /** 「出さない」にしているカードの枚数（選ぶと、その分だけ落ちる） */
+  excluded: number
+  /** 絵・意味・種別が欠けているカードの枚数（選ぶと下書きが止まる） */
+  blocked: number
+}
+
+/** 原本のキャンバス。**構造なので、1枚欠けると止まる** */
+export type StudioView = {
+  id: string
+  name: string
+  view_type: string
+  items: number
+  edges: number
+  /** 宮殿に結びついていると、まだ配れない */
+  portable: boolean
+  /** 置かれているのに「出さない」にしているカード。あると下書きが止まる */
+  blocking: string[]
+}
+
+/** 原本の宮殿。**まだ配れない** */
+export type StudioSpace = {
+  id: string
+  name: string
+  points: number
+  portable: boolean
+}
+
 export type StudioItems = {
   items: StudioItem[]
+  boxes: StudioBox[]
+  views: StudioView[]
+  spaces: StudioSpace[]
   /** 出さないと決めた枚数 */
   excluded: number
   /** 上限で切ったか */
