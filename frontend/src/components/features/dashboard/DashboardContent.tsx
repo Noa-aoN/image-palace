@@ -8,7 +8,8 @@ import { Card, CardContent } from '@/components/ui/card'
 import { MemoryAssetsCard } from '@/components/features/dashboard/MemoryAssetsCard'
 import { PalaceFloorplan } from '@/components/features/dashboard/PalaceFloorplan'
 import { PalaceLordCard } from '@/components/features/dashboard/PalaceLordCard'
-import { DemoLockBlock } from '@/components/features/demo/DemoLock'
+import { useIsDemo } from '@/components/features/demo/DemoLock'
+import { DEMO_DIM, DEMO_LOCKED_HINT } from '@/lib/demo/navigation'
 import { QuickCreateCard } from '@/components/features/dashboard/QuickCreateCard'
 import { getItemsSummary, getImageModels, type ItemsSummary } from '@/lib/api/items'
 import { useBillingStore } from '@/stores/billing'
@@ -54,6 +55,7 @@ const WORK_POLL_RETRY_MS = 8000
 const WORK_POLL_MAX_FAILURES = 8
 
 export function DashboardContent() {
+  const isDemo = useIsDemo()
   const [summary, setSummary] = useState<ItemsSummary | null>(null)
   const [progress, setProgress] = useState<BatchProgress | null>(null)
   // 作り始めた合図。**生成中が無いあいだは見張りを止めている**ので、
@@ -229,16 +231,15 @@ export function DashboardContent() {
           主人を先に置くのは、**まず自分の話**だから。残高は「あと何ができるか」の話で、
           自分が何者かを見てからのほうが読み取りやすい */}
       <div className="grid gap-6 lg:grid-cols-2 lg:items-stretch">
-      {/* **丸ごと灰色にする。** 勲章も入居日も位も、使い捨ての口座では意味が無い。
-          消さずに置くのは、本物の宮殿に何があるのかが見えたほうがよいため */}
-      <DemoLockBlock className="flex flex-col">
-        <PalaceLordCard tier={billing?.plan?.tier ?? null} />
-      </DemoLockBlock>
+      <PalaceLordCard tier={billing?.plan?.tier ?? null} />
 
       {/* **体験中は使えない。** クレジットも支払いも、使い捨ての口座には無い。
-          消さずに灰色で置く（本物の宮殿に何があるのかは見えたほうがよい） */}
-      <DemoLockBlock className="flex flex-col">
-      <section className="flex flex-col space-y-3">
+          消さずに灰色で置く（本物の宮殿に何があるのかは見えたほうがよい）。
+          包みは増やさない。grid の子の間に1枚挟むと、隣の札と高さが揃わなくなる */}
+      <section
+        className={`flex flex-col space-y-3 ${isDemo ? DEMO_DIM : ''}`}
+        title={isDemo ? DEMO_LOCKED_HINT : undefined}
+      >
         <h2 className="text-base font-semibold">宮殿の生成資産</h2>
         {/*
           カード全体を /billing への入口にしつつ、中に別のボタンも置く。
@@ -343,7 +344,6 @@ export function DashboardContent() {
             </CardContent>
         </Card>
       </section>
-      </DemoLockBlock>
       </div>
 
       {/*

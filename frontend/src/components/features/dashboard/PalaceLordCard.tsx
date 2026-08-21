@@ -7,7 +7,8 @@ import { Card, CardContent } from '@/components/ui/card'
 import { CardImage } from '@/components/ui/card-image'
 import { ImageLightbox } from '@/components/ui/image-lightbox'
 import { useAuthStore } from '@/stores/auth'
-import { DemoLockBlock } from '@/components/features/demo/DemoLock'
+import { useIsDemo } from '@/components/features/demo/DemoLock'
+import { DEMO_DIM, DEMO_LOCKED_HINT } from '@/lib/demo/navigation'
 import { tierLabel } from '@/lib/billing'
 import { displayNameOf } from '@/lib/display-name'
 import { getAchievementSummary, type AchievementSummary, type RewardKind } from '@/lib/api/achievements'
@@ -42,6 +43,7 @@ export function PalaceLordCard({ tier }: { tier: string | null }) {
   const medals = honors?.showcase?.medal ?? []
   const treasures = honors?.showcase?.treasure ?? []
   // 名前の上に置くものがあるか（いまは称号だけ）。無ければ行ごと出さない
+  const isDemo = useIsDemo()
   const hasTopRow = Boolean(honors?.title)
   const displayName = displayNameOf(user)
   const avatar = user?.avatar_thumb_url ?? user?.avatar_url ?? null
@@ -51,7 +53,10 @@ export function PalaceLordCard({ tier }: { tier: string | null }) {
     : '—'
 
   return (
-    <section className="flex flex-col space-y-3">
+    // **包みを増やさない。** 外側は grid の子で、間に1枚挟むと
+    // `items-stretch` が届かなくなり、隣の札と高さが揃わなくなる。
+    // 体験中はこの節そのものを薄くし、中の行き先だけを殺す
+    <section className={`flex flex-col space-y-3 ${isDemo ? DEMO_DIM : ''}`} title={isDemo ? DEMO_LOCKED_HINT : undefined}>
       <h2 className="text-base font-semibold">宮殿の主人情報</h2>
       {/*
         札そのものはリンクにしない。**中に釦と別の行き先があるため。**
@@ -158,10 +163,6 @@ export function PalaceLordCard({ tier }: { tier: string | null }) {
             </div>
           </div>
 
-              ただし下の一覧（勲章・宝物・入居日・位）は灰色にする。
-          {/* **名乗り（絵と名前と称号）は、そのまま見せる。** こちらで設定した姿を見てほしいため。
-              使い捨ての口座では意味が無い（勲章も入居日も、その場限りのもの）*/}
-          <DemoLockBlock>
           <dl className="grid grid-cols-2 gap-x-4 gap-y-2 text-sm">
             {/* 並びは「集めたもの」から「素性」へ。
                 上の段に勲章と宝物、下の段に入居日と位を置く。
@@ -266,7 +267,6 @@ export function PalaceLordCard({ tier }: { tier: string | null }) {
               )
             })}
           </dl>
-          </DemoLockBlock>
       </CardContent>
       </Card>
 
