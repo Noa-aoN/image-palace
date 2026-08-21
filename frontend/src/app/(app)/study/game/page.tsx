@@ -18,6 +18,7 @@ import { KarutaGame, type KarutaReadBy } from '@/components/features/study/games
 import { MemoryDuelGame } from '@/components/features/study/games/MemoryDuelGame'
 import { useStudyRecordStore } from '@/stores/studyRecords'
 import { targetKey, targetLabel, type QuizTarget, type QuizFormat } from '@/lib/quiz'
+import { bodyFor } from '@/lib/page-help'
 
 // ゲームタイトル一覧。連続正解・神経衰弱は実装済み、他は準備中（タイトルは仮）。
 type GameTitle = { key: string; icon: ReactNode; title: string; description: string; playable?: boolean }
@@ -217,7 +218,7 @@ export default function GamePage() {
           <Gamepad2 size={26} style={{ color: 'var(--palace)' }} />
           プレイ
         </h1>
-        <p className="mt-2 text-muted-foreground">楽しみながら反復できる学習モードです。対象とゲームを選んで始めましょう。</p>
+        <p className="mt-2 text-muted-foreground">{bodyFor('/study/game')}</p>
       </div>
 
       <StudyArea title="① 対象を選ぶ" description="ゲームに使うカードの範囲を選びます。">

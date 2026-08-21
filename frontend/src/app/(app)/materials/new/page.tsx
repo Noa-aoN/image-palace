@@ -5,6 +5,7 @@ import { ChevronRight, ListChecks, Images, Boxes } from 'lucide-react'
 import { Card, CardContent } from '@/components/ui/card'
 import { FeatureGate } from '@/components/features/shared/FeatureGate'
 import { CreateIcon } from '@/components/features/layout/CreateIcon'
+import { bodyFor } from '@/lib/page-help'
 
 export const metadata: Metadata = { title: 'マテリアルを作成' }
 
@@ -40,9 +41,7 @@ export default function NewMaterialPage() {
         <Boxes size={26} style={{ color: 'var(--palace)' }} />
         マテリアルを作成
       </h1>
-      <p className="mt-2 text-muted-foreground">
-        マテリアルは、カード化・制作の前段になる素材です。作りたい素材を選んでください。
-      </p>
+      <p className="mt-2 text-muted-foreground">{bodyFor('/materials/new')}</p>
 
       <div className="mt-8 grid gap-4 sm:grid-cols-2">
         {MATERIAL_ACTIONS.map((action) =>

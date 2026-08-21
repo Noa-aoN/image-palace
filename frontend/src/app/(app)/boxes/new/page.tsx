@@ -2,6 +2,7 @@ import type { Metadata } from 'next'
 import { Box } from 'lucide-react'
 import { Breadcrumb } from '@/components/ui/breadcrumb'
 import { CreateBoxForm } from '@/components/features/boxes/CreateBoxForm'
+import { bodyFor } from '@/lib/page-help'
 
 export const metadata: Metadata = { title: 'ボックスを作成' }
 
@@ -15,9 +16,7 @@ export default function NewBoxPage() {
             <Box size={26} style={{ color: 'var(--palace)' }} />
             ボックスを作成
           </h1>
-          <p className="mt-2 text-muted-foreground">
-            カードやスペース、キャンバスをまとめるボックスを作成します。
-          </p>
+          <p className="mt-2 text-muted-foreground">{bodyFor('/boxes/new')}</p>
         </div>
         <CreateBoxForm redirectBase="/boxes" />
       </div>

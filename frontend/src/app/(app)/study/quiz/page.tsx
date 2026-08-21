@@ -21,6 +21,7 @@ import {
   type QuizFormat,
   type QuizQuestion,
 } from '@/lib/quiz'
+import { bodyFor } from '@/lib/page-help'
 
 type Step = 'select' | 'play' | 'result'
 
@@ -132,7 +133,7 @@ export default function QuizPage() {
             <HelpCircle size={26} style={{ color: 'var(--palace)' }} />
             クイズ
           </h1>
-          <p className="mt-2 text-muted-foreground">選んだカードやボックスから問題を作って確認します。</p>
+          <p className="mt-2 text-muted-foreground">{bodyFor('/study/quiz')}</p>
         </div>
 
         <StudyArea title="① 出題対象" description="クイズにするカードの範囲を選びます。">

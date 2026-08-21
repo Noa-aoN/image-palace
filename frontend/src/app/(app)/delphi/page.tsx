@@ -23,6 +23,7 @@ import {
 } from '@/lib/word-difficulty'
 import { useAcropolisStore } from '@/stores/acropolis'
 import { useMotion } from '@/hooks/useMotion'
+import { bodyFor } from '@/lib/page-help'
 
 const MAX_PULL = 5
 
@@ -176,9 +177,7 @@ export default function AcropolisPage() {
           </p>
         </HelpPopover>
       </h1>
-      <p className="mt-2 text-muted-foreground">
-        なにかを受け取る場所です。言葉をランダムに受け取るか、配られたコードを引き換えるか、どちらもここで行います。
-      </p>
+      <p className="mt-2 text-muted-foreground">{bodyFor('/delphi')}</p>
 
       {/* **コードを持ってきた人を先に通す。** 目的がはっきりしている人ほど
           用が済むのが早いので、上に置く。言葉をもらいに来た人は、

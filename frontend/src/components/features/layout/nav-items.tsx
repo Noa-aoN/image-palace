@@ -33,6 +33,7 @@ import {
   Package,
 } from 'lucide-react'
 import { CreateIcon } from './CreateIcon'
+import { hintFor } from '@/lib/page-help'
 
 export interface NavNode {
   label: string
@@ -68,9 +69,9 @@ export interface NavSection {
 
 // サイドバー上部に固定するグローバル操作（場所に属さない横断操作）。アイコンのみで表示する。
 export const GLOBAL_ACTIONS: NavNode[] = [
-  { href: '/search', icon: <Search size={20} />, label: '横断検索', description: 'カードもキャンバスも、まとめて名前で探す' },
-  { href: '/tags', icon: <Tag size={20} />, label: 'タグ', description: '付けたタグの一覧。タグから辿って絞り込む' },
-  { href: '/index', icon: <List size={20} />, label: 'インデックス', description: '持っているものを、名前順に並べて探す' },
+  { href: '/search', icon: <Search size={20} />, label: '横断検索', description: hintFor('/search') },
+  { href: '/tags', icon: <Tag size={20} />, label: 'タグ', description: hintFor('/tags') },
+  { href: '/index', icon: <List size={20} />, label: 'インデックス', description: hintFor('/index') },
 ]
 
 // サイドバー（デスクトップ）とモバイルドロワーで共有するセクション付きナビ。
@@ -79,47 +80,47 @@ export const NAV_SECTIONS: NavSection[] = [
     key: 'palace',
     title: '宮殿',
     items: [
-      { href: '/entrance', icon: <DoorOpen size={22} />, label: 'エントランス', description: '宮殿の入口。いまの様子と、次にやることが分かる' },
+      { href: '/entrance', icon: <DoorOpen size={22} />, label: 'エントランス', description: hintFor('/entrance') },
       {
         // 親はアトリエのトップ（作成ハブ）へのリンク兼開閉グループ。
         href: '/atelier',
         icon: <Palette size={22} />,
-        label: 'アトリエ', description: 'つくる場所。カード・キャンバス・スペースなどを新しく作る',
+        label: 'アトリエ', description: hintFor('/atelier'),
         children: [
           // 他の「◯◯を作成」と同じくページへ移る。
           // ここだけ右パネルが開くと、押した人は同じ操作をしたつもりで違う結果を受け取る
-          { href: '/items/new', icon: <CreateIcon><GalleryHorizontal size={20} /></CreateIcon>, label: 'カードを作成', description: '覚えたい言葉を書くと、AIが絵にして1枚のカードにします' },
-          { href: '/views/new', icon: <CreateIcon><LayoutGrid size={20} /></CreateIcon>, label: 'キャンバスを作成', description: 'カードを並べて、相関図・年表・デッキを組み立てます' },
-          { href: '/spaces/new', icon: <CreateIcon><Frame size={20} /></CreateIcon>, label: 'スペースを作成', description: '部屋や道に場所を決めて、順番ごと覚える宮殿を作ります' },
-          { href: '/boxes/new', icon: <CreateIcon><Box size={20} /></CreateIcon>, label: 'ボックスを作成', description: 'カードをまとめる入れもの。単語帳のように束ねます' },
-          { href: '/materials/new', icon: <CreateIcon><Boxes size={20} /></CreateIcon>, label: 'マテリアルを作成', description: 'カードにする前の素材を作ります（語のまとまり・画像など）' },
+          { href: '/items/new', icon: <CreateIcon><GalleryHorizontal size={20} /></CreateIcon>, label: 'カードを作成', description: hintFor('/items/new') },
+          { href: '/views/new', icon: <CreateIcon><LayoutGrid size={20} /></CreateIcon>, label: 'キャンバスを作成', description: hintFor('/views/new') },
+          { href: '/spaces/new', icon: <CreateIcon><Frame size={20} /></CreateIcon>, label: 'スペースを作成', description: hintFor('/spaces/new') },
+          { href: '/boxes/new', icon: <CreateIcon><Box size={20} /></CreateIcon>, label: 'ボックスを作成', description: hintFor('/boxes/new') },
+          { href: '/materials/new', icon: <CreateIcon><Boxes size={20} /></CreateIcon>, label: 'マテリアルを作成', description: hintFor('/materials/new') },
         ],
       },
       {
         href: '/library',
         icon: <LibraryBig size={22} />,
-        label: 'ライブラリ', description: 'しまう場所。作ったものを一覧で見て、探して、整理する',
+        label: 'ライブラリ', description: hintFor('/library'),
         children: [
-          { href: '/items', icon: <GalleryHorizontal size={20} />, label: 'カード一覧', description: '作ったカードを全部見る。記憶のいちばん小さな単位' },
+          { href: '/items', icon: <GalleryHorizontal size={20} />, label: 'カード一覧', description: hintFor('/items') },
           // デッキはキャンバスの一種（view_type='deck'）。
           // 下階層に「デッキ一覧」を置いていたが、キャンバス一覧の中に絞り込みがあるので
           // 同じ場所への道が2本になっていた。階層を1つ浅くするほうが探しやすい
-          { href: '/views', icon: <LayoutGrid size={20} />, label: 'キャンバス一覧', description: '並べて作った図の一覧。開いて続きを組み立てられます' },
-          { href: '/spaces', icon: <Frame size={20} />, label: 'スペース一覧', description: '作った宮殿の一覧。歩いて思い出します' },
-          { href: '/boxes', icon: <Box size={20} />, label: 'ボックス一覧', description: 'まとめた束の一覧。束ごと練習にも使えます' },
-          { href: '/materials', icon: <Boxes size={20} />, label: 'マテリアル一覧', description: 'カードにする前の素材の一覧' },
+          { href: '/views', icon: <LayoutGrid size={20} />, label: 'キャンバス一覧', description: hintFor('/views') },
+          { href: '/spaces', icon: <Frame size={20} />, label: 'スペース一覧', description: hintFor('/spaces') },
+          { href: '/boxes', icon: <Box size={20} />, label: 'ボックス一覧', description: hintFor('/boxes') },
+          { href: '/materials', icon: <Boxes size={20} />, label: 'マテリアル一覧', description: hintFor('/materials') },
         ],
       },
       {
         // スタディのトップ（学習ハブ）へのリンク兼開閉グループ。準備中のゲーム/レコードはハブのみ。
         href: '/study',
         icon: <GraduationCap size={22} />,
-        label: 'スタディ', description: 'おぼえる場所。作ったカードで練習・クイズをする',
+        label: 'スタディ', description: hintFor('/study'),
         children: [
-          { href: '/study/practice', icon: <Layers size={20} />, label: 'プラクティス', description: 'めくって覚える。答えを見て、自分で判定します' },
-          { href: '/study/quiz', icon: <HelpCircle size={20} />, label: 'クイズ', description: '選んで答える。正誤は自動で付きます' },
-          { href: '/study/game', icon: <Gamepad2 size={20} />, label: 'プレイ', description: '遊びながら覚える。神経衰弱・かるたなど' },
-          { href: '/study/record', icon: <BarChart3 size={20} />, label: 'レコード', description: '練習の記録。どれだけ続いているかを見ます' },
+          { href: '/study/practice', icon: <Layers size={20} />, label: 'プラクティス', description: hintFor('/study/practice') },
+          { href: '/study/quiz', icon: <HelpCircle size={20} />, label: 'クイズ', description: hintFor('/study/quiz') },
+          { href: '/study/game', icon: <Gamepad2 size={20} />, label: 'プレイ', description: hintFor('/study/game') },
+          { href: '/study/record', icon: <BarChart3 size={20} />, label: 'レコード', description: hintFor('/study/record') },
         ],
       },
       {
@@ -128,12 +129,12 @@ export const NAV_SECTIONS: NavSection[] = [
         // トロフィーは眺めて楽しむもの、アカウント管理はほとんど触らないもの。
         href: '/myroom',
         icon: <House size={22} />,
-        label: 'マイルーム', description: '自分の部屋。設定・支払い・記録をまとめて置いてある',
+        label: 'マイルーム', description: hintFor('/myroom'),
         children: [
-          { href: '/achievements', icon: <Crown size={20} />, label: 'アチーブメント', description: '集めた称号と勲章。名乗るものをここで選びます' },
-          { href: '/settings', icon: <Settings size={20} />, label: '環境設定', description: '見え方と動きの好み。演出の入切もここ' },
-          { href: '/billing', icon: <CreditCard size={20} />, label: '利用と支払い', description: 'プランと残高。何にどれだけ使ったかを見ます' },
-          { href: '/account', icon: <UserCog size={20} />, label: 'アカウント管理', description: 'メールアドレス・合言葉・パスキー。退会もここ' },
+          { href: '/achievements', icon: <Crown size={20} />, label: 'アチーブメント', description: hintFor('/achievements') },
+          { href: '/settings', icon: <Settings size={20} />, label: '環境設定', description: hintFor('/settings') },
+          { href: '/billing', icon: <CreditCard size={20} />, label: '利用と支払い', description: hintFor('/billing') },
+          { href: '/account', icon: <UserCog size={20} />, label: 'アカウント管理', description: hintFor('/account') },
         ],
       },
     ],
@@ -142,9 +143,9 @@ export const NAV_SECTIONS: NavSection[] = [
     key: 'outside',
     title: '市街',
     items: [
-      { href: '/delphi', icon: <Wand2 size={22} />, label: 'デルフォイ', description: 'AI に相談する場所。何を覚えるとよいか、言葉を選んでもらう' },
-      { href: '/agora', icon: <Store size={22} />, label: 'アゴラ', description: 'みんなの広場。ほかの人が作ったものを見つける' },
-      { href: '/stadion', icon: <Swords size={22} />, label: 'スタディオン', description: '腕試しの場所。競って学ぶ（準備中）' },
+      { href: '/delphi', icon: <Wand2 size={22} />, label: 'デルフォイ', description: hintFor('/delphi') },
+      { href: '/agora', icon: <Store size={22} />, label: 'アゴラ', description: hintFor('/agora') },
+      { href: '/stadion', icon: <Swords size={22} />, label: 'スタディオン', description: hintFor('/stadion') },
     ],
   },
   {
@@ -157,11 +158,11 @@ export const NAV_SECTIONS: NavSection[] = [
         // 親自身も面を持つ（3種を一望する公示板）。畳んだままでも新着に届く
         href: '/board',
         icon: <Megaphone size={22} />,
-        label: '公示板', description: '運営からのお知らせ・使い方・コラムを読む',
+        label: '公示板', description: hintFor('/board'),
         children: [
-          { href: '/news', icon: <Megaphone size={20} />, label: 'お知らせ', description: '運営からのお知らせ' },
-          { href: '/guide', icon: <BookOpen size={20} />, label: '使い方', description: '使い方と、つまずきやすいところ' },
-          { href: '/blog', icon: <Newspaper size={20} />, label: 'コラム', description: '記憶と学びについての読みもの' },
+          { href: '/news', icon: <Megaphone size={20} />, label: 'お知らせ', description: hintFor('/news') },
+          { href: '/guide', icon: <BookOpen size={20} />, label: '使い方', description: hintFor('/guide') },
+          { href: '/blog', icon: <Newspaper size={20} />, label: 'コラム', description: hintFor('/blog') },
         ],
       },
     ],
@@ -187,40 +188,40 @@ export const ADMIN_SECTION_KEY = 'ops'
 export const ADMIN_ITEM: NavNode = {
   href: '/admin',
   icon: <ShieldCheck size={22} />,
-  label: '執務室', description: '運営向け。数字の確認と、日々の運営操作',
+  label: '執務室', description: hintFor('/admin'),
   children: [
-    { href: '/admin', icon: <House size={20} />, label: '概要', description: '運営の入口。いまの数字をひと目で', exact: true },
+    { href: '/admin', icon: <House size={20} />, label: '概要', description: hintFor('/admin'), exact: true },
     {
       icon: <BarChart3 size={20} />,
       label: '分析',
       children: [
-        { href: '/admin/business', icon: <BarChart3 size={20} />, label: '経営', description: '利用者・生成数・続いている人の数字' },
-        { href: '/admin/finance', icon: <CreditCard size={20} />, label: '収支', description: '売上と原価。プランごとの内訳' },
+        { href: '/admin/business', icon: <BarChart3 size={20} />, label: '経営', description: hintFor('/admin/business') },
+        { href: '/admin/finance', icon: <CreditCard size={20} />, label: '収支', description: hintFor('/admin/finance') },
       ],
     },
     {
       icon: <UserCog size={20} />,
       label: '運営',
       children: [
-        { href: '/admin/users', icon: <UserCog size={20} />, label: '利用者', description: '利用者を探して、様子を見て、手を打つ' },
-        { href: '/admin/campaigns', icon: <Megaphone size={20} />, label: 'キャンペーン', description: '引き換えコードを作って配ります' },
-        { href: '/admin/rewards', icon: <Crown size={20} />, label: '獲得物', description: '称号・勲章・宝物の登録簿' },
-        { href: '/admin/posts', icon: <Newspaper size={20} />, label: '読みもの', description: 'お知らせ・使い方・コラムを書いて出します' },
+        { href: '/admin/users', icon: <UserCog size={20} />, label: '利用者', description: hintFor('/admin/users') },
+        { href: '/admin/campaigns', icon: <Megaphone size={20} />, label: 'キャンペーン', description: hintFor('/admin/campaigns') },
+        { href: '/admin/rewards', icon: <Crown size={20} />, label: '獲得物', description: hintFor('/admin/rewards') },
+        { href: '/admin/posts', icon: <Newspaper size={20} />, label: '読みもの', description: hintFor('/admin/posts') },
       ],
     },
     {
       icon: <Compass size={20} />,
       label: '戦略',
-      children: [{ href: '/admin/strategy', icon: <Compass size={20} />, label: 'AI分析', description: '数字をAIに読ませて、次の一手を出させます' }],
+      children: [{ href: '/admin/strategy', icon: <Compass size={20} />, label: 'AI分析', description: hintFor('/admin/strategy') }],
     },
     {
       icon: <Settings size={20} />,
       label: 'システム',
       children: [
-        { href: '/admin/grants', icon: <CreditCard size={20} />, label: '料金と枠', description: '付与量と値段。デプロイなしで変えられます' },
-        { href: '/admin/models', icon: <Wand2 size={20} />, label: 'AIモデル', description: '使う生成モデルの登録簿' },
-        { href: '/admin/features', icon: <Layers size={20} />, label: '機能管理', description: '機能ごとの公開段階。隠す・準備中・公開' },
-        { href: '/admin/audit', icon: <List size={20} />, label: '監査ログ', description: '誰が何をしたかの記録' },
+        { href: '/admin/grants', icon: <CreditCard size={20} />, label: '料金と枠', description: hintFor('/admin/grants') },
+        { href: '/admin/models', icon: <Wand2 size={20} />, label: 'AIモデル', description: hintFor('/admin/models') },
+        { href: '/admin/features', icon: <Layers size={20} />, label: '機能管理', description: hintFor('/admin/features') },
+        { href: '/admin/audit', icon: <List size={20} />, label: '監査ログ', description: hintFor('/admin/audit') },
       ],
     },
   ],
@@ -235,13 +236,13 @@ export const ADMIN_ITEM: NavNode = {
 export const STUDIO_ITEM: NavNode = {
   href: '/studio',
   icon: <Hammer size={22} />,
-  label: '工房室', description: '公式コンテンツを選んで、確かめて、公開する',
+  label: '工房室', description: hintFor('/studio'),
   children: [
-    { href: '/studio', icon: <LayoutDashboard size={20} />, label: '概要', description: 'いま何がどこへ出ているか、ひと目で', exact: true },
-    { href: '/studio/originals', icon: <GalleryHorizontal size={20} />, label: '原本', description: '公式宮殿の中身。何が出ていて、何が出ていないか' },
-    { href: '/studio/demo', icon: <DoorOpen size={20} />, label: '体験宮殿設定', description: '体験の宮殿に置くものと、入口の開け閉め' },
-    { href: '/studio/delivery', icon: <Package size={20} />, label: '個別配布設定', description: 'デルフォイ・引き換えコード・ミッションでの配り方' },
-    { href: '/studio/settings', icon: <Settings size={20} />, label: '全体設定', description: '本人確認・公式の口座・制作枠' },
+    { href: '/studio', icon: <LayoutDashboard size={20} />, label: '概要', description: hintFor('/studio'), exact: true },
+    { href: '/studio/originals', icon: <GalleryHorizontal size={20} />, label: '原本', description: hintFor('/studio/originals') },
+    { href: '/studio/demo', icon: <DoorOpen size={20} />, label: '体験宮殿設定', description: hintFor('/studio/demo') },
+    { href: '/studio/delivery', icon: <Package size={20} />, label: '個別配布設定', description: hintFor('/studio/delivery') },
+    { href: '/studio/settings', icon: <Settings size={20} />, label: '全体設定', description: hintFor('/studio/settings') },
   ],
 }
 

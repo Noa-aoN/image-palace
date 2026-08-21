@@ -2,6 +2,7 @@ import type { Metadata } from 'next'
 import { LayoutGrid } from 'lucide-react'
 import { Breadcrumb } from '@/components/ui/breadcrumb'
 import { CreateViewForm } from '@/components/features/views/CreateViewForm'
+import { bodyFor } from '@/lib/page-help'
 
 export const metadata: Metadata = { title: 'キャンバスを作成' }
 
@@ -15,9 +16,7 @@ export default function NewViewPage() {
             <LayoutGrid size={26} style={{ color: 'var(--palace)' }} />
             キャンバスを作成
           </h1>
-          <p className="mt-2 text-muted-foreground">
-            カードを配置するキャンバス（フリーボード／スペース配置）を作成します。
-          </p>
+          <p className="mt-2 text-muted-foreground">{bodyFor('/views/new')}</p>
         </div>
         <CreateViewForm redirectBase="/views" />
       </div>

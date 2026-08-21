@@ -34,6 +34,7 @@ import {
   CreditBreakdownButton,
 } from '@/components/features/billing/CreditBreakdownPanel'
 import type { BillingPlan, BillingSummary } from '@/types/billing'
+import { bodyFor } from '@/lib/page-help'
 
 type TabKey = 'usage' | 'plan' | 'credit' | 'capacity' | 'payment'
 
@@ -467,9 +468,7 @@ export default function BillingPage() {
           <CreditCard size={26} style={{ color: 'var(--palace)' }} />
           利用と支払い
         </h1>
-        <p className="mt-2 text-muted-foreground">
-          クレジット残高の確認、プランのアップグレード、クレジットの追加ができます。
-        </p>
+        <p className="mt-2 text-muted-foreground">{bodyFor('/billing')}</p>
       </div>
 
       {checkoutNotice === 'success' && (

@@ -16,6 +16,7 @@ import { STYLE_OPTIONS } from '@/lib/item-styles'
 import { useUiStore } from '@/stores/ui'
 import { ASPECT_RATIOS, ASPECT_RATIO_KEYS } from '@/lib/aspect-ratio'
 import { DISPLAY_STYLES, DISPLAY_STYLE_KEYS, SHELF_ORIENTATIONS, SHELF_ORIENTATION_KEYS } from '@/lib/display-style'
+import { bodyFor } from '@/lib/page-help'
 
 type TabKey = 'generation' | 'display' | 'sharing' | 'notification' | 'integration' | 'data'
 
@@ -805,9 +806,7 @@ export default function SettingsPage() {
             <Settings size={26} style={{ color: 'var(--palace)' }} />
             環境設定
           </h1>
-          <p className="mt-2 text-muted-foreground">
-            生成・共有・連携・通知・データ管理など、利用環境を整えます。
-          </p>
+          <p className="mt-2 text-muted-foreground">{bodyFor('/settings')}</p>
         </div>
 
         {/* **読めなかったことを言う。** 黙っていると、つまみが効かない理由が

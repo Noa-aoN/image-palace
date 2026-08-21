@@ -12,6 +12,7 @@ import { useStudyRecordStore } from '@/stores/studyRecords'
 import { recordReviews } from '@/lib/api/reviews'
 import { loadPracticeCards, targetKey, targetLabel, type QuizTarget, type PracticeCard } from '@/lib/quiz'
 import { shuffle } from '@/lib/shuffle'
+import { bodyFor } from '@/lib/page-help'
 
 type Step = 'select' | 'study'
 type FrontMode = 'image' | 'word'
@@ -101,7 +102,7 @@ export default function PracticePage() {
             <Layers size={26} style={{ color: 'var(--palace)' }} />
             プラクティス
           </h1>
-          <p className="mt-2 text-muted-foreground">カードを見返しながら、低負担で練習します。</p>
+          <p className="mt-2 text-muted-foreground">{bodyFor('/study/practice')}</p>
         </div>
 
         <StudyArea title="① 練習する対象" description="練習するカードの範囲を選びます。">

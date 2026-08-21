@@ -5,6 +5,7 @@ import Link from 'next/link'
 import { Search } from 'lucide-react'
 import { searchLibrary } from '@/lib/api/search'
 import type { SearchResults } from '@/types/search'
+import { bodyFor } from '@/lib/page-help'
 
 interface ResultLink {
   id: string
@@ -70,9 +71,7 @@ export default function SearchPage() {
         <Search size={26} style={{ color: 'var(--palace)' }} />
         横断検索
       </h1>
-      <p className="mt-2 text-muted-foreground">
-        カード・ボックス・キャンバス・スペースをまとめて検索します。
-      </p>
+      <p className="mt-2 text-muted-foreground">{bodyFor('/search')}</p>
 
       <div className="relative mt-6 max-w-2xl">
         <Search size={18} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
