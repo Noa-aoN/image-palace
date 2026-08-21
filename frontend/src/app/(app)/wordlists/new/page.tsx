@@ -3,6 +3,7 @@
 import { ListChecks } from 'lucide-react'
 import { Breadcrumb } from '@/components/ui/breadcrumb'
 import { CreateWordlistFlow } from '@/components/features/wordlists/CreateWordlistFlow'
+import { bodyFor } from '@/lib/page-help'
 
 export default function NewWordlistPage() {
   return (
@@ -14,10 +15,7 @@ export default function NewWordlistPage() {
             <ListChecks size={26} style={{ color: 'var(--palace)' }} />
             ワードリストを作成
           </h1>
-          <p className="mt-2 text-muted-foreground">
-            テーマを入れるとAIが単語を生成します。単語数はおまかせ（テーマに応じてAIが決める）が既定です。
-            並び替え・編集して、AIチェックで内容を確かめてから保存できます。
-          </p>
+          <p className="mt-2 text-muted-foreground">{bodyFor('/wordlists/new')}</p>
         </div>
         <CreateWordlistFlow />
       </div>

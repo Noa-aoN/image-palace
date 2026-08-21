@@ -106,4 +106,34 @@ RSpec.describe "Api::V1::Settings", type: :request do
       expect(json_response["library_order"]).to eq(%w[boxes cards canvas spaces materials])
     end
   end
+
+  # 指を乗せたときの説明。**慣れた人には邪魔になるので切れる。**
+  # ただし体験の宮殿では、初めて触る人しか居ないので切らせない
+  describe "名前の上の説明" do
+    it "はじめは出す" do
+      get "/api/v1/settings", headers: headers
+
+      expect(json_response["nav_hints"]).to be(true)
+    end
+
+    it "切れる" do
+      patch "/api/v1/settings", params: { setting: { nav_hints: false } }, headers: headers
+
+      expect(json_response["nav_hints"]).to be(false)
+      expect(user.reload.setting.nav_hints).to be(false)
+    end
+
+    # **体験の宮殿では、切っても出す。**
+    # 初めて触る人しか居ないので、説明が消えると何の場所か分からなくなる
+    it "体験の宮殿では、切っても出す" do
+      demo = create(:user, :confirmed, email: "demo-#{SecureRandom.hex(4)}@#{User::DEMO_EMAIL_DOMAIN}")
+      demo.create_setting!(nav_hints: false)
+
+      get "/api/v1/settings", headers: auth_headers_for(demo)
+
+      expect(json_response["nav_hints"]).to be(true)
+      # 記録そのものは変えない（体験でなくなれば、その人の設定が効く）
+      expect(demo.reload.setting.nav_hints).to be(false)
+    end
+  end
 end

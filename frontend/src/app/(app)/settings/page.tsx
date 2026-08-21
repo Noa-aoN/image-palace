@@ -16,6 +16,7 @@ import { STYLE_OPTIONS } from '@/lib/item-styles'
 import { useUiStore } from '@/stores/ui'
 import { ASPECT_RATIOS, ASPECT_RATIO_KEYS } from '@/lib/aspect-ratio'
 import { DISPLAY_STYLES, DISPLAY_STYLE_KEYS, SHELF_ORIENTATIONS, SHELF_ORIENTATION_KEYS } from '@/lib/display-style'
+import { bodyFor } from '@/lib/page-help'
 
 type TabKey = 'generation' | 'display' | 'sharing' | 'notification' | 'integration' | 'data'
 
@@ -25,6 +26,7 @@ export default function SettingsPage() {
   const [autoTags, setAutoTags] = useState<boolean | null>(null)
   const [regenWithMeaning, setRegenWithMeaning] = useState<boolean | null>(null)
   const [imageSafeguard, setImageSafeguard] = useState<boolean | null>(null)
+  const [navHints, setNavHints] = useState<boolean | null>(null)
   // 自分が作らせた絵を、ほかの人にも使わせてよいか
   const [shareImages, setShareImages] = useState<boolean | null>(null)
   const [cardDetailColumns, setCardDetailColumns] = useState(1)
@@ -81,6 +83,7 @@ export default function SettingsPage() {
         setAutoTags(s.auto_generate_tags)
         setRegenWithMeaning(s.regenerate_with_meaning)
         setImageSafeguard(s.image_safeguard)
+        setNavHints(s.nav_hints)
         setShareImages(s.share_generated_images)
         setCardDetailColumns(s.card_detail_columns ?? 1)
         setDefaultStyle(s.default_image_style)
@@ -242,6 +245,21 @@ export default function SettingsPage() {
     }
   }
 
+  const toggleNavHints = async () => {
+    if (navHints === null || savingSettings) return
+    const next = !navHints
+    setSavingSettings(true)
+    setNavHints(next)
+    try {
+      const s = await updateSettings({ nav_hints: next })
+      setNavHints(s.nav_hints)
+    } catch {
+      setNavHints(!next) // 失敗したら元に戻す
+    } finally {
+      setSavingSettings(false)
+    }
+  }
+
   const toggleShareImages = async () => {
     if (shareImages === null || savingSettings) return
     const next = !shareImages
@@ -367,6 +385,24 @@ export default function SettingsPage() {
                 label="再生成で意味・説明を参考にする"
                 disabled={regenWithMeaning === null || savingSettings}
                 onClick={toggleRegenMeaning}
+              />
+            </div>
+            {/* **慣れると邪魔になる。** 場所を覚えてしまえば、動くたびに説明が出るのは
+                目障りでしかない。一方、はじめの数日はこれが無いと何の場所か分からない。
+                既定は出す側にして、要らなくなったら切れるようにする */}
+            <div className="flex items-start justify-between gap-4 border-t border-border pt-3">
+              <div>
+                <p className="text-sm font-medium">名前の上で説明を出す</p>
+                <p className="mt-1 text-sm text-muted-foreground">
+                  サイドバーやアイコンに指を乗せたとき、そこが何をする場所かを添えます。
+                  場所を覚えてしまったら、OFFにすると静かになります。
+                </p>
+              </div>
+              <Toggle
+                checked={navHints === true}
+                label="名前の上で説明を出す"
+                disabled={navHints === null || savingSettings}
+                onClick={toggleNavHints}
               />
             </div>
             <div className="flex items-start justify-between gap-4 border-t border-border pt-3">
@@ -770,9 +806,7 @@ export default function SettingsPage() {
             <Settings size={26} style={{ color: 'var(--palace)' }} />
             環境設定
           </h1>
-          <p className="mt-2 text-muted-foreground">
-            生成・共有・連携・通知・データ管理など、利用環境を整えます。
-          </p>
+          <p className="mt-2 text-muted-foreground">{bodyFor('/settings')}</p>
         </div>
 
         {/* **読めなかったことを言う。** 黙っていると、つまみが効かない理由が

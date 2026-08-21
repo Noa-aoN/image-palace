@@ -27,6 +27,8 @@ export interface UserSettings {
   regenerate_with_meaning: boolean
   /** 生成された絵に覆いを掛けて、承認するまで直視しないで済むようにする。既定 OFF */
   image_safeguard: boolean
+  /** 指を乗せたときに説明を出すか。**体験の宮殿では必ず出る**（サーバーが true を返す） */
+  nav_hints: boolean
   /** 自分が作らせた絵を、ほかの人にも使わせてよいか（取る側は変わらない） */
   share_generated_images: boolean
   /** カード一覧で名前として出す項目の識別名。空なら見出し語（title） */

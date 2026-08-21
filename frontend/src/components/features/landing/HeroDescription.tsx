@@ -120,8 +120,15 @@ export function HeroDescription({
           用途は**それぞれを太字にする**。文のまま流すと、
           読み飛ばした人に「単語帳のサービス」としてだけ残る。
           名詞だけを立てて、拾い読みでも用途の広さが目に入るようにする */}
+      {/* **狭い画面では出さない。**
+          用途の羅列は3段のうち一番長く、絵の上に文字の壁を作る。
+          同じ内容は、すぐ下の「できること」が絵と見出し付きで並べている
+          （そちらのほうが読みやすい）ので、ここで畳んでも失うものが無い。
+
+          広い画面では出す。1行に収まるので壁にならず、
+          スクロールする前に用途の広さが目に入るほうがよい */}
       <p
-        className={`mt-2.5 text-[0.85rem] leading-relaxed text-balance md:text-base ${
+        className={`mt-2.5 hidden text-[0.85rem] leading-relaxed text-balance md:block md:text-base ${
           // 紙以外の版では字を薄くしない。薄い字に縁や影を付けると、
           // そちらのほうが濃くなって字が抜けて見える
           textClass
@@ -135,21 +142,18 @@ export function HeroDescription({
         <strong className="font-semibold">相関図</strong>・
         <strong className="font-semibold">年表</strong>づくりで理解。
         <br />
-        さらに、
-        <strong className="font-semibold">メモ帳</strong>、
+        反復練習に
+        <strong className="font-semibold">クイズ</strong>。
         <strong className="font-semibold">絵日記</strong>、
         <strong className="font-semibold">タスク管理</strong>、
         <strong className="font-semibold">ビジョンボード</strong>など、使い方は無限大です。
       </p>
+      {/* 締めの一文。**狭い画面ではこれが2文目になる**ので、
+          1文目との間を少し広く取る（続き物ではなく、受けの文だと分かるように） */}
       <p
-        className={`mt-2.5 text-[0.85rem] leading-relaxed text-balance md:text-base ${textClass}`}
+        className={`mt-3 text-[0.85rem] leading-relaxed text-balance md:mt-2.5 md:text-base ${textClass}`}
         style={styled ? { color: '#3E3830' } : undefined}
       >
-        {/* 句点で切る。ここも1文ずつ。
-            文の途中で行を折ると JSX が改行を空白1つに変えてしまうので、
-            折ってよいのは <br /> を挟む場所だけ */}
-        作ったカードを、自分の「宮殿」に並べて、整理・組み合わせ・反復練習。
-        <br />
         {/* 「記憶のカード」と対になる呼び名なので、同じ太さで置く。
             鉤括弧は前の行の末尾に（次の行の頭だと空白が1つ入る） */}
         それが、自分だけの「

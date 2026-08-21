@@ -16,6 +16,7 @@ import { deleteAccount } from '@/lib/api/account'
 import { useAdminStore } from '@/stores/admin'
 import { useAuthStore } from '@/stores/auth'
 import { useItemsStore } from '@/stores/items'
+import { bodyFor } from '@/lib/page-help'
 
 type TabKey = 'info' | 'palace' | 'basic' | 'public' | 'security' | 'withdraw'
 
@@ -192,9 +193,7 @@ export default function AccountPage() {
             <UserCog size={26} style={{ color: 'var(--palace)' }} />
             アカウント管理
           </h1>
-          <p className="mt-2 text-muted-foreground">
-            プロフィール・ログイン情報・退会など、アカウント本体に関する設定です。
-          </p>
+          <p className="mt-2 text-muted-foreground">{bodyFor('/account')}</p>
         </div>
 
         <CategorySections sections={sections} ariaLabel="アカウント管理カテゴリ" />

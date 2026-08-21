@@ -1,6 +1,7 @@
 'use client'
 
 import { useLayoutEffect, useRef, useState, type ReactNode } from 'react'
+import { useSettingsStore } from '@/stores/settings'
 
 /** 画面の端に残す余白。ここより外へは出さない */
 const EDGE = 8
@@ -35,11 +36,18 @@ export function Tooltip({
   /** 上に出すか下に出すか。行の一番上にあるものは下、下端にあるものは上 */
   side?: 'top' | 'bottom'
 }) {
+  // **慣れた人には邪魔になる。** 環境設定で切れるようにしてある。
+  // 設定を読む前（null）は出す側に倒す。初めての人のほうが困り方が大きい。
+  // 体験の宮殿ではサーバーが必ず true を返すので、ここでは何もしない
+  const enabled = useSettingsStore((state) => state.settings?.nav_hints) !== false
+
   const anchorRef = useRef<HTMLSpanElement>(null)
   const tipRef = useRef<HTMLSpanElement>(null)
   const [pos, setPos] = useState<{ left: number; top: number } | null>(null)
 
   const show = () => {
+    if (!enabled) return
+
     const el = anchorRef.current
     if (!el) return
     const r = el.getBoundingClientRect()

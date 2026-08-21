@@ -6,6 +6,7 @@ import { Card, CardContent } from '@/components/ui/card'
 import { CreateIcon } from '@/components/features/layout/CreateIcon'
 import { KindPreview } from '@/components/features/atelier/KindPreview'
 import type { AtelierKind } from '@/lib/atelier/examples'
+import { bodyFor } from '@/lib/page-help'
 
 export const metadata: Metadata = { title: 'アトリエ' }
 
@@ -95,7 +96,7 @@ export default function AtelierPage() {
         <Palette size={26} style={{ color: 'var(--palace)' }} />
         アトリエ
       </h1>
-      <p className="mt-2 text-muted-foreground">作りたいものを選んでください。</p>
+      <p className="mt-2 text-muted-foreground">{bodyFor('/atelier')}</p>
 
       <div className="mt-8 space-y-8">
         {GROUPS.map((group) => (

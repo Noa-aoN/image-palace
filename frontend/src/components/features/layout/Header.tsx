@@ -19,6 +19,8 @@ import { useBillingStore } from '@/stores/billing'
 import { useNotificationsStore } from '@/stores/notifications'
 import { useAdminStore } from '@/stores/admin'
 import { badgeFor, can } from '@/lib/auth/capabilities'
+import { DemoLock } from '@/components/features/demo/DemoLock'
+import { DEMO_LOCKED_HINT } from '@/lib/demo/navigation'
 import { isDemoUser } from '@/lib/demo/session'
 import { leaveDemo } from '@/lib/api/demo'
 import { signOut } from '@/lib/api/auth'
@@ -111,7 +113,7 @@ export function AppHeader() {
   // 体験を終える。**宮殿ごと片付けて、LP へ戻る。**
   // ログアウトと違い、次に入ると新しい宮殿が建つ（中身は同じ）
   const handleLeaveDemo = async () => {
-    if (!window.confirm('この体験用の宮殿を片付けます。よろしいですか。')) return
+    if (!window.confirm('体験を終えて、トップページへ戻ります。よろしいですか。')) return
 
     await leaveDemo().catch(() => {})
     resetItems()
@@ -184,6 +186,7 @@ export function AppHeader() {
             36px → 116px → 200px と三度広がり、そのたびに隣の釦が動いていた。
             数だけを後から入れれば、位置は動かない */}
         {showCredits && (
+          <DemoLock>
           <Tooltip label="クレジット残高">
           <Link
             href="/billing"
@@ -196,6 +199,7 @@ export function AppHeader() {
             <span className="text-xs text-white/75">{CREDIT_UNIT_SHORT}</span>
           </Link>
           </Tooltip>
+          </DemoLock>
         )}
         {/*
           作れるものの入口。
@@ -206,7 +210,16 @@ export function AppHeader() {
           作りたいのは目の前のものの続きなので、見えたまま作れるほうがよい。
           中身は CreatePanels が持つ（入口が複数あるので置き場所は1か所）。
         */}
-        {showCreate && (
+        {showCreate && isDemo && (
+          // 体験の宮殿では絵を作れない（クレジットが無い）。
+          // 押せる形で置くと、押してから断ることになる
+          <DemoLock>
+            <span className="rounded-full p-1.5">
+              <Plus size={20} style={{ color: 'var(--on-palace)' }} />
+            </span>
+          </DemoLock>
+        )}
+        {showCreate && !isDemo && (
           <DropdownMenu open={createOpen} onOpenChange={setCreateOpen}>
             <Tooltip label="作る">
               <DropdownMenuTrigger
@@ -241,6 +254,7 @@ export function AppHeader() {
 
         {/* お知らせ（生成結果・運営からの通知）。未読があれば巻物にバッジを付け、クリックで一覧パネルを開く */}
         {showUserMenu && (
+          <DemoLock>
           <Tooltip label={unreadCount > 0 ? `お知らせ（未読${unreadCount}件）` : 'お知らせ'}>
           <button
             type="button"
@@ -256,6 +270,7 @@ export function AppHeader() {
             )}
           </button>
           </Tooltip>
+          </DemoLock>
         )}
         {showUserMenu ? (
           <DropdownMenu open={menuOpen} onOpenChange={setMenuOpen}>
@@ -310,27 +325,54 @@ export function AppHeader() {
                   工房室
                 </DropdownMenuItem>
               )}
-              <DropdownMenuItem onClick={() => router.push('/account')} className="cursor-pointer">
+              <DropdownMenuItem
+                onClick={() => router.push('/account')}
+                disabled={isDemo}
+                title={isDemo ? DEMO_LOCKED_HINT : undefined}
+                className="cursor-pointer"
+              >
                 アカウント管理
               </DropdownMenuItem>
-              <DropdownMenuItem onClick={() => router.push('/billing')} className="cursor-pointer">
+              <DropdownMenuItem
+                onClick={() => router.push('/billing')}
+                disabled={isDemo}
+                title={isDemo ? DEMO_LOCKED_HINT : undefined}
+                className="cursor-pointer"
+              >
                 利用と支払い
               </DropdownMenuItem>
-              <DropdownMenuItem onClick={() => router.push('/settings')} className="cursor-pointer">
+              <DropdownMenuItem
+                onClick={() => router.push('/settings')}
+                disabled={isDemo}
+                title={isDemo ? DEMO_LOCKED_HINT : undefined}
+                className="cursor-pointer"
+              >
                 環境設定
               </DropdownMenuItem>
-              <DropdownMenuItem onClick={() => router.push('/achievements')} className="cursor-pointer">
+              <DropdownMenuItem
+                onClick={() => router.push('/achievements')}
+                disabled={isDemo}
+                title={isDemo ? DEMO_LOCKED_HINT : undefined}
+                className="cursor-pointer"
+              >
                 アチーブメント
               </DropdownMenuItem>
               <DropdownMenuSeparator />
-              <DropdownMenuItem onClick={() => router.push('/')} className="cursor-pointer">
-                トップページへ戻る
-              </DropdownMenuItem>
+              {/* **体験中は、出口を1つにする。**
+                  ただ移るだけの「トップページへ戻る」と「体験を終える」が並ぶと、
+                  見た目が似ているのに片方は宮殿が残る。押し間違えると、
+                  出たつもりの人の宮殿が残り続ける */}
+              {!isDemo && (
+                <DropdownMenuItem onClick={() => router.push('/')} className="cursor-pointer">
+                  トップページへ戻る
+                </DropdownMenuItem>
+              )}
               {/* 体験用の口座に「ログアウト」という概念は要らない。
                   押しても宮殿は残り、次に入ると同じ場所へ戻るので、
-                  「出た」つもりの人と食い違う。**言い方も動きも1つに揃える** */}
+                  「出た」つもりの人と食い違う。**言い方も動きも1つに揃える**
+                  （帯の釦と同じ言葉・同じ動き） */}
               <DropdownMenuItem onClick={isDemo ? handleLeaveDemo : handleLogout} className="cursor-pointer">
-                {isDemo ? '体験を終える' : 'ログアウト'}
+                {isDemo ? 'トップページに戻る' : 'ログアウト'}
               </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>

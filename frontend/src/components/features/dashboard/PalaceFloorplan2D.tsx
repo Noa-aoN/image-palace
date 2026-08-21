@@ -2,7 +2,9 @@
 
 import Link from 'next/link'
 import type { ReactNode } from 'react'
-import { Footprints, ArrowUpRight } from 'lucide-react'
+import { Footprints, ArrowUpRight, X } from 'lucide-react'
+import { DEMO_LOCKED_HINT, lockedForDemo } from '@/lib/demo/navigation'
+import { useIsDemo } from '@/components/features/demo/DemoLock'
 import {
   ROOMS,
   OUTER_WALL_SEGMENTS,
@@ -43,6 +45,7 @@ export function PalaceFloorplan2D({
   onHint: (hint: string | null) => void
   icons: Record<string, ReactNode>
 }) {
+  const isDemo = useIsDemo()
   const { w, h } = PLAN_VIEWBOX
 
   return (
@@ -80,7 +83,40 @@ export function PalaceFloorplan2D({
       </svg>
 
       {/* 部屋（クリック領域＋アイコン・名前）。壁の内側に重ねる。 */}
-      {ROOMS.map((room) => (
+      {ROOMS.map((room) => {
+        // **体験中に入れない部屋は、消さずに閉ざす。**
+        // 地図から消すと「この宮殿にその部屋は無い」と読まれる。
+        // 閉ざした扉として置くほうが、宮殿の広さは伝わる
+        const locked = isDemo && lockedForDemo({ sectionKey: 'palace', href: room.href })
+        const place = {
+          position: 'absolute' as const,
+          left: pct(room.rect.x, w),
+          top: pct(room.rect.y, h),
+          width: pct(room.rect.w, w),
+          height: pct(room.rect.h, h),
+        }
+
+        if (locked) {
+          return (
+            <span
+              key={room.key}
+              aria-disabled
+              title={DEMO_LOCKED_HINT}
+              onMouseEnter={() => onHint(`「${room.label}」${DEMO_LOCKED_HINT}`)}
+              onMouseLeave={() => onHint(null)}
+              style={place}
+              className="flex cursor-not-allowed flex-col items-center justify-center gap-0.5 rounded-md text-center opacity-40"
+            >
+              <span className="absolute right-1 top-1" aria-hidden>
+                <X size={13} />
+              </span>
+              <span style={{ color: 'var(--palace)' }}>{icons[room.key]}</span>
+              <span className="text-sm font-medium leading-tight">{room.label}</span>
+            </span>
+          )
+        }
+
+        return (
         <Link
           key={room.key}
           href={room.href}
@@ -90,13 +126,7 @@ export function PalaceFloorplan2D({
           onMouseLeave={() => onHint(null)}
           onFocus={() => onHint(`「${room.label}」${room.desc}`)}
           onBlur={() => onHint(null)}
-          style={{
-            position: 'absolute',
-            left: pct(room.rect.x, w),
-            top: pct(room.rect.y, h),
-            width: pct(room.rect.w, w),
-            height: pct(room.rect.h, h),
-          }}
+          style={place}
           className="group flex flex-col items-center justify-center gap-0.5 rounded-md text-center transition-colors hover:bg-[rgba(198,167,94,0.1)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--palace)]"
         >
           {/* ホバー／フォーカスで部屋の右上に足跡＋矢印（＝この部屋へ移動できる合図） */}
@@ -120,7 +150,8 @@ export function PalaceFloorplan2D({
             </span>
           )}
         </Link>
-      ))}
+        )
+      })}
     </div>
   )
 }

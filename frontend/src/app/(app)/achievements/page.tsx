@@ -2,6 +2,7 @@
 
 import { Crown } from 'lucide-react'
 import { AchievementsBoard } from '@/components/features/achievements/AchievementsBoard'
+import { bodyFor } from '@/lib/page-help'
 
 /**
  * アチーブメント。
@@ -17,9 +18,7 @@ export default function AchievementsPage() {
           <Crown size={26} style={{ color: 'var(--palace)' }} />
           アチーブメント
         </h1>
-        <p className="mt-2 text-muted-foreground">
-          積み上げた学びと創作のしるし。次に目指すものもここで選べます。
-        </p>
+        <p className="mt-2 text-muted-foreground">{bodyFor('/achievements')}</p>
       </div>
 
       <AchievementsBoard />

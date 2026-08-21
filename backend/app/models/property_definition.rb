@@ -38,7 +38,7 @@ class PropertyDefinition < ApplicationRecord
 
   CATEGORY_LABELS = {
     "subject" => "記憶要素",
-    "mnemonic" => "記憶術要素",
+    "mnemonic" => "変換要素",
     "admin" => "管理要素"
   }.freeze
 

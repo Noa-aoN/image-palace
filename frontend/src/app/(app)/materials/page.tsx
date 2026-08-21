@@ -4,6 +4,7 @@ import Link from 'next/link'
 import { ChevronRight, ListChecks, Images, Boxes } from 'lucide-react'
 import { Card, CardContent } from '@/components/ui/card'
 import { FeatureGate } from '@/components/features/shared/FeatureGate'
+import { bodyFor } from '@/lib/page-help'
 
 export const metadata: Metadata = { title: 'マテリアル一覧' }
 
@@ -38,9 +39,7 @@ export default function MaterialsPage() {
         <Boxes size={26} style={{ color: 'var(--palace)' }} />
         マテリアル一覧
       </h1>
-      <p className="mt-2 text-muted-foreground">
-        マテリアルは、カード化・制作の前段になる素材です。種類ごとに管理できます。
-      </p>
+      <p className="mt-2 text-muted-foreground">{bodyFor('/materials')}</p>
 
       <div className="mt-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
         {MATERIAL_KINDS.map((kind) =>

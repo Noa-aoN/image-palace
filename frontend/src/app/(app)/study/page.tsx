@@ -3,6 +3,7 @@ import type { ReactNode } from 'react'
 import Link from 'next/link'
 import { ChevronRight, Layers, HelpCircle, Gamepad2, BarChart3, GraduationCap } from 'lucide-react'
 import { Card, CardContent } from '@/components/ui/card'
+import { bodyFor } from '@/lib/page-help'
 
 export const metadata: Metadata = { title: 'スタディ' }
 
@@ -47,9 +48,7 @@ export default function StudyPage() {
         <GraduationCap size={26} style={{ color: 'var(--palace)' }} />
         スタディ
       </h1>
-      <p className="mt-2 text-muted-foreground">
-        保存したカードやボックスを使って、記憶を定着させます。
-      </p>
+      <p className="mt-2 text-muted-foreground">{bodyFor('/study')}</p>
 
       <div className="mt-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         {/* 各ページの段階はサイドバーと PageGate が見る。ここは札を並べるだけ */}

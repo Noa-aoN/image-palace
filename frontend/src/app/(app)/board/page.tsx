@@ -8,6 +8,7 @@ import { getPosts } from '@/lib/api/posts'
 import { ARTICLES } from '@/lib/blog/articles'
 import { GUIDE_SECTIONS } from '@/lib/guide/sections'
 import { NEWS_CATEGORIES, type Post } from '@/types/post'
+import { bodyFor } from '@/lib/page-help'
 
 /** 各欄に出す件数。ここを増やすと「一望」ではなく一覧になる */
 const PREVIEW = 5
@@ -63,7 +64,7 @@ export default function BoardPage() {
           <Megaphone size={26} style={{ color: 'var(--palace)' }} />
           公示板
         </h1>
-        <p className="mt-2 text-muted-foreground">運営からのお知らせ・使い方・コラムをまとめています。</p>
+        <p className="mt-2 text-muted-foreground">{bodyFor('/board')}</p>
       </header>
 
       {pinned.length > 0 && (

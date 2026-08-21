@@ -34,5 +34,17 @@ export function lockedForDemo({
   return LOCKED_ROOTS.some((root) => href === root || href.startsWith(`${root}/`))
 }
 
+/**
+ * 体験中に閉じたものの見た目。
+ *
+ * **包みを増やさずに閉じる**ときに使う。grid の子の間に1枚挟むと
+ * `items-stretch` が届かなくなり、隣の札と高さが揃わなくなる。
+ *
+ * 節そのものは押せるままにして（そうしないと理由を出せない）、
+ * 中の行き先と釦だけを殺す。
+ */
+export const DEMO_DIM =
+  'cursor-not-allowed opacity-40 [&_a]:pointer-events-none [&_button]:pointer-events-none'
+
 /** 押せないことに添える一言。**なぜ使えないのかを言う** */
 export const DEMO_LOCKED_HINT = '体験の宮殿では使えません。自分の宮殿をつくるとお使いいただけます'

@@ -8,6 +8,7 @@ import { Breadcrumb } from '@/components/ui/breadcrumb'
 import { Badge } from '@/components/ui/badge'
 import { StatCard } from '@/components/features/study/StatCard'
 import { useStudyRecordStore, type StudyRecord, type StudyGameKind } from '@/stores/studyRecords'
+import { bodyFor } from '@/lib/page-help'
 
 function formatDate(iso: string): string {
   const d = new Date(iso)
@@ -81,7 +82,7 @@ export default function RecordPage() {
         <BarChart3 size={26} style={{ color: 'var(--palace)' }} />
         レコード
       </h1>
-      <p className="mt-2 text-muted-foreground">プラクティス・クイズ・プレイの学習履歴と統計を確認します。</p>
+      <p className="mt-2 text-muted-foreground">{bodyFor('/study/record')}</p>
 
       {!hydrated ? (
         <div className="mt-8 space-y-2">

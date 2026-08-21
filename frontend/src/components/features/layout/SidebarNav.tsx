@@ -11,6 +11,7 @@ import { navSectionsFor, type NavNode } from './nav-items'
 import { useAuthStore } from '@/stores/auth'
 import { isDemoUser } from '@/lib/demo/session'
 import { DEMO_LOCKED_HINT, lockedForDemo } from '@/lib/demo/navigation'
+import { Tooltip } from '@/components/ui/tooltip'
 import { opsEntriesFor } from '@/lib/auth/capabilities'
 import { useFeaturesStore } from '@/stores/features'
 
@@ -137,29 +138,31 @@ function NavTree({
 
     if (locked) {
       return (
-        <span
-          key={node.label}
-          aria-disabled
-          className={`${linkClass(depth)} cursor-not-allowed opacity-40`}
-          title={DEMO_LOCKED_HINT}
-        >
-          {inner}
-        </span>
+        <Tooltip key={node.label} label={DEMO_LOCKED_HINT}>
+          <span aria-disabled className={`${linkClass(depth)} cursor-not-allowed opacity-40`}>
+            {inner}
+          </span>
+        </Tooltip>
       )
     }
 
+    // **説明は全部の項目に出す。**
+    //
+    // 名前だけでは何の場所か分からないものがある（インデックス・デルフォイ）。
+    // 標準の `title` は出るまで約1秒かかり、迷って手が止まってから出るので
+    // 間に合わない。指を乗せた時点で出す部品に載せる。
+    // 説明を持たないものは、名前をそのまま出す（畳んで印だけのときに要る）
     return (
-      <Link
-        key={node.label}
-        href={href}
-        onClick={onNavigate}
-        className={linkClass(depth)}
-        style={linkStyle(href, node.exact)}
-        // 名前だけでは何の場所か分からないので、説明を持つものはそれを見せる
-        title={hint}
-      >
-        {inner}
-      </Link>
+      <Tooltip key={node.label} label={hint || node.label}>
+        <Link
+          href={href}
+          onClick={onNavigate}
+          className={linkClass(depth)}
+          style={linkStyle(href, node.exact)}
+        >
+          {inner}
+        </Link>
+      </Tooltip>
     )
   }
 
@@ -197,25 +200,27 @@ function NavTree({
       // リンク（ラベル）＋ chevron トグル
       <div className="flex items-center">
         {isLocked(node.href, sectionKey) ? (
-          <span
-            aria-disabled
-            className={`flex-1 ${linkClass(depth)} cursor-not-allowed opacity-40`}
-            title={DEMO_LOCKED_HINT}
-          >
-            <span className="shrink-0">{node.icon}</span>
-            <span className="truncate">{node.label}</span>
-          </span>
+          <Tooltip label={DEMO_LOCKED_HINT}>
+            <span
+              aria-disabled
+              className={`flex-1 ${linkClass(depth)} cursor-not-allowed opacity-40`}
+            >
+              <span className="shrink-0">{node.icon}</span>
+              <span className="truncate">{node.label}</span>
+            </span>
+          </Tooltip>
         ) : (
-          <Link
-            href={node.href}
-            onClick={onNavigate}
-            className={`flex-1 ${linkClass(depth)}`}
-            style={linkStyle(node.href)}
-            title={node.description}
-          >
-            <span className="shrink-0">{node.icon}</span>
-            <span className="truncate">{node.label}</span>
-          </Link>
+          <Tooltip label={node.description || node.label}>
+            <Link
+              href={node.href}
+              onClick={onNavigate}
+              className={`flex-1 ${linkClass(depth)}`}
+              style={linkStyle(node.href)}
+            >
+              <span className="shrink-0">{node.icon}</span>
+              <span className="truncate">{node.label}</span>
+            </Link>
+          </Tooltip>
         )}
         <button
           type="button"
@@ -229,17 +234,18 @@ function NavTree({
       </div>
     ) : (
       // 行全体がトグル
-      <button
-        type="button"
-        onClick={() => toggleGroup(node.label)}
-        className={`w-full ${linkClass(depth)}`}
-        aria-expanded={!collapsed}
-        title={node.description}
-      >
-        <span className="shrink-0">{node.icon}</span>
-        <span className="flex-1 truncate text-left">{node.label}</span>
-        <Chevron size={16} />
-      </button>
+      <Tooltip label={node.description || node.label}>
+        <button
+          type="button"
+          onClick={() => toggleGroup(node.label)}
+          className={`w-full ${linkClass(depth)}`}
+          aria-expanded={!collapsed}
+        >
+          <span className="shrink-0">{node.icon}</span>
+          <span className="flex-1 truncate text-left">{node.label}</span>
+          <Chevron size={16} />
+        </button>
+      </Tooltip>
     )
 
     return (

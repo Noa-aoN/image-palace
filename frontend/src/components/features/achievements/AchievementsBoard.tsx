@@ -770,7 +770,7 @@ function RewardKindsHelp() {
             称号は1つ、勲章は3つまでのように、種類ごとに数が決まっています。
           </p>
           <p className="rounded-lg bg-muted/40 px-3 py-2 text-muted-foreground">
-            ここで選んだものは、<strong className="font-medium text-foreground">エントランスの「宮殿の主人」</strong>にも出ます。
+            ここで選んだものは、<strong className="font-medium text-foreground">エントランスの「宮殿の主人情報」</strong>にも出ます。
             この板だけの飾りではなく、<strong className="font-medium text-foreground">名乗りそのもの</strong>を決める場所です。
           </p>
         </div>
