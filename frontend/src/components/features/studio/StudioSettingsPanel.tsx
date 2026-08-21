@@ -13,7 +13,7 @@ import { useAdminStore } from '@/stores/admin'
  * 全体設定。**部屋をまたいで効くものだけを置く。**
  *
  * 体験の入口は体験宮殿設定へ移した。ここに残るのは
- * 本人確認・公式の口座・制作枠のように、どの部屋にも関わるもの。
+ * 本人確認・公式のアカウント・制作枠のように、どの部屋にも関わるもの。
  *
  * 枠の上限は執務室（`/admin`）の奥にもある。だが制作だけの人は
  * 執務室に入れないので、同じ栓をここにも出す。
@@ -89,7 +89,7 @@ export function StudioSettingsPanel() {
       </section>
 
       <section className="space-y-2 rounded-xl border border-border bg-card p-5">
-        <h2 className="text-base font-semibold">公式コンテンツの口座</h2>
+        <h2 className="text-base font-semibold">公式コンテンツのアカウント</h2>
         {settings.official_account.configured ? (
           <p className="text-sm">
             {settings.official_account.email}

@@ -7,7 +7,7 @@ module Api
         include DemoRestriction
 
         before_action :set_default_confirm_success_url, only: :create
-        # 体験用の口座では、メールもパスワードも変えさせない。
+        # 体験用のアカウントでは、メールもパスワードも変えさせない。
         # 変えられると、その宮殿が特定の誰かのものになってしまう
         before_action -> { deny_for_demo!(:change_password) }, only: [ :update, :destroy ]
 

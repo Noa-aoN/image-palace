@@ -201,7 +201,7 @@ RSpec.describe "体験用の宮殿", type: :request do
     end
   end
 
-  describe "体験用の口座として扱われる" do
+  describe "体験用のアカウントとして扱われる" do
     before { post "/api/v1/demo", as: :json }
 
     let(:tokens) { json_response["tokens"] }
@@ -247,7 +247,7 @@ RSpec.describe "体験用の宮殿", type: :request do
         .not_to change { author.items.map { |i| i.primary_media.file.attached? } }
     end
 
-    # **体験用の口座しか消せない。** ここが緩いと、退会の禁止を回り込める
+    # **体験用のアカウントしか消せない。** ここが緩いと、退会の禁止を回り込める
     it "普通の利用者は、ここでは消えない" do
       normal = create(:user, :confirmed)
 
@@ -338,7 +338,7 @@ RSpec.describe "体験用の宮殿", type: :request do
     end
 
     # **索引で守る。** 画面側の連打よけが効かなくても、DB が片方を落とす
-    it "同じ合言葉の口座は、DB が2つ作らせない" do
+    it "同じ合言葉のアカウントは、DB が2つ作らせない" do
       post "/api/v1/demo", params: { client_key: "same-key" }, as: :json
 
       expect {

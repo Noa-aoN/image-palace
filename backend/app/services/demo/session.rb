@@ -7,7 +7,7 @@ module Demo
   #
   # ## 使い捨てにする理由
   #
-  # 1つの口座を大勢で共有すると、10人で壊れる。
+  # 1つのアカウントを大勢で共有すると、10人で壊れる。
   # devise_token_auth は端末を10までしか覚えないので、11人目が入った瞬間、
   # 最初の人が**黙って締め出される**。ログイン自体も 10回/20秒/1IP で絞ってあり、
   # 教室で一斉に押すと3人目から弾かれる。
@@ -71,7 +71,7 @@ module Demo
       Rails.application.message_verifier(RESUME_PURPOSE).generate(user.id, expires_in: LIFETIME)
     end
 
-    # 合鍵から口座を引く。偽物・期限切れは黙って nil（新しく建てるだけ）
+    # 合鍵からアカウントを引く。偽物・期限切れは黙って nil（新しく建てるだけ）
     def self.user_from_resume_token(token)
       return nil if token.blank?
 

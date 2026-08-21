@@ -114,7 +114,7 @@ export const PAGE_HELP: Record<string, PageHelp> = {
   // 原本
   '/studio/originals': { hint: '公式宮殿の中身。何が出ていて、何が出ていないか' },
   // 全体設定
-  '/studio/settings': { hint: '本人確認・公式の口座・制作枠' },
+  '/studio/settings': { hint: '本人確認・公式のアカウント・制作枠' },
   // スタディ
   '/study': { hint: 'おぼえる場所。作ったカードで練習・クイズをする', body: '保存したカードやボックスを使って、記憶を定着させます。' },
   // プレイ

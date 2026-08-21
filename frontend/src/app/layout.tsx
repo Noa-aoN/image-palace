@@ -83,7 +83,7 @@ export default function RootLayout({
             ヘッダーは `relative` なので、浮かせると上に乗って隠してしまう */}
         <DemoBanner />
         {/* 公式コンテンツの下見も同じ場所に出す。
-            下見は自分の口座に入るので、帯が無いと本物と見分けられない */}
+            下見は自分のアカウントに入るので、帯が無いと本物と見分けられない */}
         <PreviewBanner />
         <AppHeader />
         <div className="flex-1 flex flex-col min-h-0">

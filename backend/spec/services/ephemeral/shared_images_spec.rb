@@ -5,7 +5,7 @@ require "rails_helper"
 # 使い捨てのものを消す前に、分け合っている絵の紐だけ外す。
 #
 # **ここを間違えると、原本の絵が消える。**
-# 口座で区切ると、公式の口座が自分の荷物を下見したときに
+# アカウントで区切ると、公式のアカウントが自分の荷物を下見したときに
 # 原本の紐まで「他に持ち主が居る」ことになって外れてしまう。
 # 消してよいのは、いま消そうとしているカードの紐だけ。
 RSpec.describe Ephemeral::SharedImages, type: :service do
@@ -71,9 +71,9 @@ RSpec.describe Ephemeral::SharedImages, type: :service do
     end
   end
 
-  # **口座で区切ってはいけない。**
-  # 公式の口座が自分の荷物を下見すると、複製と原本が同じ口座に並ぶ
-  describe "原本と複製が同じ口座にあるとき" do
+  # **アカウントで区切ってはいけない。**
+  # 公式のアカウントが自分の荷物を下見すると、複製と原本が同じアカウントに並ぶ
+  describe "原本と複製が同じアカウントにあるとき" do
     let!(:same_owner_copy) do
       item = author.items.create!(title: "DNS（下見）", item_type: word, generation_status: "completed")
       item.medias.create!(media_type: "image", position: 0)
@@ -88,7 +88,7 @@ RSpec.describe Ephemeral::SharedImages, type: :service do
       expect(original.reload.primary_media.file.attached?).to be(true)
     end
 
-    # 口座ごと渡していたら、ここで原本の紐まで外れる
+    # アカウントごと渡していたら、ここで原本の紐まで外れる
     it "原本を指せば原本が外れる（範囲の指定がそのまま効く）" do
       described_class.detach!([ original.id ])
 

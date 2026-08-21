@@ -90,6 +90,21 @@ export function validateKey(key: string): string | null {
 // **一般の方に対しての見え方。** 制作の権限があれば、準備中でも確かめられる。
 export type DemoStage = 'hidden' | 'development' | 'prototype' | 'released'
 
+/**
+ * 体験の入口で選べる段。
+ *
+ * **`prototype` は出さない。**
+ *
+ * 機能の段は4つある（隠す・準備中・試作・公開）が、`prototype` は
+ * 「触れる。ただし試作の印が付く」という意味。だが体験の入口だけは
+ * `released` でないと開かない（`Demo::Session.open?`）ので、
+ * 試作を選ぶと**押せると見せておいて断る**ことになる。
+ *
+ * 4つ並べていたころは「準備中と伝える」が2つ出ていて、
+ * 見分けが付かないうえ、片方は嘘をつく状態だった。
+ */
+export const DEMO_STAGES: DemoStage[] = ['hidden', 'development', 'released']
+
 export const DEMO_STAGE_LABEL: Record<DemoStage, string> = {
   hidden: '入口ごと出さない',
   development: '準備中と伝える',

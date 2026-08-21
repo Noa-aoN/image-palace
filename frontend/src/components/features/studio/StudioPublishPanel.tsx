@@ -45,7 +45,7 @@ export function StudioPublishPanel() {
         const code = (e as { response?: { data?: { code?: string } } }).response?.data?.code
         setLoadError(
           code === 'official_account_missing'
-            ? '公式コンテンツの口座が設定されていません'
+            ? '公式コンテンツのアカウントが設定されていません'
             : '原本を読めませんでした'
         )
       })

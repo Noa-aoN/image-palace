@@ -64,7 +64,7 @@ export function StudioItemsPanel() {
         const code = (e as { response?: { data?: { code?: string } } }).response?.data?.code
         setError(
           code === 'official_account_missing'
-            ? '公式コンテンツの口座が設定されていません'
+            ? '公式コンテンツのアカウントが設定されていません'
             : 'カードを読めませんでした'
         )
       })

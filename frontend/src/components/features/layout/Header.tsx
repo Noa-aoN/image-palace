@@ -313,7 +313,7 @@ export function AppHeader() {
               </DropdownMenuGroup>
               <DropdownMenuSeparator />
               {/* 奥の部屋への近道。**それぞれの能力で出す。**
-                  工房だけを使う口座（役割は user）もあるので、
+                  工房だけを使うアカウント（役割は user）もあるので、
                   片方の条件でまとめると、その人に入口が出ない */}
               {can(adminSession, 'access_ops_room') && (
                 <DropdownMenuItem onClick={() => router.push('/admin')} className="cursor-pointer">
@@ -367,7 +367,7 @@ export function AppHeader() {
                   トップページへ戻る
                 </DropdownMenuItem>
               )}
-              {/* 体験用の口座に「ログアウト」という概念は要らない。
+              {/* 体験用のアカウントに「ログアウト」という概念は要らない。
                   押しても宮殿は残り、次に入ると同じ場所へ戻るので、
                   「出た」つもりの人と食い違う。**言い方も動きも1つに揃える**
                   （帯の釦と同じ言葉・同じ動き） */}

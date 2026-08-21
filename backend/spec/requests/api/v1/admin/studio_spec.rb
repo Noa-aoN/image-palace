@@ -73,17 +73,17 @@ RSpec.describe "公式工房", type: :request do
       expect(response).to have_http_status(:unauthorized)
     end
 
-    # **原本を持つ口座は、役割が user でも入れる。**
-    # その口座が既に全部を所有しているので、公開の可否だけを分けても
+    # **原本を持つアカウントは、役割が user でも入れる。**
+    # そのアカウントが既に全部を所有しているので、公開の可否だけを分けても
     # 守れる範囲はさほど増えない
-    it "原本を持つ口座は、役割が user でも入れる" do
+    it "原本を持つアカウントは、役割が user でも入れる" do
       get "/api/v1/admin/studio", headers: official.create_new_auth_token, as: :json
 
       expect(response).to have_http_status(:success)
     end
 
     # 持ち主だからといって、人やお金は触れない
-    it "原本を持つ口座でも、執務室には入れない" do
+    it "原本を持つアカウントでも、執務室には入れない" do
       get "/api/v1/admin/overview", headers: official.create_new_auth_token, as: :json
 
       expect(response).to have_http_status(:forbidden)
@@ -155,7 +155,7 @@ RSpec.describe "公式工房", type: :request do
   end
 
   describe "原本を選ぶ" do
-    it "公式の口座にある箱とキャンバスが並ぶ" do
+    it "公式のアカウントにある箱とキャンバスが並ぶ" do
       get "/api/v1/admin/studio/sources", headers: headers, as: :json
 
       expect(json_response["boxes"].map { |b| b["name"] })
@@ -181,7 +181,7 @@ RSpec.describe "公式工房", type: :request do
         .to eq({ "宮殿の板" => false, "ふつうの板" => true })
     end
 
-    it "公式の口座が無ければ、そうと言う" do
+    it "公式のアカウントが無ければ、そうと言う" do
       ENV["OFFICIAL_CONTENT_USER_ID"] = nil
 
       get "/api/v1/admin/studio/sources", headers: headers, as: :json
@@ -192,7 +192,7 @@ RSpec.describe "公式工房", type: :request do
 
     # **落ちるのではなく、そうと言って断る。**
     # 起こす側にも同じ栓が要る（無いと nil を触って 500 になる）
-    it "公式の口座が無ければ、下書きも起こせない" do
+    it "公式のアカウントが無ければ、下書きも起こせない" do
       ENV["OFFICIAL_CONTENT_USER_ID"] = nil
 
       post "/api/v1/admin/studio/draft",
@@ -203,8 +203,8 @@ RSpec.describe "公式工房", type: :request do
       expect(json_response["code"]).to eq("official_account_missing")
     end
 
-    # 口座が設定されていなくても、様子を見る画面は開ける
-    it "公式の口座が無くても、様子は見られる" do
+    # アカウントが設定されていなくても、様子を見る画面は開ける
+    it "公式のアカウントが無くても、様子は見られる" do
       ENV["OFFICIAL_CONTENT_USER_ID"] = nil
 
       get "/api/v1/admin/studio", headers: headers, as: :json
@@ -593,7 +593,7 @@ RSpec.describe "公式工房", type: :request do
       post "/api/v1/admin/studio/starter_test/1/preview", headers: headers, as: :json
     end
 
-    it "自分の口座に入って、受け取った人と同じ画面で見られる" do
+    it "自分のアカウントに入って、受け取った人と同じ画面で見られる" do
       preview!
 
       expect(response).to have_http_status(:success)

@@ -23,6 +23,7 @@ import {
   type PackageFilter,
 } from '@/lib/studio/status'
 import { deliveriesFor, ROOM_NOUN, type StudioRoom } from '@/lib/studio/channels'
+import { QuickLookDialog } from './QuickLookDialog'
 
 /**
  * 荷物の一覧。**部屋ごとに、触れる栓だけを出す。**
@@ -51,6 +52,8 @@ export function StudioPackageList({
 }) {
   const router = useRouter()
   const [filter, setFilter] = useState<PackageFilter>('all')
+  // さっと見る。**何も作らないので、宮殿は汚れない**
+  const [looking, setLooking] = useState<StudioPackage | null>(null)
 
   const counts = useMemo(() => countByStatus(packages), [packages])
   const shown = useMemo(() => filterPackages(packages, filter), [packages, filter])
@@ -123,6 +126,12 @@ export function StudioPackageList({
               </div>
 
               <div className="flex w-full flex-wrap gap-2 sm:w-auto">
+                {/* **まず「さっと見る」を置く。** 見た目だけ確かめたいことのほうが多く、
+                    そちらは何も作らないので宮殿が汚れない */}
+                <Button size="sm" variant="outline" onClick={() => setLooking(pkg)}>
+                  さっと見る
+                </Button>
+
                 {canPreview(pkg.status) ? (
                   <Button
                     size="sm"
@@ -183,6 +192,15 @@ export function StudioPackageList({
           ))}
         </ul>
       )}
+
+      {looking ? (
+        <QuickLookDialog
+          packageKey={looking.key}
+          version={looking.version}
+          onClose={() => setLooking(null)}
+          onPreview={() => onPreview(looking)}
+        />
+      ) : null}
     </section>
   )
 }

@@ -70,6 +70,7 @@ Rails.application.routes.draw do
         post "studio/draft", to: "studio#draft"
         get "studio/preview", to: "studio#current_preview"
         delete "studio/preview", to: "studio#end_preview"
+        get "studio/:key/:version/quick_look", to: "studio#quick_look"
         post "studio/:key/:version/preview", to: "studio#preview"
         delete "studio/:key/:version/preview", to: "studio#discard_preview"
         patch "studio/:key/:version/status", to: "studio#update_status"
