@@ -466,6 +466,44 @@ RSpec.describe "公式コンテンツの下見", type: :request do
       expect(official.boxes.count).to eq(1)
     end
 
+    # **下見だけの話ではない。** デルフォイで受け取っても同じことが起きる。
+    # 本番で実際に起きた（`studio@` が自分の荷物を受け取り、箱が2つ並んだ）
+    it "デルフォイで受け取った複製も、原本として選べない" do
+      delete "/api/v1/admin/studio/preview", headers: headers, as: :json
+      ContentDelivery.set!(package_key: "starter_it", channel: "delphi", enabled: true)
+      ContentPackages::Distributor.call(user: official, key: "starter_it", source: "delphi")
+
+      expect(official.reload.boxes.count).to eq(2)
+
+      get "/api/v1/admin/studio/sources", headers: headers, as: :json
+
+      expect(json_response["boxes"].size).to eq(1)
+      expect(json_response["boxes"].first["name"]).to eq("starter_it の箱")
+    end
+
+    it "受け取った複製の id を直に送っても、荷物にならない" do
+      delete "/api/v1/admin/studio/preview", headers: headers, as: :json
+      ContentDelivery.set!(package_key: "starter_it", channel: "delphi", enabled: true)
+      ContentPackages::Distributor.call(user: official, key: "starter_it", source: "delphi")
+      copy = official.reload.boxes.order(:created_at).last
+
+      post "/api/v1/admin/studio/draft",
+           params: { key: "starter_new", kind: "starter", name: "新しい", box_ids: [ copy.id ] },
+           headers: headers, as: :json
+
+      expect(response).to have_http_status(:unprocessable_entity)
+    end
+
+    it "受け取った複製は、カード一覧にも出ない" do
+      delete "/api/v1/admin/studio/preview", headers: headers, as: :json
+      ContentDelivery.set!(package_key: "starter_it", channel: "delphi", enabled: true)
+      ContentPackages::Distributor.call(user: official, key: "starter_it", source: "delphi")
+
+      get "/api/v1/admin/studio/items", headers: headers, as: :json
+
+      expect(json_response["items"].map { |i| i["title"] }).to contain_exactly("DNS", "ルーター")
+    end
+
     # 寿命が切れていても、掃除が回るまで実体は残っている。**その間も外す**
     it "寿命が切れていても、原本には混ざらない" do
       ContentInstallation.where(source: "preview")

@@ -47,6 +47,23 @@ class ContentInstallation < ApplicationRecord
     ContentPackage.find_by(key: package_key, version: package_version)
   end
 
+  # 受け取って入った実体の id（Item / Box / View）。
+  #
+  # **受け取ったものは原本ではない。**
+  #
+  # 公式の口座で自分の荷物を受け取る／下見すると、複製が公式宮殿そのものに入る。
+  # 名前まで同じなので、原本を選ぶ画面では見分けが付かず、
+  # **受け取った複製から公式コンテンツを作ってしまえる**。
+  # 本番で実際に起きた（デルフォイで受け取った `ITのことば` が2箱目として並んだ）。
+  #
+  # 下見だけでなく**どの受け取りも**外す。入口が違うだけで、起きることは同じ
+  def self.installed_record_ids_for(user, type)
+    return Set.new if user.nil?
+
+    ContentInstallationEntry.where(content_installation_id: where(user_id: user.id).select(:id),
+                                   record_type: type).pluck(:record_id).to_set
+  end
+
   # その人が既に持っている、公式由来のカード。
   # **同じカードを2枚にしない**ために、取り込む側へ渡す（origin_key → カード）
   def self.owned_items_for(user)
