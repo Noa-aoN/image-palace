@@ -8,6 +8,9 @@ import { useUiStore } from '@/stores/ui'
 import { useAdminStore } from '@/stores/admin'
 import { isNavItemActive } from '@/lib/nav-active'
 import { navSectionsFor, type NavNode } from './nav-items'
+import { useAuthStore } from '@/stores/auth'
+import { isDemoUser } from '@/lib/demo/session'
+import { DEMO_LOCKED_HINT, lockedForDemo } from '@/lib/demo/navigation'
 import { opsEntriesFor } from '@/lib/auth/capabilities'
 import { useFeaturesStore } from '@/stores/features'
 
@@ -64,6 +67,9 @@ function NavTree({
   const adminSession = useAdminStore((s) => s.session)
   const toggleGroup = useUiStore((s) => s.toggleGroup)
 
+  // **購読する。** `getState()` で読むと、入り直しても灰色のままになる
+  const isDemo = isDemoUser(useAuthStore((state) => state.user))
+
   const isActive = (href: string, exact = false) =>
     exact ? pathname === href : isNavItemActive(href, pathname, currentQuery)
 
@@ -100,9 +106,48 @@ function NavTree({
     return null
   }
 
-  const renderLink = (node: NavNode, depth = 0) => {
+  /**
+   * 体験中に触れない場所は、**隠さずに灰色にして押せなくする。**
+   *
+   * 消してしまうと「この宮殿にはそれが無い」と読まれる。
+   * 体験は本物を見てもらう場なので、あることは見せる。
+   */
+  const isLocked = (href: string | undefined, sectionKey: string) =>
+    isDemo && lockedForDemo({ sectionKey, href })
+
+  const renderLink = (node: NavNode, depth = 0, sectionKey = '') => {
     const href = node.href ?? '#'
     const badge = stageBadge(stageOf(node.href))
+    const locked = isLocked(node.href, sectionKey)
+    const hint = iconsOnly
+      ? [node.label, node.description].filter(Boolean).join(' — ')
+      : node.description
+
+    const inner = (
+      <>
+        <span className="shrink-0">{node.icon}</span>
+        {!iconsOnly && <span className="truncate">{node.label}</span>}
+        {!iconsOnly && badge && (
+          <span className="ml-auto shrink-0 rounded-full bg-muted px-1.5 py-0.5 text-[10px] text-muted-foreground">
+            {badge}
+          </span>
+        )}
+      </>
+    )
+
+    if (locked) {
+      return (
+        <span
+          key={node.label}
+          aria-disabled
+          className={`${linkClass(depth)} cursor-not-allowed opacity-40`}
+          title={DEMO_LOCKED_HINT}
+        >
+          {inner}
+        </span>
+      )
+    }
+
     return (
       <Link
         key={node.label}
@@ -111,26 +156,32 @@ function NavTree({
         className={linkClass(depth)}
         style={linkStyle(href, node.exact)}
         // 名前だけでは何の場所か分からないので、説明を持つものはそれを見せる
-        title={iconsOnly ? [node.label, node.description].filter(Boolean).join(' — ') : node.description}
+        title={hint}
       >
-        <span className="shrink-0">{node.icon}</span>
-        {!iconsOnly && <span className="truncate">{node.label}</span>}
-        {!iconsOnly && badge && (
-          <span className="ml-auto shrink-0 rounded-full bg-muted px-1.5 py-0.5 text-[10px] text-muted-foreground">
-            {badge}
-          </span>
-        )}
+        {inner}
       </Link>
     )
   }
 
-  const renderNode = (node: NavNode, depth = 0): React.ReactNode => {
+  const renderNode = (node: NavNode, depth = 0, sectionKey = ''): React.ReactNode => {
     if (stageOf(node.href) === 'hidden') return null
-    if (!node.children) return renderLink(node, depth)
+    if (!node.children) return renderLink(node, depth, sectionKey)
 
     // 折りたたみ時: 親アイコンのみ（リンクがあればリンク化）。子は隠す。
     if (iconsOnly) {
-      if (node.href) return renderLink(node, depth)
+      if (node.href) return renderLink(node, depth, sectionKey)
+      if (isLocked(undefined, sectionKey)) {
+        return (
+          <div
+            key={node.label}
+            aria-disabled
+            className="flex items-center justify-center py-2.5 opacity-40"
+            title={DEMO_LOCKED_HINT}
+          >
+            <span className="shrink-0">{node.icon}</span>
+          </div>
+        )
+      }
       return (
         <div key={node.label} className="flex items-center justify-center py-2.5" title={[node.label, node.description].filter(Boolean).join(' — ')}>
           <span className="shrink-0">{node.icon}</span>
@@ -145,16 +196,27 @@ function NavTree({
     const header = node.href ? (
       // リンク（ラベル）＋ chevron トグル
       <div className="flex items-center">
-        <Link
-          href={node.href}
-          onClick={onNavigate}
-          className={`flex-1 ${linkClass(depth)}`}
-          style={linkStyle(node.href)}
-          title={node.description}
-        >
-          <span className="shrink-0">{node.icon}</span>
-          <span className="truncate">{node.label}</span>
-        </Link>
+        {isLocked(node.href, sectionKey) ? (
+          <span
+            aria-disabled
+            className={`flex-1 ${linkClass(depth)} cursor-not-allowed opacity-40`}
+            title={DEMO_LOCKED_HINT}
+          >
+            <span className="shrink-0">{node.icon}</span>
+            <span className="truncate">{node.label}</span>
+          </span>
+        ) : (
+          <Link
+            href={node.href}
+            onClick={onNavigate}
+            className={`flex-1 ${linkClass(depth)}`}
+            style={linkStyle(node.href)}
+            title={node.description}
+          >
+            <span className="shrink-0">{node.icon}</span>
+            <span className="truncate">{node.label}</span>
+          </Link>
+        )}
         <button
           type="button"
           onClick={() => toggleGroup(node.label)}
@@ -183,7 +245,7 @@ function NavTree({
     return (
       <div key={node.label} className="flex flex-col gap-1">
         {header}
-        {!collapsed && node.children.map((child) => renderNode(child, depth + 1))}
+        {!collapsed && node.children.map((child) => renderNode(child, depth + 1, sectionKey))}
       </div>
     )
   }
@@ -221,12 +283,12 @@ function NavTree({
                 className="flex flex-col gap-1 rounded-b-lg p-1.5"
                 style={{ backgroundColor: 'color-mix(in srgb, #fff 82%, var(--ivory))' }}
               >
-                {section.items.map((node) => renderNode(node))}
+                {section.items.map((node) => renderNode(node, 0, section.key))}
               </div>
             </>
           )}
           {/* 折りたたみ時は面で括らない（幅が無いので、塗ると線にしか見えない） */}
-          {iconsOnly && <div className="flex flex-col gap-1">{section.items.map((node) => renderNode(node))}</div>}
+          {iconsOnly && <div className="flex flex-col gap-1">{section.items.map((node) => renderNode(node, 0, section.key))}</div>}
         </div>
       ))}
     </div>
