@@ -16,7 +16,7 @@ module Billing
     class MissingApiKey < StandardError; end
 
     # 商品の税コード。Managed Payments（Stripe が販売者となり各国の消費税を扱う仕組み）が
-    # 有効な口座では**必須**で、無いと Checkout Session の作成自体が弾かれる。
+    # 有効なアカウントでは**必須**で、無いと Checkout Session の作成自体が弾かれる。
     #
     # txcd_10000000 = General - Electronically Supplied Services。
     # 本サービスは物理商品の配送を伴わず、Web 上で完結するデジタル役務

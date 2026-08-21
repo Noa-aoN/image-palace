@@ -9,9 +9,10 @@ import { enterDemo } from '@/lib/api/demo'
 import { useAuthStore } from '@/stores/auth'
 import { useItemsStore } from '@/stores/items'
 import { useStudioRoom } from '@/hooks/useStudioRoom'
-import { DEMO_STAGE_LABEL, DEMO_STAGE_NOTE, type DemoStage } from '@/lib/studio/status'
+import { DEMO_STAGE_LABEL, DEMO_STAGE_NOTE, DEMO_STAGES, type DemoStage } from '@/lib/studio/status'
 import { PreviewStrip } from './PreviewStrip'
 import { StudioPackageList } from './StudioPackageList'
+import { QuickLookDialog } from './QuickLookDialog'
 
 /**
  * 体験宮殿設定。**体験用の宮殿に、何を置くか。**
@@ -27,6 +28,8 @@ export function StudioDemoPanel() {
   const [settings, setSettings] = useState<StudioSettings | null>(null)
   const [saving, setSaving] = useState(false)
   const [entering, setEntering] = useState(false)
+  // 置いている荷物を、入り直さずに見る
+  const [looking, setLooking] = useState<{ key: string; version: number } | null>(null)
   const [localError, setLocalError] = useState<string | null>(null)
 
   useEffect(() => {
@@ -114,10 +117,22 @@ export function StudioDemoPanel() {
                 いま置いているもの: {settings.demo_package.packages?.length} 件 / カード{' '}
                 {settings.demo_package.items} 枚
               </p>
-              <ul className="mt-1 list-disc pl-5">
+              {/* **ここからそのまま中身を見られるようにする。**
+                  体験の宮殿に何が置いてあるかを確かめたいだけなら、
+                  入り直さずに済む（ログインからも離れない） */}
+              <ul className="mt-1 space-y-1">
                 {settings.demo_package.packages?.map((p) => (
-                  <li key={p.key}>
-                    {p.name}（{p.key} v{p.version} / {p.items} 枚）
+                  <li key={p.key} className="flex flex-wrap items-center gap-2">
+                    <span>
+                      {p.name}（{p.key} v{p.version} / {p.items} 枚）
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => setLooking({ key: p.key, version: p.version })}
+                      className="rounded-full border border-border px-2 py-0.5 transition hover:bg-muted"
+                    >
+                      さっと見る
+                    </button>
                   </li>
                 ))}
               </ul>
@@ -130,7 +145,11 @@ export function StudioDemoPanel() {
           )}
 
           <div className="flex flex-wrap gap-2">
-            {settings.demo_entry_stages.map((s) => (
+            {/* サーバーが返す4段のうち、体験の入口で意味があるものだけを出す
+                （試作は「触れる」意味だが、体験の入口は公開でないと開かない） */}
+            {settings.demo_entry_stages
+              .filter((s) => DEMO_STAGES.includes(s as DemoStage))
+              .map((s) => (
               <button
                 key={s}
                 type="button"
@@ -146,19 +165,30 @@ export function StudioDemoPanel() {
                   {DEMO_STAGE_NOTE[s as DemoStage] ?? ''}
                 </span>
               </button>
-            ))}
+              ))}
           </div>
 
           <div className="border-t pt-3" style={{ borderColor: 'var(--ivory-dark)' }}>
             <Button size="sm" variant="outline" onClick={enterDemoForCheck} disabled={entering}>
-              {entering ? 'ご案内しています…' : '体験宮殿を見てみる'}
+              {entering ? 'ご案内しています…' : '体験宮殿に入ってみる'}
             </Button>
             <p className="mt-1 text-xs text-muted-foreground">
-              準備中のままでも入れます。いまのログインからは離れます
-              （合鍵は同じ引き出しにあるので、別のタブでも同じことが起きます）
+              実際に入って、来た人と同じ画面で確かめます。
+              <strong className="text-foreground">いまのログインからは離れます</strong>
+              （合鍵は同じ引き出しにあるので、別のタブでも同じことが起きます）。
+              中身を見るだけなら、上の「さっと見る」で済みます。
             </p>
           </div>
         </section>
+      ) : null}
+
+      {looking ? (
+        <QuickLookDialog
+          packageKey={looking.key}
+          version={looking.version}
+          onClose={() => setLooking(null)}
+          onPreview={() => setLooking(null)}
+        />
       ) : null}
 
       <StudioPackageList

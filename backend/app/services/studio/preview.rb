@@ -9,7 +9,7 @@ module Studio
   #
   # ## 受け取りとは分ける
   #
-  # 自分の口座に入れて見るので、形は受け取りと同じになる。
+  # 自分のアカウントに入れて見るので、形は受け取りと同じになる。
   # だが**中身は同じでも、数えるものが違う**。
   #
   #   ・配った数に入れない（`ContentInstallation.real` から外れる）
@@ -133,7 +133,7 @@ module Studio
 
       def destroy_records!(installation)
         # 絵は原本と分け合っている。**紐だけ先に外して、無駄な後始末を積まない。**
-        # 範囲は**下見で入ったカードだけ**（口座で区切ると原本の紐まで外れる）
+        # 範囲は**下見で入ったカードだけ**（アカウントで区切ると原本の紐まで外れる）
         Ephemeral::SharedImages.detach!(installation.entries.where(record_type: "Item").select(:record_id))
 
         installation.entries.each do |entry|

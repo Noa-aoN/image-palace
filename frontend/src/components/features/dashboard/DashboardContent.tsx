@@ -233,7 +233,7 @@ export function DashboardContent() {
       <div className="grid gap-6 lg:grid-cols-2 lg:items-stretch">
       <PalaceLordCard tier={billing?.plan?.tier ?? null} />
 
-      {/* **体験中は使えない。** クレジットも支払いも、使い捨ての口座には無い。
+      {/* **体験中は使えない。** クレジットも支払いも、使い捨てのアカウントには無い。
           消さずに灰色で置く（本物の宮殿に何があるのかは見えたほうがよい）。
           包みは増やさない。grid の子の間に1枚挟むと、隣の札と高さが揃わなくなる */}
       <section

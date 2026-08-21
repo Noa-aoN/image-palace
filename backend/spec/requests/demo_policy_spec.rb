@@ -34,7 +34,7 @@ RSpec.describe "体験用の宮殿で禁じている操作", type: :request do
     { name: "引き換えコード", method: :post, path: "/api/v1/campaign_codes/redeem", params: { code: "ABC123" } }
   ].freeze
 
-  describe "体験用の口座" do
+  describe "体験用のアカウント" do
     FORBIDDEN_ENDPOINTS.each do |endpoint|
       it "#{endpoint[:name]}はできない" do
         hit(endpoint, demo)
@@ -218,7 +218,7 @@ RSpec.describe "体験用の宮殿で禁じている操作", type: :request do
     end
   end
 
-  # 中の人の口座が混ざると、伸びているように見えて実は増えていない、が起きる。
+  # 中の人のアカウントが混ざると、伸びているように見えて実は増えていない、が起きる。
   # **各所の SQL に条件を散らさず、scope 1つで効かせている**ことを確かめる
   describe "数えるとき、中の人は外れる" do
     let!(:real_people) { create_list(:user, 2, :confirmed) }
@@ -261,7 +261,7 @@ RSpec.describe "体験用の宮殿で禁じている操作", type: :request do
     end
   end
 
-  describe "公式コンテンツの口座" do
+  describe "公式コンテンツのアカウント" do
     let!(:official) { create(:user, :confirmed, email: "studio@example.com") }
 
     around do |example|
@@ -271,13 +271,13 @@ RSpec.describe "体験用の宮殿で禁じている操作", type: :request do
       ENV["OFFICIAL_CONTENT_USER_ID"] = original
     end
 
-    it "指した口座だけが、原本の持ち主になる" do
+    it "指したアカウントだけが、原本の持ち主になる" do
       expect(official).to be_official_content_account
       expect(normal).not_to be_official_content_account
     end
 
     # **メールで指さない。** 同じアドレスで先に登録した人が公式になってしまう
-    it "同じメールの別の口座は、公式にならない" do
+    it "同じメールの別のアカウントは、公式にならない" do
       expect(User.official_content_account).to eq(official)
       expect(official.id).to eq(ENV["OFFICIAL_CONTENT_USER_ID"])
     end
@@ -298,9 +298,9 @@ RSpec.describe "体験用の宮殿で禁じている操作", type: :request do
       expect(create(:user, :confirmed, role: "admin").can_manage_official_content?).to be(true)
     end
 
-    # **原本を持つ口座は、役割が user でも工房を使える。**
+    # **原本を持つアカウントは、役割が user でも工房を使える。**
     #
-    # その口座が既に公式コンテンツを全部所有しているので、
+    # そのアカウントが既に公式コンテンツを全部所有しているので、
     # 公開の可否だけを分けても守れる範囲はさほど増えない。
     # 代わりに、工房へ入るときはもう一度ご本人か確かめる
     it "原本を持っていれば、役割が user でも工房を使える" do

@@ -3,7 +3,7 @@ module Api
     module Admin
       # 工房室。**公式コンテンツを、選んで・確かめて・出す場所。**
       #
-      # ここに編集の道具は置かない。カードを足したいなら公式の口座で普通に足せばよく、
+      # ここに編集の道具は置かない。カードを足したいなら公式のアカウントで普通に足せばよく、
       # 同じものをもう一度作ることになる。
       #
       #   公式宮殿で作る → 選ぶ → 下書きを起こす → 下見する → 公開する
@@ -15,7 +15,7 @@ module Api
 
         before_action :require_studio!
         before_action :require_studio_strong_auth!
-        # 原本の口座が無いと、**選ぶことも起こすこともできない**。
+        # 原本のアカウントが無いと、**選ぶことも起こすこともできない**。
         # 落ちるのではなく、そうと言って断る
         before_action :require_owner_account!, only: [ :sources, :draft, :items, :update_exclusion ]
 
@@ -55,10 +55,10 @@ module Api
           render json: { errors: e.record.errors.full_messages }, status: :unprocessable_entity
         end
 
-        # 選べる原本。公式の口座にある箱とキャンバス。
+        # 選べる原本。公式のアカウントにある箱とキャンバス。
         #
         # **受け取ったものは原本ではない。**
-        # 公式の口座で自分の荷物を受け取る／下見すると、複製が公式宮殿そのものに入る。
+        # 公式のアカウントで自分の荷物を受け取る／下見すると、複製が公式宮殿そのものに入る。
         # 名前まで同じなので選ぶ画面では見分けが付かず、
         # **複製から公式コンテンツを作ってしまえる**
         def sources
@@ -152,7 +152,7 @@ module Api
           render json: { errors: e.record.errors.full_messages }, status: :unprocessable_entity
         end
 
-        # 下見。**自分の口座へ入れて、受け取った人と同じ画面で見る。**
+        # 下見。**自分のアカウントへ入れて、受け取った人と同じ画面で見る。**
         #
         # 出す前に、実際の見え方を確かめられるようにするため。
         # 何度でも押せるように、前回の下見は先に片付ける
@@ -166,9 +166,30 @@ module Api
           render json: { error: e.message }, status: :unprocessable_entity
         end
 
+        # さっと見る。**何も作らずに、荷物の中身をそのまま返す。**
+        #
+        # 「下見する」は自分の宮殿へ実際に入れるので、受け取った人と同じ画面で見られる。
+        # だがカードを作って消す往復が要るし、見終わったら片付けも要る。
+        #
+        # 見た目だけ確かめたいことのほうが多い。そのために宮殿を汚さない道を置く。
+        # 荷物は書き出した時点で固まっているので、**payload をそのまま描けば足りる**。
+        def quick_look
+          package = find_package!
+
+          items = Array(package.payload["items"])
+          render json: {
+            key: package.key, version: package.version,
+            name: package.name, summary: package.summary, status: package.status,
+            counts: package.summary_counts,
+            boxes: Array(package.payload["boxes"]).map { |b| quick_box(b, items) },
+            views: Array(package.payload["views"]).map { |v| quick_view(v, items) },
+            items: items.map { |i| quick_item(i) }
+          }
+        end
+
         # いま下見しているもの。**普通の画面に出す帯が、これを見る。**
         #
-        # 下見は自分の口座に入るので、見た目は本物と変わらない。
+        # 下見は自分のアカウントに入るので、見た目は本物と変わらない。
         # 何を見ているのかが分からなくなるので、いつでも引ける形にしておく
         def current_preview
           installation = ::Studio::Preview.current(current_user)
@@ -276,7 +297,7 @@ module Api
           return if official
 
           render json: {
-            error: "公式コンテンツの口座が設定されていません",
+            error: "公式コンテンツのアカウントが設定されていません",
             code: "official_account_missing"
           }, status: :service_unavailable
         end
@@ -520,6 +541,41 @@ module Api
           official.spaces.includes(:space_points).order(:created_at).map do |space|
             { id: space.id, name: space.name, points: space.space_points.size, portable: false }
           end
+        end
+
+        # 荷物の中のカード1枚。**絵は blob の鍵から URL を組む**
+        # （まだ誰の持ち物でもないので、Media を通せない）
+        def quick_item(entry)
+          {
+            local_key: entry["local_key"],
+            title: entry["title"],
+            item_type: entry["item_type"],
+            image_url: quick_image_url(entry["image_key"]),
+            meaning: Array(entry["meanings"]).first&.dig("definition"),
+            tags: Array(entry["tags"])
+          }
+        end
+
+        def quick_box(box, items)
+          keys = Array(box["entries"]).map { |e| e["local_key"] }
+          { name: box["name"], description: box["description"],
+            items: keys, count: keys.size, total: items.size }
+        end
+
+        def quick_view(view, _items)
+          { name: view["name"], view_type: view["view_type"],
+            items: Array(view["placements"]).size, edges: Array(view["edges"]).size }
+        end
+
+        # 絵の在りか。**CDN があればそちら、無ければ Rails 経由**
+        # （`ItemSerialization#media_url` と同じ決まりだが、あちらは blob を受け取る）
+        def quick_image_url(key)
+          return nil if key.blank?
+
+          blob = ActiveStorage::Blob.find_by(key: key)
+          return nil if blob.nil?
+
+          media_url(blob)
         end
 
         def serialize_box(box)

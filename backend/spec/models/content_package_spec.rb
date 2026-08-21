@@ -233,7 +233,7 @@ RSpec.describe ContentPackage do
     end
   end
 
-  # 原本を持つ口座は1つだが、**それを触る人はいずれ増える**。
+  # 原本を持つアカウントは1つだが、**それを触る人はいずれ増える**。
   # そのとき「この版を出したのは誰か」が分からないと、中身の食い違いを追えない
   describe "誰が出したか" do
     let(:editor) { create(:user, :confirmed, role: "operator") }

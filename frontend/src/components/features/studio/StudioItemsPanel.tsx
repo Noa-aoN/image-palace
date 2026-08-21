@@ -5,6 +5,15 @@ import { Input } from '@/components/ui/input'
 import { Spinner } from '@/components/ui/spinner'
 import { StudioContainers } from './StudioContainers'
 import {
+  allChosen,
+  bulkLabel,
+  EMPTY,
+  keepVisible,
+  toggle as toggleId,
+  toggleAll,
+  type Selection,
+} from '@/lib/studio/selection'
+import {
   fetchStudioItems,
   setItemExclusion,
   type StudioBox,
@@ -52,6 +61,8 @@ export function StudioItemsPanel() {
   const [query, setQuery] = useState('')
   const [busy, setBusy] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
+  // **選んでからまとめて押す。** 1枚ずつだと、10枚外すのに10往復要る
+  const [rawChosen, setChosen] = useState<Selection>(EMPTY)
 
   const load = useCallback(() => {
     fetchStudioItems()
@@ -64,7 +75,7 @@ export function StudioItemsPanel() {
         const code = (e as { response?: { data?: { code?: string } } }).response?.data?.code
         setError(
           code === 'official_account_missing'
-            ? '公式コンテンツの口座が設定されていません'
+            ? '公式コンテンツのアカウントが設定されていません'
             : 'カードを読めませんでした'
         )
       })
@@ -77,6 +88,49 @@ export function StudioItemsPanel() {
     () => (items ? filterItems(items, filter, query) : []),
     [items, filter, query]
   )
+  const shownIds = useMemo(() => shown.map((i) => i.id), [shown])
+
+  // **絞り込みを変えたら、見えなくなったものは選びから外す。**
+  // 画面に出ていないものが、まとめて変わるのを防ぐ。
+  //
+  // 状態を書き換えるのではなく、**その場で絞って使う**（描き直しが連鎖しない）
+  const chosen = useMemo(() => keepVisible(rawChosen, shownIds), [rawChosen, shownIds])
+
+  /**
+   * 選んだものを、まとめて外す・戻す。
+   *
+   * **1枚ずつ送る。** まとめて送る口をサーバーに足すこともできるが、
+   * 途中で1枚こけたときに「どこまで効いたか」が分からなくなる。
+   * 1枚ずつなら、効いたものはそのまま残る。
+   */
+  async function applyToChosen(excluded: boolean) {
+    if (busy || chosen.size === 0) return
+    const targets = [...chosen]
+    if (!window.confirm(`${bulkLabel(excluded ? '出さないようにします' : '出せるようにします', targets.length)}。よろしいですか。`)) return
+
+    setBusy('bulk')
+    setError(null)
+    let done = 0
+    try {
+      for (const id of targets) {
+        await setItemExclusion(id, excluded)
+        done += 1
+      }
+      setItems((prev) =>
+        prev ? prev.map((i) => (chosen.has(i.id) ? { ...i, excluded } : i)) : prev
+      )
+      setChosen(EMPTY)
+    } catch {
+      // 途中で止まったぶんだけ画面へ写す。**全部戻さない**（効いたものは効いている）
+      const applied = new Set(targets.slice(0, done))
+      setItems((prev) =>
+        prev ? prev.map((i) => (applied.has(i.id) ? { ...i, excluded } : i)) : prev
+      )
+      setError(`${done} 件まで変えたところで止まりました`)
+    } finally {
+      setBusy(null)
+    }
+  }
 
   async function toggle(item: StudioItem) {
     if (busy) return
@@ -161,6 +215,53 @@ export function StudioItemsPanel() {
         カード <span className="text-xs font-normal text-muted-foreground">{items.length}</span>
       </h3>
 
+      {/* **選んだ数と、そこに効く操作を、いつも同じ場所に出す。**
+          選んでから探し回らせない */}
+      <div className="flex flex-wrap items-center gap-3 rounded-lg border border-border bg-muted/30 px-3 py-2 text-xs">
+        <label className="flex cursor-pointer items-center gap-2">
+          <input
+            type="checkbox"
+            checked={allChosen(chosen, shownIds)}
+            onChange={() => setChosen(toggleAll(chosen, shownIds))}
+            disabled={shownIds.length === 0}
+          />
+          いま見えている {shownIds.length} 件を選ぶ
+        </label>
+
+        {chosen.size > 0 ? (
+          <>
+            <span className="text-muted-foreground">{chosen.size} 件を選んでいます</span>
+            <button
+              type="button"
+              onClick={() => applyToChosen(true)}
+              disabled={busy !== null}
+              className="rounded-full border border-border px-3 py-1 transition hover:bg-muted disabled:opacity-50"
+            >
+              まとめて出さない
+            </button>
+            <button
+              type="button"
+              onClick={() => applyToChosen(false)}
+              disabled={busy !== null}
+              className="rounded-full border border-border px-3 py-1 transition hover:bg-muted disabled:opacity-50"
+            >
+              まとめて出せるようにする
+            </button>
+            <button
+              type="button"
+              onClick={() => setChosen(EMPTY)}
+              className="underline underline-offset-2 text-muted-foreground"
+            >
+              選びを解く
+            </button>
+          </>
+        ) : (
+          <span className="text-muted-foreground">
+            選ぶと、まとめて出す・出さないを決められます
+          </span>
+        )}
+      </div>
+
       {shown.length === 0 ? (
         <p className="rounded-lg border border-dashed border-border py-10 text-center text-sm text-muted-foreground">
           あてはまるカードがありません
@@ -168,7 +269,14 @@ export function StudioItemsPanel() {
       ) : (
         <ul className="space-y-2">
           {shown.map((item) => (
-            <Row key={item.id} item={item} busy={busy === item.id} onToggle={() => toggle(item)} />
+            <Row
+              key={item.id}
+              item={item}
+              busy={busy === item.id}
+              chosen={chosen.has(item.id)}
+              onChoose={() => setChosen(toggleId(chosen, item.id))}
+              onToggle={() => toggle(item)}
+            />
           ))}
         </ul>
       )}
@@ -185,20 +293,31 @@ export function StudioItemsPanel() {
 function Row({
   item,
   busy,
+  chosen,
+  onChoose,
   onToggle,
 }: {
   item: StudioItem
   busy: boolean
+  chosen: boolean
+  onChoose: () => void
   onToggle: () => void
 }) {
   const state = stateFor(item)
 
   return (
     <li
-      className={`flex flex-wrap items-center gap-x-4 gap-y-2 rounded-lg border border-border bg-background p-3 ${
-        item.excluded ? 'opacity-60' : ''
-      }`}
+      className={`flex flex-wrap items-center gap-x-4 gap-y-2 rounded-lg border bg-background p-3 ${
+        chosen ? 'border-[var(--palace)]' : 'border-border'
+      } ${item.excluded ? 'opacity-60' : ''}`}
     >
+      <input
+        type="checkbox"
+        checked={chosen}
+        onChange={onChoose}
+        aria-label={`${item.title} を選ぶ`}
+        className="shrink-0"
+      />
       <div className="size-12 shrink-0 overflow-hidden rounded-md bg-[var(--ivory-dark)]">
         {item.thumb_url ? (
           // 絵の配信ホストは環境で変わる（CDN / Rails プロキシ）。

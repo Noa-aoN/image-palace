@@ -63,10 +63,10 @@ RSpec.describe UserCapabilities do
     expect(user.capabilities.values).to all(be(true))
   end
 
-  # 原本を持つ口座は、役割が user でも工房を使える。
-  # **その口座が既に全部を所有している**ので、公開の可否だけを分けても
+  # 原本を持つアカウントは、役割が user でも工房を使える。
+  # **そのアカウントが既に全部を所有している**ので、公開の可否だけを分けても
   # 守れる範囲はさほど増えない。代わりに、入るときはもう一度本人か確かめる
-  describe "原本を持つ口座" do
+  describe "原本を持つアカウント" do
     let(:owner) { create(:user, :confirmed, role: "user") }
 
     around do |example|

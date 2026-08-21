@@ -113,7 +113,7 @@ export type StudioItems = {
 /**
  * いま見ている下見。
  *
- * 下見は自分の口座に入るので、**見た目は本物と変わらない**。
+ * 下見は自分のアカウントに入るので、**見た目は本物と変わらない**。
  * 何を見ているのかが分からなくなるので、いつでも引ける形にしてある
  */
 export type PreviewState =
@@ -196,6 +196,31 @@ export type DraftInput = {
 }
 
 /** 選んだものを下書きとして起こす。**ここで欠けが見つかれば、公開の前に止まる** */
+/** さっと見るときに返ってくる中身。**何も作らずに、荷物をそのまま読む** */
+export type QuickLook = {
+  key: string
+  version: number
+  name: string
+  summary: string | null
+  status: PackageStatus
+  counts: ContentPackageCounts
+  boxes: { name: string; description: string | null; count: number; total: number }[]
+  views: { name: string; view_type: string; items: number; edges: number }[]
+  items: {
+    local_key: string
+    title: string
+    item_type: string | null
+    image_url: string | null
+    meaning: string | null
+    tags: string[]
+  }[]
+}
+
+export async function fetchQuickLook(key: string, version: number): Promise<QuickLook> {
+  const res = await apiClient.get<QuickLook>(`/api/v1/admin/studio/${key}/${version}/quick_look`)
+  return res.data
+}
+
 export async function fetchCurrentPreview(): Promise<PreviewState> {
   const res = await apiClient.get<PreviewState>('/api/v1/admin/studio/preview')
   return res.data

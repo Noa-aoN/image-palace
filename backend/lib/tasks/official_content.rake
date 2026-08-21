@@ -3,7 +3,7 @@
 # 公式宮殿の中身を用意する。
 #
 # **一度きりの引っ越し**のための道具。日常的に使うものではない。
-# 個人の口座にあるカードを、公式の口座へ写す。
+# 個人のアカウントにあるカードを、公式のアカウントへ写す。
 #
 #   bin/rails official:plan          # 何をするか、実行せずに出す
 #   bin/rails official:migrate       # 実際に写す
@@ -17,7 +17,7 @@
 # ## 元のカードには触れない
 #
 # 絵は blob を共有するので、写しても保存領域は増えない。
-# 元の口座のカードは1枚も減らないし、変わらない。
+# 元のアカウントのカードは1枚も減らないし、変わらない。
 namespace :official do
   # 何を、どの箱に入れるか。**ここが公式コンテンツの設計図**。
   #
@@ -114,7 +114,7 @@ namespace :official do
     puts "**題が見つからないものが #{missing.size} 件ある。設計図を直すこと**" if missing.any?
   end
 
-  desc "選んだカードを公式の口座へ写す"
+  desc "選んだカードを公式のアカウントへ写す"
   task migrate: :environment do
     source = source_user!
     target = official_user!
@@ -148,7 +148,7 @@ namespace :official do
 
     puts
     puts "新しく作った: #{created} 枚 / すでにあった: #{reused} 枚"
-    puts "公式の口座: カード #{target.items.count} / 箱 #{target.boxes.count}"
+    puts "公式のアカウント: カード #{target.items.count} / 箱 #{target.boxes.count}"
   end
 
 
@@ -157,7 +157,7 @@ namespace :official do
   # 並べただけの板は、カードの一覧と変わらない。
   # 「つなぐと分かる」ものにだけ置くから、受け取った人に値打ちが伝わる。
   #
-  # 座標は手で決める。あとで公式の口座にログインして、画面から直せる
+  # 座標は手で決める。あとで公式のアカウントにログインして、画面から直せる
   # （そちらが本来の作り方。ここは最初の1回を用意するだけ）
   CANVASES = {
     "ネットワークの通り道" => {
@@ -438,13 +438,13 @@ namespace :official do
 
   def official_user!
     User.official_content_account or
-      abort "OFFICIAL_CONTENT_USER_ID が指す口座がありません"
+      abort "OFFICIAL_CONTENT_USER_ID が指すアカウントがありません"
   end
 
   # 写す元。ENV の運営アドレス経由で権限を持っている人
   def source_user!
     email = ENV["SOURCE_EMAIL"].presence
-    return User.find_by(email: email) || abort("SOURCE_EMAIL の口座がありません") if email
+    return User.find_by(email: email) || abort("SOURCE_EMAIL のアカウントがありません") if email
 
     User.all.find(&:bootstrap_admin?) or abort "SOURCE_EMAIL= で写す元を指定してください"
   end

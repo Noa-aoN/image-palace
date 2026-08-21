@@ -4,7 +4,7 @@ require "rails_helper"
 
 # 公式コンテンツの下見。**出す前に、受け取った人と同じ画面で見る。**
 #
-# 自分の口座に入れて見るので、形は受け取りと同じになる。
+# 自分のアカウントに入れて見るので、形は受け取りと同じになる。
 # だが**中身は同じでも、数えるものが違う**。ここを取り違えると、
 # 下見しただけで配布数が増え、無料枠が減り、本番の数字が汚れる。
 RSpec.describe "公式コンテンツの下見", type: :request do
@@ -48,7 +48,7 @@ RSpec.describe "公式コンテンツの下見", type: :request do
   end
 
   describe "始める" do
-    it "自分の口座に入って、開く先が返る" do
+    it "自分のアカウントに入って、開く先が返る" do
       start_preview
 
       expect(response).to have_http_status(:success)
@@ -183,7 +183,7 @@ RSpec.describe "公式コンテンツの下見", type: :request do
       expect(ContentInstallation.where(user_id: studio_user.id)).to be_empty
     end
 
-    # **公式の宮殿には手を出さない。** 消えるのは自分の口座に入れた複製だけ
+    # **公式の宮殿には手を出さない。** 消えるのは自分のアカウントに入れた複製だけ
     it "公式の宮殿は減らない" do
       expect { delete "/api/v1/admin/studio/preview", headers: headers, as: :json }
         .not_to change { official.items.count }
@@ -340,7 +340,7 @@ RSpec.describe "公式コンテンツの下見", type: :request do
 
   # ── 下見のカードだと分かる ──────────────────
   #
-  # 下見は自分の口座に入るので、見た目が本物と変わらない。
+  # 下見は自分のアカウントに入るので、見た目が本物と変わらない。
   # 印が無いと、自分で作ったカードと混ざる
   describe "下見のカードに付く印" do
     it "下見で入ったカードには印が付く" do
@@ -410,12 +410,12 @@ RSpec.describe "公式コンテンツの下見", type: :request do
 
   # ── 原本を汚さない ────────────────────────
   #
-  # **公式の口座で下見すると、複製が公式宮殿そのものに入る。**
+  # **公式のアカウントで下見すると、複製が公式宮殿そのものに入る。**
   # 名前まで同じなので、選ぶ画面では見分けが付かない。
   # そのまま並べると、下見の複製から公式コンテンツを作ってしまえる。
   #
   # 本番で実際に起きていた（公式宮殿にカード 74 → 124、同名の箱が2つずつ）。
-  describe "公式の口座が自分で下見したとき" do
+  describe "公式のアカウントが自分で下見したとき" do
     let(:headers) { official.create_new_auth_token }
 
     before { start_preview }
@@ -531,6 +531,63 @@ RSpec.describe "公式コンテンツの下見", type: :request do
     end
   end
 
+  # ── さっと見る ───────────────────────────
+  #
+  # 「下見する」は自分の宮殿へ実際に入れるので、受け取った人と同じ画面で見られる。
+  # だがカードを作って消す往復が要る。**見た目だけ確かめたいことのほうが多い。**
+  describe "さっと見る" do
+    it "何も作らずに、中身を返す" do
+      expect {
+        get "/api/v1/admin/studio/#{package.key}/#{package.version}/quick_look",
+            headers: headers, as: :json
+      }.not_to change(Item, :count)
+
+      expect(response).to have_http_status(:success)
+      expect(json_response["items"].map { |i| i["title"] }).to contain_exactly("DNS", "ルーター")
+    end
+
+    it "受け取りの記録も作らない" do
+      expect {
+        get "/api/v1/admin/studio/#{package.key}/#{package.version}/quick_look",
+            headers: headers, as: :json
+      }.not_to change(ContentInstallation, :count)
+    end
+
+    it "箱とキャンバスの様子も返す" do
+      get "/api/v1/admin/studio/#{package.key}/#{package.version}/quick_look",
+          headers: headers, as: :json
+
+      box = json_response["boxes"].first
+      expect(box["name"]).to eq("starter_it の箱")
+      expect(box["count"]).to eq(2)
+    end
+
+    # **絵が出ないと、見た目を確かめる意味が無い**
+    it "絵の在りかを返す" do
+      get "/api/v1/admin/studio/#{package.key}/#{package.version}/quick_look",
+          headers: headers, as: :json
+
+      expect(json_response["items"].map { |i| i["image_url"] }).to all(be_present)
+    end
+
+    it "下書きも見られる" do
+      draft = ContentPackage.draft!(key: "starter_it", kind: "starter", name: "ITのことば",
+                                    payload: package.payload)
+
+      get "/api/v1/admin/studio/starter_it/#{draft.version}/quick_look", headers: headers, as: :json
+
+      expect(response).to have_http_status(:success)
+      expect(json_response["status"]).to eq("draft")
+    end
+
+    it "工房に入れない人は見られない" do
+      get "/api/v1/admin/studio/#{package.key}/#{package.version}/quick_look",
+          headers: create(:user, :confirmed).create_new_auth_token, as: :json
+
+      expect(response).to have_http_status(:forbidden)
+    end
+  end
+
   # ── 触れる人 ───────────────────────────────
   describe "触れる人" do
     it "工房の権限が無ければ、始めることも見ることも終えることもできない" do
@@ -546,7 +603,7 @@ RSpec.describe "公式コンテンツの下見", type: :request do
       expect(response).to have_http_status(:forbidden)
     end
 
-    # **下見は自分の口座の中にしか無い。** ほかの人からは見えようがない
+    # **下見は自分のアカウントの中にしか無い。** ほかの人からは見えようがない
     it "下見で入ったカードは、その人の宮殿にしか無い" do
       start_preview
       other = create(:user, :confirmed)

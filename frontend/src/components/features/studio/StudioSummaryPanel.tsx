@@ -46,14 +46,14 @@ export function StudioSummaryPanel() {
         </div>
         {data.owner ? (
           <dl className="grid grid-cols-2 gap-x-6 gap-y-2 text-sm sm:grid-cols-4">
-            <Stat label="口座" value={data.owner.email} />
+            <Stat label="アカウント" value={data.owner.email} />
             <Stat label="カード" value={`${data.owner.items} 枚`} />
             <Stat label="箱" value={`${data.owner.boxes}`} />
             <Stat label="キャンバス" value={`${data.owner.views}`} />
           </dl>
         ) : (
           <p className="text-sm text-muted-foreground">
-            公式コンテンツの口座が設定されていません（<code>OFFICIAL_CONTENT_USER_ID</code>）
+            公式コンテンツのアカウントが設定されていません（<code>OFFICIAL_CONTENT_USER_ID</code>）
           </p>
         )}
       </section>

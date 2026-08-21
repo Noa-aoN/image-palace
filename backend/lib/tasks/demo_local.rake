@@ -4,11 +4,11 @@
 #
 #   bin/rails demo:setup_local
 #
-# **本番では走らない。** 口座や見本を勝手に作るので、
+# **本番では走らない。** アカウントや見本を勝手に作るので、
 # 開発環境でだけ動くようにしてある。
 #
 # やること
-#   1. 公式コンテンツの口座を用意する（無ければ作る）
+#   1. 公式コンテンツのアカウントを用意する（無ければ作る）
 #   2. 見本のカードを少しだけ作る（絵は小さな PNG）
 #   3. 箱とキャンバスに入れる
 #   4. demo_showcase として公開する
@@ -54,12 +54,12 @@ namespace :demo do
 
     puts
     puts "用意できました。"
-    puts "  公式の口座 : #{official.email}"
+    puts "  公式のアカウント : #{official.email}"
     puts "  荷物       : #{package.key} v#{package.version}（カード #{package.summary_counts[:items]}）"
     puts "  届け先     : 体験の宮殿に置く"
     puts "  入口       : 開いています"
     puts
-    puts "  工房室へは、この口座で入ります:"
+    puts "  工房室へは、このアカウントで入ります:"
     puts "    #{official.email}"
     if secret
       puts "    #{secret}   ← いま作りました"
@@ -69,21 +69,21 @@ namespace :demo do
       puts "    忘れたときは: bin/rails demo:studio_password"
     end
     puts
-    puts "  ふだんの口座（運営）とは分けてあります。執務室とはぶつかりません。"
+    puts "  ふだんのアカウント（運営）とは分けてあります。執務室とはぶつかりません。"
     puts "  `.env` に id を書き写す必要はありません。"
   end
 
-  # 公式コンテンツの口座を用意して、入り方ごと返す。
+  # 公式コンテンツのアカウントを用意して、入り方ごと返す。
   #
-  # **すでにある口座の合言葉は変えない。**
+  # **すでにあるアカウントの合言葉は変えない。**
   #
   # 前は走らせるたびに作り直していた。見本を入れ直すだけのつもりで走らせると、
   # そのたびに前に控えた合言葉が使えなくなる。実際それで入れなくなった。
   #
   # 忘れたときは `bin/rails demo:studio_password` で入れ直す。
   #
-  # ふだんの口座（運営）とは分けてある。役割は `user` のままでよく、
-  # 工房室へは「公式の口座であること」で入れる
+  # ふだんのアカウント（運営）とは分けてある。役割は `user` のままでよく、
+  # 工房室へは「公式のアカウントであること」で入れる
   def find_or_create_official!
     email = User::LOCAL_OFFICIAL_EMAIL
     user = User.official_content_account || User.find_by(email: email) || rename_old_local_official(email)
@@ -121,14 +121,14 @@ namespace :demo do
     "↑ 入れませんでした（#{session.response.status}）。#{body}"
   end
 
-  # 前のアドレス（手元だけで使っていたもの）で作ってあった口座を引き継ぐ。
+  # 前のアドレス（手元だけで使っていたもの）で作ってあったアカウントを引き継ぐ。
   # 作り直すと、そこに作った宮殿の中身が置き去りになる
   def rename_old_local_official(email)
     old = User.find_by(email: "studio@local.invalid")
     return nil if old.nil?
 
     old.update!(email: email, uid: email)
-    puts "  前の公式の口座を #{email} へ移しました（宮殿の中身はそのまま）"
+    puts "  前の公式のアカウントを #{email} へ移しました（宮殿の中身はそのまま）"
     old
   end
 
@@ -168,14 +168,14 @@ namespace :demo do
 
     [ box, view ]
   end
-  desc "工房の口座の合言葉を入れ直す（開発環境のみ）"
+  desc "工房のアカウントの合言葉を入れ直す（開発環境のみ）"
   task studio_password: :environment do
     abort "本番では走らせません" if Rails.env.production?
 
     user = User.find_by(email: User::LOCAL_OFFICIAL_EMAIL)
-    abort "口座がありません。先に bin/rails demo:setup_local を走らせてください" if user.nil?
+    abort "アカウントがありません。先に bin/rails demo:setup_local を走らせてください" if user.nil?
 
-    puts "工房室へは、この口座で入ります:"
+    puts "工房室へは、このアカウントで入ります:"
     reset_password!(user)
   end
 end

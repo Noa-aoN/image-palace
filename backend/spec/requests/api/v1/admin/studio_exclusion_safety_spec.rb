@@ -132,7 +132,7 @@ RSpec.describe "「出さない」が波及しないこと", type: :request do
       expect(box.reload.box_entries.map { |e| e.entry.title }).to contain_exactly("DNS", "ルーター")
     end
 
-    # 公式の口座で普通にカード一覧を開いたら、いつもどおり出てくる
+    # 公式のアカウントで普通にカード一覧を開いたら、いつもどおり出てくる
     it "ふだんのカード一覧には、そのまま出てくる" do
       exclude!
 
