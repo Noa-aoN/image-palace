@@ -8,6 +8,7 @@ import { Card, CardContent } from '@/components/ui/card'
 import { MemoryAssetsCard } from '@/components/features/dashboard/MemoryAssetsCard'
 import { PalaceFloorplan } from '@/components/features/dashboard/PalaceFloorplan'
 import { PalaceLordCard } from '@/components/features/dashboard/PalaceLordCard'
+import { DemoLockBlock } from '@/components/features/demo/DemoLock'
 import { QuickCreateCard } from '@/components/features/dashboard/QuickCreateCard'
 import { getItemsSummary, getImageModels, type ItemsSummary } from '@/lib/api/items'
 import { useBillingStore } from '@/stores/billing'
@@ -230,6 +231,9 @@ export function DashboardContent() {
       <div className="grid gap-6 lg:grid-cols-2 lg:items-stretch">
       <PalaceLordCard tier={billing?.plan?.tier ?? null} />
 
+      {/* **体験中は使えない。** クレジットも支払いも、使い捨ての口座には無い。
+          消さずに灰色で置く（本物の宮殿に何があるのかは見えたほうがよい） */}
+      <DemoLockBlock className="flex flex-col">
       <section className="flex flex-col space-y-3">
         <h2 className="text-base font-semibold">宮殿の生成資産</h2>
         {/*
@@ -335,6 +339,7 @@ export function DashboardContent() {
             </CardContent>
         </Card>
       </section>
+      </DemoLockBlock>
       </div>
 
       {/*

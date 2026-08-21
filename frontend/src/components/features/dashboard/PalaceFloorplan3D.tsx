@@ -19,6 +19,8 @@ import {
   type Segment,
 } from './floorplan-geometry'
 import { useMotion } from '@/hooks/useMotion'
+import { DEMO_LOCKED_HINT, lockedForDemo } from '@/lib/demo/navigation'
+import { useIsDemo } from '@/components/features/demo/DemoLock'
 import { SPIN_PERIOD_MS } from '@/lib/spin'
 
 // 投影：平面の奥（+y）へ進むほど画面では上へ詰まり（KY）、高さ z は上へ持ち上げる。
@@ -246,6 +248,7 @@ export function PalaceFloorplan3D({
   icons: Record<string, ReactNode>
 }) {
   const router = useRouter()
+  const isDemo = useIsDemo()
   const go = (room: Room) => router.push(room.href)
   const [hovered, setHovered] = useState(false)
   // ホバー中の部屋（その右上に足跡アイコンを出す）。ホバー中は回転も止まるので位置は動かない。
@@ -383,7 +386,25 @@ export function PalaceFloorplan3D({
             ))}
 
           {/* 部屋のクリック領域（床の上に重ねる） */}
-          {ROOMS.map((room) => (
+          {ROOMS.map((room) => {
+            // **体験中に入れない部屋は、消さずに閉ざす。**
+            // 地図から消すと「この宮殿にその部屋は無い」と読まれる
+            const locked = isDemo && lockedForDemo({ sectionKey: 'palace', href: room.href })
+
+            if (locked) {
+              return (
+                <polygon
+                  key={room.key}
+                  points={quad(room.rect, 0, yaw)}
+                  aria-disabled
+                  onMouseEnter={() => onHint(`「${room.label}」${DEMO_LOCKED_HINT}`)}
+                  onMouseLeave={() => onHint(null)}
+                  className="cursor-not-allowed fill-[rgba(0,0,0,0.06)] outline-none"
+                />
+              )
+            }
+
+            return (
             <polygon
               key={room.key}
               points={quad(room.rect, 0, yaw)}
@@ -414,7 +435,8 @@ export function PalaceFloorplan3D({
               // 塗りは CSS で当てる（SVG の presentation 属性より CSS が優先されるので、ホバーで効く）
               className="cursor-pointer fill-transparent outline-none transition-colors hover:fill-[rgba(198,167,94,0.18)] focus-visible:fill-[rgba(198,167,94,0.18)]"
             />
-          ))}
+            )
+          })}
         </svg>
 
         {/* 部屋のラベル（回転しても水平のまま。位置だけ追随する） */}

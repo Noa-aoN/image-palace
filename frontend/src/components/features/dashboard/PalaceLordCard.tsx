@@ -7,6 +7,7 @@ import { Card, CardContent } from '@/components/ui/card'
 import { CardImage } from '@/components/ui/card-image'
 import { ImageLightbox } from '@/components/ui/image-lightbox'
 import { useAuthStore } from '@/stores/auth'
+import { DemoLockBlock } from '@/components/features/demo/DemoLock'
 import { tierLabel } from '@/lib/billing'
 import { displayNameOf } from '@/lib/display-name'
 import { getAchievementSummary, type AchievementSummary, type RewardKind } from '@/lib/api/achievements'
@@ -157,6 +158,10 @@ export function PalaceLordCard({ tier }: { tier: string | null }) {
             </div>
           </div>
 
+              ただし下の一覧（勲章・宝物・入居日・位）は灰色にする。
+          {/* **名乗り（絵と名前と称号）は、そのまま見せる。** こちらで設定した姿を見てほしいため。
+              使い捨ての口座では意味が無い（勲章も入居日も、その場限りのもの）*/}
+          <DemoLockBlock>
           <dl className="grid grid-cols-2 gap-x-4 gap-y-2 text-sm">
             {/* 並びは「集めたもの」から「素性」へ。
                 上の段に勲章と宝物、下の段に入居日と位を置く。
@@ -261,6 +266,7 @@ export function PalaceLordCard({ tier }: { tier: string | null }) {
               )
             })}
           </dl>
+          </DemoLockBlock>
       </CardContent>
       </Card>
 
