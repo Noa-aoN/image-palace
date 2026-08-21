@@ -2,6 +2,7 @@ import {
   DoorOpen,
   LibraryBig,
   GalleryHorizontal,
+  LayoutDashboard,
   Box,
   LayoutGrid,
   Frame,
@@ -30,7 +31,6 @@ import {
   Compass,
   Hammer,
   Package,
-  Upload,
 } from 'lucide-react'
 import { CreateIcon } from './CreateIcon'
 
@@ -237,9 +237,11 @@ export const STUDIO_ITEM: NavNode = {
   icon: <Hammer size={22} />,
   label: '工房室', description: '公式コンテンツを選んで、確かめて、公開する',
   children: [
-    { href: '/studio', icon: <Package size={20} />, label: '荷物', exact: true },
-    { href: '/studio/publish', icon: <Upload size={20} />, label: '公開する' },
-    { href: '/studio/settings', icon: <Settings size={20} />, label: '設定' },
+    { href: '/studio', icon: <LayoutDashboard size={20} />, label: '概要', exact: true },
+    { href: '/studio/originals', icon: <GalleryHorizontal size={20} />, label: '原本' },
+    { href: '/studio/demo', icon: <DoorOpen size={20} />, label: '体験宮殿設定' },
+    { href: '/studio/delivery', icon: <Package size={20} />, label: '個別配布設定' },
+    { href: '/studio/settings', icon: <Settings size={20} />, label: '全体設定' },
   ],
 }
 

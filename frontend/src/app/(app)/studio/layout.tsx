@@ -19,9 +19,10 @@ import { AdminStrongAuthGate } from '@/components/features/admin/AdminStrongAuth
  */
 const TABS = [
   { href: '/studio', label: '概要', exact: true },
-  { href: '/studio/items', label: 'カード' },
-  { href: '/studio/publish', label: '公開する' },
-  { href: '/studio/settings', label: '設定' },
+  { href: '/studio/originals', label: '原本' },
+  { href: '/studio/demo', label: '体験宮殿設定' },
+  { href: '/studio/delivery', label: '個別配布設定' },
+  { href: '/studio/settings', label: '全体設定' },
 ]
 
 export default function StudioLayout({ children }: { children: React.ReactNode }) {

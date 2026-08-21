@@ -139,7 +139,7 @@ export function StudioItemsPanel() {
         <Input
           value={query}
           onChange={(e) => setQuery(e.target.value)}
-          placeholder="題・箱・荷物で探す"
+          placeholder="題・箱・出したもので探す"
           className="ml-auto w-full sm:w-56"
           aria-label="カードを探す"
         />

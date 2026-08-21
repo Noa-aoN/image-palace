@@ -1,5 +1,7 @@
 import type { PreviewState } from '@/lib/api/studio'
 
+export type { PreviewState }
+
 /**
  * 下見で開く先。**箱があればそこ、無ければキャンバス。**
  *

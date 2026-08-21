@@ -79,7 +79,7 @@ export function noteFor(item: StudioItem): string {
         caveats.push(`${item.views.join('・')} を選ぶと下書きが止まります`)
       }
       if (item.packages.length > 0) {
-        caveats.push(`出した荷物 ${item.packages.join('・')} には残ります`)
+        caveats.push(`すでに出したもの ${item.packages.join('・')} には残ります`)
       }
       const head = '次に起こす下書きから外れます'
       return caveats.length === 0 ? head : `${head}（${caveats.join(' / ')}）`

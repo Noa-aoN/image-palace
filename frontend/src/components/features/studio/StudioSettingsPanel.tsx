@@ -2,32 +2,28 @@
 
 import { useEffect, useState } from 'react'
 import Link from 'next/link'
-import { useRouter } from 'next/navigation'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Spinner } from '@/components/ui/spinner'
 import { fetchStudioSettings, updateStudioSettings, type StudioSettings } from '@/lib/api/studio'
-import { enterDemo } from '@/lib/api/demo'
-import { useAuthStore } from '@/stores/auth'
-import { useItemsStore } from '@/stores/items'
 import { useAdminStore } from '@/stores/admin'
-import { DEMO_STAGE_LABEL, DEMO_STAGE_NOTE, type DemoStage } from '@/lib/studio/status'
 
 /**
- * 工房の設定。**ここだけで完結するようにする。**
+ * 全体設定。**部屋をまたいで効くものだけを置く。**
  *
- * 枠の上限も体験の入口も、執務室（`/admin`）の奥にある。
- * だが制作だけの人は執務室に入れないので、同じ栓をここにも出す。
+ * 体験の入口は体験宮殿設定へ移した。ここに残るのは
+ * 本人確認・公式の口座・制作枠のように、どの部屋にも関わるもの。
+ *
+ * 枠の上限は執務室（`/admin`）の奥にもある。だが制作だけの人は
+ * 執務室に入れないので、同じ栓をここにも出す。
  * 触っているのは同じ行なので、どちらから変えても効く。
  */
 export function StudioSettingsPanel() {
-  const router = useRouter()
   const adminSession = useAdminStore((s) => s.session)
   const [settings, setSettings] = useState<StudioSettings | null>(null)
   const [limit, setLimit] = useState('')
   const [saving, setSaving] = useState(false)
-  const [entering, setEntering] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [saved, setSaved] = useState(false)
 
@@ -57,30 +53,6 @@ export function StudioSettingsPanel() {
     }
   }
 
-  // 体験を確かめる。**いまのログインから離れる**ので、先に断る
-  async function enterDemoForCheck() {
-    if (entering) return
-    if (
-      !window.confirm(
-        '体験用の宮殿へ入ります。いまのログインからは離れるので、確かめ終わったら入り直してください。'
-      )
-    ) {
-      return
-    }
-
-    setEntering(true)
-    setError(null)
-    try {
-      const session = await enterDemo()
-      useItemsStore.getState().resetItems()
-      useAuthStore.getState().setAuth(session.user, session.tokens)
-      router.push('/entrance')
-    } catch {
-      setError('体験用の宮殿へ入れませんでした')
-      setEntering(false)
-    }
-  }
-
   if (error && !settings) return <p className="py-12 text-center text-muted-foreground">{error}</p>
   if (!settings) {
     return (
@@ -89,8 +61,6 @@ export function StudioSettingsPanel() {
       </div>
     )
   }
-
-  const stage = settings.demo_entry_stage as DemoStage
 
   return (
     <div className="space-y-6">
@@ -164,67 +134,6 @@ export function StudioSettingsPanel() {
         </div>
       </section>
 
-      <section className="space-y-3 rounded-xl border border-border bg-card p-5">
-        <div>
-          <h2 className="text-base font-semibold">体験用の宮殿の入口</h2>
-          <p className="text-xs text-muted-foreground">
-            LP と登録・ログイン画面のボタンが、一般の方にどう見えるか。
-            **制作の権限があれば、準備中でも確かめられます**
-          </p>
-        </div>
-
-        {/* 体験の宮殿は「届け先が体験の荷物を全部」入れて組む。
-            **何が入るのかを、ここで見えるようにする** */}
-        {settings.demo_package.published ? (
-          <div className="text-xs text-muted-foreground">
-            <p>
-              いま置いているもの: {settings.demo_package.packages?.length} 件 / カード{' '}
-              {settings.demo_package.items} 枚
-            </p>
-            <ul className="mt-1 list-disc pl-5">
-              {settings.demo_package.packages?.map((p) => (
-                <li key={p.key}>
-                  {p.name}（{p.key} v{p.version} / {p.items} 枚）
-                </li>
-              ))}
-            </ul>
-          </div>
-        ) : (
-          <p className="text-xs" style={{ color: '#8A6210' }}>
-            置いているものがありません。開いても入れません
-            （荷物の届け先に「体験の宮殿に置く」を入れてください）
-          </p>
-        )}
-
-        <div className="flex flex-wrap gap-2">
-          {settings.demo_entry_stages.map((s) => (
-            <button
-              key={s}
-              type="button"
-              onClick={() => save({ demo_entry_stage: s })}
-              disabled={saving}
-              aria-pressed={stage === s}
-              className={`rounded-lg border px-3 py-2 text-left text-sm transition disabled:opacity-60 ${
-                stage === s ? 'border-[var(--palace)] bg-[var(--ivory-dark)]' : 'border-border'
-              }`}
-            >
-              <span className="block font-medium">{DEMO_STAGE_LABEL[s as DemoStage] ?? s}</span>
-              <span className="block text-xs text-muted-foreground">
-                {DEMO_STAGE_NOTE[s as DemoStage] ?? ''}
-              </span>
-            </button>
-          ))}
-        </div>
-
-        <div className="border-t pt-3" style={{ borderColor: 'var(--ivory-dark)' }}>
-          <Button size="sm" variant="outline" onClick={enterDemoForCheck} disabled={entering}>
-            {entering ? 'ご案内しています…' : '体験を確かめる'}
-          </Button>
-          <p className="mt-1 text-xs text-muted-foreground">
-            準備中のままでも入れます。**いまのログインからは離れます**
-          </p>
-        </div>
-      </section>
     </div>
   )
 }
