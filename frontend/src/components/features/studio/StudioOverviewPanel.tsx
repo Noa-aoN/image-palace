@@ -12,6 +12,7 @@ import {
   previewPackage,
   setDelivery,
   type Delivery,
+  type PackageHistory,
   type PreviewState,
   type StudioOverview,
   type StudioPackage,
@@ -20,6 +21,7 @@ import {
   actionsFor,
   canPreview,
   countByStatus,
+  deliveryNoteFor,
   filterPackages,
   PACKAGE_FILTERS,
   STATUS_LABEL,
@@ -33,7 +35,10 @@ import { rememberEnded } from '@/lib/studio/previewTombstone'
 /**
  * 工房室の概要。**いま何を配っているかと、原本の様子。**
  *
- * 荷物ごとにできることを並べる。
+ * 一覧は**鍵ごとに1行**。届け先も受け取りも鍵に付くので、
+ * 版ごとに並べると同じ設定が何行も出て、どれを押せばよいのか分からなくなる。
+ * 前の版は畳んでおく。
+ *
  * 戻せない操作（終える）だけ、押す前に確かめる。
  */
 export function StudioOverviewPanel() {
@@ -301,13 +306,11 @@ export function StudioOverviewPanel() {
 
                 {/* 届け先。**どこで配るか。**
                     版ではなく鍵に付くので、出し直しても引き継がれる。
-                    配布中でなければ、入れても届かないので添えて言う */}
+                    いま実際に何が届くのかは版で変わるので、ずれていたら添えて言う */}
                 <div className="w-full border-t pt-3" style={{ borderColor: 'var(--ivory-dark)' }}>
                   <p className="mb-2 text-xs text-muted-foreground">
                     届け先
-                    {pkg.status !== 'published'
-                      ? '（この荷物はいま配っていないので、入れても届きません）'
-                      : ''}
+                    {deliveryNoteFor(pkg) ? `（${deliveryNoteFor(pkg)}）` : ''}
                   </p>
                   <div className="flex flex-wrap gap-2">
                     {pkg.deliveries.map((d) => (
@@ -322,12 +325,39 @@ export function StudioOverviewPanel() {
                     ))}
                   </div>
                 </div>
+
+                {pkg.history.length > 0 ? <History versions={pkg.history} /> : null}
               </li>
             ))}
           </ul>
         )}
       </section>
     </div>
+  )
+}
+
+/**
+ * 前の版。**畳んでおく。**
+ *
+ * 出し直しても記録として残る（何を配っていたのかを後から辿れるように）。
+ * ここから押せることは無い
+ */
+function History({ versions }: { versions: PackageHistory[] }) {
+  return (
+    <details className="w-full">
+      <summary className="cursor-pointer text-xs text-muted-foreground">
+        前の版 {versions.length} 件
+      </summary>
+      <ul className="mt-2 space-y-1">
+        {versions.map((v) => (
+          <li key={v.id} className="flex items-center gap-2 text-xs text-muted-foreground">
+            <span className="tabular-nums">v{v.version}</span>
+            <span>{STATUS_LABEL[v.status]}</span>
+            {v.installs > 0 ? <span>{v.installs} 人が受け取り済み</span> : null}
+          </li>
+        ))}
+      </ul>
+    </details>
   )
 }
 

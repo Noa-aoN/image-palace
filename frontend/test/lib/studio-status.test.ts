@@ -3,6 +3,7 @@ import {
   actionsFor,
   canPreview,
   countByStatus,
+  deliveryNoteFor,
   filterPackages,
   PACKAGE_FILTERS,
   STATUS_LABEL,
@@ -136,5 +137,23 @@ describe('荷物の絞り込み', () => {
       suspended: 1,
       archived: 0,
     })
+  })
+})
+
+// **扱いだけを見て「配っていません」と言わない。**
+//
+// 新しい下書きを起こしただけで「届きません」と出すと嘘になる。
+// 実際にはひとつ前の版が届き続けている
+describe('届け先に添える一言', () => {
+  it('出している版がそのまま届いているときは、何も言わない', () => {
+    expect(deliveryNoteFor({ version: 3, delivering_version: 3 })).toBeNull()
+  })
+
+  it('どの版も出していないときは、届かないと言う', () => {
+    expect(deliveryNoteFor({ version: 2, delivering_version: null })).toContain('届きません')
+  })
+
+  it('下書きを起こした直後は、いま届く版を言う', () => {
+    expect(deliveryNoteFor({ version: 4, delivering_version: 3 })).toContain('v3')
   })
 })

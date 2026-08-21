@@ -56,16 +56,28 @@ class ContentPackage < ApplicationRecord
   # 鍵ごとに、新しい版から
   scope :ordered, -> { order(:key, version: :desc) }
 
+  # その鍵の、いちばん新しい版。下書きも含む（工房室の一覧はこれを見る）
+  def self.current(key)
+    where(key: key).order(version: :desc).first
+  end
+
   # その鍵の、いま配れる版。**デモは常にこれを使う**
+  #
+  # **いちばん新しい版だけを見る。** 下書きは飛ばすが、
+  # 止めた・終えた版があったら、そこで止まる。
+  #
+  # 「published の中で一番新しいもの」にすると、
+  # v3 を止めたときに**黙って v2 が配られ続ける**。
+  # 止めたのに配られるのは、押した人の意図と違う
   def self.latest_published(key)
-    published.where(key: key).order(version: :desc).first
+    newest = where(key: key).where.not(status: "draft").order(version: :desc).first
+    newest&.status == "published" ? newest : nil
   end
 
   # 鍵ごとに1つずつ、いま配れる版を返す
   def self.distributable(kind: nil)
-    scope = published
-    scope = scope.of_kind(kind) if kind
-    scope.order(:key, version: :desc).to_a.uniq(&:key)
+    scope = kind ? of_kind(kind) : all
+    scope.distinct.pluck(:key).filter_map { |key| latest_published(key) }
   end
 
   # 書き出したものを、**下書きとして起こす。**

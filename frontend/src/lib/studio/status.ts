@@ -134,3 +134,23 @@ export function filterPackages<T extends { status: PackageStatus }>(
 ): T[] {
   return filter === 'all' ? packages : packages.filter((p) => p.status === filter)
 }
+
+/**
+ * 届け先に添える一言。**いま実際に何が届くのかを言う。**
+ *
+ * 扱い（status）だけを見て「配っていません」と書くと、
+ * 新しい下書きを起こしただけで「届きません」と出てしまう。
+ * 実際にはひとつ前の版が届き続けている
+ */
+export function deliveryNoteFor(pkg: {
+  version: number
+  delivering_version: number | null
+}): string | null {
+  if (pkg.delivering_version === null) {
+    return 'いまはどの版も出していないので、入れても届きません'
+  }
+  if (pkg.delivering_version !== pkg.version) {
+    return `いま届くのは v${pkg.delivering_version} です（この版はまだ出していません）`
+  }
+  return null
+}
