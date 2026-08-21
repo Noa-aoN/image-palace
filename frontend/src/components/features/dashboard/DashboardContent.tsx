@@ -8,6 +8,7 @@ import { Card, CardContent } from '@/components/ui/card'
 import { MemoryAssetsCard } from '@/components/features/dashboard/MemoryAssetsCard'
 import { PalaceFloorplan } from '@/components/features/dashboard/PalaceFloorplan'
 import { PalaceLordCard } from '@/components/features/dashboard/PalaceLordCard'
+import { StarterCard } from '@/components/features/dashboard/StarterCard'
 import { useIsDemo } from '@/components/features/demo/DemoLock'
 import { DEMO_DIM, DEMO_LOCKED_HINT } from '@/lib/demo/navigation'
 import { QuickCreateCard } from '@/components/features/dashboard/QuickCreateCard'
@@ -226,6 +227,10 @@ export function DashboardContent() {
         <DoorOpen size={26} style={{ color: 'var(--palace)' }} />
         エントランス
       </h1>
+
+      {/* **空の宮殿から始めない。** 何も無い状態で「作ってみましょう」と言われても、
+          何を作ればよいのか分からない。受け取れるものが残っているあいだだけ出す */}
+      {!isDemo ? <StarterCard /> : null}
 
       {/* 宮殿の主人（本人のありよう）と、宮殿の生成資産（プラン・残高・作れる枚数）を左右に並べる。
           主人を先に置くのは、**まず自分の話**だから。残高は「あと何ができるか」の話で、

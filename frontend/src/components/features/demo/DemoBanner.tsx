@@ -66,8 +66,10 @@ export function DemoBanner() {
 
       <span>体験中の宮殿です（編集の保持は2時間だけです）</span>
 
+      {/* **どこから来たかを伝える。** 登録の画面で
+          「体験のものは引き継がれない」を先に言えるようにする */}
       <Link
-        href="/signup"
+        href="/signup?from=demo"
         className="inline-flex items-center gap-1 rounded-full bg-white/15 px-3 py-0.5
                    font-medium transition-colors hover:bg-white/25"
       >
