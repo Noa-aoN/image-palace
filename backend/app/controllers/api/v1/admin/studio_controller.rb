@@ -101,6 +101,9 @@ module Api
 
           render json: {
             items: rows.map { |item| serialize_studio_item(item, excluded, shipped) },
+            boxes: original_boxes(excluded),
+            views: original_views(excluded),
+            spaces: original_spaces,
             excluded: excluded.size,
             truncated: truncated
           }
@@ -466,6 +469,57 @@ module Api
         def installs_for(package)
           ContentInstallation.counted
                              .where(package_key: package.key, package_version: package.version).count
+        end
+
+        # 原本の箱。**選んだときに何が起きるかを、選ぶ前に出す。**
+        #
+        # 箱は袋なので、外したカードは落ちるだけ。何枚落ちるのかが分かればよい
+        def original_boxes(excluded)
+          installed = ContentInstallation.installed_record_ids_for(official, "Box")
+
+          # 欠けを数えるのに絵まで見る。**添付まで先に読まないと1枚ごとに増える**
+          official.boxes.includes(box_entries: { entry: [ :item_type, :meanings,
+                                                          { medias: { file_attachment: :blob } } ] })
+                  .order(:created_at)
+                  .reject { |box| installed.include?(box.id) }
+                  .map do |box|
+            items = box.box_entries.filter_map(&:entry)
+            {
+              id: box.id, name: box.name,
+              items: items.size,
+              excluded: items.count { |i| excluded.include?(i.id) },
+              blocked: items.count { |i| blockers_for(i, i.primary_media).any? }
+            }
+          end
+        end
+
+        # 原本のキャンバス。**配れないものは、理由まで出す。**
+        #
+        # キャンバスは構造なので、外したカードが1枚でも置かれていると
+        # 下書きが止まる。**選ぶ前にそう言う**
+        def original_views(excluded)
+          installed = ContentInstallation.installed_record_ids_for(official, "View")
+
+          official.views.includes(:view_edges, view_items: :item).order(:created_at)
+                  .reject { |view| installed.include?(view.id) }
+                  .map do |view|
+            placed = view.view_items.filter_map(&:item)
+            {
+              id: view.id, name: view.name, view_type: view.view_type,
+              items: placed.size, edges: view.view_edges.size,
+              # 宮殿に結びついたキャンバスは、宮殿ごと運ぶ仕組みがまだ無い
+              portable: view.space_id.nil?,
+              # 置かれているカードを「出さない」にしていると、下書きが止まる
+              blocking: placed.select { |i| excluded.include?(i.id) }.map(&:title)
+            }
+          end
+        end
+
+        # 原本の宮殿。**まだ配れない。** 並べるのは、有ることが見えるように
+        def original_spaces
+          official.spaces.includes(:space_points).order(:created_at).map do |space|
+            { id: space.id, name: space.name, points: space.space_points.size, portable: false }
+          end
         end
 
         def serialize_box(box)
