@@ -484,9 +484,22 @@ class User < ApplicationRecord
   # 打ち間違いで問い合わせが落ちるより、公式が居ないほうがまだ静か
   UUID_FORMAT = /\A[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\z/i
 
+  # 手元だけの逃げ道。**このアドレスの口座を公式として扱う。**
+  #
+  # 開発では `.env` に id を書き写す手間が毎回かかる
+  # （口座を作ってからでないと id が決まらないため）。
+  #
+  # 本番と同じアドレスにしてある。手元と本番で入る口座が変わると、
+  # 「本番では見えたのに手元では見えない」の切り分けが増えるため。
+  # **本番ではこの分岐に入らない**（`development?` で閉じている）
+  LOCAL_OFFICIAL_EMAIL = "studio@imagepalace.app"
+
   def self.official_content_account_id
     value = ENV["OFFICIAL_CONTENT_USER_ID"].to_s.strip
-    value.match?(UUID_FORMAT) ? value.downcase : nil
+    return value.downcase if value.match?(UUID_FORMAT)
+    return nil unless Rails.env.development?
+
+    find_by(email: LOCAL_OFFICIAL_EMAIL)&.id
   end
 
   # 原本を持つ口座そのもの。居なければ nil

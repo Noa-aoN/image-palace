@@ -104,6 +104,35 @@ RSpec.describe ContentDelivery do
       expect(described_class.packages_for("delphi")).to be_empty
     end
 
+    # **止めたのに配られ続ける、を起こさない。**
+    #
+    # 「公開中のうち一番新しいもの」を配ると、v2 を止めたときに
+    # v1 へ落ちる。押した人は止めたつもりなのに、古い中身が配られる
+    it "新しい版を止めたら、古い版へ落ちない" do
+      publish(key: "starter_it", name: "ITのことば") # v2
+      described_class.packages_for("delphi") # v2 が配られている
+      ContentPackage.find_by(key: "starter_it", version: 2).suspend!
+
+      expect(described_class.packages_for("delphi")).to be_empty
+    end
+
+    it "止めた版を戻すと、また配られる" do
+      publish(key: "starter_it", name: "ITのことば") # v2
+      newest = ContentPackage.find_by(key: "starter_it", version: 2)
+      newest.suspend!
+      newest.resume!
+
+      expect(described_class.packages_for("delphi").map(&:version)).to eq([ 2 ])
+    end
+
+    # 下書きは「まだ出していない」なので、いま配っているものを引っ込めない
+    it "新しい下書きを起こしても、いま出している版は配られ続ける" do
+      ContentPackage.draft!(key: "starter_it", kind: "starter", name: "ITのことば",
+                            payload: package.payload)
+
+      expect(described_class.packages_for("delphi").map(&:version)).to eq([ 1 ])
+    end
+
     it "下書きは返さない" do
       described_class.set!(package_key: "draft_only", channel: "delphi", enabled: true)
 
