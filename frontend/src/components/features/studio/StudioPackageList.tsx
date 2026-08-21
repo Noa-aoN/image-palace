@@ -22,8 +22,17 @@ import {
   STATUS_TONE,
   type PackageFilter,
 } from '@/lib/studio/status'
-import { deliveriesFor, ROOM_NOUN, type StudioRoom } from '@/lib/studio/channels'
+import { channelsFor, deliveriesFor, ROOM_NOUN, type StudioRoom } from '@/lib/studio/channels'
 import { QuickLookDialog } from './QuickLookDialog'
+import {
+  allChosen,
+  bulkLabel,
+  EMPTY,
+  keepVisible,
+  toggle as toggleId,
+  toggleAll,
+  type Selection,
+} from '@/lib/studio/selection'
 
 /**
  * 荷物の一覧。**部屋ごとに、触れる栓だけを出す。**
@@ -54,10 +63,44 @@ export function StudioPackageList({
   const [filter, setFilter] = useState<PackageFilter>('all')
   // さっと見る。**何も作らないので、宮殿は汚れない**
   const [looking, setLooking] = useState<StudioPackage | null>(null)
+  // **選んでからまとめて押す。** 届け先を1つずつ入れるのは、数が増えると手数だけ増える
+  const [rawChosen, setChosen] = useState<Selection>(EMPTY)
 
   const counts = useMemo(() => countByStatus(packages), [packages])
   const shown = useMemo(() => filterPackages(packages, filter), [packages, filter])
+  const shownIds = useMemo(() => shown.map((p) => p.id), [shown])
   const noun = ROOM_NOUN[room]
+
+  // **絞り込みを変えたら、見えなくなったものは選びから外す。**
+  // 画面に出ていないものが、まとめて変わるのを防ぐ。
+  //
+  // 状態を書き換えるのではなく、**その場で絞って使う**。
+  // 効果の中で書き換えると、描き直しが連鎖する
+  const chosen = useMemo(() => keepVisible(rawChosen, shownIds), [rawChosen, shownIds])
+
+  const chosenPackages = useMemo(
+    () => packages.filter((p) => chosen.has(p.id)),
+    [packages, chosen]
+  )
+
+  /**
+   * 選んだものの届け先を、まとめて入れる・外す。
+   *
+   * **1つずつ送る。** まとめて送る口を足すこともできるが、
+   * 途中で1つこけたときに「どこまで効いたか」が分からなくなる。
+   */
+  function applyDelivery(channel: Delivery['channel'], enabled: boolean, label: string) {
+    if (chosenPackages.length === 0) return
+    const action = enabled ? `${label}に入れます` : `${label}から外します`
+    if (!window.confirm(`${bulkLabel(action, chosenPackages.length)}。よろしいですか。`)) return
+
+    onAct(async () => {
+      for (const pkg of chosenPackages) {
+        await setDelivery(pkg.key, channel, enabled)
+      }
+      setChosen(EMPTY)
+    }, 'bulk-delivery')
+  }
 
   return (
     <section className="space-y-3">
@@ -96,6 +139,63 @@ export function StudioPackageList({
         </div>
       ) : null}
 
+      {/* **選んだ数と、そこに効く操作を、いつも同じ場所に出す。** */}
+      {packages.length > 0 ? (
+        <div className="flex flex-wrap items-center gap-3 rounded-lg border border-border bg-muted/30 px-3 py-2 text-xs">
+          <label className="flex cursor-pointer items-center gap-2">
+            <input
+              type="checkbox"
+              checked={allChosen(chosen, shownIds)}
+              onChange={() => setChosen(toggleAll(chosen, shownIds))}
+              disabled={shownIds.length === 0}
+            />
+            いま見えている {shownIds.length} 件を選ぶ
+          </label>
+
+          {chosen.size > 0 ? (
+            <>
+              <span className="text-muted-foreground">{chosen.size} 件を選んでいます</span>
+              {/* 届け先は部屋ごとに違う。**その部屋の栓だけを出す** */}
+              {channelsFor(room).map((channel) => {
+                const meta = packages[0]?.deliveries.find((d) => d.channel === channel)
+                if (!meta || meta.pending) return null
+                return (
+                  <span key={channel} className="flex items-center gap-1">
+                    <button
+                      type="button"
+                      onClick={() => applyDelivery(channel, true, meta.label)}
+                      disabled={busy !== null}
+                      className="rounded-full border border-border px-3 py-1 transition hover:bg-muted disabled:opacity-50"
+                    >
+                      まとめて{meta.label}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => applyDelivery(channel, false, meta.label)}
+                      disabled={busy !== null}
+                      className="rounded-full border border-border px-2 py-1 text-muted-foreground transition hover:bg-muted disabled:opacity-50"
+                    >
+                      外す
+                    </button>
+                  </span>
+                )
+              })}
+              <button
+                type="button"
+                onClick={() => setChosen(EMPTY)}
+                className="underline underline-offset-2 text-muted-foreground"
+              >
+                選びを解く
+              </button>
+            </>
+          ) : (
+            <span className="text-muted-foreground">
+              選ぶと、届け先をまとめて入れ替えられます
+            </span>
+          )}
+        </div>
+      ) : null}
+
       {packages.length === 0 ? (
         <p className="rounded-lg border border-dashed border-border py-10 text-center text-sm text-muted-foreground">
           まだ1つもありません。「新しく作る」から、公式宮殿の中身を選んでください
@@ -109,8 +209,17 @@ export function StudioPackageList({
           {shown.map((pkg) => (
             <li
               key={pkg.id}
-              className="flex flex-wrap items-center gap-x-4 gap-y-2 rounded-lg border border-border bg-background p-4"
+              className={`flex flex-wrap items-center gap-x-4 gap-y-2 rounded-lg border bg-background p-4 ${
+                chosen.has(pkg.id) ? 'border-[var(--palace)]' : 'border-border'
+              }`}
             >
+              <input
+                type="checkbox"
+                checked={chosen.has(pkg.id)}
+                onChange={() => setChosen(toggleId(chosen, pkg.id))}
+                aria-label={`${pkg.name} を選ぶ`}
+                className="shrink-0"
+              />
               <StatusChip status={pkg.status} />
               <div className="min-w-0 flex-1">
                 <p className="font-medium">
