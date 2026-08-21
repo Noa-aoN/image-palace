@@ -61,7 +61,13 @@ namespace :demo do
     puts
     puts "  工房室へは、この口座で入ります:"
     puts "    #{official.email}"
-    puts "    #{secret}   ← 走らせるたびに作り直します"
+    if secret
+      puts "    #{secret}   ← いま作りました"
+      puts "    #{sign_in_check(official.email, secret)}"
+    else
+      puts "    合言葉は**変えていません**（走らせるたびに作り直すと、控えたものが使えなくなるため）"
+      puts "    忘れたときは: bin/rails demo:studio_password"
+    end
     puts
     puts "  ふだんの口座（運営）とは分けてあります。執務室とはぶつかりません。"
     puts "  `.env` に id を書き写す必要はありません。"
@@ -69,23 +75,50 @@ namespace :demo do
 
   # 公式コンテンツの口座を用意して、入り方ごと返す。
   #
-  # **合言葉は毎回その場で作り直して表示する。** 決め打ちを置くと
-  # そのまま本番へ持っていける形になるし、手元で「入れない」に詰まる時間も無くなる。
+  # **すでにある口座の合言葉は変えない。**
+  #
+  # 前は走らせるたびに作り直していた。見本を入れ直すだけのつもりで走らせると、
+  # そのたびに前に控えた合言葉が使えなくなる。実際それで入れなくなった。
+  #
+  # 忘れたときは `bin/rails demo:studio_password` で入れ直す。
   #
   # ふだんの口座（運営）とは分けてある。役割は `user` のままでよく、
   # 工房室へは「公式の口座であること」で入れる
   def find_or_create_official!
     email = User::LOCAL_OFFICIAL_EMAIL
-    secret = SecureRandom.alphanumeric(20)
     user = User.official_content_account || User.find_by(email: email) || rename_old_local_official(email)
 
-    if user
-      user.update!(password: secret, password_confirmation: secret)
-      return [ user, secret ]
-    end
+    return [ user, nil ] if user
 
+    secret = SecureRandom.alphanumeric(20)
     [ User.create!(email: email, password: secret, password_confirmation: secret,
                    confirmed_at: Time.current, name: "公式"), secret ]
+  end
+
+  # 合言葉を入れ直して、**入れることを確かめてから**出す
+  def reset_password!(user)
+    secret = SecureRandom.alphanumeric(20)
+    user.update!(password: secret, password_confirmation: secret)
+
+    puts "  #{user.email}"
+    puts "  #{secret}"
+    puts "  #{sign_in_check(user.email, secret)}"
+  end
+
+  # **本当に入れるかを、その場で確かめる。**
+  #
+  # 「合言葉を入れ直した」と言うだけでは、入れなかったときに
+  # どこが悪いのか分からない（uid のずれ・未確認・devise の設定）。
+  # 実際にログインの口を叩いて、通ったことを見てから出す
+  def sign_in_check(email, secret)
+    session = ActionDispatch::Integration::Session.new(Rails.application)
+    session.host = "localhost"
+    session.post "/api/v1/auth/sign_in", params: { email: email, password: secret }, as: :json
+
+    return "↑ この合言葉で入れることを確かめました" if session.response.status == 200
+
+    body = session.response.body.to_s[0, 200]
+    "↑ 入れませんでした（#{session.response.status}）。#{body}"
   end
 
   # 前のアドレス（手元だけで使っていたもの）で作ってあった口座を引き継ぐ。
@@ -134,5 +167,15 @@ namespace :demo do
     end
 
     [ box, view ]
+  end
+  desc "工房の口座の合言葉を入れ直す（開発環境のみ）"
+  task studio_password: :environment do
+    abort "本番では走らせません" if Rails.env.production?
+
+    user = User.find_by(email: User::LOCAL_OFFICIAL_EMAIL)
+    abort "口座がありません。先に bin/rails demo:setup_local を走らせてください" if user.nil?
+
+    puts "工房室へは、この口座で入ります:"
+    reset_password!(user)
   end
 end
