@@ -26,6 +26,8 @@ import {
   PropertyEntryBlock,
   PROPERTY_TOOLS_KEY,
 } from '@/components/features/items/ItemPropertyBlocks'
+import { PropertyAddBlock } from '@/components/features/items/PropertyAddBlock'
+import { splitByFilled } from '@/lib/items/property-value'
 import { omittedKeysForPreset } from '@/lib/block-visibility'
 import { ItemUsageBlock } from '@/components/features/items/ItemUsageBlock'
 import { ItemReviewBlock } from '@/components/features/items/ItemReviewBlock'
@@ -735,7 +737,19 @@ export function ItemProperties({
   // 混ぜないと、並べ替えも出し入れも作り付けのものにしか効かない
   const openSettings = () => openSection({ key: PROPERTY_DEFINITIONS_PANEL_KEY, title: '項目の設定' })
 
-  const customBlocks = (item.properties ?? []).map((entry) => ({
+  // **書いたものだけを本文に並べる。**
+  //
+  // 定義した項目を全部並べていたので、20 定義していれば書いていない18件が
+  // 「未設定」と並んでカード詳細が縦に伸びていた。
+  // 読みに来た人が空欄をかき分けることになる。
+  //
+  // 押されたものは、その場で本文へ出す（書けるようにする）
+  const [revealed, setRevealed] = useState<string[]>([])
+  const { filled, empty } = splitByFilled(item.properties ?? [])
+  const shownEmpty = empty.filter((entry) => revealed.includes(entry.key))
+  const hiddenEmpty = empty.filter((entry) => !revealed.includes(entry.key))
+
+  const customBlocks = [...filled, ...shownEmpty].map((entry) => ({
     key: `prop:${entry.key}`,
     label: entry.label,
     node: (
@@ -747,6 +761,17 @@ export function ItemProperties({
       />
     ),
   }))
+
+  const addBlock = {
+    key: 'property-add',
+    label: '追加できる項目',
+    node: (
+      <PropertyAddBlock
+        entries={hiddenEmpty}
+        onReveal={(key) => setRevealed((current) => [...current, key])}
+      />
+    ),
+  }
 
   const toolsBlock = {
     key: PROPERTY_TOOLS_KEY,
@@ -768,11 +793,14 @@ export function ItemProperties({
   // 実際、本番では所有者以外の全員が0件のままだった。
   // ここは道具ではなく、機能があることを知らせる場所になる
   const hasProperties = customBlocks.length > 0
+  // 追加できる項目は、**書いたものの後ろ**に置く。
+  // 前に置くと、読みに来た人が毎回それを越えてから本文へ入ることになる
+  const addBlocks = hiddenEmpty.length > 0 ? [ addBlock ] : []
   // 0件のときは種別のすぐ下に置く。位置ではなく鍵で挿すのは、
   // 作り付けの並びを変えたときに黙ってずれないようにするため
   const allBlocks = hasProperties
-    ? [ ...leadingBlocks, ...blocks, ...customBlocks, toolsBlock ]
-    : [ ...leadingBlocks, ...insertAfter(blocks, 'item_type', toolsBlock) ]
+    ? [ ...leadingBlocks, ...blocks, ...customBlocks, ...addBlocks, toolsBlock ]
+    : [ ...leadingBlocks, ...insertAfter(blocks, 'item_type', toolsBlock), ...addBlocks ]
 
   // − に入れたもの（このカードでは持たない）と、＋の中で畳んだもの。
   // どちらも出さないが、意味が違うので分けて持つ。
