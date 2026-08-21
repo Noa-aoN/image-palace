@@ -3,6 +3,7 @@
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
+import { Home, Sparkles } from 'lucide-react'
 import { useAuthStore } from '@/stores/auth'
 import { isDemoUser } from '@/lib/demo/session'
 import { leaveDemo } from '@/lib/api/demo'
@@ -56,9 +57,10 @@ export function DemoBanner() {
         onClick={handleLeave}
         disabled={leaving}
         title="体験を終えて、トップページへ戻ります"
-        className="rounded-full bg-white/15 px-3 py-0.5 font-medium underline-offset-2
-                   transition-colors hover:bg-white/25 disabled:opacity-50"
+        className="inline-flex items-center gap-1 rounded-full bg-white/15 px-3 py-0.5
+                   font-medium transition-colors hover:bg-white/25 disabled:opacity-50"
       >
+        <Home size={12} aria-hidden />
         トップページに戻る
       </button>
 
@@ -66,8 +68,10 @@ export function DemoBanner() {
 
       <Link
         href="/signup"
-        className="rounded-full bg-white/15 px-3 py-0.5 font-medium underline-offset-2 hover:bg-white/25"
+        className="inline-flex items-center gap-1 rounded-full bg-white/15 px-3 py-0.5
+                   font-medium transition-colors hover:bg-white/25"
       >
+        <Sparkles size={12} aria-hidden />
         自分の宮殿をつくる
       </Link>
     </div>

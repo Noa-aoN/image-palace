@@ -54,8 +54,19 @@ export function PropertyBlock({
       <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-1">
         <div className="flex items-center gap-2">
           <h3 className="text-sm font-medium">{title}</h3>
+          {/* **色は添えるだけ。** 札の縁は金のままにする。
+              縁を役割ごとに塗ると、器が3種類あるように見えてしまう。
+              見分けたいのは「直すときの物差しが違う」ことであって、別の入れ物ではない。
+              色だけに頼らないよう、文字も出したままにする */}
           {role && (
-            <span className="text-[10px] text-muted-foreground" title={role.hint}>
+            <span
+              className="rounded-full px-1.5 py-0.5 text-[10px] font-medium"
+              style={{
+                color: role.accent,
+                backgroundColor: `color-mix(in srgb, ${role.accent} 12%, transparent)`,
+              }}
+              title={role.hint}
+            >
               {role.label}
             </span>
           )}
