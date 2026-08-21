@@ -2,7 +2,10 @@ import { describe, it, expect } from 'vitest'
 import {
   actionsFor,
   canPreview,
+  countByStatus,
   deliveryNoteFor,
+  filterPackages,
+  PACKAGE_FILTERS,
   STATUS_LABEL,
   STATUS_TONE,
   validateKey,
@@ -87,6 +90,53 @@ describe('鍵の形', () => {
 
   it('空なら促す', () => {
     expect(validateKey('')).toBe('鍵を入れてください')
+  })
+})
+
+// 荷物が増えると一覧が長くなる。**大きな検索は要らない。**
+// 扱いで分かれて、数が見えれば、どこを見ればよいか分かる
+describe('荷物の絞り込み', () => {
+  const packages = [
+    { status: 'draft' as const },
+    { status: 'published' as const },
+    { status: 'published' as const },
+    { status: 'suspended' as const },
+  ]
+
+  it('5つの栓がある（すべて＋4つの扱い）', () => {
+    expect(PACKAGE_FILTERS.map((f) => f.value)).toEqual([
+      'all',
+      'draft',
+      'published',
+      'suspended',
+      'archived',
+    ])
+  })
+
+  it('言い方は一覧の印と同じ', () => {
+    const published = PACKAGE_FILTERS.find((f) => f.value === 'published')
+    expect(published?.label).toBe(STATUS_LABEL.published)
+  })
+
+  it('はじめは全部見せる', () => {
+    expect(filterPackages(packages, 'all')).toHaveLength(4)
+  })
+
+  it('扱いで絞れる', () => {
+    expect(filterPackages(packages, 'published')).toHaveLength(2)
+  })
+
+  it('無いものは空になる', () => {
+    expect(filterPackages(packages, 'archived')).toEqual([])
+  })
+
+  it('件数を数える', () => {
+    expect(countByStatus(packages)).toEqual({
+      draft: 1,
+      published: 2,
+      suspended: 1,
+      archived: 0,
+    })
   })
 })
 

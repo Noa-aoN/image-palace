@@ -34,3 +34,7 @@ production:
   sweep_demo_palaces:
     class: DemoCleanupJob
     schedule: every hour at minute 25
+  # 片付け忘れた下見。放っておくと、公式の宮殿に本物と混ざって残る
+  sweep_studio_previews:
+    command: "Studio::Preview.sweep!"
+    schedule: every hour at minute 40

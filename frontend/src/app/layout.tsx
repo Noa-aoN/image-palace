@@ -7,6 +7,7 @@ import { SettingsBootstrap } from '@/components/features/layout/SettingsBootstra
 import { CookieConsentBanner } from '@/components/features/consent/CookieConsentBanner'
 import { SaveStatusNotice } from '@/components/features/shared/SaveStatusNotice'
 import { DemoBanner } from '@/components/features/demo/DemoBanner'
+import { PreviewBanner } from '@/components/features/studio/PreviewBanner'
 import { Analytics } from '@/components/features/consent/Analytics'
 import { SITE_URL, SITE_NAME, SITE_DESCRIPTION } from '@/lib/site'
 import { THEME_COLOR } from '@/lib/pwa/manifest'
@@ -81,6 +82,9 @@ export default function RootLayout({
         {/* 体験中の帯は**ヘッダーの上**に、流れの中で置く。
             ヘッダーは `relative` なので、浮かせると上に乗って隠してしまう */}
         <DemoBanner />
+        {/* 公式コンテンツの下見も同じ場所に出す。
+            下見は自分の口座に入るので、帯が無いと本物と見分けられない */}
+        <PreviewBanner />
         <AppHeader />
         <div className="flex-1 flex flex-col min-h-0">
           {children}

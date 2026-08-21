@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_08_21_010000) do
+ActiveRecord::Schema[8.1].define(version: 2026_08_21_020000) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
   enable_extension "pg_trgm"
@@ -272,8 +272,9 @@ ActiveRecord::Schema[8.1].define(version: 2026_08_21_010000) do
     t.datetime "updated_at", null: false
     t.uuid "user_id", null: false
     t.index ["package_key", "package_version"], name: "index_content_installations_on_package_key_and_package_version"
-    t.index ["user_id", "package_key"], name: "index_content_installations_on_user_id_and_package_key", unique: true
+    t.index ["user_id", "package_key"], name: "index_content_installations_unique_receipt", unique: true, where: "((source)::text <> 'preview'::text)"
     t.index ["user_id"], name: "index_content_installations_on_user_id"
+    t.index ["user_id"], name: "index_content_installations_single_preview", unique: true, where: "((source)::text = 'preview'::text)"
   end
 
   create_table "content_packages", id: :uuid, default: -> { "gen_random_uuid()" }, force: :cascade do |t|

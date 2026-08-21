@@ -30,7 +30,14 @@ class ContentInstallation < ApplicationRecord
   validates :package_key, presence: true
   validates :package_version, numericality: { only_integer: true, greater_than: 0 }
   validates :source, inclusion: { in: SOURCES }
-  validates :package_key, uniqueness: { scope: :user_id }
+  # **下見は受け取りではない。** すでに受け取っている荷物でも下見できる
+  # （v1 を持ったまま v3 を下見する、はやりたいことそのもの）。
+  # 索引も2つに割ってある（受け取りは鍵ごと1つ / 下見は1人1つ）
+  validates :package_key, uniqueness: { scope: :user_id }, unless: :preview?
+
+  def preview?
+    source == PREVIEW_SOURCE
+  end
 
   scope :free, -> { where(source: FREE_SOURCES) }
   scope :real, -> { where.not(source: PREVIEW_SOURCE) }
@@ -38,6 +45,23 @@ class ContentInstallation < ApplicationRecord
 
   def package
     ContentPackage.find_by(key: package_key, version: package_version)
+  end
+
+  # 受け取って入った実体の id（Item / Box / View）。
+  #
+  # **受け取ったものは原本ではない。**
+  #
+  # 公式の口座で自分の荷物を受け取る／下見すると、複製が公式宮殿そのものに入る。
+  # 名前まで同じなので、原本を選ぶ画面では見分けが付かず、
+  # **受け取った複製から公式コンテンツを作ってしまえる**。
+  # 本番で実際に起きた（デルフォイで受け取った `ITのことば` が2箱目として並んだ）。
+  #
+  # 下見だけでなく**どの受け取りも**外す。入口が違うだけで、起きることは同じ
+  def self.installed_record_ids_for(user, type)
+    return Set.new if user.nil?
+
+    ContentInstallationEntry.where(content_installation_id: where(user_id: user.id).select(:id),
+                                   record_type: type).pluck(:record_id).to_set
   end
 
   # その人が既に持っている、公式由来のカード。

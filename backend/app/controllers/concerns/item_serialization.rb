@@ -12,8 +12,23 @@ module ItemSerialization
       aspect_ratio: item.aspect_ratio,
       title: item.title,
       generation_status: item.generation_status,
+      from_preview: preview_item?(item),
       media: serialize_media(item.primary_media)
     }
+  end
+
+  # 下見で入ったカードの id。**1リクエストに1回だけ引く。**
+  #
+  # 下見は自分の口座に入るので、見た目が本物と変わらない。
+  # 印が無いと、自分で作ったカードと混ざる。
+  #
+  # 引くのは下見に入れる人だけ。**ふつうの利用者には1本も増やさない**
+  def preview_item_ids
+    @preview_item_ids ||= ::Studio::Preview.item_ids_for(try(:current_user))
+  end
+
+  def preview_item?(item)
+    preview_item_ids.include?(item.id)
   end
 
   # スペースのポイント（序数＋ポイント名＋そのポイント画像）。割当カードも返す（暫定）。

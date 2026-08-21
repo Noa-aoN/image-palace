@@ -685,6 +685,8 @@ module Api
           fact_check_acknowledged_at: item.primary_meaning&.fact_check_acknowledged_at,
           tags: item.tags.map { |t| { id: t.id, name: t.name } },
           media: serialize_media(item.primary_media),
+          # 下見で入ったカードには印を付ける（自分のものと混ざらないように）
+          from_preview: preview_item?(item),
           created_at: item.created_at
         }
       end
@@ -693,6 +695,8 @@ module Api
         {
           id: item.id,
           title: item.title,
+          # 下見で入ったカードには印を付ける（自分のものと混ざらないように）
+          from_preview: preview_item?(item),
           # 一覧で名前として出す文字列。設定した項目に値があればそれ、無ければ見出し語。
           # どの項目かは利用者ごとの設定で決まる（別名で覚えている人がいるため）
           headline: headline_for(item),

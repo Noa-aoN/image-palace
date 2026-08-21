@@ -101,6 +101,13 @@ export function StudioSettingsPanel() {
       ) : null}
       {saved ? <p className="text-sm text-muted-foreground">変えました</p> : null}
 
+      {/* **保存先は二重化していない。** 執務室と同じ行を触っている。
+          そう書いておかないと、片方で変えたときもう片方に効いている確信が持てない */}
+      <p className="rounded-lg border border-dashed border-border px-4 py-2 text-xs text-muted-foreground">
+        ここの設定は、執務室（<code>/admin</code>）の機能設定と共通です。
+        どちらで変更しても同じ値が更新されます。
+      </p>
+
       {/* 工房は公開まで届く場所。**合鍵ひとつで公開まで開くのを避ける。**
           執務室と同じ関門を使っているので、案内も同じ場所へ向ける */}
       <section className="space-y-2 rounded-xl border border-border bg-card p-5">

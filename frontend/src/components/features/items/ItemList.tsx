@@ -344,6 +344,17 @@ function ItemCard({ item, selectionMode, selected, onToggle, fit, sizes, working
         >
           {item.headline || item.title}
         </span>
+        {/* 下見で入ったカードは、自分で作ったものと見分けが付かない。
+            **小さく印を出すだけ**にする（専用の画面には変えない） */}
+        {item.from_preview ? (
+          <span
+            className="shrink-0 rounded-full px-1.5 py-0.5 text-[10px] font-medium"
+            style={{ backgroundColor: '#4A3B6B', color: '#fff' }}
+            title="公式コンテンツの下見で入ったカードです。下見を終えると消えます"
+          >
+            下見
+          </span>
+        ) : null}
         <StatusBadge status={item.generation_status} />
       </div>
       {blocks.map((block) => {

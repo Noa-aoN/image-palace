@@ -55,11 +55,23 @@ module Api
           render json: { errors: e.record.errors.full_messages }, status: :unprocessable_entity
         end
 
-        # 選べる原本。公式の口座にある箱とキャンバス
+        # 選べる原本。公式の口座にある箱とキャンバス。
+        #
+        # **受け取ったものは原本ではない。**
+        # 公式の口座で自分の荷物を受け取る／下見すると、複製が公式宮殿そのものに入る。
+        # 名前まで同じなので選ぶ画面では見分けが付かず、
+        # **複製から公式コンテンツを作ってしまえる**
         def sources
+          preview_boxes = ContentInstallation.installed_record_ids_for(official, "Box")
+          preview_views = ContentInstallation.installed_record_ids_for(official, "View")
+
           render json: {
-            boxes: official.boxes.order(:created_at).map { |b| serialize_box(b) },
-            views: official.views.order(:created_at).map { |v| serialize_view(v) }
+            boxes: official.boxes.order(:created_at)
+                           .reject { |b| preview_boxes.include?(b.id) }
+                           .map { |b| serialize_box(b) },
+            views: official.views.order(:created_at)
+                           .reject { |v| preview_views.include?(v.id) }
+                           .map { |v| serialize_view(v) }
           }
         end
 
@@ -76,6 +88,10 @@ module Api
             # サムネは別の添付。**先に読まないと1枚ごとに1本増える**
             { medias: [ { file_attachment: :blob }, { thumb_attachment: :blob } ] }
           ).order(:created_at).limit(ITEM_LIMIT + 1).to_a
+
+          # 受け取った複製はここに出さない。**ここは原本の一覧**
+          preview_items = ContentInstallation.installed_record_ids_for(official, "Item")
+          rows = rows.reject { |item| preview_items.include?(item.id) }
 
           truncated = rows.size > ITEM_LIMIT
           rows = rows.first(ITEM_LIMIT)
@@ -106,8 +122,13 @@ module Api
         # 選んだものを、下書きとして起こす。
         # **ここで欠けが見つかれば、公開の前に止まる**
         def draft
-          boxes = official.boxes.where(id: params[:box_ids])
-          views = official.views.where(id: params[:view_ids])
+          # **受け取った複製は選べない。** 画面から外してあるが、
+          # id を直に送れば通ってしまうので、こちらでも閉じる
+          preview_boxes = ContentInstallation.installed_record_ids_for(official, "Box")
+          preview_views = ContentInstallation.installed_record_ids_for(official, "View")
+
+          boxes = official.boxes.where(id: params[:box_ids]).reject { |b| preview_boxes.include?(b.id) }
+          views = official.views.where(id: params[:view_ids]).reject { |v| preview_views.include?(v.id) }
 
           if boxes.empty? && views.empty?
             return render json: { error: "箱かキャンバスを1つ以上選んでください" }, status: :unprocessable_entity
@@ -134,25 +155,37 @@ module Api
         # 何度でも押せるように、前回の下見は先に片付ける
         def preview
           package = find_package!
-          discard_previous_preview!(package)
-
-          result = ContentPackages::Importer.call(user: current_user, payload: package.payload)
-          record_preview!(package, result)
+          installation, = ::Studio::Preview.start!(user: current_user, package: package)
 
           audit!("content_package.preview", package)
-          render json: {
-            box_id: result.boxes.first&.id,
-            view_id: result.views.first&.id,
-            items: result.created_items.size
-          }
+          render json: serialize_preview(installation)
         rescue ContentPackages::Payload::Error => e
           render json: { error: e.message }, status: :unprocessable_entity
         end
 
-        # 下見で入れたものを片付ける
+        # いま下見しているもの。**普通の画面に出す帯が、これを見る。**
+        #
+        # 下見は自分の口座に入るので、見た目は本物と変わらない。
+        # 何を見ているのかが分からなくなるので、いつでも引ける形にしておく
+        def current_preview
+          installation = ::Studio::Preview.current(current_user)
+          return render json: { active: false } if installation.nil?
+
+          render json: serialize_preview(installation)
+        end
+
+        # 下見を終える。**荷物を問わず、いま入っている下見を片付ける。**
+        #
+        # 帯から押すときは、どの荷物を見ていたかを覚えていない。
+        # 「終わらせる」だけで終われるようにする
+        def end_preview
+          ::Studio::Preview.discard!(current_user)
+          head :no_content
+        end
+
+        # 下見で入れたものを片付ける（荷物を指して片付ける道）
         def discard_preview
-          package = find_package!
-          discard_previous_preview!(package)
+          ::Studio::Preview.discard!(current_user)
           head :no_content
         end
 
@@ -306,39 +339,6 @@ module Api
           package.draft? ? package.publish_draft! : package.resume!
         end
 
-        # 下見は**その人の口座に入る**ので、跡を残して片付けられるようにする。
-        # 印は受け取りの記録に付ける（`source: "preview"`）
-        def record_preview!(package, result)
-          installation = ContentInstallation.create!(
-            user: current_user, package_key: package.key, package_version: package.version,
-            source: "preview", installed_at: Time.current
-          )
-          rows = result.items_by_local_key.map do |local_key, item|
-            { content_installation_id: installation.id, record_type: "Item", record_id: item.id,
-              package_local_key: local_key, origin_key: result.origin_keys[local_key] }
-          end
-          (result.boxes + result.views).each do |record|
-            rows << { content_installation_id: installation.id, record_type: record.class.name,
-                      record_id: record.id, package_local_key: nil, origin_key: nil }
-          end
-          now = Time.current
-          ContentInstallationEntry.insert_all!(rows.map { |r| r.merge(created_at: now, updated_at: now) })
-        end
-
-        # 前の下見を片付ける。**カードごと消す**（残すと本物と混ざる）
-        def discard_previous_preview!(package)
-          previous = ContentInstallation.where(
-            user_id: current_user.id, package_key: package.key, source: "preview"
-          )
-          previous.each do |installation|
-            installation.entries.each do |entry|
-              entry.record&.destroy
-            rescue StandardError => e
-              Rails.logger.warn "[Studio] 下見の片付けに失敗: #{e.class}: #{e.message}"
-            end
-            installation.destroy!
-          end
-        end
 
         def update_allowance_limit!(credits)
           return if credits.negative?
@@ -428,6 +428,29 @@ module Api
             delivering_version: ContentPackage.latest_published(package.key)&.version,
             # 何人が受け取ったか（下見は数えない）
             installs: installs_for(package)
+          }
+        end
+
+        # 下見の様子。**開く先と、いつ消えるかまで返す。**
+        # 帯にも工房室にも同じ形を渡す
+        def serialize_preview(installation)
+          points = ::Studio::Preview.entry_points(installation)
+          package = installation.package
+
+          {
+            active: true,
+            key: installation.package_key,
+            version: installation.package_version,
+            name: package&.name,
+            # **何を見ているのかを、色ではなく文字で言えるように。**
+            # 下書きの下見と、出しているものの下見は、意味がまるで違う
+            status: package&.status,
+            box_id: points[:box_id],
+            view_id: points[:view_id],
+            items: installation.entries.where(record_type: "Item").count,
+            expires_at: ::Studio::Preview.expires_at(installation),
+            # 原本が作り直されている＝いま見ているものは古い
+            stale: ::Studio::Preview.stale?(installation)
           }
         end
 
