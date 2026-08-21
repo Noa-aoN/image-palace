@@ -314,6 +314,74 @@ RSpec.describe "体験用の宮殿", type: :request do
     end
   end
 
+  # **同じ画面から二重に建てさせない。**
+  #
+  # 戻るための合鍵は1回目の返事を受け取ってからしか持てないので、
+  # 「初めての1回」がほぼ同時に2本来ると宮殿が2つ建つ。
+  # 画面が自分で作って持つ合言葉で塞ぐ
+  describe "同じ画面から二重に建てない" do
+    it "合言葉が同じなら、2回目は建て直さずに戻る" do
+      post "/api/v1/demo", params: { client_key: "same-key" }, as: :json
+      first = json_response.dig("user", "id")
+
+      expect { post "/api/v1/demo", params: { client_key: "same-key" }, as: :json }
+        .not_to change(User, :count)
+      expect(json_response.dig("user", "id")).to eq(first)
+      expect(json_response["reused"]).to be(true)
+    end
+
+    it "合言葉が違えば、別の宮殿が建つ" do
+      post "/api/v1/demo", params: { client_key: "key-a" }, as: :json
+      post "/api/v1/demo", params: { client_key: "key-b" }, as: :json
+
+      expect(User.demo_accounts.count).to eq(2)
+    end
+
+    # **索引で守る。** 画面側の連打よけが効かなくても、DB が片方を落とす
+    it "同じ合言葉の口座は、DB が2つ作らせない" do
+      post "/api/v1/demo", params: { client_key: "same-key" }, as: :json
+
+      expect {
+        User.create!(email: "demo-#{SecureRandom.hex(4)}@#{User::DEMO_EMAIL_DOMAIN}",
+                     demo_client_key: "same-key", password: "aA1!aaaaaa",
+                     password_confirmation: "aA1!aaaaaa", confirmed_at: Time.current)
+      }.to raise_error(ActiveRecord::RecordNotUnique)
+    end
+
+    # 索引が落としたときは、先に建った宮殿を引き直して返す
+    it "索引に落とされても、先に建った宮殿を返す" do
+      post "/api/v1/demo", params: { client_key: "same-key" }, as: :json
+      first = User.demo_accounts.last
+
+      # 2本目が「生きているものを見つけられなかった」状況を作る
+      allow_any_instance_of(Demo::Session).to receive(:find_by_client_key).and_return(nil, first)
+
+      expect { post "/api/v1/demo", params: { client_key: "same-key" }, as: :json }
+        .not_to change(User, :count)
+      expect(response).to have_http_status(:success)
+      expect(json_response.dig("user", "id")).to eq(first.id)
+    end
+
+    it "合言葉が無くても、これまでどおり建つ" do
+      post "/api/v1/demo", as: :json
+
+      expect(response).to have_http_status(:success)
+      expect(User.demo_accounts.count).to eq(1)
+    end
+
+    # 寿命が切れた宮殿の合言葉では戻らない。**新しく建てる**
+    it "寿命が切れていれば、同じ合言葉でも建て直す" do
+      post "/api/v1/demo", params: { client_key: "same-key" }, as: :json
+      old = User.demo_accounts.last
+      old.update_column(:created_at, Demo::Session::LIFETIME.ago - 1.minute) # rubocop:disable Rails/SkipsModelValidations
+      old.update_column(:demo_client_key, nil) # rubocop:disable Rails/SkipsModelValidations
+
+      post "/api/v1/demo", params: { client_key: "same-key" }, as: :json
+
+      expect(json_response.dig("user", "id")).not_to eq(old.id)
+    end
+  end
+
   describe "片付け" do
     it "寿命の切れたものだけ消す" do
       post "/api/v1/demo", as: :json
@@ -322,7 +390,7 @@ RSpec.describe "体験用の宮殿", type: :request do
       post "/api/v1/demo", as: :json
       fresh = User.demo_accounts.order(:created_at).last
 
-      expect(DemoCleanupJob.new.perform).to eq(1)
+      expect(EphemeralCleanupJob.new.perform[:demo]).to eq(1)
 
       expect(User.find_by(id: old.id)).to be_nil
       expect(User.find_by(id: fresh.id)).to be_present
@@ -331,7 +399,7 @@ RSpec.describe "体験用の宮殿", type: :request do
     it "普通の利用者には触れない" do
       normal = create(:user, :confirmed)
 
-      DemoCleanupJob.new.perform
+      EphemeralCleanupJob.new.perform
 
       expect(User.find_by(id: normal.id)).to be_present
       expect(User.find_by(id: author.id)).to be_present
@@ -342,7 +410,7 @@ RSpec.describe "体験用の宮殿", type: :request do
       user = User.demo_accounts.last
       user.update_column(:created_at, Demo::Session::LIFETIME.ago - 1.hour) # rubocop:disable Rails/SkipsModelValidations
 
-      expect { DemoCleanupJob.new.perform }.to change(Item, :count).by(-2)
+      expect { EphemeralCleanupJob.new.perform }.to change(Item, :count).by(-2)
       expect(Box.where(user_id: user.id)).to be_empty
     end
 
@@ -352,7 +420,7 @@ RSpec.describe "体験用の宮殿", type: :request do
       user = User.demo_accounts.last
       user.update_column(:created_at, Demo::Session::LIFETIME.ago - 1.hour) # rubocop:disable Rails/SkipsModelValidations
 
-      expect { perform_enqueued_jobs { DemoCleanupJob.new.perform } }
+      expect { perform_enqueued_jobs { EphemeralCleanupJob.new.perform } }
         .not_to change { author.items.map { |i| i.primary_media.file.attached? } }
     end
   end

@@ -22,8 +22,12 @@ module Studio
   # 2つ並ぶと、どちらを見ているのか分からなくなる。
   # DB の索引でも1人1つに決めてある（`index_content_installations_single_preview`）。
   class Preview
-    # 放っておいても消える。**片付け忘れた下見が宮殿に残り続けない**ように
-    LIFETIME = 24.hours
+    # **保持するためのものではない。**
+    #
+    # 「下見を終了」を押せばその場で消える。それが本筋。
+    # ここにあるのは**閉じ忘れの保険**で、押さずに離れた下見を
+    # 公式宮殿に残し続けないための上限。体験の宮殿と同じ長さにしてある
+    LIFETIME = 2.hours
 
     SOURCE = ContentInstallation::PREVIEW_SOURCE
 
@@ -128,6 +132,10 @@ module Studio
       private
 
       def destroy_records!(installation)
+        # 絵は原本と分け合っている。**紐だけ先に外して、無駄な後始末を積まない。**
+        # 範囲は**下見で入ったカードだけ**（口座で区切ると原本の紐まで外れる）
+        Ephemeral::SharedImages.detach!(installation.entries.where(record_type: "Item").select(:record_id))
+
         installation.entries.each do |entry|
           entry.record&.destroy
         rescue StandardError => e

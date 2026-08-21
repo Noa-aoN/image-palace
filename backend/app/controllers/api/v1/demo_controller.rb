@@ -48,7 +48,8 @@ module Api
       def create
         # 名乗っていれば見る（準備中でも、制作の権限があれば入れる）
         set_user_by_token
-        result = ::Demo::Session.call(resume_token: params[:resume_token], viewer: current_user)
+        result = ::Demo::Session.call(resume_token: params[:resume_token],
+                                      client_key: params[:client_key], viewer: current_user)
         user = result.user
 
         render json: {

@@ -39,8 +39,18 @@ class ContentInstallation < ApplicationRecord
     source == PREVIEW_SOURCE
   end
 
+  # 一時的なもの。**正式な数に入れない。**
+  #
+  #   preview      … 工房室の下見。押せば消えるし、放っておいても消える
+  #   demo_signup  … 体験用の宮殿。使い捨ての口座に入る
+  #
+  # どちらも「配った数」ではない。混ぜると、試した回数が実績に見える
+  EPHEMERAL_SOURCES = %w[preview demo_signup].freeze
+
   scope :free, -> { where(source: FREE_SOURCES) }
   scope :real, -> { where.not(source: PREVIEW_SOURCE) }
+  # 数えてよい受け取り。**一時的なものを外す**
+  scope :counted, -> { where.not(source: EPHEMERAL_SOURCES) }
   scope :recent, -> { order(installed_at: :desc) }
 
   def package

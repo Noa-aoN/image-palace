@@ -1,5 +1,5 @@
 import { apiClient } from '@/lib/api/client'
-import { clearResumeToken, readResumeToken, saveResumeToken } from '@/lib/demo/session'
+import { clearResumeToken, readOrCreateClientKey, readResumeToken, saveResumeToken } from '@/lib/demo/session'
 import type { AuthTokens, User } from '@/types/auth'
 
 type DemoResponse = {
@@ -56,6 +56,10 @@ export async function enterDemo(): Promise<DemoSession> {
   try {
     const res = await apiClient.post<DemoResponse>('/api/v1/demo', {
       resume_token: readResumeToken(),
+      // **1回目から持てる合言葉。**
+      // 戻るための合鍵は返事を受け取ってからしか持てないので、
+      // 初めての1回がほぼ同時に2本出ると宮殿が2つ建つ。こちらで塞ぐ
+      client_key: readOrCreateClientKey(),
     })
 
     saveResumeToken(res.data.resume_token)
