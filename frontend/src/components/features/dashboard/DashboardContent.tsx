@@ -229,7 +229,11 @@ export function DashboardContent() {
           主人を先に置くのは、**まず自分の話**だから。残高は「あと何ができるか」の話で、
           自分が何者かを見てからのほうが読み取りやすい */}
       <div className="grid gap-6 lg:grid-cols-2 lg:items-stretch">
-      <PalaceLordCard tier={billing?.plan?.tier ?? null} />
+      {/* **丸ごと灰色にする。** 勲章も入居日も位も、使い捨ての口座では意味が無い。
+          消さずに置くのは、本物の宮殿に何があるのかが見えたほうがよいため */}
+      <DemoLockBlock className="flex flex-col">
+        <PalaceLordCard tier={billing?.plan?.tier ?? null} />
+      </DemoLockBlock>
 
       {/* **体験中は使えない。** クレジットも支払いも、使い捨ての口座には無い。
           消さずに灰色で置く（本物の宮殿に何があるのかは見えたほうがよい） */}

@@ -14,7 +14,7 @@ import { getAchievementSummary, type AchievementSummary, type RewardKind } from 
 import { getSettings } from '@/lib/api/settings'
 
 /**
- * 「宮殿の主人」。生成資産（クレジット）の隣に並べる、本人のステータス面。
+ * 「宮殿の主人情報」。生成資産（クレジット）の隣に並べる、本人のステータス面。
  *
  * 名乗っている称号と掲げている勲章は、アチーブメントで選んだものがそのまま出る。
  * 選ぶ場所と出る場所が違うと、選んだ意味が伝わらない。
@@ -52,7 +52,7 @@ export function PalaceLordCard({ tier }: { tier: string | null }) {
 
   return (
     <section className="flex flex-col space-y-3">
-      <h2 className="text-base font-semibold">宮殿の主人</h2>
+      <h2 className="text-base font-semibold">宮殿の主人情報</h2>
       {/*
         札そのものはリンクにしない。**中に釦と別の行き先があるため。**
         全体を包んでいたころは、「?」を押しても獲得物の絵を押しても、

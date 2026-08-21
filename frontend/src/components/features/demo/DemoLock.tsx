@@ -3,6 +3,7 @@
 import { useAuthStore } from '@/stores/auth'
 import { isDemoUser } from '@/lib/demo/session'
 import { DEMO_LOCKED_HINT } from '@/lib/demo/navigation'
+import { Tooltip } from '@/components/ui/tooltip'
 
 /**
  * いま体験中かどうか。
@@ -26,6 +27,9 @@ export function useIsDemo(): boolean {
  * `pointer-events-none` で中身ごと押せなくするが、**外側では拾う**。
  * そうしないと、なぜ押せないのかを出す手立てが無くなる
  * （中が全部無反応だと、ホバーも起きない）。
+ *
+ * 理由は `title` ではなく `Tooltip` で出す。標準の `title` は出るまで約1秒かかり、
+ * **迷って手が止まってから**ようやく出るので間に合わない。
  */
 export function DemoLock({
   children,
@@ -43,13 +47,11 @@ export function DemoLock({
   if (!locked) return <>{children}</>
 
   return (
-    <span
-      aria-disabled
-      title={DEMO_LOCKED_HINT}
-      className={`inline-flex cursor-not-allowed opacity-40 ${className}`}
-    >
-      <span className="pointer-events-none contents">{children}</span>
-    </span>
+    <Tooltip label={DEMO_LOCKED_HINT}>
+      <span aria-disabled className={`inline-flex cursor-not-allowed opacity-40 ${className}`}>
+        <span className="pointer-events-none contents">{children}</span>
+      </span>
+    </Tooltip>
   )
 }
 
@@ -74,12 +76,10 @@ export function DemoLockBlock({
   if (!locked) return <>{children}</>
 
   return (
-    <div
-      aria-disabled
-      title={DEMO_LOCKED_HINT}
-      className={`cursor-not-allowed opacity-40 ${className}`}
-    >
-      <div className="pointer-events-none">{children}</div>
-    </div>
+    <Tooltip label={DEMO_LOCKED_HINT}>
+      <div aria-disabled className={`cursor-not-allowed opacity-40 ${className}`}>
+        <div className="pointer-events-none">{children}</div>
+      </div>
+    </Tooltip>
   )
 }
