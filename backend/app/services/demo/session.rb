@@ -27,8 +27,18 @@ module Demo
     #
     # **最後に触ってから、にはしない。** 正確に取るには手が要るし
     # （`last_seen_at` は1日1回しか動かない）、
-    # 消えても押し直せば同じものが建つので、規則は1つで足りる
-    LIFETIME = 24.hours
+    # **保持するためのものではない。**
+    #
+    # 「体験を終える」を押せばその場で消える。それが本筋。
+    # ここにあるのは**閉じ忘れ・離脱の保険**で、押さずに去った宮殿を
+    # いつまでも立たせておかないための上限。
+    #
+    # 中身は誰が入っても毎回まったく同じで、失って困るものが1つも無い。
+    # 消えていたら、また建てればよい。
+    #
+    # 2時間は「タブを閉じて開き直しただけで消える」を避けるための安全域。
+    # 表示の「約2時間で片付きます」もここを見ている
+    LIFETIME = 2.hours
 
     # 1日に建てられる数。想定（数十〜100人）の5倍
     DAILY_CAP = 500
@@ -69,10 +79,12 @@ module Demo
       id.presence
     end
 
-    # @param resume_token [String, nil] 画面が持っている合鍵
+    # @param resume_token [String, nil] 画面が持っている合鍵（2回目以降）
+    # @param client_key [String, nil] 画面が自分で作って持つ合言葉（1回目から持てる）
     # @param viewer [User, nil] いま名乗っている人。**準備中でも入れるかの判断に使う**
-    def initialize(resume_token: nil, viewer: nil)
+    def initialize(resume_token: nil, client_key: nil, viewer: nil)
       @resume_token = resume_token
+      @client_key = client_key.presence
       @viewer = viewer
     end
 
@@ -96,18 +108,39 @@ module Demo
         raise Unavailable, "体験版は現在準備中です"
       end
 
-      reused = find_living(self.class.user_from_resume_token(@resume_token))
+      reused = find_living(self.class.user_from_resume_token(@resume_token)) || find_by_client_key
       return Result.new(user: reused, created: false, package: nil) if reused
 
       ensure_capacity!
       build!
+    rescue ActiveRecord::RecordNotUnique
+      # 同じ画面から**ほぼ同時に2本**来た。索引が片方を落としたので、
+      # 先に建った宮殿を引き直して返す。**2つ建てない**
+      existing = find_by_client_key
+      raise if existing.nil?
+
+      Result.new(user: existing, created: false, package: nil)
     end
 
-    # 寿命切れを片付ける。**1時間おきに呼ぶ**ので、1回の量が小さく保たれる
-    def self.sweep!(now: Time.current)
-      expired = User.demo_accounts.where(created_at: ...(now - LIFETIME))
-      count = expired.count
-      expired.find_each(&:destroy!)
+    # 1回の掃除で片付ける上限。
+    #
+    # **1宮殿を消すのに約1,900本の問い合わせが要る**（カード74枚で実測）。
+    # 本番の DB は隣の部屋には無いので、まとめて300宮殿を消すと
+    # 1回の掃除が数十分にわたって走り続けることになる。
+    #
+    # 1回を短く保ち、代わりに何度も回す
+    SWEEP_BATCH = 30
+
+    # 寿命切れを片付ける。**上限まで**。残りは次の回で
+    def self.sweep!(now: Time.current, limit: SWEEP_BATCH)
+      expired = User.demo_accounts.where(created_at: ...(now - LIFETIME)).limit(limit)
+      count = 0
+      expired.each do |user|
+        # 絵は原本と分け合っている。**紐だけ先に外して、無駄な後始末を積まない**
+        Ephemeral::SharedImages.detach!(user.items.select(:id))
+        user.destroy!
+        count += 1
+      end
       count
     end
 
@@ -116,7 +149,18 @@ module Demo
     def find_living(id)
       return nil if id.blank?
 
-      User.demo_accounts.where(created_at: (Time.current - LIFETIME)..).find_by(id: id)
+      living.find_by(id: id)
+    end
+
+    # 画面が自分で持っている合言葉から引く。**1回目の返事を待たずに使える**
+    def find_by_client_key
+      return nil if @client_key.blank?
+
+      living.find_by(demo_client_key: @client_key)
+    end
+
+    def living
+      User.demo_accounts.where(created_at: (Time.current - LIFETIME)..)
     end
 
     # **数は DB で数える。** Rack::Attack の絞りはプロセスごとに別勘定で、
@@ -153,6 +197,7 @@ module Demo
       password = SecureRandom.urlsafe_base64(32)
       User.create!(
         email: "demo-#{SecureRandom.hex(8)}@#{User::DEMO_EMAIL_DOMAIN}",
+        demo_client_key: @client_key,
         password: password, password_confirmation: password,
         # 確認のメールは送れないし、送る相手も居ない
         confirmed_at: Time.current,

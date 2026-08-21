@@ -4,6 +4,7 @@ import {
   clearResumeToken,
   daysLeft,
   isDemoUser,
+  readOrCreateClientKey,
   readResumeToken,
   remainingLabel,
   saveResumeToken,
@@ -121,5 +122,40 @@ describe('体験用の宮殿の覚え書き', () => {
       expect(remainingLabel(null, now)).toBeNull()
       expect(remainingLabel('でたらめ', now)).toBeNull()
     })
+  })
+})
+
+// 合鍵は「1回目の返事」を受け取ってからしか持てない。
+// だから初めての1回がほぼ同時に2本出ると、宮殿が2つ建つ。
+// 合言葉は要求を出す前に作れるので、その隙間を塞げる
+describe('画面が自分で持つ合言葉', () => {
+  beforeEach(() => window.localStorage.clear())
+
+  it('はじめて呼ぶと作られる', () => {
+    const key = readOrCreateClientKey()
+
+    expect(key).toBeTruthy()
+    expect(window.localStorage.getItem('demo-client-key')).toBe(key)
+  })
+
+  it('2回目は同じものが返る', () => {
+    expect(readOrCreateClientKey()).toBe(readOrCreateClientKey())
+  })
+
+  // **合鍵とは別の引き出しに置く。** 体験を終えると合鍵は捨てるが、
+  // 合言葉は残ってよい（サーバーは生きている宮殿しか引かない）
+  it('合鍵を捨てても残る', () => {
+    const key = readOrCreateClientKey()
+    clearResumeToken()
+
+    expect(readOrCreateClientKey()).toBe(key)
+  })
+
+  it('合鍵とは別の鍵で持つ', () => {
+    readOrCreateClientKey()
+    saveResumeToken('resume-abc')
+
+    expect(window.localStorage.getItem('demo-client-key'))
+      .not.toBe(window.localStorage.getItem('demo-resume-token'))
   })
 })

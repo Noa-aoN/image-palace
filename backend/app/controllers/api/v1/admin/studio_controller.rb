@@ -461,9 +461,11 @@ module Api
           }
         end
 
+        # 何人が受け取ったか。**一時的なものは数えない**
+        # （下見も、使い捨ての体験用の宮殿も、配った数ではない）
         def installs_for(package)
-          ContentInstallation.where(package_key: package.key, package_version: package.version)
-                             .where.not(source: "preview").count
+          ContentInstallation.counted
+                             .where(package_key: package.key, package_version: package.version).count
         end
 
         def serialize_box(box)

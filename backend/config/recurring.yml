@@ -29,12 +29,11 @@ production:
   recover_stuck_generations:
     class: RecoverStuckGenerationsJob
     schedule: every 5 minutes
-  # 寿命の切れた体験用の宮殿。1時間おきにすると、1回の削除量が小さく保たれる
-  # （まとめて1日1回にすると、その1回が本番の DB に効いてしまう）
-  sweep_demo_palaces:
-    class: DemoCleanupJob
-    schedule: every hour at minute 25
-  # 片付け忘れた下見。放っておくと、公式の宮殿に本物と混ざって残る
-  sweep_studio_previews:
-    command: "Studio::Preview.sweep!"
-    schedule: every hour at minute 40
+  # 一時的なもの（体験用の宮殿・工房室の下見）を片付ける。
+  #
+  # **10分おき。** 1宮殿を消すのに約1,900本の問い合わせが要るので、
+  # 1回の量に上限（30）を置き、代わりに何度も回す。
+  # 上限 30 × 6回/時 = 180/時で、1日に建てられる上限（500）に十分追いつく
+  sweep_ephemeral:
+    class: EphemeralCleanupJob
+    schedule: every 10 minutes

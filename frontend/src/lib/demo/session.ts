@@ -10,6 +10,15 @@
 
 const STORAGE_KEY = 'demo-resume-token'
 
+// 画面が自分で作って持つ合言葉。
+//
+// **合鍵は1回目の返事を受け取ってからしか持てない。**
+// だから「初めての1回」がほぼ同時に2本出ると、宮殿が2つ建つ。
+// こちらは要求を出す前に作れるので、その隙間を塞げる。
+//
+// サーバー側は一意索引で守っている。ここが無くても宮殿は建つ（塞げないだけ）
+const CLIENT_KEY = 'demo-client-key'
+
 /** その宮殿が体験用かどうかの目印。バックエンドと綴りを揃える */
 export const DEMO_EMAIL_DOMAIN = 'demo.invalid'
 
@@ -31,6 +40,28 @@ export function saveResumeToken(token: string | null | undefined): void {
     window.localStorage.setItem(STORAGE_KEY, token)
   } catch {
     // 保存できなくても止めない
+  }
+}
+
+/**
+ * 合言葉を読む。無ければ作って覚える。
+ *
+ * **消さない。** 体験を終えても同じ合言葉のままでよく、
+ * サーバーは「生きている宮殿」だけを引くので、消えたあとは新しく建つ。
+ */
+export function readOrCreateClientKey(): string | null {
+  if (typeof window === 'undefined') return null
+
+  try {
+    const existing = window.localStorage.getItem(CLIENT_KEY)
+    if (existing) return existing
+
+    const created = window.crypto?.randomUUID?.() ?? `k-${Date.now()}-${Math.random().toString(36).slice(2)}`
+    window.localStorage.setItem(CLIENT_KEY, created)
+    return created
+  } catch {
+    // 保存が使えない（プライベートモード等）。合言葉が無いだけで、宮殿は建つ
+    return null
   }
 }
 
