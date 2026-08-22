@@ -117,7 +117,7 @@ function PropertyEmptyState({
     >
       <div className="space-y-3">
         <p className="text-sm text-muted-foreground">
-          Wikipedia の解説、読み仮名、語源、発音、例文などを、このカードに持たせられます。
+          Wikipedia の解説、読み方（言語ごとにも持てます）、語源、発音、例文などを、このカードに持たせられます。
           {/* 押す前に知らせる。218枚に一度に反映されるので、知らないと驚きになる */}
           <span className="text-foreground">
             {' '}足した項目は「{typeLabel}」のカード全部に出ます。
