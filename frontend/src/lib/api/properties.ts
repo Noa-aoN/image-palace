@@ -281,11 +281,22 @@ export const PROPERTY_PRESETS: {
       // 事実の項目と混ぜると、直すときの物差しが変わってしまう
       { key: 'substitute_word', label: '変換語', value_type: 'text', description: '覚えにくい語を、音の似た身近な語へ置き換えたもの。' },
       { key: 'substitute_image', label: '変換イメージ', value_type: 'longtext', description: '変換語から思い浮かべる場面。奇抜なほど残る。' },
-      { key: 'note', label: 'メモ', value_type: 'longtext', description: '自分のための覚書。決まった形はない。' },
       // 見出しごと自由に決められる欄。決まった項目に収まらないもののために置く。
       // 同じものを何枚でも足せるよう、鍵は追加時に採番する
       { key: 'free', label: '自由欄', value_type: 'free_text', description: '見出しも中身もカードごとに自由。' },
       { key: 'scene', label: '自由イメージ', value_type: 'free_image', description: '小見出しと指示で、この語の一場面を描く。' },
+    ],
+  },
+  {
+    // **整理のためのもの。** 覚える対象でも、覚え方でもない。
+    // 群を分けないと「覚えた」の印と「語源」が同じ重さで並ぶ
+    group: '整理する',
+    category: 'admin',
+    items: [
+      { key: 'learned', label: '覚えた', value_type: 'boolean', description: '覚え終えたかどうか。触っていない状態と「まだ」は別に持つ。' },
+      { key: 'status', label: '状態', value_type: 'text', description: '下書き・確認待ち・完成など、自分で決める段階。' },
+      { key: 'note', label: 'メモ', value_type: 'longtext', description: '自分のための覚書。決まった形はない。' },
+      { key: 'review_note', label: '見直しの記録', value_type: 'longtext', description: 'いつ・何を直したか。あとで辿るためのもの。' },
     ],
   },
   {
