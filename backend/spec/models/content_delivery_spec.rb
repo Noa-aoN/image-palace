@@ -154,7 +154,8 @@ RSpec.describe ContentDelivery do
 
       expect(state["delphi"][:pending]).to be(false)
       expect(state["demo"][:pending]).to be(false)
-      expect(state["campaign"][:pending]).to be(true)
+      # 引き換えコードは、運営画面でコードを作れる（受け取り側もある）
+      expect(state["campaign"][:pending]).to be(false)
       expect(state["mission"][:pending]).to be(true)
       expect(state["purchase"][:pending]).to be(true)
     end
