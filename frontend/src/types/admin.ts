@@ -243,10 +243,12 @@ export interface AdminAiModelsPage {
 
 /** 引き換えコード（運営が発行し、利用者が入力してクレジットを受け取る） */
 export interface AdminCampaignCode {
+  /** 荷物を配るコードのとき、どの荷物を配るか */
+  package_key?: string | null
   id: string
   code: string
   label: string
-  reward_type: 'credits' | 'item'
+  reward_type: 'credits' | 'package' | 'item'
   amount: number
   item_kind: string | null
   starts_at: string | null
@@ -264,6 +266,8 @@ export interface AdminCampaignCode {
 }
 
 export interface AdminCampaignCodesPage {
+  /** 引き換えコードで渡せる荷物（届け先に入っているものだけ） */
+  packages?: { key: string; name: string; items: number }[]
   codes: AdminCampaignCode[]
   reward_types: string[]
   suggested_code: string

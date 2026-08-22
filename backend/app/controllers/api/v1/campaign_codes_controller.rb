@@ -40,6 +40,10 @@ module Api
           credits: result.credits,
           label: result.label,
           expires_at: result.expires_at,
+          # 荷物を受け取ったときは、何が何枚入ったかを返す。
+          # **クレジットと同じ形で返すと「0クレジット受け取りました」になる**
+          package: result.package,
+          items: result.items,
           # 受け取り直後の残高。画面が別途問い合わせなくて済む
           available_credits: current_user.reload.available_credits
         }, status: :ok

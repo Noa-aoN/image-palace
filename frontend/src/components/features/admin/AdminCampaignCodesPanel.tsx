@@ -12,7 +12,9 @@ import {
   updateAdminCampaignCode,
   deleteAdminCampaignCode,
 } from '@/lib/api/admin'
-import type { AdminCampaignCode } from '@/types/admin'
+import type { AdminCampaignCode, AdminCampaignCodesPage } from '@/types/admin'
+
+type CampaignPackage = NonNullable<AdminCampaignCodesPage['packages']>[number]
 import { useCanOperate } from '@/hooks/useAdminPermissions'
 import { ReadOnlyNotice } from '@/components/features/admin/ReadOnlyNotice'
 
@@ -33,6 +35,10 @@ export function AdminCampaignCodesPanel() {
   const [busy, setBusy] = useState<string | null>(null)
 
   const [label, setLabel] = useState('')
+  // 何を配るか。既定はクレジット（これまでどおり）
+  const [rewardType, setRewardType] = useState<'credits' | 'package'>('credits')
+  const [packageKey, setPackageKey] = useState('')
+  const [packages, setPackages] = useState<CampaignPackage[]>([])
   const [amount, setAmount] = useState('3')
   const [maxRedemptions, setMaxRedemptions] = useState('')
   const [expiresAt, setExpiresAt] = useState('')
@@ -40,25 +46,35 @@ export function AdminCampaignCodesPanel() {
 
   useEffect(() => {
     getAdminCampaignCodes()
-      .then((page) => setCodes(page.codes))
+      .then((page) => {
+        setCodes(page.codes)
+        setPackages(page.packages ?? [])
+      })
       .catch(() => setError('読み込めませんでした。'))
       .finally(() => setLoading(false))
   }, [])
 
+  const givesPackage = rewardType === 'package'
+
   const create = async () => {
     if (!label.trim() || busy) return
+    if (givesPackage && !packageKey) return
     setBusy('new')
     setError(null)
     try {
       const created = await createAdminCampaignCode({
         label: label.trim(),
-        amount: Number(amount) || 0,
+        reward_type: rewardType,
+        // 荷物を配らないコードに鍵を残さない（型を変えたときに黙って配る）
+        package_key: givesPackage ? packageKey : null,
+        amount: givesPackage ? 0 : Number(amount) || 0,
         max_redemptions: maxRedemptions ? Number(maxRedemptions) : null,
         expires_at: expiresAt || null,
         credit_valid_days: creditValidDays ? Number(creditValidDays) : null,
       })
       setCodes((rows) => [created, ...rows])
       setLabel('')
+      setPackageKey('')
       setMaxRedemptions('')
       setExpiresAt('')
       setCreditValidDays('')
@@ -106,7 +122,7 @@ export function AdminCampaignCodesPanel() {
         <h2 className="text-lg font-semibold">引き換えコード</h2>
       </div>
       <p className="text-sm text-muted-foreground">
-        コードを発行すると、受け取った人の残高にクレジットが足されます。1人1回までです。
+        コードを発行すると、受け取った人にクレジットか公式コンテンツが渡ります。1人1回までです。
         <br />
         配りすぎを止めるのは<strong className="text-foreground">受け取れる人数</strong>だけです。
         空のままだと、コードが広まったぶんだけ配られます。
@@ -124,14 +140,45 @@ export function AdminCampaignCodesPanel() {
           />
         </div>
         <div className="space-y-1">
-          <Label htmlFor="campaign-amount">配るクレジット</Label>
-          <Input
-            id="campaign-amount"
-            value={amount}
-            onChange={(e) => setAmount(e.target.value)}
-            inputMode="numeric"
-          />
+          <Label htmlFor="campaign-reward">配るもの</Label>
+          <select
+            id="campaign-reward"
+            value={rewardType}
+            onChange={(e) => setRewardType(e.target.value as 'credits' | 'package')}
+            className="h-9 w-full rounded-md border border-input bg-background px-3 text-sm"
+          >
+            <option value="credits">クレジット</option>
+            <option value="package">公式コンテンツ</option>
+          </select>
         </div>
+        {givesPackage ? (
+          <div className="space-y-1">
+            <Label htmlFor="campaign-package">渡す公式コンテンツ</Label>
+            <select
+              id="campaign-package"
+              value={packageKey}
+              onChange={(e) => setPackageKey(e.target.value)}
+              className="h-9 w-full rounded-md border border-input bg-background px-3 text-sm"
+            >
+              <option value="">選んでください</option>
+              {packages.map((pkg) => (
+                <option key={pkg.key} value={pkg.key}>
+                  {pkg.name}（{pkg.items}枚）
+                </option>
+              ))}
+            </select>
+          </div>
+        ) : (
+          <div className="space-y-1">
+            <Label htmlFor="campaign-amount">配るクレジット</Label>
+            <Input
+              id="campaign-amount"
+              value={amount}
+              onChange={(e) => setAmount(e.target.value)}
+              inputMode="numeric"
+            />
+          </div>
+        )}
         <div className="space-y-1">
           <Label htmlFor="campaign-max">受け取れる人数</Label>
           <Input
@@ -151,23 +198,38 @@ export function AdminCampaignCodesPanel() {
             onChange={(e) => setExpiresAt(e.target.value)}
           />
         </div>
-        <div className="space-y-1">
-          <Label htmlFor="campaign-valid">配るクレジットの有効日数</Label>
-          <Input
-            id="campaign-valid"
-            value={creditValidDays}
-            onChange={(e) => setCreditValidDays(e.target.value)}
-            inputMode="numeric"
-            placeholder="通常どおり"
-          />
-        </div>
+        {/* 有効日数はクレジットの話。荷物を配るコードでは出さない */}
+        {!givesPackage && (
+          <div className="space-y-1">
+            <Label htmlFor="campaign-valid">配るクレジットの有効日数</Label>
+            <Input
+              id="campaign-valid"
+              value={creditValidDays}
+              onChange={(e) => setCreditValidDays(e.target.value)}
+              inputMode="numeric"
+              placeholder="通常どおり"
+            />
+          </div>
+        )}
         <div className="flex items-end">
-          <Button onClick={create} disabled={!label.trim() || busy === 'new'} className="flex items-center gap-1.5">
+          <Button
+            onClick={create}
+            disabled={!label.trim() || (givesPackage && !packageKey) || busy === 'new'}
+            className="flex items-center gap-1.5"
+          >
             {busy === 'new' ? <Spinner size={14} /> : <Plus size={14} />}
             発行
           </Button>
         </div>
       </div>
+
+      {givesPackage && packages.length === 0 && (
+        <p className="text-sm text-muted-foreground">
+          いま渡せる公式コンテンツがありません。工房室の
+          <strong className="text-foreground">個別配布設定</strong>で、
+          「引き換えコードで渡す」を入れてください。
+        </p>
+      )}
 
       {loading ? (
         <p className="flex items-center gap-2 text-sm text-muted-foreground">
@@ -182,7 +244,7 @@ export function AdminCampaignCodesPanel() {
               <tr className="border-b border-border">
                 <th className="py-2 pr-3">コード</th>
                 <th className="py-2 pr-3">名前</th>
-                <th className="py-2 pr-3 text-right">1人あたり</th>
+                <th className="py-2 pr-3 text-right">1人あたり配るもの</th>
                 <th className="py-2 pr-3 text-right">受け取り</th>
                 <th className="py-2 pr-3 text-right">受け取り率</th>
                 <th className="py-2 pr-3 text-right">配った合計</th>
@@ -195,7 +257,11 @@ export function AdminCampaignCodesPanel() {
                 <tr key={row.id} className="border-b border-border/60">
                   <td className="py-2 pr-3 font-mono text-xs">{row.code}</td>
                   <td className="py-2 pr-3">{row.label}</td>
-                  <td className="py-2 pr-3 text-right tabular-nums">{row.amount} cr</td>
+                  <td className="py-2 pr-3 text-right tabular-nums">
+                    {row.reward_type === 'package'
+                      ? (packages.find((pkg) => pkg.key === row.package_key)?.name ?? row.package_key)
+                      : `${row.amount} cr`}
+                  </td>
                   <td className="py-2 pr-3 text-right tabular-nums">
                     {row.redeemed_count}
                     {row.max_redemptions != null && ` / ${row.max_redemptions}`}

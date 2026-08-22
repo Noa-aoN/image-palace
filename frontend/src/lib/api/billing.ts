@@ -81,6 +81,10 @@ export async function redeemCampaignCode(code: string): Promise<{
   label: string
   expires_at: string | null
   available_credits: number
+  /** 公式コンテンツを配るコードのとき、受け取ったものの名前 */
+  package?: string | null
+  /** そのとき宮殿に入ったカードの枚数 */
+  items?: number | null
 }> {
   const res = await apiClient.post('/api/v1/campaign_codes/redeem', { code })
   return res.data

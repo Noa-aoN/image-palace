@@ -15,6 +15,11 @@ module Api
           render json: {
             codes: codes.map { |code| serialize(code, counts[code.id]) },
             reward_types: CampaignCode::REWARD_TYPES,
+            # 引き換えコードで渡せる荷物。**届け先に入っているものだけ**
+            # （工房室で決めた出し先が、ここでも効く）
+            packages: ContentDelivery.packages_for("campaign").map { |p|
+              { key: p.key, name: p.name, items: p.summary_counts[:items] }
+            },
             # 打つ人が読み違えないよう、字種を絞った候補を1つ添える
             suggested_code: CampaignCode.generate_code
           }
@@ -65,7 +70,7 @@ module Api
 
         def code_params
           params.require(:campaign_code).permit(
-            :code, :label, :reward_type, :amount, :item_kind,
+            :code, :label, :reward_type, :amount, :item_kind, :package_key,
             :starts_at, :expires_at, :max_redemptions, :credit_valid_days, :enabled, :notes
           )
         end
@@ -84,6 +89,8 @@ module Api
             reward_type: code.reward_type,
             amount: code.amount,
             item_kind: code.item_kind,
+            # 荷物を配るコードのとき、何を配るか
+            package_key: code.package_key,
             starts_at: code.starts_at,
             expires_at: code.expires_at,
             max_redemptions: code.max_redemptions,

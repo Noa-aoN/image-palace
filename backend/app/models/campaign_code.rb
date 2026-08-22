@@ -7,7 +7,12 @@
 # 同じ人に2回配りたい場合はコードを2枚出すほうが、意図が記録に残る。
 class CampaignCode < ApplicationRecord
   # 配るもの。item は受け取り側の仕組みが未整備（GrantPolicy と同じ扱い）
-  REWARD_TYPES = %w[credits item].freeze
+  # 何を渡すか。
+  #
+  #   credits … クレジット
+  #   package … 公式コンテンツ（荷物）。**版は持たない**（配る時点の最新の公開版）
+  #   item    … 獲得物。受け取る側がまだ無いので、いまは断る
+  REWARD_TYPES = %w[credits package item].freeze
 
   # 打ちやすさのために字種を絞る。0/O・1/I のような読み違えやすい組み合わせを避ける
   CODE_FORMAT = /\A[A-Z0-9]{4,32}\z/
@@ -22,7 +27,12 @@ class CampaignCode < ApplicationRecord
   validates :code, presence: true, uniqueness: true, format: { with: CODE_FORMAT }
   validates :label, presence: true
   validates :reward_type, inclusion: { in: REWARD_TYPES }
-  validates :amount, numericality: { only_integer: true, greater_than: 0 }
+  validate :package_reward_must_be_ready
+  validate :package_key_only_for_package
+  # クレジットを配るコードだけ、量が要る。
+  # **荷物を配るコードに量は無い**（渡すのは決まった中身そのもの）
+  validates :amount, numericality: { only_integer: true, greater_than: 0 },
+                     if: -> { reward_type == "credits" }
   validates :max_redemptions, numericality: { only_integer: true, greater_than: 0 }, allow_nil: true
   validates :credit_valid_days, numericality: { only_integer: true, greater_than: 0 }, allow_nil: true
   validate :period_must_be_forward
@@ -99,6 +109,17 @@ class CampaignCode < ApplicationRecord
     Billing::CreditExpiryPolicy.expires_at(now)
   end
 
+  def package?
+    reward_type == "package"
+  end
+
+  # いま配れる版。**配る時点の最新の公開版**（デルフォイと同じ決まり）
+  def package
+    return nil unless package?
+
+    ContentPackage.latest_published(package_key)
+  end
+
   private
 
   def normalize_code
@@ -110,6 +131,30 @@ class CampaignCode < ApplicationRecord
     return if starts_at < expires_at
 
     errors.add(:expires_at, "は開始より後にしてください")
+  end
+
+  # 荷物を配るコードの決まり。
+  #
+  # **届け先に「引き換えコードで渡す」が入っていないものは配らせない。**
+  # 工房室で出し先を決める仕組みがあるのに、コードだけが抜け道になると、
+  # 「どこへ出しているか」を1か所で見られなくなる。
+  def package_reward_must_be_ready
+    return unless package?
+
+    if package_key.blank?
+      errors.add(:package_key, "を選んでください")
+    elsif ContentPackage.latest_published(package_key).nil?
+      errors.add(:package_key, "は、いま配れる版がありません")
+    elsif !ContentDelivery.keys_for("campaign").include?(package_key)
+      errors.add(:package_key, "は、届け先に「引き換えコードで渡す」が入っていません")
+    end
+  end
+
+  # 荷物を配らないのに鍵だけ残っていると、型を変えたときに黙って配る
+  def package_key_only_for_package
+    return if package? || package_key.blank?
+
+    errors.add(:package_key, "は、荷物を配るコードにしか持たせられません")
   end
 
   # 受け取り側の仕組みができていないものを配ると、配ったのに届かない状態になる
