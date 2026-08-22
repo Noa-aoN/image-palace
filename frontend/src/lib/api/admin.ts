@@ -133,6 +133,10 @@ export async function createAdminCampaignCode(campaign_code: {
   label: string
   amount: number
   code?: string
+  /** 何を配るか。既定はクレジット */
+  reward_type?: 'credits' | 'package'
+  /** 荷物を配るときの鍵 */
+  package_key?: string | null
   max_redemptions?: number | null
   expires_at?: string | null
   credit_valid_days?: number | null

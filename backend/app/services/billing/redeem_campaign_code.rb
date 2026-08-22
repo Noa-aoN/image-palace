@@ -21,7 +21,8 @@ module Billing
     UNAVAILABLE_MESSAGE = "このコードは使えません。入力を確かめてください。"
     ALREADY_MESSAGE = "このコードは受け取り済みです。"
 
-    Result = Struct.new(:credits, :label, :expires_at, keyword_init: true)
+    # 何を受け取ったか。**クレジットと荷物で、返すものが違う**
+    Result = Struct.new(:credits, :label, :expires_at, :package, :items, keyword_init: true)
 
     def self.call(...)
       new(...).call
@@ -37,11 +38,43 @@ module Billing
       code = CampaignCode.lookup(@raw)
       raise Unavailable, UNAVAILABLE_MESSAGE if code.nil? || !code.available?(@now)
       raise AlreadyRedeemed, ALREADY_MESSAGE if code.redemptions.exists?(user_id: @user.id)
+      return grant_package!(code) if code.package?
 
       grant!(code)
     end
 
     private
+
+    # 荷物を配る。**配る仕組みはデルフォイと同じものを通す。**
+    #
+    # 入口が違うだけで、やることは同じ（同じカードを2枚にしない・
+    # 由来を残す・二重に受け取らせない）。ここで別に書くと必ずずれる。
+    #
+    # **無料枠は使わない。** コードは配る側が数を決めているので、
+    # 受け取る側の無料枠を食う理由が無い（`campaign` は `FREE_SOURCES` に無い）
+    def grant_package!(code)
+      package = code.package
+      raise Unavailable, UNAVAILABLE_MESSAGE if package.nil?
+
+      result = nil
+      ActiveRecord::Base.transaction do
+        code.with_lock do
+          raise Unavailable, UNAVAILABLE_MESSAGE unless code.available?(@now)
+
+          code.redemptions.create!(user: @user, points: 0, created_at: @now)
+        end
+        result = ContentPackages::Distributor.call(user: @user, package: package, source: "campaign")
+      end
+
+      Result.new(credits: 0, label: code.label, expires_at: nil,
+                 package: package.name, items: result.imported.items_by_local_key.size)
+    rescue ActiveRecord::RecordNotUnique
+      raise AlreadyRedeemed, ALREADY_MESSAGE
+    rescue ContentPackages::Distributor::AlreadyInstalled
+      # **もう持っている。** コードは使わせない（使ったことにすると、
+      # 持っているのに受け取れないまま1回分が消える）
+      raise AlreadyRedeemed, "この公式コンテンツは、すでに受け取っています。"
+    end
 
     def grant!(code)
       points = code.points

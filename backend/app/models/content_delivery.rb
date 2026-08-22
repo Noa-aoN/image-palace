@@ -13,7 +13,7 @@ class ContentDelivery < ApplicationRecord
   #
   #   demo     … 体験用の宮殿に置く。**ON のものを全部入れて宮殿を組む**
   #   delphi   … デルフォイで受け取れる（無料枠を使う）
-  #   campaign … 引き換えコードで渡せる（受け取る側は #838 で作る）
+  #   campaign … 引き換えコードで渡せる（運営画面でコードを作る）
   #   mission  … ミッションの報酬にできる（同上）
   #   purchase … 買って手に入る（将来）
   CHANNELS = %w[demo delphi campaign mission purchase].freeze
@@ -40,7 +40,7 @@ class ContentDelivery < ApplicationRecord
   #
   # ここに載っているうちは、画面に「準備中」と出す。
   # 設定できるのに届かない、を黙って起こさないため
-  PENDING_CHANNELS = %w[campaign mission purchase].freeze
+  PENDING_CHANNELS = %w[mission purchase].freeze
 
   validates :package_key, presence: true
   validates :channel, inclusion: { in: CHANNELS }

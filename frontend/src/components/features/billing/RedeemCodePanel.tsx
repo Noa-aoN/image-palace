@@ -23,7 +23,7 @@ import { isSubmitEnter } from '@/lib/enter-key'
 export function RedeemCodePanel({
   onRedeemed,
   title = 'コードを使う',
-  note = '受け取ったコードを入力すると、クレジットが残高に足されます。',
+  note = '受け取ったコードを入力すると、クレジットか公式コンテンツが届きます。',
   withHistory = false,
 }: {
   onRedeemed?: () => void
@@ -68,7 +68,13 @@ export function RedeemCodePanel({
     setDone(null)
     try {
       const result = await redeemCampaignCode(trimmed)
-      setDone(`${result.label}：${result.credits} ${CREDIT_UNIT} を受け取りました。`)
+      // 公式コンテンツのコードは、クレジットが増えない。
+      // 「0 cr を受け取りました」と出ると、失敗したように読める
+      setDone(
+        result.package
+          ? `${result.package}：${result.items ?? 0}枚を宮殿に迎えました。`
+          : `${result.label}：${result.credits} ${CREDIT_UNIT} を受け取りました。`
+      )
       setCode('')
       onRedeemed?.()
       loadHistory(expanded ? 100 : undefined)
