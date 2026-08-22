@@ -83,6 +83,16 @@ describe('項目に値が入っているか', () => {
     })
   })
 
+  describe('言語ごとの読み方', () => {
+    it('1つでも書いてあれば入っている', () => {
+      expect(isFilled(e('reading', [{ language: 'ja', text: 'かな' }]))).toBe(true)
+    })
+
+    it('空の並びは入っていない', () => {
+      expect(isFilled(e('reading', []))).toBe(false)
+    })
+  })
+
   // **文字で入ってくる**（JSON の文字列）。中を見ないと、
   // 引いた結果が空でも「書いてある」と数えてしまう
   describe('Wikipedia', () => {

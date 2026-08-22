@@ -25,7 +25,20 @@ class PropertyDefinition < ApplicationRecord
   # 見出しを定義側で決めないので、同じ「自由欄」を何枚か持てる。
   # free_image は**自由な小見出しと、自由な指示で作る絵**。
   # カードの見出し語に縛られないので、そのカードの中の一場面・対比・図解などを持てる。
-  VALUE_TYPES = %w[text longtext list number date url boolean free_text free_image wikipedia].freeze
+  # select は**選択肢を定義側が持つ**。ほかの型は「どう入力してどう表示するか」
+  # だけで決まるが、これだけは「何を選べるか」が要る（`options`）
+  # reading は**言語ごとの値をひとつの項目で持つ**。
+  #
+  # 「読み方」を言語ごとに別の定義にすると、1種別40個の枠を言語の数だけ食うし、
+  # 基本の言語を変えても何も起きない。1つの項目の中に言語別の値を持てば、
+  # **どれを主として出すかは、そのときの基本言語で決まる**（値は動かさない）。
+  VALUE_TYPES = %w[
+    text longtext list number date url boolean select reading free_text free_image wikipedia
+  ].freeze
+
+  # 1つの定義に置ける選択肢の数。**多すぎると選ぶより探すほうが大変になる**
+  MAX_OPTIONS = 20
+  MAX_OPTION_LENGTH = 40
 
   # 項目の役割。**何のために持つのか**で分ける。
   #
@@ -53,6 +66,7 @@ class PropertyDefinition < ApplicationRecord
   validates :label, presence: true, length: { maximum: MAX_LABEL_LENGTH }
   validates :value_type, inclusion: { in: VALUE_TYPES }
   validates :category, inclusion: { in: CATEGORIES }
+  validate :options_must_fit
   validates :key, uniqueness: { scope: [ :user_id, :item_type_id ] }
 
   scope :ordered, -> { order(:position, :created_at) }
@@ -72,5 +86,26 @@ class PropertyDefinition < ApplicationRecord
 
     scope = PropertyDefinition.where(user_id: user_id, item_type_id: item_type_id)
     self.position = (scope.maximum(:position) || -1) + 1
+  end
+
+  def select?
+    value_type == "select"
+  end
+
+  # 選択肢の決まり。
+  #
+  # **選ぶ項目には1つ以上要る。** 空のまま作ると、開いても選べない欄になる。
+  # ほかの型には持たせない（持てると、型を変えたときに古い選択肢が残る）
+  def options_must_fit
+    list = Array(options).map { |o| o.to_s.strip }.reject(&:blank?)
+
+    if select?
+      errors.add(:options, "を1つ以上入れてください") if list.empty?
+      errors.add(:options, "は#{MAX_OPTIONS}個までです") if list.size > MAX_OPTIONS
+      errors.add(:options, "は#{MAX_OPTION_LENGTH}文字までです") if list.any? { |o| o.length > MAX_OPTION_LENGTH }
+      errors.add(:options, "に同じものが入っています") if list.uniq.size != list.size
+    elsif list.any?
+      errors.add(:options, "は選ぶ項目にしか持たせられません")
+    end
   end
 end

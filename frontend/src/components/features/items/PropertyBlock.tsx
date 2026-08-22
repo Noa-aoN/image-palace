@@ -26,6 +26,7 @@ export function PropertyBlock({
   children,
   busy = false,
   category,
+  empty = false,
 }: {
   title: string
   /** 右上に並べる操作。BlockAction を使う */
@@ -41,15 +42,23 @@ export function PropertyBlock({
    * 別の種類の入れ物だと思わせたいわけではない。
    */
   category?: PropertyCategory
+  /**
+   * まだ何も書いていないか。**地を灰にして、書いたものと見分ける。**
+   *
+   * 押して出した直後の欄と、書き終えた欄が同じ地だと、
+   * 上から読んでいってどこまで書いたのかが分からない。
+   */
+  empty?: boolean
 }) {
   const role = category ? propertyCategoryOf(category) : null
 
   return (
     // 縁は札と同じ金。ただし一段薄く（内側の器のほうが強いと主従が逆になる）。
-    // 地は灰をやめて暖かい白へ。muted の灰は青みがあり、ivory の上では汚れて見える
+    // 地は灰をやめて暖かい白へ。muted の灰は青みがあり、ivory の上では汚れて見える。
+    // **まだ書いていないものだけ**、地を落として区別する
     <section
       className="space-y-2 rounded-xl px-4 py-3 ring-1 ring-[var(--edge-gold-soft)]"
-      style={{ background: 'var(--surface-warm)' }}
+      style={{ background: empty ? 'var(--ivory-dark)' : 'var(--surface-warm)' }}
     >
       <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-1">
         <div className="flex items-center gap-2">

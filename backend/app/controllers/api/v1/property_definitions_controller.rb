@@ -61,7 +61,7 @@ module Api
 
       def definition_params
         params.require(:property_definition)
-              .permit(:item_type_id, :key, :label, :value_type, :description, :category)
+              .permit(:item_type_id, :key, :label, :value_type, :description, :category, options: [])
               .to_h.symbolize_keys
       end
 
@@ -75,6 +75,8 @@ module Api
           # 何のために持つ項目か（その語のこと / 覚えかた / 整理）
           category: record.category,
           description: record.description,
+          # 選ぶ項目の選択肢。ほかの型では空のまま
+          options: record.options,
           position: record.position
         }
       end

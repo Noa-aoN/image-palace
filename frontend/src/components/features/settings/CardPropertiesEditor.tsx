@@ -61,6 +61,10 @@ export function CardPropertiesEditor({
   // 何のために持つ項目か。既定は「その語のこと」
   const [category, setCategory] = useState<PropertyCategory>('subject')
   const [busy, setBusy] = useState(false)
+  // 選ぶ項目の選択肢。1行に1つ書いてもらう
+  const [options, setOptions] = useState('')
+  // 空行と前後の空白は落とす。**同じものも1つにまとめる**（サーバーも同じ決まり）
+  const optionList = [...new Set(options.split('\n').map((o) => o.trim()).filter(Boolean))]
   const [error, setError] = useState<string | null>(null)
 
   const sensors = useSensors(
@@ -89,6 +93,7 @@ export function CardPropertiesEditor({
     label: string
     value_type: PropertyValueType
     category?: PropertyCategory
+    options?: string[]
   }) => {
     setBusy(true)
     setError(null)
@@ -98,6 +103,7 @@ export function CardPropertiesEditor({
       setAdding(false)
       setLabel('')
       setKey('')
+      setOptions('')
     } catch (err: unknown) {
       const axiosErr = err as { response?: { data?: { errors?: string[]; error?: string } } }
       setError(axiosErr?.response?.data?.errors?.[0] ?? axiosErr?.response?.data?.error ?? '追加できませんでした')
@@ -299,13 +305,38 @@ export function CardPropertiesEditor({
               <p className="text-xs text-muted-foreground">{PROPERTY_VALUE_TYPE_NOTES[valueType]}</p>
             )}
           </div>
+
+          {/* **選ぶ項目だけ、何を選べるかが要る。**
+              空のまま作れると、開いても選べない欄になる */}
+          {valueType === 'select' && (
+            <div className="space-y-1">
+              <Label htmlFor="property-options">選択肢</Label>
+              <textarea
+                id="property-options"
+                value={options}
+                onChange={(e) => setOptions(e.target.value)}
+                rows={3}
+                placeholder={'下書き\n確認待ち\n完成'}
+                className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm"
+              />
+              <p className="text-xs text-muted-foreground">
+                1行に1つ書きます（20個まで）。あとから足したり並べ替えたりできます。
+              </p>
+            </div>
+          )}
           <div className="flex gap-2">
             <Button
               size="sm"
               onClick={() =>
-                add({ key: key.trim(), label: label.trim(), value_type: valueType, category })
+                add({
+                  key: key.trim(),
+                  label: label.trim(),
+                  value_type: valueType,
+                  category,
+                  ...(valueType === 'select' ? { options: optionList } : {}),
+                })
               }
-              disabled={busy || !label.trim() || !key.trim()}
+              disabled={busy || !label.trim() || !key.trim() || (valueType === 'select' && optionList.length === 0)}
             >
               {busy ? <Spinner size={14} /> : '追加'}
             </Button>
