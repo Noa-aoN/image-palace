@@ -36,6 +36,11 @@ export function isFilled(entry: Pick<ItemPropertyEntry, 'value_type' | 'value'>)
       return Boolean(v.heading?.trim() || v.prompt?.trim() || v.url)
     }
 
+    case 'reading': {
+      // 並びで持つ。1つでも書いてあれば入っている
+      return Array.isArray(value) && value.length > 0
+    }
+
     case 'wikipedia': {
       // **文字で入ってくる**（JSON の文字列）。引いた結果が空のこともある
       if (typeof value !== 'string' || value.trim() === '') return false

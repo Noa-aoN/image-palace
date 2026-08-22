@@ -755,6 +755,8 @@ module Api
             # 何のために持つ項目か（見分けが付くよう、画面で色と見出しに使う）
             category: definition.category,
             description: definition.description,
+            # 選ぶ項目の選択肢。**ここに無いと、開いても選べない**
+            options: definition.options,
             value: property_entry_value(definition, values[definition.id])
           }
         end

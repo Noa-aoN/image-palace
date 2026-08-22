@@ -18,6 +18,10 @@ export const PROPERTY_VALUE_TYPES = [
   'date',
   'url',
   'boolean',
+  // 選ぶ項目。**選択肢は定義側が持つ**（ほかの型と違って `options` が要る）
+  'select',
+  // 言語ごとの読み方。**1つの項目の中に並びで持つ**
+  'reading',
   'free_text',
   'free_image',
   'wikipedia',
@@ -33,6 +37,8 @@ export const PROPERTY_VALUE_TYPE_LABELS: Record<PropertyValueType, string> = {
   date: '日付',
   url: 'リンク',
   boolean: 'チェック',
+  select: '選ぶ',
+  reading: '読み方（言語別）',
   free_text: '自由欄',
   free_image: '自由イメージ',
   wikipedia: 'Wikipedia',
@@ -41,6 +47,8 @@ export const PROPERTY_VALUE_TYPE_LABELS: Record<PropertyValueType, string> = {
 /** 型ごとの一言。選ぶときに何が起きるのかを読ませる */
 export const PROPERTY_VALUE_TYPE_NOTES: Partial<Record<PropertyValueType, string>> = {
   boolean: '入 / 切で持ちます。触っていないうちは、どちらでもない状態のままです',
+  select: '決めた選択肢から1つ選びます。**選択肢はここで決めます**（あとから足せます）',
+  reading: '言語ごとの読み方を1つの項目にまとめます。基本の言語を変えると、主に出す読みも変わります',
   free_text: '見出しも中身もカードごとに自由に書けます。同じ種別に何枚でも置けます',
   free_image: '小見出しと、描いてほしいものを書いて絵を作ります。1枚 1クレジット',
   wikipedia: '見出し語で Wikipedia を引き、冒頭と記事リンクを出します',
@@ -120,6 +128,8 @@ export interface PropertyDefinition {
   /** 何のために持つ項目か */
   category?: PropertyCategory
   description?: string | null
+  /** 選ぶ項目の選択肢。ほかの型では空 */
+  options?: string[]
   position: number
 }
 
@@ -131,8 +141,18 @@ export interface ItemPropertyEntry {
   value_type: PropertyValueType
   category?: PropertyCategory
   description?: string | null
-  value: string | number | string[] | boolean | FreeTextValue | FreeImageValue | null
+  /** 選ぶ項目の選択肢。ほかの型では空 */
+  options?: string[]
+  value: string | number | string[] | boolean | FreeTextValue | FreeImageValue | ReadingValue | null
 }
+
+/**
+ * 言語ごとの読み方。**並びで持つ。**
+ *
+ * 対応表にすると保存の仕組みが鍵の順を保たず、書いた順が失われる。
+ * どれを主にするかは基本の言語で決まるが、残りは書いた順に出したい。
+ */
+export type ReadingValue = { language: string; text: string }[]
 
 /**
  * 自由イメージ。**カードの見出し語には縛られない絵。**
@@ -176,7 +196,7 @@ export async function createPropertyDefinition(payload: {
 // key と種別は変えられない（既に入っている値がどの項目のものか辿れなくなるため）
 export async function updatePropertyDefinition(
   id: string,
-  payload: { label?: string; value_type?: PropertyValueType; description?: string }
+  payload: { label?: string; value_type?: PropertyValueType; description?: string; options?: string[] }
 ): Promise<PropertyDefinition> {
   const res = await apiClient.patch<PropertyDefinition>(`/api/v1/property_definitions/${id}`, {
     property_definition: payload,
@@ -251,6 +271,9 @@ export const PROPERTY_PRESETS: {
     category: 'subject',
     items: [
       { key: 'reading', label: '読み仮名', value_type: 'text', description: 'その語の読み。複数の読みがあれば全部。' },
+      // 言語ごとに持ちたいとき。**1つの項目の中に並びで持つ**ので、
+      // 言語を増やしても項目は増えない
+      { key: 'readings', label: '読み方（言語別）', value_type: 'reading', description: '言語ごとの読み方。主に出るのは、環境設定で選んでいる言語のもの。' },
       { key: 'aliases', label: '別名・異表記', value_type: 'list', description: '同じものを指す別の呼び名や書き方。' },
       { key: 'pronunciation', label: '発音記号', value_type: 'text', description: '発音記号（IPA など）。' },
       { key: 'part_of_speech', label: '品詞', value_type: 'text', description: '名詞・動詞など、その語の働き。' },

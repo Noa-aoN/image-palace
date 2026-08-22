@@ -13,6 +13,9 @@ import {
   PROPERTY_PRESETS,
   type ItemPropertyEntry,
 } from '@/lib/api/properties'
+import { isFilled } from '@/lib/items/property-value'
+import { ReadingProperty } from '@/components/features/items/ReadingProperty'
+import type { ReadingValue } from '@/lib/api/properties'
 import { getItem } from '@/lib/api/items'
 import type { Item } from '@/types/item'
 import { WikipediaProperty } from './WikipediaProperty'
@@ -273,6 +276,11 @@ export function PropertyEntryBlock({
   // チェックは「入 / 切」を持つ。**触っていない状態と「切」は別**なので、
   // 空にできる道（未設定へ戻す）も残す
   const isCheck = entry.value_type === 'boolean'
+  // 選ぶ項目。**選択肢は定義側が持つ**ので、ここでは並べて押させるだけ
+  const isSelect = entry.value_type === 'select'
+  // 言語ごとの読み方。**1つの項目の中に並びで持つ**
+  const isReading = entry.value_type === 'reading'
+  const choices = entry.options ?? []
   // 自由欄。見出しも中身もこのカードで決める
   const isFree = entry.value_type === 'free_text'
   // 自由イメージ。**カードの見出し語には縛られない絵**
@@ -383,6 +391,8 @@ export function PropertyEntryBlock({
     <PropertyBlock
       title={entry.label}
       category={entry.category}
+      // **書いていないものは地を落とす。** 上から読んで、どこまで書いたかが分かる
+      empty={!isFilled(entry)}
       busy={writing}
       actions={
         <>
@@ -425,6 +435,53 @@ export function PropertyEntryBlock({
           generating={generating}
           onUpdated={onUpdated}
         />
+      ) : isReading ? (
+        <ReadingProperty
+          value={(entry.value as ReadingValue | null) ?? []}
+          onSave={async (next) => {
+            await setItemProperty(item.id, entry.property_definition_id, JSON.stringify(next))
+            onUpdated(await getItem(item.id))
+          }}
+        />
+      ) : isSelect && !editing ? (
+        // チェックと同じく一手で決まる。**編集に入って保存する形にすると、
+        // 選ぶだけのことに3回押させることになる**
+        <div className="flex flex-wrap items-center gap-2">
+          {choices.length === 0 ? (
+            <BlockEmpty>選択肢がありません（項目の設定で足してください）</BlockEmpty>
+          ) : (
+            choices.map((choice) => {
+              const active = filled && entry.value === choice
+              return (
+                <button
+                  key={choice}
+                  type="button"
+                  onClick={() => saveCheck(choice)}
+                  disabled={saving}
+                  aria-pressed={active}
+                  className={`rounded-full border px-3 py-0.5 text-sm transition-colors disabled:opacity-50 ${
+                    active ? 'border-transparent text-white' : 'border-border text-muted-foreground hover:bg-muted'
+                  }`}
+                  style={active ? { backgroundColor: 'var(--palace)' } : undefined}
+                >
+                  {choice}
+                </button>
+              )
+            })
+          )}
+          {filled && (
+            <button
+              type="button"
+              onClick={() => saveCheck('')}
+              disabled={saving}
+              className="text-xs text-muted-foreground underline hover:text-foreground disabled:opacity-50"
+            >
+              未設定に戻す
+            </button>
+          )}
+          {saving && <Spinner size={14} className="text-muted-foreground" />}
+          <BlockError message={error} />
+        </div>
       ) : isCheck && !editing ? (
         // チェックは一手で決まる。**編集に入って保存する形にすると、
         // 印を付けるだけのことに3回押させることになる**
