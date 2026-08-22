@@ -273,7 +273,7 @@ export const PROPERTY_PRESETS: {
       { key: 'reading', label: '読み仮名', value_type: 'text', description: 'その語の読み。複数の読みがあれば全部。' },
       // 言語ごとに持ちたいとき。**1つの項目の中に並びで持つ**ので、
       // 言語を増やしても項目は増えない
-      { key: 'readings', label: '読み方（言語別）', value_type: 'reading', description: '言語ごとの読み方。主に出るのは、環境設定で選んでいる言語のもの。' },
+      { key: 'readings', label: '読み方（言語別・まとめて）', value_type: 'reading', description: '言語ごとの読み方を1つの項目にまとめます。主に出るのは、環境設定で選んでいる言語のもの。言語ごとに分けたいなら「読み方（言語ごと）」から選びます。' },
       { key: 'aliases', label: '別名・異表記', value_type: 'list', description: '同じものを指す別の呼び名や書き方。' },
       { key: 'pronunciation', label: '発音記号', value_type: 'text', description: '発音記号（IPA など）。' },
       { key: 'part_of_speech', label: '品詞', value_type: 'text', description: '名詞・動詞など、その語の働き。' },
@@ -308,6 +308,27 @@ export const PROPERTY_PRESETS: {
       // 同じものを何枚でも足せるよう、鍵は追加時に採番する
       { key: 'free', label: '自由欄', value_type: 'free_text', description: '見出しも中身もカードごとに自由。' },
       { key: 'scene', label: '自由イメージ', value_type: 'free_image', description: '小見出しと指示で、この語の一場面を描く。' },
+    ],
+  },
+  {
+    // **言語ごとに、別々の項目として持ちたいとき。**
+    //
+    // 「読み方（言語別）」は1つの項目の中に全部を持つ形で、
+    // 主に出るものが基本の言語で変わる。まとめて扱いたいときはそちら。
+    //
+    // だが**その言語の読みだけを、独立した項目として置きたい**ことがある。
+    // 一覧の列に出す・並び順を自分で決める・使う言語だけ持つ、といった扱いは、
+    // 項目が分かれていないとできない。両方を選べるようにする。
+    group: '読み方（言語ごと）',
+    category: 'subject',
+    items: [
+      { key: 'reading_ja', label: '読み方（日本語）', value_type: 'text', description: '日本語での読み。かな・ローマ字など。' },
+      { key: 'reading_en', label: '読み方（英語）', value_type: 'text', description: '英語での読み。発音の目安。' },
+      { key: 'reading_zh', label: '読み方（中国語）', value_type: 'text', description: '中国語での読み。ピンインなど。' },
+      { key: 'reading_ko', label: '読み方（韓国語）', value_type: 'text', description: '韓国語での読み。' },
+      { key: 'reading_es', label: '読み方（スペイン語）', value_type: 'text', description: 'スペイン語での読み。' },
+      { key: 'reading_fr', label: '読み方（フランス語）', value_type: 'text', description: 'フランス語での読み。' },
+      { key: 'reading_de', label: '読み方（ドイツ語）', value_type: 'text', description: 'ドイツ語での読み。' },
     ],
   },
   {
@@ -351,6 +372,17 @@ export const PROPERTY_PRESETS: {
 export const COMMON_PROPERTY_KEYS = [
   'wikipedia',
   'reading',
+  // 言語ごとの読み。**まとめて持つ形と、言語ごとに分ける形の両方**を候補に出す。
+  //
+  // まとめる形は1項目で済み、主に出るものが基本の言語で変わる。
+  // 分ける形は、一覧の列に出したり並び順を自分で決めたりできる。
+  // どちらが要るかは使い方で変わるので、選べるようにする。
+  //
+  // ここに出すのは日本語と英語だけ。ほかの言語は「細かく決める」から選ぶ
+  // （候補を7つに絞っているのは、多いと選ぶより探すほうが大変になるため）
+  'readings',
+  'reading_ja',
+  'reading_en',
   'aliases',
   'etymology',
   'pronunciation',
