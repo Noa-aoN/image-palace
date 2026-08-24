@@ -16,7 +16,11 @@ class Notification < ApplicationRecord
   validates :title, presence: true
 
   scope :unread, -> { where(read_at: nil) }
-  scope :recent, -> { order(created_at: :desc) }
+  # 最後に id を置いて、同着の順を決め切る。
+  # お知らせは一括で作られるため作成時刻が揃いやすく、同着のままページを送ると、
+  # **同じお知らせが2ページに出て、別のお知らせがどこにも出ない**ことが起こる
+  # （カード一覧で実際に起きた。#630 で同じ手当てをしている）
+  scope :recent, -> { order(created_at: :desc, id: :desc) }
 
   def read?
     read_at.present?
