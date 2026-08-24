@@ -19,7 +19,13 @@ export function HeroScrollZoom() {
         // 上端に寄せていたころは、画面の上3分の1に文字が固まり、
         // 下の絵だけが広く空いていた。読むものを画面の中心寄りへ下ろす
         // （スクロール誘導は絶対配置なので、下げても押し出さない）
-        className="hero-stage flex flex-col items-center justify-start px-6 pt-[7vh] text-center sm:pt-[10vh] md:pt-[13vh]"
+        //
+        // **狭い画面ほど上に寄っていた。** 7vh だと、文字束（実測で画面の約4割）が
+        // 上端〜48% に収まり、そこから扉までの間だけが広く空く。
+        // 下ろす先は画面の中央ではなく、**扉の上端（67.5% − 9.6vh/2 ＝ 約62.7svh）までの空きの中央**。
+        // 扉はズームの焦点で、開くと奥から光が差す。CTA をそこへ重ねると、
+        // 開いた扉の上に押しボタンが乗る
+        className="hero-stage flex flex-col items-center justify-start px-6 pt-[11vh] text-center sm:pt-[10vh] md:pt-[13vh]"
       >
         {/* 背景画像（ズーム対象・最背面） */}
         {/* eslint-disable-next-line @next/next/no-img-element */}
