@@ -56,6 +56,9 @@ export function RelatedItems({ item }: { item: Item }) {
   return (
     <PropertyBlock
       title="関連カード"
+      // 読み終えて0件のときだけ地を落とす。読み込み中に灰色を出すと、
+      // 引けたとたんに色が戻り、画面が一度ちらつく
+      empty={relations !== null && relations.length === 0 && !adding}
       actions={
         !adding && <BlockAction icon={<Plus size={14} />} label="関連カードを足す" onClick={() => setAdding(true)} />
       }

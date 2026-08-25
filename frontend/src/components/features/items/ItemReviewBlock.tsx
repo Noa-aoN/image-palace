@@ -32,7 +32,8 @@ export function ItemReviewBlock({ itemId }: { itemId: string }) {
   }, [itemId])
 
   return (
-    <PropertyBlock title="学習の記録">
+    // 読み終えて0件のときだけ地を落とす（読み込み中は判断が付かない）
+    <PropertyBlock title="学習の記録" empty={summary !== null && summary.count === 0}>
       {summary === null ? (
         <p className="flex items-center gap-2 text-sm text-muted-foreground">
           <Spinner size={14} />

@@ -28,6 +28,7 @@ import {
 } from '@/components/features/items/ItemPropertyBlocks'
 import { PropertyAddBlock } from '@/components/features/items/PropertyAddBlock'
 import { splitByFilled } from '@/lib/items/property-value'
+import { builtInBlockEmptiness } from '@/lib/items/block-empty'
 import { omittedKeysForPreset } from '@/lib/block-visibility'
 import { ItemUsageBlock } from '@/components/features/items/ItemUsageBlock'
 import { ItemReviewBlock } from '@/components/features/items/ItemReviewBlock'
@@ -488,6 +489,13 @@ export function ItemProperties({
     }
   }
 
+  // **まだ書いていない札は地を落とす。**
+  //
+  // 自由プロパティだけ灰色にしていたので、作り付けの札（種別・意味・例・タグ）は
+  // 書いても書かなくても同じ地だった。上から読んでいって、どこまで書いたのかが
+  // 分かるのは片方だけ、という状態になっていた。判定は lib に出してある
+  const blockEmpty = builtInBlockEmptiness(item)
+
   // ブロックは「キー＋中身」の並びにしておく。並べ替えも表示切替も、
   // ここを差し替えるだけで効く（見せ方の指定はカード1枚ごとに持つ）
   const blocks: { key: string; label: string; node: React.ReactNode }[] = [
@@ -495,7 +503,7 @@ export function ItemProperties({
       key: 'item_type',
       label: '種別',
       node: (
-        <PropertyBlock title="種別" busy={savingType}>
+        <PropertyBlock title="種別" busy={savingType} empty={blockEmpty.item_type}>
           {/*
             候補を並べて1つ選ぶ。畳んだ一覧から選ぶ形（select）だと、
             **開くまで何が選べるのか分からない**。種別は数が少なく、
@@ -539,6 +547,7 @@ export function ItemProperties({
       node: (
         <PropertyBlock
           title="意味・説明"
+          empty={blockEmpty.meanings}
           actions={
             <>
               <BlockAction
@@ -614,6 +623,7 @@ export function ItemProperties({
       node: (
         <PropertyBlock
           title="例"
+          empty={blockEmpty.examples}
           actions={
             hasMeanings && (
               <BlockAction
@@ -644,6 +654,7 @@ export function ItemProperties({
         <PropertyBlock
           title="タグ"
           busy={savingTags}
+          empty={blockEmpty.tags}
           actions={
             <BlockAction
               icon={<Sparkles size={14} />}

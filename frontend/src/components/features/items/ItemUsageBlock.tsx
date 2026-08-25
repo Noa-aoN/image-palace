@@ -39,7 +39,8 @@ export function ItemUsageBlock({ itemId }: { itemId: string }) {
   const total = usages ? usages.views.length + usages.spaces.length + usages.boxes.length : 0
 
   return (
-    <PropertyBlock title="使っている場所">
+    // 読み終えて0件のときだけ地を落とす（読み込み中は判断が付かない）
+    <PropertyBlock title="使っている場所" empty={usages !== null && total === 0}>
       {usages === null ? (
         <p className="flex items-center gap-2 text-sm text-muted-foreground">
           <Spinner size={14} />
