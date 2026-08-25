@@ -104,3 +104,34 @@ describe('まとめて出す', () => {
     })
   })
 })
+
+/**
+ * カードを開いた直後に手元にあるのは一覧の要約で、意味もタグも種別も入っていない。
+ *
+ * **それを見て「空」と答えると、読めていないだけの札が灰色になり、
+ * 読み終えた瞬間に白へ戻る。**「まだ読めていない」と「無い」は別のこと。
+ */
+describe('読めていないときは、空と決めない', () => {
+  it('中身が無くても、読めていなければ空にしない', () => {
+    expect(builtInBlockEmptiness(card(), false)).toEqual({
+      item_type: false,
+      meanings: false,
+      examples: false,
+      tags: false,
+    })
+  })
+
+  it('読めたら、いつもどおり空を出す', () => {
+    expect(builtInBlockEmptiness(card(), true)).toEqual({
+      item_type: true,
+      meanings: true,
+      examples: true,
+      tags: true,
+    })
+  })
+
+  // 既定は「読めている」。ほかの呼び出しの振る舞いを変えない
+  it('省略したら読めているものとして扱う', () => {
+    expect(builtInBlockEmptiness(card())).toEqual(builtInBlockEmptiness(card(), true))
+  })
+})

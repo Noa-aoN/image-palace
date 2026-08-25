@@ -16,6 +16,17 @@ export function useItemDetail(itemId: string, opts?: { onDeleted?: () => void })
   const cachedItem = cachedItems.find((current) => current.id === itemId) ?? null
 
   const [item, setItem] = useState<Item | null>(() => cachedItem)
+  /**
+   * このカードを**最後まで読めたか**。
+   *
+   * 開いた直後に出せるのは一覧の要約（見出し語・状態・絵だけ）で、
+   * 項目も意味も並び順も入っていない。それを「空」として描くと、
+   * 読み終えた瞬間に色が変わり、項目が現れ、並びが入れ替わる。
+   *
+   * **「まだ読めていない」と「無い」は別のこと。** 画面がそれを区別できるように、
+   * ここで持つ（要約に何が入っているかを画面に推測させない）。
+   */
+  const [loaded, setLoaded] = useState(false)
   const [error, setError] = useState<string | null>(null)
   // 読み直しの合図。増やすと取得の effect がもう一度走る
   const [reloadKey, setReloadKey] = useState(0)
@@ -47,12 +58,15 @@ export function useItemDetail(itemId: string, opts?: { onDeleted?: () => void })
     let cancelled = false
     setImgError(false)
     setError(null)
+    // 別のカードへ移ったら、また読めていない状態から始める
+    setLoaded(false)
 
     const load = (retriesLeft: number) => {
       getItem(itemId)
         .then((fetched) => {
           if (cancelled) return
           setItem(fetched)
+          setLoaded(true)
           upsertItem(fetched)
         })
         .catch(() => {
@@ -186,6 +200,8 @@ export function useItemDetail(itemId: string, opts?: { onDeleted?: () => void })
 
   return {
     item,
+    /** 最後まで読めたか。**「まだ読めていない」を「空」として描かないために使う** */
+    loaded,
     error,
     reload,
     imgError,

@@ -37,10 +37,31 @@ export function isBuiltInBlockEmpty(
   }
 }
 
-/** 作り付けの札の空き具合を、まとめて出す。画面は鍵で引くだけにする */
+/** どれも空と決めない、という答え。**読めていないときはこれを返す** */
+const NOTHING_KNOWN: Record<BuiltInBlockKey, boolean> = {
+  item_type: false,
+  meanings: false,
+  examples: false,
+  tags: false,
+}
+
+/**
+ * 作り付けの札の空き具合を、まとめて出す。画面は鍵で引くだけにする。
+ *
+ * @param known そのカードを**最後まで読めているか**。
+ *
+ * カードを開いた直後に手元にあるのは一覧の要約（見出し語・状態・絵だけ）で、
+ * 意味もタグも種別も入っていない。それを見て「空」と答えると、
+ * **読めていないだけの札が灰色になり、読み終えた瞬間に白へ戻る。**
+ *
+ * 「まだ読めていない」と「無い」は別のこと。読めていないなら、何も決めない。
+ */
 export function builtInBlockEmptiness(
-  item: Pick<Item, 'item_type' | 'meanings' | 'tags'>
+  item: Pick<Item, 'item_type' | 'meanings' | 'tags'>,
+  known = true
 ): Record<BuiltInBlockKey, boolean> {
+  if (!known) return NOTHING_KNOWN
+
   return {
     item_type: isBuiltInBlockEmpty('item_type', item),
     meanings: isBuiltInBlockEmpty('meanings', item),

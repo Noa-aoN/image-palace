@@ -26,20 +26,43 @@ interface ItemsState {
   resetItems: () => void
 }
 
+/**
+ * 同じカードの新しい姿を、いま持っているものへ**重ねる**。
+ *
+ * **差し替えない。** 一覧が返すのは要約（id・見出し語・状態・絵だけ）で、
+ * 項目も意味も並び順も入っていない。差し替えると、詳細を開いたまま一覧が
+ * 更新されただけで**項目が消え、並びが既定へ戻り、地の色まで変わる**。
+ *
+ * 重ねる形なら、要約に無い鍵は前の値が残る。
+ * 消したいときは、消した側が鍵ごと（`properties: []` のように）返してくる。
+ */
+const mergeItem = (previous: Item | undefined, next: Item): Item =>
+  previous ? { ...previous, ...next } : next
+
 const upsertInto = (list: Item[], item: Item) => {
   const index = list.findIndex((current) => current.id === item.id)
   if (index === -1) return [item, ...list]
 
   const next = [...list]
-  next[index] = item
+  next[index] = mergeItem(list[index], item)
   return next
+}
+
+/**
+ * 並び・顔ぶれは新しいほうで決め、**中身は重ねる**。
+ *
+ * 一覧の読み直しで詳細の情報が落ちないようにする（上と同じ理由）。
+ */
+const replaceKeepingDetail = (list: Item[], incoming: Item[]): Item[] => {
+  const known = new Map(list.map((item) => [item.id, item]))
+  return incoming.map((item) => mergeItem(known.get(item.id), item))
 }
 
 export const useItemsStore = create<ItemsState>()((set) => ({
   items: [],
   recent: [],
-  setItems: (items) => set({ items }),
-  setRecent: (recent) => set({ recent }),
+  setItems: (items) => set((state) => ({ items: replaceKeepingDetail(state.items, items) })),
+  setRecent: (recent) => set((state) => ({ recent: replaceKeepingDetail(state.recent, recent) })),
   upsertItem: (item) =>
     set((state) => ({
       items: upsertInto(state.items, item),
