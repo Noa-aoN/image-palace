@@ -1,4 +1,8 @@
+'use client'
+
 import { cn } from '@/lib/utils'
+import { useSettingsStore } from '@/stores/settings'
+import { safeguardImageClass, safeguardLook } from '@/lib/items/safeguard'
 
 /**
  * 生成された絵に掛ける覆い。
@@ -18,19 +22,32 @@ import { cn } from '@/lib/utils'
  * `SAFEGUARD_IMAGE_CLASS` を当てる。
  */
 export function SafeguardVeil({ className }: { className?: string }) {
+  // 濃さは設定から。**読めていないうちは標準**に倒す（覆いが外れてはいけない）
+  const look = safeguardLook(useSettingsStore((s) => s.settings?.image_safeguard_strength))
+
   return (
     <div
       aria-hidden
       className={cn('pointer-events-none absolute inset-0 z-10', className)}
       style={{
         // 白い霞。黒で沈めると何色の絵かも分からなくなるので、明るい側から薄く掛ける
-        backgroundColor: 'rgba(255,255,255,0.26)',
+        backgroundColor: `rgba(255,255,255,${look.wash})`,
         // 網はごく薄く、間隔も広く。**模様として読ませない**（気配を消さない程度）
         backgroundImage:
-          'repeating-linear-gradient(45deg, rgba(0,0,0,0.07) 0 2px, rgba(0,0,0,0) 2px 14px)',
+          `repeating-linear-gradient(45deg, rgba(0,0,0,${look.mesh}) 0 2px, rgba(0,0,0,0) 2px 14px)`,
       }}
     />
   )
+}
+
+/**
+ * 覆っている絵に当てる class を、設定の濃さで引く。
+ *
+ * 呼び出し側が設定を読みに行かなくてよいように、ここで包む
+ * （覆いと画像は対で1つの見え方なので、出どころを分けない）。
+ */
+export function useSafeguardImageClass(): string {
+  return safeguardImageClass(useSettingsStore((s) => s.settings?.image_safeguard_strength))
 }
 
 /**
@@ -43,4 +60,8 @@ export function SafeguardVeil({ className }: { className?: string }) {
  * 拡大は縁のぼけを枠の外へ押し出すため（縮むと角に地が見える）。
  * 彩度を少し上げるのは、ぼかすと色が濁って見えるぶんの埋め合わせ
  */
-export const SAFEGUARD_IMAGE_CLASS = 'blur-[24px] scale-110 saturate-125'
+/**
+ * 標準の濃さの見た目。**設定を読めない場所（Server Component）のための控え。**
+ * 画面から使うときは `useSafeguardImageClass()` を使うこと（設定が効く）。
+ */
+export const SAFEGUARD_IMAGE_CLASS = safeguardImageClass('normal')

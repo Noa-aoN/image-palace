@@ -30,11 +30,21 @@ export function Tooltip({
   label,
   children,
   side = 'bottom',
+  className,
 }: {
   label: string
   children: ReactNode
   /** 上に出すか下に出すか。行の一番上にあるものは下、下端にあるものは上 */
   side?: 'top' | 'bottom'
+  /**
+   * 包みの見た目。**幅を持たせたいときに使う。**
+   *
+   * 既定は `inline-flex`（中身の幅）。アイコン釦に添えるぶんにはこれでよいが、
+   * **並びの行に添えると、中身の幅までしか当たり判定が広がらない。**
+   * サイドバーでは、名前の長さぶんだけしか色が付かず、
+   * 短い項目と長い項目で反応する幅が違って見えた。
+   */
+  className?: string
 }) {
   // **慣れた人には邪魔になる。** 環境設定で切れるようにしてある。
   // 設定を読む前（null）は出す側に倒す。初めての人のほうが困り方が大きい。
@@ -81,7 +91,7 @@ export function Tooltip({
   return (
     <span
       ref={anchorRef}
-      className="relative inline-flex"
+      className={`relative inline-flex ${className ?? ''}`}
       onMouseEnter={show}
       onMouseLeave={hide}
       onFocusCapture={show}

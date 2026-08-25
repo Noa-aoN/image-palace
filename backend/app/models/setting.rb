@@ -8,6 +8,15 @@ class Setting < ApplicationRecord
   DISPLAY_STYLES = %w[simple palace].freeze
   validates :display_style, inclusion: { in: DISPLAY_STYLES }
 
+  # 覆いの濃さ。**掛けるかどうか（image_safeguard）とは別の軸。**
+  #
+  # 境目（細部が読めない／構図は掴める）は人によって違う。
+  # 不意打ちを避けたいだけの人には薄いほうがよく、
+  # 人前で開く人には色の気配すら残さないほうがよい。
+  # `normal` が従来の見え方なので、既存の利用者の見え方は変わらない。
+  IMAGE_SAFEGUARD_STRENGTHS = %w[light normal strong].freeze
+  validates :image_safeguard_strength, inclusion: { in: IMAGE_SAFEGUARD_STRENGTHS }
+
   # 棚の並べ方（宮殿スタイルのときのみ効く）
   SHELF_ORIENTATIONS = %w[rows columns].freeze
   validates :shelf_orientation, inclusion: { in: SHELF_ORIENTATIONS }

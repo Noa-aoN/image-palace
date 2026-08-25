@@ -17,6 +17,7 @@ import { useUiStore } from '@/stores/ui'
 import { ASPECT_RATIOS, ASPECT_RATIO_KEYS } from '@/lib/aspect-ratio'
 import { DISPLAY_STYLES, DISPLAY_STYLE_KEYS, SHELF_ORIENTATIONS, SHELF_ORIENTATION_KEYS } from '@/lib/display-style'
 import { bodyFor } from '@/lib/page-help'
+import { SAFEGUARD_STRENGTHS, type SafeguardStrength } from '@/lib/items/safeguard'
 
 type TabKey = 'generation' | 'display' | 'sharing' | 'notification' | 'integration' | 'data'
 
@@ -26,6 +27,8 @@ export default function SettingsPage() {
   const [autoTags, setAutoTags] = useState<boolean | null>(null)
   const [regenWithMeaning, setRegenWithMeaning] = useState<boolean | null>(null)
   const [imageSafeguard, setImageSafeguard] = useState<boolean | null>(null)
+  // 覆いの濃さ。**掛けるかどうかとは別の軸**（境目は人によって違う）
+  const [safeguardStrength, setSafeguardStrength] = useState<SafeguardStrength | null>(null)
   const [navHints, setNavHints] = useState<boolean | null>(null)
   // 自分が作らせた絵を、ほかの人にも使わせてよいか
   const [shareImages, setShareImages] = useState<boolean | null>(null)
@@ -83,6 +86,7 @@ export default function SettingsPage() {
         setAutoTags(s.auto_generate_tags)
         setRegenWithMeaning(s.regenerate_with_meaning)
         setImageSafeguard(s.image_safeguard)
+        setSafeguardStrength(s.image_safeguard_strength)
         setNavHints(s.nav_hints)
         setShareImages(s.share_generated_images)
         setCardDetailColumns(s.card_detail_columns ?? 1)
@@ -240,6 +244,21 @@ export default function SettingsPage() {
       setImageSafeguard(s.image_safeguard)
     } catch {
       setImageSafeguard(!next) // 失敗したら元に戻す
+    } finally {
+      setSavingSettings(false)
+    }
+  }
+
+  const changeSafeguardStrength = async (next: SafeguardStrength) => {
+    if (savingSettings || next === safeguardStrength) return
+    const previous = safeguardStrength
+    setSavingSettings(true)
+    setSafeguardStrength(next)
+    try {
+      const s = await updateSettings({ image_safeguard_strength: next })
+      setSafeguardStrength(s.image_safeguard_strength)
+    } catch {
+      setSafeguardStrength(previous) // 失敗したら元に戻す
     } finally {
       setSavingSettings(false)
     }
@@ -422,6 +441,41 @@ export default function SettingsPage() {
                 onClick={toggleImageSafeguard}
               />
             </div>
+            {/* **濃さは、掛けるかどうかとは別の軸。**
+                「細部が読めない／構図は掴める」の境目は人によって違う。
+                不意打ちを避けたいだけの人には薄いほうがよく、
+                人前で開く人には色の気配すら残さないほうがよい。
+
+                掛けていないときは出さない（効かない設定を並べても迷うだけ） */}
+            {imageSafeguard === true && (
+              <div className="border-t border-border/60 pt-3">
+                <p className="text-sm font-medium">覆いの濃さ</p>
+                <div className="mt-2 flex flex-wrap gap-1.5">
+                  {SAFEGUARD_STRENGTHS.map((option) => {
+                    const active = safeguardStrength === option.key
+                    return (
+                      <button
+                        key={option.key}
+                        type="button"
+                        onClick={() => changeSafeguardStrength(option.key)}
+                        disabled={safeguardStrength === null || savingSettings}
+                        title={option.hint}
+                        aria-pressed={active}
+                        className={`rounded-full border px-3 py-1 text-sm transition-colors disabled:opacity-50 ${
+                          active ? 'border-transparent text-white' : 'border-border text-muted-foreground hover:bg-muted'
+                        }`}
+                        style={active ? { backgroundColor: 'var(--palace)' } : undefined}
+                      >
+                        {option.label}
+                      </button>
+                    )
+                  })}
+                </div>
+                <p className="mt-1.5 text-sm text-muted-foreground">
+                  {SAFEGUARD_STRENGTHS.find((o) => o.key === safeguardStrength)?.hint}
+                </p>
+              </div>
+            )}
             {/* 同じ指示の絵は世界で1回しか作らない。**得か、自分だけのものにするか** */}
             <div className="flex items-start justify-between gap-4 border-t border-border/60 pt-4">
               <div className="min-w-0">

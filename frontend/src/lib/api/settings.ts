@@ -19,6 +19,7 @@ export async function updateSettings(
       | 'onboarded'
       | 'regenerate_with_meaning'
       | 'image_safeguard'
+      | 'image_safeguard_strength'
       | 'nav_hints'
       | 'share_generated_images'
       | 'card_detail_columns'

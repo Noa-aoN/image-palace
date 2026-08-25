@@ -74,8 +74,10 @@ function NavTree({
   const isActive = (href: string, exact = false) =>
     exact ? pathname === href : isNavItemActive(href, pathname, currentQuery)
 
+  // **行は幅いっぱいに取る。** 名前の長さで当たり判定が変わると、
+  // 短い項目だけ反応する幅が狭くなり、押せる範囲が読めない
   const linkClass = (depth: number) =>
-    `flex rounded-lg py-2.5 text-sm font-medium transition-colors hover:bg-black/5 ${
+    `flex w-full rounded-lg py-2.5 text-sm font-medium transition-colors hover:bg-black/5 ${
       iconsOnly ? 'items-center justify-center px-0' : `items-center gap-3 ${INDENT[depth] ?? INDENT[2]}`
     }`
 
@@ -138,7 +140,7 @@ function NavTree({
 
     if (locked) {
       return (
-        <Tooltip key={node.label} label={DEMO_LOCKED_HINT}>
+        <Tooltip key={node.label} label={DEMO_LOCKED_HINT} className="w-full">
           <span aria-disabled className={`${linkClass(depth)} cursor-not-allowed opacity-40`}>
             {inner}
           </span>
@@ -153,7 +155,7 @@ function NavTree({
     // 間に合わない。指を乗せた時点で出す部品に載せる。
     // 説明を持たないものは、名前をそのまま出す（畳んで印だけのときに要る）
     return (
-      <Tooltip key={node.label} label={hint || node.label}>
+      <Tooltip key={node.label} label={hint || node.label} className="w-full">
         <Link
           href={href}
           onClick={onNavigate}
@@ -200,21 +202,21 @@ function NavTree({
       // リンク（ラベル）＋ chevron トグル
       <div className="flex items-center">
         {isLocked(node.href, sectionKey) ? (
-          <Tooltip label={DEMO_LOCKED_HINT}>
+          <Tooltip label={DEMO_LOCKED_HINT} className="flex-1">
             <span
               aria-disabled
-              className={`flex-1 ${linkClass(depth)} cursor-not-allowed opacity-40`}
+              className={`${linkClass(depth)} cursor-not-allowed opacity-40`}
             >
               <span className="shrink-0">{node.icon}</span>
               <span className="truncate">{node.label}</span>
             </span>
           </Tooltip>
         ) : (
-          <Tooltip label={node.description || node.label}>
+          <Tooltip label={node.description || node.label} className="flex-1">
             <Link
               href={node.href}
               onClick={onNavigate}
-              className={`flex-1 ${linkClass(depth)}`}
+              className={linkClass(depth)}
               style={linkStyle(node.href)}
             >
               <span className="shrink-0">{node.icon}</span>
@@ -234,11 +236,11 @@ function NavTree({
       </div>
     ) : (
       // 行全体がトグル
-      <Tooltip label={node.description || node.label}>
+      <Tooltip label={node.description || node.label} className="w-full">
         <button
           type="button"
           onClick={() => toggleGroup(node.label)}
-          className={`w-full ${linkClass(depth)}`}
+          className={linkClass(depth)}
           aria-expanded={!collapsed}
         >
           <span className="shrink-0">{node.icon}</span>

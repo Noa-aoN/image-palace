@@ -23,7 +23,7 @@ import {
   RegeneratingOverlay,
   REGENERATING_IMAGE_CLASS,
 } from '@/components/features/items/RegeneratingOverlay'
-import { SafeguardVeil, SAFEGUARD_IMAGE_CLASS } from '@/components/features/items/SafeguardVeil'
+import { SafeguardVeil, useSafeguardImageClass } from '@/components/features/items/SafeguardVeil'
 import { CardCreateButton } from '@/components/features/items/CardCreatePanel'
 import { getItemTypes } from '@/lib/api/items'
 import { STATUS_LABEL, isRegenerating } from '@/lib/item-status'
@@ -201,6 +201,8 @@ function ItemCard({ item, selectionMode, selected, onToggle, fit, sizes, working
   // 承認待ちは一覧でも覆う。ここで素の絵を出したら、覆う意味が無い。
   // 決めるのは詳細（カードをめくった先）で行う
   const veiled = Boolean(item.media?.needs_approval) && !regenerating
+  // 覆いの濃さは設定で変えられる（薄い / 標準 / 濃い）
+  const safeguardClass = useSafeguardImageClass()
 
   // 単語名が枠に入り切らないときだけ、ホバーで全文を出す。
   // 列数を増やせるようにした結果、8〜10列では名前が数文字で切れる。
@@ -271,7 +273,9 @@ function ItemCard({ item, selectionMode, selected, onToggle, fit, sizes, working
               alt={item.title}
               className={`${CARD_IMAGE_EDGE} ${
                 fit === 'uniform' ? 'max-h-full max-w-full object-contain' : 'w-full h-full object-cover'
-              } ${regenerating ? REGENERATING_IMAGE_CLASS : ''} ${veiled ? SAFEGUARD_IMAGE_CLASS : ''}`}
+              } ${regenerating ? REGENERATING_IMAGE_CLASS : ''} ${veiled ? safeguardClass : ''}`}
+              // 覆っている間は掴めなくする（引きずるとぼかす前の絵が持ち上がる）
+              draggable={!veiled}
               loading="lazy"
               decoding="async"
               sizes={sizes}
