@@ -31,7 +31,10 @@ import {
   suggestPropertyKey,
   createPropertyDefinition,
   deletePropertyDefinition,
+  updatePropertyDefinition,
   reorderPropertyDefinitions,
+  PROPERTY_COLORS,
+  propertyColorOf,
   type PropertyDefinition,
   type PropertyValueType,
   PROPERTY_CATEGORIES,
@@ -125,6 +128,26 @@ export function CardPropertiesEditor({
     }
   }
 
+  /**
+   * 目印の色を付け替える。
+   *
+   * **その種別のカード全部に効く。** ここは項目の設定なので、
+   * 1枚のカードから触れる場所には置かない（「このカードだけ」と誤読される）。
+   */
+  const setColor = async (definition: PropertyDefinition, color: string | null) => {
+    setBusy(true)
+    setError(null)
+    try {
+      // 外すときは空文字で送る。null をそのまま送ると、送っていないのと区別が付かない
+      await updatePropertyDefinition(definition.id, { color: color ?? '' })
+      await onChanged()
+    } catch {
+      setError('色を変えられませんでした')
+    } finally {
+      setBusy(false)
+    }
+  }
+
   const handleDragEnd = async (event: DragEndEvent) => {
     const { active, over } = event
     if (!over || active.id === over.id) return
@@ -169,6 +192,7 @@ export function CardPropertiesEditor({
                   definition={definition}
                   busy={busy}
                   onRemove={() => remove(definition)}
+                  onColorChange={(color) => setColor(definition, color)}
                 />
               ))}
             </div>
@@ -354,11 +378,16 @@ function SortableDefinition({
   definition,
   busy,
   onRemove,
+  onColorChange,
 }: {
   definition: PropertyDefinition
   busy: boolean
   onRemove: () => void
+  onColorChange: (color: string | null) => void
 }) {
+  // 色の一覧は畳んでおく。8色を常に並べると、項目の名前より色のほうが目立つ
+  const [picking, setPicking] = useState(false)
+  const mark = propertyColorOf(definition.color)
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
     id: definition.id,
   })
@@ -367,10 +396,11 @@ function SortableDefinition({
     <div
       ref={setNodeRef}
       style={{ transform: CSS.Transform.toString(transform), transition }}
-      className={`flex items-center justify-between gap-2 rounded-lg border border-border/70 bg-background px-3 py-2 ${
+      className={`rounded-lg border border-border/70 bg-background px-3 py-2 ${
         isDragging ? 'opacity-60 shadow-md' : ''
       }`}
     >
+      <div className="flex items-center justify-between gap-2">
       <div className="flex min-w-0 items-center gap-2">
         <Tooltip label="ドラッグで並べ替え">
           <button
@@ -383,6 +413,22 @@ function SortableDefinition({
             <GripVertical size={15} />
           </button>
         </Tooltip>
+        {/* 目印の色。**カード詳細で丸が出るのと同じ位置**（名前の前）に置く。
+            付けていなければ空の輪。押すと色の一覧が下に開く */}
+        <button
+          type="button"
+          onClick={() => setPicking((v) => !v)}
+          disabled={busy}
+          aria-expanded={picking}
+          aria-label={`${definition.label}の目印の色`}
+          title={mark ? `目印: ${mark.label}` : '目印の色を付ける'}
+          className="size-3.5 shrink-0 rounded-full border transition-transform hover:scale-110 disabled:opacity-40"
+          style={
+            mark
+              ? { backgroundColor: mark.hex, borderColor: 'transparent' }
+              : { backgroundColor: 'transparent', borderColor: 'var(--border)' }
+          }
+        />
         <div className="min-w-0">
           <p className="truncate text-sm font-medium">{definition.label}</p>
           <p className="truncate text-xs text-muted-foreground">
@@ -401,6 +447,42 @@ function SortableDefinition({
           <Trash2 size={14} />
         </button>
       </Tooltip>
+      </div>
+
+      {picking && (
+        <div className="mt-2 flex flex-wrap items-center gap-1.5 border-t border-border/60 pt-2">
+          {PROPERTY_COLORS.map((c) => (
+            <button
+              key={c.key}
+              type="button"
+              onClick={() => {
+                onColorChange(c.key)
+                setPicking(false)
+              }}
+              disabled={busy}
+              aria-label={c.label}
+              aria-pressed={definition.color === c.key}
+              title={c.label}
+              className={`size-5 rounded-full transition-transform hover:scale-110 disabled:opacity-40 ${
+                definition.color === c.key ? 'ring-2 ring-[var(--palace)] ring-offset-1' : ''
+              }`}
+              style={{ backgroundColor: c.hex }}
+            />
+          ))}
+          {/* 外す口を必ず置く。付けたものを戻せないと、試しに付けられない */}
+          <button
+            type="button"
+            onClick={() => {
+              onColorChange(null)
+              setPicking(false)
+            }}
+            disabled={busy || !definition.color}
+            className="ml-1 text-xs text-muted-foreground transition-colors hover:text-foreground disabled:opacity-30"
+          >
+            外す
+          </button>
+        </div>
+      )}
     </div>
   )
 }

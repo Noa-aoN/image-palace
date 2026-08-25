@@ -55,6 +55,15 @@ class PropertyDefinition < ApplicationRecord
     "admin" => "管理要素"
   }.freeze
 
+  # 項目ごとの目印の色。**名前で持つ**（実際の色味は画面側が決める）。
+  #
+  # 役割の色は3つしかないので、同じ役割の中で「語源」「品詞」「読み方」を
+  # 見分けたいときに手立てが無い。ここは**その人が自分の物差しで付ける印**。
+  #
+  # 生の `#RRGGBB` を持たないのは、地（アイボリー）に載る色が画面側の設計に
+  # 属するため。生の値だと、色味を調整するたびに保存済みの行を書き換えることになる。
+  COLORS = %w[gold purple blue green red orange pink gray].freeze
+
   MAX_KEY_LENGTH = 40
   MAX_LABEL_LENGTH = 40
   MAX_PER_ITEM_TYPE = 40
@@ -68,18 +77,27 @@ class PropertyDefinition < ApplicationRecord
   validates :category, inclusion: { in: CATEGORIES }
   validate :options_must_fit
   validates :key, uniqueness: { scope: [ :user_id, :item_type_id ] }
+  # 無色（付けていない）を既定にする。**全部に色が付くと、どれが目印か分からなくなる**
+  validates :color, inclusion: { in: COLORS }, allow_nil: true
 
   scope :ordered, -> { order(:position, :created_at) }
   scope :for_item_type, ->(item_type_id) { where(item_type_id: item_type_id) }
   scope :of_category, ->(category) { where(category: category) }
 
   before_validation :assign_position, on: :create
+  # 画面から空文字で送られてきたら「外した」とみなす。
+  # そのまま入れると、無色でも有色でもない値が残る
+  before_validation :blank_color_means_none
 
   def list?
     value_type == "list"
   end
 
   private
+
+  def blank_color_means_none
+    self.color = nil if color.blank?
+  end
 
   def assign_position
     return if position.present? && position.positive?

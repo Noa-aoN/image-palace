@@ -115,6 +115,45 @@ export const PROPERTY_CATEGORIES: {
   },
 ]
 
+/**
+ * 項目ごとの目印の色。**見出しの前に置く小さな丸**。
+ *
+ * 役割（記憶要素 / 変換要素 / 管理要素）の色は3つしかないので、
+ * 同じ役割の中に並ぶ「語源」「品詞」「読み方」は全部同じ色で出る。
+ * ここは、その人が自分の物差しで付ける印。
+ *
+ * **色の名前だけをサーバーが持つ。** 実際の色味はここで決める。
+ * 地はアイボリーなので、載る色はその地に合わせて選んである。
+ * 生の値を保存していると、色味を調整するたびに保存済みの行を書き換えることになる。
+ */
+export const PROPERTY_COLORS: { key: string; label: string; hex: string }[] = [
+  // 金だけは既にある札の色（--palace）を使う。ここで別の金を作ると2種類になる
+  { key: 'gold', label: '金', hex: 'var(--palace)' },
+  { key: 'purple', label: '藤', hex: '#9a6dd7' },
+  { key: 'blue', label: '藍', hex: '#4a7fb5' },
+  { key: 'green', label: '緑', hex: '#5b8c5a' },
+  { key: 'red', label: '朱', hex: '#c05a4e' },
+  { key: 'orange', label: '橙', hex: '#d08a3e' },
+  { key: 'pink', label: '桃', hex: '#c96b96' },
+  { key: 'gray', label: '鼠', hex: '#6b7280' },
+]
+
+/**
+ * 色の名前から、出す丸を決める。
+ *
+ * **付けていなければ null**（丸を出さない）。全部に色が付いていると、
+ * どれが目印なのかが分からなくなる。
+ *
+ * 知らない名前も null にする。対応表に無い色が届くのは、
+ * こちらが古いときなので、**知らないものは出さない**のが安全側
+ * （空の丸や黒い丸が出ると、付けていない項目より目立つ）。
+ */
+export function propertyColorOf(color?: string | null) {
+  if (!color) return null
+
+  return PROPERTY_COLORS.find((row) => row.key === color) ?? null
+}
+
 export function propertyCategoryOf(category?: string | null) {
   return PROPERTY_CATEGORIES.find((row) => row.key === category) ?? PROPERTY_CATEGORIES[0]
 }
@@ -127,6 +166,8 @@ export interface PropertyDefinition {
   value_type: PropertyValueType
   /** 何のために持つ項目か */
   category?: PropertyCategory
+  /** 見出しの前に出す丸の色。付けていなければ null */
+  color?: string | null
   description?: string | null
   /** 選ぶ項目の選択肢。ほかの型では空 */
   options?: string[]
@@ -140,6 +181,8 @@ export interface ItemPropertyEntry {
   label: string
   value_type: PropertyValueType
   category?: PropertyCategory
+  /** 見出しの前に出す丸の色。付けていなければ null */
+  color?: string | null
   description?: string | null
   /** 選ぶ項目の選択肢。ほかの型では空 */
   options?: string[]
@@ -186,6 +229,8 @@ export async function createPropertyDefinition(payload: {
   label: string
   value_type: PropertyValueType
   description?: string
+  /** 見出しの前に出す丸の色。付けなければ無色 */
+  color?: string | null
 }): Promise<PropertyDefinition> {
   const res = await apiClient.post<PropertyDefinition>('/api/v1/property_definitions', {
     property_definition: payload,
@@ -196,7 +241,14 @@ export async function createPropertyDefinition(payload: {
 // key と種別は変えられない（既に入っている値がどの項目のものか辿れなくなるため）
 export async function updatePropertyDefinition(
   id: string,
-  payload: { label?: string; value_type?: PropertyValueType; description?: string; options?: string[] }
+  payload: {
+    label?: string
+    value_type?: PropertyValueType
+    description?: string
+    options?: string[]
+    /** 空文字を送ると外れる（サーバーが「付けていない」に戻す） */
+    color?: string | null
+  }
 ): Promise<PropertyDefinition> {
   const res = await apiClient.patch<PropertyDefinition>(`/api/v1/property_definitions/${id}`, {
     property_definition: payload,
