@@ -26,7 +26,7 @@ module Api
 
       def update
         # key と種別は変えさせない。変えると、既に入っている値がどの項目のものか辿れなくなる
-        definition.update!(definition_params.slice(:label, :value_type, :description))
+        definition.update!(definition_params.slice(:label, :value_type, :description, :category, :color))
         render json: serialize(definition)
       rescue ActiveRecord::RecordInvalid => e
         render json: { errors: e.record.errors.full_messages }, status: :unprocessable_entity
@@ -61,7 +61,7 @@ module Api
 
       def definition_params
         params.require(:property_definition)
-              .permit(:item_type_id, :key, :label, :value_type, :description, :category, options: [])
+              .permit(:item_type_id, :key, :label, :value_type, :description, :category, :color, options: [])
               .to_h.symbolize_keys
       end
 
@@ -74,6 +74,8 @@ module Api
           value_type: record.value_type,
           # 何のために持つ項目か（その語のこと / 覚えかた / 整理）
           category: record.category,
+          # 見出しの前に出す丸の色。付けていなければ nil（丸を出さない）
+          color: record.color,
           description: record.description,
           # 選ぶ項目の選択肢。ほかの型では空のまま
           options: record.options,

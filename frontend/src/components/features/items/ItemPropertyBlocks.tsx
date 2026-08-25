@@ -391,6 +391,8 @@ export function PropertyEntryBlock({
     <PropertyBlock
       title={entry.label}
       category={entry.category}
+      // 自分で付けた目印。見出しの前に小さな丸で出る
+      color={entry.color}
       // **書いていないものは地を落とす。** 上から読んで、どこまで書いたかが分かる
       empty={!isFilled(entry)}
       busy={writing}

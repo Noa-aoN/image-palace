@@ -3,7 +3,7 @@
 import type { ReactNode } from 'react'
 import { Spinner } from '@/components/ui/spinner'
 import { Tooltip } from '@/components/ui/tooltip'
-import { propertyCategoryOf, type PropertyCategory } from '@/lib/api/properties'
+import { propertyCategoryOf, propertyColorOf, type PropertyCategory } from '@/lib/api/properties'
 
 /**
  * カード詳細のプロパティを載せる、共通の器。
@@ -26,6 +26,7 @@ export function PropertyBlock({
   children,
   busy = false,
   category,
+  color,
   empty = false,
 }: {
   title: string
@@ -43,6 +44,14 @@ export function PropertyBlock({
    */
   category?: PropertyCategory
   /**
+   * その項目に付けた目印の色。**見出しの前に小さな丸で出す。**
+   *
+   * 役割の色は3つしかないので、同じ役割の中に並ぶ項目は全部同じ色になる。
+   * これは、その人が自分の物差しで付ける印。**器の形も地も変えない**
+   * （縁を塗ると、同じ形で並ぶはずのものが別種の入れ物に見える）。
+   */
+  color?: string | null
+  /**
    * まだ何も書いていないか。**地を灰にして、書いたものと見分ける。**
    *
    * 押して出した直後の欄と、書き終えた欄が同じ地だと、
@@ -51,6 +60,7 @@ export function PropertyBlock({
   empty?: boolean
 }) {
   const role = category ? propertyCategoryOf(category) : null
+  const mark = propertyColorOf(color)
 
   return (
     // 縁は札と同じ金。ただし一段薄く（内側の器のほうが強いと主従が逆になる）。
@@ -62,6 +72,17 @@ export function PropertyBlock({
     >
       <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-1">
         <div className="flex items-center gap-2">
+          {/* 目印の丸。**字の前に置く。** 後ろに置くと役割の札と並んで、
+              どちらも「この項目が何か」を言う印に見える。
+              色だけの印なので、読み上げには出さない（title で名前は読める） */}
+          {mark && (
+            <span
+              aria-hidden
+              className="size-2 shrink-0 rounded-full"
+              style={{ backgroundColor: mark.hex }}
+              title={mark.label}
+            />
+          )}
           <h3 className="text-sm font-medium">{title}</h3>
           {/* **色は添えるだけ。** 札の縁は金のままにする。
               縁を役割ごとに塗ると、器が3種類あるように見えてしまう。

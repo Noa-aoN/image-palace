@@ -754,6 +754,8 @@ module Api
             value_type: definition.value_type,
             # 何のために持つ項目か（見分けが付くよう、画面で色と見出しに使う）
             category: definition.category,
+            # 項目ごとの目印。付けていなければ nil（丸を出さない）
+            color: definition.color,
             description: definition.description,
             # 選ぶ項目の選択肢。**ここに無いと、開いても選べない**
             options: definition.options,
