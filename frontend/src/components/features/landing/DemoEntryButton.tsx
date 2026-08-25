@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { enterDemo, fetchDemoOpen, DemoUnavailableError } from '@/lib/api/demo'
 import { useAuthStore } from '@/stores/auth'
+import { DEMO_HOME } from '@/lib/demo/guide'
 import { useItemsStore } from '@/stores/items'
 
 /**
@@ -42,7 +43,12 @@ export function DemoEntryButton({ label = '宮殿を見てみる' }: { label?: s
       const session = await enterDemo()
       resetItems()
       setAuth(session.user, session.tokens)
-      router.push('/entrance')
+      // **体験はカード一覧から始める。**
+      //
+      // エントランスは自分の宮殿の入口で、まだ何も無い人には
+      // 空の間取り図が出るだけになる。体験で見てほしいのは
+      // **中身のあるカード**なので、最初からそこへ通す
+      router.push(DEMO_HOME)
     } catch (e) {
       setError(
         e instanceof DemoUnavailableError

@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button'
 import { Spinner } from '@/components/ui/spinner'
 import { fetchStudioSettings, updateStudioSettings, type StudioSettings } from '@/lib/api/studio'
 import { enterDemo } from '@/lib/api/demo'
+import { DEMO_HOME } from '@/lib/demo/guide'
 import { useAuthStore } from '@/stores/auth'
 import { useItemsStore } from '@/stores/items'
 import { useStudioRoom } from '@/hooks/useStudioRoom'
@@ -69,7 +70,8 @@ export function StudioDemoPanel() {
       const session = await enterDemo()
       useItemsStore.getState().resetItems()
       useAuthStore.getState().setAuth(session.user, session.tokens)
-      router.push('/entrance')
+      // 体験はカード一覧から（DemoEntryButton と同じ入口にそろえる）
+      router.push(DEMO_HOME)
     } catch {
       setLocalError('体験用の宮殿へ入れませんでした')
       setEntering(false)
