@@ -1758,6 +1758,95 @@
 }
 /* 乳白色フィルター（HA のようなやわらかい乳白トーン）。門とカードの間に敷き、
    風景・門を薄いミルク色＋ごく軽いフロストで包んで柔らかく光らせる */
+/* 門の**奥**を飛ぶ渡鴉と蝶。
+   門（.auth-arch）より前の DOM に置くことで、門の裏へ回る
+   （どれも position:fixed / z-index:0 なので、重なりは DOM 順で決まる）。
+
+   ここは「宮殿の門の前に立つ」構図で、いままで空気だけが動いていなかった。
+   生き物が2種類（高いところを渡る鳥・低いところを舞う蝶）いると、
+   門の向こうに奥行きのある場所がある、と読める。
+
+   **絵は LP と同じものを使う。** 門の絵と同じ世界の続きに見せたいので、
+   別の鳥や蝶を用意しない（読み込むものも増えない）。 */
+.auth-fauna {
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  overflow: hidden;
+}
+
+.auth-raven {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 74px;
+  height: auto;
+  /* 遠くの空を渡るので、彩度を落として明るく霞ませる（門より奥にあると分かる濃さ） */
+  filter: saturate(0.7) brightness(1.14) blur(0.4px);
+  opacity: 0.62;
+  transform-origin: 50% 50%;
+  will-change: transform;
+  animation: auth-raven-fly 38s ease-in-out infinite;
+}
+
+/* 画面内を1周する（0%=100% でつなぎ目を作らない）。
+   進む向きに合わせて左右を反転する（step-end でパッと切り替え＝潰れない）。
+   門の頂部より上の空を通す。**カードの読み書きの邪魔をしない高さ**に留める */
+@keyframes auth-raven-fly {
+  0%   { transform: translate3d(6vw, 12vh, 0) scale(0.8, 0.8) rotate(-3deg); }
+  30%  { transform: translate3d(48vw, 7vh, 0) scale(0.7, 0.7) rotate(2deg); }
+  48%  { transform: translate3d(88vw, 16vh, 0) scale(0.86, 0.86) rotate(-1deg); animation-timing-function: step-end; }
+  50%  { transform: translate3d(88vw, 16vh, 0) scale(-0.86, 0.86) rotate(-1deg); }
+  78%  { transform: translate3d(34vw, 21vh, 0) scale(-0.78, 0.78) rotate(3deg); }
+  98%  { transform: translate3d(6vw, 13vh, 0) scale(-0.8, 0.8) rotate(-3deg); animation-timing-function: step-end; }
+  100% { transform: translate3d(6vw, 12vh, 0) scale(0.8, 0.8) rotate(-3deg); }
+}
+
+/* 低いところを舞う蝶。門の柱脚のあたり（画面の下 1/3）に散らす */
+.auth-butterfly {
+  position: absolute;
+  width: 15px;
+  will-change: transform;
+  opacity: 0.72;
+}
+.auth-butterfly__wing {
+  display: block;
+  width: 100%;
+  height: auto;
+  transform-origin: center;
+  /* 渡鴉と同じ霞ませ方。奥にいるものを、同じ空気の中に置く */
+  filter: saturate(0.72) brightness(1.1) sepia(0.1) blur(0.5px);
+  will-change: transform;
+  /* 羽ばたきは LP と同じもの（横の縮みで翅の開閉を擬似する） */
+  animation: hero-bfly-flap 0.42s ease-in-out infinite;
+}
+.auth-butterfly--1 { left: 16%; top: 68%; width: 16px; animation: auth-bfly-a 17s ease-in-out infinite; }
+.auth-butterfly--2 { left: 82%; top: 74%; width: 13px; animation: auth-bfly-b 21s ease-in-out infinite; }
+.auth-butterfly--3 { left: 68%; top: 63%; width: 12px; animation: auth-bfly-a 24s ease-in-out infinite reverse; }
+
+/* ひらひらと漂う。**直線で動かさない**（直線だと機械の動きに見える） */
+@keyframes auth-bfly-a {
+  0%, 100% { transform: translate3d(0, 0, 0); }
+  25%      { transform: translate3d(4vw, -3vh, 0); }
+  50%      { transform: translate3d(7vw, 1vh, 0); }
+  75%      { transform: translate3d(3vw, -1.5vh, 0); }
+}
+@keyframes auth-bfly-b {
+  0%, 100% { transform: translate3d(0, 0, 0); }
+  30%      { transform: translate3d(-5vw, -2vh, 0); }
+  60%      { transform: translate3d(-8vw, 2vh, 0); }
+  85%      { transform: translate3d(-3vw, -1vh, 0); }
+}
+
+/* 動きを望まない人には出さない。
+   **止めるのではなく消す。** 止まった鳥が空に貼り付いていると、
+   絵の一部なのか壊れているのかが分からない */
+@media (prefers-reduced-motion: reduce) {
+  .auth-fauna { display: none; }
+}
+:root[data-motion='off'] .auth-fauna { display: none; }
+
 .auth-veil {
   position: fixed;
   inset: 0;
