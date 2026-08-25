@@ -65,10 +65,12 @@ export function PropertyBlock({
   return (
     // 縁は札と同じ金。ただし一段薄く（内側の器のほうが強いと主従が逆になる）。
     // 地は灰をやめて暖かい白へ。muted の灰は青みがあり、ivory の上では汚れて見える。
-    // **まだ書いていないものだけ**、地を落として区別する
+    // **まだ書いていないものだけ**、地を落として区別する。
+    // 落とす先は ivory-dark では足りなかった（ivory との差が小さく、
+    // 「少し暗い紙」にしか見えない）。--surface-empty で一段深く、灰寄りにする
     <section
       className="space-y-2 rounded-xl px-4 py-3 ring-1 ring-[var(--edge-gold-soft)]"
-      style={{ background: empty ? 'var(--ivory-dark)' : 'var(--surface-warm)' }}
+      style={{ background: empty ? 'var(--surface-empty)' : 'var(--surface-warm)' }}
     >
       <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-1">
         <div className="flex items-center gap-2">

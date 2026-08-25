@@ -16,7 +16,7 @@ import {
   RegeneratingOverlay,
   REGENERATING_IMAGE_CLASS,
 } from '@/components/features/items/RegeneratingOverlay'
-import { SafeguardVeil, SAFEGUARD_IMAGE_CLASS } from '@/components/features/items/SafeguardVeil'
+import { SafeguardVeil, useSafeguardImageClass } from '@/components/features/items/SafeguardVeil'
 import { SafeguardBar } from '@/components/features/items/SafeguardBar'
 import { StatusBadge } from '@/components/features/items/StatusBadge'
 import { useItemDetail } from '@/hooks/useItemDetail'
@@ -56,6 +56,10 @@ export function ItemDetailBody({
     handleSaveTitle,
     applyUpdated,
   } = useItemDetail(itemId, { onDeleted })
+
+  // 覆いの濃さは設定で変えられる（薄い / 標準 / 濃い）。
+  // **早期 return より前で呼ぶ**（hook は毎回同じ順で呼ばれないといけない）
+  const safeguardClass = useSafeguardImageClass()
 
   // **ここも行き止まりにしない。** 詳細ページ側（items/[id]）には復帰の手があるのに、
   // 右パネルから開いたときだけ文字が出て終わりだった。読めなかった理由は同じなので、
@@ -157,8 +161,11 @@ export function ItemDetailBody({
               src={item.media.url}
               alt={item.title}
               className={`w-full rounded-lg object-cover ${regenerating ? REGENERATING_IMAGE_CLASS : ''} ${
-                veiled ? SAFEGUARD_IMAGE_CLASS : 'cursor-zoom-in'
+                veiled ? safeguardClass : 'cursor-zoom-in'
               }`}
+              // 覆っている間は**掴めなくする**。ブラウザの引きずりは
+              // 元の画像そのものを持ち上げるので、ぼかしを外した絵が見えてしまう
+              draggable={!veiled}
               decoding="async"
               onClick={() => !veiled && setZoomed(true)}
               onError={() => setImgError(true)}

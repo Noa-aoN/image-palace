@@ -1,6 +1,6 @@
 'use client'
 
-import { useCallback, useSyncExternalStore } from 'react'
+import { useCallback, useEffect, useState, useSyncExternalStore } from 'react'
 
 /**
  * カード詳細で項目を何列に並べるか。
@@ -18,10 +18,11 @@ export const CARD_DETAIL_COLUMN_CHOICES = [1, 2, 3] as const
 
 const listeners = new Set<() => void>()
 
-function read(fallback: number): number {
-  if (typeof window === 'undefined') return fallback
+/** この端末で選んだ列数。選んでいなければ null（アカウントの設定に従う） */
+function readStored(): number | null {
+  if (typeof window === 'undefined') return null
   const raw = Number(window.localStorage.getItem(KEY))
-  return CARD_DETAIL_COLUMN_CHOICES.includes(raw as 1 | 2 | 3) ? raw : fallback
+  return CARD_DETAIL_COLUMN_CHOICES.includes(raw as 1 | 2 | 3) ? raw : null
 }
 
 function subscribe(callback: () => void) {
@@ -31,19 +32,33 @@ function subscribe(callback: () => void) {
   }
 }
 
-export function useCardDetailColumns(fallback = 1) {
-  const columns = useSyncExternalStore(
-    subscribe,
-    () => read(fallback),
-    () => fallback
-  )
+/**
+ * @param fallback この端末でまだ選んでいないときに使う列数（アカウントの設定）
+ * @param fallbackReady その `fallback` が確定しているか。
+ *   アカウントの設定は後から届くので、**届く前に描くと1列で組んでから2〜3列へ割れる。**
+ *   札がいったん画面幅いっぱいに広がってから縮むので、開くたびに紙面が跳ねて見えた。
+ */
+export function useCardDetailColumns(fallback = 1, fallbackReady = true) {
+  const stored = useSyncExternalStore(subscribe, readStored, () => null)
+
+  // 設定が最後まで来ないとき（通信の失敗など）に、隠したままにしない保険
+  const [graced, setGraced] = useState(false)
+  useEffect(() => {
+    const timer = setTimeout(() => setGraced(true), 1000)
+    return () => clearTimeout(timer)
+  }, [])
 
   const change = useCallback((next: number) => {
     window.localStorage.setItem(KEY, String(next))
     listeners.forEach((listener) => listener())
   }, [])
 
-  return { columns, change }
+  return {
+    columns: stored ?? fallback,
+    change,
+    // この端末で選んであれば、設定を待つ必要は無い（そちらが優先されるので）
+    ready: stored !== null || fallbackReady || graced,
+  }
 }
 
 /**

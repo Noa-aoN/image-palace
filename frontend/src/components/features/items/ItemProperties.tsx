@@ -274,9 +274,17 @@ export function ItemProperties({
   leadingBlocks = [],
   singleColumn = false,
 }: ItemPropertiesProps) {
-  // 既定はアカウントの設定。この端末で選んでいればそちらが勝つ
-  const defaultColumns = useSettingsStore((s) => s.settings?.card_detail_columns) ?? 1
-  const { columns: chosenColumns, change: changeColumns } = useCardDetailColumns(defaultColumns)
+  // 既定はアカウントの設定。この端末で選んでいればそちらが勝つ。
+  //
+  // **設定が届くまで描かない。** 届く前に組むと1列で並べてから2〜3列へ割れるので、
+  // 札がいったん画面幅いっぱいに広がってから縮み、開くたびに紙面が跳ねて見えた
+  const settings = useSettingsStore((s) => s.settings)
+  const defaultColumns = settings?.card_detail_columns ?? 1
+  const {
+    columns: chosenColumns,
+    change: changeColumns,
+    ready: columnsReady,
+  } = useCardDetailColumns(defaultColumns, settings !== null)
   // **狭い場所では必ず1列。** 右パネルは幅が限られていて、
   // 2列にすると1列あたりが半分になり、説明のような長い項目が読めなくなる
   const columns = singleColumn ? 1 : chosenColumns
@@ -916,7 +924,9 @@ export function ItemProperties({
             上下に動かしたつもりが左右に飛ぶ */}
         <SortableContext items={visibleBlocks.map((b) => b.key)} strategy={verticalListSortingStrategy}>
           {autoFlow ? (
-            <div className={cardDetailGridClass(columns)}>
+            // 列が決まるまでは、場所は取ったまま見せない。
+            // 隠さずに描くと、1列→2〜3列の組み替えがそのまま目に映る
+            <div className={`${cardDetailGridClass(columns)} ${columnsReady ? '' : 'invisible'}`}>
               {visibleBlocks.map((b) => (
                 <SortableBlock
                   key={b.key}
@@ -933,7 +943,7 @@ export function ItemProperties({
             // 自分で決めた数で列に分ける。**幅（何列ぶん）はここでは効かない**
             // （1枚の札は1つの列に属するため）。並べ替えは従来どおり効く
             <div
-              className="grid gap-3"
+              className={`grid gap-3 ${columnsReady ? '' : 'invisible'}`}
               style={{ gridTemplateColumns: `repeat(${columns}, minmax(0, 1fr))` }}
             >
               {splitIntoColumns(visibleBlocks, columnCounts, columns).map((column, index) => (

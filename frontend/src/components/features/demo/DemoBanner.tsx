@@ -51,14 +51,19 @@ export function DemoBanner() {
       role="status"
     >
       {/* 出口を先に置く。**入ってきた人が最初に探すのは戻り道。**
-          見た目は「自分の宮殿をつくる」と揃える（どちらも出口で、格は同じ） */}
+          見た目は「自分の宮殿をつくる」と揃える（どちらも出口で、格は同じ）。
+
+          **地は白で塗り切る。** 半透明の白（15%）を金の帯に重ねていたころは、
+          白字とのコントラストが 2:1 ほどしか無く、**押せない釦に見えた**。
+          薄い地に薄い字を載せると、いくら並べても「効いていない」と読まれる。 */}
       <button
         type="button"
         onClick={handleLeave}
         disabled={leaving}
         title="体験を終えて、トップページへ戻ります"
-        className="inline-flex items-center gap-1 rounded-full bg-white/15 px-3 py-0.5
-                   font-medium transition-colors hover:bg-white/25 disabled:opacity-50"
+        className="inline-flex items-center gap-1 rounded-full bg-white px-3 py-0.5
+                   font-medium shadow-sm transition-opacity hover:opacity-90 disabled:opacity-50"
+        style={{ color: 'var(--palace)' }}
       >
         <Home size={12} aria-hidden />
         トップページに戻る
@@ -70,8 +75,9 @@ export function DemoBanner() {
           「体験のものは引き継がれない」を先に言えるようにする */}
       <Link
         href="/signup?from=demo"
-        className="inline-flex items-center gap-1 rounded-full bg-white/15 px-3 py-0.5
-                   font-medium transition-colors hover:bg-white/25"
+        className="inline-flex items-center gap-1 rounded-full bg-white px-3 py-0.5
+                   font-medium shadow-sm transition-opacity hover:opacity-90"
+        style={{ color: 'var(--palace)' }}
       >
         <Sparkles size={12} aria-hidden />
         自分の宮殿をつくる
