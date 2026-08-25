@@ -79,6 +79,7 @@ export default function ItemDetailPage() {
   // 詳細の状態・操作（取得・ポーリング・タイトル編集・削除・拡大）は共通フックに集約。
   const {
     item,
+    loaded,
     error,
     reload,
     imgError,
@@ -416,13 +417,13 @@ export default function ItemDetailPage() {
         {leadInGrid ? (
           // 「同じ列に並べる」を選んだ人は、見出し語も絵もほかの項目と同じ扱いにしたい人。
           // その意思を左右で割ると、選んだことが打ち消される
-          <ItemProperties item={item} onUpdated={applyUpdated} leadingBlocks={leadingBlocks} />
+          <ItemProperties item={item} onUpdated={applyUpdated} leadingBlocks={leadingBlocks} settled={loaded} />
         ) : (
           <div className="grid gap-4 lg:grid-cols-[minmax(0,1.1fr)_minmax(0,1fr)] lg:items-start lg:gap-6">
             <div className="lg:sticky lg:top-6">{imageNode}</div>
             <div className="space-y-3">
               {titleNode}
-              <ItemProperties item={item} onUpdated={applyUpdated} leadingBlocks={leadingBlocks} />
+              <ItemProperties item={item} onUpdated={applyUpdated} leadingBlocks={leadingBlocks} settled={loaded} />
             </div>
           </div>
         )}

@@ -82,6 +82,16 @@ type ItemPropertiesProps = {
   leadingBlocks?: { key: string; label: string; node: React.ReactNode }[]
   /** 狭い場所（右パネル）で開くとき。列を選ばせず1列にする */
   singleColumn?: boolean
+  /**
+   * そのカードを**最後まで読めているか**。
+   *
+   * 開いた直後に手元にあるのは一覧の要約で、項目も意味も並び順も入っていない。
+   * それをそのまま描くと、読み終えた瞬間に**項目が現れ、並びが入れ替わり、
+   * 地の色まで変わる**。読めるまでは、場所だけ取って見せない。
+   *
+   * 既定は true（読めているものとして扱う）。右パネル以外の呼び出しを変えないため。
+   */
+  settled?: boolean
 }
 
 const FACT_CHECK_BADGE: Record<string, { label: string; className: string }> = {
@@ -273,6 +283,7 @@ export function ItemProperties({
   onUpdated,
   leadingBlocks = [],
   singleColumn = false,
+  settled = true,
 }: ItemPropertiesProps) {
   // 既定はアカウントの設定。この端末で選んでいればそちらが勝つ。
   //
@@ -285,6 +296,9 @@ export function ItemProperties({
     change: changeColumns,
     ready: columnsReady,
   } = useCardDetailColumns(defaultColumns, settings !== null)
+  // **並びも中身も決まってから見せる。**
+  // 列（端末の設定）とカード本体（項目・並び順）の両方が要る
+  const readyToShow = columnsReady && settled
   // **狭い場所では必ず1列。** 右パネルは幅が限られていて、
   // 2列にすると1列あたりが半分になり、説明のような長い項目が読めなくなる
   const columns = singleColumn ? 1 : chosenColumns
@@ -502,7 +516,9 @@ export function ItemProperties({
   // 自由プロパティだけ灰色にしていたので、作り付けの札（種別・意味・例・タグ）は
   // 書いても書かなくても同じ地だった。上から読んでいって、どこまで書いたのかが
   // 分かるのは片方だけ、という状態になっていた。判定は lib に出してある
-  const blockEmpty = builtInBlockEmptiness(item)
+  // **読めていないうちは、どれも空と決めない。**
+  // 決めてしまうと、読めていないだけの札が灰色になり、読み終えた瞬間に白へ戻る
+  const blockEmpty = builtInBlockEmptiness(item, settled)
 
   // ブロックは「キー＋中身」の並びにしておく。並べ替えも表示切替も、
   // ここを差し替えるだけで効く（見せ方の指定はカード1枚ごとに持つ）
@@ -926,7 +942,7 @@ export function ItemProperties({
           {autoFlow ? (
             // 列が決まるまでは、場所は取ったまま見せない。
             // 隠さずに描くと、1列→2〜3列の組み替えがそのまま目に映る
-            <div className={`${cardDetailGridClass(columns)} ${columnsReady ? '' : 'invisible'}`}>
+            <div className={`${cardDetailGridClass(columns)} ${readyToShow ? '' : 'invisible'}`}>
               {visibleBlocks.map((b) => (
                 <SortableBlock
                   key={b.key}
@@ -943,7 +959,7 @@ export function ItemProperties({
             // 自分で決めた数で列に分ける。**幅（何列ぶん）はここでは効かない**
             // （1枚の札は1つの列に属するため）。並べ替えは従来どおり効く
             <div
-              className={`grid gap-3 ${columnsReady ? '' : 'invisible'}`}
+              className={`grid gap-3 ${readyToShow ? '' : 'invisible'}`}
               style={{ gridTemplateColumns: `repeat(${columns}, minmax(0, 1fr))` }}
             >
               {splitIntoColumns(visibleBlocks, columnCounts, columns).map((column, index) => (

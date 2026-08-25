@@ -36,6 +36,7 @@ export function ItemDetailBody({
 }) {
   const {
     item,
+    loaded,
     error,
     reload,
     imgError,
@@ -215,7 +216,7 @@ export function ItemDetailBody({
       {/* プロパティ */}
       {/* 右パネルでしか使わないので、列は選ばせず1列に固定する
           （パネルの幅では2列にすると1列が半分になり、長い項目が読めない） */}
-      <ItemProperties item={item} onUpdated={applyUpdated} singleColumn />
+      <ItemProperties item={item} onUpdated={applyUpdated} singleColumn settled={loaded} />
 
       {/* 詳細ページは「情報」パネルへ寄せたが、右パネルには置き場所が無い
           （パネルの中からパネルを開くことになる）。ここは一行のまま残す */}
