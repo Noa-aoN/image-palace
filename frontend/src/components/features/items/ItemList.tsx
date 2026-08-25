@@ -4,7 +4,7 @@ import { startTransition, useEffect, useEffectEvent, useRef, useState, useCallba
 import Link from 'next/link'
 import { EMPTY_VALUE_MARK } from '@/lib/card-list-layout'
 import { useRouter } from 'next/navigation'
-import { ChevronLeft, ChevronRight, Search, X, Trash2, Check, CircleCheck, Circle, Tag as TagIcon, Pin, ShieldCheck, FileText, ChevronDown, Image as ImageIcon } from 'lucide-react'
+import { Search, X, Trash2, Check, CircleCheck, Circle, Tag as TagIcon, Pin, ShieldCheck, FileText, ChevronDown, Image as ImageIcon } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import {
   DropdownMenu,
@@ -17,6 +17,7 @@ import {
 } from '@/components/ui/dropdown-menu'
 import { Spinner } from '@/components/ui/spinner'
 import { CardGridSkeleton } from '@/components/ui/skeleton'
+import { Pagination } from '@/components/ui/pagination'
 import { shouldShowSkeleton } from '@/lib/items/list-loading'
 import { GeneratingOverlay } from '@/components/features/items/GeneratingOverlay'
 import {
@@ -1412,33 +1413,7 @@ export function ItemList({ initialTag = null }: { initialTag?: string | null }) 
         ))}
       </div>
 
-      {totalPages > 1 && (
-        <nav className="flex items-center justify-center gap-4" aria-label="ページネーション">
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => goToPage(page - 1)}
-            disabled={page <= 1}
-            className="flex items-center gap-1"
-          >
-            <ChevronLeft size={16} />
-            前へ
-          </Button>
-          <span className="text-sm text-muted-foreground tabular-nums" aria-current="page">
-            {page} / {totalPages}
-          </span>
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => goToPage(page + 1)}
-            disabled={page >= totalPages}
-            className="flex items-center gap-1"
-          >
-            次へ
-            <ChevronRight size={16} />
-          </Button>
-        </nav>
-      )}
+      <Pagination page={page} totalPages={totalPages} onChange={goToPage} />
     </div>
   )
 }
