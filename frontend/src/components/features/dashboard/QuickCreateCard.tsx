@@ -1,13 +1,13 @@
 'use client'
 
 import { useEffect, useState } from 'react'
+import { useSettingsStore } from '@/stores/settings'
 import Link from 'next/link'
 import { Button } from '@/components/ui/button'
 import { Spinner } from '@/components/ui/spinner'
 import { Card, CardContent } from '@/components/ui/card'
 import { createItem } from '@/lib/api/items'
 import { trackEvent } from '@/lib/analytics'
-import { getSettings } from '@/lib/api/settings'
 import { DEFAULT_MEANING_LEVEL } from '@/lib/meaning-levels'
 import { CREDIT_UNIT_SHORT } from '@/lib/billing'
 import { useItemsStore } from '@/stores/items'
@@ -53,17 +53,12 @@ export function QuickCreateCard({
   const [doneCount, setDoneCount] = useState<number | null>(null)
 
   // 意味・タグの自動生成の既定（ユーザー設定）。CreateItemForm と同じ値。
-  const [genMeaning, setGenMeaning] = useState(true)
-  const [genTags, setGenTags] = useState(true)
-
-  useEffect(() => {
-    getSettings()
-      .then((s) => {
-        setGenMeaning(s.auto_generate_meanings)
-        setGenTags(s.auto_generate_tags)
-      })
-      .catch(() => {})
-  }, [])
+  // 意味・タグを一緒に作るかは**共有の設定から引く**（この画面では切り替えない）。
+  // ここで getSettings を叩いていたが、SettingsBootstrap がログイン直後に
+  // 一度読んでおり、同じものをもう一度取りに行っていた。
+  // 届く前は既定（作る）で扱う ― 設定を読めないことが、作らない理由にはならない
+  const genMeaning = useSettingsStore((s) => s.settings?.auto_generate_meanings ?? true)
+  const genTags = useSettingsStore((s) => s.settings?.auto_generate_tags ?? true)
 
   // 見張りが動き出したら、作り始めの一言は引っ込める。
   // 残しておくと「作りはじめました」と「◯枚生成中」が並んで、同じことを2回言うことになる

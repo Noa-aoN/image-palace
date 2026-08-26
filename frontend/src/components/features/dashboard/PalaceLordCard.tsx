@@ -7,12 +7,12 @@ import { Card, CardContent } from '@/components/ui/card'
 import { CardImage } from '@/components/ui/card-image'
 import { ImageLightbox } from '@/components/ui/image-lightbox'
 import { useAuthStore } from '@/stores/auth'
+import { useSettingsStore } from '@/stores/settings'
 import { useIsDemo } from '@/components/features/demo/DemoLock'
 import { DEMO_DIM, DEMO_LOCKED_HINT } from '@/lib/demo/navigation'
 import { tierLabel } from '@/lib/billing'
 import { displayNameOf } from '@/lib/display-name'
 import { getAchievementSummary, type AchievementSummary, type RewardKind } from '@/lib/api/achievements'
-import { getSettings } from '@/lib/api/settings'
 
 /**
  * 「宮殿の主人情報」。生成資産（クレジット）の隣に並べる、本人のステータス面。
@@ -26,15 +26,15 @@ import { getSettings } from '@/lib/api/settings'
 export function PalaceLordCard({ tier }: { tier: string | null }) {
   const user = useAuthStore((s) => s.user)
   const [honors, setHonors] = useState<AchievementSummary | null>(null)
-  const [palaceName, setPalaceName] = useState<string | null>(null)
+  // 宮殿の名前は**共有の設定から引く**。
+  // ここで getSettings を叩いていたが、SettingsBootstrap がログイン直後に
+  // 一度読んでおり、同じものをもう一度取りに行っていた
+  const palaceName = useSettingsStore((s) => s.settings?.palace_name ?? null)
   const [avatarOpen, setAvatarOpen] = useState(false)
 
   useEffect(() => {
     getAchievementSummary()
       .then(setHonors)
-      .catch(() => {})
-    getSettings()
-      .then((s) => setPalaceName(s.palace_name))
       .catch(() => {})
   }, [])
 
