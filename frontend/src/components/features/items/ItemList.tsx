@@ -49,6 +49,8 @@ import type { Tag } from '@/types/tag'
 import { aspectRatioCss } from '@/lib/aspect-ratio'
 import { CARD_IMAGE_EDGE, CARD_MAT_BG, CARD_MAT_BORDER } from '@/lib/card-frame'
 import { ItemTypeMark } from '@/components/features/items/ItemTypeMark'
+import { cardShows, densityFor, type CardDensity } from '@/lib/items/card-density'
+import { useUiStore } from '@/stores/ui'
 import {
   useCardDisplay,
   CARD_GRID_CLASSES,
@@ -187,6 +189,14 @@ type ItemCardProps = {
   /** 種別の印を出すか。「表示」で切れる。置き場所は見出し語の右で固定 */
   showTypeMark: boolean
   /**
+   * その幅で何が読めるか。**列数から決まる**。
+   *
+   * 札は格子の幅いっぱいに広がるので、列を増やすほど1枚は細くなる。
+   * 10列だと1枚 約120px で、見出しも項目も数文字で切れる。
+   * それでも積んでいると、読めない字のぶんだけ絵が小さくなる。
+   */
+  density: CardDensity
+  /**
    * 何をどの順で積むか（サーバーの設定から来る）。
    * カード側に固定で書いていたころは、絵を外しても出続け、並べ替えても順が変わらなかった。
    */
@@ -194,8 +204,15 @@ type ItemCardProps = {
 }
 
 function ItemCard({
-  item, selectionMode, selected, onToggle, fit, sizes, working, workingLabel, blocks, showTypeMark,
+  item, selectionMode, selected, onToggle, fit, sizes, working, workingLabel, blocks, showTypeMark, density,
 }: ItemCardProps) {
+  const shows = cardShows(density)
+  // 絵を出さない設定のときは、状態バッジの置き場所が無くなる。
+  // その場合だけ、従来どおり見出しの行に残す
+  const showsImage = blocks.includes('image')
+  // バッジを出しているなら、絵の真ん中は印だけにする（同じ言葉を2つ並べない）。
+  // 切っている人には、真ん中が唯一の手がかりなので言葉のまま出す
+  const statusBadgeShown = useUiStore((s) => s.showStatusBadges)
   const router = useRouter()
   const [failedImageUrl, setFailedImageUrl] = useState<string | null>(null)
   const warmedRef = useRef(false)
@@ -255,9 +272,9 @@ function ItemCard({
         className="relative w-full flex items-center justify-center overflow-hidden rounded-[3px]"
         style={{ aspectRatio: fit === 'uniform' ? '1 / 1' : aspectRatioCss(item.aspect_ratio) }}
       >
-        {/* 丸型のチェックを画像の右上に。カードの上端はタイトルと状態バッジで
-            埋まっているので、そこに重ねると読みたいものが隠れる。
-            丸なのは、押して入り切りするつまみが一個だけだから */}
+        {/* 丸型のチェックを画像の右上に。
+            丸なのは、押して入り切りするつまみが一個だけだから。
+            状態バッジも右上を使うので、選んでいる最中はそちらが左上へ回る */}
         {selectionMode && (
           <span
             aria-hidden
@@ -271,6 +288,17 @@ function ItemCard({
             <Check size={14} strokeWidth={3} />
           </span>
         )}
+        {/* 絵の状態は、**絵の上**に出す。
+            見出しの行に置いていたころは、種別の印と横に並んで
+            「このカードの状態」なのか「絵の状態」なのかが読めなかった。
+
+            選んでいる最中は右上を印（チェック）が使うので、状態は左上へ回る。
+            どちらも右上に置くと重なる */}
+        <span
+          className={`pointer-events-none absolute top-1.5 z-10 ${selectionMode ? 'left-1.5' : 'right-1.5'}`}
+        >
+          <StatusBadge status={item.generation_status} />
+        </span>
         {resolvedImageUrl && !hasImageError ? (
           <>
             {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -294,6 +322,9 @@ function ItemCard({
           <GeneratingOverlay
             status={item.generation_status}
             label={hasImageError ? '期限切れ' : STATUS_LABEL[item.generation_status]}
+            // 期限切れは状態バッジが拾わない（generation_status は completed のまま）。
+            // そのときは真ん中に言葉を出さないと、何も伝わらなくなる
+            iconOnly={statusBadgeShown && showsImage && !hasImageError}
             className="h-full w-full"
             textClassName="text-muted-foreground text-xs"
             // 失敗の理由は、指を乗せれば読める形にしておく。
@@ -353,7 +384,9 @@ function ItemCard({
           並びに関わらず同じ間隔になるよう、1か所に寄せる */}
       <div className="flex flex-col gap-1.5">
       {/* 見出しも台紙の上に置く。**枠の外に文字があると、絵だけが「カード」に見える。**
-          札の名前欄のつもりで、絵と同じ紙に載せる */}
+          札の名前欄のつもりで、絵と同じ紙に載せる。
+          細い格子（9列以上）では出さない ― 数文字で切れた字は身元にならない */}
+      {shows.title && (
       <div className="px-0.5 flex items-center justify-between gap-2">
         {/* ファクトチェックで「正しい」以外なら単語名に色を付けて気づけるようにする */}
         <span
@@ -366,7 +399,7 @@ function ItemCard({
         </span>
         {/* 種別の印。**見出しのすぐ右**に置く（何のカードかは、名前の次に知りたいこと）。
             「表示」で切れる。置き場所は固定なので、並べ替えの対象にはしない */}
-        {showTypeMark && <ItemTypeMark type={item.item_type} />}
+        {showTypeMark && shows.mark && <ItemTypeMark type={item.item_type} />}
         {/* 下見で入ったカードは、自分で作ったものと見分けが付かない。
             **小さく印を出すだけ**にする（専用の画面には変えない） */}
         {item.from_preview ? (
@@ -378,10 +411,15 @@ function ItemCard({
             下見
           </span>
         ) : null}
-        <StatusBadge status={item.generation_status} />
+        {/* 絵を出していないなら、状態の置き場所はここしかない */}
+        {!showsImage && <StatusBadge status={item.generation_status} />}
       </div>
+      )}
       {blocks.map((block) => {
         if (block === 'image') return <div key="image">{imageBlock}</div>
+
+        // 細い格子では項目を積まない。読めない字のぶん、絵が小さくなるだけ
+        if (!shows.fields) return null
 
         const field = item.list_fields?.find((row) => row.key === block)
         if (!field) return null
@@ -1431,6 +1469,7 @@ export function ItemList({ initialTag = null }: { initialTag?: string | null }) 
             fit={display.fit}
             blocks={listBlocks}
             showTypeMark={showTypeMark}
+            density={densityFor(display.columns)}
             sizes={cardImageSizes(display.columns)}
             working={bulkCurrentId === item.id}
             workingLabel={bulkAction ? (BULK_BUSY_LABEL[bulkAction.kind] ?? null) : null}
