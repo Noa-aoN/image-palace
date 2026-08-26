@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest'
 import {
   MAX_VISIBLE_FIELDS,
   buildLayoutRows,
+  isFixedPosition,
   displayValue,
   moveRow,
   toggleVisible,
@@ -121,5 +122,44 @@ describe('displayValue', () => {
     expect(displayValue(undefined)).toBe('-')
     expect(displayValue('')).toBe('-')
     expect(displayValue('   ')).toBe('-')
+  })
+})
+
+/**
+ * 種別の印は**見出し語の右**に出る。下へ積む項目ではないので、
+ * 並べ替えの対象にも、出せる数の勘定にも入れない。
+ */
+describe('置き場所が決まっている項目', () => {
+  const rows = (...keys: string[]): LayoutRow[] => keys.map((key) => ({ key, visible: true }))
+
+  it('種別の印は、置き場所が決まっている', () => {
+    expect(isFixedPosition('item_type')).toBe(true)
+    expect(isFixedPosition('meaning')).toBe(false)
+  })
+
+  // あの上限は「カードが縦に伸びる」のを抑えるためのもの。
+  // 縦を使わない印を数えると、数えるべきものが1つ減る
+  it('出せる数に数えない', () => {
+    expect(visibleCount(rows('title', 'image', 'item_type'))).toBe(2)
+  })
+
+  it('上限に達していても、印は出せる', () => {
+    const full: LayoutRow[] = [
+      ...rows('title', 'image', 'meaning', 'reading', 'origin'),
+      { key: 'item_type', visible: false },
+    ]
+    expect(visibleCount(full)).toBe(MAX_VISIBLE_FIELDS)
+
+    const { rows: next, rejected } = toggleVisible(full, 'item_type')
+    expect(rejected).toBe(false)
+    expect(next.find((r) => r.key === 'item_type')?.visible).toBe(true)
+  })
+
+  it('上限に達していれば、ふつうの項目は断る', () => {
+    const full: LayoutRow[] = [
+      ...rows('title', 'image', 'meaning', 'reading', 'origin'),
+      { key: 'aliases', visible: false },
+    ]
+    expect(toggleVisible(full, 'aliases').rejected).toBe(true)
   })
 })

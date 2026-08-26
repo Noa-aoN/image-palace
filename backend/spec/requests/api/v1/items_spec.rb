@@ -1123,22 +1123,27 @@ RSpec.describe "カード一覧が種別を返す", type: :request do
     expect(row["item_type"]).to include("name" => "person", "label" => "人物")
   end
 
-  # **枚数を増やしても問い合わせが増えないこと。**
-  # ここが崩れると、一覧が重くなるのに画面では気づけない
-  it "枚数を増やしても、種別のぶんの問い合わせが増えない" do
-    3.times { |i| create(:item, user: user, item_type: item_type, title: "カード#{i}") }
-    get "/api/v1/items", headers: headers # ウォームアップ（初回だけ走る問い合わせを除く）
+  # **枚数に比例して問い合わせが増えないこと。**
+  # ここが崩れると、一覧が重くなるのに画面では気づけない。
+  #
+  # 全体の本数では見ない。ページの埋まり方などで前後する数字なので、
+  # **種別の表そのものを何回引いたか**だけを数える（順序に左右されない）
+  it "枚数を増やしても、種別の表を引く回数は変わらない" do
+    8.times { |i| create(:item, user: user, item_type: item_type, title: "カード#{i}") }
 
-    few = count_queries { get "/api/v1/items", headers: headers }
-    5.times { |i| create(:item, user: user, item_type: item_type, title: "追加#{i}") }
-    many = count_queries { get "/api/v1/items", headers: headers }
+    get "/api/v1/items", params: { per: 3 }, headers: headers
+    few = count_item_type_queries { get "/api/v1/items", params: { per: 3 }, headers: headers }
+    many = count_item_type_queries { get "/api/v1/items", params: { per: 8 }, headers: headers }
 
     expect(many).to eq(few)
+    expect(many).to be <= 1
   end
 
-  def count_queries
+  def count_item_type_queries
     count = 0
-    counter = ->(_n, _s, _f, _i, payload) { count += 1 unless payload[:name].to_s.in?([ "SCHEMA", "TRANSACTION" ]) }
+    counter = lambda do |_n, _s, _f, _i, payload|
+      count += 1 if payload[:sql].to_s.include?(%q("item_types"))
+    end
     ActiveSupport::Notifications.subscribed(counter, "sql.active_record") { yield }
     count
   end
