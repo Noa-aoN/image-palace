@@ -29,7 +29,7 @@ import {
   RegeneratingOverlay,
   REGENERATING_IMAGE_CLASS,
 } from '@/components/features/items/RegeneratingOverlay'
-import { SafeguardVeil, useSafeguardImageClass } from '@/components/features/items/SafeguardVeil'
+import { SafeguardVeil, useSafeguardImage } from '@/components/features/items/SafeguardVeil'
 import { SafeguardBar } from '@/components/features/items/SafeguardBar'
 import { Skeleton } from '@/components/ui/skeleton'
 import { STATUS_LABEL, isRegenerating } from '@/lib/item-status'
@@ -54,7 +54,7 @@ export default function ItemDetailPage() {
   const { leadInGrid } = useCardDetailLeadInGrid()
   // 覆いの濃さは設定で変えられる（薄い / 標準 / 濃い）。
   // **早期 return より前で呼ぶ**（hook は毎回同じ順で呼ばれないといけない）
-  const safeguardClass = useSafeguardImageClass()
+  const safeguard = useSafeguardImage()
   const { ref: fitRef, maxHeight: fitHeight } = useFitToWindow(fitToWindow)
   const router = useRouter()
   const openSection = useRightPanelStore((s) => s.openSection)
@@ -261,11 +261,11 @@ export default function ItemDetailPage() {
               className={`rounded-lg ${
                 fitHeight ? 'h-auto w-auto max-w-full object-contain' : 'w-full object-cover'
               } ${regenerating ? REGENERATING_IMAGE_CLASS : ''} ${
-                veiled ? safeguardClass : 'cursor-zoom-in'
+                veiled ? safeguard.className : 'cursor-zoom-in'
               }`}
               // 収めるときは**比率を保ったまま高さで決める**。
               // 幅を張ったままだと縦長の絵が入りきらない（左右に余白ができてよい）
-              style={fitHeight ? { maxHeight: fitHeight } : undefined}
+              style={{ ...(fitHeight ? { maxHeight: fitHeight } : {}), ...(veiled ? safeguard.style : {}) }}
               // 覆っている間は**掴めなくする**。ブラウザの引きずりは
               // 元の画像そのものを持ち上げるので、ぼかしを外した絵が見えてしまう
               draggable={!veiled}

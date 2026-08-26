@@ -2,7 +2,7 @@
 
 import { cn } from '@/lib/utils'
 import { useSettingsStore } from '@/stores/settings'
-import { safeguardImageClass, safeguardLook } from '@/lib/items/safeguard'
+import { SAFEGUARD_IMAGE_CLASS, safeguardImageStyle, safeguardLook } from '@/lib/items/safeguard'
 
 /**
  * 生成された絵に掛ける覆い。
@@ -23,7 +23,7 @@ import { safeguardImageClass, safeguardLook } from '@/lib/items/safeguard'
  */
 export function SafeguardVeil({ className }: { className?: string }) {
   // 濃さは設定から。**読めていないうちは標準**に倒す（覆いが外れてはいけない）
-  const look = safeguardLook(useSettingsStore((s) => s.settings?.image_safeguard_strength))
+  const look = safeguardLook(useSettingsStore((s) => s.settings?.image_safeguard_level))
 
   return (
     <div
@@ -41,13 +41,17 @@ export function SafeguardVeil({ className }: { className?: string }) {
 }
 
 /**
- * 覆っている絵に当てる class を、設定の濃さで引く。
+ * 覆っている絵に当てる指定を、設定の濃さで引く。
  *
  * 呼び出し側が設定を読みに行かなくてよいように、ここで包む
  * （覆いと画像は対で1つの見え方なので、出どころを分けない）。
+ *
+ * **class と style の2つを返す。** ぼかしは目盛りから作る値なので、
+ * Tailwind のクラスにはできない（クラス名は静的に読まれる）。
  */
-export function useSafeguardImageClass(): string {
-  return safeguardImageClass(useSettingsStore((s) => s.settings?.image_safeguard_strength))
+export function useSafeguardImage(): { className: string; style: React.CSSProperties } {
+  const level = useSettingsStore((s) => s.settings?.image_safeguard_level)
+  return { className: SAFEGUARD_IMAGE_CLASS, style: safeguardImageStyle(level) }
 }
 
 /**
@@ -60,8 +64,4 @@ export function useSafeguardImageClass(): string {
  * 拡大は縁のぼけを枠の外へ押し出すため（縮むと角に地が見える）。
  * 彩度を少し上げるのは、ぼかすと色が濁って見えるぶんの埋め合わせ
  */
-/**
- * 標準の濃さの見た目。**設定を読めない場所（Server Component）のための控え。**
- * 画面から使うときは `useSafeguardImageClass()` を使うこと（設定が効く）。
- */
-export const SAFEGUARD_IMAGE_CLASS = safeguardImageClass('normal')
+

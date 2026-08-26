@@ -5,7 +5,7 @@ import { History, Trash2 } from 'lucide-react'
 import { Spinner } from '@/components/ui/spinner'
 import { PanelSlotContent } from '@/components/features/panel/PanelSlot'
 import { usePanelForm } from '@/components/features/panel/usePanelForm'
-import { SafeguardVeil, useSafeguardImageClass } from '@/components/features/items/SafeguardVeil'
+import { SafeguardVeil, useSafeguardImage } from '@/components/features/items/SafeguardVeil'
 import {
   getItem,
   getMediaGenerations,
@@ -38,7 +38,7 @@ export function ImageHistoryPanel({
   // いま使っている絵が、まだ承認されていないか
   const veilCurrent = Boolean(item.media?.needs_approval)
   // 覆いの濃さは設定で変えられる（薄い / 標準 / 濃い）
-  const safeguardClass = useSafeguardImageClass()
+  const safeguard = useSafeguardImage()
   const [rows, setRows] = useState<MediaGeneration[]>([])
   const [loading, setLoading] = useState(false)
   const [busyId, setBusyId] = useState<string | null>(null)
@@ -149,7 +149,8 @@ export function ImageHistoryPanel({
                           src={row.url}
                           alt=""
                           loading="lazy"
-                          className={`aspect-square w-full object-cover ${veilCurrent && row.current ? safeguardClass : ''}`}
+                          className={`aspect-square w-full object-cover ${veilCurrent && row.current ? safeguard.className : ''}`}
+                          style={veilCurrent && row.current ? safeguard.style : undefined}
                           // 覆っている間は掴めなくする（引きずるとぼかす前の絵が持ち上がる）
                           draggable={!(veilCurrent && row.current)}
                         />

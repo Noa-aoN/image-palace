@@ -17,6 +17,16 @@ class Setting < ApplicationRecord
   IMAGE_SAFEGUARD_STRENGTHS = %w[light normal strong].freeze
   validates :image_safeguard_strength, inclusion: { in: IMAGE_SAFEGUARD_STRENGTHS }
 
+  # 覆いの濃さの目盛り。**段ではなく連続で持つ。**
+  #
+  # 「細部は読めない／構図は掴める」の境目は、絵の中身と、見る人と、
+  # その場（人前かどうか）で変わる。3つに丸めると、ちょうどよい所が段の間に落ちる。
+  #
+  # 0 が最も薄く、100 が最も濃い。既定の 50 は、これまでの「標準」と同じ見え方。
+  # 上の `image_safeguard_strength` はもう読まない（消すのは別のデプロイで）。
+  IMAGE_SAFEGUARD_LEVELS = (0..100).freeze
+  validates :image_safeguard_level, inclusion: { in: IMAGE_SAFEGUARD_LEVELS }
+
   # 棚の並べ方（宮殿スタイルのときのみ効く）
   SHELF_ORIENTATIONS = %w[rows columns].freeze
   validates :shelf_orientation, inclusion: { in: SHELF_ORIENTATIONS }

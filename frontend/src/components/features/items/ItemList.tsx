@@ -24,7 +24,7 @@ import {
   RegeneratingOverlay,
   REGENERATING_IMAGE_CLASS,
 } from '@/components/features/items/RegeneratingOverlay'
-import { SafeguardVeil, useSafeguardImageClass } from '@/components/features/items/SafeguardVeil'
+import { SafeguardVeil, useSafeguardImage } from '@/components/features/items/SafeguardVeil'
 import { CardCreateButton } from '@/components/features/items/CardCreatePanel'
 import { getItemTypes } from '@/lib/api/items'
 import { STATUS_LABEL, isRegenerating } from '@/lib/item-status'
@@ -49,6 +49,7 @@ import type { Tag } from '@/types/tag'
 import { aspectRatioCss } from '@/lib/aspect-ratio'
 import { CARD_IMAGE_EDGE, CARD_MAT_BG, CARD_MAT_BORDER } from '@/lib/card-frame'
 import { ItemTypeMark } from '@/components/features/items/ItemTypeMark'
+import { cardShows, densityFor, type CardDensity } from '@/lib/items/card-density'
 import {
   useCardDisplay,
   CARD_GRID_CLASSES,
@@ -187,6 +188,14 @@ type ItemCardProps = {
   /** 種別の印を出すか。「表示」で切れる。置き場所は見出し語の右で固定 */
   showTypeMark: boolean
   /**
+   * その幅で何が読めるか。**列数から決まる**。
+   *
+   * 札は格子の幅いっぱいに広がるので、列を増やすほど1枚は細くなる。
+   * 10列だと1枚 約120px で、見出しも項目も数文字で切れる。
+   * それでも積んでいると、読めない字のぶんだけ絵が小さくなる。
+   */
+  density: CardDensity
+  /**
    * 何をどの順で積むか（サーバーの設定から来る）。
    * カード側に固定で書いていたころは、絵を外しても出続け、並べ替えても順が変わらなかった。
    */
@@ -194,8 +203,12 @@ type ItemCardProps = {
 }
 
 function ItemCard({
-  item, selectionMode, selected, onToggle, fit, sizes, working, workingLabel, blocks, showTypeMark,
+  item, selectionMode, selected, onToggle, fit, sizes, working, workingLabel, blocks, showTypeMark, density,
 }: ItemCardProps) {
+  const shows = cardShows(density)
+  // 絵を出さない設定のときは、状態バッジの置き場所が無くなる。
+  // その場合だけ、従来どおり見出しの行に残す
+  const showsImage = blocks.includes('image')
   const router = useRouter()
   const [failedImageUrl, setFailedImageUrl] = useState<string | null>(null)
   const warmedRef = useRef(false)
@@ -208,7 +221,7 @@ function ItemCard({
   // 決めるのは詳細（カードをめくった先）で行う
   const veiled = Boolean(item.media?.needs_approval) && !regenerating
   // 覆いの濃さは設定で変えられる（薄い / 標準 / 濃い）
-  const safeguardClass = useSafeguardImageClass()
+  const safeguard = useSafeguardImage()
 
   // 単語名が枠に入り切らないときだけ、ホバーで全文を出す。
   // 列数を増やせるようにした結果、8〜10列では名前が数文字で切れる。
@@ -255,9 +268,9 @@ function ItemCard({
         className="relative w-full flex items-center justify-center overflow-hidden rounded-[3px]"
         style={{ aspectRatio: fit === 'uniform' ? '1 / 1' : aspectRatioCss(item.aspect_ratio) }}
       >
-        {/* 丸型のチェックを画像の右上に。カードの上端はタイトルと状態バッジで
-            埋まっているので、そこに重ねると読みたいものが隠れる。
-            丸なのは、押して入り切りするつまみが一個だけだから */}
+        {/* 丸型のチェックを画像の右上に。
+            丸なのは、押して入り切りするつまみが一個だけだから。
+            状態バッジも右上を使うので、選んでいる最中はそちらが左上へ回る */}
         {selectionMode && (
           <span
             aria-hidden
@@ -273,13 +286,28 @@ function ItemCard({
         )}
         {resolvedImageUrl && !hasImageError ? (
           <>
+            {/* **絵があるときだけ**、状態を絵の上に出す。
+                絵が無いときは枠そのものが「まだ絵が無い」と言っているので、
+                その上にバッジを重ねると同じことを2度言うことになる
+                （実際、失敗した札には ⚠ が中央と右上に2つ並んでいた）。
+
+                ここに出るのは「絵はあるが、最後の生成に失敗した」ような場合で、
+                そのときバッジは**唯一の手がかり**になる。
+
+                選んでいる最中は右上を印（チェック）が使うので、状態は左上へ回る */}
+            <span
+              className={`pointer-events-none absolute top-1.5 z-10 ${selectionMode ? 'left-1.5' : 'right-1.5'}`}
+            >
+              <StatusBadge status={item.generation_status} />
+            </span>
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img
               src={resolvedImageUrl}
               alt={item.title}
               className={`${CARD_IMAGE_EDGE} ${
                 fit === 'uniform' ? 'max-h-full max-w-full object-contain' : 'w-full h-full object-cover'
-              } ${regenerating ? REGENERATING_IMAGE_CLASS : ''} ${veiled ? safeguardClass : ''}`}
+              } ${regenerating ? REGENERATING_IMAGE_CLASS : ''} ${veiled ? safeguard.className : ''}`}
+              style={veiled ? safeguard.style : undefined}
               // 覆っている間は掴めなくする（引きずるとぼかす前の絵が持ち上がる）
               draggable={!veiled}
               loading="lazy"
@@ -309,14 +337,20 @@ function ItemCard({
   // 落としてしまうと、出るカードと出ないカードが混ざり、法則が読めない
   const renderField = (field: { key: string; label: string; value: string }) => {
     const empty = !field.value?.trim()
+    // 意味・説明だけは長い。3行までに丸める（それ以上は一覧を圧迫する）
+    const clamped = field.key === 'meaning'
     return (
       <div className="flex gap-1.5 text-2xs leading-snug">
         <dt className="shrink-0 text-muted-foreground">{field.label}</dt>
-        {/* 意味・説明だけは長い。3行までに丸める（それ以上は一覧を圧迫する） */}
+        {/* **丸める上限ぶんの高さを、いつも取っておく。**
+            まだ生成中で「-」しか無いカードは1行、書き終えたカードは3行になり、
+            並べると**カードごとに高さが違って**見えていた。
+            高さを先に確保すれば、中身が入っても入らなくても札の形が変わらない。
+
+            4.125em ＝ 3行ぶん（leading-snug = 1.375 × 3） */}
         <dd
-          className={`${field.key === 'meaning' ? 'line-clamp-3' : 'truncate'} ${
-            empty ? 'text-muted-foreground/60' : ''
-          }`}
+          className={`${clamped ? 'line-clamp-3' : 'truncate'} ${empty ? 'text-muted-foreground/60' : ''}`}
+          style={clamped ? { minHeight: '4.125em' } : undefined}
         >
           {empty ? EMPTY_VALUE_MARK : field.value}
         </dd>
@@ -353,7 +387,9 @@ function ItemCard({
           並びに関わらず同じ間隔になるよう、1か所に寄せる */}
       <div className="flex flex-col gap-1.5">
       {/* 見出しも台紙の上に置く。**枠の外に文字があると、絵だけが「カード」に見える。**
-          札の名前欄のつもりで、絵と同じ紙に載せる */}
+          札の名前欄のつもりで、絵と同じ紙に載せる。
+          細い格子（9列以上）では出さない ― 数文字で切れた字は身元にならない */}
+      {shows.title && (
       <div className="px-0.5 flex items-center justify-between gap-2">
         {/* ファクトチェックで「正しい」以外なら単語名に色を付けて気づけるようにする */}
         <span
@@ -366,7 +402,8 @@ function ItemCard({
         </span>
         {/* 種別の印。**見出しのすぐ右**に置く（何のカードかは、名前の次に知りたいこと）。
             「表示」で切れる。置き場所は固定なので、並べ替えの対象にはしない */}
-        {showTypeMark && <ItemTypeMark type={item.item_type} />}
+        {/* 見出し語と同じ字の大きさを渡す。印はそこから `em` で自分の大きさを決める */}
+        {showTypeMark && shows.mark && <ItemTypeMark type={item.item_type} className="text-sm" />}
         {/* 下見で入ったカードは、自分で作ったものと見分けが付かない。
             **小さく印を出すだけ**にする（専用の画面には変えない） */}
         {item.from_preview ? (
@@ -378,10 +415,15 @@ function ItemCard({
             下見
           </span>
         ) : null}
-        <StatusBadge status={item.generation_status} />
+        {/* 絵を出していないなら、状態の置き場所はここしかない */}
+        {!showsImage && <StatusBadge status={item.generation_status} />}
       </div>
+      )}
       {blocks.map((block) => {
         if (block === 'image') return <div key="image">{imageBlock}</div>
+
+        // 細い格子では項目を積まない。読めない字のぶん、絵が小さくなるだけ
+        if (!shows.fields) return null
 
         const field = item.list_fields?.find((row) => row.key === block)
         if (!field) return null
@@ -1431,6 +1473,7 @@ export function ItemList({ initialTag = null }: { initialTag?: string | null }) 
             fit={display.fit}
             blocks={listBlocks}
             showTypeMark={showTypeMark}
+            density={densityFor(display.columns)}
             sizes={cardImageSizes(display.columns)}
             working={bulkCurrentId === item.id}
             workingLabel={bulkAction ? (BULK_BUSY_LABEL[bulkAction.kind] ?? null) : null}
