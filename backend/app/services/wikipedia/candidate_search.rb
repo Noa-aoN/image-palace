@@ -13,7 +13,13 @@ module Wikipedia
   #
   # 要約（SummaryFetcher）と同じ作法にする。名乗り・待たない・落ちても壊さない。
   class CandidateSearch
+    # 題の**先頭一致**。オートコンプリート用なので速いが、
+    # 「でぃーえぬえす」のような読み・言い換えには当たらない
     SEARCH_PATH = "/w/rest.php/v1/search/title"
+    # 本文まで見る検索。**Wikipedia の検索窓と同じもの**。
+    # 題が当たらなかったときだけ引く（当たっているときに混ぜると、
+    # 関係の薄い記事が上位の正解を押しのける）
+    PAGE_SEARCH_PATH = "/w/rest.php/v1/search/page"
 
     # 出す候補の数。多いと選ぶのが仕事になる。少ないと正解が漏れる
     LIMIT = 5
@@ -81,12 +87,42 @@ module Wikipedia
       "wikipedia:search:#{@language_code}:#{Digest::SHA256.hexdigest(@term.downcase)}"
     end
 
+    # 題で引き、当たらなければ本文まで見る。
+    #
+    # **2段にするのは、題の検索が先頭一致でしかないため。**
+    # 「アポロ計画」は当たるが、「でぃーえぬえす」「ネットワークの通り道」は
+    # 1件も返らない（実測）。読みや言い換えで書く人には、そこが行き止まりになる。
+    #
+    # 本文の検索は必ず何か返すかわりに、**外れも返す**（「でぃーえぬえす」に対して
+    # 「ぱーてぃーちゃん」など）。だから題が当たっているときは引かないし、
+    # 引いたときも `weak?` の判定はそのまま残す（当てずっぽうを「近い記事」と言わない）。
     def search
-      response = connection.get(SEARCH_PATH, q: @term, limit: LIMIT)
+      by_title = fetch(SEARCH_PATH)
+      # 通信が失敗したときだけ nil。キャッシュせず、次の機会に引き直す
+      return nil if by_title.nil?
+      return by_title unless by_title.weak?(@term)
+
+      by_page = fetch(PAGE_SEARCH_PATH)
+      by_page.nil? ? by_title : merge(by_title, by_page)
+    end
+
+    # 題で当たったものを先に置き、本文で見つかったものを後ろへ足す。
+    # 同じ記事は1度だけ出す
+    def merge(by_title, by_page)
+      seen = by_title.candidates.map(&:title)
+      extra = by_page.candidates.reject { |c| seen.include?(c.title) }
+      Result.new(
+        candidates: (by_title.candidates + extra).first(LIMIT),
+        language_code: @language_code
+      )
+    end
+
+    def fetch(path)
+      response = connection.get(path, q: @term, limit: LIMIT)
       build(response.body)
     rescue Faraday::Error, JSON::ParserError => e
       # 落ちている・遅い・返事が読めない。どれもカードの読み書きを止める理由にはならない
-      Rails.logger.warn "[Wikipedia] SEARCH FAILED term_len=#{@term.length} #{e.class}: #{e.message}"
+      Rails.logger.warn "[Wikipedia] SEARCH FAILED path=#{path} term_len=#{@term.length} #{e.class}: #{e.message}"
       nil
     end
 
