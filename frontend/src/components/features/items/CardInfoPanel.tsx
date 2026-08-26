@@ -5,6 +5,10 @@ import { Button } from '@/components/ui/button'
 import { PanelSlotContent } from '@/components/features/panel/PanelSlot'
 import { usePanelForm } from '@/components/features/panel/usePanelForm'
 import { STATUS_LABEL } from '@/lib/item-status'
+import { adminEntries } from '@/lib/items/admin-blocks'
+import { ItemReviewBlock } from '@/components/features/items/ItemReviewBlock'
+import { ItemUsageBlock } from '@/components/features/items/ItemUsageBlock'
+import { PropertyEntryBlock } from '@/components/features/items/ItemPropertyBlocks'
 import { ASPECT_RATIOS, type AspectRatioKey } from '@/lib/aspect-ratio'
 import type { Item } from '@/types/item'
 
@@ -16,8 +20,19 @@ export const CARD_INFO_PANEL_KEY = 'item-card-info'
  * 学習に使う中身ではないので、本文に常時置かない。作成日が意味・説明と
  * 同じ面に並んでいると、覚えたいものと管理用の数字が混ざる。
  * 知りたいときだけ開く場所に移す。
+ *
+ * ここには3つが並ぶ。
+ *   カードのこと ……… 作成日・状態・種別・ID
+ *   記録 ……………… 何回確かめたか・どこに置いてあるか
+ *   管理要素の項目 …… 出典・注意点など、役割が「管理要素」の項目
+ *
+ * **引くのは開いたときだけ。** 記録と置き場所はそれぞれ問い合わせが要るので、
+ * 本文に常時置いていたころは、カードを開くたびに2本余計に叩いていた。
  */
-export function CardInfoButton({ item }: { item: Item }) {
+export function CardInfoButton({ item, onUpdated }: { item: Item; onUpdated?: (item: Item) => void }) {
+  // 役割が「管理要素」の項目。ここで直せるようにしておく
+  // （本文から下ろしただけで、直せなくなってはいけない）
+  const managed = adminEntries(item.properties)
   const panel = usePanelForm(CARD_INFO_PANEL_KEY, '情報')
 
   return (
@@ -44,6 +59,22 @@ export function CardInfoButton({ item }: { item: Item }) {
             <span className="break-all font-mono text-xs">{item.id}</span>
           </Row>
         </dl>
+
+        {/* 記録。**開いたときに引く**（本文に置いていたころは、
+            カードを開くたびに2本余計に叩いていた） */}
+        <div className="mt-5 space-y-3">
+          <ItemReviewBlock itemId={item.id} />
+          <ItemUsageBlock itemId={item.id} />
+        </div>
+
+        {/* 管理要素の項目。**本文から下ろしただけなので、ここで直せる** */}
+        {managed.length > 0 && onUpdated && (
+          <div className="mt-3 space-y-3">
+            {managed.map((entry) => (
+              <PropertyEntryBlock key={entry.key} item={item} entry={entry} onUpdated={onUpdated} />
+            ))}
+          </div>
+        )}
       </PanelSlotContent>
     </>
   )
