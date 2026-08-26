@@ -1,6 +1,7 @@
 'use client'
 
 import { useCallback, useEffect, useState } from 'react'
+import { Pagination } from '@/components/ui/pagination'
 import Link from 'next/link'
 import { List, Search, Trash2, Loader2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
@@ -206,30 +207,13 @@ export default function IndexPage() {
         </ul>
       )}
 
-      {/* ページネーション */}
-      {totalPages > 1 && (
-        <div className="mt-6 flex items-center justify-center gap-3">
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => setPage((p) => Math.max(1, p - 1))}
-            disabled={page <= 1 || loading}
-          >
-            前へ
-          </Button>
-          <span className="text-sm text-muted-foreground">
-            {page} / {totalPages}
-          </span>
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
-            disabled={page >= totalPages || loading}
-          >
-            次へ
-          </Button>
-        </div>
-      )}
+      <Pagination
+        page={page}
+        totalPages={totalPages}
+        onChange={setPage}
+        disabled={loading}
+        className="mt-6"
+      />
     </div>
   )
 }
