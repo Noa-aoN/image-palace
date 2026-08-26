@@ -11,6 +11,7 @@ import {
 } from '@/lib/api/wikipedia'
 import { hasMoreBelow } from '@/lib/scroll-affordance'
 import { shouldAutoLookup } from '@/lib/wikipedia-auto-lookup'
+import { MAX_TERM_LENGTH, canLookup, resolveLookupTerm } from '@/lib/wikipedia-term'
 import type { WikipediaValue } from '@/lib/api/properties'
 
 /** 下端をぼかす幅。ちょうど1行ぶんにして、隠れているのが「次の行」だと分かるようにする */
@@ -57,6 +58,18 @@ export function WikipediaProperty({
 }) {
   const [busy, setBusy] = useState(false)
   const [message, setMessage] = useState<string | null>(null)
+  /**
+   * 何で引くか。**見出し語で固定しない。**
+   *
+   * 見出し語は短い呼び名で置くことが多く（DNS・国連・東大）、そのままだと
+   * 目的の記事に当たらないことがある。逆に一般名詞すぎて曖昧さ回避へ落ちることもある。
+   *
+   * **空欄は「見出し語のまま」。** 見出し語をここへ写して持たないのは、
+   * 見出し語をあとから直したときに、こちらが古いまま残るのを避けるため
+   */
+  const [draft, setDraft] = useState('')
+  /** 引き直しのときだけ、語の欄を開く（ふだんは出さない） */
+  const [editingTerm, setEditingTerm] = useState(false)
   // 題が一致しなかったときの候補。**選ぶまで保存しない**。
   // 一番上を勝手に採ると、同名の別人・別作品が黙ってカードに入る
   const [candidates, setCandidates] = useState<WikipediaCandidate[] | null>(null)
@@ -134,6 +147,46 @@ export function WikipediaProperty({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [autoLookup, value])
 
+  /** 何で引くかの欄。**空欄は見出し語のまま**なので、見出し語を写して置かない */
+  const termField = (
+    <div className="space-y-1">
+      <label className="block text-xs text-muted-foreground" htmlFor="wikipedia-term">
+        調べる語
+      </label>
+      <div className="flex flex-wrap items-center gap-1.5">
+        <input
+          id="wikipedia-term"
+          value={draft}
+          onChange={(e) => setDraft(e.target.value)}
+          onKeyDown={(e) => {
+            if (e.key !== 'Enter' || e.nativeEvent.isComposing) return
+            e.preventDefault()
+            if (canLookup(draft, term)) void lookup(resolveLookupTerm(draft, term))
+          }}
+          disabled={busy}
+          maxLength={MAX_TERM_LENGTH}
+          placeholder={term}
+          autoComplete="off"
+          className="min-w-0 flex-1 rounded-lg border border-input bg-background px-3 py-1.5 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+        />
+        <Button
+          size="sm"
+          variant="outline"
+          onClick={() => lookup(resolveLookupTerm(draft, term))}
+          disabled={busy || !canLookup(draft, term)}
+          className="flex shrink-0 items-center gap-1.5"
+        >
+          {busy ? <Spinner size={13} /> : <RefreshCw size={13} />}
+          調べる
+        </Button>
+      </div>
+      {/* 空欄のままでも引ける、と先に言う。消したら引けなくなると思わせない */}
+      <p className="text-xs text-muted-foreground">
+        空欄のままなら「{term}」で調べます。別の言い方や正式名称でも探せます。
+      </p>
+    </div>
+  )
+
   const candidateList = candidates?.length ? (
     <div className="space-y-2 rounded-lg border border-border bg-card p-3">
       <p className="text-xs text-muted-foreground">
@@ -170,22 +223,7 @@ export function WikipediaProperty({
         {/* 見出し語がそのまま入るので、長い語だと札の幅を越える。
             札の幅で切って、全文は title で読めるようにする
             （切るのは語のほうだけ。「Wikipedia で調べる」が消えると何の釦か分からない） */}
-        {editable ? (
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => lookup()}
-            disabled={busy}
-            title={`「${term}」を Wikipedia で調べる`}
-            className="flex max-w-full items-center gap-1.5"
-          >
-            {busy ? <Spinner size={13} /> : <RefreshCw size={13} className="shrink-0" />}
-            <span className="min-w-0 truncate">「{term}」</span>
-            <span className="shrink-0">を Wikipedia で調べる</span>
-          </Button>
-        ) : (
-          <p className="text-sm text-muted-foreground">未設定</p>
-        )}
+        {editable ? termField : <p className="text-sm text-muted-foreground">未設定</p>}
         {message && <p className="text-xs text-muted-foreground">{message}</p>}
         {candidateList}
       </div>
@@ -289,7 +327,22 @@ export function WikipediaProperty({
             引き直す
           </button>
         )}
+        {/* **別の記事へ移りたいときの口。** 見出し語で引き直しても同じ記事に戻るので、
+            語を変えられないと、間違った記事から抜けられない */}
+        {editable && (
+          <button
+            type="button"
+            onClick={() => setEditingTerm((open) => !open)}
+            disabled={busy}
+            aria-expanded={editingTerm}
+            className="hover:text-foreground disabled:opacity-50"
+          >
+            {editingTerm ? '語を変えるのをやめる' : '別の語で調べる'}
+          </button>
+        )}
       </p>
+
+      {editable && editingTerm && termField}
 
       {message && <p className="text-xs text-muted-foreground">{message}</p>}
       {candidateList}

@@ -326,6 +326,9 @@ export const PROPERTY_PRESETS: {
       // 言語ごとに持ちたいとき。**1つの項目の中に並びで持つ**ので、
       // 言語を増やしても項目は増えない
       { key: 'readings', label: '読み方（言語別・まとめて）', value_type: 'reading', description: '言語ごとの読み方を1つの項目にまとめます。主に出るのは、環境設定で選んでいる言語のもの。言語ごとに分けたいなら「読み方（言語ごと）」から選びます。' },
+      // 見出し語は短い呼び名で置くことが多い（DNS・国連・東大）。
+      // **正式な言い方は別に持つ**。別名（複数）とは役割が違うので、分けて置く
+      { key: 'formal_name', label: '正式名称', value_type: 'text', description: '省略せずに書いたときの正式な呼び名。' },
       { key: 'aliases', label: '別名・異表記', value_type: 'list', description: '同じものを指す別の呼び名や書き方。' },
       { key: 'pronunciation', label: '発音記号', value_type: 'text', description: '発音記号（IPA など）。' },
       { key: 'part_of_speech', label: '品詞', value_type: 'text', description: '名詞・動詞など、その語の働き。' },
