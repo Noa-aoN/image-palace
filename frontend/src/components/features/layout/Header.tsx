@@ -156,7 +156,7 @@ export function AppHeader() {
               「α版」だけでは何が違うのか分からないので、指を乗せたら説明を出す */}
           <Tooltip label="開発中の先行版です。機能や画面は予告なく変わります">
             <span
-              className="hidden rounded-full border border-white/45 px-1.5 py-0.5 text-[10px] font-medium leading-none text-white/85 sm:inline"
+              className="hidden rounded-full border border-white/45 px-1.5 py-0.5 text-3xs font-medium leading-none text-white/85 sm:inline"
               aria-label="アルファ版（開発中の先行版）"
             >
               α版
@@ -264,7 +264,7 @@ export function AppHeader() {
           >
             <ScrollText size={20} style={{ color: 'var(--on-palace)' }} />
             {unreadCount > 0 && (
-              <span className="absolute -right-0.5 -top-0.5 flex h-4 min-w-4 items-center justify-center rounded-full bg-red-600 px-1 text-[10px] font-bold leading-none text-white">
+              <span className="absolute -right-0.5 -top-0.5 flex h-4 min-w-4 items-center justify-center rounded-full bg-red-600 px-1 text-3xs font-bold leading-none text-white">
                 {unreadCount > 99 ? '99+' : unreadCount}
               </span>
             )}

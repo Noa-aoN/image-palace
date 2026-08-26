@@ -729,7 +729,7 @@ export function CreateItemForm({
                   style={{ aspectRatio: opt.css }}
                 />
                 {opt.label}
-                {opt.note && <span className="text-[10px] opacity-70">（{opt.note}）</span>}
+                {opt.note && <span className="text-3xs opacity-70">（{opt.note}）</span>}
               </button>
             )
           })}

@@ -64,7 +64,7 @@ export function RoomStyleSettings({ roomStyle, overrides, onChange }: Props) {
           const isCustom = !ROOM_STYLE_KEYS.some((k) => sameColor(ROOM_STYLE_PRESETS[k].style[f.from], current))
           return (
             <div key={f.key} className="space-y-1 text-xs">
-              <div className="flex items-baseline justify-between gap-2 text-[11px] text-muted-foreground">
+              <div className="flex items-baseline justify-between gap-2 text-2xs text-muted-foreground">
                 <span>{f.label}</span>
                 <span className="tabular-nums">{current}</span>
               </div>

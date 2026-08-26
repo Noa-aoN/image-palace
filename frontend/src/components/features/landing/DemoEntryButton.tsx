@@ -70,14 +70,14 @@ export function DemoEntryButton({ label = '宮殿を見てみる' }: { label?: s
         className="rounded-full border px-5 py-1.5 text-sm transition-colors
                    hover:bg-[color:var(--ivory-dark)] disabled:cursor-not-allowed disabled:opacity-60
                    focus-visible:outline-2 focus-visible:outline-offset-2"
-        style={{ borderColor: 'var(--palace)', color: '#4A4A4A' }}
+        style={{ borderColor: 'var(--palace)', color: 'var(--ink-soft)' }}
       >
         {loading ? 'ご案内しています…' : label}
       </button>
       {/* 添える一行は、**伝えることがあるときだけ**。
           「登録は要りません」は釦が既に言っているので置かない */}
       {error ? (
-        <p role="alert" className="text-xs" style={{ color: '#9E3226' }}>
+        <p role="alert" className="text-xs" style={{ color: 'var(--danger-deep)' }}>
           {error}
         </p>
       ) : open === false ? (

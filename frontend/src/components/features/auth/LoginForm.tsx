@@ -84,7 +84,7 @@ export function LoginForm() {
 
   return (
     <div className="w-full max-w-sm mx-auto">
-      <h1 className="text-2xl font-bold mb-6 text-center" style={{ color: '#111111' }}>
+      <h1 className="text-2xl font-bold mb-6 text-center" style={{ color: 'var(--ink-strong)' }}>
         宮殿に入る
       </h1>
 
@@ -92,7 +92,7 @@ export function LoginForm() {
         <p
           role="status"
           className="mb-5 rounded-lg border px-3 py-2 text-sm leading-relaxed"
-          style={{ borderColor: 'var(--palace)', backgroundColor: 'rgba(198, 167, 94, 0.08)', color: '#4A4A4A' }}
+          style={{ borderColor: 'var(--palace)', backgroundColor: 'rgba(198, 167, 94, 0.08)', color: 'var(--ink-soft)' }}
         >
           セッションの有効期限が切れたため、ログアウトしました。
         </p>
@@ -101,7 +101,7 @@ export function LoginForm() {
       <Button
         variant="outline"
         className={APPLE_AUTH_ENABLED ? 'w-full mb-3' : 'w-full mb-5'}
-        style={{ borderColor: '#E3E6EA' }}
+        style={{ borderColor: 'var(--rule)' }}
         onClick={() => { window.location.href = googleOAuthUrl() }}
       >
         Google でログイン
@@ -111,7 +111,7 @@ export function LoginForm() {
         <Button
           variant="outline"
           className="w-full mb-5 gap-2"
-          style={{ borderColor: '#E3E6EA' }}
+          style={{ borderColor: 'var(--rule)' }}
           onClick={() => { window.location.href = appleOAuthUrl() }}
         >
           <AppleIcon />
@@ -120,9 +120,9 @@ export function LoginForm() {
       )}
 
       <div className="mb-5 flex items-center gap-2">
-        <div className="flex-1 border-t" style={{ borderColor: '#E3E6EA' }} />
-        <span className="text-xs" style={{ color: '#4A4A4A' }}>またはメールで</span>
-        <div className="flex-1 border-t" style={{ borderColor: '#E3E6EA' }} />
+        <div className="flex-1 border-t" style={{ borderColor: 'var(--rule)' }} />
+        <span className="text-xs" style={{ color: 'var(--ink-soft)' }}>またはメールで</span>
+        <div className="flex-1 border-t" style={{ borderColor: 'var(--rule)' }} />
       </div>
 
       <form onSubmit={handleSubmit} className="flex flex-col gap-4">
@@ -175,15 +175,15 @@ export function LoginForm() {
         </Button>
       </form>
 
-      <p className="text-sm text-center mt-4" style={{ color: '#4A4A4A' }}>
-        <Link href="/forgot-password" className="underline" style={{ color: '#111111' }}>
+      <p className="text-sm text-center mt-4" style={{ color: 'var(--ink-soft)' }}>
+        <Link href="/forgot-password" className="underline" style={{ color: 'var(--ink-strong)' }}>
           パスワードを忘れた方はこちら
         </Link>
       </p>
 
-      <p className="text-sm text-center mt-4" style={{ color: '#4A4A4A' }}>
+      <p className="text-sm text-center mt-4" style={{ color: 'var(--ink-soft)' }}>
         アカウントをお持ちでない方は{' '}
-        <Link href="/signup" className="underline" style={{ color: '#111111' }}>
+        <Link href="/signup" className="underline" style={{ color: 'var(--ink-strong)' }}>
           新規登録
         </Link>
       </p>

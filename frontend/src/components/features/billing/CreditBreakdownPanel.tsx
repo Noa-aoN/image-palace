@@ -111,7 +111,7 @@ export function CreditBreakdownPanel() {
                             : '期限なし'}
                           {urgency && (
                             // 色だけで急ぎを伝えない（色が見分けられない人にも届くように、印と言葉を添える）
-                            <span className="inline-flex shrink-0 items-center gap-1 rounded-full bg-amber-100 px-1.5 py-0.5 text-[11px] font-medium text-amber-900">
+                            <span className="inline-flex shrink-0 items-center gap-1 rounded-full bg-amber-100 px-1.5 py-0.5 text-2xs font-medium text-amber-900">
                               <AlertTriangle size={11} aria-hidden />
                               {urgency}
                             </span>

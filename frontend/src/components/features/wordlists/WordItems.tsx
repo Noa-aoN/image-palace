@@ -103,7 +103,7 @@ export function WordItems({ words, onChange, issues, disabled }: Props) {
               <span className="flex flex-wrap items-center gap-2">
                 <span>{word}</span>
                 {issue && (
-                  <span className="rounded-full bg-amber-100 px-1.5 py-0.5 text-[10px] font-medium text-amber-800 dark:bg-amber-950 dark:text-amber-200">
+                  <span className="rounded-full bg-amber-100 px-1.5 py-0.5 text-3xs font-medium text-amber-800 dark:bg-amber-950 dark:text-amber-200">
                     {VERDICT_LABEL[issue.verdict]}
                   </span>
                 )}

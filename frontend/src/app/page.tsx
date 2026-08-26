@@ -148,15 +148,15 @@ export default function TopPage() {
       {/* 1. コンセプト（仮）。ヒーロー終盤へ少しだけ重ね、余白を程よく詰める */}
       <Section id="concept" cueTo="features" bg="var(--ivory)" roadFadeTop roadIntro roadFadeIntoNext className="-mt-[10svh]">
         <p className="mb-4 text-xs font-medium tracking-widest" style={{ color: 'var(--palace)' }}>CONCEPT</p>
-        <h2 className="mb-6 text-3xl font-bold tracking-tight md:text-4xl" style={{ color: '#111111' }}>
+        <h2 className="mb-6 text-3xl font-bold tracking-tight md:text-4xl" style={{ color: 'var(--ink-strong)' }}>
           イメージで記憶する。
         </h2>
-        <p className="mx-auto max-w-xl text-base leading-relaxed md:text-lg" style={{ color: '#4A4A4A' }}>
+        <p className="mx-auto max-w-xl text-base leading-relaxed md:text-lg" style={{ color: 'var(--ink-soft)' }}>
           テキスト中心の学習に違和感を持つ人へ。単語や概念をAIでイメージに変換し、
           視覚的に保持・想起できる「自分だけの記憶の宮殿」を育てます。
         </p>
         {/* 定量的な裏づけ（絵優位性・視覚記憶の容量） */}
-        <p className="mx-auto mt-8 max-w-xl text-sm leading-relaxed" style={{ color: '#4A4A4A' }}>
+        <p className="mx-auto mt-8 max-w-xl text-sm leading-relaxed" style={{ color: 'var(--ink-soft)' }}>
           人は約<span className="font-bold" style={{ color: 'var(--palace)' }}>1万枚</span>もの画像を見分けられる——
           記憶はもともと、文字よりイメージに強い。
           <span className="mt-1 block text-xs text-muted-foreground">出典: Standing (1973), Learning 10,000 pictures</span>
@@ -166,23 +166,23 @@ export default function TopPage() {
       {/* 2. 機能（仮） */}
       <Section id="features" cueTo={hasShots ? 'gallery' : 'cta'} bg="var(--ivory-dark)" topDividerFrom="var(--ivory)" roadFadeIntoNext>
         <p className="mb-4 text-xs font-medium tracking-widest" style={{ color: 'var(--palace)' }}>FEATURES</p>
-        <h2 className="mb-12 text-3xl font-bold tracking-tight md:text-4xl" style={{ color: '#111111' }}>できること</h2>
+        <h2 className="mb-12 text-3xl font-bold tracking-tight md:text-4xl" style={{ color: 'var(--ink-strong)' }}>できること</h2>
         <div className="grid gap-6 text-left md:grid-cols-3">
           {FEATURES.map((f) => (
             <div key={f.title} className="rounded-2xl bg-card px-6 py-8" style={{ border: '1px solid var(--palace)' }}>
               <div className="mb-4 flex h-12 w-12 items-center justify-center rounded-full" style={{ backgroundColor: 'rgba(198,167,94,0.15)', color: 'var(--palace)' }}>
                 {f.icon}
               </div>
-              <h3 className="mb-2 flex flex-wrap items-center gap-1.5 font-semibold" style={{ color: '#111111' }}>
+              <h3 className="mb-2 flex flex-wrap items-center gap-1.5 font-semibold" style={{ color: 'var(--ink-strong)' }}>
                 {f.title}
                 {/* まだ無いものは、そう書く。あるように見せると入ってから探すことになる */}
                 {'note' in f && f.note && (
-                  <span className="rounded-full border border-border px-1.5 py-0.5 text-[10px] font-medium leading-none text-muted-foreground">
+                  <span className="rounded-full border border-border px-1.5 py-0.5 text-3xs font-medium leading-none text-muted-foreground">
                     {f.note}
                   </span>
                 )}
               </h3>
-              <p className="text-sm leading-relaxed" style={{ color: '#4A4A4A' }}>{f.body}</p>
+              <p className="text-sm leading-relaxed" style={{ color: 'var(--ink-soft)' }}>{f.body}</p>
             </div>
           ))}
         </div>
@@ -192,7 +192,7 @@ export default function TopPage() {
       {hasShots && (
         <Section id="gallery" cueTo="cta" bg="#ffffff" topDividerFrom="var(--ivory-dark)" roadFadeIntoNext>
           <p className="mb-4 text-xs font-medium tracking-widest" style={{ color: 'var(--palace)' }}>GALLERY</p>
-          <h2 className="mb-6 text-3xl font-bold tracking-tight md:text-4xl" style={{ color: '#111111' }}>画面イメージ</h2>
+          <h2 className="mb-6 text-3xl font-bold tracking-tight md:text-4xl" style={{ color: 'var(--ink-strong)' }}>画面イメージ</h2>
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
             {LANDING_SHOTS.map((shot) => (
               <figure key={shot.src} className="overflow-hidden rounded-xl border border-border bg-card text-left shadow-sm">
@@ -214,7 +214,7 @@ export default function TopPage() {
       {/* 4. 再度の入り口（仮） */}
       {/* 区切りの色は、すぐ上の節の地色に合わせる（作例を出さないときは features の地） */}
       <Section id="cta" bg="var(--ivory)" topDividerFrom={hasShots ? '#ffffff' : 'var(--ivory-dark)'} roadFadeBottom>
-        <h2 className="mb-8 text-2xl font-bold md:text-3xl" style={{ color: '#111111' }}>
+        <h2 className="mb-8 text-2xl font-bold md:text-3xl" style={{ color: 'var(--ink-strong)' }}>
           今日から、記憶を育てはじめましょう。
         </h2>
         {/* ヒーローと同じくログイン有無で出し分ける。

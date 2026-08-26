@@ -171,7 +171,7 @@ export function StudioItemsPanel() {
       </div>
 
       {error ? (
-        <p role="alert" className="text-sm" style={{ color: '#9E3226' }}>
+        <p role="alert" className="text-sm" style={{ color: 'var(--danger-deep)' }}>
           {error}
         </p>
       ) : null}

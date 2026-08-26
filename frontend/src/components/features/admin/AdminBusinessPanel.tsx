@@ -650,7 +650,7 @@ function MetricCard({
       <div className="flex items-start justify-between gap-2">
         <div className="min-w-0">
           <p className="truncate text-sm text-muted-foreground">{definition.name}</p>
-          <p className="text-[11px] tracking-wide text-muted-foreground/70">
+          <p className="text-2xs tracking-wide text-muted-foreground/70">
             {metricLabel(metric)}
           </p>
         </div>
@@ -680,10 +680,10 @@ function MetricCard({
 
       <div className="mt-1 space-y-0.5">
         {missing && emptyReason && (
-          <p className="text-[11px] text-muted-foreground">{emptyReason}</p>
+          <p className="text-2xs text-muted-foreground">{emptyReason}</p>
         )}
         {!missing && reference && (
-          <p className="text-[11px] text-amber-600 dark:text-amber-500">参考値</p>
+          <p className="text-2xs text-amber-600 dark:text-amber-500">参考値</p>
         )}
         {change && (
           <p

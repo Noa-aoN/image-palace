@@ -279,7 +279,7 @@ export function WalkthroughRoom3D({ stops, activeIndex, style, dims, distance }:
         ))}
         <CameraRig target={view.pos} look={view.look} yaw={yaw} pitch={pitch} />
       </Canvas>
-      <span className="pointer-events-none absolute left-3 top-3 rounded bg-background/60 px-1.5 py-0.5 text-[10px] text-muted-foreground">
+      <span className="pointer-events-none absolute left-3 top-3 rounded bg-background/60 px-1.5 py-0.5 text-3xs text-muted-foreground">
         ドラッグで見回す
       </span>
     </div>

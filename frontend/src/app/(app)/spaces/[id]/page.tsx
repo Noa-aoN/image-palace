@@ -117,8 +117,8 @@ function CardPicker({ onSelect, onClose }: { onSelect: (item: Item) => void; onC
             <div className="grid grid-cols-3 gap-2">
               {items.map((item) => (
                 <button key={item.id} type="button" onClick={() => onSelect(item)} className="flex flex-col overflow-hidden rounded-lg border border-border bg-background text-left transition-shadow hover:shadow-md">
-                  <CardImage src={item.media?.thumb_url ?? item.media?.url ?? null} blur={item.media?.blur} alt={item.title} className="aspect-square w-full" fallback={<span className="px-1 text-center text-[10px] text-muted-foreground">{item.title}</span>} />
-                  <span className="truncate px-1.5 py-1 text-[11px] font-medium">{item.title}</span>
+                  <CardImage src={item.media?.thumb_url ?? item.media?.url ?? null} blur={item.media?.blur} alt={item.title} className="aspect-square w-full" fallback={<span className="px-1 text-center text-3xs text-muted-foreground">{item.title}</span>} />
+                  <span className="truncate px-1.5 py-1 text-2xs font-medium">{item.title}</span>
                 </button>
               ))}
             </div>
@@ -197,7 +197,7 @@ function FaceNavArrow({
   return (
     <button
       onClick={onClick}
-      className={`absolute z-20 flex items-center gap-0.5 rounded-full border border-border bg-background/85 px-1.5 py-1 text-[10px] font-medium text-muted-foreground shadow-sm backdrop-blur transition-colors hover:bg-muted hover:text-foreground ${posClass}`}
+      className={`absolute z-20 flex items-center gap-0.5 rounded-full border border-border bg-background/85 px-1.5 py-1 text-3xs font-medium text-muted-foreground shadow-sm backdrop-blur transition-colors hover:bg-muted hover:text-foreground ${posClass}`}
       aria-label={`${label}へ移動`}
       title={`${label}へ`}
     >
@@ -308,7 +308,7 @@ function PointRow({
               <Button variant="ghost" size="sm" onClick={() => onClearCard(point.id)}>カードを外す</Button>
             )}
           </div>
-          <p className="text-[11px] leading-snug text-muted-foreground">
+          <p className="text-2xs leading-snug text-muted-foreground">
             {point.item
               ? `カードの画像を使用中：${point.item.title}`
               : IMAGE_SOURCE_HELP}
@@ -851,7 +851,7 @@ export default function SpaceDetailPage() {
                       >
                         <FaceGlyph surface={s.key} />
                         {s.key.startsWith('wall_') ? `${s.short}面` : s.short}
-                        <span className="text-[10px] opacity-70">{count}</span>
+                        <span className="text-3xs opacity-70">{count}</span>
                       </button>
                     )
                   })}

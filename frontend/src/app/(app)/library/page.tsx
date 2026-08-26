@@ -230,7 +230,7 @@ function CardThumb({
         blur={item.media?.blur}
         alt={item.title}
         className="w-full aspect-square"
-        fallback={<span className="text-muted-foreground text-[11px] px-2 text-center">{item.title}</span>}
+        fallback={<span className="text-muted-foreground text-2xs px-2 text-center">{item.title}</span>}
       />
     </>
   )

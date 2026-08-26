@@ -163,7 +163,7 @@ export function BoardSettingsBody() {
               )
             })}
           </div>
-          <p className="text-[11px] text-muted-foreground">
+          <p className="text-2xs text-muted-foreground">
             {(settings.card_image_fit ?? 'cover') === 'contain'
               ? '切り取らずに全体を収めます。カードの大きさが違っても見える範囲が揃います。'
               : 'カードいっぱいに広げます。縦横比が違うカードでは切り取られる範囲が変わります。'}

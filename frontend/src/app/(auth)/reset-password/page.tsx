@@ -12,7 +12,7 @@ export default function ResetPasswordPage() {
         style={{ border: '1px solid var(--palace)' }}
       >
         <Suspense fallback={
-          <p className="text-sm text-center" style={{ color: '#4A4A4A' }}>
+          <p className="text-sm text-center" style={{ color: 'var(--ink-soft)' }}>
             確認中...
           </p>
         }>

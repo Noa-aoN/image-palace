@@ -43,7 +43,7 @@ function SearchCardTile({ card }: { card: SearchCard }) {
         blur={card.media?.blur}
         alt={card.title}
         className="w-full aspect-square"
-        fallback={<span className="text-muted-foreground text-[11px] px-2 text-center">{card.title}</span>}
+        fallback={<span className="text-muted-foreground text-2xs px-2 text-center">{card.title}</span>}
       />
     </Link>
   )

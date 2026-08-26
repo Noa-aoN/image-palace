@@ -114,7 +114,7 @@ export function StudioPublishPanel() {
               aria-invalid={Boolean(keyError)}
             />
             {keyError ? (
-              <p className="text-xs" style={{ color: '#9E3226' }}>
+              <p className="text-xs" style={{ color: 'var(--danger-deep)' }}>
                 {keyError}
               </p>
             ) : (
@@ -240,7 +240,7 @@ export function StudioPublishPanel() {
       </section>
 
       {error ? (
-        <p role="alert" className="text-sm" style={{ color: '#9E3226' }}>
+        <p role="alert" className="text-sm" style={{ color: 'var(--danger-deep)' }}>
           {error}
         </p>
       ) : null}

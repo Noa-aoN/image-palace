@@ -169,7 +169,7 @@ function PointMarker({
         </Html>
       )}
       <Html position={[-m / 2, m / 2, 0.06]} center distanceFactor={11} zIndexRange={[20, 0]} style={{ pointerEvents: 'none' }}>
-        <span className="flex h-5 w-5 items-center justify-center rounded-full text-[11px] font-semibold text-white shadow" style={{ backgroundColor: ACCENT }}>
+        <span className="flex h-5 w-5 items-center justify-center rounded-full text-2xs font-semibold text-white shadow" style={{ backgroundColor: ACCENT }}>
           {index + 1}
         </span>
       </Html>

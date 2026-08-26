@@ -662,7 +662,7 @@ function PropertyValue({
           <span
             key={`${value}-${index}`}
             className="rounded-full px-2.5 py-0.5 text-xs"
-            style={{ backgroundColor: 'rgba(198,167,94,0.15)', color: '#7a6432' }}
+            style={{ backgroundColor: 'rgba(198,167,94,0.15)', color: 'var(--tag-ink)' }}
           >
             {value}
           </span>

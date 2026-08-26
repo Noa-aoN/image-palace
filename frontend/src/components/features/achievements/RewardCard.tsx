@@ -86,7 +86,7 @@ export function RewardCard({
         aria-label={`${reward.name}の詳細`}
       >
         <RewardArt reward={reward} size={52} />
-        <span className="pointer-events-none absolute inset-x-[-1rem] bottom-full mb-1 hidden rounded-md bg-foreground px-2 py-1 text-[11px] leading-snug text-background shadow-md group-hover:block">
+        <span className="pointer-events-none absolute inset-x-[-1rem] bottom-full mb-1 hidden rounded-md bg-foreground px-2 py-1 text-2xs leading-snug text-background shadow-md group-hover:block">
           {reward.name}
           {showQuantity(reward) && <span className="ml-1">×{reward.quantity}</span>}
           {!reward.owned && reward.condition && <span className="block opacity-80">{reward.condition}</span>}
@@ -108,7 +108,7 @@ export function RewardCard({
             {/* 位は契約に付いてくるもので、集めるものではない。
                 **一言だけ添える**（説明はパネルに置いてある） */}
             {reward.plan_rank ? (
-              <span className="block text-[10px] text-muted-foreground">プランの位</span>
+              <span className="block text-3xs text-muted-foreground">プランの位</span>
             ) : (
               <RarityMarks level={reward.rarity_level} tierClass={style.text} dim={!reward.owned} />
             )}
@@ -128,7 +128,7 @@ export function RewardCard({
               style={{ width: `${(ratio ?? 0) * 100}%`, backgroundColor: 'var(--palace)' }}
             />
           </div>
-          <p className="text-[11px] tabular-nums text-muted-foreground">
+          <p className="text-2xs tabular-nums text-muted-foreground">
             {reward.progress} / {reward.target}
           </p>
         </div>

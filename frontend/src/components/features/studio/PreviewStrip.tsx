@@ -27,7 +27,7 @@ export function PreviewStrip({
     <section
       className="flex flex-wrap items-center gap-3 rounded-xl border p-4 text-sm"
       style={{
-        borderColor: '#4A3B6B',
+        borderColor: 'var(--preview)',
         backgroundColor: 'color-mix(in srgb, #4A3B6B 6%, transparent)',
       }}
     >
@@ -52,7 +52,7 @@ export function PreviewStrip({
       {/* **下見は作った時点で固まっている。** それは狙いどおりだが、
           原本を直したあと「直ったはずなのに変わらない」と見えるのは困る */}
       {preview.stale ? (
-        <span className="w-full text-xs" style={{ color: '#8A6210' }}>
+        <span className="w-full text-xs" style={{ color: 'var(--gold-ink)' }}>
           原本が作り直されています。いま見ているのは作った時点の姿です。
           直した姿を見るには、その荷物の「下見する」をもう一度押してください
         </span>

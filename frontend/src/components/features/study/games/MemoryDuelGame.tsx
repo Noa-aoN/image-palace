@@ -42,7 +42,7 @@ function LifeBar({ label, life, side }: { label: string; life: number; side: 'pl
       <div className="h-2.5 overflow-hidden rounded-full bg-muted">
         <div
           className="h-full rounded-full transition-[width] duration-500"
-          style={{ width: `${pct}%`, backgroundColor: side === 'player' ? '#16a34a' : '#dc2626' }}
+          style={{ width: `${pct}%`, backgroundColor: side === 'player' ? 'var(--success)' : 'var(--danger-bright)' }}
         />
       </div>
     </div>
@@ -62,7 +62,7 @@ function MonsterCard({ m, faceWord, hint }: { m: Monster; faceWord: boolean; hin
         <span className="absolute right-1.5 top-1.5 flex items-center gap-0.5 rounded-full bg-black/70 px-1.5 py-0.5 text-xs font-bold text-white">
           <Swords size={11} /> {m.atk}
         </span>
-        {hint && <span className="absolute bottom-1.5 right-1.5 rounded-full bg-black/70 px-1.5 py-0.5 text-[11px] font-semibold text-white">{hint}</span>}
+        {hint && <span className="absolute bottom-1.5 right-1.5 rounded-full bg-black/70 px-1.5 py-0.5 text-2xs font-semibold text-white">{hint}</span>}
       </div>
       <p className="truncate px-2 py-1 text-center text-xs font-medium">{faceWord ? m.title : '？？？'}</p>
     </div>
@@ -247,11 +247,23 @@ export function MemoryDuelGame({ target, onExit }: { target: QuizTarget; onExit:
         <div className="mt-5">
           <p className="mb-2 text-xs font-medium text-muted-foreground">手札（相性を考えて1枚選ぶ）</p>
           <div className="grid grid-cols-3 gap-2">
-            {hand.map((m) => {
+            {hand.map((m, index) => {
               const mult = typeMultiplier(m.type, cpu.type)
               const hint = mult > 1 ? '有利' : mult < 1 ? '不利' : '互角'
               return (
-                <button key={m.id} type="button" onClick={() => chooseHand(m)} className="text-left transition hover:-translate-y-0.5">
+                // 中身が絵札だけなので、読み上げ用の名前をここで付ける。
+                //
+                // **言葉は入れない。** この札は `faceWord={false}` で伏せてある
+                // （思い出せるかを試す場なので）。名前に入れると、
+                // 読み上げで聞いている人にだけ答えが漏れる。
+                // 伏せたまま選べるよう、番号と相性で識別させる
+                <button
+                  key={m.id}
+                  type="button"
+                  onClick={() => chooseHand(m)}
+                  aria-label={`手札${index + 1}（${TYPE_META[m.type].label} / ${hint}）を出す`}
+                  className="text-left transition hover:-translate-y-0.5"
+                >
                   <MonsterCard m={m} faceWord={false} hint={hint} />
                 </button>
               )

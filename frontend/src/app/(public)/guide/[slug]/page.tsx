@@ -245,7 +245,7 @@ function UseCasesContent() {
                     {useCase.features.map((feature) => (
                       <li
                         key={feature}
-                        className="rounded-full border border-border px-2 py-0.5 text-[11px] text-muted-foreground"
+                        className="rounded-full border border-border px-2 py-0.5 text-2xs text-muted-foreground"
                       >
                         {feature}
                       </li>

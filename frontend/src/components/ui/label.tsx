@@ -22,7 +22,7 @@ function Label({
       {children}
       {required && (
         <span
-          className="rounded bg-red-50 px-1.5 py-0.5 text-[10px] font-medium leading-none text-red-700"
+          className="rounded bg-red-50 px-1.5 py-0.5 text-3xs font-medium leading-none text-red-700"
           aria-hidden="true"
         >
           必須

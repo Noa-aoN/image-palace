@@ -131,7 +131,7 @@ function NavTree({
         <span className="shrink-0">{node.icon}</span>
         {!iconsOnly && <span className="truncate">{node.label}</span>}
         {!iconsOnly && badge && (
-          <span className="ml-auto shrink-0 rounded-full bg-muted px-1.5 py-0.5 text-[10px] text-muted-foreground">
+          <span className="ml-auto shrink-0 rounded-full bg-muted px-1.5 py-0.5 text-3xs text-muted-foreground">
             {badge}
           </span>
         )}

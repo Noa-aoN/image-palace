@@ -445,7 +445,7 @@ export function PalaceFloorplan3D({
             <span style={{ color: 'var(--palace)' }}>{icons[room.key]}</span>
             <span className="text-[13px] font-medium leading-tight">{room.label}</span>
             {room.current && (
-              <span className="flex items-center gap-1 text-[10px] font-medium text-muted-foreground">
+              <span className="flex items-center gap-1 text-3xs font-medium text-muted-foreground">
                 <span className="relative flex h-2 w-2" aria-hidden>
                   <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-red-500 opacity-75" />
                   <span className="relative inline-flex h-2 w-2 rounded-full bg-red-500" />
@@ -470,7 +470,7 @@ export function PalaceFloorplan3D({
 
         {/* 裏口の行き先 */}
         <Label at={{ ...project(BACK_EXIT.x, BACK_EXIT.y, 0, yaw), y: project(BACK_EXIT.x, BACK_EXIT.y, WALL_H + 8, yaw).y }}>
-          <span className="whitespace-nowrap text-[10px] font-medium text-muted-foreground">市街へ</span>
+          <span className="whitespace-nowrap text-3xs font-medium text-muted-foreground">市街へ</span>
         </Label>
       </div>
     </>

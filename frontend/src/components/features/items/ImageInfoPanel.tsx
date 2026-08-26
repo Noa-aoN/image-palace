@@ -229,7 +229,7 @@ function Text({ value, placeholder, mono }: { value?: string | null; placeholder
   return (
     <p
       className={`max-h-48 overflow-y-auto whitespace-pre-wrap leading-relaxed ${
-        mono ? 'font-mono text-[11px]' : 'text-xs'
+        mono ? 'font-mono text-2xs' : 'text-xs'
       }`}
     >
       {value}

@@ -189,7 +189,7 @@ export function KarutaGame({
               aria-label={isTaken ? `${card.title}（取得済み）` : '場札'}
               className="relative aspect-square overflow-hidden rounded-xl border-2 bg-muted transition disabled:cursor-default"
               style={{
-                borderColor: isWrong ? 'var(--destructive)' : isTaken ? '#16a34a' : 'var(--border)',
+                borderColor: isWrong ? 'var(--destructive)' : isTaken ? 'var(--success)' : 'var(--border)',
                 opacity: isTaken ? 0.45 : 1,
               }}
             >

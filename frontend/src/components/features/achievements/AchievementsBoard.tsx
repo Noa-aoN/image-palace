@@ -251,7 +251,7 @@ export function AchievementsBoard() {
                 >
                   <div className="flex flex-wrap items-baseline justify-between gap-2">
                     <span className="flex items-center gap-2">
-                      <span className="rounded-full bg-muted px-2 py-0.5 text-[11px] text-muted-foreground">
+                      <span className="rounded-full bg-muted px-2 py-0.5 text-2xs text-muted-foreground">
                         {mission.cadence_label}
                       </span>
                       <span className={mission.completed ? 'text-muted-foreground line-through' : 'font-medium'}>
@@ -385,7 +385,7 @@ export function AchievementsBoard() {
                 key={row.key}
                 className="rounded-xl border border-border bg-[color-mix(in_srgb,var(--card)_92%,var(--foreground))] p-3 text-center"
               >
-                <dt className="text-[11px] text-muted-foreground">{row.label}</dt>
+                <dt className="text-2xs text-muted-foreground">{row.label}</dt>
                 <dd className="text-lg font-semibold tabular-nums">
                   {row.value.toLocaleString()}
                   <span className="ml-0.5 text-xs font-normal text-muted-foreground">{row.unit}</span>
@@ -813,7 +813,7 @@ const KIND_LABELS: Record<RewardKind, string> = {
 function SummaryStat({ label, value, suffix }: { label: string; value: number; suffix?: string }) {
   return (
     <div>
-      <dt className="text-[11px] text-muted-foreground">{label}</dt>
+      <dt className="text-2xs text-muted-foreground">{label}</dt>
       <dd className="text-lg font-semibold tabular-nums">
         {value.toLocaleString()}
         {suffix && <span className="text-xs font-normal text-muted-foreground">{suffix}</span>}

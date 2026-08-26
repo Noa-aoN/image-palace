@@ -47,7 +47,7 @@ export function DemoBanner() {
     <div
       className="flex shrink-0 flex-wrap items-center justify-center gap-x-3 gap-y-1
                  px-4 py-1.5 text-center text-xs"
-      style={{ backgroundColor: 'var(--palace)', color: '#fff' }}
+      style={{ backgroundColor: 'var(--palace)', color: 'var(--on-accent)' }}
       role="status"
     >
       {/* 出口を先に置く。**入ってきた人が最初に探すのは戻り道。**

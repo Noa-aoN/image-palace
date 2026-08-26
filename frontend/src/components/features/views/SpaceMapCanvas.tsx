@@ -90,10 +90,10 @@ function CardPicker({ onSelect, onClose }: { onSelect: (item: Item) => void; onC
                         // eslint-disable-next-line @next/next/no-img-element
                         <img src={imageUrl} alt={item.title} className="h-full w-full object-cover" loading="lazy" />
                       ) : (
-                        <span className="px-1 text-center text-[10px] text-muted-foreground">{item.title}</span>
+                        <span className="px-1 text-center text-3xs text-muted-foreground">{item.title}</span>
                       )}
                     </div>
-                    <span className="truncate px-1.5 py-1 text-[11px] font-medium">{item.title}</span>
+                    <span className="truncate px-1.5 py-1 text-2xs font-medium">{item.title}</span>
                   </button>
                 )
               })}
@@ -256,7 +256,7 @@ export function SpaceMapCanvas({
                   </span>
                   {(occurrence.get(point.space_point_id) ?? 0) >= 2 && (
                     <span
-                      className="shrink-0 rounded-full border px-2 py-0.5 text-[10px] font-medium"
+                      className="shrink-0 rounded-full border px-2 py-0.5 text-3xs font-medium"
                       style={{ borderColor: 'var(--palace)', color: 'var(--palace)' }}
                       title="このカードは複数のポイントに配置されています"
                     >

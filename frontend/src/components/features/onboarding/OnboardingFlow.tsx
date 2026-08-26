@@ -282,7 +282,7 @@ function NameStep({
     <div className="space-y-2">
       <label htmlFor="onboarding-name" className="block text-sm font-medium">
         {label}
-        <span className="ml-2 rounded-full bg-muted px-1.5 py-0.5 text-[10px] font-normal text-muted-foreground">
+        <span className="ml-2 rounded-full bg-muted px-1.5 py-0.5 text-3xs font-normal text-muted-foreground">
           任意
         </span>
       </label>
@@ -322,7 +322,7 @@ function DisplayStyleStep({ value, onChange }: { value: DisplayStyle; onChange: 
               <span className="flex items-center gap-2 text-sm font-medium">
                 {opt.label}
                 {key === DEFAULT_DISPLAY_STYLE && (
-                  <span className="rounded-full bg-muted px-1.5 py-0.5 text-[10px] text-muted-foreground">
+                  <span className="rounded-full bg-muted px-1.5 py-0.5 text-3xs text-muted-foreground">
                     おすすめ
                   </span>
                 )}

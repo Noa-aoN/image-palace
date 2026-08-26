@@ -166,13 +166,13 @@ export function AddCardsBody({ viewId }: { viewId: string }) {
                 onClick={() => handleAdd(item)}
                 className="flex flex-col overflow-hidden rounded-lg border border-border bg-background text-left transition-shadow hover:shadow-md"
               >
-                <span className="truncate px-1.5 py-1 text-[11px] font-medium">{item.title}</span>
+                <span className="truncate px-1.5 py-1 text-2xs font-medium">{item.title}</span>
                 <div className="flex aspect-square w-full items-center justify-center overflow-hidden bg-muted">
                   {imageUrl ? (
                     // eslint-disable-next-line @next/next/no-img-element
                     <img src={imageUrl} alt={item.title} className="h-full w-full object-cover" loading="lazy" />
                   ) : (
-                    <span className="px-1 text-center text-[10px] text-muted-foreground">{item.title}</span>
+                    <span className="px-1 text-center text-3xs text-muted-foreground">{item.title}</span>
                   )}
                 </div>
               </button>

@@ -12,7 +12,7 @@ export function CreateIcon({ children }: { children: ReactNode }) {
       <span
         aria-hidden
         className="absolute -bottom-1 -right-1 flex items-center justify-center rounded-full ring-2 ring-[var(--ivory)]"
-        style={{ backgroundColor: 'var(--palace)', color: '#fff', width: 11, height: 11 }}
+        style={{ backgroundColor: 'var(--palace)', color: 'var(--on-accent)', width: 11, height: 11 }}
       >
         <Plus size={8} strokeWidth={3.5} />
       </span>

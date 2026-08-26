@@ -36,7 +36,7 @@ function Field({
 }) {
   return (
     <div className="space-y-1">
-      <div className="flex items-baseline justify-between gap-2 text-[11px] text-muted-foreground">
+      <div className="flex items-baseline justify-between gap-2 text-2xs text-muted-foreground">
         <span>{label}</span>
         <span className="flex items-baseline gap-2">
           {action}
@@ -126,7 +126,7 @@ function PointPromptInfo({ point }: { point: SpacePoint }) {
     <InfoPopover label="プロンプト情報" icon={<FileText size={14} />} width="w-72">
       <div>
         <p className="mb-0.5 text-xs font-medium text-muted-foreground">画像への指示</p>
-        <p className="whitespace-pre-wrap font-mono text-[11px] leading-relaxed">{prompt}</p>
+        <p className="whitespace-pre-wrap font-mono text-2xs leading-relaxed">{prompt}</p>
       </div>
       <p className="text-xs text-muted-foreground">
         記憶資産は、点の名前をそのまま画像の指示に使います。名前を変えて作り直すと絵が変わります。
@@ -157,7 +157,7 @@ export function PointCommonSettingsPanel({
 }) {
   return (
     <div className="space-y-5 p-4">
-      <p className="text-[11px] text-muted-foreground">{SCOPE_ALL}</p>
+      <p className="text-2xs text-muted-foreground">{SCOPE_ALL}</p>
 
       <Section title="表示">
         <Field label="表示サイズ" value={`×${space.point_scale.toFixed(1)}`}>
@@ -172,7 +172,7 @@ export function PointCommonSettingsPanel({
             aria-label="ポイント表示サイズ"
           />
         </Field>
-        <label className="flex items-center justify-between gap-2 text-[11px] text-muted-foreground">
+        <label className="flex items-center justify-between gap-2 text-2xs text-muted-foreground">
           <span>部屋サイズに自動追従</span>
           <input
             type="checkbox"
@@ -200,8 +200,8 @@ export function PointDetailSettingsPanel({
   if (!selectedPoint) {
     return (
       <div className="space-y-2 p-4">
-        <p className="text-[11px] text-muted-foreground">{SCOPE_ONE}</p>
-        <p className="text-[11px] text-muted-foreground">
+        <p className="text-2xs text-muted-foreground">{SCOPE_ONE}</p>
+        <p className="text-2xs text-muted-foreground">
           2D / 3D のポイントをクリックして選ぶと、ここで調整できます。
         </p>
       </div>
@@ -217,7 +217,7 @@ export function PointDetailSettingsPanel({
           <span className="truncate text-sm font-medium">{selectedPoint.name || '未命名'}</span>
           <PointPromptInfo point={selectedPoint} />
         </div>
-        <p className="text-[11px] text-muted-foreground">{SCOPE_ONE}</p>
+        <p className="text-2xs text-muted-foreground">{SCOPE_ONE}</p>
       </div>
 
       <Section title="向き">
@@ -228,7 +228,7 @@ export function PointDetailSettingsPanel({
               ROTATION_AXES.forEach(({ axis }) => onRotate(selectedPoint.id, axis, 0))
               onRotateCommit(selectedPoint.id, { rotation_x: 0, rotation_y: 0, rotation_z: 0 })
             }}
-            className="shrink-0 text-[11px] text-muted-foreground underline hover:text-foreground"
+            className="shrink-0 text-2xs text-muted-foreground underline hover:text-foreground"
           >
             すべて戻す
           </button>
@@ -280,7 +280,7 @@ export function PointDetailSettingsPanel({
               </Field>
             )
         })}
-        <p className="text-[11px] text-muted-foreground">2D では、傾きを遠近で近似して表示します。</p>
+        <p className="text-2xs text-muted-foreground">2D では、傾きを遠近で近似して表示します。</p>
       </Section>
     </div>
   )

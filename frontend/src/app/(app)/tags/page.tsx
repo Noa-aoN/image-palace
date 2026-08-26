@@ -416,7 +416,7 @@ function GroupCard({ group, board }: { group: BoardGroup; board: TagBoard }) {
             <>
               <span className="truncate text-sm font-semibold">{group.name}</span>
               {group.isDefault && (
-                <span className="shrink-0 rounded-full bg-muted px-1.5 py-0.5 text-[10px] font-medium text-muted-foreground">
+                <span className="shrink-0 rounded-full bg-muted px-1.5 py-0.5 text-3xs font-medium text-muted-foreground">
                   標準
                 </span>
               )}

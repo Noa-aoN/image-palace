@@ -180,7 +180,7 @@ export function MemoryGame({
               aria-label={isFaceUp ? tile.title : '裏向きのカード'}
               className="relative aspect-square overflow-hidden rounded-xl border bg-card transition disabled:cursor-default"
               style={{
-                borderColor: isMatched ? '#16a34a' : 'var(--border)',
+                borderColor: isMatched ? 'var(--success)' : 'var(--border)',
                 opacity: isMatched ? 0.7 : 1,
               }}
             >

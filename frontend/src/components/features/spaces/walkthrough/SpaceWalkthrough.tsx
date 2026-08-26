@@ -182,7 +182,7 @@ export function SpaceWalkthrough({
                     dims={dims}
                     distance={camDistance}
                   />
-                  <label className="absolute inset-x-0 bottom-32 z-10 mx-auto flex w-full max-w-[320px] items-center gap-2 rounded-full border border-border bg-card/80 px-3 py-1.5 text-[11px] text-muted-foreground shadow backdrop-blur">
+                  <label className="absolute inset-x-0 bottom-32 z-10 mx-auto flex w-full max-w-[320px] items-center gap-2 rounded-full border border-border bg-card/80 px-3 py-1.5 text-2xs text-muted-foreground shadow backdrop-blur">
                     <span className="shrink-0">近く</span>
                     <input
                       type="range"

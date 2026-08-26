@@ -126,7 +126,7 @@ function FaceBoard({
 
       {isFloor && big && (
         <div
-          className="absolute -translate-x-1/2 -translate-y-1/2 text-[10px] font-medium text-muted-foreground"
+          className="absolute -translate-x-1/2 -translate-y-1/2 text-3xs font-medium text-muted-foreground"
           style={{ left: `${DOOR.x}%`, top: `${100 - WALL}%` }}
         >
           入口
@@ -166,7 +166,7 @@ function FaceBoard({
             </div>
             {big && (
               <span
-                className="absolute -left-1.5 -top-1.5 flex h-5 min-w-5 items-center justify-center rounded-full px-1 text-[11px] font-semibold text-white shadow"
+                className="absolute -left-1.5 -top-1.5 flex h-5 min-w-5 items-center justify-center rounded-full px-1 text-2xs font-semibold text-white shadow"
                 style={{ backgroundColor: 'var(--palace)' }}
               >
                 {i + 1}

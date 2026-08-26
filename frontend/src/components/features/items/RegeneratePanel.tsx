@@ -368,7 +368,7 @@ export function RegeneratePanel({ item, onUpdated }: Props) {
                     className="block w-full rounded-lg border border-border px-3 py-2 text-left transition-colors hover:bg-muted disabled:opacity-50"
                   >
                     {option.label && <span className="block text-xs font-medium">{option.label}</span>}
-                    <span className="mt-0.5 block line-clamp-2 font-mono text-[11px] leading-relaxed text-muted-foreground">
+                    <span className="mt-0.5 block line-clamp-2 font-mono text-2xs leading-relaxed text-muted-foreground">
                       {option.scene_prompt}
                     </span>
                   </button>

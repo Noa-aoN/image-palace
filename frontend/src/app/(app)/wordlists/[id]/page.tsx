@@ -159,7 +159,7 @@ export default function WordlistDetailPage() {
             {confirming ? (
               <div className="flex items-center gap-2">
                 <Button variant="ghost" size="sm" onClick={() => setConfirming(false)} disabled={deleting}>キャンセル</Button>
-                <Button size="sm" onClick={handleDelete} disabled={deleting} style={{ backgroundColor: 'var(--destructive)', color: '#fff' }}>
+                <Button size="sm" onClick={handleDelete} disabled={deleting} style={{ backgroundColor: 'var(--destructive)', color: 'var(--on-accent)' }}>
                   {deleting ? '削除中...' : '削除する'}
                 </Button>
               </div>

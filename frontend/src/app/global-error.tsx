@@ -34,7 +34,7 @@ export default function GlobalError({ error }: { error: Error & { digest?: strin
               padding: '0.5rem 1rem',
               borderRadius: '0.5rem',
               border: '1px solid #ddd',
-              background: '#fff',
+              background: 'var(--on-accent)',
               cursor: 'pointer',
             }}
           >

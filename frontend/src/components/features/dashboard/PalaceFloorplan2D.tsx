@@ -53,7 +53,7 @@ export function PalaceFloorplan2D({
     <div className="relative w-full" style={{ aspectRatio: `${w} / ${h * 0.85}` }}>
       {/* 上辺の開口（壁の切れ目）に重ねて、その先の行き先を示す */}
       <span
-        className="pointer-events-none absolute left-1/2 -translate-x-1/2 -translate-y-1/2 whitespace-nowrap text-[10px] font-medium text-muted-foreground"
+        className="pointer-events-none absolute left-1/2 -translate-x-1/2 -translate-y-1/2 whitespace-nowrap text-3xs font-medium text-muted-foreground"
         style={{ top: pct(10, h) }}
       >
         市街へ
@@ -141,7 +141,7 @@ export function PalaceFloorplan2D({
           <span style={{ color: 'var(--palace)' }}>{icons[room.key]}</span>
           <span className="text-sm font-medium leading-tight">{room.label}</span>
           {room.current && (
-            <span className="flex items-center gap-1 text-[10px] font-medium text-muted-foreground">
+            <span className="flex items-center gap-1 text-3xs font-medium text-muted-foreground">
               <span className="relative flex h-2 w-2" aria-hidden>
                 <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-red-500 opacity-75" />
                 <span className="relative inline-flex h-2 w-2 rounded-full bg-red-500" />

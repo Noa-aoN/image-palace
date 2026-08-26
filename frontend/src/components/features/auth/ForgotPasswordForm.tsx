@@ -40,7 +40,7 @@ export function ForgotPasswordForm() {
   if (submitted) {
     return (
       <div className="w-full max-w-sm mx-auto">
-        <h1 className="text-2xl font-bold mb-6 text-center" style={{ color: '#111111' }}>
+        <h1 className="text-2xl font-bold mb-6 text-center" style={{ color: 'var(--ink-strong)' }}>
           メールを送信しました
         </h1>
         <div
@@ -51,8 +51,8 @@ export function ForgotPasswordForm() {
           ご入力のメールアドレス宛に、パスワード再設定用のリンクをお送りしました。
           メールが届かない場合は、迷惑メールフォルダもご確認ください。
         </div>
-        <p className="text-sm text-center" style={{ color: '#4A4A4A' }}>
-          <Link href="/login" className="underline" style={{ color: '#111111' }}>
+        <p className="text-sm text-center" style={{ color: 'var(--ink-soft)' }}>
+          <Link href="/login" className="underline" style={{ color: 'var(--ink-strong)' }}>
             ログイン画面に戻る
           </Link>
         </p>
@@ -62,10 +62,10 @@ export function ForgotPasswordForm() {
 
   return (
     <div className="w-full max-w-sm mx-auto">
-      <h1 className="text-2xl font-bold mb-6 text-center" style={{ color: '#111111' }}>
+      <h1 className="text-2xl font-bold mb-6 text-center" style={{ color: 'var(--ink-strong)' }}>
         パスワードを再設定
       </h1>
-      <p className="text-sm leading-6 mb-6" style={{ color: '#4A4A4A' }}>
+      <p className="text-sm leading-6 mb-6" style={{ color: 'var(--ink-soft)' }}>
         ご登録のメールアドレスを入力してください。パスワード再設定用のリンクをお送りします。
       </p>
 
@@ -100,8 +100,8 @@ export function ForgotPasswordForm() {
         </Button>
       </form>
 
-      <p className="text-sm text-center mt-6" style={{ color: '#4A4A4A' }}>
-        <Link href="/login" className="underline" style={{ color: '#111111' }}>
+      <p className="text-sm text-center mt-6" style={{ color: 'var(--ink-soft)' }}>
+        <Link href="/login" className="underline" style={{ color: 'var(--ink-strong)' }}>
           ログイン画面に戻る
         </Link>
       </p>

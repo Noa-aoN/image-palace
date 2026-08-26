@@ -221,7 +221,7 @@ export function CardPropertiesEditor({
           </div>
           {PROPERTY_PRESETS.map((preset) => (
             <div key={preset.group} className="space-y-1">
-              <p className="text-[11px] text-muted-foreground">{preset.group}</p>
+              <p className="text-2xs text-muted-foreground">{preset.group}</p>
               <div className="flex flex-wrap gap-1.5">
                 {preset.items.map((item) => (
                   <button

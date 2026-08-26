@@ -13,7 +13,7 @@ function LociFallback({ stop, index }: { stop: WalkthroughStop; index: number })
   return (
     <div className="flex h-full w-full flex-col items-center justify-center gap-1 text-center text-muted-foreground">
       {stop.generating ? <Loader2 size={26} className="animate-spin" /> : <Route size={26} style={{ color: 'var(--palace)' }} />}
-      <span className="px-2 text-[11px] leading-tight">{stop.name?.trim() || `ポイント ${index + 1}`}</span>
+      <span className="px-2 text-2xs leading-tight">{stop.name?.trim() || `ポイント ${index + 1}`}</span>
     </div>
   )
 }
