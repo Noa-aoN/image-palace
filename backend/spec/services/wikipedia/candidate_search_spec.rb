@@ -148,3 +148,98 @@ RSpec.describe Wikipedia::CandidateSearch do
     end
   end
 end
+
+# 題の検索は**先頭一致**（オートコンプリート用）なので、読みや言い換えには当たらない。
+# 実測: 「アポロ計画」は4件返るが、「でぃーえぬえす」「ネットワークの通り道」は0件。
+# 読みで書く人には、そこが行き止まりになっていた。
+RSpec.describe "#{Wikipedia::CandidateSearch} の本文検索フォールバック" do
+  let(:described_class) { Wikipedia::CandidateSearch }
+
+  def page(title) = { "title" => title }
+
+  # 経路ごとに違う結果を返す stub。どちらを引いたかも記録する
+  def stub_paths(title_pages:, page_pages: [], page_raises: nil)
+    connection = instance_double(Faraday::Connection)
+    allow(Faraday).to receive(:new).and_return(connection)
+    @paths = []
+    allow(connection).to receive(:get) do |path, _params|
+      @paths << path
+      if path == described_class::PAGE_SEARCH_PATH
+        raise page_raises if page_raises
+
+        instance_double(Faraday::Response, body: { "pages" => page_pages })
+      else
+        instance_double(Faraday::Response, body: { "pages" => title_pages })
+      end
+    end
+    connection
+  end
+
+  before do
+    @cache = Rails.cache
+    Rails.cache = ActiveSupport::Cache::MemoryStore.new
+  end
+
+  after { Rails.cache = @cache }
+
+  # 当たっているときに混ぜると、関係の薄い記事が上位の正解を押しのける
+  it "題で当たったら、本文までは引かない" do
+    stub_paths(title_pages: [ page("アポロ計画"), page("アポロ計画陰謀論") ])
+
+    result = described_class.call("アポロ計画")
+
+    expect(result.candidates.map(&:title)).to eq([ "アポロ計画", "アポロ計画陰謀論" ])
+    expect(@paths).to eq([ described_class::SEARCH_PATH ])
+  end
+
+  it "題が0件なら、本文まで見に行く" do
+    stub_paths(title_pages: [], page_pages: [ page("ミトコンドリアDNA") ])
+
+    result = described_class.call("みとこんどりあ")
+
+    expect(result.candidates.map(&:title)).to eq([ "ミトコンドリアDNA" ])
+    expect(@paths).to eq([ described_class::SEARCH_PATH, described_class::PAGE_SEARCH_PATH ])
+  end
+
+  # 題は返ってきたが、どれも語をかすっていない場合も同じ
+  it "題がかすってもいなければ、本文まで見に行く" do
+    stub_paths(title_pages: [ page("まったく別の記事") ], page_pages: [ page("ネットワーク") ])
+
+    result = described_class.call("ネットワークの通り道")
+
+    expect(result.candidates.map(&:title)).to eq([ "まったく別の記事", "ネットワーク" ])
+  end
+
+  it "同じ記事は1度だけ出す" do
+    stub_paths(title_pages: [ page("ネットワーク") ], page_pages: [ page("ネットワーク"), page("通信") ])
+
+    result = described_class.call("ネットワークの通り道")
+
+    expect(result.candidates.map(&:title)).to eq([ "ネットワーク", "通信" ])
+  end
+
+  it "出す数の上限は守る" do
+    stub_paths(title_pages: [], page_pages: (1..10).map { |n| page("記事#{n}") })
+
+    expect(described_class.call("なにか").candidates.size).to eq(described_class::LIMIT)
+  end
+
+  # 本文の検索が落ちても、題で拾えたものは捨てない
+  it "本文の検索が落ちても、題の結果は返す" do
+    stub_paths(title_pages: [ page("別の記事") ], page_raises: Faraday::ConnectionFailed.new("boom"))
+
+    result = described_class.call("ネットワークの通り道")
+
+    expect(result.candidates.map(&:title)).to eq([ "別の記事" ])
+  end
+
+  # 当てずっぽうを「近い記事」と言わない。判定はそのまま残す
+  it "本文で拾ったものでも、かすっていなければ弱いままにする" do
+    stub_paths(title_pages: [], page_pages: [ page("ぱーてぃーちゃん") ])
+
+    result = described_class.call("でぃーえぬえす")
+
+    expect(result.candidates.map(&:title)).to eq([ "ぱーてぃーちゃん" ])
+    expect(result.weak?("でぃーえぬえす")).to be(true)
+  end
+end

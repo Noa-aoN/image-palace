@@ -189,8 +189,11 @@ export function WikipediaProperty({
 
   const candidateList = candidates?.length ? (
     <div className="space-y-2 rounded-lg border border-border bg-card p-3">
+      {/* **「見つかりません」で終わらせない。** 題が当たらなくても、
+          本文まで見た検索（Wikipedia の検索窓と同じもの）の結果を並べる。
+          ただし当てずっぽうを「近い記事」とは言わない（message が弱さを伝える） */}
       <p className="text-xs text-muted-foreground">
-        同じ題の記事がありませんでした。近いものから選んでください（{candidateLanguage} 版）
+        もしかして、これですか？（{candidateLanguage} 版）
       </p>
       <ul className="space-y-1.5">
         {candidates.map((c) => (
