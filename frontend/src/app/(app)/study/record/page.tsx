@@ -209,7 +209,7 @@ function ActivityChart({ records }: { records: StudyRecord[] }) {
             />
           ))}
         </div>
-        <div className="mt-1.5 flex justify-between text-[11px] text-muted-foreground">
+        <div className="mt-1.5 flex justify-between text-2xs text-muted-foreground">
           <span>{mdLabel(days[0])}</span>
           <span>今日</span>
         </div>
@@ -240,7 +240,7 @@ function AccuracyTrend({ quizzes }: { quizzes: StudyRecord[] }) {
             )
           })}
         </div>
-        <div className="mt-1.5 flex justify-between text-[11px] text-muted-foreground">
+        <div className="mt-1.5 flex justify-between text-2xs text-muted-foreground">
           <span>古い</span>
           <span>最新（{recent.length > 0 ? Math.round((recent[recent.length - 1].correct / Math.max(1, recent[recent.length - 1].total)) * 100) : 0}%）</span>
         </div>

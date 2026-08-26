@@ -178,7 +178,7 @@ function BriefView({ brief }: { brief: AdminBrief }) {
 
               <p className="text-sm">{insight.suggested_action}</p>
 
-              <p className="flex flex-wrap gap-x-3 text-[11px] text-muted-foreground">
+              <p className="flex flex-wrap gap-x-3 text-2xs text-muted-foreground">
                 <span>確信度 {LEVEL_LABEL[insight.confidence] ?? insight.confidence}</span>
                 <span>効き目 {LEVEL_LABEL[insight.impact] ?? insight.impact}</span>
                 <span>急ぎ {LEVEL_LABEL[insight.urgency] ?? insight.urgency}</span>
@@ -394,7 +394,7 @@ function ActionPanel() {
                     </span>
                     {/* いつ言われたことか。古いまま残っているものに気づける */}
                     {row.generated_at && (
-                      <span className="block text-[11px] text-muted-foreground">
+                      <span className="block text-2xs text-muted-foreground">
                         {new Date(row.generated_at).toLocaleDateString('ja-JP')} の分析
                       </span>
                     )}

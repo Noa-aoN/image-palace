@@ -184,8 +184,8 @@ export function MeaningList({
                   <span className="text-sm font-medium tabular-nums text-muted-foreground">{index + 1}.</span>
                   {index === 0 && (
                     <span
-                      className="rounded-full px-2 py-0.5 text-[11px]"
-                      style={{ backgroundColor: 'rgba(198,167,94,0.15)', color: '#7a6432' }}
+                      className="rounded-full px-2 py-0.5 text-2xs"
+                      style={{ backgroundColor: 'rgba(198,167,94,0.15)', color: 'var(--tag-ink)' }}
                       title="画像生成・AIチェック・一覧の表示はこの1件を使います"
                     >
                       代表
@@ -194,11 +194,11 @@ export function MeaningList({
                   {/* 何を書いた文かは、詳しさより先に読ませる。
                       解説を探しているのに意味が並んでいる、が分かる */}
                   <span
-                    className="rounded-full border border-border px-1.5 py-0.5 text-[11px] text-muted-foreground"
+                    className="rounded-full border border-border px-1.5 py-0.5 text-2xs text-muted-foreground"
                   >
                     {meaningKindLabel(entry.kind ?? DEFAULT_MEANING_KIND)}
                   </span>
-                  <span className="text-[11px] text-muted-foreground">
+                  <span className="text-2xs text-muted-foreground">
                     {meaningLevelLabel(entry.detail_level)}
                     {entry.language_code !== DEFAULT_MEANING_LANGUAGE &&
                       ` / ${meaningLanguageLabel(entry.language_code)}`}

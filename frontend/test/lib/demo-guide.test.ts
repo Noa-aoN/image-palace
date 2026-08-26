@@ -24,6 +24,15 @@ describe('体験の道案内', () => {
     }
   })
 
+  // 帯はヘッダーの上に積むので、折り返した分だけ本文が下がる。
+  // 狭い画面では行き先の名前だけにして、3つで1行に収める
+  it('狭い画面用の短い言い方を持つ', () => {
+    for (const step of DEMO_GUIDE_STEPS) {
+      expect(step.short.trim()).not.toBe('')
+      expect(step.short.length).toBeLessThan(step.label.length)
+    }
+  })
+
   describe('いまいる場所を数える', () => {
     it('その場所そのもの', () => {
       expect(demoStepForPath('/items')).toBe('items')

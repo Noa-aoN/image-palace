@@ -30,7 +30,7 @@ export function StudioDeliveryPanel() {
   return (
     <div className="space-y-6">
       {error ? (
-        <p role="alert" className="text-sm" style={{ color: '#9E3226' }}>
+        <p role="alert" className="text-sm" style={{ color: 'var(--danger-deep)' }}>
           {error}
         </p>
       ) : null}

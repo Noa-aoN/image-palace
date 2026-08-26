@@ -95,7 +95,7 @@ function CardNodeComponent({ id, data }: NodeProps<CardNodeType>) {
                 loading="lazy"
               />
             ) : (
-              <span className="px-2 text-center text-[11px] text-muted-foreground">{item.title}</span>
+              <span className="px-2 text-center text-2xs text-muted-foreground">{item.title}</span>
             )}
           </div>
         </div>

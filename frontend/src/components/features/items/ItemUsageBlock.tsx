@@ -76,7 +76,7 @@ function UsageRow({
           key={entry.id}
           href={entry.href}
           className="rounded-full px-2.5 py-0.5 text-xs transition-opacity hover:opacity-80"
-          style={{ backgroundColor: 'rgba(198,167,94,0.15)', color: '#7a6432' }}
+          style={{ backgroundColor: 'rgba(198,167,94,0.15)', color: 'var(--tag-ink)' }}
         >
           {entry.name}
         </Link>

@@ -271,7 +271,7 @@ function UserStats({ stats }: { stats: AdminUserStats }) {
             </div>
           ))}
         </div>
-        <div className="mt-1 flex justify-between text-[11px] text-muted-foreground">
+        <div className="mt-1 flex justify-between text-2xs text-muted-foreground">
           <span>{stats.monthly[0]?.month}</span>
           <span>累計 {stats.monthly[stats.monthly.length - 1]?.cumulative ?? stats.total}</span>
           <span>{stats.monthly[stats.monthly.length - 1]?.month}</span>

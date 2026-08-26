@@ -16,7 +16,16 @@ export const DEMO_HOME = '/items'
 export type DemoGuideStep = {
   key: string
   href: string
+  /** 広い画面での言い方。誘いの形にする */
   label: string
+  /**
+   * 狭い画面での言い方。**行き先の名前だけ**にする。
+   *
+   * 「〜をみてみよう」を3つ並べると、375px では2〜3行に折り返す。
+   * 帯（体験中の案内）はヘッダーの上に積むので、**折り返した分だけ本文が下がる**。
+   * 誘いの言葉は上の一文が担っているので、ここは名前で足りる。
+   */
+  short: string
   /** なぜそこを見るのか。押す前に分かるようにする */
   hint: string
 }
@@ -24,18 +33,21 @@ export type DemoGuideStep = {
 export const DEMO_GUIDE_STEPS: DemoGuideStep[] = [
   {
     key: 'items',
+    short: 'カード一覧',
     href: '/items',
     label: 'カード一覧をみてみよう',
     hint: '言葉がイメージになったものが並びます',
   },
   {
     key: 'boxes',
+    short: 'ボックス',
     href: '/boxes',
     label: 'ボックスをみてみよう',
     hint: 'カードをまとめて持ち歩く入れ物です',
   },
   {
     key: 'views',
+    short: 'キャンバス',
     href: '/views',
     label: 'キャンバスをみてみよう',
     hint: 'カードを好きな場所に置いて、関係を描けます',

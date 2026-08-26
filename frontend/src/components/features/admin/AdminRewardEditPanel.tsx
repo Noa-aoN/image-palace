@@ -207,7 +207,7 @@ function RewardForm({
                 />
               </ZoomableImage>
             ) : (
-              <div className="flex size-16 items-center justify-center rounded-lg border border-dashed border-border text-[11px] text-muted-foreground">
+              <div className="flex size-16 items-center justify-center rounded-lg border border-dashed border-border text-2xs text-muted-foreground">
                 なし
               </div>
             )}

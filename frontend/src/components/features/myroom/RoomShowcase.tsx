@@ -73,7 +73,7 @@ export function RoomShowcase() {
           {treasures.map((reward) => (
             <li key={reward.key} className="flex w-20 flex-col items-center gap-1 text-center">
               <RewardArt reward={reward} size={48} />
-              <span className="text-[11px] leading-tight">
+              <span className="text-2xs leading-tight">
                 {reward.name}
                 {/* 2つ以上のときだけ数を出す（1個で ×1 と書くと、
                     重ねられないものまで数える対象に見える） */}

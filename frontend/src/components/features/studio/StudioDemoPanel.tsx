@@ -94,7 +94,7 @@ export function StudioDemoPanel() {
   return (
     <div className="space-y-6">
       {shown ? (
-        <p role="alert" className="text-sm" style={{ color: '#9E3226' }}>
+        <p role="alert" className="text-sm" style={{ color: 'var(--danger-deep)' }}>
           {shown}
         </p>
       ) : null}
@@ -140,7 +140,7 @@ export function StudioDemoPanel() {
               </ul>
             </div>
           ) : (
-            <p className="text-xs" style={{ color: '#8A6210' }}>
+            <p className="text-xs" style={{ color: 'var(--gold-ink)' }}>
               置いているものがありません。開いても入れません
               （下の配置物で「体験の宮殿に置く」を入れてください）
             </p>

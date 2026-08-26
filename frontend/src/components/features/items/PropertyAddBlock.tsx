@@ -46,7 +46,7 @@ export function PropertyAddBlock({
 
         return (
           <div key={role.key} className="space-y-1.5">
-            <p className="text-[11px] font-medium" style={{ color: role.accent }} title={role.hint}>
+            <p className="text-2xs font-medium" style={{ color: role.accent }} title={role.hint}>
               {role.label}
             </p>
             <div className="flex flex-wrap gap-1.5">

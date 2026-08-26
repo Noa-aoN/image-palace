@@ -109,7 +109,7 @@ export function ResetPasswordForm() {
   if (!tokensChecked) {
     return (
       <div className="w-full max-w-sm mx-auto">
-        <p className="text-sm text-center" style={{ color: '#4A4A4A' }}>
+        <p className="text-sm text-center" style={{ color: 'var(--ink-soft)' }}>
           確認中...
         </p>
       </div>
@@ -119,15 +119,15 @@ export function ResetPasswordForm() {
   if (!tokens) {
     return (
       <div className="w-full max-w-sm mx-auto">
-        <h1 className="text-2xl font-bold mb-6 text-center" style={{ color: '#111111' }}>
+        <h1 className="text-2xl font-bold mb-6 text-center" style={{ color: 'var(--ink-strong)' }}>
           リンクが無効です
         </h1>
-        <p className="text-sm leading-6 mb-6" style={{ color: '#4A4A4A' }}>
+        <p className="text-sm leading-6 mb-6" style={{ color: 'var(--ink-soft)' }}>
           リセット用のリンクが無効、または期限が切れています。
           再度パスワードリセットをお試しください。
         </p>
-        <p className="text-sm text-center" style={{ color: '#4A4A4A' }}>
-          <Link href="/forgot-password" className="underline" style={{ color: '#111111' }}>
+        <p className="text-sm text-center" style={{ color: 'var(--ink-soft)' }}>
+          <Link href="/forgot-password" className="underline" style={{ color: 'var(--ink-strong)' }}>
             パスワードを再設定する
           </Link>
         </p>
@@ -137,10 +137,10 @@ export function ResetPasswordForm() {
 
   return (
     <div className="w-full max-w-sm mx-auto">
-      <h1 className="text-2xl font-bold mb-6 text-center" style={{ color: '#111111' }}>
+      <h1 className="text-2xl font-bold mb-6 text-center" style={{ color: 'var(--ink-strong)' }}>
         新しいパスワードを設定
       </h1>
-      <p className="text-sm leading-6 mb-6" style={{ color: '#4A4A4A' }}>
+      <p className="text-sm leading-6 mb-6" style={{ color: 'var(--ink-soft)' }}>
         新しいパスワードを 8 文字以上で入力してください。
       </p>
 
@@ -165,7 +165,7 @@ export function ResetPasswordForm() {
             minLength={8}
             aria-invalid={fieldErrors.password ? true : undefined}
           />
-          <p className="text-xs" style={{ color: '#4A4A4A' }}>
+          <p className="text-xs" style={{ color: 'var(--ink-soft)' }}>
             8文字以上で設定してください。
           </p>
           {fieldErrors.password && (
@@ -218,8 +218,8 @@ export function ResetPasswordForm() {
         </Button>
       </form>
 
-      <p className="text-sm text-center mt-6" style={{ color: '#4A4A4A' }}>
-        <Link href="/login" className="underline" style={{ color: '#111111' }}>
+      <p className="text-sm text-center mt-6" style={{ color: 'var(--ink-soft)' }}>
+        <Link href="/login" className="underline" style={{ color: 'var(--ink-strong)' }}>
           ログイン画面に戻る
         </Link>
       </p>

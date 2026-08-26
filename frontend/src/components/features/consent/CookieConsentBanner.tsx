@@ -42,7 +42,7 @@ export function CookieConsentBanner() {
           <Button
             size="sm"
             onClick={accept}
-            style={{ backgroundColor: 'var(--palace)', color: '#fff', border: 'none' }}
+            style={{ backgroundColor: 'var(--palace)', color: 'var(--on-accent)', border: 'none' }}
           >
             同意する
           </Button>

@@ -15,12 +15,12 @@ export function LegalLayout({ title, updatedAt, children }: LegalLayoutProps) {
   return (
     <div className="flex flex-col flex-1">
       <main className="flex-1 w-full max-w-2xl mx-auto px-6 py-12 md:py-16">
-        <h1 className="text-2xl md:text-3xl font-bold tracking-tight mb-2" style={{ color: '#111111' }}>
+        <h1 className="text-2xl md:text-3xl font-bold tracking-tight mb-2" style={{ color: 'var(--ink-strong)' }}>
           {title}
         </h1>
         <p className="text-xs text-muted-foreground mb-10">{updatedAt}</p>
 
-        <div className="legal-prose space-y-8 text-sm leading-relaxed" style={{ color: '#3A3A3A' }}>
+        <div className="legal-prose space-y-8 text-sm leading-relaxed" style={{ color: 'var(--ink-body)' }}>
           {children}
         </div>
 
@@ -38,7 +38,7 @@ export function LegalLayout({ title, updatedAt, children }: LegalLayoutProps) {
 export function LegalSection({ heading, children }: { heading: string; children: React.ReactNode }) {
   return (
     <section className="space-y-3">
-      <h2 className="text-base font-semibold" style={{ color: '#111111' }}>
+      <h2 className="text-base font-semibold" style={{ color: 'var(--ink-strong)' }}>
         {heading}
       </h2>
       {children}

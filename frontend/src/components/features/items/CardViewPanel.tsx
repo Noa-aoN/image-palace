@@ -371,7 +371,7 @@ export function CardViewPanel({
                 className="flex items-center justify-between gap-2 rounded-lg border border-border/70 bg-background px-3 py-2"
               >
                 <span className="truncate text-sm">{block.label}</span>
-                <span className="shrink-0 text-[10px] text-muted-foreground">必須</span>
+                <span className="shrink-0 text-3xs text-muted-foreground">必須</span>
               </div>
             ))}
             <p className="text-xs text-muted-foreground">
@@ -508,7 +508,7 @@ function SortableRow({
         </span>
       </div>
       <div className="flex shrink-0 items-center gap-2 text-muted-foreground">
-        {required && <span className="text-[10px]">必須</span>}
+        {required && <span className="text-3xs">必須</span>}
         {!required && (
         <Tooltip label={hidden ? '出す' : '畳む'}>
           <button
@@ -919,7 +919,7 @@ function AddableProperties({
                 <HelpCircle size={13} />
               </span>
             </Tooltip>
-            <span className="shrink-0 text-[11px] text-muted-foreground">
+            <span className="shrink-0 text-2xs text-muted-foreground">
               {PROPERTY_VALUE_TYPE_LABELS[preset.value_type]}
             </span>
             <button

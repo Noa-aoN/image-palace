@@ -90,14 +90,14 @@ export function SignupForm() {
 
   return (
     <div className="w-full max-w-sm mx-auto">
-      <h1 className="text-2xl font-bold mb-6 text-center" style={{ color: '#111111' }}>
+      <h1 className="text-2xl font-bold mb-6 text-center" style={{ color: 'var(--ink-strong)' }}>
         宮殿をつくる
       </h1>
 
       <Button
         variant="outline"
         className={APPLE_AUTH_ENABLED ? 'w-full mb-3' : 'w-full mb-5'}
-        style={{ borderColor: '#E3E6EA' }}
+        style={{ borderColor: 'var(--rule)' }}
         onClick={() => { window.location.href = googleOAuthUrl() }}
       >
         Google で登録
@@ -107,7 +107,7 @@ export function SignupForm() {
         <Button
           variant="outline"
           className="w-full mb-5 gap-2"
-          style={{ borderColor: '#E3E6EA' }}
+          style={{ borderColor: 'var(--rule)' }}
           onClick={() => { window.location.href = appleOAuthUrl() }}
         >
           <AppleIcon />
@@ -116,9 +116,9 @@ export function SignupForm() {
       )}
 
       <div className="mb-5 flex items-center gap-2">
-        <div className="flex-1 border-t" style={{ borderColor: '#E3E6EA' }} />
-        <span className="text-xs" style={{ color: '#4A4A4A' }}>またはメールで</span>
-        <div className="flex-1 border-t" style={{ borderColor: '#E3E6EA' }} />
+        <div className="flex-1 border-t" style={{ borderColor: 'var(--rule)' }} />
+        <span className="text-xs" style={{ color: 'var(--ink-soft)' }}>またはメールで</span>
+        <div className="flex-1 border-t" style={{ borderColor: 'var(--rule)' }} />
       </div>
 
       <form onSubmit={handleSubmit} className="flex flex-col gap-4">
@@ -134,7 +134,7 @@ export function SignupForm() {
             autoComplete="email"
             aria-invalid={fieldErrors.email ? true : undefined}
           />
-          <p className="text-xs" style={{ color: '#4A4A4A' }}>
+          <p className="text-xs" style={{ color: 'var(--ink-soft)' }}>
             ほかのユーザーが使っていないメールアドレスを入力してください。
           </p>
           {fieldErrors.email && (
@@ -161,7 +161,7 @@ export function SignupForm() {
             minLength={8}
             aria-invalid={fieldErrors.password ? true : undefined}
           />
-          <p className="text-xs" style={{ color: '#4A4A4A' }}>
+          <p className="text-xs" style={{ color: 'var(--ink-soft)' }}>
             8文字以上で設定してください。
           </p>
           {fieldErrors.password && (
@@ -216,9 +216,9 @@ export function SignupForm() {
         </Button>
       </form>
 
-      <p className="text-sm text-center mt-6" style={{ color: '#4A4A4A' }}>
+      <p className="text-sm text-center mt-6" style={{ color: 'var(--ink-soft)' }}>
         すでにアカウントをお持ちの方は{' '}
-        <Link href="/login" className="underline" style={{ color: '#111111' }}>
+        <Link href="/login" className="underline" style={{ color: 'var(--ink-strong)' }}>
           ログイン
         </Link>
       </p>

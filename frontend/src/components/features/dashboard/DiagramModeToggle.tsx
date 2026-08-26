@@ -27,7 +27,7 @@ export function DiagramModeToggle({
           type="button"
           onClick={() => onChange(value)}
           aria-pressed={mode === value}
-          className={`rounded-full px-2 py-0.5 text-[11px] font-medium transition-colors ${
+          className={`rounded-full px-2 py-0.5 text-2xs font-medium transition-colors ${
             mode === value ? 'text-white' : 'text-muted-foreground hover:text-foreground'
           }`}
           style={mode === value ? { backgroundColor: 'var(--palace)' } : undefined}

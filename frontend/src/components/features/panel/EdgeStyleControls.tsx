@@ -214,7 +214,7 @@ export function EdgeStyleControls({
             active={s.curve ?? 'sharp'}
             onSelect={(v) => onChange({ curve: v as EdgeCurve })}
           />
-          <p className="text-[11px] leading-snug text-muted-foreground">
+          <p className="text-2xs leading-snug text-muted-foreground">
             線を掴んで折れ点を足すと効きます（折れ点が無い線は自動でつながります）。
           </p>
         </div>

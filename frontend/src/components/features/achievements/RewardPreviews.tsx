@@ -18,7 +18,7 @@ export function RewardPreviews({ rewards, earned }: { rewards: RewardPreview[]; 
         <li key={reward.key ?? `credits-${index}`}>
           {reward.type === 'credits' ? (
             <span
-              className={`rounded-full bg-muted/60 px-2 py-0.5 text-[11px] ${
+              className={`rounded-full bg-muted/60 px-2 py-0.5 text-2xs ${
                 earned ? 'text-foreground' : 'text-muted-foreground'
               }`}
             >
@@ -27,7 +27,7 @@ export function RewardPreviews({ rewards, earned }: { rewards: RewardPreview[]; 
           ) : (
             <span
               // 名前は折り返す。1行に押し込むと、長い名前が途中で消える
-              className="flex min-w-0 items-center gap-1 rounded-full bg-muted/60 px-2 py-0.5 text-[11px] leading-snug text-muted-foreground"
+              className="flex min-w-0 items-center gap-1 rounded-full bg-muted/60 px-2 py-0.5 text-2xs leading-snug text-muted-foreground"
               title={`${reward.name}（${reward.kind_label}）`}
             >
               {reward.image_url ? (

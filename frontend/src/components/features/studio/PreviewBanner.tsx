@@ -80,7 +80,7 @@ export function PreviewBanner() {
     <div
       className="flex shrink-0 flex-wrap items-center justify-center gap-x-3 gap-y-1
                  px-4 py-1.5 text-center text-xs"
-      style={{ backgroundColor: '#4A3B6B', color: '#fff' }}
+      style={{ backgroundColor: 'var(--preview)', color: 'var(--on-accent)' }}
       role="status"
     >
       {/* **色だけに頼らない。** 何を見ているのかを文字で言う */}

@@ -65,7 +65,7 @@ export function ListRows({ items, empty = 'まだありません。' }: { items:
                   />
                 )}
                 {item.badge && (
-                  <span className="shrink-0 rounded-full border border-border px-2 py-0.5 text-[11px] text-muted-foreground">
+                  <span className="shrink-0 rounded-full border border-border px-2 py-0.5 text-2xs text-muted-foreground">
                     {item.badge}
                   </span>
                 )}

@@ -305,7 +305,7 @@ function ItemCard({ item, selectionMode, selected, onToggle, fit, sizes, working
   const renderField = (field: { key: string; label: string; value: string }) => {
     const empty = !field.value?.trim()
     return (
-      <div className="flex gap-1.5 text-[11px] leading-snug">
+      <div className="flex gap-1.5 text-2xs leading-snug">
         <dt className="shrink-0 text-muted-foreground">{field.label}</dt>
         {/* 意味・説明だけは長い。3行までに丸める（それ以上は一覧を圧迫する） */}
         <dd
@@ -331,7 +331,7 @@ function ItemCard({ item, selectionMode, selected, onToggle, fit, sizes, working
           {/* **何をしている最中かを書く。** 輪だけだと「動いている」ことしか
               分からず、タグを付けているのか絵を作り直しているのかが読めない */}
           {workingLabel && (
-            <span className="rounded-full bg-background/90 px-2 py-0.5 text-[11px] font-medium text-muted-foreground">
+            <span className="rounded-full bg-background/90 px-2 py-0.5 text-2xs font-medium text-muted-foreground">
               {workingLabel}中
             </span>
           )}
@@ -353,8 +353,8 @@ function ItemCard({ item, selectionMode, selected, onToggle, fit, sizes, working
             **小さく印を出すだけ**にする（専用の画面には変えない） */}
         {item.from_preview ? (
           <span
-            className="shrink-0 rounded-full px-1.5 py-0.5 text-[10px] font-medium"
-            style={{ backgroundColor: '#4A3B6B', color: '#fff' }}
+            className="shrink-0 rounded-full px-1.5 py-0.5 text-3xs font-medium"
+            style={{ backgroundColor: 'var(--preview)', color: 'var(--on-accent)' }}
             title="公式コンテンツの下見で入ったカードです。下見を終えると消えます"
           >
             下見

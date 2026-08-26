@@ -75,7 +75,7 @@ export function CreditCostHint({
 export function AiCostBadge({ perCard = true }: { perCard?: boolean }) {
   return (
     <span
-      className="shrink-0 rounded-full bg-muted px-1.5 py-0.5 text-[10px] font-normal tabular-nums text-muted-foreground"
+      className="shrink-0 rounded-full bg-muted px-1.5 py-0.5 text-3xs font-normal tabular-nums text-muted-foreground"
       title="画像生成とは別に、文章の AI を1回使います"
     >
       +{AI_TEXT_COST} {CREDIT_UNIT_SHORT}

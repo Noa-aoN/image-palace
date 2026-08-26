@@ -92,7 +92,7 @@ export function PropertyBlock({
               色だけに頼らないよう、文字も出したままにする */}
           {role && (
             <span
-              className="rounded-full px-1.5 py-0.5 text-[10px] font-medium"
+              className="rounded-full px-1.5 py-0.5 text-3xs font-medium"
               style={{
                 color: role.accent,
                 backgroundColor: `color-mix(in srgb, ${role.accent} 12%, transparent)`,

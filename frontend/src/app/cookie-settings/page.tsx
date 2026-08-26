@@ -19,10 +19,10 @@ export default function CookieSettingsPage() {
   return (
     <div className="flex flex-col flex-1">
       <main className="flex-1 w-full max-w-2xl mx-auto px-6 py-12 md:py-16">
-        <h1 className="text-2xl md:text-3xl font-bold tracking-tight mb-3" style={{ color: '#111111' }}>
+        <h1 className="text-2xl md:text-3xl font-bold tracking-tight mb-3" style={{ color: 'var(--ink-strong)' }}>
           Cookie 設定
         </h1>
-        <p className="text-sm leading-relaxed mb-8" style={{ color: '#3A3A3A' }}>
+        <p className="text-sm leading-relaxed mb-8" style={{ color: 'var(--ink-body)' }}>
           本サイトでは、サービス改善のためのアクセス解析に Cookie を使用することがあります。
           以下から同意状態をいつでも変更できます。詳細は
           <Link href="/privacy" className="mx-1 underline hover:no-underline" style={{ color: 'var(--palace)' }}>
@@ -44,7 +44,7 @@ export default function CookieSettingsPage() {
           <Button
             onClick={accept}
             disabled={!hasHydrated}
-            style={{ backgroundColor: 'var(--palace)', color: '#fff', border: 'none' }}
+            style={{ backgroundColor: 'var(--palace)', color: 'var(--on-accent)', border: 'none' }}
           >
             解析 Cookie に同意する
           </Button>

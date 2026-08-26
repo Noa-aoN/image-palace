@@ -456,7 +456,7 @@ export function AiEditPanel({
 
           {/* どこまでが変わるのかを、実行の前後で分かるようにする */}
           {viewType === 'freeboard' && mode !== 'create' && !runningScope && !result && (
-            <p className="text-center text-[11px] text-muted-foreground">
+            <p className="text-center text-2xs text-muted-foreground">
               各項目の「〜だけ整える」を押すと、その項目だけが変わります。
             </p>
           )}
@@ -621,7 +621,7 @@ function Section({
       <div className="flex flex-wrap items-center justify-between gap-2">
         <div>
           <p className="text-sm font-medium">{title}</p>
-          <p className="text-[11px] text-muted-foreground">{description}</p>
+          <p className="text-2xs text-muted-foreground">{description}</p>
         </div>
         {action}
       </div>
@@ -682,7 +682,7 @@ function Choice({
           </Button>
         ))}
       </div>
-      {hint && <p className="mt-1 text-[11px] text-muted-foreground">{hint}</p>}
+      {hint && <p className="mt-1 text-2xs text-muted-foreground">{hint}</p>}
     </div>
   )
 }

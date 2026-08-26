@@ -347,7 +347,7 @@ export default function AcropolisPage() {
             {shownHistory.map((rec) => (
               <li key={rec.id} className="flex flex-wrap items-baseline gap-x-2 gap-y-1 py-1.5 text-sm">
                 <span
-                  className={`shrink-0 rounded-full px-2 py-0.5 text-[11px] font-medium ${rec.status === 'received' ? 'bg-green-100 text-green-700' : 'bg-muted text-muted-foreground'}`}
+                  className={`shrink-0 rounded-full px-2 py-0.5 text-2xs font-medium ${rec.status === 'received' ? 'bg-green-100 text-green-700' : 'bg-muted text-muted-foreground'}`}
                 >
                   {rec.status === 'received' ? '受け取り' : 'キャンセル'}
                 </span>

@@ -218,7 +218,7 @@ function EditableEdgeComponent(props: EdgeProps) {
                   width: 12,
                   height: 12,
                   borderRadius: '50%',
-                  background: '#fff',
+                  background: 'var(--on-accent)',
                   border: '2px solid var(--palace)',
                   cursor: 'grab',
                   pointerEvents: 'all',

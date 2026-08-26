@@ -265,7 +265,7 @@ function UsageCell({ model, days }: { model: AdminAiModel; days: number }) {
         </div>
       )}
       {model.cached_recently ? (
-        <p className="text-[11px] text-muted-foreground">うち {model.cached_recently} 回はキャッシュ</p>
+        <p className="text-2xs text-muted-foreground">うち {model.cached_recently} 回はキャッシュ</p>
       ) : null}
     </div>
   )

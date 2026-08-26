@@ -120,7 +120,7 @@ export function NotificationsPanel({ open, onClose }: { open: boolean; onClose: 
                       {n.body && (
                         <span className="mt-0.5 line-clamp-2 block text-xs text-muted-foreground">{n.body}</span>
                       )}
-                      <span className="mt-1 block text-[11px] text-muted-foreground/70">
+                      <span className="mt-1 block text-2xs text-muted-foreground/70">
                         {formatRelativeTime(n.created_at)}
                       </span>
                     </span>

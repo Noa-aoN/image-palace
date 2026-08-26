@@ -167,7 +167,7 @@ export function ImageHistoryPanel({
                     )}
                     {row.current && (
                       <span
-                        className="absolute left-1 top-1 rounded-full px-1.5 py-0.5 text-[10px] text-white"
+                        className="absolute left-1 top-1 rounded-full px-1.5 py-0.5 text-3xs text-white"
                         style={{ backgroundColor: 'var(--palace)' }}
                       >
                         いま
@@ -181,7 +181,7 @@ export function ImageHistoryPanel({
                   </button>
 
                   <div className="flex items-center justify-between gap-1">
-                    <span className="min-w-0 truncate text-[10px] text-muted-foreground" title={row.model ?? ''}>
+                    <span className="min-w-0 truncate text-3xs text-muted-foreground" title={row.model ?? ''}>
                       {new Date(row.used_at).toLocaleDateString('ja-JP')}
                     </span>
                     {/* 消すのは記録だけ。絵そのものは消さない（ほかの人も同じ絵を使っている） */}

@@ -84,10 +84,12 @@ export function DemoGuide() {
 
   return (
     <div
-      className="flex shrink-0 flex-wrap items-center justify-center gap-x-4 gap-y-1 px-4 py-1.5 text-xs"
+      className="flex shrink-0 flex-wrap items-center justify-center gap-x-2 gap-y-1 px-3 py-1 text-2xs sm:gap-x-4 sm:px-4 sm:py-1.5 sm:text-xs"
       style={{ backgroundColor: 'var(--ivory-dark)' }}
     >
-      <span className="text-muted-foreground">まずは、この3つを見てみてください</span>
+      {/* 誘いの一文は**広い画面だけ**。狭い画面では、3つの行き先で1行を使い切る */}
+      <span className="hidden text-muted-foreground sm:inline">まずは、この3つを見てみてください</span>
+      <span className="text-muted-foreground sm:hidden">見てみよう:</span>
       {DEMO_GUIDE_STEPS.map((step) => {
         const done = seen.includes(step.key)
         return (
@@ -107,7 +109,9 @@ export function DemoGuide() {
             ) : (
               <span aria-hidden className="size-3 rounded-[3px] border border-current" />
             )}
-            {step.label}
+            {/* 狭い画面では行き先の名前だけ。折り返すと、その分だけ本文が下がる */}
+            <span className="sm:hidden">{step.short}</span>
+            <span className="hidden sm:inline">{step.label}</span>
           </Link>
         )
       })}

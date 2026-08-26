@@ -65,7 +65,7 @@ export function StudioSettingsPanel() {
   return (
     <div className="space-y-6">
       {error ? (
-        <p role="alert" className="text-sm" style={{ color: '#9E3226' }}>
+        <p role="alert" className="text-sm" style={{ color: 'var(--danger-deep)' }}>
           {error}
         </p>
       ) : null}
@@ -160,7 +160,7 @@ function StrongAuthState({ session }: { session: { strong_auth?: { required: boo
 
   if (!strongAuth.prepared) {
     return (
-      <p className="text-sm" style={{ color: '#8A6210' }}>
+      <p className="text-sm" style={{ color: 'var(--gold-ink)' }}>
         手立てがありません。
         <Link href="/account#security" className="ml-1 underline underline-offset-2">
           パスキーか認証アプリを設定してください

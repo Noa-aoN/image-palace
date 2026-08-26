@@ -55,7 +55,7 @@ export function LandingCta({ className = '' }: { className?: string }) {
             <Button
               size="lg"
               className="w-full px-8 text-base sm:w-44"
-              style={{ backgroundColor: 'var(--palace)', color: '#fff', border: 'none' }}
+              style={{ backgroundColor: 'var(--palace)', color: 'var(--on-accent)', border: 'none' }}
             >
               宮殿に入る
             </Button>
@@ -70,7 +70,7 @@ export function LandingCta({ className = '' }: { className?: string }) {
             <Button
               size="lg"
               className="w-full px-8 text-base sm:w-44"
-              style={{ backgroundColor: 'var(--palace)', color: '#fff', border: 'none' }}
+              style={{ backgroundColor: 'var(--palace)', color: 'var(--on-accent)', border: 'none' }}
             >
               無料ではじめる
             </Button>

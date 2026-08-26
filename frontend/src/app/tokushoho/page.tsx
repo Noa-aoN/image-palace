@@ -97,7 +97,7 @@ export default function TokushohoPage() {
       <dl className="divide-y" style={{ borderColor: 'var(--palace)' }}>
         {ROWS.map(({ label, value }) => (
           <div key={label} className="grid grid-cols-1 gap-1 py-4 sm:grid-cols-[10rem_1fr] sm:gap-4">
-            <dt className="font-semibold" style={{ color: '#111111' }}>
+            <dt className="font-semibold" style={{ color: 'var(--ink-strong)' }}>
               {label}
             </dt>
             <dd>{value}</dd>

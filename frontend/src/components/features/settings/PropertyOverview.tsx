@@ -80,7 +80,7 @@ export function PropertyOverview({
             {/* どの種別で使っているか。ここが分からないと、消してよいか判断できない */}
             <span className="ml-auto flex flex-wrap justify-end gap-1">
               {row.typeIds.map((id) => (
-                <span key={id} className="rounded-full border border-border px-2 py-0.5 text-[11px] text-muted-foreground">
+                <span key={id} className="rounded-full border border-border px-2 py-0.5 text-2xs text-muted-foreground">
                   {typeLabel(id)}
                 </span>
               ))}

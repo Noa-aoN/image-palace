@@ -35,7 +35,7 @@ export function WalkthroughPanel({
     <div className={`pointer-events-none absolute inset-x-0 bottom-0 z-10 flex justify-center px-4 pb-28 ${anim}`}>
       {/* 部屋の景色を隠しすぎないよう、小さめ＋透け感を持たせる */}
       <div className={`pointer-events-auto flex flex-col items-center gap-1.5 rounded-2xl border border-border/70 bg-card/65 p-3 text-center shadow-lg backdrop-blur-md ${pair ? 'w-full max-w-sm' : 'w-full max-w-[15rem]'}`}>
-        <span className="text-[11px] font-medium tabular-nums text-muted-foreground">
+        <span className="text-2xs font-medium tabular-nums text-muted-foreground">
           {index + 1} / {total}
         </span>
 

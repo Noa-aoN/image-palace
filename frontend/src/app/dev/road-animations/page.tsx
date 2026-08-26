@@ -38,10 +38,10 @@ function Proposal({
       <p className="mb-2 text-sm font-medium tracking-widest" style={{ color: 'var(--palace)' }}>
         {label}
       </p>
-      <h2 className="mb-2 text-2xl font-bold tracking-tight" style={{ color: '#111111' }}>
+      <h2 className="mb-2 text-2xl font-bold tracking-tight" style={{ color: 'var(--ink-strong)' }}>
         {title}
       </h2>
-      <p className="mb-6 text-sm leading-relaxed" style={{ color: '#4A4A4A' }}>
+      <p className="mb-6 text-sm leading-relaxed" style={{ color: 'var(--ink-soft)' }}>
         {body}
       </p>
       <div className="rad-stage">{children}</div>
@@ -53,7 +53,7 @@ export default function RoadAnimationsPage() {
   return (
     <div className="flex flex-col gap-20 px-6 py-16" style={{ backgroundColor: 'var(--ivory)' }}>
       <header className="mx-auto w-full max-w-3xl">
-        <h1 className="mb-3 text-3xl font-bold tracking-tight" style={{ color: '#111111' }}>
+        <h1 className="mb-3 text-3xl font-bold tracking-tight" style={{ color: 'var(--ink-strong)' }}>
           道ループアニメーション 3案
         </h1>
         <p className="text-sm leading-relaxed text-muted-foreground">
