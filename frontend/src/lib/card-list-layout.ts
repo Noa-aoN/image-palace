@@ -24,6 +24,21 @@ export interface LayoutCandidate {
 export const MAX_VISIBLE_FIELDS = 5
 
 /**
+ * 置き場所が決まっている項目。
+ *
+ * 種別の印は**見出し語の右**に出す。下へ積む項目ではないので、
+ *   ・並べ替えの対象にしない（動かす先が無い）
+ *   ・出せる数（MAX_VISIBLE_FIELDS）にも数えない
+ *      … あの上限は**カードが縦に伸びる**のを抑えるためのもので、
+ *        縦を使わない印を数えると、数えるべきものが1つ減ってしまう
+ */
+export const FIXED_POSITION_KEYS: ReadonlySet<string> = new Set([ 'item_type' ])
+
+export function isFixedPosition(key: string): boolean {
+  return FIXED_POSITION_KEYS.has(key)
+}
+
+/**
  * 保存されている並びと、選べる候補から、画面に並べる行を作る。
  *
  * 保存されている順を先に、そこに無い候補を後ろへ（隠した状態で）足す。
@@ -38,8 +53,9 @@ export function buildLayoutRows(entries: LayoutRow[], candidates: LayoutCandidat
   return [...kept, ...candidates.filter((c) => !seen.has(c.key)).map((c) => ({ key: c.key, visible: false }))]
 }
 
+/** 縦に積まれる項目の数。**置き場所が決まっているものは数えない** */
 export function visibleCount(rows: LayoutRow[]): number {
-  return rows.filter((row) => row.visible).length
+  return rows.filter((row) => row.visible && !isFixedPosition(row.key)).length
 }
 
 /**
@@ -55,7 +71,8 @@ export function toggleVisible(
   const target = rows.find((row) => row.key === key)
   if (!target) return { rows, rejected: false }
 
-  if (!target.visible && visibleCount(rows) >= MAX_VISIBLE_FIELDS) {
+  // 置き場所が決まっているものは縦を使わないので、上限に関わらず出し入れできる
+  if (!target.visible && !isFixedPosition(key) && visibleCount(rows) >= MAX_VISIBLE_FIELDS) {
     return { rows, rejected: true }
   }
 

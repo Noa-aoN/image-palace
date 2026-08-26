@@ -1106,3 +1106,45 @@ RSpec.describe "Api::V1::Items", type: :request do
     end
   end
 end
+
+# 一覧の札に**属性の印**（種別の一文字）を出すために、種別を返す。
+# 問い合わせは増えない（一覧も検索も `includes(:item_type)` 済み）。
+RSpec.describe "カード一覧が種別を返す", type: :request do
+  let(:user) { create(:user, :confirmed) }
+  let(:headers) { auth_headers_for(user) }
+  let(:item_type) { ItemType.find_or_create_by!(name: "person") { |t| t.label = "人物" } }
+
+  it "一覧に種別が入る" do
+    create(:item, user: user, item_type: item_type, title: "アポロン")
+
+    get "/api/v1/items", headers: headers
+
+    row = json_response["items"].first
+    expect(row["item_type"]).to include("name" => "person", "label" => "人物")
+  end
+
+  # **枚数に比例して問い合わせが増えないこと。**
+  # ここが崩れると、一覧が重くなるのに画面では気づけない。
+  #
+  # 全体の本数では見ない。ページの埋まり方などで前後する数字なので、
+  # **種別の表そのものを何回引いたか**だけを数える（順序に左右されない）
+  it "枚数を増やしても、種別の表を引く回数は変わらない" do
+    8.times { |i| create(:item, user: user, item_type: item_type, title: "カード#{i}") }
+
+    get "/api/v1/items", params: { per: 3 }, headers: headers
+    few = count_item_type_queries { get "/api/v1/items", params: { per: 3 }, headers: headers }
+    many = count_item_type_queries { get "/api/v1/items", params: { per: 8 }, headers: headers }
+
+    expect(many).to eq(few)
+    expect(many).to be <= 1
+  end
+
+  def count_item_type_queries
+    count = 0
+    counter = lambda do |_n, _s, _f, _i, payload|
+      count += 1 if payload[:sql].to_s.include?(%q("item_types"))
+    end
+    ActiveSupport::Notifications.subscribed(counter, "sql.active_record") { yield }
+    count
+  end
+end

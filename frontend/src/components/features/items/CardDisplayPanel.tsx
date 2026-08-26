@@ -10,11 +10,14 @@ import {
   visibleCount,
   type LayoutCandidate,
   type LayoutRow,
+  isFixedPosition,
 } from '@/lib/card-list-layout'
 
 // 組み込みの候補。利用者が作った項目より前に並べる（どのカードにもあるため）
 const BUILTIN_CANDIDATES: LayoutCandidate[] = [
   { key: 'title', label: '見出し語', builtin: true },
+  // 見出し語の右に出る一文字。**下へ積まない**ので、並べ替えも数の勘定もしない
+  { key: 'item_type', label: '種別の印', builtin: true },
   { key: 'image', label: 'イメージ', builtin: true },
   { key: 'meaning', label: '意味・説明', builtin: true },
 ]
@@ -190,7 +193,11 @@ export function CardDisplayPanel({
                     </span>
                   </label>
 
-                  {/* 掴んで動かせない人のために、押して動かす道も残す */}
+                  {/* 置き場所が決まっている項目には、動かす道を出さない。
+                      押せる釦を出しておいて何も起きないと、効かないのか壊れたのかが分からない */}
+                  {isFixedPosition(row.key) ? (
+                    <span className="shrink-0 text-3xs text-muted-foreground">見出し語の右</span>
+                  ) : (
                   <div className="flex shrink-0 gap-0.5">
                     <button
                       type="button"
@@ -211,6 +218,7 @@ export function CardDisplayPanel({
                       <ChevronDown size={14} />
                     </button>
                   </div>
+                  )}
                 </li>
               ))}
             </ul>

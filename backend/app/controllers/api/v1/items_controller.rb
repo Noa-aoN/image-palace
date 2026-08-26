@@ -879,6 +879,8 @@ module Api
           # 名前と絵は、カードの形そのものとして別に描かれる。
           # 名前として使っている項目も、下にもう一度出さない（同じ値が2つ並ぶ）
           next if key == "title" || key == "image" || key == headline_key
+          # 種別の印は見出し語の右に出る。下へ積まない
+          next if ::Setting::FIXED_POSITION_LAYOUT_KEYS.include?(key)
 
           if key == "meaning"
             { key: key, label: "意味・説明", value: meaning_summary_for(item) }
@@ -899,11 +901,23 @@ module Api
           next unless row["visible"]
           # 名前はカードの見出しとして別に描く。名前に使っている項目も下に重ねない
           next if key == "title" || key == headline_key
+          # 種別の印は見出し語の右に出る。積む並びには入れない
+          next if ::Setting::FIXED_POSITION_LAYOUT_KEYS.include?(key)
 
           key
         end
 
-        { blocks: blocks, image: blocks.include?("image") }
+        { blocks: blocks, image: blocks.include?("image"), type_mark: type_mark_visible? }
+      end
+
+      # 種別の印を出すか。
+      #
+      # **設定に行が無い人には出す。** 印は後から足したもので、
+      # 既に並びを保存している人の設定にはその行が無い。
+      # 「無い＝出さない」にすると、触ってもいないのに印だけ消える
+      def type_mark_visible?
+        row = card_list_layout.find { |r| r["key"].to_s == "item_type" }
+        row.nil? || row["visible"] == true
       end
 
       # 設定の行がまだ無い人にも既定の並びを使う。

@@ -36,3 +36,26 @@ export const CARD_MAT_BORDER = 'border-[var(--edge-gold)]'
  */
 export const CARD_IMAGE_EDGE =
   'rounded-[2px] shadow-[0_1px_3px_rgba(0,0,0,0.25)] ring-1 ring-[color-mix(in_srgb,var(--palace)_55%,transparent)]'
+
+/**
+ * カード詳細の項目を載せる器（`PropertyBlock`）の地と縁。
+ *
+ * **札と同じ紙にする。** 一覧の札（`CARD_MAT_BG`）と詳細の器で紙の色が違うと、
+ * 同じカードなのに画面ごとに別のものに見える。値はどちらも `--surface-warm`。
+ *
+ * 縁だけ一段薄い（`--edge-gold-soft`）。内側の器のほうが強いと主従が逆になる。
+ *
+ * ここに出しておくのは、**カードの見た目をまとめて作り直すときに、
+ * 触る場所を1か所にするため**。詳細をノートの形にするなら、変えるのはここになる。
+ */
+export const BLOCK_SURFACE = 'var(--surface-warm)'
+export const BLOCK_BORDER = 'ring-1 ring-[var(--edge-gold-soft)]'
+export const BLOCK_RADIUS = 'rounded-xl'
+
+/**
+ * まだ何も書いていない器の地。**書いたものと見分けるために落とす。**
+ *
+ * `--ivory-dark` では ivory との差が 8/10/14 しかなく、「少し暗い紙」に
+ * しか見えなかった。一段落として灰へ寄せてある。
+ */
+export const BLOCK_SURFACE_EMPTY = 'var(--surface-empty)'

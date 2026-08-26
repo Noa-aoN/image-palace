@@ -48,6 +48,7 @@ import type { Item, ItemType } from '@/types/item'
 import type { Tag } from '@/types/tag'
 import { aspectRatioCss } from '@/lib/aspect-ratio'
 import { CARD_IMAGE_EDGE, CARD_MAT_BG, CARD_MAT_BORDER } from '@/lib/card-frame'
+import { ItemTypeMark } from '@/components/features/items/ItemTypeMark'
 import {
   useCardDisplay,
   CARD_GRID_CLASSES,
@@ -183,6 +184,8 @@ type ItemCardProps = {
   working: boolean
   /** 何をしている最中か。輪だけだと「動いている」ことしか分からない */
   workingLabel: string | null
+  /** 種別の印を出すか。「表示」で切れる。置き場所は見出し語の右で固定 */
+  showTypeMark: boolean
   /**
    * 何をどの順で積むか（サーバーの設定から来る）。
    * カード側に固定で書いていたころは、絵を外しても出続け、並べ替えても順が変わらなかった。
@@ -190,7 +193,9 @@ type ItemCardProps = {
   blocks: string[]
 }
 
-function ItemCard({ item, selectionMode, selected, onToggle, fit, sizes, working, workingLabel, blocks }: ItemCardProps) {
+function ItemCard({
+  item, selectionMode, selected, onToggle, fit, sizes, working, workingLabel, blocks, showTypeMark,
+}: ItemCardProps) {
   const router = useRouter()
   const [failedImageUrl, setFailedImageUrl] = useState<string | null>(null)
   const warmedRef = useRef(false)
@@ -337,9 +342,19 @@ function ItemCard({ item, selectionMode, selected, onToggle, fit, sizes, working
           )}
         </span>
       )}
+      {/* 間隔は**この包みだけが決める**。
+          以前はブロックごとに `pt-1.5` を持っていたので、
+
+            見出し → 絵    … 6px（見出しの pb だけ）
+            見出し → 項目  … 12px（見出しの pb ＋ 項目の pt）
+            絵 → 項目      … 6px
+
+          となり、**並べ替えると間隔が変わって見えた**。
+          並びに関わらず同じ間隔になるよう、1か所に寄せる */}
+      <div className="flex flex-col gap-1.5">
       {/* 見出しも台紙の上に置く。**枠の外に文字があると、絵だけが「カード」に見える。**
           札の名前欄のつもりで、絵と同じ紙に載せる */}
-      <div className="px-0.5 pb-1.5 flex items-center justify-between gap-2">
+      <div className="px-0.5 flex items-center justify-between gap-2">
         {/* ファクトチェックで「正しい」以外なら単語名に色を付けて気づけるようにする */}
         <span
           className={`text-sm font-medium truncate ${factCheckTitleClass(item)}`}
@@ -349,6 +364,9 @@ function ItemCard({ item, selectionMode, selected, onToggle, fit, sizes, working
         >
           {item.headline || item.title}
         </span>
+        {/* 種別の印。**見出しのすぐ右**に置く（何のカードかは、名前の次に知りたいこと）。
+            「表示」で切れる。置き場所は固定なので、並べ替えの対象にはしない */}
+        {showTypeMark && <ItemTypeMark type={item.item_type} />}
         {/* 下見で入ったカードは、自分で作ったものと見分けが付かない。
             **小さく印を出すだけ**にする（専用の画面には変えない） */}
         {item.from_preview ? (
@@ -368,11 +386,12 @@ function ItemCard({ item, selectionMode, selected, onToggle, fit, sizes, working
         const field = item.list_fields?.find((row) => row.key === block)
         if (!field) return null
         return (
-          <dl key={block} className="space-y-0.5 px-0.5 pt-1.5">
+          <dl key={block} className="space-y-0.5 px-0.5">
             {renderField(field)}
           </dl>
         )
       })}
+      </div>
     </>
   )
 
@@ -481,6 +500,8 @@ export function ItemList({ initialTag = null }: { initialTag?: string | null }) 
   const backgroundRefreshRef = useRef(false)
   // 一覧の並べ方（サーバーの設定から来る）。既定は「絵だけ」
   const [listBlocks, setListBlocks] = useState<string[]>(['image'])
+  // 種別の印を出すか。**設定に行が無い人には出す**（サーバーが決める）
+  const [showTypeMark, setShowTypeMark] = useState(true)
   // 一括AI操作（タグ再設定・付与・ファクトチェック・説明付与）の進捗とサマリ
   const [bulkAction, setBulkAction] = useState<{ label: string; kind: BulkKind; done: number; total: number } | null>(null)
   // いま処理しているカード。上の進捗だけだと「どれが対象か」が分からず、
@@ -726,7 +747,10 @@ export function ItemList({ initialTag = null }: { initialTag?: string | null }) 
         itemTypeIds: activeTypes.length > 0 ? activeTypes : undefined,
       })
       setItems(fetched)
-      if (meta.card_list) setListBlocks(meta.card_list.blocks)
+      if (meta.card_list) {
+        setListBlocks(meta.card_list.blocks)
+        setShowTypeMark(meta.card_list.type_mark)
+      }
       setTotalPages(Math.max(meta.total_pages, 1))
       setError(null)
       return fetched
@@ -1406,6 +1430,7 @@ export function ItemList({ initialTag = null }: { initialTag?: string | null }) 
             onToggle={toggleSelect}
             fit={display.fit}
             blocks={listBlocks}
+            showTypeMark={showTypeMark}
             sizes={cardImageSizes(display.columns)}
             working={bulkCurrentId === item.id}
             workingLabel={bulkAction ? (BULK_BUSY_LABEL[bulkAction.kind] ?? null) : null}

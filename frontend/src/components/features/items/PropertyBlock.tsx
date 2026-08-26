@@ -4,6 +4,7 @@ import type { ReactNode } from 'react'
 import { Spinner } from '@/components/ui/spinner'
 import { Tooltip } from '@/components/ui/tooltip'
 import { propertyCategoryOf, propertyColorOf, type PropertyCategory } from '@/lib/api/properties'
+import { BLOCK_BORDER, BLOCK_RADIUS, BLOCK_SURFACE, BLOCK_SURFACE_EMPTY } from '@/lib/card-frame'
 
 /**
  * カード詳細のプロパティを載せる、共通の器。
@@ -69,8 +70,8 @@ export function PropertyBlock({
     // 落とす先は ivory-dark では足りなかった（ivory との差が小さく、
     // 「少し暗い紙」にしか見えない）。--surface-empty で一段深く、灰寄りにする
     <section
-      className="space-y-2 rounded-xl px-4 py-3 ring-1 ring-[var(--edge-gold-soft)]"
-      style={{ background: empty ? 'var(--surface-empty)' : 'var(--surface-warm)' }}
+      className={`space-y-2 px-4 py-3 ${BLOCK_RADIUS} ${BLOCK_BORDER}`}
+      style={{ background: empty ? BLOCK_SURFACE_EMPTY : BLOCK_SURFACE }}
     >
       <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-1">
         <div className="flex items-center gap-2">

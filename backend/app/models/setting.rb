@@ -71,13 +71,19 @@ class Setting < ApplicationRecord
   # 3つとも組み込みの項目なので、利用者が項目を作っていなくても必ず出る
   DEFAULT_CARD_LIST_LAYOUT = [
     { "key" => "title", "visible" => true },
+    # 種別の印。**見出し語の右**に出るので、下へ積む項目とは数え方が違う
+    { "key" => "item_type", "visible" => true },
     { "key" => "image", "visible" => true },
     { "key" => "meaning", "visible" => true }
   ].freeze
 
+  # 置き場所が決まっている項目。並べ替えの対象にせず、出せる数にも数えない
+  FIXED_POSITION_LAYOUT_KEYS = %w[item_type].freeze
+
   # 見出しとして使わない項目。絵は見出しにならないし、
-  # 意味・説明は長すぎて名前にならない
-  NON_HEADLINE_KEYS = %w[image meaning].freeze
+  # 意味・説明は長すぎて名前にならない。
+  # 種別の印は**見出し語の右に添えるもの**なので、それ自体が名前にはならない
+  NON_HEADLINE_KEYS = (%w[image meaning] + FIXED_POSITION_LAYOUT_KEYS).freeze
 
   belongs_to :user
 
