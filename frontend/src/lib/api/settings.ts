@@ -20,6 +20,7 @@ export async function updateSettings(
       | 'regenerate_with_meaning'
       | 'image_safeguard'
       | 'image_safeguard_strength'
+      | 'image_safeguard_level'
       | 'nav_hints'
       | 'share_generated_images'
       | 'card_detail_columns'

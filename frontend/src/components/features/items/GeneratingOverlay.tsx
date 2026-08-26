@@ -18,21 +18,20 @@ type Props = {
    * 「また押す」以外の手が思いつかない
    */
   title?: string
-  /**
-   * 言葉ではなく印だけにする。
-   *
-   * **同じことを2か所で言わない。** 一覧の札は絵の右上に状態のバッジを出すので、
-   * 真ん中にも「失敗」と書くと、1枚の中に同じ言葉が2つ並ぶ。
-   *
-   * バッジを出していないとき（環境設定で切っている）は、ここが唯一の手がかりに
-   * なるので言葉のまま出す。**判断は呼び出し側が持つ**（ここは出し方だけ決める）。
-   */
-  iconOnly?: boolean
 }
 
 // 画像が未生成の枠に、ステータス文言＋（生成中は）左→右に流れるシマーを重ねる共通オーバーレイ。
 // 一覧カード・詳細で共通利用する。挙動は変えず、従来の静的 pulse をシマーへ置き換える演出向上。
-export function GeneratingOverlay({ status, label, className, textClassName, style, title, iconOnly }: Props) {
+/**
+ * 絵がまだ無い枠。
+ *
+ * **ここが状態の置き場所そのもの。** 絵が無いときの枠は空いた面ではなく、
+ * 「まだ絵が無い」ことを言うための面。だから印と言葉を**まとめて中央に置く**。
+ *
+ * 別に小さなバッジを重ねない。同じことを2か所で言うと、
+ * 目が2回止まるだけで、分かることは増えない。
+ */
+export function GeneratingOverlay({ status, label, className, textClassName, style, title }: Props) {
   const Icon = STATUS_ICON[status]
 
   return (
@@ -42,14 +41,16 @@ export function GeneratingOverlay({ status, label, className, textClassName, sty
       title={title}
     >
       {isGenerating(status) && <div aria-hidden className="animate-shimmer pointer-events-none absolute inset-0" />}
-      {iconOnly && Icon ? (
-        // 印だけでも、読み上げには言葉を残す（見えない人にとっては印が無いのと同じ）
-        <span className={cn('relative z-10', textClassName)} role="img" aria-label={label} title={label}>
-          <Icon size={22} className={status === 'processing' ? 'animate-spin' : undefined} />
-        </span>
-      ) : (
-        <span className={cn('relative z-10 px-2 text-center', textClassName)}>{label}</span>
-      )}
+      <span className={cn('relative z-10 flex flex-col items-center gap-1 px-2 text-center', textClassName)}>
+        {Icon && (
+          <Icon
+            size={20}
+            aria-hidden
+            className={status === 'processing' ? 'animate-spin' : undefined}
+          />
+        )}
+        {label}
+      </span>
     </div>
   )
 }

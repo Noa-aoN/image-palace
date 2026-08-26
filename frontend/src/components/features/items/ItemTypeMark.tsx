@@ -29,17 +29,23 @@ export function ItemTypeMark({ type, className = '' }: { type?: ItemType | null;
       // `em` で持てば、置いた先の字の大きさにそのまま従う。
       //
       // 1.35em … 見出しの文字より少し高い。並べたときに字と同じ「行のもの」に見える高さ
-      className={`inline-flex shrink-0 items-center justify-center rounded-[3px] font-bold leading-none ${className}`}
+      // **丸にする。** 角丸の四角は状態のバッジ（丸い錠剤）と形が近く、
+      // 縦に並んだときに同じ種類の印に見えていた。
+      // 丸は一文字を囲む形として素直で、属性の印だとひと目で分かる。
+      //
+      // 四角より一回り大きくするのは、丸に収まる字の面積が小さいため
+      // （同じ 1.35em だと、字が縁に触れて窮屈に見える）
+      className={`inline-flex shrink-0 items-center justify-center rounded-full font-bold leading-none ${className}`}
       style={{
-        width: '1.35em',
-        height: '1.35em',
+        width: '1.5em',
+        height: '1.5em',
         color: mark.color,
         // 地は色を薄く敷くだけ。塗り潰すと、見出しより印のほうが目立つ
         backgroundColor: `color-mix(in srgb, ${mark.color} 14%, transparent)`,
       }}
     >
       {/* 字は枠より一回り小さく。枠いっぱいだと窮屈で、一文字が読み取れない */}
-      <span style={{ fontSize: '0.8em' }}>{mark.char}</span>
+      <span style={{ fontSize: '0.72em' }}>{mark.char}</span>
     </span>
   )
 }

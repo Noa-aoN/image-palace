@@ -24,7 +24,7 @@ import {
   RegeneratingOverlay,
   REGENERATING_IMAGE_CLASS,
 } from '@/components/features/items/RegeneratingOverlay'
-import { SafeguardVeil, useSafeguardImageClass } from '@/components/features/items/SafeguardVeil'
+import { SafeguardVeil, useSafeguardImage } from '@/components/features/items/SafeguardVeil'
 import { CardCreateButton } from '@/components/features/items/CardCreatePanel'
 import { getItemTypes } from '@/lib/api/items'
 import { STATUS_LABEL, isRegenerating } from '@/lib/item-status'
@@ -50,7 +50,6 @@ import { aspectRatioCss } from '@/lib/aspect-ratio'
 import { CARD_IMAGE_EDGE, CARD_MAT_BG, CARD_MAT_BORDER } from '@/lib/card-frame'
 import { ItemTypeMark } from '@/components/features/items/ItemTypeMark'
 import { cardShows, densityFor, type CardDensity } from '@/lib/items/card-density'
-import { useUiStore } from '@/stores/ui'
 import {
   useCardDisplay,
   CARD_GRID_CLASSES,
@@ -210,9 +209,6 @@ function ItemCard({
   // 絵を出さない設定のときは、状態バッジの置き場所が無くなる。
   // その場合だけ、従来どおり見出しの行に残す
   const showsImage = blocks.includes('image')
-  // バッジを出しているなら、絵の真ん中は印だけにする（同じ言葉を2つ並べない）。
-  // 切っている人には、真ん中が唯一の手がかりなので言葉のまま出す
-  const statusBadgeShown = useUiStore((s) => s.showStatusBadges)
   const router = useRouter()
   const [failedImageUrl, setFailedImageUrl] = useState<string | null>(null)
   const warmedRef = useRef(false)
@@ -225,7 +221,7 @@ function ItemCard({
   // 決めるのは詳細（カードをめくった先）で行う
   const veiled = Boolean(item.media?.needs_approval) && !regenerating
   // 覆いの濃さは設定で変えられる（薄い / 標準 / 濃い）
-  const safeguardClass = useSafeguardImageClass()
+  const safeguard = useSafeguardImage()
 
   // 単語名が枠に入り切らないときだけ、ホバーで全文を出す。
   // 列数を増やせるようにした結果、8〜10列では名前が数文字で切れる。
@@ -288,26 +284,30 @@ function ItemCard({
             <Check size={14} strokeWidth={3} />
           </span>
         )}
-        {/* 絵の状態は、**絵の上**に出す。
-            見出しの行に置いていたころは、種別の印と横に並んで
-            「このカードの状態」なのか「絵の状態」なのかが読めなかった。
-
-            選んでいる最中は右上を印（チェック）が使うので、状態は左上へ回る。
-            どちらも右上に置くと重なる */}
-        <span
-          className={`pointer-events-none absolute top-1.5 z-10 ${selectionMode ? 'left-1.5' : 'right-1.5'}`}
-        >
-          <StatusBadge status={item.generation_status} />
-        </span>
         {resolvedImageUrl && !hasImageError ? (
           <>
+            {/* **絵があるときだけ**、状態を絵の上に出す。
+                絵が無いときは枠そのものが「まだ絵が無い」と言っているので、
+                その上にバッジを重ねると同じことを2度言うことになる
+                （実際、失敗した札には ⚠ が中央と右上に2つ並んでいた）。
+
+                ここに出るのは「絵はあるが、最後の生成に失敗した」ような場合で、
+                そのときバッジは**唯一の手がかり**になる。
+
+                選んでいる最中は右上を印（チェック）が使うので、状態は左上へ回る */}
+            <span
+              className={`pointer-events-none absolute top-1.5 z-10 ${selectionMode ? 'left-1.5' : 'right-1.5'}`}
+            >
+              <StatusBadge status={item.generation_status} />
+            </span>
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img
               src={resolvedImageUrl}
               alt={item.title}
               className={`${CARD_IMAGE_EDGE} ${
                 fit === 'uniform' ? 'max-h-full max-w-full object-contain' : 'w-full h-full object-cover'
-              } ${regenerating ? REGENERATING_IMAGE_CLASS : ''} ${veiled ? safeguardClass : ''}`}
+              } ${regenerating ? REGENERATING_IMAGE_CLASS : ''} ${veiled ? safeguard.className : ''}`}
+              style={veiled ? safeguard.style : undefined}
               // 覆っている間は掴めなくする（引きずるとぼかす前の絵が持ち上がる）
               draggable={!veiled}
               loading="lazy"
@@ -322,9 +322,6 @@ function ItemCard({
           <GeneratingOverlay
             status={item.generation_status}
             label={hasImageError ? '期限切れ' : STATUS_LABEL[item.generation_status]}
-            // 期限切れは状態バッジが拾わない（generation_status は completed のまま）。
-            // そのときは真ん中に言葉を出さないと、何も伝わらなくなる
-            iconOnly={statusBadgeShown && showsImage && !hasImageError}
             className="h-full w-full"
             textClassName="text-muted-foreground text-xs"
             // 失敗の理由は、指を乗せれば読める形にしておく。

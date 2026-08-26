@@ -6,7 +6,7 @@ import { Button } from '@/components/ui/button'
 import { Spinner } from '@/components/ui/spinner'
 import { approveItemImage, deleteItem } from '@/lib/api/items'
 import { useSettingsStore } from '@/stores/settings'
-import { SAFEGUARD_STRENGTHS, type SafeguardStrength } from '@/lib/items/safeguard'
+import { DEFAULT_LEVEL, MAX_LEVEL, MIN_LEVEL, clampLevel, safeguardLabel } from '@/lib/items/safeguard'
 import type { Item } from '@/types/item'
 
 /**
@@ -39,20 +39,20 @@ export function SafeguardBar({
    * ここで変えるのは**アカウントの設定そのもの**（このカード限りではない）。
    * 濃さを2通り持つと、どちらが効いているのか読めなくなる。そう書いて渡す。
    */
-  const strength = useSettingsStore((s) => s.settings?.image_safeguard_strength)
+  const stored = useSettingsStore((s) => s.settings?.image_safeguard_level)
   const patchSettings = useSettingsStore((s) => s.patchSettings)
   const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
-  const level = Math.max(0, SAFEGUARD_STRENGTHS.findIndex((o) => o.key === (strength ?? 'normal')))
+  const level = clampLevel(stored ?? DEFAULT_LEVEL)
 
-  const changeStrength = (next: SafeguardStrength) => {
-    // 送るのは手を止めてから。掴んで動かすと途中の段まで送ることになる
+  const changeLevel = (next: number) => {
+    // 送るのは手を止めてから。掴んで動かすと、通り過ぎた目盛りまで全部送ることになる
     if (saveTimer.current) clearTimeout(saveTimer.current)
     saveTimer.current = setTimeout(() => {
-      void patchSettings({ image_safeguard_strength: next }).catch(() => {})
+      void patchSettings({ image_safeguard_level: next }).catch(() => {})
     }, 400)
     // 見た目は先に変える（覆いはこの設定を見て濃さを決めている）
     useSettingsStore.setState((s) =>
-      s.settings ? { settings: { ...s.settings, image_safeguard_strength: next } } : s
+      s.settings ? { settings: { ...s.settings, image_safeguard_level: next } } : s
     )
   }
 
@@ -121,15 +121,16 @@ export function SafeguardBar({
           <input
             id="safeguard-strength"
             type="range"
-            min={0}
-            max={SAFEGUARD_STRENGTHS.length - 1}
+            min={MIN_LEVEL}
+            max={MAX_LEVEL}
             step={1}
             value={level}
-            onChange={(e) => changeStrength(SAFEGUARD_STRENGTHS[Number(e.target.value)].key)}
-            aria-valuetext={SAFEGUARD_STRENGTHS[level].label}
-            className="w-28 accent-[var(--palace)]"
+            onChange={(e) => changeLevel(clampLevel(Number(e.target.value)))}
+            aria-valuetext={`${safeguardLabel(level)}（${level}）`}
+            className="w-36 accent-[var(--palace)]"
           />
-          <span className="w-8 shrink-0 font-medium text-foreground">{SAFEGUARD_STRENGTHS[level].label}</span>
+          {/* 数字だけでは、どのくらいなのかが分からない。呼び名を添える */}
+          <span className="w-10 shrink-0 font-medium text-foreground">{safeguardLabel(level)}</span>
         </label>
         {/* このカード限りではない、と先に言う。黙って全体が変わると驚きになる */}
         <span className="text-3xs text-muted-foreground">次に覆う絵にも、同じ濃さで掛かります</span>

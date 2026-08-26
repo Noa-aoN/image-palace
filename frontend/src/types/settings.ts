@@ -27,8 +27,10 @@ export interface UserSettings {
   regenerate_with_meaning: boolean
   /** 生成された絵に覆いを掛けて、承認するまで直視しないで済むようにする。既定 OFF */
   image_safeguard: boolean
-  /** 覆いの濃さ（light / normal / strong）。掛けるかどうかとは別の軸 */
+  /** 覆いの濃さ（段）。移行のため残しているだけで、画面は目盛りを見る */
   image_safeguard_strength: 'light' | 'normal' | 'strong'
+  /** 覆いの濃さの目盛り（0〜100）。0 が最も薄い */
+  image_safeguard_level: number
   /** 指を乗せたときに説明を出すか。**体験の宮殿では必ず出る**（サーバーが true を返す） */
   nav_hints: boolean
   /** 自分が作らせた絵を、ほかの人にも使わせてよいか（取る側は変わらない） */

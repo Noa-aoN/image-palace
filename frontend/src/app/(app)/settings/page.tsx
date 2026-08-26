@@ -17,7 +17,7 @@ import { useUiStore } from '@/stores/ui'
 import { ASPECT_RATIOS, ASPECT_RATIO_KEYS } from '@/lib/aspect-ratio'
 import { DISPLAY_STYLES, DISPLAY_STYLE_KEYS, SHELF_ORIENTATIONS, SHELF_ORIENTATION_KEYS } from '@/lib/display-style'
 import { bodyFor } from '@/lib/page-help'
-import { SAFEGUARD_STRENGTHS, type SafeguardStrength } from '@/lib/items/safeguard'
+import { DEFAULT_LEVEL, MAX_LEVEL, MIN_LEVEL, clampLevel, safeguardLabel } from '@/lib/items/safeguard'
 
 type TabKey = 'generation' | 'display' | 'sharing' | 'notification' | 'integration' | 'data'
 
@@ -28,7 +28,7 @@ export default function SettingsPage() {
   const [regenWithMeaning, setRegenWithMeaning] = useState<boolean | null>(null)
   const [imageSafeguard, setImageSafeguard] = useState<boolean | null>(null)
   // 覆いの濃さ。**掛けるかどうかとは別の軸**（境目は人によって違う）
-  const [safeguardStrength, setSafeguardStrength] = useState<SafeguardStrength | null>(null)
+  const [safeguardLevel, setSafeguardLevel] = useState<number | null>(null)
   const [navHints, setNavHints] = useState<boolean | null>(null)
   // 自分が作らせた絵を、ほかの人にも使わせてよいか
   const [shareImages, setShareImages] = useState<boolean | null>(null)
@@ -86,7 +86,7 @@ export default function SettingsPage() {
         setAutoTags(s.auto_generate_tags)
         setRegenWithMeaning(s.regenerate_with_meaning)
         setImageSafeguard(s.image_safeguard)
-        setSafeguardStrength(s.image_safeguard_strength)
+        setSafeguardLevel(s.image_safeguard_level)
         setNavHints(s.nav_hints)
         setShareImages(s.share_generated_images)
         setCardDetailColumns(s.card_detail_columns ?? 1)
@@ -249,16 +249,16 @@ export default function SettingsPage() {
     }
   }
 
-  const changeSafeguardStrength = async (next: SafeguardStrength) => {
-    if (savingSettings || next === safeguardStrength) return
-    const previous = safeguardStrength
+  const changeSafeguardLevel = async (next: number) => {
+    if (savingSettings || next === safeguardLevel) return
+    const previous = safeguardLevel
     setSavingSettings(true)
-    setSafeguardStrength(next)
+    setSafeguardLevel(next)
     try {
-      const s = await updateSettings({ image_safeguard_strength: next })
-      setSafeguardStrength(s.image_safeguard_strength)
+      const s = await updateSettings({ image_safeguard_level: next })
+      setSafeguardLevel(s.image_safeguard_level)
     } catch {
-      setSafeguardStrength(previous) // 失敗したら元に戻す
+      setSafeguardLevel(previous) // 失敗したら元に戻す
     } finally {
       setSavingSettings(false)
     }
@@ -450,29 +450,25 @@ export default function SettingsPage() {
             {imageSafeguard === true && (
               <div className="border-t border-border/60 pt-3">
                 <p className="text-sm font-medium">覆いの濃さ</p>
-                <div className="mt-2 flex flex-wrap gap-1.5">
-                  {SAFEGUARD_STRENGTHS.map((option) => {
-                    const active = safeguardStrength === option.key
-                    return (
-                      <button
-                        key={option.key}
-                        type="button"
-                        onClick={() => changeSafeguardStrength(option.key)}
-                        disabled={safeguardStrength === null || savingSettings}
-                        title={option.hint}
-                        aria-pressed={active}
-                        className={`rounded-full border px-3 py-1 text-sm transition-colors disabled:opacity-50 ${
-                          active ? 'border-transparent text-white' : 'border-border text-muted-foreground hover:bg-muted'
-                        }`}
-                        style={active ? { backgroundColor: 'var(--palace)' } : undefined}
-                      >
-                        {option.label}
-                      </button>
-                    )
-                  })}
+                <div className="mt-2 flex items-center gap-3">
+                  {/* **段ではなく目盛りで持つ。** 境目は絵の中身と、見る人と、
+                      その場で変わるので、3つに丸めるとちょうどよい所が段の間に落ちる */}
+                  <input
+                    type="range"
+                    min={MIN_LEVEL}
+                    max={MAX_LEVEL}
+                    step={1}
+                    value={safeguardLevel ?? DEFAULT_LEVEL}
+                    onChange={(e) => changeSafeguardLevel(clampLevel(Number(e.target.value)))}
+                    disabled={safeguardLevel === null || savingSettings}
+                    aria-label="覆いの濃さ"
+                    aria-valuetext={`${safeguardLabel(safeguardLevel)}（${safeguardLevel ?? DEFAULT_LEVEL}）`}
+                    className="w-56 max-w-full accent-[var(--palace)]"
+                  />
+                  <span className="w-10 shrink-0 text-sm font-medium">{safeguardLabel(safeguardLevel)}</span>
                 </div>
                 <p className="mt-1.5 text-sm text-muted-foreground">
-                  {SAFEGUARD_STRENGTHS.find((o) => o.key === safeguardStrength)?.hint}
+                  薄いほど「何の絵か」が分かり、濃いほど色の気配だけになります。
                 </p>
               </div>
             )}

@@ -27,7 +27,7 @@ module Api
           :auto_generate_meanings, :auto_generate_tags, :auto_generate_properties, :auto_detect_item_type,
           :share_generated_images, :default_image_style, :default_aspect_ratio,
           :display_style, :shelf_orientation, :onboarded,
-          :regenerate_with_meaning, :image_safeguard, :image_safeguard_strength, :palace_name, :nav_hints,
+          :regenerate_with_meaning, :image_safeguard, :image_safeguard_strength, :image_safeguard_level, :palace_name, :nav_hints,
           :card_detail_columns,
           :diagram_mode, :motion_mode, :word_difficulty, :default_card_preset,
           library_order: [],
@@ -57,8 +57,10 @@ module Api
           onboarded: setting.onboarded_at.present?,
           regenerate_with_meaning: setting.regenerate_with_meaning,
           image_safeguard: setting.image_safeguard,
-          # 覆いの濃さ。掛けるかどうかとは別の軸で持つ
+          # 覆いの濃さ。掛けるかどうかとは別の軸で持つ。
+          # 段（strength）は移行のため残しているだけで、画面は目盛り（level）を見る
           image_safeguard_strength: setting.image_safeguard_strength,
+          image_safeguard_level: setting.image_safeguard_level,
           # 指を乗せたときの説明を出すか。**体験の宮殿では必ず出す**
           # （初めて触る人しか居ないので、切れる意味が無い）
           nav_hints: setting.user&.demo? ? true : setting.nav_hints,
