@@ -4,12 +4,35 @@ module Api
       include DemoRestriction
 
       before_action :authenticate_user!
+      before_action :enforce_session_lifetime
       after_action :record_visit
 
       rescue_from ActiveRecord::RecordNotFound, with: :not_found
       rescue_from ActionController::ParameterMissing, with: :bad_request
 
       private
+
+      # セッションの**絶対上限**。
+      #
+      # トークンの寿命はリクエストのたびに延びるので、使い続けている限り切れない。
+      # 「7日**使わなければ**入り直し」という意味しかなく、置き忘れた端末や
+      # 持ち出されたトークンには効かない。
+      #
+      # ここは別の物差しで、**始まってから何日経ったか**を見る。
+      # 過ぎていたらその端末のトークンを落とし、入り直してもらう。
+      #
+      # `SESSION_MAX_DAYS=0` で止められる（デプロイせずに切れるようにしておく）。
+      def enforce_session_lifetime
+        client = @token&.client
+        return if client.blank?
+        return unless current_user.session_expired?(client)
+
+        current_user.end_session!(client)
+        render json: {
+          errors: [ "しばらく経ったので、もう一度ログインしてください" ],
+          reason: "session_expired"
+        }, status: :unauthorized
+      end
 
       # 「その日来た人」を数えるための記録。1日1回しか書かない（User#touch_last_seen!）。
       #

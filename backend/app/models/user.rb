@@ -1,4 +1,5 @@
 class User < ApplicationRecord
+  include SessionLifetime
   # == Deviseモジュール ======================================================
   devise :database_authenticatable, :registerable,
          :recoverable, :rememberable, :validatable, :confirmable,
