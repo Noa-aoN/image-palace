@@ -340,14 +340,20 @@ function ItemCard({
   // 落としてしまうと、出るカードと出ないカードが混ざり、法則が読めない
   const renderField = (field: { key: string; label: string; value: string }) => {
     const empty = !field.value?.trim()
+    // 意味・説明だけは長い。3行までに丸める（それ以上は一覧を圧迫する）
+    const clamped = field.key === 'meaning'
     return (
       <div className="flex gap-1.5 text-2xs leading-snug">
         <dt className="shrink-0 text-muted-foreground">{field.label}</dt>
-        {/* 意味・説明だけは長い。3行までに丸める（それ以上は一覧を圧迫する） */}
+        {/* **丸める上限ぶんの高さを、いつも取っておく。**
+            まだ生成中で「-」しか無いカードは1行、書き終えたカードは3行になり、
+            並べると**カードごとに高さが違って**見えていた。
+            高さを先に確保すれば、中身が入っても入らなくても札の形が変わらない。
+
+            4.125em ＝ 3行ぶん（leading-snug = 1.375 × 3） */}
         <dd
-          className={`${field.key === 'meaning' ? 'line-clamp-3' : 'truncate'} ${
-            empty ? 'text-muted-foreground/60' : ''
-          }`}
+          className={`${clamped ? 'line-clamp-3' : 'truncate'} ${empty ? 'text-muted-foreground/60' : ''}`}
+          style={clamped ? { minHeight: '4.125em' } : undefined}
         >
           {empty ? EMPTY_VALUE_MARK : field.value}
         </dd>
