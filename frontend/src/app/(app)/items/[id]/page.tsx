@@ -382,7 +382,7 @@ export default function ItemDetailPage() {
               表示
             </Button>
             {/* 学習に使わない情報（作成日・状態・ID）はここへ寄せる */}
-            <CardInfoButton item={item} />
+            <CardInfoButton item={item} onUpdated={applyUpdated} />
             <Button
               variant={confirmDelete ? 'destructive' : 'ghost'}
               size="sm"

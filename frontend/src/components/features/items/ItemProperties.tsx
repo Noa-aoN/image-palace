@@ -30,6 +30,7 @@ import { PropertyAddBlock } from '@/components/features/items/PropertyAddBlock'
 import { splitByFilled } from '@/lib/items/property-value'
 import { builtInBlockEmptiness } from '@/lib/items/block-empty'
 import { omittedKeysForPreset } from '@/lib/block-visibility'
+import { adminBlockKeys, defaultOmittedBlockKeys } from '@/lib/items/admin-blocks'
 import { ItemUsageBlock } from '@/components/features/items/ItemUsageBlock'
 import { ItemReviewBlock } from '@/components/features/items/ItemReviewBlock'
 import { CardViewPanel, applyBlockOrder } from '@/components/features/items/CardViewPanel'
@@ -844,9 +845,15 @@ export function ItemProperties({
   // ひな型に無いものを「持たない」に回す（どんなブロックがあるかを知っているのは画面側）
   const fromPreset = item.block_view?.from_preset === true
   const presetKeys = new Set(item.block_view?.order ?? [])
+  // 管理のための札（学習の記録・使っている場所・役割が管理要素の項目）は、
+  // **既定では本文に置かない。** 覚えたいものと管理用の数字が同じ面に並ぶと、
+  // 最初に読むべきものがその分だけ後ろへ押される。中身は「情報」から見られる。
+  //
+  // 一度でも並べたカードには手を出さない（整えた並びを黙って崩さない）
+  const defaultOmitted = defaultOmittedBlockKeys(adminBlockKeys(item.properties), item.block_view?.order)
   const omittedKeys = fromPreset
     ? omittedKeysForPreset(allBlocks.map((b) => b.key), presetKeys)
-    : new Set(item.block_view?.omitted ?? [])
+    : new Set([ ...(item.block_view?.omitted ?? []), ...defaultOmitted ])
   const hiddenKeys = new Set(item.block_view?.hidden ?? [])
   const adopted = allBlocks.filter((b) => !omittedKeys.has(b.key))
   const orderedBlocks = applyBlockOrder(adopted, item.block_view?.order)
