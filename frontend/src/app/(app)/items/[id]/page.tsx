@@ -16,9 +16,11 @@ import {
   useCardDetailColumns,
   useCardDetailFit,
   useCardDetailLeadInGrid,
+  useCardDetailNote,
 } from '@/hooks/useCardDetailColumns'
 import { useFitToWindow } from '@/hooks/useFitToWindow'
 import { CardInfoButton } from '@/components/features/items/CardInfoPanel'
+import { NoteSurface } from '@/components/features/items/NoteSurface'
 import { PropertyBlock, BlockAction } from '@/components/features/items/PropertyBlock'
 import { Tooltip } from '@/components/ui/tooltip'
 import { useRightPanelStore } from '@/stores/rightPanel'
@@ -52,6 +54,8 @@ export default function ItemDetailPage() {
   const { fit: fitToWindow } = useCardDetailFit()
   // 見出し語とイメージも、ほかの項目と同じ列に並べるか
   const { leadInGrid } = useCardDetailLeadInGrid()
+  // 紙を1枚敷いて、その上に札を並べるか（端末ごと・既定は切）
+  const { note } = useCardDetailNote()
   // 覆いの濃さは設定で変えられる（薄い / 標準 / 濃い）。
   // **早期 return より前で呼ぶ**（hook は毎回同じ順で呼ばれないといけない）
   const safeguard = useSafeguardImage()
@@ -414,6 +418,7 @@ export default function ItemDetailPage() {
 
             左を貼り付けておく（sticky）のは、右が長いカードでも絵が視界から
             消えないようにするため。絵を見ながら意味を読むのが、この画面の使い方 */}
+        <DetailSurface note={note}>
         {leadInGrid ? (
           // 「同じ列に並べる」を選んだ人は、見出し語も絵もほかの項目と同じ扱いにしたい人。
           // その意思を左右で割ると、選んだことが打ち消される
@@ -427,6 +432,7 @@ export default function ItemDetailPage() {
             </div>
           </div>
         )}
+        </DetailSurface>
 
 
       </div>
@@ -455,4 +461,14 @@ export default function ItemDetailPage() {
 
     </div>
   )
+}
+
+/**
+ * ノートを敷くかどうかで包みを切り替える。
+ *
+ * **切っている人の DOM を増やさない。** 常に包んでおいて色だけ変える形だと、
+ * 紙を敷いていない人にも余白と角丸が付いて、いまの見え方が変わってしまう。
+ */
+function DetailSurface({ note, children }: { note: boolean; children: React.ReactNode }) {
+  return note ? <NoteSurface>{children}</NoteSurface> : <>{children}</>
 }

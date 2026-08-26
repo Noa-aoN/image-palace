@@ -143,6 +143,33 @@ export function useCardDetailLeadInGrid() {
   return { leadInGrid: value, change }
 }
 
+/**
+ * カード詳細を「ノート」の形で見るか。
+ *
+ * 紙を1枚敷いて、その上に札を並べる。カードの中身は絵とその周りに
+ * 書き足していった手控えに近いので、**1枚についての記述**だと分かる形にする。
+ *
+ * 端末ごとに覚える（列数・収める・同じ列に並べる、と同じ扱い）。
+ * **既定は切**。いまの見え方を変えないまま、選んだ人にだけ紙が敷かれる。
+ */
+const NOTE_KEY = 'card-detail-note'
+
+function readNote(): boolean {
+  if (typeof window === 'undefined') return false
+  return window.localStorage.getItem(NOTE_KEY) === 'true'
+}
+
+export function useCardDetailNote() {
+  const note = useSyncExternalStore(subscribe, readNote, () => false)
+
+  const change = useCallback((next: boolean) => {
+    window.localStorage.setItem(NOTE_KEY, String(next))
+    listeners.forEach((listener) => listener())
+  }, [])
+
+  return { note, change }
+}
+
 export function useCardDetailFit() {
   const fit = useSyncExternalStore(
     subscribe,

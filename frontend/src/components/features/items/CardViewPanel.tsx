@@ -27,7 +27,7 @@ import { CreditCostHint } from '@/components/features/billing/CreditCostNote'
 import { AI_TEXT_COST } from '@/lib/billing'
 import { useBillingStore } from '@/stores/billing'
 import { PanelSlotContent } from '@/components/features/panel/PanelSlot'
-import { useCardDetailFit, useCardDetailLeadInGrid } from '@/hooks/useCardDetailColumns'
+import { useCardDetailFit, useCardDetailLeadInGrid, useCardDetailNote } from '@/hooks/useCardDetailColumns'
 import { updateBlockView, suggestItemProperties } from '@/lib/api/items'
 import { getSettings, updateSettings } from '@/lib/api/settings'
 import {
@@ -122,6 +122,7 @@ export function CardViewPanel({
 
   const { fit, change: changeFit } = useCardDetailFit()
   const { leadInGrid, change: changeLead } = useCardDetailLeadInGrid()
+  const { note, change: changeNote } = useCardDetailNote()
 
   const save = async (nextHidden: string[], nextOrder: string[], nextOmitted: string[]) => {
     setBusy(true)
@@ -257,6 +258,16 @@ export function CardViewPanel({
         </label>
         <p className="-mt-1 text-xs text-muted-foreground">
           ほかの項目と同じ幅・同じ並びで扱えます（幅を変える・順を入れ替える）。
+        </p>
+
+        {/* 紙を1枚敷いて、その上に札を並べる */}
+        <label className="flex items-center gap-2 text-sm">
+          <input type="checkbox" checked={note} onChange={(e) => changeNote(e.target.checked)} />
+          ノートの上に並べる
+        </label>
+        <p className="-mt-1 text-xs text-muted-foreground">
+          紙を1枚敷きます。載っているものが「1枚のカードについて書いたもの」だと分かります。
+          上の「列に含める」と組み合わせると、紙の上に絵ごと載る形にもできます。
         </p>
 
         {/* 狭い場所では列を選ばせない。選べても1列にしかならず、
