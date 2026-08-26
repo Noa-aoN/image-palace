@@ -48,6 +48,7 @@ import type { Item, ItemType } from '@/types/item'
 import type { Tag } from '@/types/tag'
 import { aspectRatioCss } from '@/lib/aspect-ratio'
 import { CARD_IMAGE_EDGE, CARD_MAT_BG, CARD_MAT_BORDER } from '@/lib/card-frame'
+import { ItemTypeMark } from '@/components/features/items/ItemTypeMark'
 import {
   useCardDisplay,
   CARD_GRID_CLASSES,
@@ -349,6 +350,10 @@ function ItemCard({ item, selectionMode, selected, onToggle, fit, sizes, working
         >
           {item.headline || item.title}
         </span>
+        {/* 種別の印。**見出しのすぐ右**に置く（何のカードかは、名前の次に知りたいこと）。
+            種別はカードに必ず付くので、ふつうは全部の札に出る。
+            古い版の一覧など、種別を返さない経路から来たときだけ出ない */}
+        <ItemTypeMark type={item.item_type} />
         {/* 下見で入ったカードは、自分で作ったものと見分けが付かない。
             **小さく印を出すだけ**にする（専用の画面には変えない） */}
         {item.from_preview ? (

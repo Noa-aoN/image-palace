@@ -1106,3 +1106,40 @@ RSpec.describe "Api::V1::Items", type: :request do
     end
   end
 end
+
+# 一覧の札に**属性の印**（種別の一文字）を出すために、種別を返す。
+# 問い合わせは増えない（一覧も検索も `includes(:item_type)` 済み）。
+RSpec.describe "カード一覧が種別を返す", type: :request do
+  let(:user) { create(:user, :confirmed) }
+  let(:headers) { auth_headers_for(user) }
+  let(:item_type) { ItemType.find_or_create_by!(name: "person") { |t| t.label = "人物" } }
+
+  it "一覧に種別が入る" do
+    create(:item, user: user, item_type: item_type, title: "アポロン")
+
+    get "/api/v1/items", headers: headers
+
+    row = json_response["items"].first
+    expect(row["item_type"]).to include("name" => "person", "label" => "人物")
+  end
+
+  # **枚数を増やしても問い合わせが増えないこと。**
+  # ここが崩れると、一覧が重くなるのに画面では気づけない
+  it "枚数を増やしても、種別のぶんの問い合わせが増えない" do
+    3.times { |i| create(:item, user: user, item_type: item_type, title: "カード#{i}") }
+    get "/api/v1/items", headers: headers # ウォームアップ（初回だけ走る問い合わせを除く）
+
+    few = count_queries { get "/api/v1/items", headers: headers }
+    5.times { |i| create(:item, user: user, item_type: item_type, title: "追加#{i}") }
+    many = count_queries { get "/api/v1/items", headers: headers }
+
+    expect(many).to eq(few)
+  end
+
+  def count_queries
+    count = 0
+    counter = ->(_n, _s, _f, _i, payload) { count += 1 unless payload[:name].to_s.in?([ "SCHEMA", "TRANSACTION" ]) }
+    ActiveSupport::Notifications.subscribed(counter, "sql.active_record") { yield }
+    count
+  end
+end

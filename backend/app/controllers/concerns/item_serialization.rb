@@ -13,6 +13,9 @@ module ItemSerialization
       title: item.title,
       generation_status: item.generation_status,
       from_preview: preview_item?(item),
+      # 種別。一覧の札に**属性の印**（一文字）を出すのに使う。
+      # 問い合わせは増えない（一覧も検索も `includes(:item_type)` 済み）
+      item_type: item.item_type && { id: item.item_type_id, name: item.item_type.name, label: item.item_type.label },
       media: serialize_media(item.primary_media)
     }
   end
