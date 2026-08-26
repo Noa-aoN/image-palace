@@ -399,7 +399,8 @@ function ItemCard({
         </span>
         {/* 種別の印。**見出しのすぐ右**に置く（何のカードかは、名前の次に知りたいこと）。
             「表示」で切れる。置き場所は固定なので、並べ替えの対象にはしない */}
-        {showTypeMark && shows.mark && <ItemTypeMark type={item.item_type} />}
+        {/* 見出し語と同じ字の大きさを渡す。印はそこから `em` で自分の大きさを決める */}
+        {showTypeMark && shows.mark && <ItemTypeMark type={item.item_type} className="text-sm" />}
         {/* 下見で入ったカードは、自分で作ったものと見分けが付かない。
             **小さく印を出すだけ**にする（専用の画面には変えない） */}
         {item.from_preview ? (
