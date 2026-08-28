@@ -172,3 +172,76 @@ RSpec.describe Admin::FinanceService do
     expect(summary[:margin]).to be_nil
   end
 end
+
+# 合計と内訳だけでは「誰かが買ってくれたかもしれない」が確かめられない。
+# 件数が少ないうちは、1件が起きたことそのものが知りたい情報になる。
+RSpec.describe "#{Admin::FinanceService} の決済明細" do
+  let(:described_class) { Admin::FinanceService }
+  let(:user) { create(:user, :confirmed, name: "テスト太郎") }
+  let(:now) { Time.zone.local(2026, 8, 15, 12, 0, 0) }
+
+  def summary
+    described_class.call(year: 2026, month: 8)
+  end
+
+  before { travel_to(now) }
+
+  it "1件ずつ返す" do
+    CreditTransaction.create!(user: user, kind: "topup_purchase", delta: 50, amount_cents: 900, livemode: true)
+
+    row = summary[:revenue][:payments].first
+
+    expect(row[:kind]).to eq("topup_purchase")
+    expect(row[:amount]).to eq(900)
+    expect(row[:credits]).to eq(50)
+    expect(row[:user_label]).to eq("テスト太郎")
+  end
+
+  # 名指ししないが、同じ人が2回買ったのかは分かるようにする
+  it "名前が無ければ id の先頭で表す" do
+    nameless = create(:user, :confirmed, name: nil)
+    CreditTransaction.create!(user: nameless, kind: "topup_purchase", delta: 10, amount_cents: 190, livemode: true)
+
+    expect(summary[:revenue][:payments].first[:user_label]).to start_with(nameless.id.to_s.first(8))
+  end
+
+  it "新しい順に並べる" do
+    CreditTransaction.create!(user: user, kind: "topup_purchase", delta: 10, amount_cents: 190, livemode: true,
+                              created_at: now - 2.days)
+    CreditTransaction.create!(user: user, kind: "topup_purchase", delta: 50, amount_cents: 900, livemode: true,
+                              created_at: now - 1.hour)
+
+    expect(summary[:revenue][:payments].map { |r| r[:amount] }).to eq([ 900, 190 ])
+  end
+
+  # 返金は「入ってきたお金」ではないので、明細にも出さない
+  it "返金の行は出さない" do
+    CreditTransaction.create!(user: user, kind: "refund", delta: -10, amount_cents: -190, livemode: true)
+
+    expect(summary[:revenue][:payments]).to be_empty
+  end
+
+  # テストの決済は売上に入れないので、明細にも出さない
+  it "テストの決済は出さない" do
+    CreditTransaction.create!(user: user, kind: "topup_purchase", delta: 10, amount_cents: 190, livemode: false)
+
+    expect(summary[:revenue][:payments]).to be_empty
+  end
+
+  it "前の月の決済は出さない" do
+    travel_to(now - 1.month) do
+      CreditTransaction.create!(user: user, kind: "topup_purchase", delta: 10, amount_cents: 190, livemode: true)
+    end
+
+    expect(summary[:revenue][:payments]).to be_empty
+  end
+
+  # 件数が増えても画面を壊さない
+  it "上限を超えたら切る" do
+    (Admin::FinanceService::PAYMENT_LIMIT + 5).times do
+      CreditTransaction.create!(user: user, kind: "topup_purchase", delta: 10, amount_cents: 190, livemode: true)
+    end
+
+    expect(summary[:revenue][:payments].size).to eq(Admin::FinanceService::PAYMENT_LIMIT)
+  end
+end

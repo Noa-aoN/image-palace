@@ -7,6 +7,9 @@ module Admin
   # 回数は正確（image_usages / ai_usages）だが単価は設定値なので、そこが誤差になる。
   # だから請求実額（MonthlyActual）を並べ、乖離率を出して単価を直せるようにしてある。
   class FinanceService
+    # 決済の明細に出す上限。件数が増えても画面を壊さない
+    PAYMENT_LIMIT = 50
+
     def self.call(year:, month:, costs: nil)
       new(year: year, month: month, costs: costs).call
     end
@@ -85,7 +88,10 @@ module Admin
           # 返金。負の値で持つ（画面ではそのままマイナスとして出す）
           refunds: refunds,
           # 手元に残った額
-          net: net
+          net: net,
+          # **1件ずつの決済。** 合計だけでは「誰かが買ってくれたかもしれない」が
+          # 確かめられない。件数が少ないうちは、1件が起きたことそのものが情報になる
+          payments: payments
         },
         cost: {
           total: estimated_cost,
@@ -140,6 +146,35 @@ module Admin
     # 決済と返金が別の月にまたがるときは、それぞれの月に別々に立つ。
     def refunds_jpy
       amounts_by_kind["refund"].to_i
+    end
+
+    # その月の決済を1件ずつ。**新しい順に、上限を置いて返す。**
+    #
+    # 合計と内訳だけでは「誰が買ったのか」が分からない。件数が少ないうちは、
+    # 1件が起きたことそのものが知りたい情報になる。
+    #
+    # メールアドレスまでは返さない（収支の画面で個人を特定する必要はない）。
+    # 誰かを追うときは利用者の画面から辿る。
+    def payments
+      CreditTransaction.where(created_at: @from...@to)
+                       .where.not(amount_cents: nil)
+                       .where(livemode: true)
+                       .where.not(kind: "refund")
+                       .includes(:user)
+                       .order(created_at: :desc)
+                       .limit(PAYMENT_LIMIT)
+                       .map do |row|
+        {
+          id: row.id,
+          at: row.created_at,
+          kind: row.kind,
+          amount: row.amount_cents.to_i,
+          credits: row.delta.to_i,
+          # 表示名が無ければ id の先頭だけ。**誰かを名指ししない**が、
+          # 同じ人が2回買ったのかどうかは分かるようにする
+          user_label: row.user&.name.presence || "#{row.user_id.to_s.first(8)}…"
+        }
+      end
     end
 
     # 期間内に記録された、テストの決済の額。0 でなければ画面に断りを出す

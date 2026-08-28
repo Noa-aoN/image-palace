@@ -66,7 +66,6 @@ export default function StudioLayout({ children }: { children: React.ReactNode }
   if (strongAuth?.required && !strongAuth.satisfied) {
     return (
       <AdminStrongAuthGate
-        prepared={strongAuth.prepared ?? false}
         onDone={fetchSession}
         room="工房室"
         reason="公式コンテンツを扱うため、もう一度ご本人か確かめさせてください。"
