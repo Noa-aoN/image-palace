@@ -15,7 +15,9 @@ module Billing
       "subscription_carryover" => "プランの持ち越し",
       "free_carryover" => "無料枠の引き継ぎ",
       "campaign" => "キャンペーン",
-      "goodwill" => "お詫び・調整"
+      "goodwill" => "お詫び・調整",
+      # 運営の予算から自分の残高へ入れたぶん。出どころが履歴で分かるようにする
+      "ops" => "運営クレジット"
     }.freeze
 
     module_function

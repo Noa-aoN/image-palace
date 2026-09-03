@@ -41,7 +41,7 @@ module Api
         cost = ::Billing::CreditCost.call(kind: :free_image)
 
         current_user.with_lock do
-          raise User::InsufficientCredits if current_user.available_credit_points < cost
+          raise User::InsufficientCredits unless current_user.can_afford?(cost)
 
           current_user.consume_credits!(cost, item: item)
           property.typed_value = { "heading" => heading, "prompt" => prompt, "status" => "pending" }

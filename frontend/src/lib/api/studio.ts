@@ -140,7 +140,7 @@ export type StudioOwner = {
   items: number
 }
 
-/** 公式制作枠。**通常のクレジットとは別の勘定** */
+/** 運営クレジット。**今月あといくら自分の残高へ入れられるか**（使うのは普通の残高から） */
 export type StudioAllowance = {
   used_credits: number
   limit_credits: number

@@ -23,7 +23,7 @@ module Api
         def show
           render json: {
             owner: owner_summary,
-            # 公式制作枠。**通常のクレジットとは別**なので、ここに出す
+            # 運営クレジット。今月あといくら残高へ入れられるか（入れるのは執務室から）
             allowance: current_user.studio_allowance_summary,
             packages: packages_by_key
           }

@@ -527,3 +527,36 @@ export async function deleteAdminRewardImage(id: string): Promise<{ reward: Admi
   )
   return res.data
 }
+
+/**
+ * 運営クレジット。**運営の予算を、自分の残高へ入れる。**
+ *
+ * 以前は運営だけ別の財布から引かれていて、残高が1点も動かなかった。
+ * 入れたあとは普通のクレジットとして減るので、数え方も使いすぎも
+ * ほかの利用者と同じ画面で見える。
+ */
+export interface AdminOpsCreditAccount {
+  id: string
+  label: string
+  allowance: {
+    used_credits: number
+    limit_credits: number
+    remaining_credits: number
+    period_start: string
+  } | null
+  available_credits: number
+  /** 今月、実際に減ったぶん */
+  spent_credits: number
+  /** 今月つくった絵の枚数（API を呼んだぶんだけ） */
+  generated_images: number
+}
+
+export async function getAdminOpsCredits(): Promise<AdminOpsCreditAccount[]> {
+  const res = await apiClient.get<{ accounts: AdminOpsCreditAccount[] }>('/api/v1/admin/ops_credits')
+  return res.data.accounts
+}
+
+export async function drawAdminOpsCredits(credits: number, reason: string): Promise<AdminOpsCreditAccount> {
+  const res = await apiClient.post<AdminOpsCreditAccount>('/api/v1/admin/ops_credits', { credits, reason })
+  return res.data
+}

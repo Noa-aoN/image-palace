@@ -2,7 +2,7 @@ class CreditGrant < ApplicationRecord
   # 期限付きクレジット（Free引き継ぎ・キャンペーン等）。残量が0になるか期限切れで無効。
   # trial: 登録時のお試し枠（1アカウント1回）
   # topup: 買い切りで購入したぶん（期限付き）
-  KINDS = %w[trial monthly_free topup free_carryover subscription_carryover campaign goodwill].freeze
+  KINDS = %w[trial monthly_free topup free_carryover subscription_carryover campaign goodwill ops].freeze
 
   belongs_to :user
 

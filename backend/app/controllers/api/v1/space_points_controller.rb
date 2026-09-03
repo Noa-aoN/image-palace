@@ -151,7 +151,7 @@ module Api
       # 当月分の無料枠を付与したうえで、ポイント生成1件分のクレジットが足りないか
       def insufficient_credits?
         current_user.ensure_current_period_credits!
-        current_user.available_credit_points < point_cost
+        !current_user.can_afford?(point_cost)
       end
 
       def render_insufficient_credits

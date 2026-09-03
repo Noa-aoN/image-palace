@@ -219,6 +219,29 @@ export default function BillingPage() {
               {summary?.available_credits ?? 0}
               <span className="ml-1 text-sm font-normal text-muted-foreground">{CREDIT_UNIT}</span>
             </p>
+            {/*
+              運営クレジット。**枠を持つ人にだけ出す。**
+
+              使うときは上の残高から引かれる（ほかの利用者とまったく同じ）。
+              ここに出すのは「今月あといくら運営の予算から入れられるか」で、
+              入れる操作そのものは執務室にある
+            */}
+            {summary?.studio_allowance && (
+              <div className="rounded-lg border border-border bg-muted/40 px-3 py-2.5">
+                <div className="flex items-baseline justify-between gap-2">
+                  <span className="text-sm font-medium">運営クレジット</span>
+                  <span className="text-sm tabular-nums">
+                    今月あと {summary.studio_allowance.remaining_credits}
+                    <span className="text-muted-foreground"> / {summary.studio_allowance.limit_credits} {CREDIT_UNIT}</span>
+                  </span>
+                </div>
+                <p className="mt-1 text-xs text-muted-foreground">
+                  運営の予算から、この残高へ入れられる量です。入れるのは執務室から。
+                  使うときは、ほかの利用者と同じようにこの残高から引かれます。
+                </p>
+              </div>
+            )}
+
             {/* 内訳は畳んでパネルへ。残高の面に細かい表を常時置くと、
                 いちばん見たい数字（残り何cr）が埋もれる */}
             <div className="flex flex-wrap items-center gap-2">

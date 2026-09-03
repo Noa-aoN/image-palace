@@ -11,7 +11,7 @@ import { PreviewStrip } from './PreviewStrip'
  * 工房室の概要。**いま何がどこへ出ているか、ひと目で。**
  *
  * ここに操作は置かない。触るのは各部屋で行う。
- * 概要に全部を積むと、荷物が増えるほど原本や制作枠が画面の外へ行く。
+ * 概要に全部を積むと、荷物が増えるほど原本や運営クレジットが画面の外へ行く。
  */
 export function StudioSummaryPanel() {
   const { data, preview, busy, error, stopPreview } = useStudioRoom()
@@ -97,9 +97,9 @@ export function StudioSummaryPanel() {
 
       {data.allowance ? (
         <section className="rounded-xl border border-border bg-card p-5">
-          <h2 className="mb-1 text-base font-semibold">公式制作枠</h2>
+          <h2 className="mb-1 text-base font-semibold">運営クレジット</h2>
           <p className="mb-3 text-xs text-muted-foreground">
-            公式コンテンツを作るときはこちらを使います。買ったクレジットは減りません。毎月戻ります
+            今月ここまで自分の残高へ入れました。入れるのは執務室から。毎月戻ります
           </p>
           <p className="text-2xl font-semibold tabular-nums">
             {data.allowance.used_credits}

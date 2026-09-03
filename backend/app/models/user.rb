@@ -13,7 +13,7 @@ class User < ApplicationRecord
   # 将来「宮殿ごとの一員か」を判断に足せるようにするため
   include UserCapabilities
 
-  # == 公式制作枠 ============================================================
+  # == 運営クレジット ========================================================
   # 公式コンテンツを作るときは、買ったクレジットを減らさない。
   # ただし無制限にはせず、月ごとの枠で数える
   include StudioAllowance
@@ -155,6 +155,15 @@ class User < ApplicationRecord
   # 表示用クレジット（1cr = Billing::POINTS_PER_CREDIT pt）。
   def available_credits
     available_credit_points.fdiv(Billing::POINTS_PER_CREDIT)
+  end
+
+  # その支払いができるか。**入口の判断と、実際に引く判断を揃える。**
+  #
+  # 以前は入口が6か所に散らばっていて、それぞれが残高を直接見ていた。
+  # 判断が散っていると、引く側の決まりを変えたときに必ずどれかが取り残される
+  # （実際、運営の枠を見ない入口が6か所とも残っていた）。
+  def can_afford?(points)
+    available_credit_points >= points
   end
 
   # 無料枠を整える。登録直後の「お試し」と、毎月の少量。
@@ -381,18 +390,20 @@ class User < ApplicationRecord
   # 種類ではなく期限で並べる。期限が無いものは最後（いくらでも待てるため）。
   # クレジットを使う。
   #
-  # **公式コンテンツを作る人は、枠のほうから使う。**
-  # 運営の仕事であって、その人の買い物ではないため。
-  # 枠を使い切ったら普通のクレジットへ戻る（作業が止まるより、
-  # 気づいてから上げてもらうほうがよい）。
+  # **財布はひとつ。** 誰であっても、ここから引く。
   #
-  # 分岐はここ1か所。呼んでいる8か所は1文字も変わらない
-  def consume_credits!(amount, item: nil, space_point_id: nil, kind: "image")
-    if studio_allowance_covers?(amount)
-      consume_studio_allowance!(amount, kind: kind, item: item)
-      return
-    end
-
+  # 以前は運営だけ別の財布（公式制作枠）から引いていた。運営の仕事を
+  # その人の買い物にしないためだったが、**残高が1点も動かなくなる**ので
+  #   ・数え方の不具合に気づけない（現に気づけなかった）
+  #   ・使いすぎているのかも分からない
+  # という状態になっていた。
+  #
+  # 運営の予算は、財布を分ける代わりに**執務室から残高へ入れる**形にした
+  # （draw_studio_allowance!）。出どころは grant の種類として残る。
+  #
+  # **何に使ったかはここでは持たない。** 画像は image_usages、文章は ai_usages が
+  # 種類つきで記録している。ここで持つと同じことを2か所に書くことになる
+  def consume_credits!(amount, item: nil, space_point_id: nil)
     with_lock do
       raise InsufficientCredits, "クレジットが不足しています" if available_credit_points < amount
 

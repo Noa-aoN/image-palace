@@ -31,6 +31,18 @@ export type BillingSummary = {
   next_credit_reset: string | null
   /** 残高の内訳を「いつ消えるか」で並べたもの。期限が近い順＝使われる順 */
   credit_buckets?: CreditBucket[]
+  /**
+   * 運営クレジット。**枠を持つ人にだけ返る**（運営と公式アカウント）。
+   *
+   * 今月、運営の予算から残高へ入れられる量。使うときは普通の残高から引かれる
+   * （財布は分けない。分けていたころは残高が動かず、不具合に気づけなかった）。
+   */
+  studio_allowance?: {
+    used_credits: number
+    limit_credits: number
+    remaining_credits: number
+    period_start: string
+  } | null
 }
 
 export interface CreditBucket {
