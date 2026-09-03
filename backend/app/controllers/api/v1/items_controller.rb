@@ -563,7 +563,7 @@ module Api
         cost = ::Billing::CreditCost.call(kind: :regeneration, model_key: target.image_model)
 
         current_user.with_lock do
-          raise User::InsufficientCredits if current_user.available_credit_points < cost
+          raise User::InsufficientCredits unless current_user.can_afford?(cost)
 
           current_user.consume_credits!(cost, item: target)
         end

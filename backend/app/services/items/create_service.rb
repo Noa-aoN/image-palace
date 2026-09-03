@@ -28,7 +28,8 @@ module Items
       item = nil
 
       @user.with_lock do
-        raise InsufficientCredits, "クレジットが不足しています" if @user.available_credit_points < cost
+        # 足りるかの判断は1か所（can_afford?）。引く側と同じものを使う
+        raise InsufficientCredits, "クレジットが不足しています" unless @user.can_afford?(cost)
 
         item = @user.items.create!(
           title: @params[:title],

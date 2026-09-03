@@ -84,6 +84,8 @@ module Ai
       cost = cost_points(kind)
       return 0 if user.nil? || cost <= 0
 
+      # 何に使ったかは AiUsage が種類つきで記録する（Ai::Chat#record!）。
+      # ここでは残高を引くだけ
       user.consume_credits!(cost)
       cost
     end
@@ -101,7 +103,9 @@ module Ai
       return if cost <= 0
 
       user.ensure_current_period_credits!
-      return if user.available_credit_points >= cost
+      # 引く側（consume_credits!）と同じ判断を使う。
+      # 残高だけを見ていたころは、枠が余っていても入口で断っていた
+      return if user.can_afford?(cost)
 
       raise Chat::LimitExceeded, "クレジットが不足しています"
     end

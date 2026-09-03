@@ -13,7 +13,7 @@ import { useAdminStore } from '@/stores/admin'
  * 全体設定。**部屋をまたいで効くものだけを置く。**
  *
  * 体験の入口は体験宮殿設定へ移した。ここに残るのは
- * 本人確認・公式のアカウント・制作枠のように、どの部屋にも関わるもの。
+ * 本人確認・公式のアカウント・運営クレジットのように、どの部屋にも関わるもの。
  *
  * 枠の上限は執務室（`/admin`）の奥にもある。だが制作だけの人は
  * 執務室に入れないので、同じ栓をここにも出す。
@@ -106,9 +106,9 @@ export function StudioSettingsPanel() {
 
       <section className="space-y-3 rounded-xl border border-border bg-card p-5">
         <div>
-          <h2 className="text-base font-semibold">公式制作枠</h2>
+          <h2 className="text-base font-semibold">運営クレジット</h2>
           <p className="text-xs text-muted-foreground">
-            公式コンテンツを作るときに使う枠。**買ったクレジットは減りません。**毎月戻ります
+            運営の予算から、1か月に自分の残高へ入れられる上限。使うときは普通の残高から引かれます
           </p>
         </div>
         <div className="flex flex-wrap items-end gap-3">

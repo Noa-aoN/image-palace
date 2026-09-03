@@ -26,6 +26,8 @@ RSpec.describe "運営の段階ごとに触れる範囲", type: :request do
     [ :get, "/api/v1/admin/posts" ],
     [ :get, "/api/v1/admin/feature_flags" ],
     [ :get, "/api/v1/admin/grant_policies" ],
+    # 運営クレジットの状況。読むだけ（入れるのは operator 以上）
+    [ :get, "/api/v1/admin/ops_credits" ],
     [ :get, "/api/v1/admin/ai_models" ],
     [ :get, "/api/v1/admin/campaign_codes" ],
     # 経営の見立て。読むだけ（作るのは operator 以上）
@@ -44,7 +46,9 @@ RSpec.describe "運営の段階ごとに触れる範囲", type: :request do
     [ :put, "/api/v1/admin/feature_flags/page.trophy" ],
     [ :put, "/api/v1/admin/grant_policies/free_monthly" ],
     # 見立てを作る。AI を呼ぶので費用が出るし、記録として残る
-    [ :post, "/api/v1/admin/brief" ]
+    [ :post, "/api/v1/admin/brief" ],
+    # 運営の予算から自分の残高へ入れる。**理由が要り、監査ログに残る**
+    [ :post, "/api/v1/admin/ops_credits" ]
   ].freeze
 
   # お金と権限。admin でないと通らない。

@@ -33,7 +33,7 @@ module CoverImageGeneration
     cost = ::Billing::CreditCost.call(kind: :cover)
 
     current_user.with_lock do
-      raise User::InsufficientCredits if current_user.available_credit_points < cost
+      raise User::InsufficientCredits unless current_user.can_afford?(cost)
 
       current_user.consume_credits!(cost)
       record.update_cover_generation_status!("pending")

@@ -79,6 +79,9 @@ Rails.application.routes.draw do
         # キーに「.」が入る（page.trophy）。制約を付けないと拡張子として切り落とされる
         put "feature_flags/:key", to: "feature_flags#upsert", constraints: { key: %r{[^/]+} }
         delete "feature_flags/:key", to: "feature_flags#destroy", constraints: { key: %r{[^/]+} }
+        # 運営クレジット（運営の予算から自分の残高へ入れる）
+        get "ops_credits", to: "ops_credits#index"
+        post "ops_credits", to: "ops_credits#create"
         get "grant_policies", to: "grant_policies#index"
         put "grant_policies/:key", to: "grant_policies#upsert"
         delete "grant_policies/:key", to: "grant_policies#destroy"

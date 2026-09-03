@@ -40,7 +40,7 @@ class GrantPolicy < ApplicationRecord
     # ただし無制限にはしない。間違いや暴走がそのまま費用になるので、
     # 「使い切らない大きさ」を置いて、近づいたら気づけるようにする
     "studio_allowance" => {
-      label: "公式制作枠（月あたり）",
+      label: "運営クレジット（月あたりに残高へ入れられる上限）",
       reward_type: "credits",
       amount: 500,
       description: "公式コンテンツを作るときに使う。通常のクレジットは減らない。毎月戻る"
