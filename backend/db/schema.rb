@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_09_03_071518) do
+ActiveRecord::Schema[8.1].define(version: 2026_09_03_184358) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
   enable_extension "pg_trgm"
@@ -1159,6 +1159,21 @@ ActiveRecord::Schema[8.1].define(version: 2026_09_03_071518) do
     t.index ["view_id", "position"], name: "index_view_revisions_on_view_id_and_position", unique: true
   end
 
+  create_table "view_shapes", id: :uuid, default: -> { "gen_random_uuid()" }, force: :cascade do |t|
+    t.datetime "created_at", null: false
+    t.float "height", default: 120.0, null: false
+    t.string "kind", null: false
+    t.jsonb "style", default: {}, null: false
+    t.text "text"
+    t.datetime "updated_at", null: false
+    t.uuid "view_id", null: false
+    t.float "width", default: 200.0, null: false
+    t.float "x", default: 0.0, null: false
+    t.float "y", default: 0.0, null: false
+    t.integer "z_index", default: 0, null: false
+    t.index ["view_id"], name: "index_view_shapes_on_view_id"
+  end
+
   create_table "views", id: :uuid, default: -> { "gen_random_uuid()" }, force: :cascade do |t|
     t.text "cover_generation_error"
     t.string "cover_generation_status"
@@ -1293,6 +1308,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_09_03_071518) do
   add_foreign_key "view_items", "space_points", on_delete: :cascade
   add_foreign_key "view_items", "views", on_delete: :cascade
   add_foreign_key "view_revisions", "views", on_delete: :cascade
+  add_foreign_key "view_shapes", "views"
   add_foreign_key "views", "items", column: "cover_item_id", on_delete: :nullify
   add_foreign_key "views", "spaces", on_delete: :nullify
   add_foreign_key "views", "users", on_delete: :cascade

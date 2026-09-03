@@ -464,7 +464,13 @@ module Api
         # 並べ方の設定は**キャンバスに1回だけ**付ける（全カードで同じもの）
         base = base.merge(card_list: card_list_meta) if view.deck?
         # freeboard のみ接続線を返す（deck は順序のみ）。重なり順（z_index）昇順で返す。
-        base = base.merge(edges: view.view_edges.order(:z_index, :created_at).map { |edge| serialize_edge(edge) }) if view.freeboard?
+        if view.freeboard?
+          base = base.merge(
+            edges: view.view_edges.order(:z_index, :created_at).map { |edge| serialize_edge(edge) },
+            # ボードに置いた図形。かこみは必ず後ろから返す（前に出ると中身が隠れる）
+            shapes: view.view_shapes.ordered.map { |shape| serialize_shape(shape) }
+          )
+        end
         base
       end
 
@@ -520,6 +526,15 @@ module Api
           height: view_item.height,
           position: view_item.position,
           item: list_card ? serialize_list_item(view_item.item) : serialize_item(view_item.item)
+        }
+      end
+
+      # 図形1つぶん。線と同じ形（id・置き場所・重なり順・見た目）
+      def serialize_shape(shape)
+        {
+          id: shape.id, kind: shape.kind,
+          x: shape.x, y: shape.y, width: shape.width, height: shape.height,
+          z_index: shape.z_index, text: shape.text, style: shape.style
         }
       end
 

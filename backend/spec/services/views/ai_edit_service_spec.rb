@@ -126,6 +126,30 @@ RSpec.describe Views::AiEditService do
       end
     end
 
+    # 図形は「囲む」「区切る」ために置かれるので、その上を線が通ると意味が読めない
+    it "線は、置かれた図形をよける" do
+      view.view_items.find_by(item_id: a.id).update!(x: 100, y: 200)
+      view.view_items.find_by(item_id: b.id).update!(x: 900, y: 200)
+      view.view_shapes.create!(kind: "rectangle", x: 460, y: 150, width: 200, height: 200)
+      stub_plan("relations" => [ { "from" => a.id, "to" => b.id } ])
+
+      described_class.call(view: view, instruction: "つないで", placement: "keep")
+
+      expect(view.view_edges.first.points).not_to be_empty
+    end
+
+    # かこみはカードを囲うために置かれている。その中を通るのは正しい
+    it "かこみの中は通ってよい" do
+      view.view_items.find_by(item_id: a.id).update!(x: 100, y: 200)
+      view.view_items.find_by(item_id: b.id).update!(x: 900, y: 200)
+      view.view_shapes.create!(kind: "frame", x: 60, y: 100, width: 1000, height: 400)
+      stub_plan("relations" => [ { "from" => a.id, "to" => b.id } ])
+
+      described_class.call(view: view, instruction: "つないで", placement: "keep")
+
+      expect(view.view_edges.first.points).to be_empty
+    end
+
     it "関係の種類が線に残る（あとから見直せるように）" do
       stub_plan("relations" => [
         { "from" => a.id, "to" => b.id, "type" => "contrast", "strength" => 0.9 }

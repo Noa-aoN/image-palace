@@ -218,11 +218,46 @@ export interface AiEditSummary {
   connected: number
 }
 
+/**
+ * ボードに置く図形。
+ *
+ * カードの置き場所（view_items）は item_id が必須なので、図形はそこには入らない。
+ * 線（view_edges）と同じく、ボードにぶら下がる別の実体として持つ
+ */
+export type BoardShapeKind = 'rectangle' | 'ellipse' | 'sticky' | 'text' | 'frame'
+
+export interface BoardShapeStyle {
+  fill?: string
+  stroke?: string
+  stroke_width?: number
+  radius?: number
+  opacity?: number
+  font_size?: number
+  text_color?: string
+  align?: 'left' | 'center' | 'right'
+  bold?: boolean
+  dashed?: boolean
+}
+
+export interface BoardShape {
+  id: string
+  kind: BoardShapeKind
+  x: number
+  y: number
+  width: number
+  height: number
+  z_index: number
+  text: string | null
+  style: BoardShapeStyle
+}
+
 export interface ViewDetail extends View {
   /** 「カードから作る」で作られたぶん（その応答にだけ入る） */
   created_cards?: { count: number; titles: string[]; reused: number; arranged: boolean }
   items?: ViewItemPlacement[] // freeboard
   edges?: ViewEdge[] // freeboard
+  /** ボードに置いた図形。かこみは後ろから並ぶ */
+  shapes?: BoardShape[] // freeboard
   space?: { id: string; name: string; space_type: string } | null // space_map
   points?: SpaceMapPoint[] // space_map
   /** AI編集の直後だけ返る（何が変わったかの報告） */

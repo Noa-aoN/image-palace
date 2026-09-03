@@ -12,6 +12,7 @@ import { BoardCardsList } from './BoardCardsList'
 import { AddCardsBody } from './AddCardsBody'
 import { ObjectList } from './ObjectList'
 import { EdgePropertiesBody } from './EdgePropertiesBody'
+import { ShapePanel } from '@/components/features/panel/ShapePanel'
 import { BoardSettingsBody } from './BoardSettingsBody'
 import { BulkEditBody } from './BulkEditBody'
 import { PanelShell } from './PanelShell'
@@ -27,6 +28,7 @@ export function RightPanel() {
   const itemId = useRightPanelStore((s) => s.itemId)
   const viewId = useRightPanelStore((s) => s.viewId)
   const edge = useRightPanelStore((s) => s.edge)
+  const shape = useRightPanelStore((s) => s.shape)
   const bulkItemIds = useRightPanelStore((s) => s.bulkItemIds)
   const bulkEdgeIds = useRightPanelStore((s) => s.bulkEdgeIds)
   const section = useRightPanelStore((s) => s.section)
@@ -70,6 +72,8 @@ export function RightPanel() {
       ? '配置カード一覧'
       : mode === 'add-cards'
         ? 'カードを配置'
+        : mode === 'shape'
+          ? '図形'
         : mode === 'board-objects'
           ? 'オブジェクト一覧'
           : mode === 'board-settings'
@@ -92,14 +96,14 @@ export function RightPanel() {
   const onBack =
     mode === 'card' && viewId
       ? () => openBoardCards(viewId)
-      : mode === 'edge' && viewId
+      : (mode === 'edge' || mode === 'shape') && viewId
         ? () => openBoardObjects(viewId)
         : mode === 'section' && itemId
           ? () => openCard(itemId, viewId)
           : undefined
   const backLabel =
     mode === 'card' ? '配置カード一覧'
-    : mode === 'edge' ? 'オブジェクト一覧'
+    : mode === 'edge' || mode === 'shape' ? 'オブジェクト一覧'
     : mode === 'section' && itemId ? 'カード'
     : undefined
 
@@ -167,6 +171,7 @@ export function RightPanel() {
         {mode === 'board-settings' && viewId && <BoardSettingsBody />}
         {mode === 'bulk' && viewId && <BulkEditBody />}
         {mode === 'edge' && viewId && edge && <EdgePropertiesBody key={edge.id} viewId={viewId} />}
+        {mode === 'shape' && viewId && shape && <ShapePanel key={shape.id} viewId={viewId} shape={shape} />}
         {/* 汎用スロット。中身はページ側が PanelSlotContent で差し込む */}
         {mode === 'section' && <div ref={setPanelSlot} />}
       </PanelShell>

@@ -330,6 +330,7 @@ export default function ViewEditorPage() {
               viewId={view.id}
               viewName={view.name}
               initialItems={view.items ?? []}
+              initialShapes={view.shapes ?? []}
               initialEdges={view.edges ?? []}
               aiEditAction={editAction}
               aiEditHistoryActions={historyActions}

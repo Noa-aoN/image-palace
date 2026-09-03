@@ -1047,6 +1047,21 @@ module Views
     end
 
     # 配置後のカードの矩形。端点を決めるのに使う
+    # 盤に置かれた図形。**線はこれもよける。**
+    #
+    # 図形は「囲む」「区切る」ために置かれるので、その上を線が通ると
+    # 囲った意味が読めなくなる。かこみ（frame）だけは別で、
+    # **カードを囲うために置かれている**ので、その中を通るのは正しい
+    def shape_obstacles
+      @shape_obstacles ||= @view.view_shapes.reject(&:frame?).to_h do |shape|
+        [ "shape-#{shape.id}", Layout::Box.new(
+          id: "shape-#{shape.id}", title: nil,
+          x: shape.x, y: shape.y, width: shape.width, height: shape.height,
+          footprint_width: shape.width
+        ) ]
+      end
+    end
+
     # 線を引くための、いまの盤の様子。
     # **配置と同じ Box を使う**（別の形で持つと、片方だけ直して食い違う）
     def placement_boxes
@@ -1071,7 +1086,8 @@ module Views
     # 線を引く道具。**盤ごとに1つだけ作る**（線の本数だけ作り直さない）
     def router(boxes)
       @router ||= {}
-      @router[boxes.object_id] ||= Layout::Router.new(boxes: boxes)
+      # 線は、カードと図形の両方をよける
+      @router[boxes.object_id] ||= Layout::Router.new(boxes: boxes.merge(shape_obstacles))
     end
 
 
