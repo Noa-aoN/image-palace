@@ -150,6 +150,103 @@ RSpec.describe Views::AiEditService do
       expect(view.view_edges.first.points).to be_empty
     end
 
+    # 見出しと説明文だけでは、関係を読み取れないことがある。
+    # 「アレス」と「ヘラ」を並べても、親子なのか同僚なのかは分からない
+    describe "AI へ渡す手がかり" do
+      it "種別を渡す" do
+        person = ItemType.find_or_create_by!(name: "person") { |t| t.label = "人物" }
+        a.update!(item_type: person)
+        stub_plan({})
+
+        described_class.call(view: view, instruction: "整えて")
+
+        expect(Ai::Chat).to have_received(:call) do |args|
+          expect(args[:messages].last[:content]).to include("［人物］")
+        end
+      end
+
+      it "タグを渡す" do
+        a.tags << Tag.create!(user: user, name: "神話")
+        stub_plan({})
+
+        described_class.call(view: view, instruction: "整えて")
+
+        expect(Ai::Chat).to have_received(:call) do |args|
+          expect(args[:messages].last[:content]).to include("〈神話〉")
+        end
+      end
+
+      # タグの多いカードだけが資料を占めないようにする
+      it "タグは数を絞って渡す" do
+        6.times { |i| a.tags << Tag.create!(user: user, name: "タグ#{i}") }
+        stub_plan({})
+
+        described_class.call(view: view, instruction: "整えて")
+
+        expect(Ai::Chat).to have_received(:call) do |args|
+          line = args[:messages].last[:content].lines.find { |l| l.include?(a.id) }
+          expect(line.scan("・").size).to be < 6
+        end
+      end
+
+      # AI に推測させるより確かな材料
+      it "利用者が結んだ関連を渡す" do
+        Relation.create!(user: user, from_item: a, to_item: b, relation_type: "related")
+        stub_plan({})
+
+        described_class.call(view: view, instruction: "整えて")
+
+        expect(Ai::Chat).to have_received(:call) do |args|
+          material = args[:messages].last[:content]
+          expect(material).to include("利用者が「関連あり」と結んだ組")
+          expect(material).to include("原因 ⇔ 結果")
+        end
+      end
+
+      it "盤に載っていないカードとの関連は渡さない" do
+        outsider = card("よそ者")
+        Relation.create!(user: user, from_item: a, to_item: outsider, relation_type: "related")
+        stub_plan({})
+
+        described_class.call(view: view, instruction: "整えて")
+
+        expect(Ai::Chat).to have_received(:call) do |args|
+          expect(args[:messages].last[:content]).not_to include("よそ者")
+        end
+      end
+
+      it "関連が無ければ、その節ごと出さない" do
+        stub_plan({})
+
+        described_class.call(view: view, instruction: "整えて")
+
+        expect(Ai::Chat).to have_received(:call) do |args|
+          expect(args[:messages].last[:content]).not_to include("関連あり")
+        end
+      end
+
+      # ここが崩れると、枚数の多いボードだけが静かに重くなる
+      it "枚数を増やしても、種別とタグを引く回数は変わらない" do
+        stub_plan({})
+        few = count_lookup_queries { described_class.call(view: view, instruction: "整えて") }
+
+        6.times { |i| view.view_items.create!(item: card("追加#{i}"), x: 0, y: 0) }
+        many = count_lookup_queries { described_class.call(view: view, instruction: "整えて") }
+
+        expect(many).to eq(few)
+      end
+
+      def count_lookup_queries
+        count = 0
+        counter = lambda do |_n, _s, _f, _i, payload|
+          sql = payload[:sql].to_s
+          count += 1 if sql.include?(%q("item_types")) || sql.include?(%q("tags"))
+        end
+        ActiveSupport::Notifications.subscribed(counter, "sql.active_record") { yield }
+        count
+      end
+    end
+
     it "関係の種類が線に残る（あとから見直せるように）" do
       stub_plan("relations" => [
         { "from" => a.id, "to" => b.id, "type" => "contrast", "strength" => 0.9 }

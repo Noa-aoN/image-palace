@@ -33,6 +33,11 @@ module Views
     # 線の見出しの長さ。長い文は図の上で読めない
     MAX_EDGE_LABEL_LENGTH = 40
 
+    # 1枚あたりに渡すタグの数。**全部渡すと、タグの多いカードだけが資料を占める**
+    MAX_TAGS_PER_CARD = 4
+    # 資料に載せる「利用者が結んだ関連」の数。多すぎると、そればかりを写してくる
+    MAX_DECLARED_RELATIONS = 40
+
     # どれだけ動かしてよいか。**「いまの形を活かす」をここへ吸収する。**
     #   small … 控えめ。いまの形をできるだけ残す
     #   medium… ふつう
@@ -176,7 +181,12 @@ module Views
     # --- 材料をそろえる -----------------------------------------------------
 
     def placed
-      @placed ||= @view.view_items.includes(:item).order(:position, :created_at).to_a
+      # **種別とタグも一緒に読む。** カードの意味を知る材料になるのに、
+      # これまでは見出しと説明文しか渡していなかった。
+      # includes に足すだけなので、問い合わせの本数は増えない
+      @placed ||= @view.view_items
+                       .includes(item: [ :item_type, :tags ])
+                       .order(:position, :created_at).to_a
     end
 
     def placed_items
@@ -336,6 +346,13 @@ module Views
         - **「関係」「関連」「つながり」のように何も説明していない語は使わない**
         - strength は 0〜1。**強いほど近くに置かれます**。
           迷ったら 0.5。確かな関係なら 0.9、思いつきなら 0.3
+        - **資料の材料を使う。**
+          ・種別［人物］［出来事］［場所］は、成り立つ関係を絞る手がかりになる
+            （人物どうしなら親子・師弟、出来事どうしなら前後・因果）
+          ・〈タグ〉が同じものは、同じ群れに入りやすい
+          ・「利用者が『関連あり』と結んだ組」は**本人が確かだと言っている**。
+            種類までは決まっていないので、意味を読んで type と label を当てる。
+            **無視して別の関係だけを書かない**
         - **関係があるものは全て挙げる。** ある分類に下位が5つあるなら5本とも書く。
           見た目の混雑を理由に落とさない（重ならないように置くのはこちらの仕事）
         - 無い関係を作ってはいけない（落とさない／作らない、の両方）
@@ -469,6 +486,15 @@ module Views
         sections << "いまある線:"
         edges = @view.view_edges.to_a
         sections << (edges.empty? ? "（なし）" : edges.map { |edge| edge_line(edge) }.join("\n"))
+
+        # **利用者が既に結んだ関連。** AI に推測させるより確かな材料。
+        # 「この2枚は関係がある」と本人が言っているので、線を引く根拠になる
+        declared = declared_relation_lines
+        if declared.any?
+          sections << ""
+          sections << "利用者が「関連あり」と結んだ組（種類までは決まっていない）:"
+          sections << declared.join("\n")
+        end
       end
 
       if @mode == "select"
@@ -489,17 +515,53 @@ module Views
       text.to_s.gsub(/[<>]/, " ").gsub(/[[:cntrl:]&&[^\n]]/, "").strip.first(limit)
     end
 
+    # 1枚ぶんの手がかり。
+    #
+    # **見出しと説明文だけでは、関係を読み取れないことがある。**
+    # 「アレス」と「ヘラ」を並べても、親子なのか同僚なのかは分からない。
+    # 種別（人物・出来事・場所）とタグは、その判断の助けになる。
+    #
+    # 足しても1枚あたり20〜40字なので、100枚でも入力は数千トークンしか増えない。
     def placed_line(view_item)
-      title = sanitize(view_item.item&.title, limit: 100)
-      meaning = sanitize(view_item.item&.primary_meaning&.definition, limit: meaning_limit)
-      note = meaning.present? ? "／#{meaning}" : ""
-      if @view.deck?
-        "- #{view_item.item_id}: #{title}#{note}（現在#{view_item.position || '-'}番目）"
-      else
-        "- #{view_item.item_id}: #{title}#{note}" \
-        "（x=#{view_item.x.round}, y=#{view_item.y.round}, " \
-          "w=#{(view_item.width || CARD_WIDTH).round}, h=#{(view_item.height || CARD_HEIGHT).round}, " \
-          "見出し幅≈#{title_footprint_width(title).round}）"
+      item = view_item.item
+      title = sanitize(item&.title, limit: 100)
+      parts = [ "- #{view_item.item_id}: #{title}" ]
+
+      kind = item&.item_type&.label
+      parts << "［#{sanitize(kind, limit: 20)}］" if kind.present?
+
+      meaning = sanitize(item&.primary_meaning&.definition, limit: meaning_limit)
+      parts << "／#{meaning}" if meaning.present?
+
+      tags = Array(item&.tags).map(&:name).first(MAX_TAGS_PER_CARD)
+      parts << "〈#{sanitize(tags.join('・'), limit: 60)}〉" if tags.any?
+
+      parts << placement_note(view_item, title)
+      parts.join
+    end
+
+    # 置き場所の控え。**デッキには座標が無い**ので、並び順を渡す
+    def placement_note(view_item, title)
+      return "（現在#{view_item.position || '-'}番目）" if @view.deck?
+
+      "（x=#{view_item.x.round}, y=#{view_item.y.round}, " \
+        "w=#{(view_item.width || CARD_WIDTH).round}, h=#{(view_item.height || CARD_HEIGHT).round}, " \
+        "見出し幅≈#{title_footprint_width(title).round}）"
+    end
+
+    # 利用者が結んだ関連。**盤に載っている2枚の組だけ**を渡す。
+    # 盤の外のカードとの関連を渡しても、線は引けない
+    def declared_relation_lines
+      on_board = placed_items.to_h { |item| [ item.id, item.title ] }
+      return [] if on_board.size < 2
+
+      ids = on_board.keys
+      Relation.where(user_id: @user.id, from_item_id: ids, to_item_id: ids)
+              .limit(MAX_DECLARED_RELATIONS)
+              .map do |relation|
+        from = sanitize(on_board[relation.from_item_id], limit: 60)
+        to = sanitize(on_board[relation.to_item_id], limit: 60)
+        "- #{from} ⇔ #{to}"
       end
     end
 
