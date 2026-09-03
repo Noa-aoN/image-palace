@@ -3,6 +3,8 @@ module Api
     class ViewsController < BaseController
       include ListPagination
       include ItemSerialization
+      # デッキを「一覧と同じ札」で見せるため、札の作り方を借りる
+      include CardListSerialization
       include CoverImageUpload
       include CoverImageGeneration
 
@@ -441,12 +443,18 @@ module Api
 
         # deck は position 順、freeboard は重なり順
         order = view.deck? ? Arel.sql("position ASC NULLS LAST, created_at ASC") : Arel.sql("z_index, created_at")
+        # デッキは一覧と同じ札で見せられるようにするので、札に要るものまで引く。
+        # **枚数ぶん問い合わせを増やさない**ため、ここでまとめて読む
+        associations = view.deck? ? [ :item_type, :meanings, :tags, { item_properties: :property_definition }, MEDIA_INCLUDES ]
+                                  : [ :item_type, MEDIA_INCLUDES ]
         placements = view.view_items
-                         .includes(item: [ :item_type, MEDIA_INCLUDES ])
+                         .includes(item: associations)
                          .order(order)
         base = serialize_view(view)
-               .merge(items: placements.map { |vi| serialize_placement(vi) })
+               .merge(items: placements.map { |vi| serialize_placement(vi, list_card: view.deck?) })
                .merge(revision: Views::RevisionService.status(view))
+        # 並べ方の設定は**キャンバスに1回だけ**付ける（全カードで同じもの）
+        base = base.merge(card_list: card_list_meta) if view.deck?
         # freeboard のみ接続線を返す（deck は順序のみ）。重なり順（z_index）昇順で返す。
         base = base.merge(edges: view.view_edges.order(:z_index, :created_at).map { |edge| serialize_edge(edge) }) if view.freeboard?
         base
@@ -492,7 +500,9 @@ module Api
           (point.item ? serialize_media(point.item.primary_media)&.slice(:url, :thumb_url, :blur) : nil)
       end
 
-      def serialize_placement(view_item)
+      # list_card を立てると、カードは**一覧と同じ札の形**で返る。
+      # デッキだけがそれを要る（板や空間は絵と名前しか出さない）
+      def serialize_placement(view_item, list_card: false)
         {
           item_id: view_item.item_id,
           x: view_item.x,
@@ -501,7 +511,7 @@ module Api
           width: view_item.width,
           height: view_item.height,
           position: view_item.position,
-          item: serialize_item(view_item.item)
+          item: list_card ? serialize_list_item(view_item.item) : serialize_item(view_item.item)
         }
       end
 

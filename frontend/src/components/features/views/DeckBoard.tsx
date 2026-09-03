@@ -2,16 +2,49 @@
 
 import { useState } from 'react'
 import Link from 'next/link'
-import { Plus, X, ChevronUp, ChevronDown, GripVertical } from 'lucide-react'
+import { Plus, X, ChevronUp, ChevronDown, GripVertical, List, LayoutGrid } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { getItems } from '@/lib/api/items'
 import { addDeckCard, removeViewItem, reorderDeckCards } from '@/lib/api/views'
+import { ItemCard } from '@/components/features/items/ItemCard'
+import { CARD_GRID_CLASSES } from '@/lib/card-grid'
+import { cardImageSizes } from '@/hooks/useCardDisplay'
+import { densityFor } from '@/lib/items/card-density'
+import { readDeckLayout, writeDeckLayout, type DeckLayout } from '@/lib/views/deck-layout'
 import type { ViewItemPlacement } from '@/types/view'
 import type { Item } from '@/types/item'
 
-// deck 種別のキャンバス本体：カードの順序付きリスト（追加・削除・並び替え）。
-export function DeckBoard({ viewId, initialItems }: { viewId: string; initialItems: ViewItemPlacement[] }) {
+/** カードで見るときの列数。並べ替えの手が届く程度に大きく置く */
+const CARD_COLUMNS = 4
+
+/**
+ * deck 種別のキャンバス本体：カードの順序付きリスト（追加・削除・並び替え）。
+ *
+ * 見せ方を2つ持つ。
+ *   リスト … 並びを直すための形。順番・つまみ・外すが1行に収まる
+ *   カード … 中身を読むための形。**一覧とまったく同じ札**を使う
+ *
+ * 別々に描くと、同じカードなのに一覧とデッキで見え方が違うことになる。
+ * 札は `ItemCard` を借りて、並べ方の設定（何をどの順で積むか）もサーバーから受け取る。
+ */
+export function DeckBoard({
+  viewId,
+  initialItems,
+  cardList,
+}: {
+  viewId: string
+  initialItems: ViewItemPlacement[]
+  /** 並べ方の設定。キャンバスに1回だけ付いてくる */
+  cardList?: { blocks: string[]; image: boolean; type_mark: boolean }
+}) {
   const [items, setItems] = useState<ViewItemPlacement[]>(initialItems)
+  // 見せ方は端末に覚えさせる。**この人がどう見たいか**であって、デッキの性質ではない
+  const [layout, setLayout] = useState<DeckLayout>(() => readDeckLayout())
+
+  const changeLayout = (next: DeckLayout) => {
+    setLayout(next)
+    writeDeckLayout(next)
+  }
   const [picking, setPicking] = useState(false)
   const [allItems, setAllItems] = useState<Item[]>([])
   const [busy, setBusy] = useState(false)
@@ -99,17 +132,50 @@ export function DeckBoard({ viewId, initialItems }: { viewId: string; initialIte
 
   return (
     <div className="flex-1">
-      <div className="mb-4 flex items-center justify-between">
-        <p className="text-sm text-muted-foreground">{items.length} 枚</p>
-        <Button size="sm" onClick={openPicker} className="flex items-center gap-1">
-          <Plus size={14} />
-          カードを追加
-        </Button>
+      <div className="mb-4 flex items-center justify-between gap-2">
+        <p className="shrink-0 text-sm text-muted-foreground">{items.length} 枚</p>
+        <div className="flex items-center gap-2">
+          {/* **並びを直すのと、中身を読むのは別の用事。**
+              リストは順番・つまみ・外すが1行に収まる。カードは一覧と同じ札で読める */}
+          <div className="flex rounded-lg border border-border p-0.5">
+            <LayoutToggle active={layout === 'list'} onClick={() => changeLayout('list')} label="リストで見る">
+              <List size={15} />
+            </LayoutToggle>
+            <LayoutToggle active={layout === 'card'} onClick={() => changeLayout('card')} label="カードで見る">
+              <LayoutGrid size={15} />
+            </LayoutToggle>
+          </div>
+          <Button size="sm" onClick={openPicker} className="flex items-center gap-1">
+            <Plus size={14} />
+            カードを追加
+          </Button>
+        </div>
       </div>
 
       {items.length === 0 ? (
         <div className="rounded-xl border border-border/70 bg-muted/30 px-5 py-10 text-center text-sm text-muted-foreground">
           まだカードがありません。「カードを追加」から入れましょう。
+        </div>
+      ) : layout === 'card' ? (
+        /* **一覧とまったく同じ札**を使う。別々に描くと、同じカードなのに
+           一覧とデッキで見え方が変わる。並べ方の設定もサーバーから受け取る */
+        <div className={`grid gap-4 ${CARD_GRID_CLASSES[CARD_COLUMNS]}`}>
+          {items.map((vi) => (
+            <ItemCard
+              key={vi.item_id}
+              item={vi.item as Item}
+              selectionMode={false}
+              selected={false}
+              onToggle={() => {}}
+              fit="natural"
+              blocks={cardList?.blocks ?? [ 'image' ]}
+              showTypeMark={cardList?.type_mark ?? true}
+              density={densityFor(CARD_COLUMNS)}
+              sizes={cardImageSizes(CARD_COLUMNS)}
+              working={false}
+              workingLabel={null}
+            />
+          ))}
         </div>
       ) : (
         <ul className="space-y-2">
@@ -194,5 +260,37 @@ export function DeckBoard({ viewId, initialItems }: { viewId: string; initialIte
         </div>
       )}
     </div>
+  )
+}
+
+/**
+ * 見せ方の切り替え。**字ではなく形で示す。**
+ * 「リスト」「カード」と並べると、その2語ぶんだけ横幅を食い、
+ * 「カードを追加」が画面の外へ出る。何であるかは名前で伝える
+ */
+function LayoutToggle({
+  active,
+  onClick,
+  label,
+  children,
+}: {
+  active: boolean
+  onClick: () => void
+  label: string
+  children: React.ReactNode
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      aria-pressed={active}
+      aria-label={label}
+      title={label}
+      className={`rounded-md px-2 py-1 transition-colors ${
+        active ? 'bg-muted text-foreground' : 'text-muted-foreground hover:text-foreground'
+      }`}
+    >
+      {children}
+    </button>
   )
 }

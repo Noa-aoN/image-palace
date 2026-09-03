@@ -1,4 +1,4 @@
-import type { ItemMedia, GenerationStatus } from './item'
+import type { Item, ItemMedia, GenerationStatus } from './item'
 import type { CoverType, CoverImage } from './cover'
 
 // freeboard: ボード全体設定
@@ -47,12 +47,25 @@ export interface ViewItemPlacement {
   width?: number | null
   height?: number | null
   position?: number | null
-  item: {
-    id: string
-    title: string
-    generation_status: GenerationStatus
-    media: ItemMedia | null
-  }
+  /**
+   * 置いてあるカード。**デッキだけは一覧と同じ札の形で返る**
+   * （headline / list_fields / tags など）。板や空間は絵と名前しか出さない
+   */
+  item: DeckPlacementItem
+}
+
+/**
+ * 置いてあるカード。
+ *
+ * **必ずあるのは、絵と名前を出すのに要るものだけ。**
+ * デッキのときは一覧と同じ札に足りるものまで返るが、
+ * 板や空間では返らないので、全部そろっている型にはできない。
+ */
+export type DeckPlacementItem = Partial<Item> & {
+  id: string
+  title: string
+  generation_status: GenerationStatus
+  media: ItemMedia | null
 }
 
 // space_map: スペースのポイント（loci）と、そこに配置されたカード
@@ -189,4 +202,9 @@ export interface ViewDetail extends View {
   ai_edit?: AiEditSummary
   /** 戻る／進むの可否 */
   revision?: { cursor: number; can_undo: boolean; can_redo: boolean }
+  /**
+   * 一覧の並べ方（デッキのときだけ返る）。
+   * **カードごとではなくキャンバスに1回**（全カードで同じ設定のため）
+   */
+  card_list?: { blocks: string[]; image: boolean; type_mark: boolean }
 }
