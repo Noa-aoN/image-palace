@@ -25,6 +25,15 @@ export type SessionEndRecord = {
   tokenExpiry: string | null
   /** 期限が既に過ぎていたか。**期限切れと不具合を分ける決め手** */
   expired: boolean | null
+  /**
+   * サーバーが言ってきた理由。
+   *
+   * **期限が切れていないのに終わることがある。** 使い続けているセッションを
+   * 一定の日数で必ず打ち切る決まり（`session_expired`）があり、
+   * そのときトークンの期限はまだ先にある。理由を残さないと、
+   * `expired: false` の記録が不具合と見分けられない。
+   */
+  reason: string | null
   /** ログイン画面へ送ったか。公開ページでは送らずに留める */
   redirected: boolean
 }
@@ -83,12 +92,15 @@ export function buildSessionEndRecord({
   tokenExpiry,
   redirected,
   now,
+  reason,
 }: {
   pathname: string
   api: string
   tokenExpiry: string | null | undefined
   redirected: boolean
   now: Date
+  /** サーバーが言ってきた理由（`session_expired` など） */
+  reason?: string | null
 }): SessionEndRecord {
   const expiresAt = expiryToDate(tokenExpiry)
 
@@ -100,6 +112,7 @@ export function buildSessionEndRecord({
     tokenExpiry: expiresAt ? expiresAt.toISOString() : null,
     expired: expiresAt ? expiresAt.getTime() <= now.getTime() : null,
     redirected,
+    reason: reason ?? null,
   }
 }
 

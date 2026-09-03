@@ -82,6 +82,9 @@ apiClient.interceptors.response.use(
       reportSessionEnd(
         buildSessionEndRecord({
           pathname,
+          // 期限が切れていなくても終わることがある（使い続けたセッションの打ち切り）。
+          // 理由を残さないと、`expired: false` の記録が不具合と見分けられない
+          reason: (error.response?.data as { reason?: string } | undefined)?.reason ?? null,
           // **pathname だけを載せる。** requestUrl にはクエリが付く。
           // いまは載る値に秘密は無いが、あとで付いたものが記録へ流れ込む道を作らない
           api: path ?? '(不明)',

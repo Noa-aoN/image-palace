@@ -118,3 +118,33 @@ describe('ログイン画面への申し送り', () => {
     expect(takeSessionEndNotice()).toBe(false)
   })
 })
+
+/**
+ * **期限が切れていないのに終わることがある。**
+ * 使い続けているセッションを一定の日数で必ず打ち切る決まりがあり、
+ * そのときトークンの期限はまだ先にある。
+ */
+describe('サーバーが言ってきた理由', () => {
+  const base = {
+    pathname: '/items',
+    api: '/api/v1/items',
+    redirected: true,
+    now: new Date('2026-08-27T09:00:00Z'),
+  }
+
+  it('理由を残す', () => {
+    const record = buildSessionEndRecord({
+      ...base,
+      tokenExpiry: String(Math.floor(new Date('2026-09-01T09:00:00Z').getTime() / 1000)),
+      reason: 'session_expired',
+    })
+
+    // 期限はまだ先。理由が無いと、これが不具合の記録と見分けられない
+    expect(record.expired).toBe(false)
+    expect(record.reason).toBe('session_expired')
+  })
+
+  it('理由が無ければ null', () => {
+    expect(buildSessionEndRecord({ ...base, tokenExpiry: null }).reason).toBeNull()
+  })
+})
