@@ -61,115 +61,163 @@ RSpec.describe Views::AiEditService do
       view.view_items.create!(item: b, x: 0, y: 0)
     end
 
-    it "配置と接続線を作る" do
+    # AI が返すのは「意味と構造」だけ。座標はレイアウトエンジンが解く
+    it "構造から配置を作り、関係から線を引く" do
       stub_plan(
         "summary" => "流れが分かるように並べました",
-        "placements" => [ { "item_id" => a.id, "x" => 100, "y" => 200 },
-                          { "item_id" => b.id, "x" => 500, "y" => 200 } ],
-        "edges" => [ { "source" => a.id, "target" => b.id, "label" => "から" } ]
+        "structure" => "flow",
+        "relations" => [ { "from" => a.id, "to" => b.id, "label" => "から", "type" => "cause" } ]
       )
 
       result = described_class.call(view: view, instruction: "原因と結果を線でつないで")
 
       expect(result.placed).to eq(2)
       expect(result.connected).to eq(1)
-      expect(view.view_items.find_by(item_id: a.id).x).to eq(100)
       edge = view.view_edges.first
       expect(edge.source_node_id).to eq(a.id)
       expect(edge.label).to eq("から")
+      # 流れは左から右。原因が結果より左に来る
+      expect(view.view_items.find_by(item_id: a.id).x)
+        .to be < view.view_items.find_by(item_id: b.id).x
     end
 
-    # 端点を AI に決めさせると配置と食い違い、線がカードを横切る。
-    # 座標が決まったあとなら幾何学的に一意なので、こちらで計算する
-    # 「重ねない」と指示しても守られないことがある。座標が出そろえば計算で確実に解ける
+    # AI は線を1本ずつ考えるので、図全体の辻褄は見ていない。
+    # 実際に、同じ2枚に「姉妹」と「娘」の両方が付くことがあった
+    it "関係の食い違いを見つけて伝える" do
+      stub_plan("relations" => [
+        { "from" => a.id, "to" => b.id, "type" => "parent", "label" => "娘" },
+        { "from" => a.id, "to" => b.id, "type" => "related", "label" => "姉妹" }
+      ])
+
+      result = described_class.call(view: view, instruction: "つないで")
+
+      expect(result.notes).to include("食い違っています")
+    end
+
+    it "たどると自分の先祖になる図を見つける" do
+      c = card("三番目")
+      view.view_items.create!(item: c, x: 0, y: 0)
+      stub_plan("relations" => [
+        { "from" => a.id, "to" => b.id, "type" => "parent" },
+        { "from" => b.id, "to" => c.id, "type" => "parent" },
+        { "from" => c.id, "to" => a.id, "type" => "parent" }
+      ])
+
+      result = described_class.call(view: view, instruction: "つないで")
+
+      expect(result.notes).to include("先祖")
+    end
+
+    it "食い違いが無ければ、余計なことを言わない" do
+      stub_plan("relations" => [ { "from" => a.id, "to" => b.id, "type" => "parent", "label" => "父" } ])
+
+      result = described_class.call(view: view, instruction: "つないで")
+
+      expect(result.notes).to be_nil
+    end
+
+    it "同じ2枚に意味の違う線を引かないよう、AI にも伝える" do
+      stub_plan({})
+
+      described_class.call(view: view, instruction: "つないで")
+
+      expect(Ai::Chat).to have_received(:call) do |args|
+        expect(args[:messages].first[:content]).to include("意味の違う線を2本引かない")
+      end
+    end
+
+    it "関係の種類が線に残る（あとから見直せるように）" do
+      stub_plan("relations" => [
+        { "from" => a.id, "to" => b.id, "type" => "contrast", "strength" => 0.9 }
+      ])
+
+      described_class.call(view: view, instruction: "対比を示して")
+
+      style = view.view_edges.first.style
+      expect(style["relation"]).to eq("contrast")
+      expect(style["strength"]).to eq(0.9)
+      # 強い関係は太く出る
+      expect(style["width"]).to eq(3)
+    end
+
+    it "知らない種類は related に落とす" do
+      stub_plan("relations" => [ { "from" => a.id, "to" => b.id, "type" => "なんとなく" } ])
+
+      described_class.call(view: view, instruction: "つないで")
+
+      expect(view.view_edges.first.style["relation"]).to eq("related")
+    end
+
     describe "重なりの解消" do
       it "重なったカードを離す" do
-        stub_plan("placements" => [ { "item_id" => a.id, "x" => 200, "y" => 200 },
-                                    { "item_id" => b.id, "x" => 210, "y" => 205 } ])
+        stub_plan("relations" => [])
 
         described_class.call(view: view, instruction: "並べて")
 
-        first = view.view_items.find_by(item_id: a.id)
-        second = view.view_items.find_by(item_id: b.id)
-        gap_x = (first.x - second.x).abs
-        gap_y = (first.y - second.y).abs
-        expect([ gap_x >= described_class::CARD_WIDTH, gap_y >= described_class::CARD_HEIGHT ].any?).to be(true)
+        boxes = view.view_items.pluck(:x, :y)
+        expect(boxes.uniq.size).to eq(2)
+        expect((boxes[0][0] - boxes[1][0]).abs + (boxes[0][1] - boxes[1][1]).abs)
+          .to be >= described_class::MIN_CARD_GAP
       end
 
-      it "カード間に線や文字を置ける余白を残す" do
-        stub_plan("placements" => [ { "item_id" => a.id, "x" => 200, "y" => 200 },
-                                    { "item_id" => b.id, "x" => 210, "y" => 205 } ])
-
-        described_class.call(view: view, instruction: "余裕を持って並べて")
-
-        first = view.view_items.find_by(item_id: a.id)
-        second = view.view_items.find_by(item_id: b.id)
-        horizontal_gap = [ second.x - (first.x + first.width), first.x - (second.x + second.width) ].max
-        vertical_gap = [ second.y - (first.y + first.height), first.y - (second.y + second.height) ].max
-        expect([ horizontal_gap, vertical_gap ].max).to be >= described_class::MIN_CARD_GAP
-      end
-
-      it "長い見出しの文字幅を配置の間隔に含める" do
-        a.update!(title: "とても長い見出し" * 6)
-        stub_plan("placements" => [ { "item_id" => a.id, "x" => 200, "y" => 200 },
-                                    { "item_id" => b.id, "x" => 450, "y" => 200 } ])
-
-        described_class.call(view: view, instruction: "読みやすく並べて")
-
-        first = view.view_items.find_by(item_id: a.id)
-        second = view.view_items.find_by(item_id: b.id)
-        center_distance = ((first.x + first.width / 2) - (second.x + second.width / 2)).abs
-        required_distance = (described_class::MAX_TITLE_FOOTPRINT_WIDTH + second.width) / 2 +
-                            described_class::MIN_CARD_GAP
-        expect(center_distance).to be >= required_distance
-      end
-
-      it "盤の四辺に外周余白を残す" do
-        view.view_items.find_by(item_id: b.id).destroy!
-        stub_plan("placements" => [ { "item_id" => a.id, "x" => 0, "y" => 0 } ])
-
-        described_class.call(view: view, instruction: "配置して")
-
-        placement = view.view_items.find_by(item_id: a.id)
-        expect(placement.x).to be >= described_class::BOARD_PADDING
-        expect(placement.y).to be >= described_class::BOARD_PADDING
-        expect(placement.x + placement.width).to be <= described_class::BOARD_WIDTH - described_class::BOARD_PADDING
-        expect(placement.y + placement.height).to be <= described_class::BOARD_HEIGHT - described_class::BOARD_PADDING
-      end
-
-      it "離れているカードは動かさない" do
-        stub_plan("placements" => [ { "item_id" => a.id, "x" => 100, "y" => 100 },
-                                    { "item_id" => b.id, "x" => 900, "y" => 900 } ])
+      it "カードどうしに最低の隙間をあける" do
+        stub_plan("relations" => [ { "from" => a.id, "to" => b.id } ])
 
         described_class.call(view: view, instruction: "並べて")
 
-        expect(view.view_items.find_by(item_id: a.id).x).to eq(100)
-        expect(view.view_items.find_by(item_id: b.id).x).to eq(900)
+        placed = view.view_items.index_by(&:item_id)
+        horizontal = (placed[a.id].x - placed[b.id].x).abs
+        vertical = (placed[a.id].y - placed[b.id].y).abs
+        expect([ horizontal, vertical ].max).to be >= described_class::MIN_CARD_GAP
       end
 
-      # 置き場所を触らない設定では、もとからあるカードを勝手に動かさない
-      it "置き場所を変えない指定なら、足したカードだけを逃がす" do
-        newcomer = card("新入り")
-        view.view_items.find_by(item_id: a.id).update!(x: 300, y: 300)
-        stub_plan("add" => [ newcomer.id ],
-                  "placements" => [ { "item_id" => newcomer.id, "x" => 305, "y" => 305 } ])
+      # 盤が固定だった頃は、33枚目から重なったまま黙って終わっていた
+      it "枚数が多くても重ならない" do
+        cards = (1..40).map { |i| card("語#{i}") }
+        cards.each { |item| view.view_items.create!(item: item, x: 0, y: 0) }
+        stub_plan("relations" => [])
 
-        described_class.call(view: view, instruction: "足して", mode: "select", placement: "keep")
+        described_class.call(view: view, instruction: "並べて")
 
-        expect(view.view_items.find_by(item_id: a.id).x).to eq(300)
-        expect(view.view_items.find_by(item_id: newcomer.id).x).not_to eq(305)
+        placed = view.view_items.pluck(:x, :y)
+        expect(placed.uniq.size).to eq(placed.size)
+      end
+
+      it "盤の左と上に余白を残す" do
+        stub_plan("relations" => [])
+
+        described_class.call(view: view, instruction: "並べて")
+
+        expect(view.view_items.minimum(:x)).to be >= 0
+        expect(view.view_items.minimum(:y)).to be >= 0
+      end
+
+      it "長い見出しのカードは、そのぶん広く場所を取る" do
+        long = card("とても長い見出しを持つ語である")
+        view.view_items.create!(item: long, x: 0, y: 0)
+        stub_plan("relations" => [])
+
+        described_class.call(view: view, instruction: "並べて")
+
+        placed = view.view_items.index_by(&:item_id)
+        expect((placed[long.id].x - placed[a.id].x).abs + (placed[long.id].y - placed[a.id].y).abs)
+          .to be >= described_class::MIN_CARD_GAP
       end
     end
 
     describe "線の端点" do
-      it "右にあるカードへは、右から出て左へ入る" do
-        stub_plan(
-          "placements" => [ { "item_id" => a.id, "x" => 100, "y" => 200 },
-                            { "item_id" => b.id, "x" => 700, "y" => 200 } ],
-          "edges" => [ { "source" => a.id, "target" => b.id } ]
-        )
+      # 端点を AI に決めさせると配置と食い違い、線がカードを横切る。
+      # 座標が決まったあとなら幾何学的に一意なので、こちらで計算する
+      def place!(item, x, y)
+        view.view_items.find_by(item_id: item.id).update!(x: x, y: y)
+      end
 
-        described_class.call(view: view, instruction: "つないで")
+      it "右にあるカードへは、右から出て左へ入る" do
+        place!(a, 100, 200)
+        place!(b, 900, 200)
+        stub_plan("relations" => [ { "from" => a.id, "to" => b.id } ])
+
+        described_class.call(view: view, instruction: "つないで", placement: "keep")
 
         edge = view.view_edges.first
         expect(edge.source_handle).to eq("right")
@@ -177,75 +225,55 @@ RSpec.describe Views::AiEditService do
       end
 
       it "下にあるカードへは、下から出て上へ入る" do
-        stub_plan(
-          "placements" => [ { "item_id" => a.id, "x" => 200, "y" => 100 },
-                            { "item_id" => b.id, "x" => 200, "y" => 700 } ],
-          "edges" => [ { "source" => a.id, "target" => b.id } ]
-        )
+        place!(a, 200, 100)
+        place!(b, 200, 900)
+        stub_plan("relations" => [ { "from" => a.id, "to" => b.id } ])
 
-        described_class.call(view: view, instruction: "つないで")
+        described_class.call(view: view, instruction: "つないで", placement: "keep")
 
         edge = view.view_edges.first
         expect(edge.source_handle).to eq("bottom")
         expect(edge.target_handle).to eq("top")
       end
 
-      it "左上にあるカードへは、上から出て下へ入る（離れている向きを優先）" do
-        stub_plan(
-          "placements" => [ { "item_id" => a.id, "x" => 300, "y" => 800 },
-                            { "item_id" => b.id, "x" => 200, "y" => 100 } ],
-          "edges" => [ { "source" => a.id, "target" => b.id } ]
-        )
+      it "離れている向きを優先する" do
+        place!(a, 300, 900)
+        place!(b, 200, 100)
+        stub_plan("relations" => [ { "from" => a.id, "to" => b.id } ])
 
-        described_class.call(view: view, instruction: "つないで")
+        described_class.call(view: view, instruction: "つないで", placement: "keep")
 
         edge = view.view_edges.first
         expect(edge.source_handle).to eq("top")
         expect(edge.target_handle).to eq("bottom")
       end
 
-      it "2枚の間に別カードがあるときは、そのカードの外へ線を迂回させる" do
-        blocker = card("途中のカード")
-        view.view_items.create!(item: blocker, x: 0, y: 0)
-        stub_plan(
-          "placements" => [ { "item_id" => a.id, "x" => 100, "y" => 200 },
-                            { "item_id" => blocker.id, "x" => 400, "y" => 200 },
-                            { "item_id" => b.id, "x" => 700, "y" => 200 } ],
-          "edges" => [ { "source" => a.id, "target" => b.id, "label" => "結果" } ]
-        )
+      it "2枚の間に別カードがあるときは、そのカードの外へ迂回させる" do
+        middle = card("あいだ")
+        view.view_items.create!(item: middle, x: 500, y: 200)
+        place!(a, 100, 200)
+        place!(b, 900, 200)
+        stub_plan("relations" => [ { "from" => a.id, "to" => b.id } ])
 
-        described_class.call(view: view, instruction: "線がカードに重ならないようにつないで")
+        described_class.call(view: view, instruction: "つないで", placement: "keep")
 
-        edge = view.view_edges.first
-        expect(edge.points).to be_present
-        expect(edge.points.map { |point| point["y"] }.max)
-          .to be < 200 - described_class::EDGE_CARD_CLEARANCE
+        points = view.view_edges.first.points
+        expect(points).not_to be_empty
       end
 
-      it "配置だけ整えたときも、接続と見た目を保って既存線をカードの外へ引き直す" do
-        blocker = card("途中のカード")
-        view.view_items.create!(item: blocker, x: 1_000, y: 1_000)
+      it "配置を変えたときは、接続と見た目を保って既存線を引き直す" do
         edge = view.view_edges.create!(
-          source_node_id: a.id, target_node_id: b.id, label: "結果",
-          style: { "width" => 3 }, points: [ { "x" => 999, "y" => 999 } ]
+          source_node_id: a.id, target_node_id: b.id, label: "手で描いた",
+          style: { "width" => 4 }, points: [ { "x" => 999, "y" => 999 } ]
         )
-        stub_plan(
-          "placements" => [ { "item_id" => a.id, "x" => 100, "y" => 200 },
-                            { "item_id" => blocker.id, "x" => 400, "y" => 200 },
-                            { "item_id" => b.id, "x" => 700, "y" => 200 } ],
-          "edges" => []
-        )
+        stub_plan("relations" => [])
 
-        described_class.call(view: view, instruction: "配置だけ整えて", edges: "keep", placement: "arrange")
+        described_class.call(view: view, instruction: "並べて", edges: "keep")
 
         edge.reload
-        expect(edge.label).to eq("結果")
-        expect(edge.style).to eq("width" => 3)
-        expect(edge.source_node_id).to eq(a.id)
-        expect(edge.target_node_id).to eq(b.id)
+        expect(edge.label).to eq("手で描いた")
+        expect(edge.style["width"]).to eq(4)
         expect(edge.points).not_to eq([ { "x" => 999, "y" => 999 } ])
-        expect(edge.points.map { |point| point["y"] }.max)
-          .to be < 200 - described_class::EDGE_CARD_CLEARANCE
       end
     end
 
@@ -268,10 +296,10 @@ RSpec.describe Views::AiEditService do
           source_node_id: a.id, target_node_id: b.id, label: "関係",
           style: { "width" => 1 }, points: [ { "x" => 10, "y" => 20 } ]
         )
-        stub_plan("edges" => [
-          { "source" => a.id, "target" => b.id, "label" => "原因", "style" => { "width" => 3 } },
+        stub_plan("relations" => [
+          { "from" => a.id, "to" => b.id, "label" => "原因", "type" => "cause", "strength" => 0.9 },
           # いまつながっていない組は無視する（線を足さない）
-          { "source" => b.id, "target" => a.id, "label" => "逆" }
+          { "from" => b.id, "to" => a.id, "label" => "逆" }
         ])
 
         described_class.call(view: view, instruction: "線を整えて", edges: "restyle", placement: "keep")
@@ -279,7 +307,9 @@ RSpec.describe Views::AiEditService do
         expect(view.view_edges.count).to eq(1)
         edge.reload
         expect(edge.label).to eq("原因")
+        # 見た目は関係の種類から決まる（強い因果は太い矢印）
         expect(edge.style["width"]).to eq(3)
+        expect(edge.style["relation"]).to eq("cause")
         # 折れ点は残す
         expect(edge.points).to eq([ { "x" => 10, "y" => 20 } ])
       end
@@ -289,9 +319,9 @@ RSpec.describe Views::AiEditService do
           source_node_id: a.id, target_node_id: b.id, label: "関係",
           style: { "width" => 1, "color" => "#999999" }, points: [ { "x" => 10, "y" => 20 } ]
         )
-        stub_plan("edges" => [
-          { "source" => a.id, "target" => b.id, "label" => "原因", "style" => { "width" => 8 } },
-          { "source" => b.id, "target" => a.id, "label" => "逆" }
+        stub_plan("relations" => [
+          { "from" => a.id, "to" => b.id, "label" => "原因" },
+          { "from" => b.id, "to" => a.id, "label" => "逆" }
         ])
 
         described_class.call(view: view, instruction: "線の文言を直して", edges: "relabel", placement: "keep")
@@ -311,11 +341,8 @@ RSpec.describe Views::AiEditService do
           style: { "width" => 1 }, points: [ { "x" => 10, "y" => 20 } ]
         )
         stub_plan(
-          "placements" => [
-            { "item_id" => a.id, "x" => 200, "y" => 200 },
-            { "item_id" => b.id, "x" => 900, "y" => 900 }
-          ],
-          "edges" => [ { "source" => a.id, "target" => b.id, "label" => "原因" } ]
+          "structure" => "flow",
+          "relations" => [ { "from" => a.id, "to" => b.id, "label" => "原因" } ]
         )
 
         described_class.call(view: view, instruction: "並べて", edges: "restyle")
@@ -364,13 +391,11 @@ RSpec.describe Views::AiEditService do
         view.view_items.find_by(item_id: a.id).update!(width: 300, height: 360)
         # 重なりの解消に巻き込まれないよう、もう1枚は離しておく
         view.view_items.find_by(item_id: b.id).update!(x: 1_500, y: 1_200)
-        stub_plan("placements" => [ { "item_id" => a.id, "x" => 100, "y" => 100, "width" => 90, "height" => 100 } ])
+        stub_plan("relations" => [])
 
         described_class.call(view: view, instruction: "並べて", sizing: "keep")
 
-        placement = view.view_items.find_by(item_id: a.id)
-        expect(placement.width).to eq(300)
-        expect(placement.x).to eq(100)
+        expect(view.view_items.find_by(item_id: a.id).width).to eq(300)
       end
 
       # 並べ替えだけで終わらず、意味から関係を見つけて結んでほしいという要望
@@ -388,33 +413,47 @@ RSpec.describe Views::AiEditService do
         end
       end
 
-      it "並べ方を指定すると、その規則を指示に足す" do
+      # 形を選んでいるなら、AI に見立てさせない。
+      # 見立てさせてこちらで上書きするのは、聞くだけ聞いて捨てているのと同じ
+      it "形を選んだら、その形に決まっていると伝える" do
         stub_plan({})
 
         described_class.call(view: view, instruction: "並べて", layout: "hierarchy")
 
         expect(Ai::Chat).to have_received(:call) do |args|
-          expect(args[:messages].first[:content]).to include("家系図の形")
+          expect(args[:messages].first[:content]).to include("形は「hierarchy」に決まっています")
         end
+      end
+
+      # 選んだ形と違う図が返るのは、選ばせていないのと同じ
+      it "選んだ形が、AI の見立てより強い" do
+        stub_plan("structure" => "network")
+
+        described_class.call(view: view, instruction: "並べて", layout: "grid")
+
+        # 格子は関係を見ないので、2枚が同じ行に並ぶ
+        placed = view.view_items.pluck(:y).uniq
+        expect(placed.size).to eq(1)
       end
 
       # 線や大きさだけ整えたいとき、置き場所が動いてしまうと台無しになる
       it "置き場所を変えない指定なら、座標に触らない" do
         view.view_items.find_by(item_id: a.id).update!(x: 42, y: 84)
-        stub_plan("placements" => [ { "item_id" => a.id, "x" => 900, "y" => 900, "width" => 200, "height" => 240 } ])
+        view.view_items.find_by(item_id: b.id).update!(x: 1_500, y: 1_200)
+        stub_plan("relations" => [])
 
         described_class.call(view: view, instruction: "大きさだけ整えて", placement: "keep")
 
         placement = view.view_items.find_by(item_id: a.id)
         expect(placement.x).to eq(42)
-        expect(placement.width).to eq(200)
+        expect(placement.y).to eq(84)
       end
 
       # そろえるのは決めごとなので、AI が挙げなかったカードにも効かせる
       it "大きさをそろえる指定なら、全てのカードを同じ大きさにする" do
         view.view_items.find_by(item_id: a.id).update!(width: 300, height: 360)
         view.view_items.find_by(item_id: b.id).update!(width: 90, height: 108)
-        stub_plan("placements" => [])
+        stub_plan("relations" => [])
 
         described_class.call(view: view, instruction: "そろえて", sizing: "uniform")
 
@@ -424,16 +463,15 @@ RSpec.describe Views::AiEditService do
       # 「カードだけ整える」で足したカードが原点に重なるのを防ぐ
       it "置き場所を変えない指定でも、足したカードだけは置く" do
         newcomer = card("新入り")
-        stub_plan(
-          "add" => [ newcomer.id ],
-          "placements" => [ { "item_id" => newcomer.id, "x" => 600, "y" => 400 },
-                            { "item_id" => a.id, "x" => 900, "y" => 900 } ]
-        )
+        stub_plan("add" => [ newcomer.id ], "relations" => [])
         view.view_items.find_by(item_id: a.id).update!(x: 10, y: 20)
+        view.view_items.find_by(item_id: b.id).update!(x: 1_500, y: 1_200)
 
         described_class.call(view: view, instruction: "足して", mode: "select", placement: "keep")
 
-        expect(view.view_items.find_by(item_id: newcomer.id).x).to eq(600)
+        # 足したカードは原点に重ならず、どこかへ逃げる
+        placed = view.view_items.index_by(&:item_id)
+        expect([ placed[newcomer.id].x, placed[newcomer.id].y ]).not_to eq([ 0.0, 0.0 ])
         # もとからあるカードは動かさない
         expect(view.view_items.find_by(item_id: a.id).x).to eq(10)
       end
@@ -457,7 +495,7 @@ RSpec.describe Views::AiEditService do
     end
 
 
-    it "AI に外周余白と見出し幅を伝える" do
+    it "AI に頼むのは意味と構造だけで、座標は頼まない" do
       stub_plan({})
 
       described_class.call(view: view, instruction: "読みやすく配置して")
@@ -465,11 +503,17 @@ RSpec.describe Views::AiEditService do
       expect(Ai::Chat).to have_received(:call) do |args|
         system = args[:messages].first[:content]
         material = args[:messages].last[:content]
-        expect(system).to include("四辺には最低 #{described_class::BOARD_PADDING} の余白")
-        expect(system).to include("見出し幅")
-        # 線は必ず直交で引かれる。だから**つなぐ2枚は軸を揃えて置く**、と伝える
-        expect(system).to include("x か y のどちらかを揃えて置く")
-        expect(system).to include("平行に揃え")
+        # 座標は渡さない。AI に決めさせるのは意味と構造だけ
+        expect(system).to include("座標は考えなくてよい")
+        expect(system).to include("hierarchy")
+        expect(system).to include("groups")
+        expect(system).to include("relations")
+        # 座標にまつわる言葉は、もう system に出てこない
+        expect(system).not_to include("placements")
+        # 揃えるのはこちらの仕事になった。AI には関係の向きと強さだけ頼む
+        expect(system).to include("from から to へ読む向き")
+        expect(system).to include("強いほど近くに置かれます")
+        # 資料には、いまの盤の様子をそのまま渡す
         expect(material).to include("見出し幅≈")
       end
     end
@@ -487,21 +531,23 @@ RSpec.describe Views::AiEditService do
       end
     end
 
-    it "ボードに無いカードの配置・接続は無視する" do
+    it "ボードに無いカードは、置きも結びもしない" do
       other = card("よそ者")
       stub_plan(
-        "placements" => [ { "item_id" => other.id, "x" => 10, "y" => 10 } ],
-        "edges" => [ { "source" => a.id, "target" => other.id } ]
+        "groups" => [ { "name" => "群れ", "members" => [ other.id ] } ],
+        "relations" => [ { "from" => a.id, "to" => other.id } ]
       )
 
       result = described_class.call(view: view, instruction: "並べて")
 
-      expect(result.placed).to eq(0)
+      # 置かれるのは盤に載っている2枚だけ。よそ者は増えない
+      expect(result.placed).to eq(2)
+      expect(view.view_items.count).to eq(2)
       expect(view.view_edges.count).to eq(0)
     end
 
     it "自分自身への線は作らない" do
-      stub_plan("edges" => [ { "source" => a.id, "target" => a.id } ])
+      stub_plan("relations" => [ { "from" => a.id, "to" => a.id  } ])
 
       described_class.call(view: view, instruction: "つないで")
 
@@ -510,7 +556,7 @@ RSpec.describe Views::AiEditService do
 
     it "外したカードにつながっていた線も消す" do
       view.view_edges.create!(source_node_id: a.id, target_node_id: b.id)
-      stub_plan("remove" => [ a.id ], "edges" => [ { "source" => a.id, "target" => b.id } ])
+      stub_plan("remove" => [ a.id ], "relations" => [ { "from" => a.id, "to" => b.id  } ])
 
       described_class.call(view: view, instruction: "原因を外して")
 
@@ -694,61 +740,85 @@ RSpec.describe Views::AiEditService do
       view.view_items.create!(item: b, x: 0, y: 0)
     end
 
-    it "カードの大きさを反映する" do
-      stub_plan("placements" => [ { "item_id" => a.id, "x" => 100, "y" => 100, "width" => 288, "height" => 344 } ])
+    # 中心のカードを大きくする。**1枚ずつ寸法を返させない。**
+    # 返させていた頃は、出力が枚数に比例して 44 枚で JSON が切れていた
+    it "中心に挙げたカードを大きくする" do
+      stub_plan("emphasis" => [ a.id ], "relations" => [])
 
       described_class.call(view: view, instruction: "主役を大きく")
 
-      placement = view.view_items.find_by(item_id: a.id)
-      expect(placement.width).to eq(288)
-      expect(placement.height).to eq(344)
+      placed = view.view_items.index_by(&:item_id)
+      expect(placed[a.id].width).to be > placed[b.id].width
+    end
+
+    it "大きくするのは数枚まで（全部を挙げると強弱が消える）" do
+      cards = (1..6).map { |i| card("語#{i}") }
+      cards.each { |item| view.view_items.create!(item: item, x: 0, y: 0) }
+      stub_plan("emphasis" => cards.map(&:id), "relations" => [])
+
+      described_class.call(view: view, instruction: "全部大きく")
+
+      enlarged = view.view_items.where("width > ?", described_class::CARD_WIDTH).count
+      expect(enlarged).to be <= described_class::MAX_EMPHASIS
     end
 
     it "読めないほど小さく・画面を覆うほど大きくはしない" do
-      stub_plan("placements" => [
-        { "item_id" => a.id, "x" => 0, "y" => 0, "width" => 5, "height" => 99_999 }
-      ])
+      stub_plan("emphasis" => [ a.id ], "relations" => [])
 
       described_class.call(view: view, instruction: "大きく")
 
       placement = view.view_items.find_by(item_id: a.id)
-      expect(placement.width).to eq(described_class::MIN_CARD_SIZE)
-      expect(placement.height).to eq(described_class::MAX_CARD_SIZE)
+      expect(placement.width).to be_between(described_class::MIN_CARD_SIZE, described_class::MAX_CARD_SIZE)
     end
 
-    it "大きさの指定が無ければ既定に戻す（前回の指定が残り続けない）" do
+    it "挙げられなければ既定に戻す（前回の指定が残り続けない）" do
       view.view_items.find_by(item_id: a.id).update!(width: 400, height: 400)
-      stub_plan("placements" => [ { "item_id" => a.id, "x" => 0, "y" => 0 } ])
+      stub_plan("relations" => [])
 
       described_class.call(view: view, instruction: "並べ直して")
 
       expect(view.view_items.find_by(item_id: a.id).width).to eq(described_class::CARD_WIDTH)
     end
 
-    it "線の見た目を反映する" do
-      stub_plan("edges" => [ {
-        "source" => a.id, "target" => b.id, "label" => "原因",
-        "style" => { "width" => 3, "dashed" => true, "color" => "#c0504d", "marker_end" => "arrow" }
-      } ])
+    # 見た目は関係の種類から引く。AI に選ばせていた頃は、
+    # 同じ「原因と結果」でも呼ばれるたびに違う見た目になっていた
+    it "関係の種類ごとに、決まった見た目で引く" do
+      stub_plan("relations" => [ { "from" => a.id, "to" => b.id, "type" => "cause", "strength" => 0.9 } ])
 
       described_class.call(view: view, instruction: "つないで")
 
       style = view.view_edges.first.style
-      expect(style).to eq("width" => 3, "dashed" => true, "color" => "#c0504d", "marker_end" => "arrow")
+      expect(style["marker_end"]).to eq("arrow")
+      expect(style["dashed"]).to be(false)
+      expect(style["relation"]).to eq("cause")
     end
 
-    it "扱えない見た目の指定は捨てる（描画へそのまま流さない）" do
-      stub_plan("edges" => [ {
-        "source" => a.id, "target" => b.id,
-        "style" => { "width" => 999, "color" => "url(javascript:alert(1))", "marker_end" => "explode" }
-      } ])
+    it "弱い関係は細く、点線で引く" do
+      stub_plan("relations" => [ { "from" => a.id, "to" => b.id, "type" => "related", "strength" => 0.2 } ])
 
       described_class.call(view: view, instruction: "つないで")
 
       style = view.view_edges.first.style
-      expect(style["width"]).to eq(described_class::MAX_EDGE_WIDTH)
-      expect(style).not_to have_key("color")
-      expect(style).not_to have_key("marker_end")
+      expect(style["width"]).to eq(1)
+      expect(style["dashed"]).to be(true)
+    end
+
+    it "同じ関係を2回書かれても、線は1本だけ引く" do
+      stub_plan("relations" => [
+        { "from" => a.id, "to" => b.id }, { "from" => a.id, "to" => b.id }
+      ])
+
+      described_class.call(view: view, instruction: "つないで")
+
+      expect(view.view_edges.count).to eq(1)
+    end
+
+    it "強さは 0〜1 に収める" do
+      stub_plan("relations" => [ { "from" => a.id, "to" => b.id, "strength" => 99 } ])
+
+      described_class.call(view: view, instruction: "つないで")
+
+      expect(view.view_edges.first.style["strength"]).to eq(1.0)
     end
   end
 

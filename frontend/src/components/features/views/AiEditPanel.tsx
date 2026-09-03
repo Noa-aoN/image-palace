@@ -11,6 +11,8 @@ import { aiEditView, createCardsOnView, proposeCards, redoView, undoView } from 
 import type {
   AiEditEdgeMode,
   AiEditLayout,
+  AiEditDirection,
+  AiEditChangeScale,
   AiEditMode,
   AiEditPlacementMode,
   AiEditSizeMode,
@@ -22,12 +24,41 @@ import type {
 } from '@/types/view'
 
 // 並べ方の指定。おまかせ以外を選ぶと、その形になるよう AI へ規則を足す
-const LAYOUTS: { value: AiEditLayout; label: string }[] = [
-  { value: 'auto', label: 'おまかせ' },
-  { value: 'hierarchy', label: '階層（上→下）' },
-  { value: 'radial', label: '放射（中心から）' },
-  { value: 'flow', label: '流れ（左→右）' },
-  { value: 'grid', label: '格子' },
+/**
+ * 図の形。**説明を添える。**
+ *
+ * 名前だけでは、階層と放射とマインドマップの違いが読み取れない。
+ * どんな図になるのかが分からないまま選ばせると、押して確かめるしかなくなる。
+ */
+const LAYOUTS: { value: AiEditLayout; label: string; hint: string }[] = [
+  { value: 'auto', label: 'おまかせ', hint: '関係の張られ方から、合う形を選びます' },
+  { value: 'hierarchy', label: '階層図', hint: '根から枝分かれ。分類・系統・組織' },
+  { value: 'flow', label: '流れ図', hint: '順序のあるものを一列に。手順・時系列・因果' },
+  { value: 'mindmap', label: 'マインドマップ', hint: '中心から左右へ。発想を広げる' },
+  { value: 'radial', label: '放射図', hint: '中心から360度へ。中心からの遠さに意味がある' },
+  { value: 'network', label: '関係図', hint: '上下が無い網の目。人物の相関など' },
+  { value: 'cluster', label: 'グループ図', hint: 'まとまりごとに島を作る' },
+  { value: 'grid', label: '格子', hint: '並べるだけ' },
+]
+
+/**
+ * 流れの向き。**種別とは別に選べる。**
+ *
+ * 「階層＝上から下」「流れ＝左から右」と結びついていたが、
+ * 組織図を横に伸ばしたいことも、手順を縦に並べたいこともある。
+ * 向きだけ変えたいのに種別を選び直させるのは、別のことを選ばせている
+ */
+const DIRECTIONS: { value: AiEditDirection; label: string; hint: string }[] = [
+  { value: 'auto', label: 'おまかせ', hint: '階層図は上から下、流れ図は左から右になります' },
+  { value: 'down', label: '上から下', hint: '縦に伸びます' },
+  { value: 'right', label: '左から右', hint: '横に伸びます' },
+]
+
+/** どれだけ動かしてよいか。「いまの形を活かす」をここへ吸収する */
+const CHANGE_SCALES: { value: AiEditChangeScale; label: string; hint: string }[] = [
+  { value: 'small', label: '控えめ', hint: 'いまの形をできるだけ残します' },
+  { value: 'medium', label: 'ふつう', hint: '読みやすさといまの形の釣り合いを取ります' },
+  { value: 'large', label: '大胆に', hint: '読みやすさを優先して並べ直します' },
 ]
 
 // どこまで整えるか。ジャンル別に実行できるようにし、選ばなかったものは触らない。
@@ -125,6 +156,8 @@ export function AiEditPanel({
   const [edgeMode, setEdgeMode] = useState<AiEditEdgeMode>('rebuild')
   const [sizeMode, setSizeMode] = useState<AiEditSizeMode>('ai')
   const [placementMode, setPlacementMode] = useState<AiEditPlacementMode>('arrange')
+  const [direction, setDirection] = useState<AiEditDirection>('auto')
+  const [changeScale, setChangeScale] = useState<AiEditChangeScale>('medium')
   const [createdCount, setCreatedCount] = useState<number | null>(null)
   const [arranged, setArranged] = useState(false)
 
@@ -205,6 +238,8 @@ export function AiEditPanel({
   const optionsFor = (scope: EditScope) => ({
     layout,
     placement: scope === 'all' || scope === 'layout' ? placementMode : ('keep' as const),
+    direction: scope === 'all' || scope === 'layout' ? direction : undefined,
+    change_scale: scope === 'all' || scope === 'layout' ? changeScale : undefined,
     edges: scope === 'edge_labels' ? ('relabel' as const) : scope === 'all' || scope === 'edges' ? edgeMode : ('keep' as const),
     sizing: scope === 'all' || scope === 'cards' ? sizeMode : ('keep' as const),
   })
@@ -449,8 +484,8 @@ export function AiEditPanel({
               >
                 <Choice
                   options={[
-                    ...LAYOUTS.map((option) => ({ value: option.value, label: option.label })),
-                    { value: 'keep', label: '触らない' },
+                    ...LAYOUTS,
+                    { value: 'keep', label: '触らない', hint: 'いまの置き場所をそのままにします' },
                   ]}
                   value={placementMode === 'keep' ? 'keep' : layout}
                   onChange={(value) => {
@@ -463,6 +498,31 @@ export function AiEditPanel({
                   }}
                   disabled={busy !== null}
                 />
+
+                {/* 向きと変更量は、**置き場所を触るときだけ**意味がある。
+                    触らない設定のときに出すと、押しても何も起きない設定が並ぶ */}
+                {placementMode !== 'keep' && (
+                  <>
+                    <div className="mt-3">
+                      <Choice
+                        label="流れの向き"
+                        options={DIRECTIONS}
+                        value={direction}
+                        onChange={(value) => setDirection(value as AiEditDirection)}
+                        disabled={busy !== null}
+                      />
+                    </div>
+                    <div className="mt-3">
+                      <Choice
+                        label="変更量"
+                        options={CHANGE_SCALES}
+                        value={changeScale}
+                        onChange={(value) => setChangeScale(value as AiEditChangeScale)}
+                        disabled={busy !== null}
+                      />
+                    </div>
+                  </>
+                )}
               </Section>
             </>
           )}
@@ -619,10 +679,25 @@ export function AiEditPanel({
                 追加 {result.added} / 取り外し {result.removed} / 配置 {result.placed}
                 {viewType === 'freeboard' && <> / 線 {result.connected}</>}
               </p>
+              {/*
+                気づいたこと。**1行ずつ立てて出す。**
+
+                中身は3種類が混ざっている（AI が読んだ内容の誤り／図の辻褄の
+                食い違い／重なりや交差といった崩れ）。つなげて1文にすると、
+                どれが何件あるのかが読み取れない。
+              */}
               {result.notes && (
-                <p className="mt-2 border-t border-border/60 pt-2 text-xs leading-relaxed text-muted-foreground">
-                  AIからの補足: {result.notes}
-                </p>
+                <div className="mt-2 border-t border-border/60 pt-2">
+                  <p className="mb-1 text-xs font-medium text-muted-foreground">気づいたこと</p>
+                  <ul className="space-y-0.5">
+                    {result.notes.split('\n').filter(Boolean).map((note, index) => (
+                      <li key={index} className="flex gap-1.5 text-xs leading-relaxed text-muted-foreground">
+                        <span aria-hidden>・</span>
+                        <span>{note}</span>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
               )}
             </div>
           )}
@@ -689,12 +764,15 @@ function Choice({
   hint,
 }: {
   label?: string
-  options: { value: string; label: string }[]
+  /** hint は**選んでいるものの下にだけ**出す。全部に添えると、並びが説明文で埋まる */
+  options: { value: string; label: string; hint?: string }[]
   value: string
   onChange: (value: string) => void
   disabled: boolean
   hint?: string
 }) {
+  const chosen = options.find((option) => option.value === value)
+
   return (
     <div>
       {label && <p className="mb-1 text-xs text-muted-foreground">{label}</p>}
@@ -712,7 +790,10 @@ function Choice({
           </Button>
         ))}
       </div>
-      {hint && <p className="mt-1 text-2xs text-muted-foreground">{hint}</p>}
+      {/* 選んでいるものの説明を優先する。呼び出し側の hint は、その次 */}
+      {(chosen?.hint || hint) && (
+        <p className="mt-1 text-2xs text-muted-foreground">{chosen?.hint || hint}</p>
+      )}
     </div>
   )
 }

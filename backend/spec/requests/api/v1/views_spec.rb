@@ -284,4 +284,18 @@ RSpec.describe "Api::V1::Views", type: :request do
       expect(json_response["views"]).to be_empty
     end
   end
+  # 画面が送るのに permit に無いと、strong parameters が黙って落とす
+  describe "ボードの設定" do
+    let(:board) { user.views.create!(name: "板", view_type: "freeboard") }
+
+    it "画像の見せ方を保存する" do
+      patch "/api/v1/views/#{board.id}",
+            params: { view: { settings: { card_image_fit: "contain", bg_color: "#ffffff" } } },
+            headers: headers, as: :json
+
+      settings = board.reload.settings
+      expect(settings["card_image_fit"]).to eq("contain")
+      expect(settings["bg_color"]).to eq("#ffffff")
+    end
+  end
 end

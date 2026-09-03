@@ -45,8 +45,15 @@ module Api
       def edge_params
         params.permit(
           :source_node_id, :target_node_id, :source_handle, :target_handle, :label, :z_index,
+          # 画面が送るものは、ここに全部載せる。
+          # 載っていないと strong parameters が黙って落とすので、
+          # 「変えたのに次に開くと戻っている」ことになる
+          # （線の種類・角の丸めがそうだった）
           style: [ :color, :dashed, :width, :opacity, :marker_start, :marker_end,
-                   :label_color, :label_size, :label_bg, :label_opacity, :label_vertical ],
+                   :label_color, :label_size, :label_bg, :label_opacity, :label_vertical,
+                   :line_style, :curve, :curve_radius,
+                   # AI が付ける関係の種類と強さ。あとから見直すための控え
+                   :relation, :strength ],
           points: [ :x, :y ]
         )
       end

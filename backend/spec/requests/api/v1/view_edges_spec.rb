@@ -141,4 +141,32 @@ RSpec.describe "Api::V1::Views edges (freeboard)", type: :request do
       expect(view.view_edges.count).to eq(1)
     end
   end
+  # 画面が送るのに permit に無いと、strong parameters が黙って落とす。
+  # 「変えたのに次に開くと戻っている」ことになる
+  describe "見た目の保存" do
+    let!(:edge) do
+      view.view_edges.create!(source_node_id: item_a.id, target_node_id: item_b.id)
+    end
+
+    it "線の種類と角の丸めを保存する" do
+      patch "/api/v1/views/#{view.id}/edges/#{edge.id}",
+            params: { style: { line_style: "dotted", curve: "round", curve_radius: 24 } },
+            headers: headers, as: :json
+
+      style = edge.reload.style
+      expect(style["line_style"]).to eq("dotted")
+      expect(style["curve"]).to eq("round")
+      expect(style["curve_radius"]).to eq(24)
+    end
+
+    it "関係の種類と強さを保存する" do
+      patch "/api/v1/views/#{view.id}/edges/#{edge.id}",
+            params: { style: { relation: "parent", strength: 0.9 } },
+            headers: headers, as: :json
+
+      style = edge.reload.style
+      expect(style["relation"]).to eq("parent")
+      expect(style["strength"]).to eq(0.9)
+    end
+  end
 end
