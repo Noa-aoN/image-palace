@@ -46,12 +46,28 @@ RSpec.describe "Api::V1::Views AI編集", type: :request do
     expect(json_response["items"].map { |i| i["item_id"] }).to eq([ b.id, a.id ])
   end
 
-  it "指示が空なら 422" do
+  # 名前は「何の図か」を既に言っている。書き写させるより、押せばその図になるほうがよい
+  it "指示が空なら、キャンバスの名前を指示にする" do
+    stub_plan("summary" => "並べました", "order" => [ b.id, a.id ])
+
     post "/api/v1/views/#{view.id}/ai_edit",
          params: { edit: { instruction: "" } }, headers: headers, as: :json
 
+    expect(response).to have_http_status(:success)
+    expect(Ai::Chat).to have_received(:call) do |args|
+      expect(args[:messages].last[:content]).to include("テスト")
+    end
+  end
+
+  it "触る対象が無ければ 422 で理由を返す" do
+    board = user.views.create!(name: "板", view_type: "freeboard")
+
+    post "/api/v1/views/#{board.id}/ai_edit",
+         params: { edit: { instruction: "整えて", placement: "keep", sizing: "keep", edges: "keep" } },
+         headers: headers, as: :json
+
     expect(response).to have_http_status(:unprocessable_entity)
-    expect(json_response["error"]).to be_present
+    expect(json_response["error"]).to include("触る対象")
   end
 
   it "利用上限に達していれば 429 で理由を返す" do

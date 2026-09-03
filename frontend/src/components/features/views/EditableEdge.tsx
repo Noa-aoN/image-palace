@@ -11,13 +11,21 @@ import {
 import {
   BaseEdge,
   EdgeLabelRenderer,
-  getSmoothStepPath,
   useReactFlow,
   Position,
   type EdgeProps,
 } from '@xyflow/react'
 import type { ViewEdgeStyle, EdgePoint } from '@/types/view'
-import { buildEdgePath, dashArrayFor, resolveLineStyle, DEFAULT_CURVE_RADIUS } from '@/lib/edge-path'
+import { useBoardSettingsStore } from '@/stores/boardSettings'
+import {
+  axisForHandle,
+  buildEdgePath,
+  orthogonalize,
+  withStubs,
+  dashArrayFor,
+  resolveLineStyle,
+  DEFAULT_CURVE_RADIUS,
+} from '@/lib/edge-path'
 
 // 折れ点の確定保存はボード側（FreeboardCanvas）へ委譲する（data に関数を入れず lint 回避）。
 export const EdgeActionsContext = createContext<{
@@ -43,35 +51,43 @@ function EditableEdgeComponent(props: EdgeProps) {
   const latest = useRef<EdgePoint[]>(points)
   const moved = useRef(false)
 
-  const verts = [{ x: sourceX, y: sourceY }, ...points, { x: targetX, y: targetY }]
-  let edgePath: string
-  let labelX: number
-  let labelY: number
-  if (points.length === 0) {
-    const [p, lx, ly] = getSmoothStepPath({
-      sourceX,
-      sourceY,
-      targetX,
-      targetY,
-      sourcePosition: sourcePosition ?? Position.Bottom,
-      targetPosition: targetPosition ?? Position.Top,
-    })
-    edgePath = p
-    labelX = lx
-    labelY = ly
-  } else {
-    // 折れ点があるときのつなぎ方は設定で選ぶ（角ばる／角を丸める／なめらか）
-    edgePath = buildEdgePath(verts, s.curve ?? 'sharp', s.curve_radius ?? DEFAULT_CURVE_RADIUS)
-    const mid = verts[Math.floor(verts.length / 2)]
-    labelX = mid.x
-    labelY = mid.y
-  }
+  /**
+   * 線の道すじ。**カードから離してから曲げ、手前で止める。**
+   *
+   * 2つを順に掛ける。
+   *   1. 助走  … 出た辺の向きへまっすぐ離れてから曲がる
+   *              （すぐ曲がると、線がそのカードの側面に張り付いて走る）
+   *   2. 直交  … 軸に揃っていない対の間に角を挟む
+   *              （折れ点はサーバーが「既定のカードの大きさ」で計算するが、
+   *                実際の大きさは AI が変える。その差が斜め線になっていた）
+   *
+   * **端は縁まで届かせる。** 手前で止めていた頃は、助走の終わりから
+   * 止めた位置までが数 px しか無く、そこに矢じりが詰まって見えた。
+   * 矢印はカードに届いてこそ「これを指している」と読める。
+   */
+  const sourceHandleSide = handleSide(sourcePosition, Position.Bottom)
+  const targetHandleSide = handleSide(targetPosition, Position.Top)
+  const verts = orthogonalize(
+    withStubs(
+      [{ x: sourceX, y: sourceY }, ...points, { x: targetX, y: targetY }],
+      sourceHandleSide,
+      targetHandleSide
+    ),
+    axisForHandle(sourceHandleSide)
+  )
+  // 助走と手前止めを掛けたので、折れ点が無い線もここで組む。
+  // React Flow の自動経路（getSmoothStepPath）だと、その2つが効かない
+  const edgePath = buildEdgePath(verts, s.curve ?? 'sharp', s.curve_radius ?? DEFAULT_CURVE_RADIUS)
+  const { x: labelX, y: labelY } = midpointOf(verts)
 
   // 線の種類。二重線だけは1本では描けないので、太い線の真ん中を盤の色で抜く
   const lineStyle = resolveLineStyle(s)
   const strokeWidth = s.width || 2
   const dashArray = dashArrayFor(lineStyle, strokeWidth)
   const doubled = lineStyle === 'double'
+  // 二重線は真ん中を抜いて作るので、下地を敷くと抜けが埋まる。そこだけは敷かない
+  const backgroundImageUrl = useBoardSettingsStore((state) => state.backgroundImageUrl)
+  const haloed = !doubled && !backgroundImageUrl
   const baseStyle = {
     ...style,
     strokeDasharray: dashArray,
@@ -135,6 +151,26 @@ function EditableEdgeComponent(props: EdgeProps) {
         >
           <animate attributeName="stroke-opacity" values="0.1;0.8;0.1" dur="0.8s" repeatCount="indefinite" />
         </path>
+      )}
+      {/*
+        線が交わったところを読めるようにする。
+
+        **線の下に、盤の色で少し太い線を敷く。** 重なると上の線の下地が
+        下の線を切るので、どちらが手前かが目で分かる（回路図の線の跨ぎと同じ考え）。
+        交点を計算しないので、線が何本あっても重くならない。
+
+        盤に背景の絵があるときは敷かない。**絵に帯が走って、そちらのほうが読みにくい。**
+      */}
+      {haloed && (
+        <path
+          d={edgePath}
+          fill="none"
+          stroke={boardBg}
+          strokeWidth={strokeWidth + EDGE_HALO_WIDTH}
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          style={{ pointerEvents: 'none' }}
+        />
       )}
       <BaseEdge id={id} path={edgePath} markerStart={markerStart} markerEnd={markerEnd} style={baseStyle} />
       {doubled && (
@@ -233,3 +269,39 @@ function EditableEdgeComponent(props: EdgeProps) {
 }
 
 export const EditableEdge = memo(EditableEdgeComponent)
+
+/** React Flow の位置を、取っ手の名前へ直す */
+function handleSide(position: Position | undefined, fallback: Position): string {
+  const value = position ?? fallback
+  if (value === Position.Left) return 'left'
+  if (value === Position.Right) return 'right'
+  if (value === Position.Top) return 'top'
+  return 'bottom'
+}
+
+/**
+ * 文字を置く場所。**線の道のりの真ん中**に置く。
+ * 頂点の真ん中を採ると、折れ方によっては端へ寄る
+ */
+function midpointOf(points: { x: number; y: number }[]): { x: number; y: number } {
+  if (points.length === 0) return { x: 0, y: 0 }
+
+  const lengths = points.slice(1).map((p, i) => Math.hypot(p.x - points[i].x, p.y - points[i].y))
+  const half = lengths.reduce((a, b) => a + b, 0) / 2
+
+  let walked = 0
+  for (let i = 0; i < lengths.length; i++) {
+    if (walked + lengths[i] >= half) {
+      const t = lengths[i] === 0 ? 0 : (half - walked) / lengths[i]
+      return {
+        x: points[i].x + (points[i + 1].x - points[i].x) * t,
+        y: points[i].y + (points[i + 1].y - points[i].y) * t,
+      }
+    }
+    walked += lengths[i]
+  }
+  return points[points.length - 1]
+}
+
+/** 線の下に敷く下地の太さ(px)。線より広く、文字より狭く */
+const EDGE_HALO_WIDTH = 5

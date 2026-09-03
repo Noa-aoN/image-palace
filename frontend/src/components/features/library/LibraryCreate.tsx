@@ -24,7 +24,7 @@ export type LibraryCreateKind = 'deck' | 'freeboard' | 'space_map' | 'road' | 'r
 
 const TITLES: Record<LibraryCreateKind, string> = {
   deck: 'デッキを作成',
-  freeboard: 'フリーボードを作成',
+  freeboard: 'ボードを作成',
   space_map: 'スペース配置を作成',
   road: 'ロードを作成',
   room: 'ルームを作成',

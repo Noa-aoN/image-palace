@@ -117,7 +117,12 @@ module Views
         "edges" => @view.view_edges.map do |edge|
           {
             "source" => edge.source_node_id, "target" => edge.target_node_id,
-            "label" => edge.label, "style" => edge.style, "z_index" => edge.z_index
+            "label" => edge.label, "style" => edge.style, "z_index" => edge.z_index,
+            # **手で置いた折れ点と、どの辺から出すかも控える。**
+            # 控えていなかった頃は、戻すと線の道すじが失われ、
+            # 手で曲げた線が全部まっすぐな自動経路に戻っていた
+            "points" => edge.points, "source_handle" => edge.source_handle,
+            "target_handle" => edge.target_handle
           }
         end
       }
@@ -146,9 +151,13 @@ module Views
         Array(state["edges"]).each do |edge|
           next unless owned.include?(edge["source"]) && owned.include?(edge["target"])
 
+          # 古い控えには道すじが入っていない。**その場合は自動経路に戻す**
+          # （欠けているものを埋めようとせず、無い状態をそのまま復元する）
           @view.view_edges.create!(
             source_node_id: edge["source"], target_node_id: edge["target"],
-            label: edge["label"], style: edge["style"] || {}, z_index: edge["z_index"].to_i
+            label: edge["label"], style: edge["style"] || {}, z_index: edge["z_index"].to_i,
+            points: edge["points"] || [],
+            source_handle: edge["source_handle"], target_handle: edge["target_handle"]
           )
         end
       end

@@ -13,7 +13,7 @@ describe('選んだカードから作るときの名前', () => {
   })
 
   it('種別ごとに呼び名が変わる', () => {
-    expect(defaultBulkName('freeboard', [ 'DNS' ])).toBe('DNSのフリーボード')
+    expect(defaultBulkName('freeboard', [ 'DNS' ])).toBe('DNSのボード')
     expect(defaultBulkName(BOX_KIND, [ 'DNS' ])).toBe('DNSのボックス')
   })
 

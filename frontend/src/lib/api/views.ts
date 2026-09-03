@@ -61,7 +61,7 @@ export async function getViewDetail(id: string): Promise<ViewDetail> {
   return res.data
 }
 
-// フリーボードにカードを配置する
+// ボードにカードを配置する
 export async function addViewItem(
   viewId: string,
   itemId: string,
@@ -85,7 +85,7 @@ export async function updateViewItemPosition(
   await apiClient.patch(`/api/v1/views/${viewId}/items/${itemId}`, payload)
 }
 
-// フリーボードからカードを外す
+// ボードからカードを外す
 export async function removeViewItem(viewId: string, itemId: string): Promise<void> {
   await apiClient.delete(`/api/v1/views/${viewId}/items/${itemId}`)
 }
@@ -212,7 +212,7 @@ export async function generateViewCover(id: string, prompt: string, style?: stri
   return res.data
 }
 
-// ことばの指示でキャンバスを組み立て直す（デッキ / フリーボード）。
+// ことばの指示でキャンバスを組み立て直す（デッキ / ボード）。
 // mode=placed_only はいまある札だけ、select は手持ちから探して足す。
 export async function aiEditView(
   id: string,

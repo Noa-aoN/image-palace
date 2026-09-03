@@ -261,7 +261,8 @@ RSpec.describe Views::AiEditService do
         expect(view.view_edges.first.label).to eq("手で描いた")
       end
 
-      # 引き直すと手で描いた線や折れ点が失われる。文字と見た目だけ当て直したい場面がある
+      # 引き直すと手で描いた線や折れ点が失われる。文字と見た目だけ当て直したい場面がある。
+      # 画面の「線だけ整える」は置き場所を触らない（placement: keep）ので、それに合わせる
       it "文字と見た目だけ整える指定なら、つなぎ方は変えずに label と style を当て直す" do
         edge = view.view_edges.create!(
           source_node_id: a.id, target_node_id: b.id, label: "関係",
@@ -273,7 +274,7 @@ RSpec.describe Views::AiEditService do
           { "source" => b.id, "target" => a.id, "label" => "逆" }
         ])
 
-        described_class.call(view: view, instruction: "線を整えて", edges: "restyle")
+        described_class.call(view: view, instruction: "線を整えて", edges: "restyle", placement: "keep")
 
         expect(view.view_edges.count).to eq(1)
         edge.reload
@@ -293,13 +294,49 @@ RSpec.describe Views::AiEditService do
           { "source" => b.id, "target" => a.id, "label" => "逆" }
         ])
 
-        described_class.call(view: view, instruction: "線の文言を直して", edges: "relabel")
+        described_class.call(view: view, instruction: "線の文言を直して", edges: "relabel", placement: "keep")
 
         expect(view.view_edges.count).to eq(1)
         edge.reload
         expect(edge.label).to eq("原因")
         expect(edge.style).to eq("width" => 1, "color" => "#999999")
         expect(edge.points).to eq([ { "x" => 10, "y" => 20 } ])
+      end
+
+      # **カードが動いたら、古い折れ点はもう合っていない。**
+      # そのまま残すと、整えたはずの線がカードの上を通る
+      it "カードが動いたときは、つなぎ方と文言を保ったまま経路だけ引き直す" do
+        edge = view.view_edges.create!(
+          source_node_id: a.id, target_node_id: b.id, label: "関係",
+          style: { "width" => 1 }, points: [ { "x" => 10, "y" => 20 } ]
+        )
+        stub_plan(
+          "placements" => [
+            { "item_id" => a.id, "x" => 200, "y" => 200 },
+            { "item_id" => b.id, "x" => 900, "y" => 900 }
+          ],
+          "edges" => [ { "source" => a.id, "target" => b.id, "label" => "原因" } ]
+        )
+
+        described_class.call(view: view, instruction: "並べて", edges: "restyle")
+
+        edge.reload
+        expect(edge.label).to eq("原因")
+        expect(edge.source_node_id).to eq(a.id)
+        expect(edge.points).not_to eq([ { "x" => 10, "y" => 20 } ])
+      end
+
+      # 逆に、動いていないなら触らない（手で曲げた線を潰さない）
+      it "カードが動いていなければ、折れ点はそのまま残す" do
+        edge = view.view_edges.create!(
+          source_node_id: a.id, target_node_id: b.id, label: "関係",
+          points: [ { "x" => 10, "y" => 20 } ]
+        )
+        stub_plan("edges" => [])
+
+        described_class.call(view: view, instruction: "そのまま", edges: "keep", placement: "keep")
+
+        expect(edge.reload.points).to eq([ { "x" => 10, "y" => 20 } ])
       end
 
       it "文言だけ整える指定では、曖昧な語と逆向きのラベルを避ける規則を足す" do
@@ -357,7 +394,7 @@ RSpec.describe Views::AiEditService do
         described_class.call(view: view, instruction: "並べて", layout: "hierarchy")
 
         expect(Ai::Chat).to have_received(:call) do |args|
-          expect(args[:messages].first[:content]).to include("上から下への階層")
+          expect(args[:messages].first[:content]).to include("家系図の形")
         end
       end
 
@@ -430,8 +467,9 @@ RSpec.describe Views::AiEditService do
         material = args[:messages].last[:content]
         expect(system).to include("四辺には最低 #{described_class::BOARD_PADDING} の余白")
         expect(system).to include("見出し幅")
-        expect(system).to include("水平・垂直の直交線")
-        expect(system).to include("平行に揃える")
+        # 線は必ず直交で引かれる。だから**つなぐ2枚は軸を揃えて置く**、と伝える
+        expect(system).to include("x か y のどちらかを揃えて置く")
+        expect(system).to include("平行に揃え")
         expect(material).to include("見出し幅≈")
       end
     end
@@ -526,11 +564,70 @@ RSpec.describe Views::AiEditService do
   describe "受け付けないもの" do
     let(:view) { user.views.create!(name: "テスト", view_type: "deck") }
 
-    it "指示が空なら呼ばない" do
+    # 指示が空なら、キャンバスの名前をそのまま指示にする。
+    # 名前は「何の図か」を既に言っているので、書き写させない
+    it "指示が空なら、キャンバスの名前を指示にする" do
+      stub_plan({})
+
+      described_class.call(view: view, instruction: "  ")
+
+      expect(Ai::Chat).to have_received(:call) do |args|
+        expect(args[:messages].last[:content]).to include("テスト")
+      end
+    end
+
+    # 名前は必須なので、ふつうはここに来ない。それでも黙って空の指示を投げないよう守る
+    it "指示も名前も無ければ呼ばない" do
       allow(Ai::Chat).to receive(:call)
+      allow(view).to receive(:name).and_return(" ")
 
       expect { described_class.call(view: view, instruction: "  ") }.to raise_error(described_class::EditError)
       expect(Ai::Chat).not_to have_received(:call)
+    end
+
+    # 触る対象が1つも無いのに呼ぶと、何も変わらないままクレジットだけ減る
+    it "何も触らない設定なら、AI を呼ばずに断る" do
+      allow(Ai::Chat).to receive(:call)
+      board = user.views.create!(name: "板", view_type: "freeboard")
+
+      expect {
+        described_class.call(view: board, instruction: "整えて",
+                             placement: "keep", sizing: "keep", edges: "keep")
+      }.to raise_error(described_class::EditError, /触る対象/)
+      expect(Ai::Chat).not_to have_received(:call)
+    end
+
+    it "カードを足す設定なら、ほかが keep でも呼ぶ" do
+      board = user.views.create!(name: "板", view_type: "freeboard")
+      stub_plan({})
+
+      described_class.call(view: board, instruction: "足して", mode: "select",
+                           placement: "keep", sizing: "keep", edges: "keep")
+
+      expect(Ai::Chat).to have_received(:call)
+    end
+
+    # 既定の 2,000 では 44 枚で JSON が切れて、必ず失敗していた
+    it "計画は長さの上限を明示して頼む" do
+      board = user.views.create!(name: "板", view_type: "freeboard")
+      stub_plan({})
+
+      described_class.call(view: board, instruction: "整えて")
+
+      expect(Ai::Chat).to have_received(:call) do |args|
+        expect(args[:max_tokens]).to eq(described_class::MAX_PLAN_TOKENS)
+        expect(described_class::MAX_PLAN_TOKENS).to be > 2_000
+      end
+    end
+
+    it "途中で切れたときは、切れたと分かる言い方で返す" do
+      board = user.views.create!(name: "板", view_type: "freeboard")
+      allow(Ai::Chat).to receive(:call).and_return(
+        { "choices" => [ { "finish_reason" => "length", "message" => { "content" => '{"summary":' } } ] }
+      )
+
+      expect { described_class.call(view: board, instruction: "整えて") }
+        .to raise_error(described_class::EditError, /多すぎて/)
     end
 
     it "指示が長すぎれば呼ばない" do

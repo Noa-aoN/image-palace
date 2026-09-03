@@ -1,7 +1,7 @@
 import { create } from 'zustand'
 import type { BoardSettings } from '@/types/view'
 
-// フリーボードのボード全体設定をボード⇔右パネルで共有する。
+// ボード全体の設定を、ボード⇔右パネルで共有する。
 // edges と違い RF 状態に持たないため、共有 store が自然。views.settings で永続化。
 interface BoardSettingsState {
   viewId: string | null

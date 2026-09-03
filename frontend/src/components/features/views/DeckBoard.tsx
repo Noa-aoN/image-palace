@@ -41,7 +41,7 @@ export function DeckBoard({
   /**
    * AI の操作。**このツールバーに混ぜて受け取る。**
    * 別の行に置くと、同じキャンバスへの操作が2段に分かれて、
-   * どちらを見ればよいのか分からなくなる（フリーボードと同じ形にする）
+   * どちらを見ればよいのか分からなくなる（ボードと同じ形にする）
    */
   aiEditAction?: ReactNode
   aiEditHistoryActions?: ReactNode
@@ -160,7 +160,7 @@ export function DeckBoard({
     <div className="flex-1">
       {/*
         **操作は1行に収める。** カードを足す・AI に整えさせる・戻す／進む・見せ方を変える。
-        フリーボードと同じ並べ方にする（主な操作を左端に色付きで、
+        ボードと同じ並べ方にする（主な操作を左端に色付きで、
         履歴はそのあと、見せ方だけを右端へ）。
 
         枚数はここに出さない。**見出しの隣**にあるほうが、
@@ -175,7 +175,7 @@ export function DeckBoard({
         {aiEditHistoryActions}
 
         {/* 掴む場所は見れば分かるものではないので、一言添える
-            （フリーボードが操作の要点を右端に置いているのと同じ形） */}
+            （ボードが操作の要点を右端に置いているのと同じ形） */}
         <span className="ml-auto hidden text-xs text-muted-foreground sm:inline">
           つまみを掴んで並び替えられます
         </span>
