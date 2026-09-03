@@ -331,7 +331,12 @@ export default function ViewEditorPage() {
               setCanvasKey((n) => n + 1)
             }}
           />
-          <DeckBoard key={canvasKey} viewId={view.id} initialItems={view.items ?? []} />
+          <DeckBoard
+            key={canvasKey}
+            viewId={view.id}
+            initialItems={view.items ?? []}
+            cardList={view.card_list}
+          />
         </>
       ) : view.view_type === 'space_map' ? (
         <SpaceMapCanvas viewId={view.id} space={view.space} initialPoints={view.points ?? []} />
