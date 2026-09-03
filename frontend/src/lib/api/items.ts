@@ -367,8 +367,24 @@ export async function suggestItemProperties(id: string, availableKeys: string[])
 }
 
 // AI による説明（meaning）のファクトチェック（同期）。説明が無いカードはスキップ。
-export async function factCheckItem(id: string): Promise<ItemOrSkip> {
-  const res = await apiClient.post<ItemOrSkip>(`/api/v1/items/${id}/fact_check`)
+/**
+ * 説明が事実として正しいかを AI に確かめさせる。
+ *
+ * scope='all' にすると、説明だけでなく**書いてある項目もまとめて**見る。
+ * 見るものが増えるぶん、時間と AI の利用量は増える。
+ */
+/**
+ * 絵が語と噛み合っているかを見る。
+ *
+ * 運営が段階を開けるまでは 503 が返る（絵を送るぶん、1回が高いため）。
+ */
+export async function imageCheckItem(id: string): Promise<ItemOrSkip> {
+  const res = await apiClient.post<ItemOrSkip>(`/api/v1/items/${id}/image_check`)
+  return res.data
+}
+
+export async function factCheckItem(id: string, scope: 'meaning' | 'all' = 'meaning'): Promise<ItemOrSkip> {
+  const res = await apiClient.post<ItemOrSkip>(`/api/v1/items/${id}/fact_check`, { scope })
   return res.data
 }
 

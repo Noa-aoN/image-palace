@@ -4,7 +4,7 @@ import { startTransition, useEffect, useEffectEvent, useRef, useState, useCallba
 import Link from 'next/link'
 import { EMPTY_VALUE_MARK } from '@/lib/card-list-layout'
 import { useRouter } from 'next/navigation'
-import { Search, X, Trash2, Check, CircleCheck, Circle, Tag as TagIcon, Pin, ShieldCheck, FileText, ChevronDown, Image as ImageIcon } from 'lucide-react'
+import { Sparkles, Search, X, Trash2, Check, CircleCheck, Circle, Tag as TagIcon, Pin, ShieldCheck, FileText, ChevronDown } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import {
   DropdownMenu,
@@ -34,15 +34,21 @@ import {
   getItemsPage,
   getItemSuggestions,
   bulkDeleteItems,
-  generateTags,
-  generateMeaning,
   factCheckItem,
+  imageCheckItem,
   retryItem,
+  getItem,
   isItemSkip,
   type ItemSuggestion,
   type ItemOrSkip,
 } from '@/lib/api/items'
 import { getTags } from '@/lib/api/tags'
+import { fillItemProperties } from '@/lib/api/properties'
+import { useFeatureStage } from '@/stores/features'
+import { BulkPropertyPicker, BULK_PROPERTY_PANEL_KEY } from '@/components/features/items/BulkPropertyPicker'
+import { BulkUsePanel, BULK_USE_PANEL_KEY } from '@/components/features/items/BulkUsePanel'
+import type { BulkUseFamily } from '@/components/features/items/BulkUsePanel'
+import { useRightPanelStore } from '@/stores/rightPanel'
 import { useItemsStore } from '@/stores/items'
 import type { Item, ItemType } from '@/types/item'
 import type { Tag } from '@/types/tag'
@@ -70,6 +76,8 @@ type BulkResultEntry = {
   outcome: 'processed' | 'skipped' | 'failed'
   item?: Item
   reason?: string
+  /** そのカードで何が起きたか。**操作ごとに違う**ので、実行した側が書く */
+  note?: string
 }
 
 // カードの上に出す「いま何をしているか」。
@@ -80,14 +88,24 @@ type BulkResultEntry = {
 const BULK_BUSY_LABEL: Record<string, string> = {
   tag: 'タグ付け',
   meaning: '説明づくり',
+  property: '項目を埋め中',
   factcheck: 'AIチェック',
+  imagecheck: 'イメージ点検',
   regenerate: '作り直し',
 }
 
 const SKIP_REASON_LABEL: Record<string, string> = {
   no_meaning: '説明が無いためスキップ',
+  no_image: '絵が無いためスキップ',
   already_has_meaning: '既に説明があるためスキップ',
   already_tagged: '既にタグがあるためスキップ',
+}
+
+/** 絵と語の噛み合い。**説明の判定とは別の並び**にする（見ているものが違う） */
+const IMAGE_CHECK_LABEL: Record<string, string> = {
+  fits: '✓ 合っている',
+  weak: '⚠ 思い出しにくい',
+  mismatch: '✕ 別のものの絵',
 }
 
 const FACT_CHECK_LABEL: Record<string, string> = {
@@ -97,7 +115,7 @@ const FACT_CHECK_LABEL: Record<string, string> = {
 }
 
 // 一括AI操作の種別。結果の表示（バッジ色・要点）を切り替えるのに使う。
-type BulkKind = 'tag' | 'meaning' | 'factcheck' | 'regenerate'
+type BulkKind = 'tag' | 'meaning' | 'property' | 'factcheck' | 'imagecheck' | 'regenerate'
 
 // 結果バッジ（ラベル＋色）。ファクトチェックは判定（正しい/疑わしい/誤り）で色分けする。
 function bulkBadge(kind: BulkKind, e: BulkResultEntry): { text: string; className: string } {
@@ -106,6 +124,17 @@ function bulkBadge(kind: BulkKind, e: BulkResultEntry): { text: string; classNam
   if (e.outcome === 'skipped') return { text: 'スキップ', className: base + 'bg-muted text-muted-foreground' }
   // 再生成は送信しただけで、絵ができるのはこの後。「完了」と出すと誤解を招く
   if (kind === 'regenerate') return { text: '生成中', className: base + 'bg-blue-100 text-blue-700' }
+  // 絵の点検も、判定で色を分ける（説明の判定とは別の言い方にする）
+  if (kind === 'imagecheck') {
+    const fit = e.item?.image_check_status
+    if (fit) {
+      const cls =
+        fit === 'fits' ? 'bg-green-100 text-green-700'
+        : fit === 'weak' ? 'bg-yellow-100 text-yellow-800'
+        : 'bg-red-100 text-red-700'
+      return { text: IMAGE_CHECK_LABEL[fit] ?? '完了', className: base + cls }
+    }
+  }
   const status = kind === 'factcheck' ? e.item?.fact_check_status : undefined
   if (status) {
     const cls =
@@ -125,6 +154,11 @@ function bulkRowClass(kind: BulkKind, e: BulkResultEntry): string {
     if (s === 'incorrect') return 'border-l-2 border-l-red-400 bg-red-50/40'
     if (s === 'doubtful') return 'border-l-2 border-l-yellow-400 bg-yellow-50/50'
   }
+  if (kind === 'imagecheck') {
+    const fit = e.item?.image_check_status
+    if (fit === 'mismatch') return 'border-l-2 border-l-red-400 bg-red-50/40'
+    if (fit === 'weak') return 'border-l-2 border-l-yellow-400 bg-yellow-50/50'
+  }
   return ''
 }
 
@@ -132,19 +166,36 @@ function bulkRowClass(kind: BulkKind, e: BulkResultEntry): string {
 function bulkResultDetail(kind: BulkKind, e: BulkResultEntry): string | null {
   if (e.outcome === 'failed') return '生成に失敗しました（再試行できます）'
   if (e.outcome === 'skipped') return e.reason ? (SKIP_REASON_LABEL[e.reason] ?? 'スキップしました') : null
+
   const item = e.item
-  if (!item) return null
-  if (kind === 'factcheck') {
-    const verdict = item.fact_check_status ? FACT_CHECK_LABEL[item.fact_check_status] : null
-    if (!verdict) return null
-    return item.fact_check_comment ? `${verdict} — ${item.fact_check_comment}` : verdict
-  }
-  if (kind === 'meaning') return item.meaning ?? null
-  if (kind === 'tag') {
-    const names = item.tags?.map((t) => t.name) ?? []
-    return names.length ? `タグ: ${names.join(' / ')}` : 'タグなし'
-  }
-  return null
+  const base = !item ? null
+    : kind === 'imagecheck' ? imageCheckDetail(item)
+    : kind === 'factcheck' ? factCheckDetail(item)
+    : kind === 'meaning' ? (item.meaning ?? null)
+    : kind === 'tag' ? tagDetail(item)
+    : null
+
+  // 実行した側が書き残した一言（何を書いたか・何を見たか）は、
+  // **判定を置き換えずに添える**。片方だけでは、結果を読み切れない
+  if (!e.note) return base
+  return base ? `${base}（${e.note}）` : e.note
+}
+
+function imageCheckDetail(item: Item): string | null {
+  const verdict = item.image_check_status ? IMAGE_CHECK_LABEL[item.image_check_status] : null
+  if (!verdict) return null
+  return item.image_check_comment ? `${verdict} — ${item.image_check_comment}` : verdict
+}
+
+function factCheckDetail(item: Item): string | null {
+  const verdict = item.fact_check_status ? FACT_CHECK_LABEL[item.fact_check_status] : null
+  if (!verdict) return null
+  return item.fact_check_comment ? `${verdict} — ${item.fact_check_comment}` : verdict
+}
+
+function tagDetail(item: Item): string {
+  const names = item.tags?.map((t) => t.name) ?? []
+  return names.length ? `タグ: ${names.join(' / ')}` : 'タグなし'
 }
 
 // 単語名の吹き出しの最大幅（max-w-[18rem] と合わせる）。寄せ方の判定に使う
@@ -564,11 +615,32 @@ export function ItemList({ initialTag = null }: { initialTag?: string | null }) 
   const upsertItem = useItemsStore((state) => state.upsertItem)
   const bulkBusy = deleting || bulkAction !== null
 
+  /**
+   * 選んだカードの実体を覚えておく。
+   *
+   * **選択はページを移っても残る。** 1ページ目で20枚、2ページ目で5枚選べば
+   * 操作は25枚に効く。だが `items` は**いま見えているページの分しか無い**ので、
+   * id だけ持っていると「選んだ25枚」を画面に出せない。
+   *
+   * 溜めておけば、パネルの帯にも全部出せるし、
+   * 「他のページのぶんも選んでいる」と伝えられる。
+   */
+  const [selectedCache, setSelectedCache] = useState<Map<string, Item>>(new Map())
+  /** 「活用」で選んだ行き先の系統。パネルを開く前に決まる */
+  const [useFamily, setUseFamily] = useState<BulkUseFamily>('canvas')
+
   const toggleSelect = (id: string) => {
+    const item = items.find((row) => row.id === id)
     setSelectedIds((prev) => {
       const next = new Set(prev)
       if (next.has(id)) next.delete(id)
       else next.add(id)
+      return next
+    })
+    setSelectedCache((prev) => {
+      const next = new Map(prev)
+      if (next.has(id)) next.delete(id)
+      else if (item) next.set(id, item)
       return next
     })
   }
@@ -576,6 +648,7 @@ export function ItemList({ initialTag = null }: { initialTag?: string | null }) 
   const exitSelection = () => {
     setSelectionMode(false)
     setSelectedIds(new Set())
+    setSelectedCache(new Map())
     setConfirmBulkDelete(false)
     setPendingBulk(null)
     setActionError(null)
@@ -590,7 +663,9 @@ export function ItemList({ initialTag = null }: { initialTag?: string | null }) 
     kind: BulkKind,
     fn: (id: string) => Promise<ItemOrSkip>,
     // 選択の一部だけを対象にするとき（例: 失敗したものだけ作り直す）
-    include?: (id: string) => boolean
+    include?: (id: string) => boolean,
+    // 1枚ごとの結果に添える一言（「何を書いたか」は fn 側しか知らない）
+    describe?: (id: string) => string | undefined
   ) => {
     const ids = [...selectedIds].filter((id) => !include || include(id))
     if (ids.length === 0) return
@@ -621,7 +696,13 @@ export function ItemList({ initialTag = null }: { initialTag?: string | null }) 
           } else {
             upsertItem(result)
             processed += 1
-            entries.push({ id: ids[i], title: result.title, outcome: 'processed', item: result })
+            entries.push({
+              id: ids[i],
+              title: result.title,
+              outcome: 'processed',
+              item: result,
+              note: describe?.(ids[i]),
+            })
           }
           break
         } catch (err) {
@@ -655,19 +736,115 @@ export function ItemList({ initialTag = null }: { initialTag?: string | null }) 
   // ── 一括操作 ────────────────────────────────────────────────
   // 上書き系（作り直す）は取り消せないので、実行前に確認バーを出す。
   // 確認の作法をメニュー3つで揃えるため、pendingBulk に集約している。
-  const handleTagFill = () => runBulkAi('タグを付与', 'tag', (id) => generateTags(id, { onlyIfEmpty: true }))
-  const handleMeaningFill = () =>
-    runBulkAi('説明を付与', 'meaning', (id) => generateMeaning(id, undefined, { onlyIfEmpty: true }))
   const handleFactCheck = () => runBulkAi('説明のAIチェック', 'factcheck', (id) => factCheckItem(id))
 
-  const handleTagReplace = () =>
-    askBulk('タグをすべて作り直す', `選択 ${selectedIds.size} 件のタグをAIの結果で置き換えます`, () =>
-      runBulkAi('タグを作り直す', 'tag', (id) => generateTags(id, { replace: true }))
+  /**
+   * 説明だけを見ると、項目に書いた誤りが素通りする。
+   * **書いてあるもの全部**を見る道を別に置く（そのぶん時間と利用量は増える）。
+   *
+   * 結果には**何項目を見たか**を添える。判定だけでは
+   * 「項目まで見たうえでの correct」なのかが分からない。
+   */
+  const handleFactCheckAll = () => {
+    const scope = new Map<string, string>()
+    return runBulkAi(
+      'カード全体のAIチェック',
+      'factcheck',
+      async (id) => {
+        const result = await factCheckItem(id, 'all')
+        if (!isItemSkip(result)) {
+          const count = (result.fact_check_fields ?? []).filter((name) => name !== '説明').length
+          scope.set(id, count === 0 ? '説明のみを確認' : `説明と ${count} 項目を確認`)
+        }
+        return result
+      },
+      undefined,
+      (id) => scope.get(id)
     )
+  }
 
-  const handleMeaningReplace = () =>
-    askBulk('説明をすべて作り直す', `選択 ${selectedIds.size} 件の説明をAIの結果で置き換えます`, () =>
-      runBulkAi('説明を作り直す', 'meaning', (id) => generateMeaning(id))
+  // タグと説明だけを取り出した入口は無くした。**どちらも項目の一種**で、
+  // そこだけ別の口を持つ理由が無い（`fill_properties` が全部まとめて見る）。
+  // 1つだけ埋めたいときは「項目を選んで埋める」から選ぶ
+
+  /**
+   * 項目をまとめて埋める。
+   *
+   * **タグ・説明だけを取り出さない。** そこだけ入口を持っていたのは、
+   * その3つを先に作ったからで、設計上の理由は無かった。
+   * 項目は分野ごとに増えるので、**操作を軸に**しないと入口が増え続ける。
+   *
+   * サーバーは1回の呼び出しで全部の項目を見るので、
+   * 項目が増えても費用と待ち時間は比例しない。
+   *
+   * @param keys 特定の項目だけに絞るとき。省略すればその種別の全部が対象
+   */
+  const runPropertyFill = (label: string, overwrite: boolean, keys?: string[]) => {
+    /**
+     * **どの項目が埋まったかを覚えておく。**
+     *
+     * 「12枚を処理しました」だけでは、AI が何を書いたのか分からない。
+     * 項目は分野ごとに増えるので、カードによって埋まる数も中身も違う。
+     * 結果の一覧で1枚ずつ開き直さずに済むように、名前を並べて返す。
+     */
+    const filled = new Map<string, string>()
+
+    return runBulkAi(
+      label,
+      'property',
+      async (id) => {
+        const result = await fillItemProperties(id, { overwrite, ...(keys?.length ? { keys } : {}) })
+        // 埋めた結果を画面へ返す。fill は結果の要約を返すので、カードは取り直す
+        const item = await getItem(id)
+        // key のままでは読めない。取り直したカードから見出しを引く
+        const labelOf = new Map((item.properties ?? []).map((p) => [ p.key, p.label ]))
+        const names = result.filled_keys.map((key) => labelOf.get(key) ?? key)
+        filled.set(
+          id,
+          names.length ? `${names.length}項目を書きました: ${names.join(' / ')}` : '書ける項目がありませんでした'
+        )
+        return item
+      },
+      undefined,
+      (id) => filled.get(id)
+    )
+  }
+
+  const handlePropertyFill = () => runPropertyFill('項目を埋める', false)
+
+  /**
+   * 絵が語と噛み合っているかを見る。
+   *
+   * **運営が段階を開けるまで出さない。** 絵をそのまま送るので1回が高く、
+   * 出来と費用を手元で見てから開けたい（栓は /admin にある）。
+   */
+  const imageCheckStage = useFeatureStage('image_fit_check')
+  const imageCheckOpen = imageCheckStage === 'released' || imageCheckStage === 'prototype'
+  const handleImageCheck = () => runBulkAi('イメージの点検', 'imagecheck', (id) => imageCheckItem(id))
+
+  // 設定が要るものはパネルで開く。**対象のカードを見たまま決められるように**
+  const openSection = useRightPanelStore((s) => s.openSection)
+  const closePanel = useRightPanelStore((s) => s.close)
+  const openPropertyPicker = () =>
+    openSection({ key: BULK_PROPERTY_PANEL_KEY, title: '項目を選んで埋める' })
+  // どの系統へ渡すかは、開く前に決まっている（ドロップダウンで選ばせる）。
+  // パネルに両方を並べると、選ぶ手が一段増えるだけになる
+  const openUsePanel = (family: BulkUseFamily) => {
+    setUseFamily(family)
+    openSection({
+      key: BULK_USE_PANEL_KEY,
+      title: family === 'box' ? 'ボックスへ渡す' : 'キャンバスへ渡す',
+    })
+  }
+
+  // 選択中のカードの実体。**いま見えていないページのぶんも含む**
+  const selectedItems = [...selectedIds].map((id) => selectedCache.get(id)).filter((i): i is Item => i != null)
+  // いま見えているページの外にも選択があるか。あるなら、そう伝える
+  const selectedOffPage = selectedItems.filter((item) => !items.some((row) => row.id === item.id)).length
+
+  const handlePropertyReplace = () =>
+    askBulk('項目をすべて作り直す', `選択 ${selectedIds.size} 件の項目を、AIの結果で置き換えます`, () =>
+      runPropertyFill('項目を作り直す', true)
     )
 
   // 画像は1枚につき1クレジット。失敗したものだけに絞れると、成功済みのぶんを無駄にしない
@@ -690,6 +867,7 @@ export function ItemList({ initialTag = null }: { initialTag?: string | null }) 
   const allSelected = items.length > 0 && items.every((i) => selectedIds.has(i.id))
   const toggleSelectAll = () => {
     setSelectedIds(allSelected ? new Set() : new Set(items.map((i) => i.id)))
+    setSelectedCache(allSelected ? new Map() : new Map(items.map((i) => [ i.id, i ])))
   }
 
   const handleBulkDelete = async () => {
@@ -1305,58 +1483,96 @@ export function ItemList({ initialTag = null }: { initialTag?: string | null }) 
             className="flex shrink-0 items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors disabled:opacity-50"
           >
             {allSelected ? <CircleCheck size={16} /> : <Circle size={16} />}
-            {allSelected ? 'すべて解除' : 'すべて選択'}
+            <span className="hidden sm:inline">{allSelected ? 'すべて解除' : 'すべて選択'}</span>
           </button>
-          <span className="shrink-0 text-sm text-muted-foreground">{selectedIds.size}件を選択中</span>
-          <div className="ml-auto flex min-w-0 items-center gap-2 overflow-x-auto">
+          {/*
+            **狭い画面では、字を削って釦を残す。**
+            「◯件を選択中」を書くと、横に並ぶ操作が画面の外へ押し出されて
+            スクロールしないと見えなくなっていた。数だけなら幅を取らない。
+
+            他のページで選んだぶんも操作の対象になる。見えていないものに効くので、
+            黙っておかずに数を添える。
+          */}
+          <span className="shrink-0 text-sm text-muted-foreground tabular-nums">
+            {selectedIds.size}
+            <span className="hidden sm:inline">件を選択中</span>
+            <span className="sm:hidden">件</span>
+            {selectedOffPage > 0 && (
+              <span className="ml-1 text-2xs" title={`このページ以外で選んだ ${selectedOffPage} 件も対象になります`}>
+                (他{selectedOffPage})
+              </span>
+            )}
+          </span>
+          <div className="ml-auto flex min-w-0 items-center gap-1.5 overflow-x-auto sm:gap-2">
             {/*
-              対象（タグ・説明・画像）ごとに1つの入口へまとめる。
-              「未設定だけ埋める」と「すべて上書き」は結果が全く違うので、同じボタンには載せず
-              メニュー内の別項目にする。上書き側は取り消せないため一段深い位置に置く。
+              **操作を軸に、3つへ畳む。**
+
+              以前はタグ・説明・画像が横に並んでいた。だがその3つを取り出していたのは
+              先に作ったからで、設計上の理由は無い。**項目は分野ごとに増える**ので、
+              対象ごとに入口を持つと増え続ける。
+
+              イメージも、カードを成す要素のひとつ。別の入口にすると
+              「絵は項目ではない」という誤った線を引くことになるので、編集の中へ入れる。
+              ただし**クレジットを使う**ので、中では段を分けて費用を書く。
+
+              「未設定だけ埋める」と「すべて作り直す」は結果が全く違うので、
+              同じ札には載せない。上書きは取り消せないため、赤くして下へ置く。
             */}
-            <BulkMenu label="タグ" icon={<TagIcon size={14} />} disabled={bulkBusy || selectedIds.size === 0}>
-              <DropdownMenuLabel>選択 {selectedIds.size} 件のタグ</DropdownMenuLabel>
-              <DropdownMenuItem onClick={handleTagFill}>
-                未設定だけ付ける
+            <BulkMenu label="編集" icon={<FileText size={14} />} disabled={bulkBusy || selectedIds.size === 0}>
+              <DropdownMenuLabel>選択 {selectedIds.size} 件の項目</DropdownMenuLabel>
+              <DropdownMenuItem onClick={handlePropertyFill}>
+                未設定だけ埋める
               </DropdownMenuItem>
-              <DropdownMenuSeparator />
-              <DropdownMenuItem onClick={handleTagReplace} variant="destructive">
+              <DropdownMenuItem onClick={openPropertyPicker}>
+                項目を選んで埋める…
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={handlePropertyReplace} variant="destructive">
                 すべて作り直す（上書き）
               </DropdownMenuItem>
-            </BulkMenu>
 
-            <BulkMenu label="説明" icon={<FileText size={14} />} disabled={bulkBusy || selectedIds.size === 0}>
-              <DropdownMenuLabel>選択 {selectedIds.size} 件の説明</DropdownMenuLabel>
-              <DropdownMenuItem onClick={handleMeaningFill}>
-                未設定だけ付ける
-              </DropdownMenuItem>
               <DropdownMenuSeparator />
-              <DropdownMenuItem onClick={handleMeaningReplace} variant="destructive">
-                すべて作り直す（上書き）
-              </DropdownMenuItem>
-            </BulkMenu>
-
-            <BulkMenu label="画像" icon={<ImageIcon size={14} />} disabled={bulkBusy || selectedIds.size === 0}>
-              <DropdownMenuLabel>選択 {selectedIds.size} 件の画像</DropdownMenuLabel>
-              {/* 失敗したものだけ作り直せると、成功済みのぶんのクレジットを無駄にしない */}
+              {/* イメージだけは費用がかかる。段を分けて、枚数ぶんの cr を先に見せる */}
+              <DropdownMenuLabel>イメージ</DropdownMenuLabel>
               <DropdownMenuItem onClick={() => handleRegenerate(true)}>
                 失敗したものだけ作り直す
               </DropdownMenuItem>
-              <DropdownMenuSeparator />
               <DropdownMenuItem onClick={() => handleRegenerate(false)} variant="destructive">
                 すべて作り直す（{selectedIds.size} cr）
               </DropdownMenuItem>
             </BulkMenu>
 
-            {/* 他の一括操作（タグ・説明・画像）と同じ形にする。
-                チェックの対象はこれから増えるので、最初からメニューにしておく */}
-            <BulkMenu label="AIチェック" icon={<ShieldCheck size={14} />} disabled={bulkBusy || selectedIds.size === 0}>
+            <BulkMenu label="チェック" icon={<ShieldCheck size={14} />} disabled={bulkBusy || selectedIds.size === 0}>
               <DropdownMenuLabel>選択 {selectedIds.size} 件をチェック</DropdownMenuLabel>
               <DropdownMenuItem onClick={handleFactCheck}>
                 意味・説明が正しいか
               </DropdownMenuItem>
+              <DropdownMenuItem onClick={handleFactCheckAll}>
+                カード全体（項目もすべて）
+              </DropdownMenuItem>
+              {imageCheckOpen && (
+                <DropdownMenuItem onClick={handleImageCheck}>
+                  イメージが合っているか
+                </DropdownMenuItem>
+              )}
             </BulkMenu>
-            <span className="mx-1 h-5 w-px shrink-0 bg-border" aria-hidden />
+
+            {/* 選んだカードを使う。**設定が要るものはパネルで開く**
+                （新しく作るか、いまあるものへ足すかを、そこで決める） */}
+            <BulkMenu label="活用" icon={<Sparkles size={14} />} disabled={bulkBusy || selectedIds.size === 0}>
+              <DropdownMenuLabel>選択 {selectedIds.size} 件を</DropdownMenuLabel>
+              <DropdownMenuItem onClick={() => openUsePanel('canvas')}>
+                キャンバスを作る・追加する…
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => openUsePanel('box')}>
+                ボックスを作る・追加する…
+              </DropdownMenuItem>
+              {/* **消さずに灰色で置く。** 消すと「できない」ではなく「無い」と読まれる。
+                  スペースは点を選ばないと置けないので、ここからは作れない */}
+              <DropdownMenuItem disabled>
+                スペースを作る・追加する（準備中）
+              </DropdownMenuItem>
+            </BulkMenu>
+            <span className="mx-0.5 h-5 w-px shrink-0 bg-border sm:mx-1" aria-hidden />
             <Button
               variant={confirmBulkDelete ? 'destructive' : 'outline'}
               size="sm"
@@ -1368,8 +1584,9 @@ export function ItemList({ initialTag = null }: { initialTag?: string | null }) 
               {deleting ? <Spinner size={14} /> : <Trash2 size={14} />}
               {deleting ? '削除中...' : confirmBulkDelete ? `本当に削除（${selectedIds.size}件）` : '削除'}
             </Button>
-            <Button variant="ghost" size="sm" className="shrink-0" onClick={exitSelection} disabled={bulkBusy}>
-              キャンセル
+            <Button variant="ghost" size="sm" className="shrink-0" onClick={exitSelection} disabled={bulkBusy} aria-label="選択をやめる">
+              <span className="hidden sm:inline">キャンセル</span>
+              <X size={15} className="sm:hidden" />
             </Button>
           </div>
         </div>
@@ -1480,6 +1697,32 @@ export function ItemList({ initialTag = null }: { initialTag?: string | null }) 
           />
         ))}
       </div>
+
+      {/* 設定が要る一括操作は、ここでパネルへ差し込む。
+          **対象のカードを見たまま決められる**（覆い被さるモーダルにしない） */}
+      <BulkPropertyPicker
+        selected={selectedItems}
+        onClose={closePanel}
+        onRun={(keys, overwrite) => {
+          closePanel()
+          if (overwrite) {
+            askBulk('選んだ項目を作り直す', `選択 ${selectedIds.size} 件の ${keys.length} 項目を置き換えます`, () =>
+              runPropertyFill('項目を作り直す', true, keys)
+            )
+            return
+          }
+          runPropertyFill('項目を埋める', false, keys)
+        }}
+      />
+      <BulkUsePanel
+        family={useFamily}
+        selected={selectedItems}
+        onClose={closePanel}
+        onCreated={() => {
+          closePanel()
+          exitSelection()
+        }}
+      />
 
       <Pagination page={page} totalPages={totalPages} onChange={goToPage} />
     </div>

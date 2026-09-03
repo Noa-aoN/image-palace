@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_08_27_020000) do
+ActiveRecord::Schema[8.1].define(version: 2026_09_03_071518) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
   enable_extension "pg_trgm"
@@ -437,6 +437,9 @@ ActiveRecord::Schema[8.1].define(version: 2026_08_27_020000) do
     t.text "content"
     t.datetime "created_at", null: false
     t.string "generation_status", default: "pending", null: false
+    t.text "image_check_comment"
+    t.string "image_check_status"
+    t.datetime "image_checked_at"
     t.text "image_description"
     t.string "image_model"
     t.uuid "item_type_id", null: false
@@ -462,6 +465,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_08_27_020000) do
     t.datetime "fact_check_acknowledged_at"
     t.jsonb "fact_check_claims", default: [], null: false
     t.text "fact_check_comment"
+    t.jsonb "fact_check_fields", default: [], null: false
     t.text "fact_check_known"
     t.string "fact_check_status"
     t.text "fact_check_suggestion"

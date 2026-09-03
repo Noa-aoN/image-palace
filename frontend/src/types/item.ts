@@ -26,6 +26,10 @@ export interface ItemMedia {
 
 /** 説明文から取り出した主張ひとつと、その検証結果 */
 export interface FactCheckClaim {
+  /** その主張がどこから出たか。'説明' か、項目の見出し。'要素間' は突き合わせから出たもの */
+  field?: string
+  /** 指摘の種類。fact=事実の誤り / consistency=要素どうしの食い違い / intent=項目の意図とのずれ */
+  kind?: 'fact' | 'consistency' | 'intent'
   text: string
   /** supported=裏づけあり / unsupported=確証なし / contradicted=矛盾 */
   verdict: 'supported' | 'unsupported' | 'contradicted'
@@ -115,6 +119,12 @@ export interface Item {
   fact_check_known?: string | null
   /** 説明文から取り出した主張ごとの検証結果 */
   fact_check_claims?: FactCheckClaim[]
+  /** 何を見たうえでの判定か。['説明'] だけなら説明チェック、項目名が並べば全体チェック */
+  fact_check_fields?: string[]
+  /** 絵と語の噛み合い。fits=そのままでよい / weak=思い出しにくい / mismatch=別のもの */
+  image_check_status?: 'fits' | 'weak' | 'mismatch' | null
+  image_check_comment?: string | null
+  image_checked_at?: string | null
   fact_checked_at?: string | null
   /** 人が読んで判断した日時。入っていれば一覧でも警告色を出さない */
   fact_check_acknowledged_at?: string | null

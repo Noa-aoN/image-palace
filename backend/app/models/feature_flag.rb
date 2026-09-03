@@ -87,6 +87,14 @@ class FeatureFlag < ApplicationRecord
     #   released    … 入れる
     #
     # デプロイ無しで開け閉めできる。**公開の判断を、運営の手に置くため**
+    # 絵の点検。**既定は準備中。**
+    #
+    # 絵をそのまま AI へ送るので、ほかのチェックより1回が高い。
+    # 出来と費用を手元で見てから開けられるように、栓を運営の手に置く
+    "image_fit_check" => {
+      label: "イメージの点検", group: "other", path: nil, stage: "development",
+      note: "カードの絵が語と噛み合っているかを AI に見せる。絵を送るぶん、ほかのチェックより高くつく"
+    },
     "demo_entry" => {
       label: "体験用の宮殿の入口", group: "other", path: nil, stage: "development",
       note: "はじまりの宮殿へ入れるかどうか。準備中にすると、入口は見えるが入れない"

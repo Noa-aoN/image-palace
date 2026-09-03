@@ -127,13 +127,24 @@ export async function removeViewEdge(viewId: string, edgeId: string): Promise<vo
   await apiClient.delete(`/api/v1/views/${viewId}/edges/${edgeId}`)
 }
 
+/**
+ * キャンバスを作る。**カードも一緒に渡せる。**
+ *
+ * 作ってから1枚ずつ入れると、50枚で51往復になる。
+ * この製品の遅さは往復の本数で決まるので、作成時にまとめて渡す。
+ *
+ * 渡した順に並ぶ（デッキの並びなど、選んだ順に意味があることがある）。
+ * スペース配置（space_map）は点を選ばないと置けないので、渡しても入らない。
+ */
 export async function createView(
   name: string,
   viewType: string = 'freeboard',
-  spaceId?: string
+  spaceId?: string,
+  itemIds?: string[]
 ): Promise<View> {
   const res = await apiClient.post<View>('/api/v1/views', {
     view: { name, view_type: viewType, space_id: spaceId },
+    ...(itemIds?.length ? { item_ids: itemIds } : {}),
   })
   return res.data
 }
@@ -258,4 +269,17 @@ export async function undoView(id: string): Promise<ViewDetail> {
 export async function redoView(id: string): Promise<ViewDetail> {
   const res = await apiClient.post<ViewDetail>(`/api/v1/views/${id}/redo`)
   return res.data
+}
+
+/**
+ * 選んだカードを、いまあるキャンバスへまとめて足す。
+ *
+ * 1枚ずつの `addViewItem` で 50 枚入れると 50 往復になる。
+ * 既に入っているカードは飛ばされ、並びは末尾へ継がれる（サーバ側で判断する）。
+ */
+export async function addViewItems(viewId: string, itemIds: string[]): Promise<number> {
+  const res = await apiClient.post<{ added: number }>(`/api/v1/views/${viewId}/items`, {
+    item_ids: itemIds,
+  })
+  return res.data.added
 }

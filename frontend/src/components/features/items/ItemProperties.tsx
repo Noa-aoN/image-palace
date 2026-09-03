@@ -114,9 +114,28 @@ const CLAIM_VERDICT: Record<string, { mark: string; className: string }> = {
  * 何を照らし合わせてそう言っているのかを見せて、最後は人が判断できるようにする。
  * 既定では畳んでおく（判定とコメントで足りる場面が多いため）。
  */
+/** 説明そのものを指す名前（backend の GenerateFactCheckService::MEANING_FIELD と揃える） */
+const MEANING_FIELD = '説明'
+
+/**
+ * 指摘の種類。**同じ「怪しい」でも直し方が違う**ので分けて出す。
+ * fact は数が多く、付けると札だらけになるので出さない（既定として扱う）。
+ */
+const CLAIM_KIND_LABEL: Record<string, string> = {
+  consistency: '食い違い',
+  intent: '項目ちがい',
+}
+
 function FactCheckEvidence({ item }: { item: Item }) {
   const [open, setOpen] = useState(false)
   const claims = item.fact_check_claims ?? []
+  // 見た範囲。項目まで見ていれば、その数を出す（説明ぶんの1件は数から外す）
+  const fields = item.fact_check_fields ?? []
+  const propertyCount = fields.filter((name) => name !== MEANING_FIELD).length
+  const checkedScope = fields.length === 0 ? null
+    : propertyCount === 0 ? '説明のみを確認'
+    : `説明と ${propertyCount} 項目を確認`
+
   if (!item.fact_check_known && claims.length === 0) return null
 
   return (
@@ -129,6 +148,9 @@ function FactCheckEvidence({ item }: { item: Item }) {
       >
         {open ? '判定の根拠を隠す' : '判定の根拠を見る'}
       </button>
+      {/* **何を見たうえでの判定かを、開かずに分かるようにする。**
+          同じ「正しい」でも、説明だけ見たものと項目までぜんぶ見たものでは重みが違う */}
+      {checkedScope && <span className="ml-2 text-xs text-muted-foreground">{checkedScope}</span>}
 
       {open && (
         <div className="mt-2 space-y-2 rounded border border-border bg-background px-2.5 py-2">
@@ -140,7 +162,7 @@ function FactCheckEvidence({ item }: { item: Item }) {
           )}
           {claims.length > 0 && (
             <div>
-              <p className="text-xs font-medium text-muted-foreground">説明文の主張ごとの検証</p>
+              <p className="text-xs font-medium text-muted-foreground">主張ごとの検証</p>
               <ul className="mt-1 space-y-1">
                 {claims.map((claim, index) => {
                   const verdict = CLAIM_VERDICT[claim.verdict] ?? CLAIM_VERDICT.unsupported
@@ -150,6 +172,18 @@ function FactCheckEvidence({ item }: { item: Item }) {
                         {verdict.mark}
                       </span>
                       <span>
+                        {/* どこから出た指摘かを先に出す。カード全体を見たときは、
+                            説明と項目の指摘が混ざるので、行だけでは追えない */}
+                        {claim.field && claim.field !== MEANING_FIELD && (
+                          <span className="mr-1 rounded bg-muted px-1 py-0.5 text-3xs text-muted-foreground">
+                            {claim.field}
+                          </span>
+                        )}
+                        {claim.kind && CLAIM_KIND_LABEL[claim.kind] && (
+                          <span className="mr-1 rounded bg-muted px-1 py-0.5 text-3xs text-muted-foreground">
+                            {CLAIM_KIND_LABEL[claim.kind]}
+                          </span>
+                        )}
                         {claim.text}
                         {claim.note && <span className="text-muted-foreground">（{claim.note}）</span>}
                       </span>

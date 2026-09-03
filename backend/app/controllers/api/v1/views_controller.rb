@@ -37,9 +37,17 @@ module Api
         render json: serialize_view_detail(@view)
       end
 
+      # キャンバスを作る。**カードも一緒に入れられる。**
+      #
+      # 選んだカードから作る導線があるので、作ってから1枚ずつ入れると
+      # 50枚で51往復になる。往復の本数がそのまま待ち時間になるため、
+      # 作成と同時に受け取れるようにする。
       def create
         view = current_user.views.build(view_params)
-        view.save!
+        ActiveRecord::Base.transaction do
+          view.save!
+          place_items!(view, params[:item_ids])
+        end
         render json: serialize_view(view), status: :created
       rescue ActiveRecord::RecordInvalid => e
         render json: { errors: e.record.errors.full_messages }, status: :unprocessable_entity
@@ -61,6 +69,14 @@ module Api
 
       # フリーボードにカードを配置する
       def add_item
+        # まとめて足す道。一覧で選んだ 50 枚を入れるのに 50 往復させない
+        # （この製品の遅さは往復の本数で決まる）。作成時と同じ規則を通す
+        if params[:item_ids].present?
+          added = 0
+          ActiveRecord::Base.transaction { added = place_items!(@view, params[:item_ids]) }
+          return render json: { added: added }, status: :created
+        end
+
         item = current_user.items.find(params[:item_id])
         view_item = @view.view_items.find_or_initialize_by(item_id: item.id)
         if @view.deck?
@@ -73,6 +89,34 @@ module Api
         render json: serialize_placement(view_item.tap { |vi| vi.item = item }), status: :created
       rescue ActiveRecord::RecordInvalid => e
         render json: { errors: e.record.errors.full_messages }, status: :unprocessable_entity
+      end
+
+      # 渡されたカードをまとめて置く。
+      #
+      # **持ち主のものだけ。** id を並べて送れる口なので、
+      # ここで絞らないと他人のカードを自分の板へ引き込めてしまう。
+      #
+      # 並びは**渡された順**。選んだ順に意味があることがある（デッキの並びなど）。
+      # 空間配置（space_map）は点を選ばないと置けないので、ここでは入れない。
+      def place_items!(view, item_ids)
+        ids = Array(item_ids).map(&:to_s).uniq
+        return 0 if ids.empty? || view.space_map?
+
+        owned = current_user.items.where(id: ids).pluck(:id)
+        # 送られた順を保つ（where の結果順は保証されない）
+        ordered = ids & owned.map(&:to_s)
+
+        # **既にあるものは飛ばす。** 作成時は空なので効かないが、
+        # あとから足す道では、同じカードを選び直すたびに増えてしまう
+        already = view.view_items.where(item_id: ordered).pluck(:item_id).map(&:to_s).to_set
+        fresh = ordered.reject { |id| already.include?(id) }
+
+        # 並びは末尾へ継ぐ。1 から振り直すと、先にあったカードと番号がぶつかる
+        base = view.view_items.maximum(:position) || 0
+        fresh.each_with_index do |item_id, index|
+          view.view_items.create!(item_id: item_id, position: base + index + 1)
+        end
+        fresh.size
       end
 
       # 配置（座標・重なり順）を更新する
