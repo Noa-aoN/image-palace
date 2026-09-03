@@ -112,6 +112,8 @@ export default function ViewEditorPage() {
       .then((data) => {
         if (cancelled) return
         setView(data)
+        // 枚数は見出しの隣に出す。デッキ以外では出さない（並びの意味が違う）
+        if (data.view_type === 'deck') setDeckCount(data.items?.length ?? 0)
         if (data.view_type === 'freeboard') {
           useBoardSettingsStore.getState().init(data.id, data.settings, data.background_image?.url ?? null)
         }
@@ -159,6 +161,13 @@ export default function ViewEditorPage() {
   const [coverBusy, setCoverBusy] = useState(false)
   // AI編集の結果を盤へ映すための作り直しの鍵
   const [canvasKey, setCanvasKey] = useState(0)
+  /**
+   * デッキの枚数。**見出しの隣に出す。**
+   *
+   * 持ち主は DeckBoard（増減するのはそこでの操作）だが、出す場所は見出しなので
+   * ここで受ける。null は「デッキではない／まだ分からない」で、そのときは出さない。
+   */
+  const [deckCount, setDeckCount] = useState<number | null>(null)
   const handleSetCoverType = async (coverType: CoverType) => {
     if (!view || view.cover_type === coverType) return
     setCoverBusy(true)
@@ -256,6 +265,13 @@ export default function ViewEditorPage() {
           <div className="flex items-center gap-2 min-w-0">
             <h1 className="text-2xl font-semibold truncate">{view.name}</h1>
             <span className="text-sm text-muted-foreground shrink-0">{viewTypeLabel(view.view_type)}</span>
+            {/* 枚数は**見出しの隣**。操作の行に置くと、操作の一部として読まれる。
+                中で増減するので、デッキから知らせてもらう */}
+            {deckCount !== null && (
+              <span className="shrink-0 rounded-full bg-muted px-2 py-0.5 text-xs text-muted-foreground tabular-nums">
+                {deckCount} 枚
+              </span>
+            )}
             <button
               onClick={() => { setNameDraft(view.name); setEditing(true) }}
               className="shrink-0 text-muted-foreground hover:text-foreground transition-colors"
@@ -320,24 +336,34 @@ export default function ViewEditorPage() {
           )}
         </AiEditPanel>
       ) : view.view_type === 'deck' ? (
-        <>
-          <AiEditPanel
-            viewId={view.id}
-            viewType={view.view_type}
-            canUndo={view.revision?.can_undo ?? false}
-            canRedo={view.revision?.can_redo ?? false}
-            onApplied={(updated) => {
-              setView(updated)
-              setCanvasKey((n) => n + 1)
-            }}
-          />
-          <DeckBoard
-            key={canvasKey}
-            viewId={view.id}
-            initialItems={view.items ?? []}
-            cardList={view.card_list}
-          />
-        </>
+        /* AI の操作はデッキのツールバーへ差し込む。
+           独立した行に置くと、同じキャンバスへの操作が2段に分かれる
+           （フリーボードと同じ形にする） */
+        <AiEditPanel
+          viewId={view.id}
+          viewType={view.view_type}
+          canUndo={view.revision?.can_undo ?? false}
+          canRedo={view.revision?.can_redo ?? false}
+          onApplied={(updated) => {
+            setView(updated)
+            setDeckCount(updated.items?.length ?? 0)
+            setCanvasKey((n) => n + 1)
+          }}
+        >
+          {({ editAction, historyActions }) => (
+            <DeckBoard
+              key={canvasKey}
+              viewId={view.id}
+              initialItems={view.items ?? []}
+              cardList={view.card_list}
+              aiEditAction={editAction}
+              aiEditHistoryActions={historyActions}
+              onCountChange={setDeckCount}
+              // 出す項目を変えたら、札の中身はサーバーが解決して返す。取り直す
+              onLayoutSaved={refreshView}
+            />
+          )}
+        </AiEditPanel>
       ) : view.view_type === 'space_map' ? (
         <SpaceMapCanvas viewId={view.id} space={view.space} initialPoints={view.points ?? []} />
       ) : (

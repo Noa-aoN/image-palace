@@ -56,6 +56,7 @@ export function CardDisplayPanel({
   display,
   onChange,
   onLayoutSaved,
+  showRows = true,
 }: {
   display: CardDisplay
   onChange: (patch: Partial<CardDisplay>) => void
@@ -65,6 +66,13 @@ export function CardDisplayPanel({
    * **保存しただけでは棚は変わらない。** 取り直しの合図をここで出す。
    */
   onLayoutSaved?: () => void
+  /**
+   * 1ページの行数を出すか。
+   *
+   * ページ送りのある一覧でだけ意味を持つ。デッキは1枚の面に全部並ぶので、
+   * 出すと**押しても何も起きない設定**が並ぶことになる。
+   */
+  showRows?: boolean
 }) {
   const panel = usePanelForm(PANEL_KEY, '表示')
   const rowChoices = availableRowChoices(display.columns)
@@ -119,25 +127,30 @@ export function CardDisplayPanel({
             </p>
           </div>
 
-          <div className="space-y-2">
-            <Label>1ページの行数</Label>
-            <div className="flex flex-wrap gap-2">
-              {rowChoices.map((count) => (
-                <Chip key={count} active={display.rows === count} onClick={() => onChange({ rows: count })}>
-                  {count}
-                </Chip>
-              ))}
-            </div>
-            {rowChoices.length < CARD_ROW_CHOICES.length && (
-              <p className="text-xs text-muted-foreground">1ページ {MAX_CARDS_PER_PAGE} 枚までです。</p>
-            )}
-          </div>
-          <p className="rounded-lg bg-muted/40 px-3 py-2 text-xs text-muted-foreground">
-            <strong className="text-foreground">
-              {display.columns} 列 × {display.rows} 行
-            </strong>{' '}
-            ＝ 1ページ <strong className="text-foreground">{perPage} 枚</strong>
-          </p>
+          {/* ページ送りのある一覧でだけ意味を持つ。デッキでは出さない */}
+          {showRows && (
+            <>
+              <div className="space-y-2">
+                <Label>1ページの行数</Label>
+                <div className="flex flex-wrap gap-2">
+                  {rowChoices.map((count) => (
+                    <Chip key={count} active={display.rows === count} onClick={() => onChange({ rows: count })}>
+                      {count}
+                    </Chip>
+                  ))}
+                </div>
+                {rowChoices.length < CARD_ROW_CHOICES.length && (
+                  <p className="text-xs text-muted-foreground">1ページ {MAX_CARDS_PER_PAGE} 枚までです。</p>
+                )}
+              </div>
+              <p className="rounded-lg bg-muted/40 px-3 py-2 text-xs text-muted-foreground">
+                <strong className="text-foreground">
+                  {display.columns} 列 × {display.rows} 行
+                </strong>{' '}
+                ＝ 1ページ <strong className="text-foreground">{perPage} 枚</strong>
+              </p>
+            </>
+          )}
 
           {/* 列数・行数と、出す項目は別の話。線で区切って、混ざらないようにする */}
           <hr className="border-border" />
