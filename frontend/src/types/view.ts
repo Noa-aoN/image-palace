@@ -37,7 +37,7 @@ export interface View {
   created_at: string
 }
 
-// フリーボード上に配置されたカード（deck では position が順序を表す）
+// ボード上に配置されたカード（deck では position が順序を表す）
 export interface ViewItemPlacement {
   item_id: string
   x: number
@@ -134,7 +134,7 @@ export interface ViewEdge {
 // AI編集のモード。placed_only=いまある札だけ / select=手持ちから探して足す
 export type AiEditMode = 'placed_only' | 'select'
 
-/** AI に整えてもらうときの方針（フリーボードのみ） */
+/** AI に整えてもらうときの方針（ボードのみ） */
 export type AiEditLayout = 'auto' | 'hierarchy' | 'radial' | 'flow' | 'grid'
 export type AiEditEdgeMode = 'rebuild' | 'keep' | 'infer' | 'restyle' | 'relabel'
 export type AiEditSizeMode = 'ai' | 'uniform' | 'keep'
@@ -171,7 +171,7 @@ export interface CardProposalResult {
   proposals: CardProposal[]
   reuse: CardReuse[]
   edges: CardEdge[]
-  /** フリーボードのとき、これから作る完成図の説明 */
+  /** ボードのとき、これから作る完成図の説明 */
   plan: string | null
   /** 上限で切り詰めたか */
   truncated: boolean

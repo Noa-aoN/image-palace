@@ -6,7 +6,7 @@ export const VIEW_TYPES = ['deck', 'freeboard', 'space_map', 'page', 'map', 'tim
 export type ViewType = (typeof VIEW_TYPES)[number]
 
 export const VIEW_TYPE_LABELS: Record<string, string> = {
-  freeboard: 'フリーボード',
+  freeboard: 'ボード',
   space_map: 'スペース配置',
   deck: 'デッキ',
   // 「ページ」はブラウザの画面そのものを指す語と紛れる（サイトマップの「ページ」など）。

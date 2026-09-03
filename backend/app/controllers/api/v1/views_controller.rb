@@ -69,7 +69,7 @@ module Api
         head :no_content
       end
 
-      # フリーボードにカードを配置する
+      # ボードにカードを配置する
       def add_item
         # まとめて足す道。一覧で選んだ 50 枚を入れるのに 50 往復させない
         # （この製品の遅さは往復の本数で決まる）。作成時と同じ規則を通す
@@ -135,7 +135,7 @@ module Api
         ids = Array(params[:ordered_item_ids])
         ViewItem.transaction do
           ids.each_with_index do |item_id, index|
-            # デッキは position（先頭=1）。フリーボード等はレイヤー＝z_index（先頭=手前=最大）。
+            # デッキは position（先頭=1）。ボード等はレイヤー＝z_index（先頭=手前=最大）。
             attrs = @view.deck? ? { position: index + 1 } : { z_index: ids.size - index }
             @view.view_items.where(item_id: item_id).update_all(**attrs, updated_at: Time.current)
           end
@@ -186,7 +186,7 @@ module Api
       end
 
       # POST /api/v1/views/:id/ai_edit
-      # ことばの指示でキャンバスを組み立て直す（デッキ / フリーボード）。
+      # ことばの指示でキャンバスを組み立て直す（デッキ / ボード）。
       # mode=select は使うカードを選ぶところから、placed_only はいまあるカードだけで組み直す。
       def ai_edit
         # 調整の前に控えを取る。思ったものと違ったときに戻せるようにする

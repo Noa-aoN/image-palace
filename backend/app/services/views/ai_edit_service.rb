@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
 module Views
-  # キャンバス（デッキ／フリーボード）を、ことばの指示どおりに組み立て直す。
+  # キャンバス（デッキ／ボード）を、ことばの指示どおりに組み立て直す。
   #
   # 「このデッキを覚えやすい順に並べ替えて」「原因と結果を線でつないで」といった、
   # ユーザーが手でやっている作業を代わりにやる。
@@ -22,6 +22,13 @@ module Views
     MAX_CANDIDATES = 60
     # 1回の指示で動かせる量の上限（暴走しても被害を限る）
     MAX_OPERATIONS = 100
+    # 計画1回で返させる長さの上限。
+    #
+    # `Ai::Chat` の既定は 2,000 で、**配置1件がおよそ45トークン**。
+    # つまり44枚で JSON が途中で切れ、必ず失敗していた。
+    # 呼び出し側が渡せば上書きされるので、ここで明示する
+    MAX_PLAN_TOKENS = 8_000
+
     # 線だけは別枠にして緩くする。カードと違って外部の費用がかからず、
     # 中心から多数の枝が出る図では本数が素直に増えるため。
     # ここは「関係の数」ではなく暴走の歯止めなので、実際に描く図より十分大きく取る
@@ -32,7 +39,7 @@ module Views
     MODES = %w[select placed_only].freeze
     DEFAULT_MODE = "placed_only"
 
-    # フリーボードの座標系。だいたいこの範囲に収まるよう AI に伝える
+    # ボードの座標系。だいたいこの範囲に収まるよう AI に伝える
     BOARD_WIDTH = 2400
     BOARD_HEIGHT = 1600
     # カードの既定の大きさ（フロントの CARD_DEFAULT_W / H と合わせること）。
@@ -46,7 +53,9 @@ module Views
     # 盤の端にも余白を残す。カードが端に張り付くと、fitView 後も窮屈に見えるため
     BOARD_PADDING = 96
     # カードどうしの最低の隙間。線やラベルを通せる余裕も含めて広めに取る
-    MIN_CARD_GAP = 96
+    # 助走（両端で 28 ずつ）＋文字の居場所を通す。
+    # 96 のころは、線がカードの縁を出てすぐ曲がるしかなく、側面に張り付いていた
+    MIN_CARD_GAP = 140
     # 長い見出しは実カード幅だけで衝突判定すると詰まって見えるため、
     # おおよその文字幅を「読みやすさに必要な幅」として配置計算に含める
     CARD_TITLE_HORIZONTAL_PADDING = 32
@@ -54,7 +63,9 @@ module Views
     # 押しのけを繰り返す回数（連鎖して玉突きになるため何度か回す）
     OVERLAP_PASSES = 24
     # 接続線をカードから離して迂回させる幅。カード間余白の半分を線の通り道に使う
-    EDGE_CARD_CLEARANCE = 40
+    # 迂回する線が、よけたカードからどれだけ離れるか。
+    # 助走ぶん（28）より広く取らないと、よけた先でまた側面に寄る
+    EDGE_CARD_CLEARANCE = 56
 
     # 線の太さの範囲
     MIN_EDGE_WIDTH = 1
@@ -69,8 +80,15 @@ module Views
     # 並べ方の指定。おまかせ以外を選ぶと、その形になるよう指示を足す
     LAYOUTS = %w[auto hierarchy radial flow grid].freeze
     LAYOUT_RULES = {
-      "hierarchy" => "上から下への階層にする。親を上、子をその真下に等間隔で並べ、" \
-                     "同じ深さのものは同じ y に揃える。",
+      # 家系図の形。**親は子の真ん中の上**、というのが要。
+      # 「親を上、子を下」だけだと、子が親の左右どちらかへ寄って読み筋が崩れる
+      "hierarchy" => "家系図の形にする。" \
+                     "(1) 同じ深さのものは必ず同じ y に置き、深さが1つ下がるごとに y を 260 ずつ増やす。" \
+                     "(2) 子は親の下に、左から順に等間隔（x の間隔は 260 以上）で並べる。" \
+                     "(3) **親の x は、その子たちの左端と右端のちょうど中間**に置く。" \
+                     "子が1つなら親と同じ x にする。" \
+                     "(4) 兄弟のかたまり同士は 200 以上あけ、別の親の子と混ざらないようにする。" \
+                     "(5) 線は親から子への1方向だけ。親から出るのは下辺、子へ入るのは上辺。",
       "radial" => "中心から放射状にする。主題を中央に置き、関係するものを周囲へ等間隔・等距離に配る。",
       "flow" => "左から右への流れにする。順序のあるものを横一列に等間隔で並べ、" \
                 "枝分かれは上下へ振る。",
@@ -95,7 +113,12 @@ module Views
     def initialize(view:, instruction:, mode:, layout: nil, edges: nil, sizing: nil, placement: nil)
       @view = view
       @user = view.user
-      @instruction = instruction.to_s.strip
+      # 指示が空なら、**ボードの名前をそのまま指示にする。**
+      #
+      # 名前は「何の図か」を既に言っている（「DNSの仕組み」「明治維新の流れ」）。
+      # それを書き写させるより、押せばその図になるほうがよい。
+      # 名前も無いときだけ断る。
+      @instruction = instruction.to_s.strip.presence || view.name.to_s.strip
       @mode = MODES.include?(mode.to_s) ? mode.to_s : DEFAULT_MODE
       @layout = LAYOUTS.include?(layout.to_s) ? layout.to_s : "auto"
       # 既定は従来どおり（線は引き直す・大きさは AI に任せる）
@@ -104,10 +127,15 @@ module Views
       @placement_mode = PLACEMENT_MODES.include?(placement.to_s) ? placement.to_s : "arrange"
     end
 
+    # 何も触らない設定で呼ばれたとき。**AI を呼ぶ前に断る。**
+    # 呼んでしまうと、結果が何も変わらないのにクレジットだけ減る
+    NOTHING_TO_DO = "触る対象が選ばれていません。カード・線・配置のどれかを整える設定にしてください。"
+
     def call
-      raise EditError, "指示を入力してください" if @instruction.blank?
+      raise EditError, "指示を入力してください（ボードに名前を付けておくと、それを指示にできます）" if @instruction.blank?
       raise EditError, "指示が長すぎます（#{MAX_INSTRUCTION_LENGTH}文字以内）" if @instruction.length > MAX_INSTRUCTION_LENGTH
       raise EditError, "このキャンバスは対象外です" unless @view.deck? || @view.freeboard?
+      raise EditError, NOTHING_TO_DO if nothing_to_do?
 
       # OpenAI へ渡るユーザー入力は必ず検査する（作成・再生成と同じ基準）
       moderation = Moderation::PromptModerator.call(@instruction)
@@ -145,7 +173,7 @@ module Views
         remaining = MAX_CANDIDATES - matched.size
         recent = if remaining.positive?
           @user.items.where.not(id: placed_ids + matched.map(&:id))
-               .order(created_at: :desc).limit(remaining).to_a
+               .order(created_at: :desc, id: :asc).limit(remaining).to_a
         else
           []
         end
@@ -162,7 +190,10 @@ module Views
       scope = @user.items.left_joins(:tags)
       condition = words.map { "items.title ILIKE ? OR tags.name ILIKE ?" }.join(" OR ")
       values = words.flat_map { |word| [ "%#{word}%", "%#{word}%" ] }
-      scope.where(condition, *values).distinct.limit(MAX_CANDIDATES).to_a
+      # **並び順を決めて切る。** 指定しないと、上限で切られる中身が実行のたびに変わり、
+      # AI へ渡す資料そのものが揺れる（同じ指示から違う図が出る原因のひとつ）
+      scope.where(condition, *values).distinct.order(created_at: :desc, id: :asc)
+           .limit(MAX_CANDIDATES).to_a
     end
 
     # --- AI に計画を立てさせる ----------------------------------------------
@@ -177,10 +208,19 @@ module Views
           { role: "user", content: user_message }
         ],
         temperature: 0.3,
+        max_tokens: MAX_PLAN_TOKENS,
         response_format: { type: "json_object" }
       )
 
-      JSON.parse(response.dig("choices", 0, "message", "content").to_s)
+      content = response.dig("choices", 0, "message", "content").to_s
+      # **切れたことを、切れたと言う。**
+      # 打ち切られた JSON は解析に失敗するので、これまでは「解釈できませんでした」と
+      # だけ返っていた。枚数が多いのが理由なら、そう言わないと打つ手が分からない
+      if response.dig("choices", 0, "finish_reason") == "length"
+        raise EditError, "カードが多すぎて、AI が最後まで答えられませんでした。枚数を減らすか、範囲を絞ってお試しください。"
+      end
+
+      JSON.parse(content)
     rescue JSON::ParserError => e
       raise EditError, "AI の応答を解釈できませんでした: #{e.message}"
     end
@@ -214,7 +254,10 @@ module Views
         - order には、編集後にデッキへ残る全てのカードを、意図した順に過不足なく並べること。
         - 並べる根拠を持つこと。時系列・因果・易→難・大→小など、指示に沿った一貫した軸で並べる。
         - remove はデッキから外すだけで、カードそのものは消えません。
-        - 指示に無いことはしないこと。並べ替えを頼まれていないなら order は今のままにする。
+
+        #{option_rules}
+
+        #{no_extra_rule} 並べ替えを頼まれていないなら order は今のままにする。
         - 説明に事実として疑わしい点や、明らかに欠けている観点があれば notes に日本語で書くこと。
           ただし推測で断定しない。確証が持てないことは「確認できない」と書く。
       PROMPT
@@ -223,7 +266,7 @@ module Views
     def freeboard_rules
       <<~PROMPT
         あなたは考えを図にまとめる編集者です。
-        フリーボードは、カードを平面に置き、カード同士を線でつなぐ形式です。
+        ボードは、カードを平面に置き、カード同士を線でつなぐ形式です。
 
         次の JSON のみを返してください。
         {"summary": "何をしたかの日本語の短い説明",
@@ -245,12 +288,20 @@ module Views
           カードが重なると下のカードが読めなくなる。詰めたいときは大きさを小さくする。
         - **線がカードの上を通らないようにする**。つなぐ2枚の間に別のカードを挟まない。
           挟まる配置しか作れないなら、並び順の方を変える。
-        - 線はできるだけ **水平・垂直の直交線**で結べる配置にする。斜め線が必要になる置き方を避け、
-          同じ向きに流れる複数の線は平行に揃える。線同士にも間隔を残し、1本に重ねない。
+        - 線はカードの縁から**いったんまっすぐ離れてから**曲がる。
+          カードを詰めすぎると曲がる場所が無くなり、線が別のカードの側面に張り付く。
+        - 線は**水平・垂直だけで引かれる**（斜めにはならない）。だから
+          **つなぐ2枚は、x か y のどちらかを揃えて置く**こと。
+          揃っていないと線が階段状に折れて、図が読みにくくなる。
+            ・上下につなぐなら x を揃える（同じ列に置く）
+            ・左右につなぐなら y を揃える（同じ行に置く）
+          同じ向きに流れる複数の線は平行に揃え、線同士にも間隔を残して1本に重ねない。
         - 意味のまとまりが目で分かる配置にすること。
           流れがあるものは左から右（または上から下）へ等間隔に、
           対比は左右に対称に、まとまりは近くに寄せ、別のまとまりとは 200 以上あける。
         - 座標は 20 の倍数に丸めて、並びが揃って見えるようにする。
+        - 返す直前に、**線でつないだ全ての組について x か y が揃っているか**を確かめる。
+          揃っていない組があれば、どちらかのカードを動かして揃え直す。
 
         ## 線
         - edges は編集後のボードにあるべき線を全て挙げること。ここに無い線は消えます。
@@ -300,7 +351,10 @@ module Views
       @edge_mode == "keep" ? MEANING_EXCERPT : MEANING_EXCERPT_FOR_INFER
     end
 
-    # 画面で選んだ方針を規則として足す。指示文に混ぜず、規則の側に置く
+    # 画面で選んだ方針を規則として足す。指示文に混ぜず、規則の側に置く。
+    #
+    # **デッキには「カードの追加」しか効かない。** 置き場所・線・大きさはデッキに無い。
+    # 全部足していた頃は、デッキに座標の話が混ざって指示がぼやけていた
     def option_rules
       rules = []
       if @mode == "select"
@@ -311,6 +365,8 @@ module Views
           - ただし関係のないものは入れない。図に要るものだけを選ぶ。
         SELECT
       end
+      return rules.join("\n\n") if @view.deck?
+
       if @placement_mode == "keep"
         rules << "## 置き場所\n- カードの位置は変えない。placements に x / y を書かないこと。"
       elsif LAYOUT_RULES.key?(@layout)
@@ -366,7 +422,7 @@ module Views
     # 囲いを閉じる記号を含んだ入力で外へ抜け出せないよう、記号は落としておく。
     def user_message
       sections = [ "<指示>", sanitize(@instruction), "</指示>", "", "<資料>" ]
-      sections << "キャンバス種別: #{@view.deck? ? 'デッキ（並び順）' : 'フリーボード（平面）'}"
+      sections << "キャンバス種別: #{@view.deck? ? 'デッキ（並び順）' : 'ボード（平面）'}"
       sections << ""
       sections << "いまキャンバスにあるカード:"
       sections << (placed.empty? ? "（なし）" : placed.map { |vi| placed_line(vi) }.join("\n"))
@@ -428,6 +484,10 @@ module Views
       added = removed = placed_count = connected = 0
 
       ViewItem.transaction do
+        # 動かす前の座標。**「本当に動いたか」を後で見る**ために控える。
+        # 「動かす設定か」ではなく「動いたか」で判断しないと、
+        # 何も動いていないのに線を引き直して、手で曲げた線を潰してしまう
+        before_boxes = @view.freeboard? ? placement_boxes : {}
         removed = remove_items!(ids_from(plan["remove"]))
         added_ids = add_items!(ids_from(plan["add"]))
         added = added_ids.size
@@ -441,27 +501,36 @@ module Views
         unify_card_sizes! if @view.freeboard? && @size_mode == "uniform"
         # 重なりは頼んでも守られないことがある。最後にこちらで必ず解く
         resolve_overlaps!(added_ids) if @view.freeboard?
+        moved_cards = @view.freeboard? && placement_boxes != before_boxes
         connected =
           if !@view.freeboard?
             0
           elsif %w[rebuild infer].include?(@edge_mode)
             apply_edges!(plan["edges"])
-          elsif @edge_mode == "restyle"
-            # つなぎ方は変えず、文字と見た目だけ当て直す
-            restyle_edges!(plan["edges"])
-          elsif @edge_mode == "relabel"
-            # 接続・見た目・折れ点を保ち、線上の文言だけを当て直す
-            relabel_edges!(plan["edges"])
           else
-            # 「線はそのまま」を選んだときは触らない。引き直すと手で描いた線が消える
-            # ただし配置を変えた場合、古い端点・折れ点のままではカード上を通るため
-            # 接続・文言・見た目を保ったまま経路だけを新配置へ合わせる
-            reroute_existing_edges! if @placement_mode == "arrange"
+            # 引き直さない3つ（restyle / relabel / keep）。**線そのものは残す。**
+            #
+            # ただしカードが動いたなら、古い折れ点はもう合っていない。
+            # そのままにすると、整えたはずの線がカードの上を通る。
+            # 接続・文言・見た目は保ったまま、経路だけを新しい配置へ合わせる。
+            case @edge_mode
+            when "restyle" then restyle_edges!(plan["edges"])
+            when "relabel" then relabel_edges!(plan["edges"])
+            end
+            reroute_existing_edges! if moved_cards
             @view.view_edges.count
           end
       end
 
       Result.new(summary:, notes:, added:, removed:, placed: placed_count, connected:)
+    end
+
+    # 置き場所も大きさも線も触らず、カードも足さない＝やることが無い。
+    # デッキは並び替えが本体なので、この判定に含めない
+    def nothing_to_do?
+      return false unless @view.freeboard?
+
+      @placement_mode == "keep" && @size_mode == "keep" && @edge_mode == "keep" && @mode != "select"
     end
 
     def ids_from(value)
@@ -559,8 +628,23 @@ module Views
     # 置き場所を触らない設定のときは、今回足したカードだけを動かす
     # （もとからあるカードを勝手に動かさない）。
     def resolve_overlaps!(added_ids)
-      movable = @placement_mode == "arrange" ? nil : added_ids.to_set
-      boxes = @view.view_items.includes(:item).map do |view_item|
+      # 動かしてよいカード。nil は「全部」。
+      #
+      # **大きさをそろえたときも全部を動かせるようにする。**
+      # 置き場所を触らない設定でも、大きさが変われば新しい重なりができる。
+      # 足したカードだけを逃がしていた頃は、その重なりが解けないまま残っていた
+      movable =
+        if @placement_mode == "arrange" || @size_mode == "uniform"
+          nil
+        else
+          added_ids.to_set
+        end
+      # **並び順を決めて読む。**
+      #
+      # 押しのけは `combination(2)` で総当りするので、**順が変われば結果も変わる**。
+      # 並び順を指定していなかった頃は、同じ計画を渡しても配置が実行のたびに違った。
+      # id 順にすれば、同じ入力からは必ず同じ図が出る。
+      boxes = @view.view_items.includes(:item).order(:item_id).map do |view_item|
         width = (view_item.width || CARD_WIDTH).to_f
         {
           id: view_item.item_id, x: view_item.x.to_f, y: view_item.y.to_f,

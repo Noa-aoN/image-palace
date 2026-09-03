@@ -43,7 +43,7 @@ function ToggleRow({ label, checked, onChange }: { label: string; checked: boole
   )
 }
 
-// 右パネル: フリーボード全体の設定（背景色・背景模様・カード文字サイズ・表示トグル）。
+// 右パネル: ボード全体の設定（背景色・背景模様・カード文字サイズ・表示トグル）。
 export function BoardSettingsBody() {
   const viewId = useRightPanelStore((s) => s.viewId)
   const settings = useBoardSettingsStore((s) => s.settings)

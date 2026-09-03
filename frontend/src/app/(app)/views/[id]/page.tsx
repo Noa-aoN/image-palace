@@ -316,6 +316,7 @@ export default function ViewEditorPage() {
         <AiEditPanel
           viewId={view.id}
           viewType={view.view_type}
+          viewName={view.name}
           canUndo={view.revision?.can_undo ?? false}
           canRedo={view.revision?.can_redo ?? false}
           onApplied={(updated) => {
@@ -338,10 +339,11 @@ export default function ViewEditorPage() {
       ) : view.view_type === 'deck' ? (
         /* AI の操作はデッキのツールバーへ差し込む。
            独立した行に置くと、同じキャンバスへの操作が2段に分かれる
-           （フリーボードと同じ形にする） */
+           （ボードと同じ形にする） */
         <AiEditPanel
           viewId={view.id}
           viewType={view.view_type}
+          viewName={view.name}
           canUndo={view.revision?.can_undo ?? false}
           canRedo={view.revision?.can_redo ?? false}
           onApplied={(updated) => {

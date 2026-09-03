@@ -85,6 +85,7 @@ const EXAMPLES: Record<string, string> = {
 export function AiEditPanel({
   viewId,
   viewType,
+  viewName,
   canUndo,
   canRedo,
   onApplied,
@@ -92,11 +93,13 @@ export function AiEditPanel({
 }: {
   viewId: string
   viewType: string
+  /** キャンバスの名前。**空欄のときの指示になる**ので、押す前に見せる */
+  viewName?: string
   canUndo: boolean
   canRedo: boolean
   /** 編集後のキャンバス。呼び出し側で描き直す */
   onApplied: (view: ViewDetail) => void
-  /** フリーボードでは操作をキャンバスのツールバー内へ差し込む */
+  /** ボードでは操作をキャンバスのツールバー内へ差し込む */
   children?: (controls: { editAction: ReactNode; historyActions: ReactNode }) => ReactNode
 }) {
   const panel = usePanelForm(PANEL_KEY, 'AIで整える')
@@ -128,6 +131,8 @@ export function AiEditPanel({
   // 「カードから作る」は提案を出すだけ。作るのは確認したあと
   // 「作る」も「手持ちから足す」も、いきなり適用せず一覧で見せてから決める
   const propose = async (source: 'create' | 'select') => {
+    // ここは**空欄では動かない**。どんなカードを作るか／どれを足すかは、
+    // ボードの名前だけでは決められない（何を足すかは指示そのもの）
     const trimmed = instruction.trim()
     if (!trimmed || busy) return
     setBusy('propose')
@@ -183,7 +188,19 @@ export function AiEditPanel({
   }
 
   // 範囲に応じて、触らない項目を自動で「そのまま」にする
-  const canRun = busy === null && instruction.trim().length > 0
+  // 空欄でも押せる。空ならボードの名前が指示になる（サーバー側で補う）。
+  // 名前も無いときだけ、サーバーが理由を返す
+  /**
+   * 押せるかどうか。
+   *
+   * **並べ直すだけなら空欄でよい**（サーバーがボードの名前を指示にする）。
+   * カードを足す2つの方針だけは、空欄では決められない
+   * ——「何を作るか」「どれを足すか」は、名前ではなく指示そのものだから。
+   */
+  const needsInstruction = mode === 'create' || mode === 'select'
+  const canRunScope = (scope: EditScope) =>
+    busy === null && (!(scope === 'all' || scope === 'cards') || !needsInstruction || instruction.trim().length > 0)
+  const canRun = canRunScope('all')
 
   const optionsFor = (scope: EditScope) => ({
     layout,
@@ -198,8 +215,10 @@ export function AiEditPanel({
       if (mode === 'create') return propose('create')
       if (mode === 'select') return propose('select')
     }
+    // 空欄でよい。**サーバーがボードの名前を指示にする。**
+    // 線の文字だけを付け直すときは、決まった言い方を先に当てる
     const trimmed = instruction.trim() || (scope === 'edge_labels' ? DEFAULT_EDGE_LABEL_INSTRUCTION : '')
-    if (!trimmed || busy) return
+    if (busy) return
     setBusy('edit')
     setRunningScope(scope)
     setError(null)
@@ -299,7 +318,7 @@ export function AiEditPanel({
 
           <div>
             <label htmlFor="ai-edit-instruction" className="mb-1 block text-xs text-muted-foreground">
-              指示
+              指示（空欄でもよい）
             </label>
             <Input
               id="ai-edit-instruction"
@@ -313,9 +332,20 @@ export function AiEditPanel({
               maxLength={MAX_INSTRUCTION}
               disabled={busy !== null}
             />
-            <p className="mt-1 text-right text-xs text-muted-foreground">
-              {instruction.length} / {MAX_INSTRUCTION}
-            </p>
+            <div className="mt-1 flex items-baseline justify-between gap-2">
+              {/* 空欄のときに何が起きるかを、押す前に言う。
+                  名前は「何の図か」を既に言っているので、書き写させない */}
+              <p className="text-xs text-muted-foreground">
+                {instruction.trim()
+                  ? '\u00A0'
+                  : needsInstruction
+                    ? 'カードを足すときは、何を足すかを書いてください'
+                    : `空欄なら「${viewName ?? 'このボード'}」を指示にします`}
+              </p>
+              <p className="shrink-0 text-xs text-muted-foreground">
+                {instruction.length} / {MAX_INSTRUCTION}
+              </p>
+            </div>
           </div>
 
           {/*
@@ -331,7 +361,7 @@ export function AiEditPanel({
                 <RunButton
                   label="カードだけ整える"
                   busy={runningScope === 'cards'}
-                  disabled={!canRun}
+                  disabled={!canRunScope('cards')}
                   onClick={() => run('cards')}
                 />
               ) : undefined
@@ -377,7 +407,7 @@ export function AiEditPanel({
                     <RunButton
                       label="線だけ整える"
                       busy={runningScope === 'edges'}
-                      disabled={!canRun}
+                      disabled={!canRunScope('edges')}
                       onClick={() => run('edges')}
                     />
                   </div>
@@ -412,7 +442,7 @@ export function AiEditPanel({
                   <RunButton
                     label="配置だけ整える"
                     busy={runningScope === 'layout'}
-                    disabled={!canRun}
+                    disabled={!canRunScope('layout')}
                     onClick={() => run('layout')}
                   />
                 }
@@ -439,7 +469,7 @@ export function AiEditPanel({
 
           <Button
             onClick={() => run('all')}
-            disabled={busy !== null || !instruction.trim()}
+            disabled={!canRun}
             className="flex w-full items-center justify-center gap-1.5"
           >
             {busy === 'edit' || busy === 'propose' ? <Spinner size={14} /> : <Wand2 size={14} />}

@@ -1,6 +1,6 @@
 module Api
   module V1
-    # フリーボードのカード間接続線（edges）の CRUD。
+    # ボードのカード間接続線（edges）の CRUD。
     class ViewEdgesController < BaseController
       before_action :set_view
 

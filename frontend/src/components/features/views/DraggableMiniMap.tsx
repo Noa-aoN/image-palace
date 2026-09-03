@@ -9,7 +9,7 @@ const MIN_SIZE = { w: 120, h: 90 }
 // ドラッグ用ハンドルバーの高さ（px）。ミニマップ本体はこのぶん下げる。
 const HANDLE_H = 20
 
-// フリーボードのミニマップを、ドラッグで移動・角ドラッグでリサイズできるようにするラッパー。
+// ボードのミニマップを、ドラッグで移動・角ドラッグでリサイズできるようにするラッパー。
 // 位置は既定で右下（pos=null）。一度ドラッグしたら left/top 指定に切り替える。
 // ※右パネルの開閉に連動した位置調整は行わない（固定運用）。
 export function DraggableMiniMap({ boardRef }: { boardRef: RefObject<HTMLDivElement | null> }) {

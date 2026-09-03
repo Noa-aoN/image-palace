@@ -679,7 +679,7 @@ export default function LibraryPage() {
     ),
     canvas: (
       <>
-        {/* キャンバス（表示・学習形式：デッキ / フリーボード等） */}
+        {/* キャンバス（表示・学習形式：デッキ / ボード等） */}
         <Section icon={<LayoutGrid size={22} />} title="キャンバス" description="カードの表示・学習形式">
           <Shelf icon={<Layers size={18} />} title="デッキ" count={deckViews.length} href={selectionMode ? undefined : '/views?type=deck'} action={selectionMode ? undefined : <LibraryCreateButton kind="deck" />}>
             {deckViews.length === 0 ? (
@@ -698,9 +698,9 @@ export default function LibraryPage() {
               </Rail>
             )}
           </Shelf>
-          <Shelf icon={<LayoutGrid size={18} />} title="フリーボード" count={freeboardViews.length} href={selectionMode ? undefined : '/views?type=freeboard'} action={selectionMode ? undefined : <LibraryCreateButton kind="freeboard" />}>
+          <Shelf icon={<LayoutGrid size={18} />} title="ボード" count={freeboardViews.length} href={selectionMode ? undefined : '/views?type=freeboard'} action={selectionMode ? undefined : <LibraryCreateButton kind="freeboard" />}>
             {freeboardViews.length === 0 ? (
-              <EmptyRail message="まだフリーボードがありません。" />
+              <EmptyRail message="まだボードがありません。" />
             ) : (
               <Rail onEndReached={() => loadMoreShelf('views', views.length)}>
                 {freeboardViews.slice(0, PREVIEW_LIMIT).map((view) => (

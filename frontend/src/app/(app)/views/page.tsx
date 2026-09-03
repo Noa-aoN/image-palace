@@ -130,7 +130,7 @@ function ViewsPageInner() {
         )}
       </div>
       <p className="text-sm text-muted-foreground mb-6">
-        カードを自由に配置するフリーボード。関係性を視覚的に整理できます。
+        カードを自由に配置するボード。関係性を視覚的に整理できます。
       </p>
 
       <PanelSlotContent sectionKey="view-create">
