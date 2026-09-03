@@ -1,21 +1,19 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, type ReactNode } from 'react'
 import Link from 'next/link'
 import { Plus, X, ChevronUp, ChevronDown, GripVertical, List, LayoutGrid } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { getItems } from '@/lib/api/items'
 import { addDeckCard, removeViewItem, reorderDeckCards } from '@/lib/api/views'
 import { ItemCard } from '@/components/features/items/ItemCard'
+import { CardDisplayPanel } from '@/components/features/items/CardDisplayPanel'
 import { CARD_GRID_CLASSES } from '@/lib/card-grid'
-import { cardImageSizes } from '@/hooks/useCardDisplay'
+import { cardImageSizes, useCardDisplay } from '@/hooks/useCardDisplay'
 import { densityFor } from '@/lib/items/card-density'
 import { readDeckLayout, writeDeckLayout, type DeckLayout } from '@/lib/views/deck-layout'
 import type { ViewItemPlacement } from '@/types/view'
 import type { Item } from '@/types/item'
-
-/** カードで見るときの列数。並べ替えの手が届く程度に大きく置く */
-const CARD_COLUMNS = 4
 
 /**
  * deck 種別のキャンバス本体：カードの順序付きリスト（追加・削除・並び替え）。
@@ -31,13 +29,41 @@ export function DeckBoard({
   viewId,
   initialItems,
   cardList,
+  aiEditAction,
+  aiEditHistoryActions,
+  onCountChange,
+  onLayoutSaved,
 }: {
   viewId: string
   initialItems: ViewItemPlacement[]
   /** 並べ方の設定。キャンバスに1回だけ付いてくる */
   cardList?: { blocks: string[]; image: boolean; type_mark: boolean }
+  /**
+   * AI の操作。**このツールバーに混ぜて受け取る。**
+   * 別の行に置くと、同じキャンバスへの操作が2段に分かれて、
+   * どちらを見ればよいのか分からなくなる（フリーボードと同じ形にする）
+   */
+  aiEditAction?: ReactNode
+  aiEditHistoryActions?: ReactNode
+  /** 枚数は見出しの隣に出す。中で増減するので、変わったら知らせる */
+  onCountChange?: (count: number) => void
+  /**
+   * 出す項目の設定を保存し終えたとき。
+   * 項目の並びはサーバーが解決して返すので、**保存しただけでは札は変わらない**
+   */
+  onLayoutSaved?: () => void
 }) {
+  // 見え方の設定は**一覧と同じものを使う**。デッキだけ列数が違うと、
+  // 同じ札なのに幅が変わり、読める字の量も変わる
+  const [display, changeDisplay] = useCardDisplay()
   const [items, setItems] = useState<ViewItemPlacement[]>(initialItems)
+
+  // 枚数の持ち主はここ（増減するのはここでの操作）。見出しへは知らせるだけ。
+  // **効果で送らない。** 増減した瞬間に呼べば、余計な描き直しが1回減る
+  const replaceItems = (next: ViewItemPlacement[]) => {
+    setItems(next)
+    onCountChange?.(next.length)
+  }
   // 見せ方は端末に覚えさせる。**この人がどう見たいか**であって、デッキの性質ではない
   const [layout, setLayout] = useState<DeckLayout>(() => readDeckLayout())
 
@@ -69,8 +95,8 @@ export function DeckBoard({
     setBusy(true)
     try {
       await addDeckCard(viewId, item.id)
-      setItems((cur) => [
-        ...cur,
+      replaceItems([
+        ...items,
         {
           item_id: item.id,
           x: 0,
@@ -90,7 +116,7 @@ export function DeckBoard({
     setBusy(true)
     try {
       await removeViewItem(viewId, itemId)
-      setItems((cur) => cur.filter((i) => i.item_id !== itemId))
+      replaceItems(items.filter((i) => i.item_id !== itemId))
     } catch {
       // noop
     } finally {
@@ -132,23 +158,50 @@ export function DeckBoard({
 
   return (
     <div className="flex-1">
-      <div className="mb-4 flex items-center justify-between gap-2">
-        <p className="shrink-0 text-sm text-muted-foreground">{items.length} 枚</p>
-        <div className="flex items-center gap-2">
-          {/* **並びを直すのと、中身を読むのは別の用事。**
-              リストは順番・つまみ・外すが1行に収まる。カードは一覧と同じ札で読める */}
-          <div className="flex rounded-lg border border-border p-0.5">
-            <LayoutToggle active={layout === 'list'} onClick={() => changeLayout('list')} label="リストで見る">
-              <List size={15} />
-            </LayoutToggle>
-            <LayoutToggle active={layout === 'card'} onClick={() => changeLayout('card')} label="カードで見る">
-              <LayoutGrid size={15} />
-            </LayoutToggle>
-          </div>
-          <Button size="sm" onClick={openPicker} className="flex items-center gap-1">
-            <Plus size={14} />
-            カードを追加
-          </Button>
+      {/*
+        **操作は1行に収める。** カードを足す・AI に整えさせる・戻す／進む・見せ方を変える。
+        フリーボードと同じ並べ方にする（主な操作を左端に色付きで、
+        履歴はそのあと、見せ方だけを右端へ）。
+
+        枚数はここに出さない。**見出しの隣**にあるほうが、
+        「このデッキが何枚か」として読める（操作の一部ではない）
+      */}
+      <div className="mb-4 flex flex-wrap items-center gap-2">
+        <Button size="sm" onClick={openPicker} className="flex items-center gap-1">
+          <Plus size={15} />
+          カードを追加
+        </Button>
+        {aiEditAction}
+        {aiEditHistoryActions}
+
+        {/* 掴む場所は見れば分かるものではないので、一言添える
+            （フリーボードが操作の要点を右端に置いているのと同じ形） */}
+        <span className="ml-auto hidden text-xs text-muted-foreground sm:inline">
+          つまみを掴んで並び替えられます
+        </span>
+
+        {/* 出す項目・列数・画像の収め方。**一覧と同じパネルを開く。**
+            行数（ページ送り）だけはデッキに無いので出さない。
+            カードで見るときにしか効かないので、そのときだけ出す */}
+        {layout === 'card' && (
+          <CardDisplayPanel
+            display={display}
+            onChange={changeDisplay}
+            onLayoutSaved={onLayoutSaved}
+            showRows={false}
+          />
+        )}
+
+        {/* **並びを直すのと、中身を読むのは別の用事。**
+            リストは順番・つまみ・外すが1行に収まる。カードは一覧と同じ札で読める。
+            見せ方は操作ではないので、右端へ寄せる（一覧の「表示」と同じ位置） */}
+        <div className="flex shrink-0 rounded-lg border border-border p-0.5">
+          <LayoutToggle active={layout === 'list'} onClick={() => changeLayout('list')} label="リストで見る">
+            <List size={15} />
+          </LayoutToggle>
+          <LayoutToggle active={layout === 'card'} onClick={() => changeLayout('card')} label="カードで見る">
+            <LayoutGrid size={15} />
+          </LayoutToggle>
         </div>
       </div>
 
@@ -159,22 +212,54 @@ export function DeckBoard({
       ) : layout === 'card' ? (
         /* **一覧とまったく同じ札**を使う。別々に描くと、同じカードなのに
            一覧とデッキで見え方が変わる。並べ方の設定もサーバーから受け取る */
-        <div className={`grid gap-4 ${CARD_GRID_CLASSES[CARD_COLUMNS]}`}>
-          {items.map((vi) => (
-            <ItemCard
+        <div className={`grid gap-4 ${CARD_GRID_CLASSES[display.columns]}`}>
+          {items.map((vi, index) => (
+            <div
               key={vi.item_id}
-              item={vi.item as Item}
-              selectionMode={false}
-              selected={false}
-              onToggle={() => {}}
-              fit="natural"
-              blocks={cardList?.blocks ?? [ 'image' ]}
-              showTypeMark={cardList?.type_mark ?? true}
-              density={densityFor(CARD_COLUMNS)}
-              sizes={cardImageSizes(CARD_COLUMNS)}
-              working={false}
-              workingLabel={null}
-            />
+              // 掴めるのはつまみを押している間だけ。**札そのものを掴めるようにしない。**
+              // 札は押すと詳細へ進む。掴めてしまうと、開こうとしただけで並びが動く
+              draggable={grabbed === index}
+              onDragStart={() => setDragIndex(index)}
+              onDragOver={(e) => { e.preventDefault(); handleDragOver(index) }}
+              onDragEnd={() => { handleDragEnd(); setGrabbed(null) }}
+              className={`group relative ${dragIndex === index ? 'opacity-50' : ''}`}
+            >
+              <ItemCard
+                item={vi.item as Item}
+                selectionMode={false}
+                selected={false}
+                onToggle={() => {}}
+                fit={display.fit}
+                blocks={cardList?.blocks ?? [ 'image' ]}
+                showTypeMark={cardList?.type_mark ?? true}
+                density={densityFor(display.columns)}
+                sizes={cardImageSizes(display.columns)}
+                working={false}
+                workingLabel={null}
+              />
+              {/*
+                つまみ。**札の上に重ねる。**
+                リスト表示と同じ持ち方にして、掴む場所を覚え直させない。
+
+                **ふだんは出さない。** 札は絵を見るためのもので、
+                常に印が乗っていると、並べ替えないときにも視線を取る。
+                指で触る画面には hover が無いので、そこでは出したままにする
+                （消すと掴む場所が無くなる）。
+              */}
+              <span
+                onPointerDown={() => setGrabbed(index)}
+                onPointerUp={() => setGrabbed(null)}
+                // 札の押下（詳細へ進む）に伝えない
+                onClick={(e) => { e.preventDefault(); e.stopPropagation() }}
+                title="掴んで並び替え"
+                aria-hidden="true"
+                className={`absolute left-1 top-1 z-10 cursor-grab touch-none rounded bg-background/80 p-0.5 text-muted-foreground/70 backdrop-blur-sm transition-opacity active:cursor-grabbing [@media(hover:hover)]:opacity-0 [@media(hover:hover)]:group-hover:opacity-100 ${
+                  grabbed === index || dragIndex === index ? '[@media(hover:hover)]:opacity-100' : ''
+                }`}
+              >
+                <GripVertical size={14} />
+              </span>
+            </div>
           ))}
         </div>
       ) : (
