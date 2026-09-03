@@ -23,6 +23,7 @@ import { useItemDetail } from '@/hooks/useItemDetail'
 import { STATUS_LABEL, isRegenerating } from '@/lib/item-status'
 import { aspectRatioCss } from '@/lib/aspect-ratio'
 import { isSubmitEnter } from '@/lib/enter-key'
+import type { Item } from '@/types/item'
 
 // カード詳細の本体（画像・タイトル編集・再生成・プロパティ・生成情報）。
 // 詳細ページと右パネルの両方から使えるよう、前後ナビ・パンくずは含めない。
@@ -210,6 +211,10 @@ export function ItemDetailBody({
         {/* 覆いを外すか、カードごと消すか */}
         {veiled && <SafeguardBar item={item} onUpdated={applyUpdated} onDeleted={onDeleted} />}
 
+        {/* 点検の結果は**絵のすぐ下**に置く。
+            指摘を読むのは絵を見ているときで、そこから離すと結び付かない */}
+        <ImageCheckNote item={item} />
+
         {/* イメージへの操作は、イメージの枠の中に収める */}
         <ItemImageBar item={item} onUpdated={applyUpdated} />
       </PropertyBlock>
@@ -251,6 +256,24 @@ export function ItemDetailBody({
           item.media?.url ? () => downloadImage(item.media!.url!, item.title) : undefined
         }
       />
+    </div>
+  )
+}
+
+/** 絵と語の噛み合い。**合っているときは出さない**（読むべきものだけを置く） */
+const IMAGE_CHECK_LOOK: Record<string, { label: string; className: string }> = {
+  weak: { label: '思い出しにくいかもしれません', className: 'bg-yellow-50 text-yellow-900 border-yellow-200' },
+  mismatch: { label: '別のものの絵に見えます', className: 'bg-red-50 text-red-900 border-red-200' },
+}
+
+function ImageCheckNote({ item }: { item: Item }) {
+  const look = item.image_check_status ? IMAGE_CHECK_LOOK[item.image_check_status] : null
+  if (!look) return null
+
+  return (
+    <div className={`rounded-lg border px-3 py-2 text-sm leading-6 ${look.className}`}>
+      <p className="font-medium">{look.label}</p>
+      {item.image_check_comment && <p className="mt-0.5 text-xs leading-relaxed">{item.image_check_comment}</p>}
     </div>
   )
 }

@@ -53,9 +53,16 @@ module Api
         )
       end
 
+      # ボックスを作る。**カードも一緒に入れられる。**
+      #
+      # 選んだカードから作る導線があるので、作ってから1枚ずつ入れると
+      # 50枚で51往復になる。往復の本数がそのまま待ち時間になる。
       def create
         box = current_user.boxes.build(box_params)
-        box.save!
+        ActiveRecord::Base.transaction do
+          box.save!
+          add_items!(box, params[:item_ids])
+        end
         render json: serialize_box(box), status: :created
       rescue ActiveRecord::RecordInvalid => e
         render json: { errors: e.record.errors.full_messages }, status: :unprocessable_entity
@@ -78,11 +85,43 @@ module Api
       # POST /api/v1/boxes/:id/entries { entry_type, entry_id }
       # entry_type は Item / Space / View
       def add_entry
+        # まとめて足す道（一覧で選んだカードをそのまま入れる）。カードに限る
+        if params[:item_ids].present?
+          added = 0
+          ActiveRecord::Base.transaction { added = add_items!(@box, params[:item_ids]) }
+          return render json: { added: added }, status: :created
+        end
+
         entry = find_owned_entry(params[:entry_type], params[:entry_id])
         @box.box_entries.find_or_create_by!(entry_type: params[:entry_type], entry_id: entry.id)
         head :no_content
       rescue ActiveRecord::RecordInvalid => e
         render json: { errors: e.record.errors.full_messages }, status: :unprocessable_entity
+      end
+
+      # 渡されたカードをまとめて入れる。
+      #
+      # **持ち主のものだけ。** id を並べて送れる口なので、
+      # ここで絞らないと他人のカードを自分の箱へ引き込めてしまう。
+      def add_items!(box, item_ids)
+        ids = Array(item_ids).map(&:to_s).uniq
+        return 0 if ids.empty?
+
+        owned = current_user.items.where(id: ids).pluck(:id)
+        # 送られた順を保つ（where の結果順は保証されない）
+        ordered = ids & owned.map(&:to_s)
+
+        # **既に入っているものは飛ばす。** あとから足す道では、
+        # 同じカードを選び直すたびに二重に入ってしまう
+        already = box.box_entries.where(entry_type: "Item", entry_id: ordered).pluck(:entry_id).map(&:to_s).to_set
+        fresh = ordered.reject { |id| already.include?(id) }
+
+        # 並びは末尾へ継ぐ（1 から振り直すと先にあったものと番号がぶつかる）
+        base = box.box_entries.maximum(:position) || 0
+        fresh.each_with_index do |item_id, index|
+          box.box_entries.create!(entry_type: "Item", entry_id: item_id, position: base + index + 1)
+        end
+        fresh.size
       end
 
       # DELETE /api/v1/boxes/:id/entries/:entry_type/:entry_id

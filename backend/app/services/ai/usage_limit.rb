@@ -43,6 +43,10 @@ module Ai
       "detect_item_type" => UNIT_COST_POINTS,
       "fill_properties" => UNIT_COST_POINTS,
       "fact_check" => UNIT_COST_POINTS,
+      # 絵の点検。絵そのものを送るが、detail: "low" では画像ぶんは 85 トークン程度で、
+      # 長い指示文を送る fact_check と桁は変わらない。**実績を見るまでは一律に置く。**
+      # 重いと分かったら AI_COST_IMAGE_FIT_CHECK で上げられる（デプロイ不要）
+      "image_fit_check" => UNIT_COST_POINTS,
       "words_generate" => UNIT_COST_POINTS,
       "words_check" => UNIT_COST_POINTS,
       "canvas_edit" => UNIT_COST_POINTS,

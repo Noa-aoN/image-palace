@@ -22,9 +22,20 @@ export async function getBox(id: string, cursor?: string | null): Promise<BoxDet
   return res.data
 }
 
-export async function createBox(name: string, description?: string): Promise<Box> {
+/**
+ * ボックスを作る。**カードも一緒に渡せる。**
+ *
+ * 作ってから1枚ずつ入れると、50枚で51往復になる。
+ * 渡した順に並ぶ。
+ */
+export async function createBox(
+  name: string,
+  description?: string,
+  itemIds?: string[]
+): Promise<Box> {
   const res = await apiClient.post<Box>('/api/v1/boxes', {
     box: { name, description },
+    ...(itemIds?.length ? { item_ids: itemIds } : {}),
   })
   return res.data
 }
@@ -80,4 +91,15 @@ export async function generateBoxCover(id: string, prompt: string, style?: strin
     cover: { prompt, ...(style ? { style } : {}) },
   })
   return res.data
+}
+
+/**
+ * 選んだカードを、いまあるボックスへまとめて入れる。
+ * 既に入っているものは飛ばされる（サーバ側で判断する）。
+ */
+export async function addItemsToBox(boxId: string, itemIds: string[]): Promise<number> {
+  const res = await apiClient.post<{ added: number }>(`/api/v1/boxes/${boxId}/entries`, {
+    item_ids: itemIds,
+  })
+  return res.data.added
 }

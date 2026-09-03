@@ -10,7 +10,7 @@ module Api
 
       before_action :set_item,
                     only: [ :show, :update, :destroy, :retry, :approve_image, :meaning, :examples, :brief, :scene_rewrite,
-                            :generate_tags, :fact_check, :fill_properties, :usages, :update_block_view,
+                            :generate_tags, :fact_check, :image_check, :fill_properties, :usages, :update_block_view,
                             :suggest_properties ]
 
       DEFAULT_PER_PAGE = 24
@@ -422,7 +422,9 @@ module Api
       # カードの説明（meaning）が事実として正しいかを AI でファクトチェックする（同期）。
       # 説明が無いカードはスキップを返す。
       def fact_check
-        result = GenerateFactCheckService.call(item: item)
+        # scope=all で、説明文だけでなく書いてある項目もまとめて見る。
+        # 既定は説明文だけ（速くて安い）。知らない値は既定へ落ちる
+        result = GenerateFactCheckService.call(item: item, scope: params[:scope].to_s)
         return render json: { status: "skipped", reason: "no_meaning" }, status: :ok if result.nil?
 
         render json: serialize_item(item.reload), status: :ok
@@ -431,6 +433,27 @@ module Api
       rescue GenerateFactCheckService::GenerationError, KeyError, Faraday::Error => e
         Rails.logger.warn "[ItemsController#fact_check] failed item_id=#{item.id}: #{e.class}: #{e.message}"
         render json: { error: "AIチェックに失敗しました。時間を置いて再度お試しください。" }, status: :unprocessable_entity
+      end
+
+      # 絵が語と噛み合っているかを見る。
+      #
+      # **運営が段階を開けるまで通さない。** 絵をそのまま送るので1回が高く、
+      # 出来を手元で見てから開けたい。released / prototype のときだけ動く
+      def image_check
+        stage = FeatureFlag.stages["image_fit_check"]
+        unless %w[released prototype].include?(stage)
+          return render json: { error: "この機能は現在無効になっています" }, status: :service_unavailable
+        end
+
+        ::Images::FitCheckService.call(item: item)
+        render json: serialize_item(item.reload), status: :ok
+      rescue ::Images::FitCheckService::NoImage => e
+        render json: { status: "skipped", reason: "no_image", message: e.message }, status: :ok
+      rescue Ai::Chat::LimitExceeded => e
+        render json: { error: e.message }, status: :too_many_requests
+      rescue ::Images::FitCheckService::GenerationError, KeyError, Faraday::Error => e
+        Rails.logger.warn "[ItemsController#image_check] failed item_id=#{item.id}: #{e.class}: #{e.message}"
+        render json: { error: "イメージの点検に失敗しました。時間を置いて再度お試しください。" }, status: :unprocessable_entity
       end
 
       private
@@ -720,6 +743,12 @@ module Api
           fact_check_title_suggestion: item.primary_meaning&.fact_check_title_suggestion,
           fact_check_known: item.primary_meaning&.fact_check_known,
           fact_check_claims: item.primary_meaning&.fact_check_claims || [],
+          # 何を見たうえでの判定か。「説明だけ」と「項目もぜんぶ」を画面で見分ける
+          fact_check_fields: item.primary_meaning&.fact_check_fields || [],
+          # 絵と語の噛み合い。説明の判定とは別（見ているものが違う）
+          image_check_status: item.image_check_status,
+          image_check_comment: item.image_check_comment,
+          image_checked_at: item.image_checked_at,
           fact_checked_at: item.primary_meaning&.fact_checked_at,
           fact_check_acknowledged_at: item.primary_meaning&.fact_check_acknowledged_at,
           meanings: item.sorted_meanings.map { |m| serialize_meaning_entry(m) },

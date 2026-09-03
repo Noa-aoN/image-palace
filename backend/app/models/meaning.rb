@@ -43,7 +43,9 @@ class Meaning < ApplicationRecord
 
   # 以前の判定を消す（保存はしない）。項目が増えても消し忘れないよう1か所にまとめる
   def clear_fact_check
-    assign_attributes(FACT_CHECK_ATTRIBUTES.index_with(nil).merge("fact_check_claims" => []))
+    assign_attributes(
+      FACT_CHECK_ATTRIBUTES.index_with(nil).merge("fact_check_claims" => [], "fact_check_fields" => [])
+    )
   end
 
   # 人が読んで判断したか。確認済みのものは、一覧でも警告色を出さない

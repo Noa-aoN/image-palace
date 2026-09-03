@@ -188,6 +188,8 @@ Rails.application.routes.draw do
           patch :block_view, action: :update_block_view
           get "reviews/summary", to: "item_reviews#summary"
           post :fact_check
+          # 絵が語と噛み合っているか（運営が段階を開けたときだけ通る）
+          post :image_check
           post "tags", action: :generate_tags
         end
       end
