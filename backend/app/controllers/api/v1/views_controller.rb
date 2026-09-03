@@ -199,7 +199,11 @@ module Api
           layout: params.dig(:edit, :layout),
           edges: params.dig(:edit, :edges),
           sizing: params.dig(:edit, :sizing),
-          placement: params.dig(:edit, :placement)
+          placement: params.dig(:edit, :placement),
+          # 流れの向き。種別とは別の軸（同じ階層図を縦にも横にもできる）
+          direction: params.dig(:edit, :direction),
+          # どれだけ動かしてよいか（「いまの形を活かす」を吸収する）
+          change_scale: params.dig(:edit, :change_scale)
         )
         Views::RevisionService.snapshot!(@view.reload, label: "AI調整の後")
         render json: serialize_view_detail(@view.reload).merge(
@@ -393,7 +397,11 @@ module Api
       def view_update_params
         params.require(:view).permit(
           :name, :cover_item_id, :cover_type,
-          settings: [ :bg_color, :bg_pattern, :pattern_color, :card_font_size, :minimap, :controls ]
+          # 画面が送るものは、ここに全部載せる。
+          # 載っていないと strong parameters が黙って落とすので、
+          # 「押しても次に開くと戻っている」ことになる（card_image_fit がそうだった）
+          settings: [ :bg_color, :bg_pattern, :pattern_color, :card_font_size,
+                      :card_image_fit, :minimap, :controls ]
         )
       end
 

@@ -135,7 +135,30 @@ export interface ViewEdge {
 export type AiEditMode = 'placed_only' | 'select'
 
 /** AI に整えてもらうときの方針（ボードのみ） */
-export type AiEditLayout = 'auto' | 'hierarchy' | 'radial' | 'flow' | 'grid'
+/**
+ * 図の形。**同じ絵を別の名前で並べない。**
+ * 「樹形図」を別立てにしていないのは、hierarchy（縦）と flow（横）で
+ * 向きが違うだけの同じ組み方だから。種別を増やすと選ぶ手間だけ増える
+ */
+/**
+ * 流れの向き。**種別とは別の軸。**
+ * 「階層＝縦」「流れ＝横」と結びつけていたが、組織図を横に伸ばしたいことも、
+ * 手順を縦に並べたいこともある。向きだけ変えたいのに種別を選び直させない
+ */
+export type AiEditDirection = 'auto' | 'down' | 'right'
+
+/** どれだけ動かしてよいか。「いまの形を活かす」をここへ吸収する */
+export type AiEditChangeScale = 'small' | 'medium' | 'large'
+
+export type AiEditLayout =
+  | 'auto'
+  | 'hierarchy'
+  | 'flow'
+  | 'mindmap'
+  | 'radial'
+  | 'network'
+  | 'cluster'
+  | 'grid'
 export type AiEditEdgeMode = 'rebuild' | 'keep' | 'infer' | 'restyle' | 'relabel'
 export type AiEditSizeMode = 'ai' | 'uniform' | 'keep'
 export type AiEditPlacementMode = 'arrange' | 'keep'
@@ -145,6 +168,10 @@ export interface AiEditOptions {
   edges?: AiEditEdgeMode
   sizing?: AiEditSizeMode
   placement?: AiEditPlacementMode
+  /** 流れの向き。種別とは別の軸 */
+  direction?: AiEditDirection
+  /** どれだけ動かしてよいか */
+  change_scale?: AiEditChangeScale
 }
 
 /** 「カードから作る」の提案（まだ作られていない） */

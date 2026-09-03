@@ -22,6 +22,30 @@ module Views
     MAX_CANDIDATES = 60
     # 1回の指示で動かせる量の上限（暴走しても被害を限る）
     MAX_OPERATIONS = 100
+    # 関係の種類。**言葉ではなく決まった語で持つ。**
+    #
+    # これまでは種類が「太さ・色・破線」という見た目にだけ表れていて、
+    # 機械では読めなかった。語で持てば、線の引き方も、距離の決め方も、
+    # あとから見直すこともできる。知らない語は related へ落とす
+    RELATION_TYPES = %w[parent cause part example contrast sequence means related].freeze
+    DEFAULT_RELATION_TYPE = "related"
+
+    # 線の見出しの長さ。長い文は図の上で読めない
+    MAX_EDGE_LABEL_LENGTH = 40
+
+    # どれだけ動かしてよいか。**「いまの形を活かす」をここへ吸収する。**
+    #   small … 控えめ。いまの形をできるだけ残す
+    #   medium… ふつう
+    #   large … 大胆に。読みやすさを優先して並べ直す
+    CHANGE_SCALES = %w[small medium large].freeze
+    DEFAULT_CHANGE_SCALE = "medium"
+
+    # 流れの向き。種別とは別の軸（同じ階層図を縦にも横にもできる）
+    DIRECTIONS = Layout::Planner::DIRECTIONS
+
+    # 見立ての名前。Layout::Planner が受け取れるものと揃える
+    STRUCTURES = Layout::Planner::STRUCTURES
+
     # 計画1回で返させる長さの上限。
     #
     # `Ai::Chat` の既定は 2,000 で、**配置1件がおよそ45トークン**。
@@ -78,22 +102,13 @@ module Views
     Result = Struct.new(:summary, :notes, :added, :removed, :placed, :connected, keyword_init: true)
 
     # 並べ方の指定。おまかせ以外を選ぶと、その形になるよう指示を足す
-    LAYOUTS = %w[auto hierarchy radial flow grid].freeze
-    LAYOUT_RULES = {
-      # 家系図の形。**親は子の真ん中の上**、というのが要。
-      # 「親を上、子を下」だけだと、子が親の左右どちらかへ寄って読み筋が崩れる
-      "hierarchy" => "家系図の形にする。" \
-                     "(1) 同じ深さのものは必ず同じ y に置き、深さが1つ下がるごとに y を 260 ずつ増やす。" \
-                     "(2) 子は親の下に、左から順に等間隔（x の間隔は 260 以上）で並べる。" \
-                     "(3) **親の x は、その子たちの左端と右端のちょうど中間**に置く。" \
-                     "子が1つなら親と同じ x にする。" \
-                     "(4) 兄弟のかたまり同士は 200 以上あけ、別の親の子と混ざらないようにする。" \
-                     "(5) 線は親から子への1方向だけ。親から出るのは下辺、子へ入るのは上辺。",
-      "radial" => "中心から放射状にする。主題を中央に置き、関係するものを周囲へ等間隔・等距離に配る。",
-      "flow" => "左から右への流れにする。順序のあるものを横一列に等間隔で並べ、" \
-                "枝分かれは上下へ振る。",
-      "grid" => "格子状に並べる。行と列を揃え、まとまりごとに行を分ける。"
-    }.freeze
+    # 図の形。**Layout::Planner が組める種別と揃える。**
+    #
+    # 以前はここに「家系図の形にする」といった日本語の作文（LAYOUT_RULES）を持ち、
+    # AI に守らせていた。守られたかどうかは運任せで、
+    # 守られても後段の押しのけが崩していた。いまは形はコードが解くので、
+    # AI へは**どの形にするかの見立て**だけを聞く
+    LAYOUTS = Layout::Planner::STRUCTURES
 
     # 何を整えるかは項目ごとに選べる。関心のないものは "keep"（触らない）にすると、
     # その項目だけを個別に実行できる（線だけ整える、大きさだけ揃える、など）
@@ -106,11 +121,14 @@ module Views
     # 線を扱うときは、意味の抜粋を長めに渡す（60文字では関係やラベルの判断に足りない）
     MEANING_EXCERPT_FOR_INFER = 160
 
-    def self.call(view:, instruction:, mode: DEFAULT_MODE, layout: nil, edges: nil, sizing: nil, placement: nil)
-      new(view:, instruction:, mode:, layout:, edges:, sizing:, placement:).call
+    def self.call(view:, instruction:, mode: DEFAULT_MODE, layout: nil, edges: nil, sizing: nil,
+                  placement: nil, change_scale: nil, direction: nil)
+      new(view:, instruction:, mode:, layout:, edges:, sizing:, placement:, change_scale:,
+          direction:).call
     end
 
-    def initialize(view:, instruction:, mode:, layout: nil, edges: nil, sizing: nil, placement: nil)
+    def initialize(view:, instruction:, mode:, layout: nil, edges: nil, sizing: nil,
+                   placement: nil, change_scale: nil, direction: nil)
       @view = view
       @user = view.user
       # 指示が空なら、**ボードの名前をそのまま指示にする。**
@@ -125,6 +143,9 @@ module Views
       @edge_mode = EDGE_MODES.include?(edges.to_s) ? edges.to_s : "rebuild"
       @size_mode = SIZE_MODES.include?(sizing.to_s) ? sizing.to_s : "ai"
       @placement_mode = PLACEMENT_MODES.include?(placement.to_s) ? placement.to_s : "arrange"
+      @change_scale = CHANGE_SCALES.include?(change_scale.to_s) ? change_scale.to_s : DEFAULT_CHANGE_SCALE
+      @direction = DIRECTIONS.include?(direction.to_s) ? direction.to_s : Layout::Planner::DEFAULT_DIRECTION
+      @layout_notes = []
     end
 
     # 何も触らない設定で呼ばれたとき。**AI を呼ぶ前に断る。**
@@ -268,67 +289,80 @@ module Views
         あなたは考えを図にまとめる編集者です。
         ボードは、カードを平面に置き、カード同士を線でつなぐ形式です。
 
+        **座標は考えなくてよい。** どこに置くかはこちらで解きます。
+        あなたに決めてほしいのは、**カードどうしの関係と、図全体の形**です。
+
         次の JSON のみを返してください。
         {"summary": "何をしたかの日本語の短い説明",
          "notes": "気づいたこと（誤りや不足の指摘など。無ければ空文字）",
          "add": ["追加するカードのid"],
          "remove": ["ボードから外すカードのid"],
-         "placements": [{"item_id": "id", "x": 0, "y": 0, "width": #{CARD_WIDTH}, "height": #{CARD_HEIGHT}}],
-         "edges": [{"source": "id", "target": "id", "label": "線の見出し（不要なら空文字）",
-                    "style": {"width": 2, "dashed": false, "color": "#888888", "marker_end": "arrow"}}]}
+         "structure": "hierarchy|flow|mindmap|radial|network|cluster|grid",
+         "roots": ["いちばん上（中心）に来るカードのid"],
+         "emphasis": ["話の中心になるカードのid（少数）"],
+         "groups": [{"name": "群れの名前", "members": ["id"]}],
+         "relations": [{"from": "id", "to": "id", "type": "#{RELATION_TYPES.join('|')}",
+                        "label": "線の見出し", "strength": 0.8}]}
 
-        ## 置き方
-        - 座標は x が 0〜#{BOARD_WIDTH}、y が 0〜#{BOARD_HEIGHT}。x,y はカードの左上。
-          ただし盤の四辺には最低 #{BOARD_PADDING} の余白を残し、カードを端へ張り付けない。
-        - カードの既定の大きさは 幅#{CARD_WIDTH}・高さ#{CARD_HEIGHT}。
-          width / height は #{MIN_CARD_SIZE}〜#{MAX_CARD_SIZE} の範囲で変えられる。
-          **話の中心になるカードは 1.5〜2 倍に大きく**し、補足は既定のままにして、重みを目で分かるようにする。
-        - **重ねない**。隣り合うカードの間には最低 #{MIN_CARD_GAP} の空白を残す。
-          資料にある「見出し幅」もカードの幅として扱い、長い文字のカード同士を詰めない。
-          カードが重なると下のカードが読めなくなる。詰めたいときは大きさを小さくする。
-        - **線がカードの上を通らないようにする**。つなぐ2枚の間に別のカードを挟まない。
-          挟まる配置しか作れないなら、並び順の方を変える。
-        - 線はカードの縁から**いったんまっすぐ離れてから**曲がる。
-          カードを詰めすぎると曲がる場所が無くなり、線が別のカードの側面に張り付く。
-        - 線は**水平・垂直だけで引かれる**（斜めにはならない）。だから
-          **つなぐ2枚は、x か y のどちらかを揃えて置く**こと。
-          揃っていないと線が階段状に折れて、図が読みにくくなる。
-            ・上下につなぐなら x を揃える（同じ列に置く）
-            ・左右につなぐなら y を揃える（同じ行に置く）
-          同じ向きに流れる複数の線は平行に揃え、線同士にも間隔を残して1本に重ねない。
-        - 意味のまとまりが目で分かる配置にすること。
-          流れがあるものは左から右（または上から下）へ等間隔に、
-          対比は左右に対称に、まとまりは近くに寄せ、別のまとまりとは 200 以上あける。
-        - 座標は 20 の倍数に丸めて、並びが揃って見えるようにする。
-        - 返す直前に、**線でつないだ全ての組について x か y が揃っているか**を確かめる。
-          揃っていない組があれば、どちらかのカードを動かして揃え直す。
+        ## 図全体の形（structure）
+        - hierarchy … 階層図・組織図・樹形図。**根から下へ枝分かれ**する。分類・系統・組織
+        - flow      … 流れ図。**左から右へ**進む。手順・時系列・因果の連なり
+        - mindmap   … マインドマップ。中心の主題から**左右へ振り分けて**広げる。
+                      発想を広げる図、1つの話題を多面から見る図
+        - radial    … 放射図。中心から**360度へ**。中心からの遠さ自体に意味がある図
+        - network   … 関係図・相関図。**上下が無い網の目**。
+                      人物どうしの関係のように、誰もが誰とでもつながるもの
+        - cluster   … グループ図。つながりより**まとまり**が大事なもの
+        - grid      … 並べるだけ。関係で並べる理由が無いとき
 
-        ## 線
-        - edges は編集後のボードにあるべき線を全て挙げること。ここに無い線は消えます。
-          線が要らない指示なら、いまある線をそのまま挙げ直すこと。
-        - **線の意味を style で描き分ける**。
-          - 強い因果・主要な流れ … width 3、dashed false、marker_end "arrow"、color "#555555"
-          - 補助的な関連       … width 1、dashed true、marker_end "none"、color "#999999"
-          - 対立・否定の関係   … width 2、dashed false、marker_end "arrow"、color "#c0504d"
-        - label は 8 文字程度までの短い語にする（「原因」「例」「対して」など）。長い文は入れない。
-        - label は **source から target へ読んだ関係**を表す具体的な語にする。
-          「関係」「関連」「つながり」のように何も説明していない語は使わない。
-          返す直前に、向きが逆になっていないか、カードの意味と食い違っていないかを全て見直す。
-        - **1枚のカードから出る線の数に上限は設けない**。関係があるものは全て結ぶ。
-          例: ある分類に下位分類が5つあるなら5本、10あるなら10本とも引く。
-          一部だけ引くと図として誤りになる。見た目の混雑を理由に関係を落とさないこと。
-        - 足すのは意味のある関係だけ。無い関係を作ってはいけない（落とさない／作らない、の両方）。
-        - 本数が多いときは、配置で読みやすくする。中心から多数の枝が出る図（系統図など）は
-          中心を上または左に置き、枝を扇形に等間隔で広げると交差しない。
-          遠回りに交差する線ができるなら、線を減らすのではなく置き方を変える。
-        - **孤立カードを見落とさない**。返す直前に各カードの接続本数を確認し、
-          意味のある関係を持つカードには最低1本の線を引く。
-          本当に関係が判断できないカードだけは無理に結ばず、そのカード名と理由を notes に書く。
+        ### 選び方
+        - 親がひとつずつに決まる → hierarchy（縦）か flow（横）
+        - 中心が1つで、そこから多く広がる → mindmap
+        - 親が複数ある・双方向のつながりがある → network
+        - 群れに分かれていて、群れの中の順序は問わない → cluster
+
+        ## 群れ（groups）
+        - 意味のまとまりごとに分ける。**名前を付けること**（「オリュンポスの神々」など）
+        - どの群れにも入らないカードは、無理に入れない（こちらで下へまとめます）
+        - 群れが1つしか作れないなら、groups は空配列でよい
+
+        ## 関係（relations）
+        - **from から to へ読む向き**で書く。「A の子が B」なら from=A, to=B
+        - type は次から選ぶ。当てはまるものが無ければ related
+          parent（親子・上位下位） / cause（原因と結果） / part（部分と全体）
+          / example（具体例） / contrast（対比・対立） / sequence（順序・時系列）
+          / means（手段と目的） / related（その他）
+        - label は 8 文字程度までの短い語（「父」「原因」「例」など）。長い文は入れない
+        - **「関係」「関連」「つながり」のように何も説明していない語は使わない**
+        - strength は 0〜1。**強いほど近くに置かれます**。
+          迷ったら 0.5。確かな関係なら 0.9、思いつきなら 0.3
+        - **関係があるものは全て挙げる。** ある分類に下位が5つあるなら5本とも書く。
+          見た目の混雑を理由に落とさない（重ならないように置くのはこちらの仕事）
+        - 無い関係を作ってはいけない（落とさない／作らない、の両方）
+        - **同じ2枚に、意味の違う線を2本引かない。**
+          「姉妹」と「娘」の両方を付けると、どちらが正しいのか読めなくなる。
+          迷ったら、確かなほうだけを1本残し、迷った理由を notes に書く。
+        - **向きのある関係を、逆向きにも引かない。**
+          A の親が B なら、B の親は A ではない。
+        - **たどると元へ戻る親子を作らない。** 誰かが自分の先祖になる図は成り立たない。
+        - **孤立を見落とさない。** 返す直前に各カードを見て、
+          意味のある関係を持つものには最低1本の関係を書く。
+          本当に判断できないカードだけは無理に結ばず、そのカード名と理由を notes に書く
+
+        ## roots
+        - hierarchy / radial のとき、いちばん上（中心）に来るものを挙げる
+        - 分からなければ空配列でよい（関係から自動で選びます）
+
+        ## emphasis
+        - **話の中心になるカード**を挙げる。大きく描いて、目で重みが分かるようにします
+        - 多くても3枚まで。全部を挙げると強弱が消える
+        - 特に無ければ空配列でよい
 
         #{option_rules}
 
         ## その他
-        - remove はボードから外すだけで、カードそのものは消えません。
+        - add / remove / groups / relations には、<資料> に載っている id だけを使うこと
+        - remove はボードから外すだけで、カードそのものは消えません
         #{no_extra_rule}
         - 内容に事実として疑わしい点や、図にする上で明らかに欠けている観点があれば notes に日本語で書くこと。
           ただし推測で断定しない。確証が持てないことは「確認できない」と書く。
@@ -369,8 +403,11 @@ module Views
 
       if @placement_mode == "keep"
         rules << "## 置き場所\n- カードの位置は変えない。placements に x / y を書かないこと。"
-      elsif LAYOUT_RULES.key?(@layout)
-        rules << "## 並べ方の指定\n- #{LAYOUT_RULES[@layout]}"
+      elsif @layout != "auto"
+        # 形は選ばれている。**AI に見立てさせない。**
+        # 見立てさせて、こちらで上書きするのは、聞くだけ聞いて捨てているのと同じ
+        rules << "## 図の形\n- 形は「#{@layout}」に決まっています。structure はこの語で返すこと。\n" \
+                 "  この形にふさわしい関係の挙げ方をすること。"
       end
       case @edge_mode
       when "keep"
@@ -487,7 +524,7 @@ module Views
         # 動かす前の座標。**「本当に動いたか」を後で見る**ために控える。
         # 「動かす設定か」ではなく「動いたか」で判断しないと、
         # 何も動いていないのに線を引き直して、手で曲げた線を潰してしまう
-        before_boxes = @view.freeboard? ? placement_boxes : {}
+        before_boxes = @view.freeboard? ? placement_snapshot : {}
         removed = remove_items!(ids_from(plan["remove"]))
         added_ids = add_items!(ids_from(plan["add"]))
         added = added_ids.size
@@ -495,18 +532,16 @@ module Views
           if @view.deck?
             apply_order!(ids_from(plan["order"]))
           else
-            apply_placements!(plan["placements"], added_ids: added_ids)
+            # 大きさも重なりも、配置と同じ場所で解く。
+            # 別々にやっていた頃は、あとから大きさを変えて新しい重なりを作っていた
+            apply_placements!(plan, added_ids: added_ids)
           end
-        # そろえるのは AI の判断ではなく決めごと。挙がらなかったカードにも効かせる
-        unify_card_sizes! if @view.freeboard? && @size_mode == "uniform"
-        # 重なりは頼んでも守られないことがある。最後にこちらで必ず解く
-        resolve_overlaps!(added_ids) if @view.freeboard?
-        moved_cards = @view.freeboard? && placement_boxes != before_boxes
+        moved_cards = @view.freeboard? && placement_snapshot != before_boxes
         connected =
           if !@view.freeboard?
             0
           elsif %w[rebuild infer].include?(@edge_mode)
-            apply_edges!(plan["edges"])
+            apply_edges!(normalized_relations(plan["relations"]))
           else
             # 引き直さない3つ（restyle / relabel / keep）。**線そのものは残す。**
             #
@@ -514,15 +549,18 @@ module Views
             # そのままにすると、整えたはずの線がカードの上を通る。
             # 接続・文言・見た目は保ったまま、経路だけを新しい配置へ合わせる。
             case @edge_mode
-            when "restyle" then restyle_edges!(plan["edges"])
-            when "relabel" then relabel_edges!(plan["edges"])
+            when "restyle" then restyle_edges!(normalized_relations(plan["relations"]))
+            when "relabel" then relabel_edges!(normalized_relations(plan["relations"]))
             end
             reroute_existing_edges! if moved_cards
             @view.view_edges.count
           end
       end
 
-      Result.new(summary:, notes:, added:, removed:, placed: placed_count, connected:)
+      # AI の気づきに、こちらで見つけたことを足す。
+      # **崩れていることは、崩れていると言う**（黙って妥協しない）
+      Result.new(summary:, notes: combined_notes(notes), added:, removed:,
+                 placed: placed_count, connected:)
     end
 
     # 置き場所も大きさも線も触らず、カードも足さない＝やることが無い。
@@ -531,6 +569,15 @@ module Views
       return false unless @view.freeboard?
 
       @placement_mode == "keep" && @size_mode == "keep" && @edge_mode == "keep" && @mode != "select"
+    end
+
+    # 利用者に返す一言をまとめる。
+    #   AI の気づき   … 内容の誤りや不足
+    #   食い違い      … 図全体として辻褄が合わないところ
+    #   図の崩れ      … 重なり・線の交差・文字の衝突
+    def combined_notes(ai_notes)
+      [ ai_notes, *Array(@consistency_notes), *Array(@layout_notes) ]
+        .compact_blank.uniq.first(8).join("\n").presence
     end
 
     def ids_from(value)
@@ -588,35 +635,167 @@ module Views
       ordered.size
     end
 
-    def apply_placements!(placements, added_ids: [])
-      on_board = @view.view_items.pluck(:item_id).to_set
-      newly_added = added_ids.to_set
-      Array(placements).first(MAX_OPERATIONS).count do |placement|
-        next false unless placement.is_a?(Hash)
+    # 配置を決める。**座標は AI ではなくレイアウトエンジンが解く。**
+    #
+    # AI が返すのは「これは階層だ」「この3枚はひと群れだ」「A の親は B だ」という
+    # 意味と構造だけ。以前は x/y を直接返させていたが、
+    #   ・出力が枚数に比例し、44枚で JSON が途中で切れて必ず失敗した
+    #   ・AI が揃えたものを、あとから走る押しのけが崩していた
+    #   ・同じ指示でも実行のたびに配置が変わった
+    # という行き詰まりがあった。
+    def apply_placements!(plan, added_ids: [])
+      boxes = build_boxes(added_ids)
+      return 0 if boxes.empty?
 
-        item_id = placement["item_id"].to_s
-        next false unless on_board.include?(item_id)
-
-        attributes = { updated_at: Time.current }
-        # 「置き場所は変えない」なら座標に触らない（線や大きさだけ整えたいとき）。
-        # ただし今回足したカードは置き場所を持っていないので、そこは必ず置く
-        if @placement_mode == "arrange" || newly_added.include?(item_id)
-          attributes[:x] = clamp(placement["x"], BOARD_WIDTH)
-          attributes[:y] = clamp(placement["y"], BOARD_HEIGHT)
+      apply_sizes!(boxes, plan["emphasis"])
+      # どの形で組むか。**選ばれたものが、AI の見立てより強い。**
+      #
+      #   置き場所を触らない  … いまの形のまま、重なりだけ解く
+      #   形を選んでいる      … その形。選んだものと違う図を返さない
+      #   おまかせ            … AI の見立てに従う
+      structure =
+        if @placement_mode == "keep"
+          "keep_shape"
+        elsif @layout != "auto"
+          @layout
+        else
+          plan["structure"].to_s
         end
+      result = Layout::Planner.new(
+        boxes: boxes,
+        relations: normalized_relations(plan["relations"]),
+        groups: normalized_groups(plan["groups"]),
+        structure: structure,
+        roots: Array(plan["roots"]).map(&:to_s),
+        move_weight: move_weight,
+        direction: @direction,
+        # 置き場所を触らない設定では、**今回足したカードだけ**を動かす
+        movable: @placement_mode == "keep" ? added_ids.to_set : nil
+      ).call
+
+      # 図全体としての辻褄。**AI は線を1本ずつ考えるので、ここは見ていない。**
+      # 同じ2枚に「姉妹」と「娘」が付く、といった食い違いを突き合わせて見つける
+      relations = normalized_relations(plan["relations"])
+      @consistency_notes = Layout::Consistency.new(
+        relations: raw_relations(plan["relations"]), titles: card_titles
+      ).notes
+
+      @layout_notes = result.notes
+      @layout_score = result.score
+      persist_boxes!(result.boxes)
+    end
+
+    # カードの名前。食い違いを伝えるときに使う（id では読めない）
+    def card_titles
+      @card_titles ||= @view.view_items.includes(:item).to_h do |view_item|
+        [ view_item.item_id, view_item.item&.title ]
+      end
+    end
+
+    # 配置の対象。**いま盤に載っているカード全部**。
+    # AI が挙げたものだけを動かすと、新旧の配置が混ざった図になる
+    def build_boxes(added_ids)
+      font_size = Layout::Metrics.font_size_for(@view)
+      @view.view_items.includes(:item).order(:item_id).map do |view_item|
+        title = view_item.item&.title
+        Layout::Box.new(
+          id: view_item.item_id, title: title,
+          # 足したばかりのカードは座標を持たない。原点に置いてから並べ直す
+          x: added_ids.include?(view_item.item_id) ? 0 : view_item.x.to_f,
+          y: added_ids.include?(view_item.item_id) ? 0 : view_item.y.to_f,
+          width: view_item.width || Layout::Metrics::CARD_WIDTH,
+          height: view_item.height || Layout::Metrics::CARD_HEIGHT,
+          footprint_width: Layout::Metrics.title_footprint_width(title, font_size: font_size)
+        )
+      end
+    end
+
+    # 中心のカードを大きくする倍率。1.6 は「目で分かるが、場所を食いすぎない」あたり
+    EMPHASIS_SCALE = 1.6
+    # 大きくするのは多くても3枚。全部を大きくすると強弱が消える
+    MAX_EMPHASIS = 3
+
+    # 大きさは配置の前に決める。**あとから変えると、そのぶん重なりが出る。**
+    #
+    # 以前は AI が1枚ずつ width / height を返していたが、
+    # そのぶん出力が枚数に比例していた。いまは「中心はどれか」だけを挙げさせ、
+    # 倍率はこちらで決める（毎回同じ大きさになる）
+    def apply_sizes!(boxes, emphasis)
+      highlighted = Array(emphasis).map(&:to_s).first(MAX_EMPHASIS).to_set
+
+      boxes.each do |box|
         case @size_mode
+        when "uniform" then box.resize(Layout::Metrics::CARD_WIDTH, Layout::Metrics::CARD_HEIGHT)
         when "ai"
-          attributes[:width] = card_size(placement["width"], CARD_WIDTH)
-          attributes[:height] = card_size(placement["height"], CARD_HEIGHT)
-        when "uniform"
-          # 全部そろえる。AI の強弱は使わず既定の大きさに統一する
-          attributes[:width] = CARD_WIDTH
-          attributes[:height] = CARD_HEIGHT
+          if highlighted.include?(box.id)
+            box.resize(Layout::Metrics::CARD_WIDTH * EMPHASIS_SCALE,
+                       Layout::Metrics::CARD_HEIGHT * EMPHASIS_SCALE)
+          else
+            box.resize(Layout::Metrics::CARD_WIDTH, Layout::Metrics::CARD_HEIGHT)
+          end
         end
-        next false if attributes.keys == [ :updated_at ]
+      end
+    end
 
-        @view.view_items.where(item_id: item_id).update_all(attributes)
+    # 変更量。**大きいほど、いまの形を尊ぶ。**
+    # 「控えめ」で全部並べ直されると、見慣れた図が失われる
+    def move_weight
+      case @change_scale
+      when "small" then 8.0
+      when "large" then 0.2
+      else 1.0
+      end
+    end
+
+    def persist_boxes!(boxes)
+      boxes.count do |box|
+        @view.view_items.where(item_id: box.id).update_all(
+          x: box.x.round, y: box.y.round,
+          width: box.width.round, height: box.height.round,
+          updated_at: Time.current
+        )
         true
+      end
+    end
+
+    # AI が挙げた関係を、通せるものだけに絞る。
+    # **同じ組は1本にする**（2本引くと、どちらが正しいのか読めない）
+    def normalized_relations(relations)
+      seen = Set.new
+      raw_relations(relations).select { |relation| seen.add?([ relation[:from], relation[:to] ]) }
+             .first(MAX_EDGES)
+    end
+
+    # 落とす前の一覧。**食い違いはここで見る。**
+    # 1本にまとめてしまうと、「姉妹」と「娘」が両方付いていたことに気づけない
+    def raw_relations(relations)
+      on_board = @view.view_items.pluck(:item_id).to_set
+      Array(relations).filter_map do |relation|
+        next unless relation.is_a?(Hash)
+
+        from = relation["from"].to_s
+        to = relation["to"].to_s
+        # 自分自身へは引かない
+        next if from == to || !on_board.include?(from) || !on_board.include?(to)
+
+        {
+          from: from, to: to,
+          type: RELATION_TYPES.include?(relation["type"].to_s) ? relation["type"].to_s : DEFAULT_RELATION_TYPE,
+          label: relation["label"].to_s.strip.first(MAX_EDGE_LABEL_LENGTH).presence,
+          strength: relation["strength"].to_f.clamp(0.0, 1.0)
+        }
+      end
+    end
+
+    def normalized_groups(groups)
+      on_board = @view.view_items.pluck(:item_id).to_set
+      Array(groups).filter_map do |group|
+        next unless group.is_a?(Hash)
+
+        members = Array(group["members"]).map(&:to_s).select { |id| on_board.include?(id) }
+        next if members.empty?
+
+        { name: group["name"].to_s.strip.first(40), members: members }
       end
     end
 
@@ -781,46 +960,106 @@ module Views
       estimated.clamp(CARD_WIDTH, MAX_TITLE_FOOTPRINT_WIDTH)
     end
 
-    def apply_edges!(edges)
-      on_board = @view.view_items.pluck(:item_id).to_set
-      wanted = Array(edges).first(MAX_EDGES).filter_map do |edge|
-        next unless edge.is_a?(Hash)
+    # 座標と大きさの控え。**「本当に動いたか」を比べるのに使う。**
+    #
+    # Box は入れ物なので、そのまま比べると中身が同じでも別物と判定される。
+    # また **大きさの nil は「既定」の意味**なので、既定値へ揃えてから比べる。
+    # 揃えないと、nil を 144 に書き直しただけで「動いた」ことになってしまう
+    def placement_snapshot
+      @view.view_items.pluck(:item_id, :x, :y, :width, :height).map do |id, x, y, width, height|
+        [ id, x.to_f, y.to_f,
+          (width || Layout::Metrics::CARD_WIDTH).to_f, (height || Layout::Metrics::CARD_HEIGHT).to_f ]
+      end.sort
+    end
 
-        source = edge["source"].to_s
-        target = edge["target"].to_s
-        next if source == target
-        next unless on_board.include?(source) && on_board.include?(target)
 
-        { source:, target:, label: sanitize(edge["label"], limit: 40).presence, style: edge_style(edge["style"]) }
+    # 線の出口と入口。
+    #
+    # **段が違うなら、必ず縦に出す。**
+    #
+    # 中心どうしの遠さで決めていた頃は、親から離れた子への線が横から出ていた。
+    # 家系図で親の横から線が出ると、その線は同じ段のカードの前を通ることになり、
+    # 兄弟の並びを横切る。段が違うなら上下に抜けるのが読み筋に合う。
+    def handles_for(source, target)
+      return [ nil, nil ] if source.nil? || target.nil?
+
+      dx = target.center_x - source.center_x
+      dy = target.center_y - source.center_y
+      # 段が違うとみなす縦の隔たり。カードの高さぶん離れていれば別の段
+      apart = (source.height + target.height) / 2
+
+      if dy.abs >= apart || dy.abs >= dx.abs
+        dy.positive? ? [ "bottom", "top" ] : [ "top", "bottom" ]
+      else
+        dx.positive? ? [ "right", "left" ] : [ "left", "right" ]
       end
+    end
 
+    def apply_edges!(relations)
       # 挙げられた線が編集後の全てになる。挙がらなかったものは消す
       @view.view_edges.destroy_all
       boxes = placement_boxes
-      wanted.each do |edge|
-        source_box = boxes[edge[:source]]
-        target_box = boxes[edge[:target]]
+
+      relations.each do |relation|
+        source_box = boxes[relation[:from]]
+        target_box = boxes[relation[:to]]
         source_handle, target_handle = handles_for(source_box, target_box)
         @view.view_edges.create!(
-          source_node_id: edge[:source], target_node_id: edge[:target],
+          source_node_id: relation[:from], target_node_id: relation[:to],
           source_handle: source_handle, target_handle: target_handle,
-          label: edge[:label], style: edge[:style],
-          points: route_around_cards(
-            source_box, target_box, source_handle, target_handle,
-            boxes.except(edge[:source], edge[:target]).values
-          )
+          label: sanitize(relation[:label], limit: MAX_EDGE_LABEL_LENGTH).presence,
+          style: relation_style(relation),
+          points: router(boxes).route(source_box, target_box, source_handle, target_handle)
         )
       end
-      wanted.size
+      relations.size
+    end
+
+    # 関係の種類ごとの見た目。**強さは太さに出す。**
+    #
+    # 種類と強さを `style` へ残しておくと、あとから
+    # 「対立の線だけ消す」「弱い関係を薄くする」といった見直しができる。
+    # 見た目にだけ焼き付けていた頃は、機械では読み取れなかった
+    RELATION_LOOKS = {
+      "parent" => { color: "#555555", marker_end: "arrow" },
+      "cause" => { color: "#555555", marker_end: "arrow" },
+      "sequence" => { color: "#555555", marker_end: "arrow" },
+      "means" => { color: "#555555", marker_end: "arrow" },
+      "part" => { color: "#777777", marker_end: "none" },
+      "example" => { color: "#999999", marker_end: "none", dashed: true },
+      "contrast" => { color: "#c0504d", marker_end: "arrow" },
+      "related" => { color: "#999999", marker_end: "none", dashed: true }
+    }.freeze
+
+    def relation_style(relation)
+      look = RELATION_LOOKS.fetch(relation[:type], RELATION_LOOKS["related"])
+      strength = relation[:strength]
+      {
+        "width" => strength >= 0.7 ? 3 : (strength >= 0.4 ? 2 : 1),
+        "color" => look[:color],
+        "marker_end" => look[:marker_end],
+        "dashed" => look.fetch(:dashed, false),
+        # 機械が読むための控え。画面はいまのところ見ていないが、
+        # 種類で絞る・強さで薄くするといった見直しの足場になる
+        "relation" => relation[:type],
+        "strength" => strength.round(2)
+      }
     end
 
     # 配置後のカードの矩形。端点を決めるのに使う
+    # 線を引くための、いまの盤の様子。
+    # **配置と同じ Box を使う**（別の形で持つと、片方だけ直して食い違う）
     def placement_boxes
-      @view.view_items.pluck(:item_id, :x, :y, :width, :height).to_h do |item_id, x, y, width, height|
-        [ item_id, {
-          x: x.to_f, y: y.to_f,
-          width: (width || CARD_WIDTH).to_f, height: (height || CARD_HEIGHT).to_f
-        } ]
+      font_size = Layout::Metrics.font_size_for(@view)
+      @view.view_items.includes(:item).order(:item_id).to_h do |view_item|
+        title = view_item.item&.title
+        [ view_item.item_id, Layout::Box.new(
+          id: view_item.item_id, title: title,
+          x: view_item.x.to_f, y: view_item.y.to_f,
+          width: view_item.width || Layout::Metrics::CARD_WIDTH,
+          height: view_item.height || Layout::Metrics::CARD_HEIGHT,
+          footprint_width: Layout::Metrics.title_footprint_width(title, font_size: font_size)
+        ) ]
       end
     end
 
@@ -829,109 +1068,13 @@ module Views
     # AI に決めさせると、配置と食い違って線がカードを横切る。座標が決まったあとなら
     # 幾何学的に一意に決まるので、こちらで計算する。
     # 縦横どちらに離れているかで面を選び、必ず向かい合う面どうしを結ぶ。
-    def handles_for(source, target)
-      return [ nil, nil ] if source.nil? || target.nil?
-
-      dx = (target[:x] + target[:width] / 2) - (source[:x] + source[:width] / 2)
-      dy = (target[:y] + target[:height] / 2) - (source[:y] + source[:height] / 2)
-
-      if dy.abs >= dx.abs
-        dy.positive? ? [ "bottom", "top" ] : [ "top", "bottom" ]
-      else
-        dx.positive? ? [ "right", "left" ] : [ "left", "right" ]
-      end
+    # 線を引く道具。**盤ごとに1つだけ作る**（線の本数だけ作り直さない）
+    def router(boxes)
+      @router ||= {}
+      @router[boxes.object_id] ||= Layout::Router.new(boxes: boxes)
     end
 
-    # source/target の間に別カードがある場合、線へ直交する迂回点を付ける。
-    # フロント側の自動経路だけでは障害物を認識しないため、座標が確定した後に処理する。
-    # 迂回点は水平・垂直の線分だけで構成し、斜め線を作らない。
-    def route_around_cards(source, target, source_handle, target_handle, obstacles)
-      return [] if source.nil? || target.nil? || obstacles.empty?
 
-      start_point = edge_anchor(source, source_handle)
-      end_point = edge_anchor(target, target_handle)
-      horizontal = %w[left right].include?(source_handle)
-      direct_points = if horizontal
-        middle_x = (start_point[:x] + end_point[:x]) / 2
-        [ { "x" => middle_x, "y" => start_point[:y] }, { "x" => middle_x, "y" => end_point[:y] } ]
-      else
-        middle_y = (start_point[:y] + end_point[:y]) / 2
-        [ { "x" => start_point[:x], "y" => middle_y }, { "x" => end_point[:x], "y" => middle_y } ]
-      end
-      return [] if route_collision_count(start_point, direct_points, end_point, obstacles).zero?
-
-      detours = if horizontal
-        obstacles.flat_map do |box|
-          [ box[:y] - EDGE_CARD_CLEARANCE - 1, box[:y] + box[:height] + EDGE_CARD_CLEARANCE + 1 ]
-        end.uniq.map do |y|
-          y = y.clamp(BOARD_PADDING / 2.0, BOARD_HEIGHT - BOARD_PADDING / 2.0)
-          [ { "x" => start_point[:x], "y" => y }, { "x" => end_point[:x], "y" => y } ]
-        end
-      else
-        obstacles.flat_map do |box|
-          [ box[:x] - EDGE_CARD_CLEARANCE - 1, box[:x] + box[:width] + EDGE_CARD_CLEARANCE + 1 ]
-        end.uniq.map do |x|
-          x = x.clamp(BOARD_PADDING / 2.0, BOARD_WIDTH - BOARD_PADDING / 2.0)
-          [ { "x" => x, "y" => start_point[:y] }, { "x" => x, "y" => end_point[:y] } ]
-        end
-      end
-
-      best = detours.min_by do |points|
-        [ route_collision_count(start_point, points, end_point, obstacles), route_length(start_point, points, end_point) ]
-      end
-      compact_route_points(start_point, best, end_point)
-    end
-
-    def edge_anchor(box, handle)
-      case handle
-      when "top" then { x: box[:x] + box[:width] / 2, y: box[:y] }
-      when "right" then { x: box[:x] + box[:width], y: box[:y] + box[:height] / 2 }
-      when "bottom" then { x: box[:x] + box[:width] / 2, y: box[:y] + box[:height] }
-      else { x: box[:x], y: box[:y] + box[:height] / 2 }
-      end
-    end
-
-    def route_collision_count(start_point, points, end_point, obstacles)
-      [ start_point, *points.map(&:symbolize_keys), end_point ].each_cons(2).sum do |from, to|
-        obstacles.count { |box| segment_crosses_box?(from, to, box) }
-      end
-    end
-
-    def segment_crosses_box?(from, to, box)
-      left = box[:x] - EDGE_CARD_CLEARANCE
-      right = box[:x] + box[:width] + EDGE_CARD_CLEARANCE
-      top = box[:y] - EDGE_CARD_CLEARANCE
-      bottom = box[:y] + box[:height] + EDGE_CARD_CLEARANCE
-
-      if from[:x] == to[:x]
-        from[:x].between?(left, right) && ranges_overlap?(from[:y], to[:y], top, bottom)
-      elsif from[:y] == to[:y]
-        from[:y].between?(top, bottom) && ranges_overlap?(from[:x], to[:x], left, right)
-      else
-        # 生成する経路は直交線だけ。想定外の斜線は安全側で衝突扱いにする
-        true
-      end
-    end
-
-    def ranges_overlap?(a, b, min, max)
-      [ a, b ].min <= max && [ a, b ].max >= min
-    end
-
-    def route_length(start_point, points, end_point)
-      [ start_point, *points.map(&:symbolize_keys), end_point ].each_cons(2).sum do |from, to|
-        (from[:x] - to[:x]).abs + (from[:y] - to[:y]).abs
-      end
-    end
-
-    def compact_route_points(start_point, points, end_point)
-      points.each_with_object([]) do |point, compacted|
-        symbolized = point.symbolize_keys
-        previous = compacted.last&.symbolize_keys || start_point
-        next if symbolized == previous || symbolized == end_point
-
-        compacted << { "x" => symbolized[:x].round, "y" => symbolized[:y].round }
-      end
-    end
 
     # 配置だけを整えた後、既存線の意味と見た目は保って経路だけを引き直す。
     # 手動折れ点は移動前の座標なので、新しいカード配置ではそのまま使えない。
@@ -946,28 +1089,24 @@ module Views
         edge.update!(
           source_handle: source_handle,
           target_handle: target_handle,
-          points: route_around_cards(
-            source_box, target_box, source_handle, target_handle,
-            boxes.except(edge.source_node_id, edge.target_node_id).values
-          )
+          points: router(boxes).route(source_box, target_box, source_handle, target_handle)
         )
       end
     end
 
     # つながりは変えず、文字と見た目だけ当て直す。
     # 引き直すと手で描いた線や折れ点が失われるので、既存の行を更新する
-    def restyle_edges!(edges)
+    def restyle_edges!(relations)
       by_pair = @view.view_edges.index_by { |edge| [ edge.source_node_id, edge.target_node_id ] }
 
-      Array(edges).first(MAX_EDGES).count do |edge|
-        next false unless edge.is_a?(Hash)
-
-        target = by_pair[[ edge["source"].to_s, edge["target"].to_s ]]
+      relations.count do |relation|
+        target = by_pair[[ relation[:from], relation[:to] ]]
         next false if target.nil?
 
+        # 見た目は関係の種類から引く。**折れ点は触らない**（つなぎ方は変えないため）
         target.update!(
-          label: sanitize(edge["label"], limit: 40).presence,
-          style: target.style.merge(edge_style(edge["style"]))
+          label: sanitize(relation[:label], limit: MAX_EDGE_LABEL_LENGTH).presence,
+          style: target.style.merge(relation_style(relation))
         )
         true
       end
@@ -975,16 +1114,14 @@ module Views
 
     # つながり・style・points は変えず、ラベルだけを更新する。
     # 文言専用ボタンから使い、見た目まで意図せず変わるのを防ぐ。
-    def relabel_edges!(edges)
+    def relabel_edges!(relations)
       by_pair = @view.view_edges.index_by { |edge| [ edge.source_node_id, edge.target_node_id ] }
 
-      Array(edges).first(MAX_EDGES).count do |edge|
-        next false unless edge.is_a?(Hash)
-
-        target = by_pair[[ edge["source"].to_s, edge["target"].to_s ]]
+      relations.count do |relation|
+        target = by_pair[[ relation[:from], relation[:to] ]]
         next false if target.nil?
 
-        target.update!(label: sanitize(edge["label"], limit: 40).presence)
+        target.update!(label: sanitize(relation[:label], limit: MAX_EDGE_LABEL_LENGTH).presence)
         true
       end
     end
