@@ -1,7 +1,6 @@
 'use client'
 
-import Link from 'next/link'
-import { ShieldAlert, ShieldCheck } from 'lucide-react'
+import { ShieldCheck } from 'lucide-react'
 import { StrongAuthPrompt } from '@/components/features/account/StrongAuthPrompt'
 
 /**
@@ -21,14 +20,11 @@ import { StrongAuthPrompt } from '@/components/features/account/StrongAuthPrompt
  * 扉の外は変わらず開くので、登録して戻ってこられる。
  */
 export function AdminStrongAuthGate({
-  prepared,
   onDone,
   room = '執務室',
   reason = '運営の画面を開くため、もう一度ご本人か確かめさせてください。',
   preparation = '運営として入るときは、ログインに加えてもう一度ご本人か確かめています。',
 }: {
-  /** パスキーか認証アプリを持っているか */
-  prepared: boolean
   /** 確かめ終わったとき。呼び出し側が権限を取り直す */
   onDone: () => void
   /** どこへ入ろうとしているか。**扉に出る名前** */
@@ -38,36 +34,22 @@ export function AdminStrongAuthGate({
   /** まだ手立てが無いときの一言 */
   preparation?: string
 }) {
-  // 何も持っていない人に確認画面を出しても、押せるものが無い。
-  // 行き止まりにせず、用意する場所へ送る
-  if (!prepared) {
-    return (
-      <div className="mx-auto max-w-lg space-y-4 py-24 text-center">
-        <ShieldAlert size={32} className="mx-auto text-muted-foreground" />
-        <h1 className="text-xl font-semibold">{room}に入る準備が必要です</h1>
-        <p className="text-sm text-muted-foreground">
-          {preparation}
-          パスキーか認証アプリを登録してから、あらためてお越しください。
-        </p>
-        <Link
-          href="/account#security"
-          className="inline-flex h-9 items-center rounded-lg bg-[var(--palace)] px-4 text-sm font-medium text-white transition hover:opacity-90"
-        >
-          セキュリティの設定を開く
-        </Link>
-        <p className="text-xs text-muted-foreground">
-          ふだんの機能はこれまでどおりお使いいただけます。
-        </p>
-      </div>
-    )
-  }
-
+  // **手立ての有無で画面を分けない。**
+  //
+  // 以前はここで「準備が必要です」と出して設定画面へ送っていた。だが
+  // パスキーは端末ごとの鍵なので、**PCで登録済みの人がスマホで開くと
+  // `prepared` は true のまま、押しても通らない**という穴があった。
+  // 分岐の外側にいる人が行き止まりに落ちる。
+  //
+  // 確認も、足りないものを足すのも、`StrongAuthPrompt` が両方持っている。
+  // ここは部屋の名前を出すだけにする。
   return (
     <div className="mx-auto max-w-md space-y-4 py-24">
       <div className="flex items-center justify-center gap-2">
         <ShieldCheck size={22} style={{ color: 'var(--palace)' }} />
         <h1 className="text-xl font-semibold">{room}</h1>
       </div>
+      <p className="text-center text-xs text-muted-foreground">{preparation}</p>
       <StrongAuthPrompt reason={reason} onDone={onDone} />
     </div>
   )

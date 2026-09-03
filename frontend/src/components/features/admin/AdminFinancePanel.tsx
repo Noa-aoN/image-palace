@@ -24,6 +24,23 @@ const GROUP_LABELS: Record<string, string> = {
 const yen = (value: number) => `¥${Math.round(value).toLocaleString()}`
 
 /**
+ * 収入の種別の呼び名。
+ *
+ * **識別名をそのまま出していた。** `topup_purchase` と並んでいても、
+ * それが単発の買い切りなのか月額なのかが読めない。
+ * 収支を見に来る目的は「何でいくら入ったか」を知ることなので、
+ * ここが英語のままだと画面の用を成さない。
+ */
+const REVENUE_KIND_LABELS: Record<string, string> = {
+  topup_purchase: '単発（買い切り）',
+  subscription_grant: '月額',
+  grant: 'ボーナス付与',
+  adjustment: '調整',
+}
+
+const revenueKindLabel = (kind: string) => REVENUE_KIND_LABELS[kind] ?? kind
+
+/**
  * 支出入の概算。
  *
  * 収入は実績なので確度が高い。支出は「実回数 × 単価」で、回数は正確（image_usages /
@@ -176,10 +193,42 @@ export function AdminFinancePanel() {
           />
           <Breakdown
             title="収入の内訳"
-            rows={Object.entries(summary.revenue.by_kind).map(([kind, value]) => ({ label: kind, value }))}
+            rows={Object.entries(summary.revenue.by_kind).map(([kind, value]) => ({
+              label: revenueKindLabel(kind),
+              value,
+            }))}
             empty="この月の決済はまだありません"
           />
         </div>
+
+        {/* **1件ずつ出す。** 合計と内訳だけでは「誰かが買ってくれたかもしれない」が
+            確かめられない。件数が少ないうちは、1件が起きたことそのものが情報になる */}
+        {summary.revenue.payments.length > 0 && (
+          <div className="rounded-lg border border-border p-3">
+            <p className="mb-2 text-sm font-medium">
+              決済の明細
+              <span className="ml-2 text-xs font-normal text-muted-foreground">
+                {summary.revenue.payments.length} 件（新しい順）
+              </span>
+            </p>
+            <ul className="divide-y divide-border/60">
+              {summary.revenue.payments.map((row) => (
+                <li key={row.id} className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-0.5 py-1.5">
+                  <span className="text-sm">{row.user_label}</span>
+                  <span className="text-xs text-muted-foreground">
+                    {revenueKindLabel(row.kind)}
+                    {row.credits > 0 && ` ・ ${row.credits}cr`}
+                    {' ・ '}
+                    {new Date(row.at).toLocaleString('ja-JP', {
+                      month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit',
+                    })}
+                  </span>
+                  <span className="tabular-nums text-sm font-medium">{yen(row.amount)}</span>
+                </li>
+              ))}
+            </ul>
+          </div>
+        )}
 
         {(summary.cost.image.breakdown.length > 0 || summary.cost.text.breakdown.length > 0) && (
           <div className="grid gap-3 lg:grid-cols-2">

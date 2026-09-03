@@ -405,6 +405,23 @@ export interface AdminFinanceSummary {
     refunds: number
     /** 手元に残った額（Gross + Refunds） */
     net: number
+    /**
+     * 1件ずつの決済（新しい順・最大50件）。
+     *
+     * 合計と内訳だけでは「誰が買ってくれたのか」が分からない。
+     * 件数が少ないうちは、1件が起きたことそのものが知りたい情報になる。
+     */
+    payments: {
+      id: string
+      at: string
+      kind: string
+      /** 円 */
+      amount: number
+      /** 増えたクレジット */
+      credits: number
+      /** 表示名。無ければ id の先頭だけ（名指ししないが、同じ人かは分かる） */
+      user_label: string
+    }[]
   }
   /** テストの決済（売上には入れない）。0 でなければ画面に断りを出す */
   test_revenue: number
