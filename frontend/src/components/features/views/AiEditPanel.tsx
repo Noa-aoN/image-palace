@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, type ReactNode } from 'react'
-import { Wand2, Undo2, Redo2 } from 'lucide-react'
+import { Wand2, Undo2, Redo2, ChevronDown } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Spinner } from '@/components/ui/spinner'
@@ -14,8 +14,6 @@ import type {
   AiEditDirection,
   AiEditChangeScale,
   AiEditMode,
-  AiEditPlacementMode,
-  AiEditSizeMode,
   AiEditSummary,
   CardEdge,
   CardProposal,
@@ -54,6 +52,31 @@ const DIRECTIONS: { value: AiEditDirection; label: string; hint: string }[] = [
   { value: 'right', label: '左から右', hint: '横に伸びます' },
 ]
 
+/**
+ * どこまで整えるか。
+ *
+ * 以前は「カードだけ」「線だけ」「配置だけ」「文言だけ」「すべて」の
+ * **5つの実行ボタン**で範囲を決めていた。押した場所で範囲が決まる仕掛けは巧いが、
+ * 別に選んだ設定と噛み合わず、**選んだはずのものが黙って無視される**ことがあった。
+ *
+ * 実行ボタンは1つにして、範囲は明示的に選ぶ形にする。
+ */
+type PanelScope = 'all' | 'layout' | 'edges'
+
+const SCOPE_CHOICES: { value: PanelScope; label: string; hint: string }[] = [
+  { value: 'all', label: '置き方と線', hint: 'カードの並びと、つなぎ方の両方を整えます' },
+  { value: 'layout', label: '置き方だけ', hint: '線はそのままにして、並びだけ整えます' },
+  { value: 'edges', label: '線だけ', hint: '置き場所は動かさず、つなぎ方だけ整えます' },
+]
+
+/** 線の扱い。**「文字だけ」は線の中の話**なので、ここに含める */
+const EDGE_CHOICES: { value: AiEditEdgeMode; label: string; hint: string }[] = [
+  { value: 'rebuild', label: '引き直す', hint: '指示に沿って、線を引き直します' },
+  { value: 'infer', label: '意味から見つける', hint: '書かれていない関係も、意味を読んで結びます' },
+  { value: 'relabel', label: '文字だけ直す', hint: 'つなぎ方は変えず、線の上の言葉だけ当て直します' },
+  { value: 'keep', label: '触らない', hint: 'いまの線をそのままにします' },
+]
+
 /** どれだけ動かしてよいか。「いまの形を活かす」をここへ吸収する */
 const CHANGE_SCALES: { value: AiEditChangeScale; label: string; hint: string }[] = [
   { value: 'small', label: '控えめ', hint: 'いまの形をできるだけ残します' },
@@ -61,22 +84,8 @@ const CHANGE_SCALES: { value: AiEditChangeScale; label: string; hint: string }[]
   { value: 'large', label: '大胆に', hint: '読みやすさを優先して並べ直します' },
 ]
 
-// どこまで整えるか。ジャンル別に実行できるようにし、選ばなかったものは触らない。
-// 「触らない」を2つ手で選ばせるより、押したボタンで範囲が決まる方が迷わない
-type EditScope = 'all' | 'cards' | 'edges' | 'edge_labels' | 'layout'
-
-// 実行の結果に、どこまでが対象だったかを添える
-const SCOPE_LABELS: Record<EditScope, string> = {
-  all: 'カード・線・配置をまとめて整えました',
-  cards: 'カードだけ整えました（線と配置はそのまま）',
-  edges: '線だけ整えました（カードと配置はそのまま）',
-  edge_labels: '線の文言だけ整えました（つなぎ方・見た目・カード・配置はそのまま）',
-  layout: '配置だけ整えました（カードと線はそのまま）',
-}
-
 const PANEL_KEY = 'canvas-ai-edit'
 const MAX_INSTRUCTION = 500
-const DEFAULT_EDGE_LABEL_INSTRUCTION = '線上の文言を、カード同士の関係と向きに合う具体的な短い言葉へ直して'
 
 // 「カードから作る」は新しくカードを作る（＝クレジットを使う）ので、他の2つとは性質が違う。
 // 同じ並びに置きつつ、実行前に必ず枚数の確認を挟む
@@ -140,8 +149,6 @@ export function AiEditPanel({
   const [error, setError] = useState<string | null>(null)
   const [result, setResult] = useState<AiEditSummary | null>(null)
   // いま何を実行しているか／何を実行した結果か。どこまで変わるのかを迷わせないため
-  const [runningScope, setRunningScope] = useState<EditScope | null>(null)
-  const [doneScope, setDoneScope] = useState<EditScope | null>(null)
   // 提案（まだ作っていない）と、そのうち作るものの選択
   const [proposals, setProposals] = useState<CardProposal[] | null>(null)
   const [chosen, setChosen] = useState<Set<string>>(new Set())
@@ -154,10 +161,9 @@ export function AiEditPanel({
   // 整え方の方針。既定は従来と同じ（おまかせ・線は引き直す・大きさは AI に任せる）
   const [layout, setLayout] = useState<AiEditLayout>('auto')
   const [edgeMode, setEdgeMode] = useState<AiEditEdgeMode>('rebuild')
-  const [sizeMode, setSizeMode] = useState<AiEditSizeMode>('ai')
-  const [placementMode, setPlacementMode] = useState<AiEditPlacementMode>('arrange')
   const [direction, setDirection] = useState<AiEditDirection>('auto')
   const [changeScale, setChangeScale] = useState<AiEditChangeScale>('medium')
+  const [editScope, setEditScope] = useState<PanelScope>('all')
   const [createdCount, setCreatedCount] = useState<number | null>(null)
   const [arranged, setArranged] = useState(false)
 
@@ -231,47 +237,55 @@ export function AiEditPanel({
    * ——「何を作るか」「どれを足すか」は、名前ではなく指示そのものだから。
    */
   const needsInstruction = mode === 'create' || mode === 'select'
-  const canRunScope = (scope: EditScope) =>
-    busy === null && (!(scope === 'all' || scope === 'cards') || !needsInstruction || instruction.trim().length > 0)
-  const canRun = canRunScope('all')
+  const canRun = busy === null && (!needsInstruction || instruction.trim().length > 0)
 
-  const optionsFor = (scope: EditScope) => ({
-    layout,
-    placement: scope === 'all' || scope === 'layout' ? placementMode : ('keep' as const),
-    direction: scope === 'all' || scope === 'layout' ? direction : undefined,
-    change_scale: scope === 'all' || scope === 'layout' ? changeScale : undefined,
-    edges: scope === 'edge_labels' ? ('relabel' as const) : scope === 'all' || scope === 'edges' ? edgeMode : ('keep' as const),
-    sizing: scope === 'all' || scope === 'cards' ? sizeMode : ('keep' as const),
-  })
+  /**
+   * 選んだ範囲を、サーバへ渡す形にする。
+   *
+   * **範囲の外は必ず「触らない」にする。** そう伝えないと既定が効いてしまい、
+   * 「線だけ整えて」と言ったのにカードが動く、ということが起きる。
+   */
+  const optionsFor = () => {
+    const touchesLayout = editScope !== 'edges'
+    const touchesEdges = editScope !== 'layout'
 
-  const run = async (scope: EditScope = 'all') => {
-    // カードを足す2つの方針は、提案→承認を挟む
-    if (scope === 'all' || scope === 'cards') {
-      if (mode === 'create') return propose('create')
-      if (mode === 'select') return propose('select')
+    return {
+      layout,
+      placement: touchesLayout ? ('arrange' as const) : ('keep' as const),
+      direction: touchesLayout ? direction : undefined,
+      change_scale: touchesLayout ? changeScale : undefined,
+      edges: touchesEdges ? edgeMode : ('keep' as const),
+      // 大きさは置き方の一部として扱う。別の軸にすると、
+      // 「置き方だけ整える」で大きさが揃わない理由が読めない
+      sizing: touchesLayout ? ('ai' as const) : ('keep' as const),
     }
-    // 空欄でよい。**サーバーがボードの名前を指示にする。**
-    // 線の文字だけを付け直すときは、決まった言い方を先に当てる
-    const trimmed = instruction.trim() || (scope === 'edge_labels' ? DEFAULT_EDGE_LABEL_INSTRUCTION : '')
+  }
+
+  /**
+   * 整える。**入口はここ1つ。**
+   *
+   * 範囲別に5つのボタンを置いていた頃は、押した場所で決まる範囲と、
+   * 別に選んだ設定とが噛み合わず、選んだはずのものが黙って無視されていた。
+   */
+  const run = async () => {
     if (busy) return
+    // カードを足す2つの方針は、提案→承認を挟む
+    if (mode === 'create') return propose('create')
+    if (mode === 'select') return propose('select')
+
+    // 空欄でよい。**サーバーがボードの名前を指示にする**
     setBusy('edit')
-    setRunningScope(scope)
     setError(null)
     setResult(null)
-    setDoneScope(null)
     try {
-      // 線や配置だけを整えるときは、カードを足さない（範囲の外なので）
-      const editMode: AiEditMode = scope === 'all' || scope === 'cards' ? (mode as AiEditMode) : 'placed_only'
-      const updated = await aiEditView(viewId, trimmed, editMode, optionsFor(scope))
+      const updated = await aiEditView(viewId, instruction.trim(), 'placed_only', optionsFor())
       setResult(updated.ai_edit ?? null)
-      setDoneScope(scope)
       onApplied(updated)
     } catch (err: unknown) {
       const e = err as { response?: { data?: { error?: string } } }
       setError(e?.response?.data?.error ?? '編集できませんでした。時間を置いてお試しください。')
     } finally {
       setBusy(null)
-      setRunningScope(null)
     }
   }
 
@@ -384,172 +398,100 @@ export function AiEditPanel({
           </div>
 
           {/*
-            ジャンルごとに区切り、それぞれに実行ボタンを置く。
-            押したボタンの範囲だけが変わり、他は触らない。
-            「触らない」を手で2つ選ばせるより、押した場所で範囲が決まる方が迷わない。
-          */}
-          <Section
-            title="カード"
-            description="どのカードを使うか・大きさ"
-            action={
-              viewType === 'freeboard' && mode !== 'create' ? (
-                <RunButton
-                  label="カードだけ整える"
-                  busy={runningScope === 'cards'}
-                  disabled={!canRunScope('cards')}
-                  onClick={() => run('cards')}
-                />
-              ) : undefined
-            }
-          >
-            <Choice
-              label="使うカード"
-              options={MODES.map((option) => ({ value: option.value, label: option.label }))}
-              value={mode}
-              onChange={(value) => setMode(value as EditChoice)}
-              disabled={busy !== null}
-              hint={MODES.find((option) => option.value === mode)?.description}
-            />
+            **ふだんは、指示欄と「整える」だけ。**
 
-            {viewType === 'freeboard' && mode !== 'create' && (
+            以前は選択肢と実行ボタンが 30 個ほど並んでいた。
+            「何を編集するか」「どう編集するか」「どこまで変えてよいか」が
+            混ざったまま、全部が同じ高さで並んでいたので、
+            **どれを押せばよいのかが読み取れなかった。**
+
+            内部が緻密になるほど、表に出す操作は減らせる。
+            既定のまま押して良い図が出ることを目標に置き、
+            細かい指定は「詳しく」の中へ畳む。
+          */}
+          <details className="group rounded-lg border border-border">
+            <summary className="flex cursor-pointer items-center justify-between px-3 py-2 text-sm text-muted-foreground transition-colors hover:text-foreground">
+              詳しく
+              <ChevronDown size={14} className="transition-transform group-open:rotate-180" />
+            </summary>
+
+            <div className="space-y-5 border-t border-border px-3 py-4">
+              {/* ① 何を触るか。**カード本文には触らない**ので、そう書いておく */}
               <Choice
-                label="大きさ"
-                options={[
-                  { value: 'ai', label: 'AIが強弱をつける' },
-                  { value: 'uniform', label: '全部そろえる' },
-                  { value: 'keep', label: '触らない' },
-                ]}
-                value={sizeMode}
-                onChange={(value) => setSizeMode(value as AiEditSizeMode)}
+                label="どこまで整えるか"
+                options={SCOPE_CHOICES}
+                value={editScope}
+                onChange={(value) => setEditScope(value as PanelScope)}
                 disabled={busy !== null}
               />
-            )}
-          </Section>
+              <p className="text-2xs text-muted-foreground">
+                カードの見出しや説明そのものは変えません。ボード上での置き方と、線だけを整えます。
+              </p>
 
-          {viewType === 'freeboard' && mode !== 'create' && (
-            <>
-              <Section
-                title="線"
-                description="どうつなぐか"
-                action={
-                  <div className="flex flex-wrap justify-end gap-1.5">
-                    <RunButton
-                      label="文言だけ整える"
-                      busy={runningScope === 'edge_labels'}
-                      disabled={busy !== null}
-                      onClick={() => run('edge_labels')}
-                    />
-                    <RunButton
-                      label="線だけ整える"
-                      busy={runningScope === 'edges'}
-                      disabled={!canRunScope('edges')}
-                      onClick={() => run('edges')}
-                    />
-                  </div>
-                }
-              >
+              {/* ② 図の形。置き場所を触るときだけ意味がある */}
+              {viewType === 'freeboard' && editScope !== 'edges' && (
+                <>
+                  <Choice
+                    label="図の形"
+                    options={LAYOUTS}
+                    value={layout}
+                    onChange={(value) => setLayout(value as AiEditLayout)}
+                    disabled={busy !== null}
+                  />
+                  <Choice
+                    label="流れの向き"
+                    options={DIRECTIONS}
+                    value={direction}
+                    onChange={(value) => setDirection(value as AiEditDirection)}
+                    disabled={busy !== null}
+                  />
+                  <Choice
+                    label="変更量"
+                    options={CHANGE_SCALES}
+                    value={changeScale}
+                    onChange={(value) => setChangeScale(value as AiEditChangeScale)}
+                    disabled={busy !== null}
+                  />
+                </>
+              )}
+
+              {/* ③ 線の扱い。置き場所だけ整えるときは出さない */}
+              {viewType === 'freeboard' && editScope !== 'layout' && (
                 <Choice
-                  options={[
-                    { value: 'rebuild', label: '指示どおりに引き直す' },
-                    { value: 'infer', label: '意味を読んで関係を見つけて引く' },
-                    { value: 'restyle', label: '文字と見た目だけ整える' },
-                    { value: 'keep', label: 'いまの線をそのままにする' },
-                  ]}
+                  label="線"
+                  options={EDGE_CHOICES}
                   value={edgeMode}
                   onChange={(value) => setEdgeMode(value as AiEditEdgeMode)}
                   disabled={busy !== null}
-                  hint={
-                    edgeMode === 'infer'
-                      ? 'カードの意味・説明を読み、原因と結果・上位と下位・対比などの関係を見つけて結びます。根拠のない線は引きません。'
-                      : edgeMode === 'restyle'
-                        ? 'つなぎ方は変えず、線の文字づかいを揃え、意味の違いが目で分かる太さ・色にします。折れ点も残ります。'
-                        : edgeMode === 'keep'
-                          ? '手で描いた線が並べ替えで消えません。'
-                          : '指示にある関係だけを引き直します。'
-                  }
                 />
-              </Section>
+              )}
 
-              <Section
-                title="全体・配置"
-                description="どう並べるか"
-                action={
-                  <RunButton
-                    label="配置だけ整える"
-                    busy={runningScope === 'layout'}
-                    disabled={!canRunScope('layout')}
-                    onClick={() => run('layout')}
-                  />
-                }
-              >
-                <Choice
-                  options={[
-                    ...LAYOUTS,
-                    { value: 'keep', label: '触らない', hint: 'いまの置き場所をそのままにします' },
-                  ]}
-                  value={placementMode === 'keep' ? 'keep' : layout}
-                  onChange={(value) => {
-                    if (value === 'keep') {
-                      setPlacementMode('keep')
-                      return
-                    }
-                    setPlacementMode('arrange')
-                    setLayout(value as AiEditLayout)
-                  }}
-                  disabled={busy !== null}
-                />
+              {/* ④ カードを足すか。**足すときだけ指示が要る**ので、最後に置く */}
+              <Choice
+                label="カードを足すか"
+                options={MODES.map((option) => ({
+                  value: option.value,
+                  label: option.label,
+                  hint: option.description,
+                }))}
+                value={mode}
+                onChange={(value) => setMode(value as EditChoice)}
+                disabled={busy !== null}
+              />
+            </div>
+          </details>
 
-                {/* 向きと変更量は、**置き場所を触るときだけ**意味がある。
-                    触らない設定のときに出すと、押しても何も起きない設定が並ぶ */}
-                {placementMode !== 'keep' && (
-                  <>
-                    <div className="mt-3">
-                      <Choice
-                        label="流れの向き"
-                        options={DIRECTIONS}
-                        value={direction}
-                        onChange={(value) => setDirection(value as AiEditDirection)}
-                        disabled={busy !== null}
-                      />
-                    </div>
-                    <div className="mt-3">
-                      <Choice
-                        label="変更量"
-                        options={CHANGE_SCALES}
-                        value={changeScale}
-                        onChange={(value) => setChangeScale(value as AiEditChangeScale)}
-                        disabled={busy !== null}
-                      />
-                    </div>
-                  </>
-                )}
-              </Section>
-            </>
-          )}
-
+          {/* 押すところは1つ。**何が変わるかは「詳しく」で決まっている** */}
           <Button
-            onClick={() => run('all')}
+            onClick={() => run()}
             disabled={!canRun}
             className="flex w-full items-center justify-center gap-1.5"
           >
             {busy === 'edit' || busy === 'propose' ? <Spinner size={14} /> : <Wand2 size={14} />}
-            {mode === 'create'
-              ? busy === 'propose'
-                ? '考え中…'
-                : '作るカードを提案してもらう'
-              : runningScope === 'all'
-                ? 'すべて整えています…'
-                : viewType === 'freeboard'
-                  ? 'すべて整える（カード・線・配置）'
-                  : '整える'}
+            {runLabel(mode, busy, editScope)}
           </Button>
 
-          {/* どこまでが変わるのかを、実行の前後で分かるようにする */}
-          {viewType === 'freeboard' && mode !== 'create' && !runningScope && !result && (
-            <p className="text-center text-2xs text-muted-foreground">
-              各項目の「〜だけ整える」を押すと、その項目だけが変わります。
-            </p>
-          )}
+
 
           {/* 提案の確認。作ると1枚1クレジット出ていくので、枚数を見せてから決めてもらう */}
           {proposals && (proposals.length > 0 || reuse.length > 0) && (
@@ -673,7 +615,6 @@ export function AiEditPanel({
 
           {result && (
             <div className="rounded-lg border border-border bg-muted/30 px-3 py-2">
-              <p className="text-xs text-muted-foreground">{SCOPE_LABELS[doneScope ?? 'all']}</p>
               <p className="text-sm">{result.summary}</p>
               <p className="mt-1 text-xs text-muted-foreground">
                 追加 {result.added} / 取り外し {result.removed} / 配置 {result.placed}
@@ -706,51 +647,6 @@ export function AiEditPanel({
         </div>
       </PanelSlotContent>
     </>
-  )
-}
-
-// ジャンルの区切り。見出し・説明と、その範囲だけを実行するボタンを持つ
-function Section({
-  title,
-  description,
-  action,
-  children,
-}: {
-  title: string
-  description: string
-  action?: ReactNode
-  children: ReactNode
-}) {
-  return (
-    <section className="space-y-2 rounded-lg border border-border px-3 py-2.5">
-      <div className="flex flex-wrap items-center justify-between gap-2">
-        <div>
-          <p className="text-sm font-medium">{title}</p>
-          <p className="text-2xs text-muted-foreground">{description}</p>
-        </div>
-        {action}
-      </div>
-      <div className="space-y-3">{children}</div>
-    </section>
-  )
-}
-
-function RunButton({
-  label,
-  busy,
-  disabled,
-  onClick,
-}: {
-  label: string
-  busy: boolean
-  disabled: boolean
-  onClick: () => void
-}) {
-  return (
-    <Button variant="outline" size="sm" onClick={onClick} disabled={disabled} className="shrink-0">
-      {busy ? <Spinner size={13} /> : <Wand2 size={13} />}
-      {label}
-    </Button>
   )
 }
 
@@ -796,4 +692,20 @@ function Choice({
       )}
     </div>
   )
+}
+
+/**
+ * ボタンに出す言葉。**いま何が起きるかを、押す前に言う。**
+ *
+ * 「詳しく」を畳んでいると、選んだ範囲が画面から見えなくなる。
+ * ボタンに書けば、開かなくても分かる。
+ */
+function runLabel(mode: EditChoice, busy: string | null, scope: PanelScope): string {
+  if (mode === 'create') return busy === 'propose' ? '考え中…' : '作るカードを提案してもらう'
+  if (mode === 'select') return busy === 'propose' ? '考え中…' : '足すカードを提案してもらう'
+  if (busy === 'edit') return '整えています…'
+
+  if (scope === 'layout') return '置き方を整える'
+  if (scope === 'edges') return '線を整える'
+  return '整える'
 }
