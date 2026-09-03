@@ -264,6 +264,11 @@ Rails.application.routes.draw do
           patch "items/:item_id", action: :update_item
           delete "items/:item_id", action: :remove_item
           # freeboard 種別: カード間の接続線（フローチャート）
+          # ボードに置く図形（四角・丸・付箋・見出し・かこみ）
+          post "shapes", to: "view_shapes#create"
+          patch "shapes/reorder", to: "view_shapes#reorder"
+          patch "shapes/:shape_id", to: "view_shapes#update"
+          delete "shapes/:shape_id", to: "view_shapes#destroy"
           post "edges", to: "view_edges#create"
           patch "edges/reorder", to: "view_edges#reorder"
           patch "edges/:edge_id", to: "view_edges#update"

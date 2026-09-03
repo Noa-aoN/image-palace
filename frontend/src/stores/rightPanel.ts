@@ -1,10 +1,11 @@
 import { create } from 'zustand'
 import type { Item } from '@/types/item'
-import type { ViewEdge, ViewEdgeStyle } from '@/types/view'
+import type { BoardShape, ViewEdge, ViewEdgeStyle } from '@/types/view'
 
 // 右パネル（統一インスペクタ）の表示モード。
 // closed=非表示 / card=カード詳細 / board-cards=配置カード一覧 / add-cards=カード追加
-// board-objects=オブジェクト（接続線・図形）一覧 / edge=接続線編集 / board-settings=ボード設定 / bulk=複数選択の一括
+// board-objects=オブジェクト（接続線・図形）一覧 / edge=接続線編集
+// shape=図形編集（塗り・枠・文字） / board-settings=ボード設定 / bulk=複数選択の一括
 //
 // section= 汎用スロット。ページ側が自分の UI をパネルへ差し込む（ボード以外のページはこれを使う）。
 // ボード固有のモードは、いずれ section へ寄せて畳む想定。
@@ -15,6 +16,7 @@ export type RightPanelMode =
   | 'add-cards'
   | 'board-objects'
   | 'edge'
+  | 'shape'
   | 'board-settings'
   | 'bulk'
   | 'section'
@@ -41,6 +43,7 @@ interface RightPanelState {
   itemId: string | null // card モードで表示するカード
   viewId: string | null // ボード文脈（一覧/追加/ボード由来のカード詳細/接続線）
   edge: ViewEdge | null // edge モードで編集する接続線のスナップショット
+  shape: BoardShape | null // shape モードで編集する図形のスナップショット
   // bulk モードの選択集合
   bulkItemIds: string[]
   bulkEdgeIds: string[]
@@ -62,6 +65,16 @@ interface RightPanelState {
   openBoardObjects: (viewId: string) => void
   openBoardSettings: (viewId: string) => void
   openEdge: (viewId: string, edge: ViewEdge) => void
+  /** 図形の編集を開く。塗り・枠・文字をその場で直す */
+  openShape: (viewId: string, shape: BoardShape) => void
+  /** 図形の見た目を盤へ反映する合図。ボード側が拾って消す */
+  shapePatch: BoardShape | null
+  requestShapePatch: (shape: BoardShape) => void
+  consumeShapePatch: () => void
+  /** 図形を消す合図 */
+  shapeRemoveId: string | null
+  requestShapeRemove: (id: string) => void
+  consumeShapeRemove: () => void
   openBulk: (viewId: string, itemIds: string[], edgeIds: string[]) => void
   /** 汎用スロットを開く。中身はページ側が差し込む */
   openSection: (section: PanelSection) => void
@@ -91,6 +104,7 @@ export const useRightPanelStore = create<RightPanelState>()((set) => ({
   itemId: null,
   viewId: null,
   edge: null,
+  shape: null,
   bulkItemIds: [],
   bulkEdgeIds: [],
   section: null,
@@ -111,6 +125,13 @@ export const useRightPanelStore = create<RightPanelState>()((set) => ({
   openBoardObjects: (viewId) => set({ mode: 'board-objects', viewId }),
   openBoardSettings: (viewId) => set({ mode: 'board-settings', viewId }),
   openEdge: (viewId, edge) => set({ mode: 'edge', viewId, edge }),
+  openShape: (viewId, shape) => set({ mode: 'shape', viewId, shape }),
+  shapePatch: null,
+  requestShapePatch: (shape) => set({ shapePatch: shape }),
+  consumeShapePatch: () => set({ shapePatch: null }),
+  shapeRemoveId: null,
+  requestShapeRemove: (id) => set({ shapeRemoveId: id }),
+  consumeShapeRemove: () => set({ shapeRemoveId: null }),
   openBulk: (viewId, itemIds, edgeIds) => set({ mode: 'bulk', viewId, bulkItemIds: itemIds, bulkEdgeIds: edgeIds }),
   openSection: (section) => set({ mode: 'section', section }),
   close: () =>
@@ -118,6 +139,7 @@ export const useRightPanelStore = create<RightPanelState>()((set) => ({
       mode: 'closed',
       itemId: null,
       edge: null,
+  shape: null,
       bulkItemIds: [],
       bulkEdgeIds: [],
       section: null,

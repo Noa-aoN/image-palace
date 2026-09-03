@@ -1,5 +1,6 @@
 import { apiClient } from './client'
-import type { AiEditMode, AiEditOptions, CardEdge, CardProposalResult, View, ViewDetail, ViewItemPlacement, ViewEdge, SpaceMapPoint, BoardSettings } from '@/types/view'
+import type { AiEditMode, AiEditOptions, BoardShape, BoardShapeKind, BoardShapeStyle,
+  CardEdge, CardProposalResult, View, ViewDetail, ViewItemPlacement, ViewEdge, SpaceMapPoint, BoardSettings } from '@/types/view'
 import type { CoverType } from '@/types/cover'
 
 // freeboard の接続線 API の入力
@@ -282,4 +283,38 @@ export async function addViewItems(viewId: string, itemIds: string[]): Promise<n
     item_ids: itemIds,
   })
   return res.data.added
+}
+
+// --- ボードに置く図形 -----------------------------------------------------
+//
+// カードの置き場所（view_items）は item_id が必須なので、図形はそこには入らない。
+// 線（view_edges）と同じく、ボードにぶら下がる別の実体として持つ。
+
+export interface ShapeInput {
+  kind?: BoardShapeKind
+  x?: number
+  y?: number
+  width?: number
+  height?: number
+  z_index?: number
+  text?: string | null
+  style?: BoardShapeStyle
+}
+
+export async function createViewShape(viewId: string, input: ShapeInput): Promise<BoardShape> {
+  const res = await apiClient.post<BoardShape>(`/api/v1/views/${viewId}/shapes`, input)
+  return res.data
+}
+
+export async function updateViewShape(viewId: string, shapeId: string, patch: ShapeInput): Promise<void> {
+  await apiClient.patch(`/api/v1/views/${viewId}/shapes/${shapeId}`, patch)
+}
+
+export async function removeViewShape(viewId: string, shapeId: string): Promise<void> {
+  await apiClient.delete(`/api/v1/views/${viewId}/shapes/${shapeId}`)
+}
+
+/** 重なり順。**手前から順に**渡す（線の並べ替えと同じ作法） */
+export async function reorderViewShapes(viewId: string, frontToBackIds: string[]): Promise<void> {
+  await apiClient.patch(`/api/v1/views/${viewId}/shapes/reorder`, { ordered_ids: frontToBackIds })
 }

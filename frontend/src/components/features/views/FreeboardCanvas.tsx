@@ -23,7 +23,18 @@ import {
   type Edge,
 } from '@xyflow/react'
 import '@xyflow/react/dist/style.css'
-import { Plus, List, Spline, Settings, ArrowUpToLine, ArrowDownToLine, ArrowUp, ArrowDown, Trash2, Download } from 'lucide-react'
+import {
+  Plus, List, Spline, Settings, ArrowUpToLine, ArrowDownToLine,
+  ArrowUp, ArrowDown, Trash2, Download, Square, ChevronDown,
+} from 'lucide-react'
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuGroup,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu'
 import { toPng } from 'html-to-image'
 import { Button } from '@/components/ui/button'
 import { proxiedDataUrl, nextFrame } from '@/lib/boardExport'
@@ -46,8 +57,16 @@ import { BoardActionsContext, CardNode, CARD_DEFAULT_W, CARD_DEFAULT_H, type Car
 import { EditableEdge, EdgeActionsContext } from './EditableEdge'
 import { DraggableMiniMap } from './DraggableMiniMap'
 import { persist } from '@/lib/api/persist'
+import { ShapeNode, type ShapeNodeType } from '@/components/features/views/ShapeNode'
+import {
+  createViewShape,
+  removeViewShape,
+  reorderViewShapes,
+  updateViewShape,
+} from '@/lib/api/views'
+import type { BoardShape, BoardShapeKind } from '@/types/view'
 
-const nodeTypes = { card: CardNode }
+const nodeTypes = { card: CardNode, shape: ShapeNode }
 const edgeTypes = { editable: EditableEdge }
 // カードノードの既定サイズ（中央寄せ計算・未指定サイズのフォールバック）
 const CARD_W = CARD_DEFAULT_W
@@ -67,6 +86,32 @@ function toNode(placement: ViewItemPlacement): CardNodeType {
     zIndex: placement.z_index,
   }
 }
+
+/**
+ * 図形をノードにする。
+ *
+ * **かこみは、いちばん後ろへ置く。** 前に出ると囲ったカードが隠れる。
+ * `zIndex` を負にして、カード（0以上）より必ず奥にする。
+ */
+function toShapeNode(shape: BoardShape): ShapeNodeType {
+  return {
+    id: shape.id,
+    type: 'shape',
+    position: { x: shape.x, y: shape.y },
+    data: { shape },
+    width: shape.width,
+    height: shape.height,
+    zIndex: shape.kind === 'frame' ? -1000 + shape.z_index : shape.z_index,
+    // かこみは掴んでも中のカードを巻き込まない（縁と見出しだけが掴める）
+    selectable: true,
+  }
+}
+
+/** 盤に載るもの。カードか図形 */
+type BoardNode = CardNodeType | ShapeNodeType
+
+const isShapeNode = (node: BoardNode): node is ShapeNodeType => node.type === 'shape'
+const isCardNode = (node: BoardNode): node is CardNodeType => node.type === 'card'
 
 type EdgeData = { edgeStyle: ViewEdgeStyle; label: string | null; points: EdgePoint[] }
 
@@ -157,19 +202,37 @@ type FreeboardCanvasProps = {
   viewId: string
   viewName?: string
   initialItems: ViewItemPlacement[]
+  /** ボードに置いた図形。かこみは後ろから並ぶ */
+  initialShapes?: BoardShape[]
   initialEdges: ViewEdge[]
   aiEditAction?: ReactNode
   aiEditHistoryActions?: ReactNode
 }
 
-function Canvas({ viewId, viewName, initialItems, initialEdges, aiEditAction, aiEditHistoryActions }: FreeboardCanvasProps) {
+function Canvas({
+  viewId, viewName, initialItems, initialShapes = [], initialEdges,
+  aiEditAction, aiEditHistoryActions,
+}: FreeboardCanvasProps) {
   const boardRef = useRef<HTMLDivElement>(null)
-  const [nodes, setNodes, onNodesChange] = useNodesState<CardNodeType>(initialItems.map(toNode))
+  /**
+   * 盤に載るもの。**カードと図形を同じ並びで持つ。**
+   *
+   * 別々に持つと、選択・重なり順・掴んで動かす、が全部2通りになる。
+   * React Flow は種類の違うノードを1つの並びで扱えるので、それに乗る。
+   */
+  const [nodes, setNodes, onNodesChange] = useNodesState<BoardNode>(
+    [ ...initialShapes.map(toShapeNode), ...initialItems.map(toNode) ]
+  )
   const [edges, setEdges, onEdgesChange] = useEdgesState<Edge>(initialEdges.map(viewToEdge))
   const { screenToFlowPosition, setCenter, getZoom, getNodes, getEdges, fitView, getViewport, setViewport } =
     useReactFlow()
 
   const openCard = useRightPanelStore((s) => s.openCard)
+  const openShape = useRightPanelStore((s) => s.openShape)
+  const shapePatch = useRightPanelStore((s) => s.shapePatch)
+  const consumeShapePatch = useRightPanelStore((s) => s.consumeShapePatch)
+  const shapeRemoveId = useRightPanelStore((s) => s.shapeRemoveId)
+  const consumeShapeRemove = useRightPanelStore((s) => s.consumeShapeRemove)
   const closePanel = useRightPanelStore((s) => s.close)
   const openBoardCards = useRightPanelStore((s) => s.openBoardCards)
   const openAddCards = useRightPanelStore((s) => s.openAddCards)
@@ -220,17 +283,56 @@ function Canvas({ viewId, viewName, initialItems, initialEdges, aiEditAction, ai
       盤面座標 (659, 364) → 画面 (755.2, 642.8)  差 0.0px
     と一致した。読み直したときに数が違って見えても、位置は保たれている。
   */
-  const handleDragStop: OnNodeDrag<CardNodeType> = useCallback(
+  /**
+   * 図形を置く。**いま見えている真ん中に置く。**
+   *
+   * 原点に置くと、盤の端まで移動して探すことになる。
+   * 見えている場所に出れば、置いた直後に掴んで動かせる。
+   */
+  const addShape = async (kind: BoardShapeKind) => {
+    const board = boardRef.current?.getBoundingClientRect()
+    const center = board
+      ? screenToFlowPosition({ x: board.left + board.width / 2, y: board.top + board.height / 2 })
+      : { x: 0, y: 0 }
+
+    try {
+      const shape = await createViewShape(viewId, {
+        kind,
+        x: Math.round(center.x),
+        y: Math.round(center.y),
+      })
+      // 置いた図形の左上が中央に来ると、掴む場所が画面の端に寄る。中心を合わせる
+      const centred = { ...shape, x: shape.x - shape.width / 2, y: shape.y - shape.height / 2 }
+      await updateViewShape(viewId, shape.id, { x: Math.round(centred.x), y: Math.round(centred.y) })
+      setNodes((current) => [ ...current, toShapeNode(centred) ])
+    } catch {
+      // 置けなかったときは何も起きない（盤は元のまま）
+    }
+  }
+
+  /** 図形の置き場所と大きさを保存する。カードと同じ key の付け方 */
+  const persistShape = (id: string, patch: Parameters<typeof updateViewShape>[2]) => {
+    persist(() => updateViewShape(viewId, id, patch), { key: `view:${viewId}:shape:${id}:pos` })
+  }
+
+  const removeShape = useCallback(
+    (id: string) => {
+      setNodes((current) => current.filter((node) => node.id !== id))
+      persist(() => removeViewShape(viewId, id), { key: `view:${viewId}:shape:${id}:remove` })
+    },
+    [viewId, setNodes]
+  )
+
+  const handleDragStop: OnNodeDrag<BoardNode> = useCallback(
     (_event, node) => {
-      persist(
-        () =>
-          updateViewItemPosition(viewId, node.id, {
-            x: Math.round(node.position.x),
-            y: Math.round(node.position.y),
-          }),
-        // 同じカードを動かし直したら、**新しい位置だけ**を送る
-        { key: `view:${viewId}:item:${node.id}:pos` }
-      )
+      const at = { x: Math.round(node.position.x), y: Math.round(node.position.y) }
+      // 図形とカードは置き場所の持ち方が違う。**保存先だけ分ける**
+      if (isShapeNode(node)) {
+        persist(() => updateViewShape(viewId, node.id, at), { key: `view:${viewId}:shape:${node.id}:pos` })
+        return
+      }
+      // 同じカードを動かし直したら、**新しい位置だけ**を送る
+      persist(() => updateViewItemPosition(viewId, node.id, at), { key: `view:${viewId}:item:${node.id}:pos` })
     },
     [viewId]
   )
@@ -252,9 +354,41 @@ function Canvas({ viewId, viewName, initialItems, initialEdges, aiEditAction, ai
     [viewId]
   )
 
+  /**
+   * 図形の大きさを保存する。
+   *
+   * カードは `CardNode` が `onResizeEnd` を呼んでくれるが、図形は
+   * `NodeResizer` を素で使っているので、**ノードの変化から拾う**。
+   * `dimensions` の変化は掴んでいる間も届くので、離したときだけ保存する
+   */
+  const handleNodesChange: typeof onNodesChange = useCallback(
+    (changes) => {
+      onNodesChange(changes)
+      changes.forEach((change) => {
+        if (change.type !== 'dimensions' || change.resizing) return
+
+        const node = getNodes().find((n) => n.id === change.id) as BoardNode | undefined
+        if (!node || !isShapeNode(node)) return
+
+        persistShape(node.id, {
+          x: Math.round(node.position.x),
+          y: Math.round(node.position.y),
+          width: Math.round(node.width ?? 0),
+          height: Math.round(node.height ?? 0),
+        })
+      })
+    },
+    // persistShape は viewId しか見ない
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [ onNodesChange, getNodes, viewId ]
+  )
+
   // ダブルクリックで既定サイズに戻す
-  const handleNodeDoubleClick: NodeMouseHandler<CardNodeType> = useCallback(
+  const handleNodeDoubleClick: NodeMouseHandler<BoardNode> = useCallback(
     (_event, node) => {
+      // 図形は既定の大きさへ戻さない（種類ごとに違い、戻す意味が薄い）
+      if (!isCardNode(node)) return
+
       setNodes((ns) =>
         ns.map((n) => (n.id === node.id ? { ...n, width: CARD_DEFAULT_W, height: CARD_DEFAULT_H } : n))
       )
@@ -281,17 +415,22 @@ function Canvas({ viewId, viewName, initialItems, initialEdges, aiEditAction, ai
   // カード/接続線の「実クリック」でパネルを開く（ドラッグ移動では発火しない）。
   // 複数選択された状態でのクリックは一括、単一はそれぞれのパネルにする。
   // 現在の選択集合はライブ参照（getNodes/getEdges）で判定し、状態の取りこぼしを避ける。
-  const handleNodeClick: NodeMouseHandler<CardNodeType> = useCallback(
+  const handleNodeClick: NodeMouseHandler<BoardNode> = useCallback(
     (_event, node) => {
       const selNodes = getNodes().filter((n) => n.selected)
       const selEdges = getEdges().filter((e) => e.selected)
       if (selNodes.length + selEdges.length > 1) {
-        openBulk(viewId, selNodes.map((n) => n.id), selEdges.map((e) => e.id))
-      } else {
-        openCard(node.id, viewId)
+        // 一括編集はカードと線のためのもの。図形は数に入れない
+        const cardIds = selNodes.filter((n) => n.type === 'card').map((n) => n.id)
+        openBulk(viewId, cardIds, selEdges.map((e) => e.id))
+        return
       }
+      // 図形は見た目を直すパネル、カードは中身のパネル
+      const target = node as BoardNode
+      if (isShapeNode(target)) openShape(viewId, target.data.shape)
+      else openCard(node.id, viewId)
     },
-    [viewId, getNodes, getEdges, openBulk, openCard]
+    [viewId, getNodes, getEdges, openBulk, openCard, openShape]
   )
 
   const handleEdgeClick: EdgeMouseHandler = useCallback(
@@ -317,22 +456,24 @@ function Canvas({ viewId, viewName, initialItems, initialEdges, aiEditAction, ai
   }, [closePanel])
 
   // 右クリックのコンテキストメニュー（レイヤー操作＋ボードから削除）。位置はボード左上からの相対座標。
-  const [ctxMenu, setCtxMenu] = useState<{ x: number; y: number; kind: 'card' | 'edge'; targetIds: string[] } | null>(null)
+  const [ctxMenu, setCtxMenu] =
+    useState<{ x: number; y: number; kind: 'card' | 'edge' | 'shape'; targetIds: string[] } | null>(null)
 
   const openCtxMenu = useCallback(
-    (event: { clientX: number; clientY: number }, kind: 'card' | 'edge', targetIds: string[]) => {
+    (event: { clientX: number; clientY: number }, kind: 'card' | 'edge' | 'shape', targetIds: string[]) => {
       const rect = boardRef.current?.getBoundingClientRect()
       setCtxMenu({ x: event.clientX - (rect?.left ?? 0), y: event.clientY - (rect?.top ?? 0), kind, targetIds })
     },
     []
   )
 
-  const handleNodeContextMenu: NodeMouseHandler<CardNodeType> = useCallback(
+  const handleNodeContextMenu: NodeMouseHandler<BoardNode> = useCallback(
     (event, node) => {
       event.preventDefault()
-      // 選択中のカードを右クリックしたら選択集合すべてに適用（複数選択バルク）
-      const selectedIds = nodes.filter((n) => n.selected).map((n) => n.id)
-      openCtxMenu(event, 'card', selectedIds.length > 1 && selectedIds.includes(node.id) ? selectedIds : [node.id])
+      // 図形とカードは、右クリックでできることが違う（図形は削除だけ）
+      const kind = node.type === 'shape' ? 'shape' : 'card'
+      const selectedIds = nodes.filter((n) => n.selected && n.type === node.type).map((n) => n.id)
+      openCtxMenu(event, kind, selectedIds.length > 1 && selectedIds.includes(node.id) ? selectedIds : [ node.id ])
     },
     [nodes, openCtxMenu]
   )
@@ -351,10 +492,20 @@ function Canvas({ viewId, viewName, initialItems, initialEdges, aiEditAction, ai
     (op: LayerOp) => {
       if (!ctxMenu) return
       const targets = new Set(ctxMenu.targetIds)
-      if (ctxMenu.kind === 'card') {
-        const ordered = computeLayerOrder(nodes, (n) => n.zIndex ?? 0, op, targets)
+      if (ctxMenu.kind === 'shape') {
+        // 図形は図形どうしで前後を決める。**かこみは奥のまま**（前に出ると中身が隠れる）
+        const shapes = nodes.filter(isShapeNode).filter((n) => n.data.shape.kind !== 'frame')
+        const ordered = computeLayerOrder(shapes, (n) => n.zIndex ?? 0, op, targets)
+        const map = new Map(ordered.map((n, i) => [ n.id, i + 1 ]))
+        setNodes((ns) => ns.map((n) => (map.has(n.id) ? { ...n, zIndex: map.get(n.id) } : n)))
+        persist(() => reorderViewShapes(viewId, [ ...ordered ].reverse().map((n) => n.id)), {
+          key: `view:${viewId}:shapeOrder`,
+        })
+      } else if (ctxMenu.kind === 'card') {
+        const cards = nodes.filter(isCardNode)
+        const ordered = computeLayerOrder(cards, (n) => n.zIndex ?? 0, op, targets)
         const map = new Map(ordered.map((n, i) => [n.id, i + 1]))
-        setNodes((ns) => ns.map((n) => ({ ...n, zIndex: map.get(n.id) ?? n.zIndex })))
+        setNodes((ns) => ns.map((n) => (map.has(n.id) ? { ...n, zIndex: map.get(n.id) } : n)))
         persist(() => reorderBoardLayers(viewId, [...ordered].reverse().map((n) => n.id)), {
           key: `view:${viewId}:layers`,
         })
@@ -374,7 +525,9 @@ function Canvas({ viewId, viewName, initialItems, initialEdges, aiEditAction, ai
   // ボードから削除（カード＝端点の接続線も掃除／接続線＝その線のみ）。
   const applyDelete = useCallback(() => {
     if (!ctxMenu) return
-    if (ctxMenu.kind === 'card') {
+    if (ctxMenu.kind === 'shape') {
+      ctxMenu.targetIds.forEach((id) => removeShape(id))
+    } else if (ctxMenu.kind === 'card') {
       ctxMenu.targetIds.forEach((id) => handleRemove(id))
     } else {
       const ids = new Set(ctxMenu.targetIds)
@@ -384,7 +537,31 @@ function Canvas({ viewId, viewName, initialItems, initialEdges, aiEditAction, ai
       })
     }
     setCtxMenu(null)
-  }, [ctxMenu, handleRemove, setEdges, viewId])
+  }, [ctxMenu, handleRemove, removeShape, setEdges, viewId])
+
+  /**
+   * パネルで直した図形を、盤へ映す。
+   * **サーバの返事を待たない**（待つと、打った文字が遅れて出る）
+   */
+  useEffect(() => {
+    if (!shapePatch) return
+
+    setNodes((current) =>
+      current.map((node) =>
+        node.id === shapePatch.id && isShapeNode(node)
+          ? { ...node, data: { shape: shapePatch } }
+          : node
+      )
+    )
+    consumeShapePatch()
+  }, [shapePatch, consumeShapePatch, setNodes])
+
+  useEffect(() => {
+    if (!shapeRemoveId) return
+
+    setNodes((current) => current.filter((node) => node.id !== shapeRemoveId))
+    consumeShapeRemove()
+  }, [shapeRemoveId, consumeShapeRemove, setNodes])
 
   // ハンドルをドラッグして接続線を作る
   const handleConnect: OnConnect = useCallback(
@@ -706,6 +883,9 @@ function Canvas({ viewId, viewName, initialItems, initialEdges, aiEditAction, ai
             カードを配置
           </Button>
           {aiEditAction}
+          {/* 図形を置く。**1つのドロップダウンに畳む。**
+              5つを並べると、よく使う「カードを配置」と「AIで整える」が押しのけられる */}
+          <ShapeMenu onAdd={addShape} />
           <Button size="sm" variant="outline" onClick={() => openBoardCards(viewId)} className="flex items-center gap-1">
             <List size={15} />
             配置カード一覧
@@ -745,7 +925,7 @@ function Canvas({ viewId, viewName, initialItems, initialEdges, aiEditAction, ai
             edges={edges}
             nodeTypes={nodeTypes}
             edgeTypes={edgeTypes}
-            onNodesChange={onNodesChange}
+            onNodesChange={handleNodesChange}
             onEdgesChange={onEdgesChange}
             onNodeDragStop={handleDragStop}
             onNodeClick={handleNodeClick}
@@ -802,7 +982,7 @@ function Canvas({ viewId, viewName, initialItems, initialEdges, aiEditAction, ai
               >
                 {ctxMenu.targetIds.length > 1 && (
                   <p className="px-3 pb-1 pt-0.5 text-xs text-muted-foreground">
-                    {ctxMenu.kind === 'card' ? 'カード' : '接続線'}
+                    {ctxMenu.kind === 'card' ? 'カード' : ctxMenu.kind === 'shape' ? '図形' : '接続線'}
                     {ctxMenu.targetIds.length}件
                   </p>
                 )}
@@ -850,5 +1030,48 @@ export function FreeboardCanvas(props: FreeboardCanvasProps) {
     <ReactFlowProvider>
       <Canvas {...props} />
     </ReactFlowProvider>
+  )
+}
+
+/**
+ * 図形を置くボタン。
+ *
+ * 図を描く道具（Figma / Miro / FigJam）が共通して持っているものだけにした。
+ * 種類を増やすと選ぶ手間が増えるわりに、できる図はほとんど変わらない。
+ */
+const SHAPE_CHOICES: { kind: BoardShapeKind; label: string; hint: string }[] = [
+  { kind: 'frame', label: 'かこみ', hint: 'カードの後ろに敷いて、群れを囲みます' },
+  { kind: 'sticky', label: '付箋', hint: '思いつきを貼ります' },
+  { kind: 'text', label: '文字', hint: '見出しや注釈を置きます' },
+  { kind: 'rectangle', label: '四角', hint: '区切る・囲む' },
+  { kind: 'ellipse', label: '丸', hint: '強調する' },
+]
+
+function ShapeMenu({ onAdd }: { onAdd: (kind: BoardShapeKind) => void }) {
+  return (
+    <DropdownMenu>
+      {/* Base UI の Trigger は自前で要素を描くので、隣のボタンと同じ見た目を直接あてる */}
+      <DropdownMenuTrigger className="inline-flex h-8 shrink-0 items-center gap-1 rounded-[min(var(--radius-md),12px)] border border-border bg-background px-2.5 text-sm font-medium whitespace-nowrap transition-colors hover:bg-muted">
+        <Square size={15} />
+        図形
+        <ChevronDown size={13} className="text-muted-foreground" />
+      </DropdownMenuTrigger>
+      <DropdownMenuContent align="start" className="w-60">
+        {/* 見出しは群の中でしか使えない。包まないと Base UI が落ちる */}
+        <DropdownMenuGroup>
+          <DropdownMenuLabel>置くもの</DropdownMenuLabel>
+          {SHAPE_CHOICES.map((choice) => (
+            <DropdownMenuItem
+              key={choice.kind}
+              onClick={() => onAdd(choice.kind)}
+              className="flex-col items-start gap-0.5"
+            >
+              <span>{choice.label}</span>
+              <span className="text-2xs text-muted-foreground">{choice.hint}</span>
+            </DropdownMenuItem>
+          ))}
+        </DropdownMenuGroup>
+      </DropdownMenuContent>
+    </DropdownMenu>
   )
 }
