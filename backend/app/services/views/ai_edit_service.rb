@@ -955,7 +955,66 @@ module Views
 
       @layout_notes = result.notes
       @layout_score = result.score
-      persist_boxes!(result.boxes)
+      # **かこみは、中身を追いかける。**
+      # 動かす前に「どのカードが入っていたか」を控え、動かした後に囲み直す
+      enclosed = frame_contents(boxes)
+      placed_count = persist_boxes!(result.boxes)
+      refit_frames!(enclosed, result.boxes)
+      placed_count
+    end
+
+    # かこみからカードの縁までの余白。狭いと囲っているように見えない
+    FRAME_PADDING = 48
+
+    # 動かす前に、それぞれのかこみが囲っていたカードを控える。
+    #
+    # **控えないと、整えた後に空のかこみだけが盤に残る。**
+    # カードは新しい場所へ移り、かこみは元の場所に取り残されるので、
+    # 「何も囲っていない枠が湧いた」ようにしか見えない。
+    # 実際、これが「AIで整えるたびに囲みが増える」の正体だった
+    def frame_contents(boxes)
+      frames = @view.view_shapes.select(&:frame?)
+      return {} if frames.empty?
+
+      frames.to_h do |frame|
+        inside = boxes.select { |box| inside_frame?(frame, box) }.map(&:id)
+        [ frame.id, inside ]
+      end
+    end
+
+    def inside_frame?(frame, box)
+      box.center_x >= frame.x && box.center_x <= frame.x + frame.width &&
+        box.center_y >= frame.y && box.center_y <= frame.y + frame.height
+    end
+
+    # 控えたカードを、新しい場所で囲み直す。
+    #
+    # 何も囲っていなかったかこみは触らない（**空の枠は、そこに置いた理由がある**）
+    def refit_frames!(enclosed, boxes)
+      return if enclosed.empty?
+
+      by_id = boxes.to_h { |box| [ box.id, box ] }
+      enclosed.each do |frame_id, item_ids|
+        members = item_ids.filter_map { |id| by_id[id] }
+        next if members.empty?
+
+        frame = @view.view_shapes.find_by(id: frame_id)
+        next if frame.nil?
+
+        frame.update!(fitted_bounds(members))
+      end
+    end
+
+    def fitted_bounds(members)
+      left = members.map(&:left_edge).min - FRAME_PADDING
+      right = members.map(&:right_edge).max + FRAME_PADDING
+      top = members.map(&:top).min - FRAME_PADDING
+      bottom = members.map(&:bottom).max + FRAME_PADDING
+      {
+        x: left.round, y: top.round,
+        width: (right - left).round.clamp(ViewShape::MIN_SIZE, ViewShape::MAX_SIZE),
+        height: (bottom - top).round.clamp(ViewShape::MIN_SIZE, ViewShape::MAX_SIZE)
+      }
     end
 
     # 線に繋がらなかったカードを、名前で伝える。
@@ -1396,10 +1455,15 @@ module Views
     # 図形は「囲む」「区切る」ために置かれるので、その上を線が通ると
     # 囲った意味が読めなくなる。かこみ（frame）だけは別で、
     # **カードを囲うために置かれている**ので、その中を通るのは正しい
+    # 盤に置かれた図形。**線はこれをよけ、これに刺さる。**
+    #
+    # id に接頭辞を付けていたが、やめた。画面（React Flow）は図形の id を
+    # そのまま節の名前に使っているので、**接頭辞を付けると線の端が結び付かない**。
+    # 図形とカードの id はどちらも UUID なので、ぶつからない
     def shape_obstacles
       @shape_obstacles ||= @view.view_shapes.reject(&:frame?).to_h do |shape|
-        [ "shape-#{shape.id}", Layout::Box.new(
-          id: "shape-#{shape.id}", title: nil,
+        [ shape.id, Layout::Box.new(
+          id: shape.id, title: nil,
           x: shape.x, y: shape.y, width: shape.width, height: shape.height,
           footprint_width: shape.width
         ) ]
@@ -1422,10 +1486,18 @@ module Views
       end
     end
 
+    # 線の端になれるもの。**カードと図形の両方。**
+    #
+    # カードしか返していなかった頃は、図形につないだ線が
+    # 「端が盤に無い」とみなされて引き直しから外れ、古い道すじのまま残っていた
+    def connectable_boxes
+      placement_boxes.merge(shape_obstacles)
+    end
+
     # 配置だけを整えた後、既存線の意味と見た目は保って経路だけを引き直す。
     # 手動折れ点は移動前の座標なので、新しいカード配置ではそのまま使えない。
     def reroute_existing_edges!
-      boxes = placement_boxes
+      boxes = connectable_boxes
       edges = @view.view_edges.select do |edge|
         boxes[edge.source_node_id] && boxes[edge.target_node_id]
       end

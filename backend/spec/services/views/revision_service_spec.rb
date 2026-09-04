@@ -95,3 +95,73 @@ RSpec.describe Views::RevisionService do
     expect(status[:can_redo]).to be(false)
   end
 end
+
+# 図形も控える。
+#
+# 控えていなかった頃は、図形を置いてから「戻る」を押しても図形が残り、
+# 何が戻ったのか読めなかった（カードと線だけが戻る）。
+RSpec.describe "#{Views::RevisionService} 図形の控え" do
+  let(:user) { create(:user, :confirmed) }
+  let(:view) { create(:view, user: user, view_type: "freeboard") }
+
+  # snapshot! は状態（進める／戻せる）を返すので、控えそのものは引き直す
+  def snapshot(label)
+    Views::RevisionService.snapshot!(view.reload, label: label)
+    view.reload.view_revisions.order(:position).last
+  end
+
+  it "置いた図形が控えに入る" do
+    view.view_shapes.create!(kind: "sticky", x: 10, y: 20, width: 180, height: 180, text: "覚書")
+
+    revision = snapshot("置いた後")
+
+    expect(revision.state["shapes"].first).to include("kind" => "sticky", "text" => "覚書")
+  end
+
+  it "戻ると、置く前の状態へ返る" do
+    snapshot("置く前")
+    view.view_shapes.create!(kind: "sticky", x: 10, y: 20, width: 180, height: 180)
+    snapshot("置いた後")
+
+    Views::RevisionService.new(view).undo!
+
+    expect(view.reload.view_shapes.count).to eq(0)
+  end
+
+  it "進むと、置いた状態へ返る" do
+    snapshot("置く前")
+    view.view_shapes.create!(kind: "frame", x: 0, y: 0, width: 400, height: 300)
+    snapshot("置いた後")
+    service = Views::RevisionService.new(view)
+    service.undo!
+
+    service.redo!
+
+    expect(view.reload.view_shapes.count).to eq(1)
+    expect(view.view_shapes.first.kind).to eq("frame")
+  end
+
+  # 「控えていない」と「1つも無かった」は別のこと
+  it "図形を控える前の版へ戻しても、図形を消さない" do
+    view.view_shapes.create!(kind: "sticky", x: 10, y: 20, width: 180, height: 180)
+    old = snapshot("古い版")
+    old.update!(state: old.state.except("shapes"))
+
+    Views::RevisionService.new(view.reload).send(:restore!, old.reload)
+
+    expect(view.reload.view_shapes.count).to eq(1)
+  end
+
+  it "知らない種類は戻さない（壊れた控えを通さない）" do
+    snapshot("空")
+    view.view_shapes.create!(kind: "sticky", x: 0, y: 0, width: 180, height: 180)
+    revision = snapshot("あり")
+    revision.update!(state: revision.state.merge("shapes" => [ { "kind" => "なにか", "x" => 0, "y" => 0,
+                                                                 "width" => 100, "height" => 100 } ]))
+    view.view_shapes.destroy_all
+
+    Views::RevisionService.new(view.reload).send(:restore!, revision.reload)
+
+    expect(view.reload.view_shapes.count).to eq(0)
+  end
+end

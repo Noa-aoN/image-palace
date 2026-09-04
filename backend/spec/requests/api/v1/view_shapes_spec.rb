@@ -250,3 +250,55 @@ RSpec.describe "Api::V1::Views shapes", type: :request do
     end
   end
 end
+
+# 接合点。**線が分かれる場所**を表す点。
+#
+# 線と線をつなぐ作りにも、見た目だけの分岐にもできたが、
+# 小さな節にすると、移動・重なり順・削除・戻るが既にあるものでそのまま効く。
+RSpec.describe "Api::V1::Views 接合点", type: :request do
+  let(:user) { create(:user, :confirmed) }
+  let(:headers) { auth_headers_for(user) }
+  let(:view) { create(:view, user: user, view_type: "freeboard") }
+
+  it "点として置ける（小さくても弾かれない）" do
+    post "/api/v1/views/#{view.id}/shapes", params: { kind: "junction" }, headers: headers, as: :json
+
+    expect(response).to have_http_status(:created)
+    body = response.parsed_body
+    expect(body["width"]).to be < ViewShape::MIN_SIZE
+    expect(body["style"]["fill"]).to be_present
+  end
+
+  it "他の図形は、これまでどおり小さくできない" do
+    post "/api/v1/views/#{view.id}/shapes",
+         params: { kind: "rectangle", width: 10, height: 10 }, headers: headers, as: :json
+
+    expect(response).to have_http_status(:unprocessable_entity)
+  end
+
+  it "接合点も、大きくしすぎられない（点でなくなる）" do
+    post "/api/v1/views/#{view.id}/shapes",
+         params: { kind: "junction", width: 500, height: 500 }, headers: headers, as: :json
+
+    expect(response).to have_http_status(:unprocessable_entity)
+  end
+
+  it "線の端にできる" do
+    post "/api/v1/views/#{view.id}/shapes", params: { kind: "junction" }, headers: headers, as: :json
+    junction_id = response.parsed_body["id"]
+
+    post "/api/v1/views/#{view.id}/edges",
+         params: { source_node_id: junction_id, target_node_id: SecureRandom.uuid },
+         headers: headers, as: :json
+
+    expect(response).to have_http_status(:created)
+  end
+
+  # 中身を囲うためのもので、点ではない
+  it "かこみは、線の端にできる図形から外れている" do
+    view.view_shapes.create!(kind: "frame", x: 0, y: 0, width: 400, height: 300)
+    view.view_shapes.create!(kind: "junction", x: 0, y: 0, width: 14, height: 14)
+
+    expect(view.view_shapes.connectable.map(&:kind)).to eq([ "junction" ])
+  end
+end

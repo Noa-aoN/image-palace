@@ -1244,6 +1244,7 @@ const SHAPE_LABELS: Record<BoardShapeKind, string> = {
   sticky: '付箋',
   text: '文字',
   frame: 'かこみ',
+  junction: '接合点',
 }
 
 const SHAPE_CHOICES: { kind: BoardShapeKind; label: string; hint: string }[] = [
@@ -1252,6 +1253,8 @@ const SHAPE_CHOICES: { kind: BoardShapeKind; label: string; hint: string }[] = [
   { kind: 'text', label: '文字', hint: '見出しや注釈を置きます' },
   { kind: 'rectangle', label: '四角', hint: '区切る・囲む' },
   { kind: 'ellipse', label: '丸', hint: '強調する' },
+  // 線が分かれる場所。両親から子へ1本にまとめるときに使う
+  { kind: 'junction', label: '接合点', hint: '線を分ける点。両親から子へ、など' },
 ]
 
 function ShapeMenu({ onAdd }: { onAdd: (kind: BoardShapeKind) => void }) {
