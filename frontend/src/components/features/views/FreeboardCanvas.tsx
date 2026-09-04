@@ -71,6 +71,9 @@ const nodeTypes = { card: CardNode, shape: ShapeNode }
 const edgeTypes = { editable: EditableEdge }
 // カードノードの既定サイズ（中央寄せ計算・未指定サイズのフォールバック）
 const CARD_W = CARD_DEFAULT_W
+
+/** 接合点の大きさ。サーバーの ViewShape::DEFAULT_SIZES と揃える */
+const JUNCTION_SIZE = 14
 const CARD_H = CARD_DEFAULT_H
 // 全体表示でカードへ寄りすぎないよう、少し引いた倍率を上限にする。
 // サーバ側の外周余白と合わせて、AI 配置後にも盤面の文脈が見える状態を保つ。
@@ -357,16 +360,20 @@ function Canvas({
    * 図形を置けない場所。**ここを押したら、置くのをやめる。**
    *
    * 構えている間はどこを押しても図形ができていたので、カードを掴もうとして
-   * 図形が生まれることがあった。**押した本人には「勝手に増えた」としか見えない。**
-   * 空いている場所を押したときだけ置く。
+   * 図形が生まれることがあった。押した本人には「勝手に増えた」としか見えない。
+   *
+   * **ただし線の上は止めない。** 止めていたので、混んだ盤では押した所がほぼ必ず
+   * 何かに当たり、**接合点が一度も置けなかった**（線の上に置くためのものなのに）。
+   * 掴み違えて困るのはカードと図形なので、そこだけを避ける。
    */
-  const NOT_A_PLACE = '.react-flow__node, .react-flow__edge, .react-flow__controls, .react-flow__minimap, .react-flow__panel'
+  const NOT_A_PLACE = '.react-flow__node, .react-flow__controls, .react-flow__minimap, .react-flow__panel'
 
   const handlePlacePointerDown = (event: React.PointerEvent<HTMLDivElement>) => {
     if (!placing || event.button !== 0) return
 
-    // カードや線の上なら、置かずにやめる（掴もうとしただけ、と読む）
-    if ((event.target as Element).closest?.(NOT_A_PLACE)) {
+    // カードや図形の上なら、置かずにやめる（掴もうとしただけ、と読む）。
+    // **接合点だけは例外**。線の上にも、カードの近くにも置けてよい
+    if (placing !== 'junction' && (event.target as Element).closest?.(NOT_A_PLACE)) {
       setPlacing(null)
       setBand(null)
       return
@@ -396,7 +403,8 @@ function Canvas({
 
     const from = screenToFlowPosition(band.start)
     const to = screenToFlowPosition(end)
-    if (isClick(band.start, end)) {
+    // **接合点は「点」。** 引いても大きさは決めない（大きくすると図形になる）
+    if (kind === 'junction' || isClick(band.start, end)) {
       void createShape(kind, { x: Math.round(from.x), y: Math.round(from.y) })
       return
     }
@@ -1033,10 +1041,44 @@ function Canvas({
     () => ({ onRemove: handleRemove, onResizeEnd: handleResizeEnd }),
     [handleRemove, handleResizeEnd]
   )
+  /**
+   * 線の途中から、3つ目の端を引き出す。
+   *
+   * **線と線をつなぐのではなく、線の上に点（接合点）を置いて、そこから新しい線を引く。**
+   * 両親から子へ1本にまとめる、といった図はこれで描ける。
+   *
+   * 点を盤の上のものとして持つので、動かす・消す・戻す・重なり順が、
+   * **既にある仕組みでそのまま効く**（線と線をつなぐ作りにすると、
+   * 親の線を消したとき子の線の行き先が決まらない）。
+   */
+  const branchFrom = useCallback(
+    async (at: { x: number; y: number }, targetNodeId: string) => {
+      try {
+        // 点の中心を掴んだ場所に合わせる（左上を合わせると、線から外れて見える）
+        const half = JUNCTION_SIZE / 2
+        const junction = await createViewShape(viewId, {
+          kind: 'junction',
+          x: Math.round(at.x - half),
+          y: Math.round(at.y - half),
+        })
+        setNodes((current) => [ ...current, toShapeNode(junction) ])
+
+        const saved = await addViewEdge(viewId, {
+          source_node_id: junction.id,
+          target_node_id: targetNodeId,
+        })
+        setEdges((current) => [ ...current, viewToEdge(saved) ])
+      } catch {
+        // 作れなかったときは何も起きない（宙に浮いた点を残さない）
+      }
+    },
+    [viewId, setNodes, setEdges]
+  )
+
   // 二重線は真ん中を盤の色で抜いて描くので、盤の色を線側にも渡す
   const edgeActions = useMemo(
-    () => ({ commitPoints, boardBg: boardSettings.bg_color || 'var(--board-bg)' }),
-    [commitPoints, boardSettings.bg_color]
+    () => ({ commitPoints, branchFrom, boardBg: boardSettings.bg_color || 'var(--board-bg)' }),
+    [commitPoints, branchFrom, boardSettings.bg_color]
   )
 
   return (
@@ -1247,14 +1289,18 @@ const SHAPE_LABELS: Record<BoardShapeKind, string> = {
   junction: '接合点',
 }
 
+/**
+ * 置ける図形。**接合点はここに出さない。**
+ *
+ * 接合点は図形ではなく、**線の途中から引き出す3つ目の端**。
+ * 図形として手で置かせると、線と関係のない所に点だけが残る
+ */
 const SHAPE_CHOICES: { kind: BoardShapeKind; label: string; hint: string }[] = [
   { kind: 'frame', label: 'かこみ', hint: 'カードの後ろに敷いて、群れを囲みます' },
   { kind: 'sticky', label: '付箋', hint: '思いつきを貼ります' },
   { kind: 'text', label: '文字', hint: '見出しや注釈を置きます' },
   { kind: 'rectangle', label: '四角', hint: '区切る・囲む' },
   { kind: 'ellipse', label: '丸', hint: '強調する' },
-  // 線が分かれる場所。両親から子へ1本にまとめるときに使う
-  { kind: 'junction', label: '接合点', hint: '線を分ける点。両親から子へ、など' },
 ]
 
 function ShapeMenu({ onAdd }: { onAdd: (kind: BoardShapeKind) => void }) {

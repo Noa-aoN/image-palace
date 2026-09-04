@@ -59,6 +59,17 @@ export const ShapeNode = memo(function ShapeNode({ data, selected }: NodeProps<S
       >
         <div className="relative h-full w-full" style={surfaceStyle(kind, style)}>
           {folded && <Dogear style={style} />}
+          {/*
+            接合点は 14px しかないので、**掴む的を見た目より大きく取る。**
+            点を大きくすると図が点だらけに見えるので、当たり判定だけ広げる
+          */}
+          {isJunction && (
+            <span
+              aria-hidden
+              className="absolute left-1/2 top-1/2 h-6 w-6 -translate-x-1/2 -translate-y-1/2 rounded-full"
+            />
+          )}
+
           {/* かこみの見出しは**枠の外**（上）に置く。中に置くとカードと重なる */}
           {isFrame && text && (
             <span className="pointer-events-auto absolute -top-6 left-0 max-w-full truncate text-sm font-medium"
@@ -109,6 +120,22 @@ export const ShapeNode = memo(function ShapeNode({ data, selected }: NodeProps<S
       {selected && !isJunction && (
         <span className="pointer-events-none absolute -top-5 right-0 text-2xs text-muted-foreground">
           {KIND_LABELS[kind]}
+        </span>
+      )}
+
+      {/*
+        接合点は**線の3つ目の端**。だが点そのものは 14px しかないので、
+        何なのか・何ができるのかが、見ただけでは読めなかった。
+
+        線の上の点（終端・折れ点）と同じ言い方で出す。
+        「名前：何ができるか」の形にそろえて、触っているものが何かを先に言う
+      */}
+      {isJunction && (
+        <span
+          className="pointer-events-none absolute left-1/2 top-full hidden -translate-x-1/2 whitespace-nowrap rounded px-1.5 py-0.5 text-3xs group-hover:block"
+          style={{ marginTop: 6, background: 'var(--foreground)', color: 'var(--background)' }}
+        >
+          <strong className="font-semibold">接合点</strong>：引いて動かす／ここから線を引けます
         </span>
       )}
     </>

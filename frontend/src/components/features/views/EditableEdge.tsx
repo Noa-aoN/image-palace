@@ -35,10 +35,19 @@ import {
 // 折れ点の確定保存はボード側（FreeboardCanvas）へ委譲する（data に関数を入れず lint 回避）。
 export const EdgeActionsContext = createContext<{
   commitPoints: (edgeId: string, points: EdgePoint[]) => void
+  /**
+   * 線の途中から、3つ目の端を引き出す。
+   *
+   * **線と線をつなぐのではなく、線の上に点を置いて、そこから新しい線を引く。**
+   * 両親から子へ1本にまとめる、といった図はこれで描ける。
+   * 点は盤の上のものとして持つので、動かす・消す・戻すが既にある仕組みで効く
+   */
+  branchFrom: (at: EdgePoint, targetNodeId: string) => void
   /** 二重線の内側に敷く色。盤の色を渡す（線を2本描く代わりに、真ん中を盤の色で抜く） */
   boardBg: string
 }>({
   commitPoints: () => {},
+  branchFrom: () => {},
   boardBg: 'var(--board-bg)',
 })
 
@@ -56,7 +65,7 @@ function EditableEdgeComponent(props: EdgeProps) {
   const { screenToFlowPosition, setEdges } = useReactFlow()
   // 盤の拡大率。**説明の大きさを打ち消す**のに使う（盤ごと縮めると読めなくなる）
   const zoom = useStore((state) => state.transform[2])
-  const { commitPoints, boardBg } = useContext(EdgeActionsContext)
+  const { commitPoints, branchFrom, boardBg } = useContext(EdgeActionsContext)
   const latest = useRef<EdgePoint[]>(points)
   const moved = useRef(false)
 
@@ -164,6 +173,78 @@ function EditableEdgeComponent(props: EdgeProps) {
     commitPoints(id, inserted)
   }
 
+  /**
+   * 線の途中から、3つ目の端を引き出す。
+   *
+   * **折れ点とは別のもの。** 折れ点は線の形を変えるためのもので、
+   * こちらは**新しい線をここから生やす**ためのもの。
+   * 見た目も三角にして、丸（点）・四角（折れ点）と混ざらないようにする。
+   *
+   * 引いている間は行き先までの線を見せ、離した所にカードや図形があれば繋ぐ。
+   * 何も無い所で離したときは、**何も起きない**（宙に浮いた点を残さない）。
+   */
+  const [branch, setBranch] = useState<{ from: EdgePoint; to: EdgePoint } | null>(null)
+
+  const startBranch = (at: EdgePoint) => (ev: ReactPointerEvent) => {
+    if (ev.button !== 0) return
+    ev.stopPropagation()
+    setBranch({ from: at, to: at })
+
+    const move = (e: PointerEvent) => {
+      const fp = screenToFlowPosition({ x: e.clientX, y: e.clientY })
+      setBranch({ from: at, to: { x: fp.x, y: fp.y } })
+    }
+    const up = (e: PointerEvent) => {
+      window.removeEventListener('pointermove', move)
+      window.removeEventListener('pointerup', up)
+      setBranch(null)
+
+      // 離した所にあるものを探す。**カードでも図形でもよい**
+      const under = document.elementFromPoint(e.clientX, e.clientY)
+      const targetId = under?.closest('.react-flow__node')?.getAttribute('data-id')
+      if (targetId) branchFrom(at, targetId)
+    }
+    window.addEventListener('pointermove', move)
+    window.addEventListener('pointerup', up)
+  }
+
+  /**
+   * 線そのものを引く。
+   *
+   * 掴んだ場所に折れ点を作って、そのまま引きずる。
+   * **点を狙わなくても、線を掴めば曲げられる。**
+   *
+   * 引かずに離したときは、作った折れ点を捨てる。
+   * ちょっと触っただけで折れ点が増えるのは、掴んだつもりの人には邪魔にしかならない
+   */
+  const dragFromPath = (ev: ReactPointerEvent) => {
+    if (ev.button !== 0) return
+
+    const { index, inserted } = addPointAt(ev)
+    writeLocal(inserted)
+
+    const before = points
+    moved.current = false
+    const move = (e: PointerEvent) => {
+      moved.current = true
+      const fp = screenToFlowPosition({ x: e.clientX, y: e.clientY })
+      writeLocal(inserted.map((p, i) => (i === index ? { x: Math.round(fp.x), y: Math.round(fp.y) } : p)))
+    }
+    const up = () => {
+      window.removeEventListener('pointermove', move)
+      window.removeEventListener('pointerup', up)
+      if (moved.current) {
+        commitPoints(id, latest.current)
+      } else {
+        // 引かなかった＝掴んだだけ。**増やさずに戻す**
+        writeLocal(before)
+      }
+    }
+    ev.stopPropagation()
+    window.addEventListener('pointermove', move)
+    window.addEventListener('pointerup', up)
+  }
+
   // waypoint ダブルクリックで削除
   const removeAt = (idx: number) => (ev: ReactMouseEvent) => {
     ev.stopPropagation()
@@ -208,19 +289,39 @@ function EditableEdgeComponent(props: EdgeProps) {
         />
       )}
       <BaseEdge id={id} path={edgePath} markerStart={markerStart} markerEnd={markerEnd} style={baseStyle} />
+      {/* 引き出している間の下書き。**離す前に、どこへ繋がるかを見せる** */}
+      {branch && (
+        <line
+          x1={branch.from.x}
+          y1={branch.from.y}
+          x2={branch.to.x}
+          y2={branch.to.y}
+          stroke={BRANCH_COLOR}
+          strokeWidth={2}
+          strokeDasharray="6 4"
+          style={{ pointerEvents: 'none' }}
+        />
+      )}
       {/*
         掴むための、見えない太い線。**線そのものは細いので、狙って当てにくい。**
-        ダブルクリックでその場に折れ点を置ける（的を狙わなくてよい）
+
+        **線を直接引けるようにする。** これまでは点を狙って掴むしかなく、
+        「この線をここまでずらしたい」と思っても、まず折れ点を作る手が要った。
+        線を引いた場所に折れ点ができて、そのまま付いてくる——
+        図を描く道具（draw.io / Lucidchart）が共通してそうしている。
+
+        ダブルクリックでも置ける（引かずに、その場に1つだけ足したいとき）
       */}
       <path
         d={edgePath}
         fill="none"
         stroke="transparent"
         strokeWidth={Math.max(strokeWidth + 12, 16)}
+        onPointerDown={dragFromPath}
         onDoubleClick={insertOnPath}
         onMouseEnter={() => setHovered(true)}
         onMouseLeave={() => setHovered(false)}
-        style={{ cursor: 'crosshair', pointerEvents: 'stroke' }}
+        style={{ cursor: 'grab', pointerEvents: 'stroke' }}
       />
       {doubled && (
         // 真ん中を盤の色で抜いて2本に見せる。矢印は外側の線だけに付ける
@@ -276,15 +377,21 @@ function EditableEdgeComponent(props: EdgeProps) {
             */}
             {verts.slice(0, -1).map((v, i) => {
               const n = verts[i + 1]
-              const mx = (v.x + n.x) / 2
-              const my = (v.y + n.y) / 2
+              const length = Math.hypot(n.x - v.x, n.y - v.y)
+              // **短い区間には出さない。** カードから出る助走は 28px しかないので、
+              // そこに候補を出しても、置けるのはカードの縁のすぐ横。
+              // 狙う的だけが増えて、本当に曲げたい所が押しにくくなる
+              if (length < MIN_SEGMENT_FOR_GHOST) return null
+
+              // **真ん中は三角に譲る。** 三角が出ない短い区間では、こちらが真ん中を使う
+              const at = pointOn(v, n, length >= MIN_SEGMENT_FOR_BRANCH ? GHOST_AT : 0.5)
               return (
                 <ControlPoint
                   key={`g${i}`}
-                  x={mx}
-                  y={my}
+                  x={at.x}
+                  y={at.y}
                   kind="add"
-                  label="押すと折れ点ができます"
+                  hint="押すとここに折れ点ができます（そのまま引くと位置も決まります）"
                   zoom={zoom}
                   onPointerDown={startInsert()}
                 />
@@ -298,12 +405,38 @@ function EditableEdgeComponent(props: EdgeProps) {
                 x={p.x}
                 y={p.y}
                 kind="bend"
-                label="引いて動かす／2回押すと消えます"
+                hint="引いて動かす／2回押すと消えます"
                 zoom={zoom}
                 onPointerDown={startMove(i, points)}
                 onDoubleClick={removeAt(i)}
               />
             ))}
+
+            {/*
+              3つ目の端を引き出す印。**三角**にして、丸（終端）・四角（折れ点）と
+              混ざらないようにする。引くと、そこに接合点ができて新しい線が生える
+            */}
+            {verts.slice(0, -1).map((v, i) => {
+              const n = verts[i + 1]
+              if (Math.hypot(n.x - v.x, n.y - v.y) < MIN_SEGMENT_FOR_BRANCH) return null
+
+              // **真ん中に置く。** いちばん押しやすい場所を、いちばん使うものに充てる。
+              // ただし線の上には乗せず、**脇へ少しずらす**。
+              // 線の上の文字（ラベル）も道のりの真ん中に来るので、そのままだと重なる。
+              // ずらすと「ここから外へ引き出すもの」だと形でも伝わる
+              const at = besideSegment(pointOn(v, n, 0.5), v, n, BRANCH_OFFSET)
+              return (
+                <ControlPoint
+                  key={`b${i}`}
+                  x={at.x}
+                  y={at.y}
+                  kind="branch"
+                  hint="引くと、ここから新しい線が生えます（相手の上で離す）"
+                  zoom={zoom}
+                  onPointerDown={startBranch(at)}
+                />
+              )
+            })}
 
             {/* 終端。**線に関わる点なので、接合点と同じ色**にする */}
             {[ verts[0], verts[verts.length - 1] ].map((p, i) => (
@@ -312,7 +445,7 @@ function EditableEdgeComponent(props: EdgeProps) {
                 x={p.x}
                 y={p.y}
                 kind="end"
-                label={i === 0 ? 'ここから出ています' : 'ここへ着いています'}
+                hint={i === 0 ? 'ここから出ています' : 'ここへ着いています'}
                 zoom={zoom}
               />
                         ))}
@@ -342,7 +475,7 @@ function EditableEdgeComponent(props: EdgeProps) {
  *
  * 説明は近づいたときに出す。形だけでは、初めての人には読めない。
  */
-type ControlKind = 'add' | 'bend' | 'end'
+type ControlKind = 'add' | 'bend' | 'end' | 'branch'
 
 /**
  * 点の大きさは**3つとも同じ**にする。
@@ -351,6 +484,65 @@ type ControlKind = 'add' | 'bend' | 'end'
  * 役割の違いなので、**形と色だけで見分ける**のが正しい。
  */
 const CONTROL_SIZE = 11
+/**
+ * 掴める範囲。**見た目より大きく取る。**
+ * 点を大きくすると図が点だらけに見えるので、当たり判定だけ広げる
+ */
+const CONTROL_HIT_SIZE = 22
+
+/**
+ * 折れ点の候補を出す、区間の最短の長さ。
+ *
+ * 助走（`EDGE_STUB` = 28）より長くする。助走の途中に候補を出しても、
+ * 置けるのはカードの縁のすぐ横で、曲げる意味がほとんど無い
+ */
+const MIN_SEGMENT_FOR_GHOST = 44
+
+/**
+ * 三角が出るとき、折れ点の候補をどこへ寄せるか（区間の割合）。
+ * **重ならない程度に離す。** 近すぎると、狙ったほうと違うものを掴む
+ */
+const GHOST_AT = 0.24
+
+/** 区間の上の点。a から b へ t だけ進んだ所 */
+function pointOn(a: EdgePoint, b: EdgePoint, t: number): EdgePoint {
+  return { x: a.x + (b.x - a.x) * t, y: a.y + (b.y - a.y) * t }
+}
+
+/**
+ * 区間の**脇**へずらした点。線と直角の向きへ離す。
+ * 線の上の文字と重ならず、「外へ引き出すもの」だと形でも伝わる
+ */
+function besideSegment(at: EdgePoint, a: EdgePoint, b: EdgePoint, distance: number): EdgePoint {
+  const length = Math.hypot(b.x - a.x, b.y - a.y)
+  if (length === 0) return at
+
+  // 直角の向き（右手側）。線が縦なら右へ、横なら下へ寄る
+  return { x: at.x - ((b.y - a.y) / length) * distance, y: at.y + ((b.x - a.x) / length) * distance }
+}
+
+/**
+ * 点の名前。説明は「**名前：何ができるか**」の形で出す。
+ * 説明文だけだと、いま触っているのが何なのかが分からないまま操作を読むことになる
+ */
+const CONTROL_NAMES: Record<ControlKind, string> = {
+  add: '折れ点を足す',
+  bend: '折れ点',
+  end: '終端',
+  branch: '枝分かれ',
+}
+
+/**
+ * 枝分かれの印を出す、区間の最短の長さ。
+ * 折れ点の候補より長い区間にだけ出す（短い線に印が2つ並ぶと、どちらも押しにくい）
+ */
+const MIN_SEGMENT_FOR_BRANCH = 96
+
+/** 枝分かれの色。**足す操作の色**として、線の色から離す */
+const BRANCH_COLOR = '#3f9c62'
+
+/** 三角を線から離す幅。**文字と重ならず、線から離れすぎない** */
+const BRANCH_OFFSET = 15
 
 const CONTROL_LOOKS: Record<ControlKind, React.CSSProperties> = {
   add: {
@@ -374,13 +566,25 @@ const CONTROL_LOOKS: Record<ControlKind, React.CSSProperties> = {
     // 終端は見た目だけ。つなぎ替えは React Flow の受け持ち
     pointerEvents: 'none',
   },
+  /**
+   * **三角、そして緑。** 丸（端）とも四角（折れ点）とも違うことを、形と色の両方で伝える。
+   *
+   * ほかの点は線と同じ色を使っている（線に関わるものだから）。
+   * こちらは**新しい線を生やす**もので、いまある線を触るものではない。
+   * 足す操作の色として、線の色から離す
+   */
+  branch: {
+    background: BRANCH_COLOR,
+    clipPath: 'polygon(50% 0%, 100% 100%, 0% 100%)',
+    cursor: 'copy',
+  },
 }
 
 function ControlPoint({
   x,
   y,
   kind,
-  label,
+  hint,
   zoom,
   onPointerDown,
   onDoubleClick,
@@ -388,7 +592,8 @@ function ControlPoint({
   x: number
   y: number
   kind: ControlKind
-  label: string
+  /** 何をする点かの一言。**名前は kind から引く**（言い方をばらけさせない） */
+  hint: string
   /** 盤の拡大率。**説明の大きさを打ち消す**のに使う */
   zoom: number
   onPointerDown?: (event: ReactPointerEvent) => void
@@ -401,16 +606,40 @@ function ControlPoint({
       className="nodrag nopan"
       style={{ position: 'absolute', transform: `translate(-50%, -50%) translate(${x}px, ${y}px)` }}
     >
+      {/*
+        **掴む的を、見た目より大きく取る。**
+
+        11px の点をそのまま的にしていたので、狙って当てるのに手間がかかった。
+        点は小さいままにして（大きくすると図が点だらけに見える）、
+        当たり判定だけ広げる。透明な余白は見えないが、確かに掴める
+      */}
       <div
         onPointerDown={onPointerDown}
         onDoubleClick={onDoubleClick}
         onMouseEnter={() => setNear(true)}
         onMouseLeave={() => setNear(false)}
         style={{
+          position: 'absolute',
+          left: '50%',
+          top: '50%',
+          width: CONTROL_HIT_SIZE,
+          height: CONTROL_HIT_SIZE,
+          transform: 'translate(-50%, -50%)',
+          pointerEvents: 'all',
+          cursor: CONTROL_LOOKS[kind].cursor,
+          // 掴める範囲そのものは見せない（見せると点が大きく見える）
+          background: 'transparent',
+        }}
+      />
+      {/* 見える点。**近づいたら少しだけ大きくする**（掴めることが伝わる） */}
+      <div
+        style={{
           width: CONTROL_SIZE,
           height: CONTROL_SIZE,
-          pointerEvents: 'all',
+          pointerEvents: 'none',
           boxSizing: 'border-box',
+          transition: 'transform 120ms ease',
+          transform: near ? 'scale(1.35)' : 'scale(1)',
           ...CONTROL_LOOKS[kind],
         }}
       />
@@ -432,7 +661,8 @@ function ControlPoint({
             transformOrigin: 'top center',
           }}
         >
-          {label}
+          <strong style={{ fontWeight: 600 }}>{CONTROL_NAMES[kind]}</strong>
+          {`：${hint}`}
         </span>
       )}
     </div>
