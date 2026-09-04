@@ -70,12 +70,14 @@ module GoldenBoard
     puts "quality_score              #{result.score.points}"
     puts "isolated_with_strong_rel   #{isolated_with_strong(result.boxes, relations)}"
     puts "edge_crossings             #{counts[:edge_crossings]}"
-    puts "total_edge_length          #{total_length(lines).round}"
+    puts "total_edge_length          #{counts[:total_edge_length]}"
+    # 数え方を変えたので、前と比べられるよう旧来の数え方も出す
+    puts "edge_length_sum_old        #{lines.sum { |l| l.polyline.each_cons(2).sum { |a, b| (a[:x] - b[:x]).abs + (a[:y] - b[:y]).abs } }.round}"
     puts "hierarchy_violations       #{hierarchy_violations(placed, relations)}"
     puts "visible_corners            #{counts[:bends]}"
     # 数え方を変えたので、前と比べられるよう旧来の数え方も出す
     puts "bends_per_edge_old         #{lines.sum { |l| [ l.polyline.size - 2, 0 ].max }}"
-    puts "junctions_used             #{Views::Layout::CoupleBus.new(boxes: placed, relations: relations).couples.size}"
+    puts "junctions_used             #{Views::Layout::Bus.new(boxes: placed, relations: relations).groups.size}"
     puts "node_overlap               #{counts[:overlaps]}"
     puts "label_collision            #{counts[:label_clashes]}"
     puts "edges_drawn                #{relations.size}"
@@ -93,12 +95,6 @@ module GoldenBoard
                          .flat_map { |r| [ r[:from], r[:to] ] }.to_set
     named = relations.flat_map { |r| [ r[:from], r[:to] ] }.to_set
     boxes.count { |box| named.include?(box.id) && !connected.include?(box.id) }
-  end
-
-  def self.total_length(lines)
-    lines.sum do |line|
-      line.polyline.each_cons(2).sum { |a, b| (a[:x] - b[:x]).abs + (a[:y] - b[:y]).abs }
-    end
   end
 
   # 子が親より上にある、または同じ高さにある組
