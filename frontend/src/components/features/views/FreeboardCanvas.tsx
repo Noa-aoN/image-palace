@@ -43,6 +43,7 @@ import {
   addViewItem,
   removeViewItem,
   updateViewItemPosition,
+  addViewItems,
   addViewEdge,
   updateViewEdge,
   removeViewEdge,
@@ -246,6 +247,8 @@ function Canvas({
   const openBulk = useRightPanelStore((s) => s.openBulk)
   const pendingAddItem = useRightPanelStore((s) => s.pendingAddItem)
   const consumeAdd = useRightPanelStore((s) => s.consumeAdd)
+  const pendingAddItems = useRightPanelStore((s) => s.pendingAddItems)
+  const consumeAddMany = useRightPanelStore((s) => s.consumeAddMany)
   const focusItemId = useRightPanelStore((s) => s.focusItemId)
   const consumeFocus = useRightPanelStore((s) => s.consumeFocus)
   const focusEdgeId = useRightPanelStore((s) => s.focusEdgeId)
@@ -329,17 +332,46 @@ function Canvas({
 
   useEffect(() => {
     if (!placing) return
-    const cancel = (event: KeyboardEvent) => {
-      if (event.key !== 'Escape') return
+
+    const stop = () => {
       setPlacing(null)
       setBand(null)
     }
-    window.addEventListener('keydown', cancel)
-    return () => window.removeEventListener('keydown', cancel)
+    const onKey = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') stop()
+    }
+    // **盤の外を押したら、構えを解く。** 解かないまま残ると、
+    // ずっとあとで盤を押したときに図形ができて、原因が結び付かない
+    const onDown = (event: PointerEvent) => {
+      if (!boardRef.current?.contains(event.target as Node)) stop()
+    }
+    window.addEventListener('keydown', onKey)
+    window.addEventListener('pointerdown', onDown, true)
+    return () => {
+      window.removeEventListener('keydown', onKey)
+      window.removeEventListener('pointerdown', onDown, true)
+    }
   }, [placing])
+
+  /**
+   * 図形を置けない場所。**ここを押したら、置くのをやめる。**
+   *
+   * 構えている間はどこを押しても図形ができていたので、カードを掴もうとして
+   * 図形が生まれることがあった。**押した本人には「勝手に増えた」としか見えない。**
+   * 空いている場所を押したときだけ置く。
+   */
+  const NOT_A_PLACE = '.react-flow__node, .react-flow__edge, .react-flow__controls, .react-flow__minimap, .react-flow__panel'
 
   const handlePlacePointerDown = (event: React.PointerEvent<HTMLDivElement>) => {
     if (!placing || event.button !== 0) return
+
+    // カードや線の上なら、置かずにやめる（掴もうとしただけ、と読む）
+    if ((event.target as Element).closest?.(NOT_A_PLACE)) {
+      setPlacing(null)
+      setBand(null)
+      return
+    }
+
     // 構えている間は、盤の掴み（パン）も範囲選択も起きないようにする
     event.preventDefault()
     event.stopPropagation()
@@ -745,6 +777,52 @@ function Canvas({
     handleAdd(pendingAddItem)
     consumeAdd()
   }, [pendingAddItem, handleAdd, consumeAdd])
+
+  /**
+   * デッキごと、まとめて置く。
+   *
+   * **1枚ずつ置く道を繰り返してはいけない。** あちらは置くたびに盤を中央へ
+   * 寄せ直すので、30枚置けば30回画面が跳ねる。しかも置き場所がほぼ重なる。
+   *
+   * 見えている場所の下に、格子で並べる。重なりは「AIで整える」で解ける
+   */
+  useEffect(() => {
+    if (!pendingAddItems?.length) return
+
+    const fresh = pendingAddItems.filter((item) => !placedIds.has(item.id))
+    consumeAddMany()
+    if (fresh.length === 0) return
+
+    const rect = boardRef.current?.getBoundingClientRect()
+    const corner = rect
+      ? screenToFlowPosition({ x: rect.left + 80, y: rect.top + 80 })
+      : { x: 0, y: 0 }
+    const columns = Math.max(1, Math.ceil(Math.sqrt(fresh.length)))
+
+    const placements: ViewItemPlacement[] = fresh.map((item, index) => ({
+      item_id: item.id,
+      x: Math.round(corner.x + (index % columns) * (CARD_W + 40)),
+      y: Math.round(corner.y + Math.floor(index / columns) * (CARD_H + 40)),
+      z_index: 0,
+      item: { id: item.id, title: item.title, generation_status: item.generation_status, media: item.media },
+    }))
+
+    setNodes((ns) => [...ns, ...placements.map(toNode)])
+    // **1往復で入れる。** 1枚ずつだと30枚で30往復になる
+    addViewItems(viewId, fresh.map((item) => item.id))
+      .then(() => {
+        // 置き場所はこちらで決めたので、入れたあとに書き戻す
+        placements.forEach((placement) => {
+          persist(() => updateViewItemPosition(viewId, placement.item_id, { x: placement.x, y: placement.y }), {
+            key: `view:${viewId}:item:${placement.item_id}:pos`,
+          })
+        })
+      })
+      .catch(() => {
+        const ids = new Set(fresh.map((item) => item.id))
+        setNodes((ns) => ns.filter((n) => !ids.has(n.id)))
+      })
+  }, [pendingAddItems, consumeAddMany, placedIds, viewId, screenToFlowPosition, setNodes])
 
   // 右パネルの一覧クリックを消費して該当カードへパンする
   useEffect(() => {

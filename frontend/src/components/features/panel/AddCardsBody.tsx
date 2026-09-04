@@ -1,19 +1,29 @@
 'use client'
 
 import { useEffect, useMemo, useRef, useState } from 'react'
-import { Search } from 'lucide-react'
+import { Plus, Search } from 'lucide-react'
 import { getItemsPage } from '@/lib/api/items'
 import { getTags } from '@/lib/api/tags'
 import { getViewDetail } from '@/lib/api/views'
 import { useRightPanelStore } from '@/stores/rightPanel'
+import { Spinner } from '@/components/ui/spinner'
 import type { Item } from '@/types/item'
 import type { Tag } from '@/types/tag'
+import { DeckSection } from './DeckSection'
+
+/**
+ * 一度に読み込む枚数。
+ *
+ * 50枚を一度に出していた。持っているカードが増えるほど、
+ * **開いた瞬間に長い一覧が降ってきて、探すより先に読み込みを待つ**ことになる。
+ * 少なめに出して、足りなければ「もっと読み込む」で継ぎ足す。
+ */
+const PAGE_SIZE = 24
 
 // 右パネル: ボードに追加できるカードを検索・タグ絞り込みして選ぶ。
 // クリックは requestAdd でボード側に通知し、ボードが中央に配置する（座標計算はボードが持つため）。
 export function AddCardsBody({ viewId }: { viewId: string }) {
   const requestAdd = useRightPanelStore((s) => s.requestAdd)
-  const [items, setItems] = useState<Item[]>([])
   const [tags, setTags] = useState<Tag[]>([])
   // タグは3行までにして、あふれたぶんは「＋」で開く。
   // **あふれているかは実際に測る。** 個数で決めると、短い名前ばかりのときに
@@ -25,7 +35,16 @@ export function AddCardsBody({ viewId }: { viewId: string }) {
   const [query, setQuery] = useState('')
   const [appliedQuery, setAppliedQuery] = useState('')
   const [activeTag, setActiveTag] = useState<string | null>(null)
-  const [loading, setLoading] = useState(true)
+  /**
+   * 読み込んだ結果は、**どの絞り込みのものか**と一緒に持つ。
+   *
+   * 絞り込みが変わった瞬間に「読み込み中」へ戻す書き方だと、
+   * 描いている最中に状態を書き替えることになる。
+   * いまの絞り込みと違う結果は「まだ無い」とみなせば、その必要が無くなる。
+   * 遅れて返ってきた古い結果が新しい結果を上書きすることも無くなる。
+   */
+  const [loaded, setLoaded] = useState<{ key: string; items: Item[]; page: number; totalPages: number } | null>(null)
+  const [loadingMore, setLoadingMore] = useState(false)
 
   useEffect(() => {
     getTags().then(setTags).catch(() => {})
@@ -44,22 +63,43 @@ export function AddCardsBody({ viewId }: { viewId: string }) {
     return () => clearTimeout(handle)
   }, [query])
 
+  // いまの絞り込みを表す鍵。これが変われば、いまの結果は「別のもの」になる
+  const filterKey = `${appliedQuery}\u0000${activeTag ?? ''}`
+  const showing = loaded?.key === filterKey ? loaded : null
+  const loading = showing === null
+
+  // 絞り込みが変わったら1ページ目から引き直す
   useEffect(() => {
     let cancelled = false
-    getItemsPage(1, 50, { query: appliedQuery || undefined, tagId: activeTag ?? undefined })
+    getItemsPage(1, PAGE_SIZE, { query: appliedQuery || undefined, tagId: activeTag ?? undefined })
       .then((res) => {
-        if (!cancelled) setItems(res.items)
+        if (!cancelled) setLoaded({ key: filterKey, items: res.items, page: 1, totalPages: res.meta.total_pages })
       })
       .catch(() => {
-        if (!cancelled) setItems([])
-      })
-      .finally(() => {
-        if (!cancelled) setLoading(false)
+        if (!cancelled) setLoaded({ key: filterKey, items: [], page: 1, totalPages: 1 })
       })
     return () => {
       cancelled = true
     }
-  }, [appliedQuery, activeTag])
+  }, [appliedQuery, activeTag, filterKey])
+
+  // 続きを継ぎ足す。**すでに出ているものは消さない**（見ていた場所が動かない）
+  const loadMore = () => {
+    if (loadingMore || !showing || showing.page >= showing.totalPages) return
+
+    const next = showing.page + 1
+    setLoadingMore(true)
+    getItemsPage(next, PAGE_SIZE, { query: appliedQuery || undefined, tagId: activeTag ?? undefined })
+      .then((res) => {
+        setLoaded((current) =>
+          current?.key === filterKey
+            ? { ...current, items: [...current.items, ...res.items], page: next, totalPages: res.meta.total_pages }
+            : current
+        )
+      })
+      .catch(() => {})
+      .finally(() => setLoadingMore(false))
+  }
 
   useEffect(() => {
     const el = tagBoxRef.current
@@ -79,12 +119,24 @@ export function AddCardsBody({ viewId }: { viewId: string }) {
     return () => observer.disconnect()
   }, [tags, tagsOpen])
 
-  const available = useMemo(() => items.filter((i) => !placedIds.has(i.id)), [items, placedIds])
+  const available = useMemo(
+    () => (showing?.items ?? []).filter((i) => !placedIds.has(i.id)),
+    [showing, placedIds]
+  )
 
   const handleAdd = (item: Item) => {
     // 楽観的に一覧から消し、重複クリックを防ぐ
     setPlacedIds((prev) => new Set(prev).add(item.id))
     requestAdd(item)
+  }
+
+  // まとめて置いたぶんを、こちらの一覧からも外す
+  const markPlaced = (ids: string[]) => {
+    setPlacedIds((prev) => {
+      const next = new Set(prev)
+      ids.forEach((id) => next.add(id))
+      return next
+    })
   }
 
   return (
@@ -180,6 +232,24 @@ export function AddCardsBody({ viewId }: { viewId: string }) {
           })}
         </div>
       )}
+
+      {/* **続きは押したときだけ引く。** 開いた瞬間に全部降ってくると、
+          探すより先に読み込みを待つことになる */}
+      {showing && showing.page < showing.totalPages && (
+        <button
+          type="button"
+          onClick={loadMore}
+          disabled={loadingMore}
+          className="flex w-full items-center justify-center gap-1.5 rounded-lg border border-border py-1.5 text-xs text-muted-foreground transition-colors hover:bg-muted disabled:opacity-60"
+        >
+          {loadingMore ? <Spinner size={13} /> : <Plus size={13} />}
+          もっと読み込む
+          <span className="text-3xs">（{showing.page} / {showing.totalPages} ページ）</span>
+        </button>
+      )}
+
+      {/* デッキごとまとめて置く。1枚ずつ探して押すより速い */}
+      <DeckSection placedIds={placedIds} onPlaced={markPlaced} />
     </div>
   )
 }
