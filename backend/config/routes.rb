@@ -206,6 +206,8 @@ Rails.application.routes.draw do
       get "wikipedia/summary", to: "wikipedia#summary"
       # 題が一致しなかったときの候補。選ぶのは利用者なので、ここでは保存しない
       get "wikipedia/search", to: "wikipedia#search"
+      # 曖昧さ回避ページに並んでいる記事。多義語はここから選び直す
+      get "wikipedia/entries", to: "wikipedia#entries"
       # 公式コンテンツの受け取り（デルフォイ）
       get "content_packages", to: "content_packages#index"
       post "content_packages/:key/install", to: "content_packages#install", as: :install_content_package

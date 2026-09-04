@@ -58,3 +58,29 @@ export async function searchWikipediaCandidates(
   })
   return res.data
 }
+
+/**
+ * 曖昧さ回避ページに並んでいる記事。
+ *
+ * 「アポロン」「水星」のような多義語を引くと、Wikipedia は行き先の一覧
+ * （曖昧さ回避ページ）を返す。冒頭を保存しても意味が取れないので、
+ * **一覧をそのまま次の選択肢として出す**。
+ *
+ * これが無かった頃は、候補に出た曖昧さ回避ページを選ぶと
+ * 「その記事は引けませんでした」で行き止まりになっていた。
+ */
+export type WikipediaEntries = {
+  candidates: WikipediaCandidate[]
+  language_code: string
+  message: string | null
+}
+
+export async function fetchWikipediaEntries(
+  title: string,
+  languageCode?: string
+): Promise<WikipediaEntries> {
+  const res = await apiClient.get<WikipediaEntries>('/api/v1/wikipedia/entries', {
+    params: { title, ...(languageCode ? { language_code: languageCode } : {}) },
+  })
+  return res.data
+}
