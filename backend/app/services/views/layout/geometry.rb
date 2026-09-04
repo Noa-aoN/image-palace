@@ -46,6 +46,9 @@ module Views
         links = assign_handles
 
         routes = router.route_all(links)
+        # **夫婦から子への線は、1本の幹にまとめる。**
+        # 幹を通せる組だけ差し替える（通せない組は普通に引いたまま）
+        apply_couple_bus!(links, routes)
         labels = @relations.map { |relation| relation[:label].presence }
         spots = LabelPlacement.call(
           routes:, labels:, links:, font_sizes: @font_sizes, boxes: @by_id.values
@@ -152,6 +155,23 @@ module Views
 
       def router
         @router ||= Router.new(boxes: @by_id.merge(@obstacles))
+      end
+
+      def couple_bus
+        @couple_bus ||= CoupleBus.new(boxes: @by_id, relations: @relations)
+      end
+
+      # 幹を通る線を、幹の道すじへ差し替える。
+      #
+      # **通せなかった線はそのまま**。無理に幹へ寄せると、かえって遠回りになる
+      def apply_couple_bus!(links, routes)
+        @relations.each_with_index do |relation, index|
+          couple = couple_bus.couple_for(relation)
+          next if couple.nil?
+
+          replacement = couple_bus.route(couple, relation, source_port: routes[index].source_port)
+          routes[index] = replacement if replacement
+        end
       end
 
       def build_line(relation, link, route, label, spot)

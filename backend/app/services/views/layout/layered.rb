@@ -62,6 +62,7 @@ module Views
       def call
         levels = assign_levels
         order_within_levels!(levels)
+        pair_partners!(levels)
         place!(levels)
         @boxes
       end
@@ -188,6 +189,57 @@ module Views
         level.sort_by! do |box|
           known = neighbours[box.id].filter_map { |id| position[id] }
           known.empty? ? keep[box.id] : known.sum / known.size
+        end
+      end
+
+      # 同列で結ばれた2枚を、**必ず隣どうしにする**。
+      #
+      # 重心法は「つながっている相手の平均」へ寄せるだけなので、二人の間に
+      # 別の兄弟が挟まることがある。挟まると、二人を結ぶ線がその兄弟をまたぎ、
+      # **子へ降ろす幹も、どちらの二人のものか読めなくなる**。
+      #
+      # 動かすのは相手のほうだけ。並び全体をやり直さないので、
+      # 重心法で減らした交差を壊さない
+      def pair_partners!(levels)
+        pairs = couple_pairs
+        return if pairs.empty?
+
+        levels.each do |level|
+          moved = Set.new
+          pairs.each do |from_id, to_id|
+            # **1枚を2度動かさない。** 兄弟にも夫婦にも寄せようとすると
+            # 押し合いになり、どちらも隣り合わなくなる
+            next if moved.include?(from_id) || moved.include?(to_id)
+
+            left = level.index { |box| box.id == from_id }
+            right = level.index { |box| box.id == to_id }
+            next if left.nil? || right.nil?
+
+            moved << from_id
+            moved << to_id
+            next if (left - right).abs == 1
+
+            partner = level.delete_at(right)
+            anchor = level.index { |box| box.id == from_id }
+            level.insert(right > left ? anchor + 1 : anchor, partner)
+          end
+        end
+      end
+
+      # 隣にしたいのは、**共通の子を持つ組だけ**。
+      #
+      # 兄弟も同列だが、隣り合っていなくても図は読める。
+      # 子へ幹を降ろす組だけは、間に何か挟まると幹がどちらのものか読めなくなる
+      def couple_pairs
+        @couple_pairs ||= begin
+          children = @edges.group_by { |edge| edge[:from] }
+                           .transform_values { |list| list.map { |edge| edge[:to] } }
+          @peers.filter_map do |edge|
+            shared = children[edge[:from]].to_a & children[edge[:to]].to_a
+            next if shared.empty?
+
+            [ edge[:from], edge[:to] ]
+          end
         end
       end
 

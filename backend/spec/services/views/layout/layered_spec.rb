@@ -270,3 +270,59 @@ RSpec.describe "#{Views::Layout::Layered} 同列の関係" do
     expect(top).to contain_exactly("ゼウス", "ヘラ")
   end
 end
+
+# 同列で結ばれた2枚は、必ず隣どうしになる。
+#
+# 間に別の兄弟が挟まると、二人を結ぶ線がその兄弟をまたぎ、
+# 子へ降ろす幹も、どちらの二人のものか読めなくなる。
+RSpec.describe "#{Views::Layout::Layered} 夫婦を隣に置く" do
+  def box(id, width: 144, height: 176)
+    Views::Layout::Box.new(id: id, title: id, x: 0, y: 0, width: width, height: height,
+                           footprint_width: width)
+  end
+
+  def top_row(result)
+    top = result.map(&:y).min
+    result.select { |b| b.y == top }.sort_by(&:x).map(&:id)
+  end
+
+  it "間に兄弟が挟まっていても、隣へ寄せる" do
+    boxes = %w[父 兄 母 子].map { |id| box(id) }
+    edges = [
+      { from: "父", to: "母", type: "peer" },
+      { from: "父", to: "兄", type: "peer" },
+      { from: "父", to: "子", type: "parent" },
+      { from: "母", to: "子", type: "parent" }
+    ]
+
+    row = top_row(Views::Layout::Layered.new(boxes: boxes, edges: edges, roots: [ "父" ]).call)
+    expect((row.index("父") - row.index("母")).abs).to eq(1)
+  end
+
+  it "同列が無くても落ちない" do
+    boxes = %w[親 子].map { |id| box(id) }
+    edges = [ { from: "親", to: "子", type: "parent" } ]
+
+    expect { Views::Layout::Layered.new(boxes: boxes, edges: edges).call }.not_to raise_error
+  end
+
+  it "寄せても、カードは1枚も消えない" do
+    boxes = %w[父 兄 母 子].map { |id| box(id) }
+    edges = [ { from: "父", to: "母", type: "peer" }, { from: "父", to: "兄", type: "peer" },
+              { from: "父", to: "子", type: "parent" }, { from: "母", to: "子", type: "parent" } ]
+
+    result = Views::Layout::Layered.new(boxes: boxes, edges: edges, roots: [ "父" ]).call
+    expect(result.map(&:id)).to contain_exactly("父", "兄", "母", "子")
+  end
+
+  it "同じ入力なら同じ並びになる" do
+    make = lambda do
+      boxes = %w[父 兄 母 子].map { |id| box(id) }
+      edges = [ { from: "父", to: "母", type: "peer" }, { from: "父", to: "兄", type: "peer" },
+                { from: "父", to: "子", type: "parent" }, { from: "母", to: "子", type: "parent" } ]
+      top_row(Views::Layout::Layered.new(boxes: boxes, edges: edges, roots: [ "父" ]).call)
+    end
+
+    expect(make.call).to eq(make.call)
+  end
+end
