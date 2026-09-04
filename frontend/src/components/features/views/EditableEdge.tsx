@@ -278,13 +278,17 @@ function EditableEdgeComponent(props: EdgeProps) {
               const n = verts[i + 1]
               const mx = (v.x + n.x) / 2
               const my = (v.y + n.y) / 2
+              // **短い区間には出さない。** カードから出る助走は 28px しかないので、
+              // そこに候補を出しても、置けるのはカードの縁のすぐ横。
+              // 狙う的だけが増えて、本当に曲げたい所が押しにくくなる
+              if (Math.hypot(n.x - v.x, n.y - v.y) < MIN_SEGMENT_FOR_GHOST) return null
               return (
                 <ControlPoint
                   key={`g${i}`}
                   x={mx}
                   y={my}
                   kind="add"
-                  label="押すと折れ点ができます"
+                  hint="押すとここに折れ点ができます（そのまま引くと位置も決まります）"
                   zoom={zoom}
                   onPointerDown={startInsert()}
                 />
@@ -298,7 +302,7 @@ function EditableEdgeComponent(props: EdgeProps) {
                 x={p.x}
                 y={p.y}
                 kind="bend"
-                label="引いて動かす／2回押すと消えます"
+                hint="引いて動かす／2回押すと消えます"
                 zoom={zoom}
                 onPointerDown={startMove(i, points)}
                 onDoubleClick={removeAt(i)}
@@ -312,7 +316,7 @@ function EditableEdgeComponent(props: EdgeProps) {
                 x={p.x}
                 y={p.y}
                 kind="end"
-                label={i === 0 ? 'ここから出ています' : 'ここへ着いています'}
+                hint={i === 0 ? 'ここから出ています' : 'ここへ着いています'}
                 zoom={zoom}
               />
                         ))}
@@ -351,6 +355,29 @@ type ControlKind = 'add' | 'bend' | 'end'
  * 役割の違いなので、**形と色だけで見分ける**のが正しい。
  */
 const CONTROL_SIZE = 11
+/**
+ * 掴める範囲。**見た目より大きく取る。**
+ * 点を大きくすると図が点だらけに見えるので、当たり判定だけ広げる
+ */
+const CONTROL_HIT_SIZE = 22
+
+/**
+ * 折れ点の候補を出す、区間の最短の長さ。
+ *
+ * 助走（`EDGE_STUB` = 28）より長くする。助走の途中に候補を出しても、
+ * 置けるのはカードの縁のすぐ横で、曲げる意味がほとんど無い
+ */
+const MIN_SEGMENT_FOR_GHOST = 44
+
+/**
+ * 点の名前。説明は「**名前：何ができるか**」の形で出す。
+ * 説明文だけだと、いま触っているのが何なのかが分からないまま操作を読むことになる
+ */
+const CONTROL_NAMES: Record<ControlKind, string> = {
+  add: '折れ点を足す',
+  bend: '折れ点',
+  end: '終端',
+}
 
 const CONTROL_LOOKS: Record<ControlKind, React.CSSProperties> = {
   add: {
@@ -380,7 +407,7 @@ function ControlPoint({
   x,
   y,
   kind,
-  label,
+  hint,
   zoom,
   onPointerDown,
   onDoubleClick,
@@ -388,7 +415,8 @@ function ControlPoint({
   x: number
   y: number
   kind: ControlKind
-  label: string
+  /** 何をする点かの一言。**名前は kind から引く**（言い方をばらけさせない） */
+  hint: string
   /** 盤の拡大率。**説明の大きさを打ち消す**のに使う */
   zoom: number
   onPointerDown?: (event: ReactPointerEvent) => void
@@ -401,16 +429,40 @@ function ControlPoint({
       className="nodrag nopan"
       style={{ position: 'absolute', transform: `translate(-50%, -50%) translate(${x}px, ${y}px)` }}
     >
+      {/*
+        **掴む的を、見た目より大きく取る。**
+
+        11px の点をそのまま的にしていたので、狙って当てるのに手間がかかった。
+        点は小さいままにして（大きくすると図が点だらけに見える）、
+        当たり判定だけ広げる。透明な余白は見えないが、確かに掴める
+      */}
       <div
         onPointerDown={onPointerDown}
         onDoubleClick={onDoubleClick}
         onMouseEnter={() => setNear(true)}
         onMouseLeave={() => setNear(false)}
         style={{
+          position: 'absolute',
+          left: '50%',
+          top: '50%',
+          width: CONTROL_HIT_SIZE,
+          height: CONTROL_HIT_SIZE,
+          transform: 'translate(-50%, -50%)',
+          pointerEvents: 'all',
+          cursor: CONTROL_LOOKS[kind].cursor,
+          // 掴める範囲そのものは見せない（見せると点が大きく見える）
+          background: 'transparent',
+        }}
+      />
+      {/* 見える点。**近づいたら少しだけ大きくする**（掴めることが伝わる） */}
+      <div
+        style={{
           width: CONTROL_SIZE,
           height: CONTROL_SIZE,
-          pointerEvents: 'all',
+          pointerEvents: 'none',
           boxSizing: 'border-box',
+          transition: 'transform 120ms ease',
+          transform: near ? 'scale(1.35)' : 'scale(1)',
           ...CONTROL_LOOKS[kind],
         }}
       />
@@ -432,7 +484,8 @@ function ControlPoint({
             transformOrigin: 'top center',
           }}
         >
-          {label}
+          <strong style={{ fontWeight: 600 }}>{CONTROL_NAMES[kind]}</strong>
+          {`：${hint}`}
         </span>
       )}
     </div>
