@@ -1,5 +1,12 @@
 import { describe, expect, it } from 'vitest'
-import { buildEdgePath, dashArrayFor, resolveLineStyle, DEFAULT_CURVE_RADIUS } from '@/lib/edge-path'
+import {
+  buildEdgePath,
+  dashArrayFor,
+  resolveLineStyle,
+  portedPoint,
+  pointAtFraction,
+  DEFAULT_CURVE_RADIUS,
+} from '@/lib/edge-path'
 
 const A = { x: 0, y: 0 }
 const B = { x: 100, y: 0 }
@@ -72,5 +79,65 @@ describe('resolveLineStyle', () => {
 describe('DEFAULT_CURVE_RADIUS', () => {
   it('折れ点の位置が分からなくなるほど大きくしない', () => {
     expect(DEFAULT_CURVE_RADIUS).toBeLessThanOrEqual(24)
+  })
+})
+
+/**
+ * ポートと、線の上の文字の位置。
+ *
+ * サーバーが「辺のどこから出るか」を割り振っても、画面が辺の中心から描いたら
+ * 扇の根元は1点に戻る。**両側が同じ形を描くこと**が要る。
+ */
+describe('portedPoint', () => {
+  it('上下の辺では、辺に沿って横へずれる（辺から浮かない）', () => {
+    expect(portedPoint({ x: 100, y: 50 }, 'bottom', 30)).toEqual({ x: 130, y: 50 })
+    expect(portedPoint({ x: 100, y: 50 }, 'top', -30)).toEqual({ x: 70, y: 50 })
+  })
+
+  it('左右の辺では、辺に沿って縦へずれる', () => {
+    expect(portedPoint({ x: 100, y: 50 }, 'right', 20)).toEqual({ x: 100, y: 70 })
+    expect(portedPoint({ x: 100, y: 50 }, 'left', -20)).toEqual({ x: 100, y: 30 })
+  })
+
+  it('ずれが無ければ、そのまま返す（古いデータは今までどおり）', () => {
+    const point = { x: 100, y: 50 }
+    expect(portedPoint(point, 'bottom', undefined)).toBe(point)
+    expect(portedPoint(point, 'bottom', 0)).toBe(point)
+  })
+})
+
+describe('pointAtFraction', () => {
+  const line = [
+    { x: 0, y: 0 },
+    { x: 100, y: 0 },
+  ]
+
+  it('既定は真ん中', () => {
+    expect(pointAtFraction(line)).toEqual({ x: 50, y: 0 })
+  })
+
+  it('道のりの割合で測る（頂点の数ではない）', () => {
+    // 前半が長い折れ線。頂点の真ん中を採ると角に寄ってしまう
+    const bent = [
+      { x: 0, y: 0 },
+      { x: 300, y: 0 },
+      { x: 300, y: 100 },
+    ]
+    expect(pointAtFraction(bent, 0.5)).toEqual({ x: 200, y: 0 })
+  })
+
+  it('前後へずらせる（重なった文字を離すのに使う）', () => {
+    expect(pointAtFraction(line, 0.35)).toEqual({ x: 35, y: 0 })
+    expect(pointAtFraction(line, 0.65)).toEqual({ x: 65, y: 0 })
+  })
+
+  it('範囲の外を渡されても線の上に留まる', () => {
+    expect(pointAtFraction(line, -1)).toEqual({ x: 0, y: 0 })
+    expect(pointAtFraction(line, 5)).toEqual({ x: 100, y: 0 })
+  })
+
+  it('長さが0の線でも落ちない', () => {
+    expect(pointAtFraction([{ x: 7, y: 7 }, { x: 7, y: 7 }], 0.5)).toEqual({ x: 7, y: 7 })
+    expect(pointAtFraction([])).toEqual({ x: 0, y: 0 })
   })
 })

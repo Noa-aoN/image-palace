@@ -24,6 +24,8 @@ import {
   withStubs,
   dashArrayFor,
   resolveLineStyle,
+  portedPoint,
+  pointAtFraction,
   DEFAULT_CURVE_RADIUS,
 } from '@/lib/edge-path'
 
@@ -67,18 +69,20 @@ function EditableEdgeComponent(props: EdgeProps) {
    */
   const sourceHandleSide = handleSide(sourcePosition, Position.Bottom)
   const targetHandleSide = handleSide(targetPosition, Position.Top)
+  // 取っ手は辺の中心に1つしかないので、ポートのぶんだけ辺に沿ってずらす。
+  // ずらさないと、扇の根元が1点に戻って、どれがどこへ向かう線か読めない
+  const start = portedPoint({ x: sourceX, y: sourceY }, sourceHandleSide, s.source_port)
+  const end = portedPoint({ x: targetX, y: targetY }, targetHandleSide, s.target_port)
   const verts = orthogonalize(
-    withStubs(
-      [{ x: sourceX, y: sourceY }, ...points, { x: targetX, y: targetY }],
-      sourceHandleSide,
-      targetHandleSide
-    ),
+    withStubs([start, ...points, end], sourceHandleSide, targetHandleSide),
     axisForHandle(sourceHandleSide)
   )
   // 助走と手前止めを掛けたので、折れ点が無い線もここで組む。
   // React Flow の自動経路（getSmoothStepPath）だと、その2つが効かない
   const edgePath = buildEdgePath(verts, s.curve ?? 'sharp', s.curve_radius ?? DEFAULT_CURVE_RADIUS)
-  const { x: labelX, y: labelY } = midpointOf(verts)
+  // 道すじが近い線どうしで文字が重なるので、サーバーが線に沿ってずらしている。
+  // 線から離すのではなく線の上を滑らせるので、どの線の文字かは見失われない
+  const { x: labelX, y: labelY } = pointAtFraction(verts, s.label_t ?? 0.5)
 
   // 線の種類。二重線だけは1本では描けないので、太い線の真ん中を盤の色で抜く
   const lineStyle = resolveLineStyle(s)
@@ -277,30 +281,6 @@ function handleSide(position: Position | undefined, fallback: Position): string 
   if (value === Position.Right) return 'right'
   if (value === Position.Top) return 'top'
   return 'bottom'
-}
-
-/**
- * 文字を置く場所。**線の道のりの真ん中**に置く。
- * 頂点の真ん中を採ると、折れ方によっては端へ寄る
- */
-function midpointOf(points: { x: number; y: number }[]): { x: number; y: number } {
-  if (points.length === 0) return { x: 0, y: 0 }
-
-  const lengths = points.slice(1).map((p, i) => Math.hypot(p.x - points[i].x, p.y - points[i].y))
-  const half = lengths.reduce((a, b) => a + b, 0) / 2
-
-  let walked = 0
-  for (let i = 0; i < lengths.length; i++) {
-    if (walked + lengths[i] >= half) {
-      const t = lengths[i] === 0 ? 0 : (half - walked) / lengths[i]
-      return {
-        x: points[i].x + (points[i + 1].x - points[i].x) * t,
-        y: points[i].y + (points[i + 1].y - points[i].y) * t,
-      }
-    }
-    walked += lengths[i]
-  }
-  return points[points.length - 1]
 }
 
 /** 線の下に敷く下地の太さ(px)。線より広く、文字より狭く */

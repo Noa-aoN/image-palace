@@ -33,17 +33,62 @@ module Views
       # よけるとき、カードからどれだけ離れるか
       CLEARANCE = 56
 
+      # 同じ辺から出入りする線どうしの間隔。
+      # **1つの辺の中心から全部出していた頃は、扇の根元が1本に見えていた。**
+      # どれがどこへ向かう線か読めず、線の上の文字も同じ場所に重なっていた
+      PORT_GAP = 34
+      # 辺の端に寄せすぎない余白。角から出ると、どちらの辺の線か分からなくなる
+      PORT_MARGIN = 14
+
+      # 同じ道すじを通ってしまった線をずらす幅
+      LANE_GAP = 16
+      # 「同じ道すじ」とみなす差
+      LANE_TOLERANCE = 3
+      # ずらす本数の上限。これを超えると盤が線で埋まる
+      MAX_LANES = 5
+
       # @param boxes [Hash<String, Box>] 盤の全カード
       def initialize(boxes:)
         @boxes = boxes
       end
 
+      # 線をまとめて引く。
+      #
+      # **1本ずつ引くと、線どうしの重なりは原理的に解けない。**
+      # 隣の線がどこを通るかを知らないまま最短路を選ぶので、
+      # 同じ辺から出る線は同じ点から出て、同じ隙間を通って、同じ所に着く。
+      # 軌跡が重なれば、線の上の文字も重なる。
+      #
+      # まとめて引けば、①辺のどこから出すか（ポート）を割り振れる
+      # ②通り道が重なった線をずらせる。
+      #
+      # @param links [Array<Hash>] { from:, to:, source_handle:, target_handle: }
+      # @return [Array<Route>] links と同じ並び
+      def route_all(links)
+        ports = assign_ports(links)
+        routes = links.map.with_index do |link, index|
+          source_port = ports.dig(index, :source).to_f
+          target_port = ports.dig(index, :target).to_f
+          Route.new(
+            points: route(link[:from], link[:to], link[:source_handle], link[:target_handle],
+                          source_port: source_port, target_port: target_port),
+            source_port: source_port.round,
+            target_port: target_port.round
+          )
+        end
+        separate_lanes!(routes, links, ports)
+        routes
+      end
+
+      # 引けた線。points は折れ点、port は辺の中心からのずれ（px）
+      Route = Struct.new(:points, :source_port, :target_port, keyword_init: true)
+
       # @return [Array<Hash>] 折れ点。空なら直接つないでよい
-      def route(source, target, source_handle, target_handle)
+      def route(source, target, source_handle, target_handle, source_port: 0, target_port: 0)
         return [] if source.nil? || target.nil?
 
-        start_point = anchor(source, source_handle)
-        end_point = anchor(target, target_handle)
+        start_point = anchor(source, source_handle, source_port)
+        end_point = anchor(target, target_handle, target_port)
         obstacles = @boxes.values.reject { |box| [ source.id, target.id ].include?(box.id) }
 
         # 助走の先。ここから先が通り道になる
@@ -63,12 +108,13 @@ module Views
 
       private
 
-      def anchor(box, handle)
+      # 辺のどこから出るか。offset は辺の中心からのずれ
+      def anchor(box, handle, offset = 0)
         case handle
-        when "top" then { x: box.center_x, y: box.top }
-        when "bottom" then { x: box.center_x, y: box.bottom }
-        when "right" then { x: box.right_edge, y: box.center_y }
-        else { x: box.left_edge, y: box.center_y }
+        when "top" then { x: box.center_x + offset, y: box.top }
+        when "bottom" then { x: box.center_x + offset, y: box.bottom }
+        when "right" then { x: box.right_edge, y: box.center_y + offset }
+        else { x: box.left_edge, y: box.center_y + offset }
         end
       end
 
@@ -131,6 +177,157 @@ module Views
           else
             [ { x: from[:x], y: value }, { x: to[:x], y: value } ]
           end
+        end
+      end
+
+      # ── 辺のどこから出すか（ポート）──────────────────────────
+      #
+      # 同じ辺を使う線を集め、辺の幅いっぱいに散らす。
+      # 並べる順は**相手の位置**で決める。近い相手ほど近いポートから出せば、
+      # 扇の中で線どうしが交差しない。
+      def assign_ports(links)
+        slots = Hash.new { |hash, key| hash[key] = [] }
+
+        links.each_with_index do |link, index|
+          from = link[:from]
+          to = link[:to]
+          next if from.nil? || to.nil?
+
+          slots[[ from.id, link[:source_handle] ]] << { index:, role: :source, box: from, other: to }
+          slots[[ to.id, link[:target_handle] ]] << { index:, role: :target, box: to, other: from }
+        end
+
+        ports = Hash.new { |hash, key| hash[key] = {} }
+        slots.each do |(_id, handle), entries|
+          offsets_for(entries, handle).each { |entry, offset| ports[entry[:index]][entry[:role]] = offset }
+        end
+        ports
+      end
+
+      def offsets_for(entries, handle)
+        vertical_side = %w[top bottom].include?(handle)
+        span = vertical_side ? entries.first[:box].width : entries.first[:box].height
+        usable = [ span - PORT_MARGIN * 2, 0 ].max
+        count = entries.size
+        gap = count <= 1 ? 0 : [ PORT_GAP, usable / (count - 1).to_f ].min
+
+        sorted = entries.sort_by do |entry|
+          [ vertical_side ? entry[:other].center_x : entry[:other].center_y, entry[:index] ]
+        end
+        sorted.each_with_index.map { |entry, i| [ entry, (i - (count - 1) / 2.0) * gap ] }
+      end
+
+      # ── 同じ道すじを通る線をずらす ──────────────────────────
+      #
+      # ポートを散らしても、途中で同じ隙間へ吸い寄せられることがある
+      # （通り道の候補が同じなので当然そうなる）。重なった区間だけを、
+      # 別の車線へ寄せる。**寄せられなければ元に戻す**（よけたつもりの嘘を残さない）
+      def separate_lanes!(routes, links, ports)
+        clusters(collect_segments(routes)).each do |cluster|
+          assign_lanes(cluster).each do |segment, lane|
+            next if lane.zero?
+
+            shift_segment!(routes[segment[:route]].points, segment, lane_delta(lane))
+          end
+        end
+
+        routes.each_with_index { |route, index| revert_unless_clear!(route, links[index], ports[index]) }
+      end
+
+      def collect_segments(routes)
+        routes.each_with_index.flat_map do |route, route_index|
+          points = route.points
+          (0...[ points.size - 1, 0 ].max).filter_map do |at|
+            segment_of(points[at], points[at + 1], route_index, at)
+          end
+        end
+      end
+
+      def segment_of(a, b, route_index, at)
+        dx = (a["x"] - b["x"]).abs
+        dy = (a["y"] - b["y"]).abs
+        axis = if dy <= LANE_TOLERANCE && dx > LANE_TOLERANCE then :horizontal
+        elsif dx <= LANE_TOLERANCE && dy > LANE_TOLERANCE then :vertical
+        end
+        return nil if axis.nil?
+
+        values = axis == :horizontal ? [ a["x"], b["x"] ] : [ a["y"], b["y"] ]
+        { route: route_index, at:, axis:,
+          fixed: axis == :horizontal ? a["y"] : a["x"],
+          from: values.min, to: values.max }
+      end
+
+      # 同じ向き・ほぼ同じ位置の区間をひとまとめにする
+      def clusters(segments)
+        segments.group_by { |segment| segment[:axis] }.values.flat_map do |same_axis|
+          same_axis.sort_by { |segment| [ segment[:fixed], segment[:from] ] }
+                   .slice_when { |a, b| (b[:fixed] - a[:fixed]).abs > LANE_TOLERANCE }
+                   .to_a
+        end
+      end
+
+      # 区間が重なっているものだけ、別の車線へ回す
+      def assign_lanes(cluster)
+        return [] if cluster.size < 2
+
+        taken = Hash.new { |hash, key| hash[key] = [] }
+        cluster.map do |segment|
+          lane = (0...MAX_LANES).find do |candidate|
+            taken[candidate].none? { |other| overlaps?(segment[:from], segment[:to], other[:from], other[:to]) }
+          end || 0
+          taken[lane] << segment
+          [ segment, lane ]
+        end
+      end
+
+      # 0 は動かさない。1 から左右（上下）へ交互に開く
+      def lane_delta(lane)
+        step = (lane + 1) / 2
+        lane.odd? ? step * LANE_GAP : -step * LANE_GAP
+      end
+
+      def shift_segment!(points, segment, delta)
+        key = segment[:axis] == :horizontal ? "y" : "x"
+        points[segment[:at]][key] += delta
+        points[segment[:at] + 1][key] += delta
+      end
+
+      # ずらした結果、カードに当たる・助走が裏返るなら、引き直して元へ戻す
+      def revert_unless_clear!(route, link, port)
+        from = link[:from]
+        to = link[:to]
+        return if from.nil? || to.nil? || route.points.empty?
+
+        start_point = anchor(from, link[:source_handle], port[:source].to_f)
+        end_point = anchor(to, link[:target_handle], port[:target].to_f)
+        obstacles = @boxes.values.reject { |box| [ from.id, to.id ].include?(box.id) }
+        return if stubs_outward?(route.points, start_point, end_point, link) &&
+                  !hits_any?(start_point, symbolized(route.points), end_point, obstacles)
+
+        route.points = route(from, to, link[:source_handle], link[:target_handle],
+                             source_port: port[:source].to_f, target_port: port[:target].to_f)
+      end
+
+      def symbolized(points)
+        points.map { |point| { x: point["x"], y: point["y"] } }
+      end
+
+      # 助走が、出た辺の外を向いたままか。裏返ると線が端で折り返して見える
+      def stubs_outward?(points, start_point, end_point, link)
+        outward?(points.first, start_point, link[:source_handle]) &&
+          outward?(points.last, end_point, link[:target_handle])
+      end
+
+      # ずらしても、助走はこれだけは残す
+      MIN_STUB = 8
+
+      def outward?(point, anchor_point, handle)
+        case handle
+        when "top" then anchor_point[:y] - point["y"] >= MIN_STUB
+        when "bottom" then point["y"] - anchor_point[:y] >= MIN_STUB
+        when "right" then point["x"] - anchor_point[:x] >= MIN_STUB
+        when "left" then anchor_point[:x] - point["x"] >= MIN_STUB
+        else true
         end
       end
 
