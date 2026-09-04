@@ -58,3 +58,46 @@ RSpec.describe Setting, type: :model do
     end
   end
 end
+
+# 置き場所が決まっている項目は、出す数に数えない。
+#
+# 数えていた頃は、画面が「5件」と数えている並びをサーバーが「6件」と断り、
+# 種別の印を消そうとしても保存できなかった。
+RSpec.describe "#{Setting} 置き場所が決まっている項目" do
+  let(:user) { create(:user) }
+  let(:setting) { user.setting || user.create_setting! }
+
+  def rows(*keys)
+    keys.map { |key| { "key" => key, "visible" => true } }
+  end
+
+  it "種別の印は、出す数に数えない" do
+    setting.card_list_layout = rows("title", "item_type", "image", "meaning", "a", "b")
+
+    expect(setting).to be_valid
+  end
+
+  it "積む項目が上限を超えたら、これまでどおり断る" do
+    setting.card_list_layout = rows("title", "image", "meaning", "a", "b", "c")
+
+    expect(setting).not_to be_valid
+  end
+
+  it "上限を超えた並びを読んでも、種別の印は消えない" do
+    setting.update_column(
+      :card_list_layout,
+      rows("title", "image", "meaning", "a", "b") + [ { "key" => "item_type", "visible" => true } ]
+    )
+
+    entries = setting.reload.card_list_layout_entries
+    expect(entries.find { |r| r["key"] == "item_type" }["visible"]).to be(true)
+  end
+
+  it "消す指定は、そのまま保存できる" do
+    setting.update!(card_list_layout: [ { "key" => "item_type", "visible" => false },
+                                        { "key" => "title", "visible" => true } ])
+
+    entries = setting.reload.card_list_layout_entries
+    expect(entries.find { |r| r["key"] == "item_type" }["visible"]).to be(false)
+  end
+end

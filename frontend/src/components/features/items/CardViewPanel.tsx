@@ -443,9 +443,13 @@ export function CardViewPanel({
           </div>
         )}
 
-        {/* まだ作っていない項目も、ここから足せるようにする。
-            「持たない」に出るのは既に定義したものだけなので、
-            Wikipedia のような新しい項目は、環境設定まで行かないと存在に気づけなかった */}
+        {/*
+          まだ作っていない項目も、ここから足せるようにする。
+
+          **押した瞬間にカードへ出る。** 作るだけにしていた頃は、
+          カードには「未設定」として増えるだけで、詳細でもう一度押さないと
+          書けなかった（足したつもりのものが出てこない）
+        */}
         <AddableProperties item={item} adoptedKeys={allAdoptedKeys} onUpdated={onUpdated} />
 
         {busy && (
@@ -909,9 +913,10 @@ function AddableProperties({
 
   return (
     <div className="space-y-1.5 pt-1">
-      <p className="text-xs font-medium">＋ まだ無い項目を作る</p>
+      <p className="text-xs font-medium">＋ まだ無い項目を足す</p>
       <p className="text-xs text-muted-foreground">
-        押すと「{item.item_type?.label}」の項目として作られます（この種別のカード全部に出ます）。
+        押すと「{item.item_type?.label}」の項目として作られ、そのままカードに出ます
+        （この種別のカード全部に出ます）。
       </p>
       {/* 1行に1つ並べる。丸い札を折り返すと、数が増えたときに見出しの列に見えて
           「押せるもの」に見えなくなる。上の採用済みの行と同じ形にして、
@@ -940,7 +945,7 @@ function AddableProperties({
               className="flex shrink-0 items-center gap-1 rounded-full border border-border px-2 py-0.5 text-xs text-muted-foreground transition-colors hover:bg-muted disabled:opacity-40"
             >
               {busy === preset.key ? <Spinner size={11} /> : <Plus size={11} />}
-              作る
+              足す
             </button>
           </li>
         ))}

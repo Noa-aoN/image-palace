@@ -5,6 +5,7 @@ import {
   memo,
   useContext,
   useRef,
+  useState,
   type PointerEvent as ReactPointerEvent,
   type MouseEvent as ReactMouseEvent,
 } from 'react'
@@ -48,6 +49,8 @@ function EditableEdgeComponent(props: EdgeProps) {
   const s = d.edgeStyle ?? {}
   const label = d.label
   const points = d.points ?? []
+  // 近づいたときにも操作点を出す。選ぶ→出る、だと**まず選ぶ手間が要る**
+  const [hovered, setHovered] = useState(false)
 
   const { screenToFlowPosition, setEdges } = useReactFlow()
   const { commitPoints, boardBg } = useContext(EdgeActionsContext)
@@ -212,6 +215,8 @@ function EditableEdgeComponent(props: EdgeProps) {
         stroke="transparent"
         strokeWidth={Math.max(strokeWidth + 12, 16)}
         onDoubleClick={insertOnPath}
+        onMouseEnter={() => setHovered(true)}
+        onMouseLeave={() => setHovered(false)}
         style={{ cursor: 'crosshair', pointerEvents: 'stroke' }}
       />
       {doubled && (
@@ -254,8 +259,8 @@ function EditableEdgeComponent(props: EdgeProps) {
           </div>
         )}
 
-        {selected && (
-          <>
+        {(selected || hovered) && (
+          <div onMouseEnter={() => setHovered(true)} onMouseLeave={() => setHovered(false)}>
             {/*
               線の上の点を、**役割ごとに違う形**にする。
 
@@ -271,75 +276,139 @@ function EditableEdgeComponent(props: EdgeProps) {
               const mx = (v.x + n.x) / 2
               const my = (v.y + n.y) / 2
               return (
-                <div
+                <ControlPoint
                   key={`g${i}`}
-                  className="nodrag nopan"
+                  x={mx}
+                  y={my}
+                  kind="add"
+                  label="押すと折れ点ができます"
                   onPointerDown={startInsert()}
-                  title="押すと折れ点ができます（そのまま引くと位置も決まります）"
-                  style={{
-                    ...DOT,
-                    transform: `translate(-50%, -50%) translate(${mx}px, ${my}px)`,
-                    width: 12,
-                    height: 12,
-                    border: '1.5px dashed var(--palace)',
-                    background: 'var(--board-bg)',
-                    opacity: 0.7,
-                    cursor: 'crosshair',
-                  }}
                 />
               )
             })}
 
-            {/* 折り曲げ点。白抜きにして「掴める・動かせる」ことを示す */}
+            {/* 折り曲げ点。**四角**にして、動かせることを形で示す */}
             {points.map((p, i) => (
-              <div
+              <ControlPoint
                 key={`w${i}`}
-                className="nodrag nopan"
+                x={p.x}
+                y={p.y}
+                kind="bend"
+                label="引いて動かす／2回押すと消えます"
                 onPointerDown={startMove(i, points)}
                 onDoubleClick={removeAt(i)}
-                title="引いて動かす／2回押すと消えます"
-                style={{
-                  ...DOT,
-                  transform: `translate(-50%, -50%) translate(${p.x}px, ${p.y}px)`,
-                  width: 13,
-                  height: 13,
-                  background: 'var(--board-bg)',
-                  border: '2.5px solid var(--palace)',
-                  cursor: 'grab',
-                }}
               />
             ))}
 
-            {/* 終端。塗りつぶして「相手に刺さっている」ことを示す。
-                掴んでつなぎ替えるのは React Flow の受け持ちなので、ここは見た目だけ */}
+            {/* 終端。**線に関わる点なので、接合点と同じ色**にする */}
             {[ verts[0], verts[verts.length - 1] ].map((p, i) => (
-              <div
+              <ControlPoint
                 key={`e${i}`}
-                className="nodrag nopan pointer-events-none"
-                style={{
-                  ...DOT,
-                  transform: `translate(-50%, -50%) translate(${p.x}px, ${p.y}px)`,
-                  width: 10,
-                  height: 10,
-                  background: 'var(--palace)',
-                  border: '2px solid var(--board-bg)',
-                }}
+                x={p.x}
+                y={p.y}
+                kind="end"
+                label={i === 0 ? 'ここから出ています' : 'ここへ着いています'}
               />
-            ))}
-          </>
+                        ))}
+          </div>
         )}
       </EdgeLabelRenderer>
     </>
   )
 }
 
-/** 線の上の点に共通する形。**大きさと役割の色だけを、それぞれで変える** */
-const DOT = {
-  position: 'absolute',
-  borderRadius: '50%',
-  pointerEvents: 'all',
-  boxSizing: 'border-box',
-} as const
+/**
+ * 線の上の操作点。
+ *
+ * ## 3つを、形と色で見分ける
+ *
+ * 同じ丸で描いていた頃は、押してみるまで何が起きるか分からなかった。
+ * 図を描く道具（Figma / draw.io / yEd）が共通して使い分けている作法に合わせる。
+ *
+ * | | 形 | 色 | 意味 |
+ * |---|---|---|---|
+ * | 足せる場所 | 小さい丸・破線の縁 | 薄い | まだ何も無い |
+ * | 折り曲げ点 | **四角** | 濃い | 掴んで動かせる |
+ * | 終端 | 丸・塗りつぶし | **線の色** | 相手に刺さっている |
+ *
+ * **終端と接合点は同じ色**にする。どちらも「線がどこに関わっているか」を示すもので、
+ * 折り曲げ点（形を変えるためのもの）とは役割が違う。
+ *
+ * 説明は近づいたときに出す。形だけでは、初めての人には読めない。
+ */
+type ControlKind = 'add' | 'bend' | 'end'
+
+const CONTROL_LOOKS: Record<ControlKind, React.CSSProperties> = {
+  add: {
+    width: 11,
+    height: 11,
+    borderRadius: '50%',
+    border: '1.5px dashed var(--palace)',
+    background: 'var(--board-bg)',
+    opacity: 0.7,
+    cursor: 'crosshair',
+  },
+  // 四角にすると、丸（点）と役割が違うことが形だけで伝わる
+  bend: {
+    width: 12,
+    height: 12,
+    borderRadius: 3,
+    border: '2.5px solid var(--palace)',
+    background: 'var(--board-bg)',
+    cursor: 'grab',
+  },
+  end: {
+    width: 10,
+    height: 10,
+    borderRadius: '50%',
+    background: 'var(--palace)',
+    border: '2px solid var(--board-bg)',
+    // 終端は見た目だけ。つなぎ替えは React Flow の受け持ち
+    pointerEvents: 'none',
+  },
+}
+
+function ControlPoint({
+  x,
+  y,
+  kind,
+  label,
+  onPointerDown,
+  onDoubleClick,
+}: {
+  x: number
+  y: number
+  kind: ControlKind
+  label: string
+  onPointerDown?: (event: ReactPointerEvent) => void
+  onDoubleClick?: (event: ReactMouseEvent) => void
+}) {
+  const [near, setNear] = useState(false)
+
+  return (
+    <div
+      className="nodrag nopan"
+      style={{ position: 'absolute', transform: `translate(-50%, -50%) translate(${x}px, ${y}px)` }}
+    >
+      <div
+        onPointerDown={onPointerDown}
+        onDoubleClick={onDoubleClick}
+        onMouseEnter={() => setNear(true)}
+        onMouseLeave={() => setNear(false)}
+        style={{ pointerEvents: 'all', boxSizing: 'border-box', ...CONTROL_LOOKS[kind] }}
+      />
+      {/* 近づいたときだけ説明を出す。常に出すと、点の数だけ文字が散らかる */}
+      {near && (
+        <span
+          className="pointer-events-none absolute left-1/2 top-full mt-1 -translate-x-1/2 whitespace-nowrap rounded px-1.5 py-0.5 text-3xs"
+          style={{ background: 'var(--foreground)', color: 'var(--background)' }}
+        >
+          {label}
+        </span>
+      )}
+    </div>
+  )
+}
 
 export const EditableEdge = memo(EditableEdgeComponent)
 

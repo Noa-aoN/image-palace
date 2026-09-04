@@ -155,6 +155,30 @@ export function CardDisplayPanel({
           {/* 列数・行数と、出す項目は別の話。線で区切って、混ざらないようにする */}
           <hr className="border-border" />
 
+          {/*
+            置き場所が決まっているものは、**並びの外に出す。**
+
+            並びの中に混ぜていた頃は、掴んで動かせない行が1つだけ混ざり、
+            上下の釦も出ない。「なぜこれだけ動かせないのか」が読めなかった。
+            下へ積む枠も使わないので、出す数にも数えない
+          */}
+          {layout.rows.filter((row) => isFixedPosition(row.key)).map((row) => (
+            <label key={row.key} className="flex items-start gap-2 text-sm">
+              <input
+                type="checkbox"
+                checked={row.visible}
+                onChange={() => layout.toggle(row.key)}
+                className="mt-0.5 shrink-0"
+              />
+              <span>
+                {layout.labelOf(row.key)}
+                <span className="block text-2xs text-muted-foreground">
+                  見出し語の右に、一文字だけ添えます（出す数には数えません）
+                </span>
+              </span>
+            </label>
+          ))}
+
           <div className="space-y-2">
             <div className="flex flex-wrap items-baseline justify-between gap-2">
               <Label>表示項目</Label>
@@ -165,7 +189,7 @@ export function CardDisplayPanel({
             </div>
 
             <ul className="space-y-1">
-              {layout.rows.map((row, index) => (
+              {layout.rows.filter((row) => !isFixedPosition(row.key)).map((row, index) => (
                 <li
                   key={row.key}
                   // 掴めるのはつまみを押している間だけ（行そのものを掴めると文字を選べない）

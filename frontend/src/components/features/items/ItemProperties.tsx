@@ -816,6 +816,27 @@ export function ItemProperties({
   // 押されたものは、その場で本文へ出す（書けるようにする）
   const [revealed, setRevealed] = useState<string[]>([])
   const { filled, empty } = splitByFilled(item.properties ?? [])
+
+  /**
+   * **新しく作られた項目は、そのまま書ける状態にする。**
+   *
+   * ライトパネルから項目を作ると、カードには「未設定」として増えるだけで、
+   * もう一度こちらで押さないと書けなかった。**足したつもりのものが出てこない。**
+   *
+   * どこから作られたかを伝え合うのではなく、
+   * **前に見た鍵に無いものが増えたら、それが新しいもの**と読む。
+   * 作る道が増えても、こちらを直さずに済む
+   */
+  const seenKeys = useRef<Set<string> | null>(null)
+  useEffect(() => {
+    const keys = new Set((item.properties ?? []).map((entry) => entry.key))
+    const before = seenKeys.current
+    seenKeys.current = keys
+    if (before === null) return
+
+    const fresh = [...keys].filter((key) => !before.has(key))
+    if (fresh.length > 0) setRevealed((current) => [...new Set([...current, ...fresh])])
+  }, [item.properties])
   const shownEmpty = empty.filter((entry) => revealed.includes(entry.key))
   const hiddenEmpty = empty.filter((entry) => !revealed.includes(entry.key))
 
@@ -834,11 +855,15 @@ export function ItemProperties({
 
   const addBlock = {
     key: 'property-add',
-    label: '追加できる項目',
+    // **「未設定」と「まだ無い」を分けない。** 読む側にとっては同じ
+    // 「まだ出ていない項目」で、どちらかは中の作りの話でしかない
+    label: '出ていない項目',
     node: (
       <PropertyAddBlock
+        item={item}
         entries={hiddenEmpty}
         onReveal={(key) => setRevealed((current) => [...current, key])}
+        onUpdated={onUpdated}
       />
     ),
   }
@@ -865,7 +890,8 @@ export function ItemProperties({
   const hasProperties = customBlocks.length > 0
   // 追加できる項目は、**書いたものの後ろ**に置く。
   // 前に置くと、読みに来た人が毎回それを越えてから本文へ入ることになる
-  const addBlocks = hiddenEmpty.length > 0 ? [ addBlock ] : []
+  // **作られていない項目もここに並ぶ**ので、未設定が0件でも出す
+  const addBlocks = [ addBlock ]
   // 0件のときは種別のすぐ下に置く。位置ではなく鍵で挿すのは、
   // 作り付けの並びを変えたときに黙ってずれないようにするため
   const allBlocks = hasProperties
