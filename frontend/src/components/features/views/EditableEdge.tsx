@@ -13,6 +13,7 @@ import {
   BaseEdge,
   EdgeLabelRenderer,
   useReactFlow,
+  useStore,
   Position,
   type EdgeProps,
 } from '@xyflow/react'
@@ -53,6 +54,8 @@ function EditableEdgeComponent(props: EdgeProps) {
   const [hovered, setHovered] = useState(false)
 
   const { screenToFlowPosition, setEdges } = useReactFlow()
+  // 盤の拡大率。**説明の大きさを打ち消す**のに使う（盤ごと縮めると読めなくなる）
+  const zoom = useStore((state) => state.transform[2])
   const { commitPoints, boardBg } = useContext(EdgeActionsContext)
   const latest = useRef<EdgePoint[]>(points)
   const moved = useRef(false)
@@ -282,6 +285,7 @@ function EditableEdgeComponent(props: EdgeProps) {
                   y={my}
                   kind="add"
                   label="押すと折れ点ができます"
+                  zoom={zoom}
                   onPointerDown={startInsert()}
                 />
               )
@@ -295,6 +299,7 @@ function EditableEdgeComponent(props: EdgeProps) {
                 y={p.y}
                 kind="bend"
                 label="引いて動かす／2回押すと消えます"
+                zoom={zoom}
                 onPointerDown={startMove(i, points)}
                 onDoubleClick={removeAt(i)}
               />
@@ -308,6 +313,7 @@ function EditableEdgeComponent(props: EdgeProps) {
                 y={p.y}
                 kind="end"
                 label={i === 0 ? 'ここから出ています' : 'ここへ着いています'}
+                zoom={zoom}
               />
                         ))}
           </div>
@@ -338,10 +344,16 @@ function EditableEdgeComponent(props: EdgeProps) {
  */
 type ControlKind = 'add' | 'bend' | 'end'
 
+/**
+ * 点の大きさは**3つとも同じ**にする。
+ *
+ * 大きさが違うと「大きいほうが大事」と読まれる。だが3つは重さの違いではなく
+ * 役割の違いなので、**形と色だけで見分ける**のが正しい。
+ */
+const CONTROL_SIZE = 11
+
 const CONTROL_LOOKS: Record<ControlKind, React.CSSProperties> = {
   add: {
-    width: 11,
-    height: 11,
     borderRadius: '50%',
     border: '1.5px dashed var(--palace)',
     background: 'var(--board-bg)',
@@ -350,16 +362,12 @@ const CONTROL_LOOKS: Record<ControlKind, React.CSSProperties> = {
   },
   // 四角にすると、丸（点）と役割が違うことが形だけで伝わる
   bend: {
-    width: 12,
-    height: 12,
     borderRadius: 3,
     border: '2.5px solid var(--palace)',
     background: 'var(--board-bg)',
     cursor: 'grab',
   },
   end: {
-    width: 10,
-    height: 10,
     borderRadius: '50%',
     background: 'var(--palace)',
     border: '2px solid var(--board-bg)',
@@ -373,6 +381,7 @@ function ControlPoint({
   y,
   kind,
   label,
+  zoom,
   onPointerDown,
   onDoubleClick,
 }: {
@@ -380,6 +389,8 @@ function ControlPoint({
   y: number
   kind: ControlKind
   label: string
+  /** 盤の拡大率。**説明の大きさを打ち消す**のに使う */
+  zoom: number
   onPointerDown?: (event: ReactPointerEvent) => void
   onDoubleClick?: (event: ReactMouseEvent) => void
 }) {
@@ -395,13 +406,31 @@ function ControlPoint({
         onDoubleClick={onDoubleClick}
         onMouseEnter={() => setNear(true)}
         onMouseLeave={() => setNear(false)}
-        style={{ pointerEvents: 'all', boxSizing: 'border-box', ...CONTROL_LOOKS[kind] }}
+        style={{
+          width: CONTROL_SIZE,
+          height: CONTROL_SIZE,
+          pointerEvents: 'all',
+          boxSizing: 'border-box',
+          ...CONTROL_LOOKS[kind],
+        }}
       />
-      {/* 近づいたときだけ説明を出す。常に出すと、点の数だけ文字が散らかる */}
+      {/*
+        近づいたときだけ説明を出す。常に出すと、点の数だけ文字が散らかる。
+
+        **盤の縮尺に合わせない。** 盤ごと縮めると、遠くを見ているときほど
+        説明が小さくなって読めない。読ませるための文字なので、
+        いつでも同じ大きさで出す（拡大率の逆数を掛けて打ち消す）
+      */}
       {near && (
         <span
-          className="pointer-events-none absolute left-1/2 top-full mt-1 -translate-x-1/2 whitespace-nowrap rounded px-1.5 py-0.5 text-3xs"
-          style={{ background: 'var(--foreground)', color: 'var(--background)' }}
+          className="pointer-events-none absolute left-1/2 top-full whitespace-nowrap rounded px-1.5 py-0.5"
+          style={{
+            background: 'var(--foreground)',
+            color: 'var(--background)',
+            fontSize: 11,
+            transform: `translate(-50%, 4px) scale(${1 / zoom})`,
+            transformOrigin: 'top center',
+          }}
         >
           {label}
         </span>

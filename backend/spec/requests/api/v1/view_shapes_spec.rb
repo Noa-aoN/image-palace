@@ -302,3 +302,32 @@ RSpec.describe "Api::V1::Views 接合点", type: :request do
     expect(view.view_shapes.connectable.map(&:kind)).to eq([ "junction" ])
   end
 end
+
+# 接合点は「線が集まる点」。**よける相手ではないが、端にはなる。**
+RSpec.describe "Api::V1::Views 接合点と線", type: :request do
+  let(:user) { create(:user, :confirmed) }
+  let(:view) { create(:view, user: user, view_type: "freeboard") }
+
+  def boxes_from(service, name)
+    service.send(name)
+  end
+
+  it "よける相手には数えない（よけると線が集まれない）" do
+    view.view_shapes.create!(kind: "junction", x: 0, y: 0, width: 14, height: 14)
+    view.view_shapes.create!(kind: "sticky", x: 0, y: 0, width: 180, height: 180)
+
+    service = Views::AiEditService.new(view: view, instruction: "x", mode: "placed_only")
+
+    kinds = boxes_from(service, :shape_obstacles).keys.map { |id| ViewShape.find(id).kind }
+    expect(kinds).to eq([ "sticky" ])
+  end
+
+  it "線の端にはなれる" do
+    junction = view.view_shapes.create!(kind: "junction", x: 0, y: 0, width: 14, height: 14)
+    view.view_shapes.create!(kind: "frame", x: 0, y: 0, width: 400, height: 300)
+
+    service = Views::AiEditService.new(view: view, instruction: "x", mode: "placed_only")
+
+    expect(boxes_from(service, :shape_endpoints).keys).to eq([ junction.id ])
+  end
+end

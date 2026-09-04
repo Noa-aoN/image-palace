@@ -1,7 +1,7 @@
 'use client'
 
 import { useState } from 'react'
-import { Plus } from 'lucide-react'
+import { ChevronDown, Plus } from 'lucide-react'
 import { Spinner } from '@/components/ui/spinner'
 import {
   PROPERTY_CATEGORIES,
@@ -13,6 +13,7 @@ import {
 } from '@/lib/api/properties'
 import { getItem } from '@/lib/api/items'
 import type { Item } from '@/types/item'
+import { PropertyBlock } from '@/components/features/items/PropertyBlock'
 
 /**
  * まだこのカードに出ていない項目。**押せば、その場で出る。**
@@ -49,6 +50,8 @@ export function PropertyAddBlock({
 }) {
   const [busy, setBusy] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
+  // 既定は畳んでおく。**書きに来たときだけ開く場所**なので、開いたまま置かない
+  const [open, setOpen] = useState(false)
   const itemTypeId = item.item_type?.id
 
   // 既に持っている鍵。作られていない項目の候補から外す
@@ -74,7 +77,11 @@ export function PropertyAddBlock({
   const all = [...existing, ...uncreated]
 
   if (all.length === 0) {
-    return <p className="text-sm text-muted-foreground">書ける項目は、ぜんぶ書いてあります。</p>
+    return (
+      <PropertyBlock title="出ていない項目" empty category="admin">
+        <p className="text-sm text-muted-foreground">書ける項目は、ぜんぶ書いてあります。</p>
+      </PropertyBlock>
+    )
   }
 
   const add = async (candidate: (typeof all)[number]) => {
@@ -111,6 +118,27 @@ export function PropertyAddBlock({
   }
 
   return (
+    <PropertyBlock
+      title="出ていない項目"
+      empty
+      category="admin"
+    >
+      {/*
+        **開け閉めは、下に大きく置く。** 右上の小さな印にしていたが、
+        畳んでいるときは中身が無いので、どこを押せば開くのかを探すことになる。
+        札の幅いっぱいの帯にすれば、迷わない
+      */}
+      {!open ? (
+        <button
+          type="button"
+          onClick={() => setOpen(true)}
+          aria-expanded={false}
+          className="flex w-full items-center justify-center gap-1.5 rounded-lg border border-dashed border-border py-2 text-xs text-muted-foreground transition-colors hover:border-[var(--palace)] hover:text-foreground"
+        >
+          <Plus size={13} />
+          書ける項目を開く（{all.length} 件）
+        </button>
+      ) : (
     <div className="space-y-3">
       <p className="text-xs text-muted-foreground">
         押すと、その項目をこのカードに出します（{all.length} 件）
@@ -135,7 +163,15 @@ export function PropertyAddBlock({
                   title={candidate.description ?? undefined}
                   // **薄いまま置く。** 書いてあるものと同じ濃さで並べると、
                   // どれが書いてあるのか読み取れなくなる
-                  className="inline-flex items-center gap-1 rounded-full border border-dashed border-border px-2.5 py-1 text-xs text-muted-foreground transition hover:border-[var(--palace)] hover:text-foreground disabled:opacity-60"
+                  // **白抜きにする。** 灰の地に灰の文字で置いていたので、
+                  // 押せるものだと読み取りにくかった。地を起こして縁を実線にし、
+                  // 「まだ書いていない」ことは**破線ではなく薄い色**で示す
+                  className="inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-xs transition hover:border-[var(--palace)] hover:text-[var(--palace)] disabled:opacity-60"
+                  style={{
+                    background: 'var(--background)',
+                    borderColor: 'var(--border)',
+                    color: 'var(--ink-body)',
+                  }}
                 >
                   {busy === candidate.key ? <Spinner size={11} /> : <Plus size={11} />}
                   {candidate.label}
@@ -153,6 +189,18 @@ export function PropertyAddBlock({
         「新」が付いたものは、この種別（{item.item_type?.label ?? '種別なし'}）の項目として新しく作られ、
         同じ種別のカード全部に出ます。
       </p>
+
+      <button
+        type="button"
+        onClick={() => setOpen(false)}
+        aria-expanded
+        className="flex w-full items-center justify-center gap-1.5 rounded-lg border border-border py-2 text-xs text-muted-foreground transition-colors hover:text-foreground"
+      >
+        <ChevronDown size={13} className="rotate-180" />
+        閉じる
+      </button>
     </div>
+      )}
+    </PropertyBlock>
   )
 }

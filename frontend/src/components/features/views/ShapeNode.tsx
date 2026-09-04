@@ -92,10 +92,15 @@ export const ShapeNode = memo(function ShapeNode({ data, selected }: NodeProps<S
           style={handle.style}
           /* 接合点は点そのものが端。掴む所を隠すと繋げられないので、常に見せる */
           className={
-            /* 接合点は小さいので、点そのものを狙わせない。
-               近づいたら4方向とも出して、そこから引けるようにする */
+            /*
+              接合点は 14px しかないので、**掴む的を点より大きく取る。**
+              小さいままだと、線を引いてきても当たらず「繋げられない」ように見える。
+
+              透明でも当たり判定は生かす（`opacity-0` は当たり判定を消さない）。
+              近づいたときだけ色を出して、そこから引けることを伝える
+            */
             isJunction
-              ? '!z-10 !h-3 !w-3 !border-2 !border-background !bg-[var(--palace)] !opacity-0 transition-opacity group-hover:!opacity-100'
+              ? '!z-10 !h-5 !w-5 !border-2 !border-background !bg-[var(--palace)] !opacity-0 transition-opacity hover:!opacity-100 group-hover:!opacity-100'
               : '!pointer-events-none !z-10 !h-3 !w-3 !border-2 !border-background !bg-[var(--palace)] !opacity-0 transition-all group-hover:!pointer-events-auto group-hover:!opacity-100 hover:!h-4 hover:!w-4'
           }
         />

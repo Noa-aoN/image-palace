@@ -1,4 +1,6 @@
 import type { Metadata } from 'next'
+import Link from 'next/link'
+import { CONTACT_EMAIL, CONTACT_PENDING_LABEL } from '@/lib/contact'
 import { LegalLayout, LegalSection } from '@/components/features/legal/LegalLayout'
 
 export const metadata: Metadata = {
@@ -10,7 +12,7 @@ export const metadata: Metadata = {
 
 export default function PrivacyPage() {
   return (
-    <LegalLayout title="プライバシーポリシー" updatedAt="最終更新日: 2026-06-11">
+    <LegalLayout title="プライバシーポリシー" updatedAt="最終更新日: 2026-09-05">
       <p>
         IMAGE PALACE（以下「本サービス」といいます）は、利用者の個人情報を適切に取り扱うことを重要な責務と考え、
         以下のとおりプライバシーポリシー（以下「本ポリシー」といいます）を定めます。
@@ -62,25 +64,41 @@ export default function PrivacyPage() {
         </p>
       </LegalSection>
 
-      <LegalSection heading="4. 第三者提供">
+      <LegalSection heading="4. 生成した画像の共用">
+        <p>
+          本サービスは、運営コストおよび生成の待ち時間を抑えるため、同一の指示から生成された画像を
+          本サービス全体で共用します。このため、<strong>利用者が生成させた画像は、同一の指示を入力した
+          他の利用者に対しても提供されます</strong>（初期設定では共用が有効です）。
+        </p>
+        <p>
+          他の利用者に提供されるのは生成された画像のみで、それを生成した利用者のメールアドレス・表示名などの
+          個人情報や、どの利用者が生成したかという情報は提供されません。
+        </p>
+        <p>
+          共用は、ログイン後の「環境設定」画面からいつでも停止できます。停止した場合、それ以降に生成される
+          画像は他の利用者へ提供されません。詳しくは利用規約第6条をご覧ください。
+        </p>
+      </LegalSection>
+
+      <LegalSection heading="5. 第三者提供">
         <p>
           本サービスは、次の場合を除き、あらかじめ利用者の同意を得ることなく個人情報を第三者に提供しません。
         </p>
         <ul className="list-disc pl-5 space-y-1">
           <li>法令に基づく場合</li>
           <li>人の生命・身体または財産の保護のために必要な場合</li>
-          <li>サービス提供に必要な範囲で外部サービス（前項記載のもの）に委託する場合</li>
+          <li>サービス提供に必要な範囲で外部サービス（第3項記載のもの）に委託する場合</li>
         </ul>
       </LegalSection>
 
-      <LegalSection heading="5. 保存期間">
+      <LegalSection heading="6. 保存期間">
         <p>
           取得した情報は、利用目的の達成に必要な期間、またはアカウントが有効な期間にわたり保存します。
           利用者がアカウントを削除した場合、関連する情報は合理的な期間内に削除されます。
         </p>
       </LegalSection>
 
-      <LegalSection heading="6. 利用者の権利（データのエクスポート・削除）">
+      <LegalSection heading="7. 利用者の権利（データのエクスポート・削除）">
         <p>
           利用者は、自己の個人情報について、開示・訂正・利用停止・削除を求めることができます。
         </p>
@@ -100,22 +118,35 @@ export default function PrivacyPage() {
         </p>
       </LegalSection>
 
-      <LegalSection heading="7. Cookie 等の利用">
+      <LegalSection heading="8. Cookie 等の利用">
         <p>
           本サービスは、ログイン状態の維持やアクセス解析のために Cookie および類似技術を利用することがあります。
-          利用者は、ブラウザの設定により Cookie を無効化できますが、その場合本サービスの一部機能が利用できなくなることがあります。
+          アクセス解析のための Cookie は、利用者の同意を得たうえで使用します。同意の内容は
+          
+          <Link href="/cookie-settings" className="underline underline-offset-2">
+            Cookie の設定
+          </Link>
+          からいつでも変更できます。また、ブラウザの設定により Cookie を無効化できますが、
+          その場合本サービスの一部機能が利用できなくなることがあります。
         </p>
       </LegalSection>
 
-      <LegalSection heading="8. 本ポリシーの変更">
+      <LegalSection heading="9. 本ポリシーの変更">
         <p>
           本サービスは、必要に応じて本ポリシーを変更することがあります。変更後の内容は、本ページに掲載した時点から効力を生じます。
         </p>
       </LegalSection>
 
-      <LegalSection heading="9. お問い合わせ窓口">
+      <LegalSection heading="10. お問い合わせ窓口">
+        <p>本ポリシーに関するお問い合わせは、次の窓口までご連絡ください。</p>
         <p>
-          本ポリシーに関するお問い合わせは、本サービスのお問い合わせ窓口までご連絡ください。
+          {CONTACT_EMAIL ? (
+            <a href={`mailto:${CONTACT_EMAIL}`} className="underline underline-offset-2">
+              {CONTACT_EMAIL}
+            </a>
+          ) : (
+            CONTACT_PENDING_LABEL
+          )}
         </p>
       </LegalSection>
     </LegalLayout>
