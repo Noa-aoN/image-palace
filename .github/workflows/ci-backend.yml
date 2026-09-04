@@ -63,7 +63,7 @@ jobs:
       # libvips のローダ構成（不要モジュールの削除）はイメージの性質なので、
       # 素のランナーに libvips を入れても本番の検証にはならない
       - name: Build backend image
-        uses: docker/build-push-action@v6
+        uses: docker/build-push-action@v7
         with:
           context: ./backend
           target: production
