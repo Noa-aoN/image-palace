@@ -4,6 +4,7 @@ import { useState } from 'react'
 import { Trash2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
+import { GrowingTextarea } from './GrowingTextarea'
 import { Label } from '@/components/ui/label'
 import { useRightPanelStore } from '@/stores/rightPanel'
 import type { BoardShape, BoardShapeStyle } from '@/types/view'
@@ -29,6 +30,9 @@ const STROKES: { value: string | null; label: string }[] = [
   { value: '#333333', label: '濃' },
   { value: '#999999', label: '薄' },
 ]
+
+/** サーバー側の ViewShape::MAX_TEXT_LENGTH と揃える。超えると保存が弾かれる */
+const SHAPE_TEXT_LIMIT = 2000
 
 const ALIGNS: { value: NonNullable<BoardShapeStyle['align']>; label: string }[] = [
   { value: 'left', label: '左' },
@@ -57,18 +61,33 @@ export function ShapeEditBody({
 
   const isText = shape.kind === 'text'
   const isFrame = shape.kind === 'frame'
+  const isSticky = shape.kind === 'sticky'
 
   return (
     <div className="space-y-5">
       {/* かこみの文字は見出しとして枠の外に出る。用途が違うので言い方を変える */}
       <div className="space-y-1.5">
         <Label htmlFor="shape-text">{isFrame ? '見出し' : '文字'}</Label>
-        <Input
-          id="shape-text"
-          value={shape.text ?? ''}
-          onChange={(e) => onChange({ text: e.target.value })}
-          placeholder={isFrame ? '例: 前半のできごと' : '入れなくてもよい'}
-        />
+        {/* かこみの見出しは枠の外に1行で出るので、欄も1行のままにする。
+            それ以外は付箋や注釈として長く書ける。1行で受けていた頃は、
+            入れた文字の大半が見えなかった */}
+        {isFrame ? (
+          <Input
+            id="shape-text"
+            value={shape.text ?? ''}
+            maxLength={SHAPE_TEXT_LIMIT}
+            onChange={(e) => onChange({ text: e.target.value })}
+            placeholder="例: 前半のできごと"
+          />
+        ) : (
+          <GrowingTextarea
+            id="shape-text"
+            value={shape.text ?? ''}
+            maxLength={SHAPE_TEXT_LIMIT}
+            onChange={(text) => onChange({ text })}
+            placeholder="入れなくてもよい"
+          />
+        )}
       </div>
 
       {/* 文字だけの図形は、塗りも枠も持たない（持たせると毎回消す手間が要る） */}
@@ -108,6 +127,30 @@ export function ShapeEditBody({
             </div>
           </div>
         </>
+      )}
+
+      {/* 付箋だけの飾り。形で見分けられるようにするためのものなので、
+          外せるようにはしておく（色を揃えたい図では邪魔になる） */}
+      {isSticky && (
+        <div className="space-y-2">
+          <Label>角の折り目</Label>
+          <div className="flex gap-1.5">
+            <Button
+              size="sm"
+              variant={style.folded ?? true ? 'default' : 'outline'}
+              onClick={() => onChange({ style: { folded: true } })}
+            >
+              つける
+            </Button>
+            <Button
+              size="sm"
+              variant={style.folded ?? true ? 'outline' : 'default'}
+              onClick={() => onChange({ style: { folded: false } })}
+            >
+              つけない
+            </Button>
+          </div>
+        </div>
       )}
 
       <div className="space-y-2">

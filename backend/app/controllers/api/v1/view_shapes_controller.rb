@@ -18,7 +18,9 @@ module Api
 
         shape = @view.view_shapes.build(shape_params)
         apply_default_size(shape)
-        shape.style = sanitized_style(params[:style])
+        # 指定が無いところは種類ごとの既定で埋める。
+        # **見えない図形を置かない**（塗りも枠も無いと、盤にあることが分からない）
+        shape.style = ViewShape.default_style_for(shape.kind).merge(sanitized_style(params[:style]))
         shape.save!
         render json: serialize_shape(shape), status: :created
       rescue ActiveRecord::RecordInvalid => e
@@ -95,7 +97,9 @@ module Api
           "text_color" => color(source["text_color"]),
           "align" => (ALIGNMENTS.include?(source["align"].to_s) ? source["align"].to_s : nil),
           "bold" => (source["bold"].present? ? ActiveModel::Type::Boolean.new.cast(source["bold"]) : nil),
-          "dashed" => (source["dashed"].present? ? ActiveModel::Type::Boolean.new.cast(source["dashed"]) : nil)
+          "dashed" => (source["dashed"].present? ? ActiveModel::Type::Boolean.new.cast(source["dashed"]) : nil),
+          # 付箋の角の折り目。形だけで他の図形と見分けられるようにする
+          "folded" => (source["folded"].nil? ? nil : ActiveModel::Type::Boolean.new.cast(source["folded"]))
         }.compact
       end
 
