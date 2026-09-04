@@ -15,27 +15,52 @@ module Views
     # ここで**線に沿って前後へずらす**。線から離すのではなく線の上を滑らせるので、
     # どの線の文字かは見失われない。
     #
-    # ## 決め方
+    # ## 点ではなく面で見る
     #
-    # 真ん中から順に試し、**既に置いた文字と離れている最初の場所**を採る。
-    # どこも空いていなければ真ん中に戻す（無理にずらして端へ寄せない）。
+    # 最初は「置いた点どうしが 46px 離れているか」だけを見ていた。
+    # **文字には高さと幅がある。** 点が離れていても、
+    # 「オリュンポスの神々」のような長い語は横へ伸びて隣に被る。
+    # 縦に並んだときは、たった 46px では2行ぶんに足りない。
+    #
+    # いまは文字を**矩形**として置き、次の3つを避ける。
+    #
+    #   1. 他の文字（重なると、どちらも読めない）
+    #   2. 他の線（文字が線を隠す。線が文字を横切ると字が割れる）
+    #   3. カード（文字がカードの上に乗ると、カードの見出しと混ざる）
+    #
+    # 自分が乗っている線だけは避けない。**線の上に置くのが仕事**なので。
     class LabelPlacement
       # 道のりのどこに置くか（0=始点, 1=終点）
       CENTER = 0.5
-      # 試す順。真ん中を最優先し、そこから前後へ開く
-      SPOTS = [ 0.5, 0.35, 0.65, 0.25, 0.75 ].freeze
+      # 試す順。真ん中を最優先し、そこから前後へ開く。
+      # 端に寄りすぎると、どちらのカードの文字か紛れるので 0.2〜0.8 に収める
+      SPOTS = [ 0.5, 0.4, 0.6, 0.32, 0.68, 0.25, 0.75, 0.2, 0.8 ].freeze
 
-      # これより近いと重なって読めない。文字の大きさ（13px前後）と余白から
-      MIN_DISTANCE = 46
+      # 文字の大きさの既定。画面の `s.label_size || 13` と揃える
+      DEFAULT_FONT_SIZE = 13
+      # 文字の周りの余白。画面は padding 2px 6px ＋ 1px の縁を持つ
+      PADDING_X = 14
+      PADDING_Y = 6
+      # 行の高さ。画面の line-height 1.3 と揃える
+      LINE_HEIGHT = 1.3
+      # 隣り合う文字の間に、これだけは空ける
+      BREATHING_ROOM = 8
 
-      def self.call(routes:, labels:, links:)
-        new(routes:, labels:, links:).call
+      # 他のものに重なったときの重さ。**文字どうしがいちばん困る**
+      PENALTY_LABEL = 100.0
+      PENALTY_EDGE = 12.0
+      PENALTY_CARD = 40.0
+
+      def self.call(routes:, labels:, links:, font_sizes: nil, boxes: nil)
+        new(routes:, labels:, links:, font_sizes:, boxes:).call
       end
 
-      def initialize(routes:, labels:, links:)
+      def initialize(routes:, labels:, links:, font_sizes: nil, boxes: nil)
         @routes = routes
         @labels = labels
         @links = links
+        @font_sizes = font_sizes
+        @given_boxes = boxes
       end
 
       # @return [Array<Float, nil>] labels と同じ並び。文字が無い線は nil
@@ -44,39 +69,129 @@ module Views
         @labels.each_with_index.map do |label, index|
           next nil if label.blank?
 
-          polyline = polyline_for(index)
+          polyline = polylines[index]
           next nil if polyline.size < 2
 
-          spot = choose(polyline, placed)
-          placed << point_at(polyline, spot)
+          spot = choose(index, label, polyline, placed)
+          placed << rect_at(polyline, spot, label, font_size(index))
           spot
         end
       end
 
       private
 
-      # 置ける場所のうち、既に置いた文字といちばん離れているもの。
-      # **十分離れているものが見つかった時点で止める**（真ん中に近いほうを優先する）
-      def choose(polyline, placed)
+      # いちばん邪魔にならない場所。
+      # **どこにも当たらない場所が見つかったら、そこで止める**（真ん中に近いほうを優先する）
+      def choose(index, label, polyline, placed)
         best = CENTER
-        best_distance = -1
+        best_cost = Float::INFINITY
 
         SPOTS.each do |spot|
-          distance = nearest_distance(point_at(polyline, spot), placed)
-          return spot if distance >= MIN_DISTANCE
+          rect = rect_at(polyline, spot, label, font_size(index))
+          cost = cost_of(rect, index, placed)
+          return spot if cost.zero?
 
-          if distance > best_distance
+          if cost < best_cost
             best = spot
-            best_distance = distance
+            best_cost = cost
           end
         end
         best
       end
 
-      def nearest_distance(point, placed)
-        return Float::INFINITY if placed.empty?
+      # 重なった量で測る。**「当たったか」ではなく「どれだけ当たったか」**。
+      # 真偽だけで見ていると、少し掠っただけの場所と、丸ごと隠れる場所が同じ評価になる
+      def cost_of(rect, index, placed)
+        cost = placed.sum { |other| overlap_area(rect, other) } * PENALTY_LABEL
+        cost += edge_crossing_length(rect, index) * PENALTY_EDGE
+        cost + card_overlap(rect) * PENALTY_CARD
+      end
 
-        placed.map { |other| Math.hypot(point[:x] - other[:x], point[:y] - other[:y]) }.min
+      def overlap_area(a, b)
+        width = [ a[:right], b[:right] ].min - [ a[:left], b[:left] ].max
+        height = [ a[:bottom], b[:bottom] ].min - [ a[:top], b[:top] ].max
+        return 0.0 if width <= 0 || height <= 0
+
+        # 面積そのものだと長い文字が不利になりすぎる。辺の長さで正規化する
+        (width * height) / (a[:right] - a[:left] + a[:bottom] - a[:top])
+      end
+
+      # 文字の矩形を横切る、**他の線**の長さ。自分が乗っている線は数えない
+      def edge_crossing_length(rect, index)
+        segments.sum do |segment|
+          next 0.0 if segment[:route] == index
+
+          clipped_length(rect, segment)
+        end
+      end
+
+      # 線分のうち、矩形の中に入っている長さ。直交で組んであるので縦横だけ見る
+      def clipped_length(rect, segment)
+        if segment[:axis] == :horizontal
+          return 0.0 unless segment[:fixed] > rect[:top] && segment[:fixed] < rect[:bottom]
+
+          span(segment[:from], segment[:to], rect[:left], rect[:right])
+        else
+          return 0.0 unless segment[:fixed] > rect[:left] && segment[:fixed] < rect[:right]
+
+          span(segment[:from], segment[:to], rect[:top], rect[:bottom])
+        end
+      end
+
+      def span(from, to, low, high)
+        [ [ to, high ].min - [ from, low ].max, 0.0 ].max
+      end
+
+      def card_overlap(rect)
+        boxes.sum do |box|
+          overlap_area(rect, { left: box.left_edge, right: box.right_edge, top: box.top, bottom: box.bottom })
+        end
+      end
+
+      # ── 測るための下ごしらえ ──────────────────────────────
+
+      def font_size(index)
+        size = @font_sizes&.[](index).to_f
+        size.positive? ? size.clamp(8, 48) : DEFAULT_FONT_SIZE
+      end
+
+      # 文字が占める面。見出しと同じ物差し（Metrics.text_units）で測る
+      def rect_at(polyline, fraction, label, size)
+        center = point_at(polyline, fraction)
+        half_width = (Metrics.text_units(label) * size + PADDING_X + BREATHING_ROOM) / 2
+        half_height = (size * LINE_HEIGHT + PADDING_Y + BREATHING_ROOM) / 2
+        {
+          left: center[:x] - half_width, right: center[:x] + half_width,
+          top: center[:y] - half_height, bottom: center[:y] + half_height
+        }
+      end
+
+      # 避けるカード。**盤の全部**を見る。
+      # 線の両端だけを見ていた頃は、端へ寄せた文字が別のカードの上に乗っていた
+      def boxes
+        @boxes ||= (@given_boxes || @links.flat_map { |link| [ link[:from], link[:to] ] })
+                   .compact.uniq(&:id)
+      end
+
+      def polylines
+        @polylines ||= @labels.each_index.map { |index| polyline_for(index) }
+      end
+
+      # 盤の上の線分すべて。文字がどれを隠すかを測るのに使う
+      def segments
+        @segments ||= polylines.each_with_index.flat_map do |polyline, index|
+          polyline.each_cons(2).filter_map { |a, b| segment_of(a, b, index) }
+        end
+      end
+
+      def segment_of(a, b, route_index)
+        if (a[:y] - b[:y]).abs < 1
+          { route: route_index, axis: :horizontal, fixed: a[:y],
+            from: [ a[:x], b[:x] ].min, to: [ a[:x], b[:x] ].max }
+        elsif (a[:x] - b[:x]).abs < 1
+          { route: route_index, axis: :vertical, fixed: a[:x],
+            from: [ a[:y], b[:y] ].min, to: [ a[:y], b[:y] ].max }
+        end
       end
 
       # 線の実体。**画面が描くのと同じ形**でなければ、ここで測った位置がずれる。

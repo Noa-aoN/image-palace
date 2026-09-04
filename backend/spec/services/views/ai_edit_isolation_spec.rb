@@ -36,6 +36,36 @@ RSpec.describe "Views::AiEditService 孤立の報告" do
     expect(result.notes).to include("孤島")
   end
 
+  # 「何であるか」を読み取れているかどうかで、次にすべきことが変わる
+  it "読み取れた意味を添える" do
+    parent = place("ゼウス")
+    child = place("アテナ")
+    lonely = place("雷霆")
+
+    result = run({
+      "structure" => "hierarchy",
+      "readings" => [ { "id" => lonely, "gist" => "ゼウスの武器" } ],
+      "relations" => [ { "from" => parent, "to" => child, "type" => "parent", "label" => "子" } ]
+    })
+
+    expect(result.notes).to include("雷霆「ゼウスの武器」")
+    expect(result.notes).to include("どう結ぶかを指示で伝える")
+  end
+
+  it "意味が読み取れていなければ、説明を足すよう勧める" do
+    parent = place("ゼウス")
+    child = place("アテナ")
+    lonely = place("謎の語")
+
+    result = run({
+      "structure" => "hierarchy",
+      "readings" => [ { "id" => lonely, "gist" => "不明" } ],
+      "relations" => [ { "from" => parent, "to" => child, "type" => "parent", "label" => "子" } ]
+    })
+
+    expect(result.notes).to include("説明を足してください")
+  end
+
   it "全部が繋がっていれば何も言わない" do
     parent = place("ゼウス")
     child = place("アテナ")

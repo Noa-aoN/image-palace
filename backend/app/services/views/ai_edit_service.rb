@@ -277,6 +277,7 @@ module Views
         次の JSON のみを返してください。
         {"summary": "何をしたかの日本語の短い説明",
          "notes": "気づいたこと（誤りや不足の指摘など。無ければ空文字）",
+         "readings": [{"id": "カードのid", "gist": "そのカードが何であるかを20字程度で"}],
          "add": ["追加するカードのid"],
          "remove": ["デッキから外すカードのid"],
          "order": ["先頭から順に並べたカードのid"]}
@@ -305,6 +306,7 @@ module Views
         次の JSON のみを返してください。
         {"summary": "何をしたかの日本語の短い説明",
          "notes": "気づいたこと（誤りや不足の指摘など。無ければ空文字）",
+         "readings": [{"id": "カードのid", "gist": "そのカードが何であるかを20字程度で"}],
          "add": ["追加するカードのid"],
          "remove": ["ボードから外すカードのid"],
          "structure": "hierarchy|flow|mindmap|radial|network|cluster|grid",
@@ -330,6 +332,15 @@ module Views
         - 中心が1つで、そこから多く広がる → mindmap
         - 親が複数ある・双方向のつながりがある → network
         - 群れに分かれていて、群れの中の順序は問わない → cluster
+
+        ## 読み取り（readings）— **いちばん先に書くこと**
+        - <資料> のカードを**1枚残らず**、上から順に1行ずつ書く。飛ばさない
+        - gist は「そのカードが何であるか」。説明が資料に無いカードほど、ここが効く。
+          見出し語と種別とタグから読み取れることを書く（「ギリシア神話の主神」など）
+        - **分からないものは「不明」と書く。** 埋めるために作り話をしない
+        - ここを書いてから relations を書くこと。**先に全部を読んでおくと、
+          関係のあるカードを挙げ忘れにくい**（挙げ忘れは、そのカードが
+          図の中で浮いたまま残るということ）
 
         ## 群れ（groups）
         - 意味のまとまりごとに分ける。**名前を付けること**（「オリュンポスの神々」など）
@@ -362,8 +373,9 @@ module Views
         - **向きのある関係を、逆向きにも引かない。**
           A の親が B なら、B の親は A ではない。
         - **たどると元へ戻る親子を作らない。** 誰かが自分の先祖になる図は成り立たない。
-        - **孤立を見落とさない。** 返す直前に各カードを見て、
-          意味のある関係を持つものには最低1本の関係を書く。
+        - **孤立を見落とさない。** readings に書いた行を上から順に見直し、
+          **一度も from にも to にも出ていないカード**を探すこと。
+          そのカードに意味のある関係があるなら、いまここで書き足す。
           本当に判断できないカードだけは無理に結ばず、そのカード名と理由を notes に書く
 
         ## roots
@@ -740,7 +752,7 @@ module Views
       relations = normalized_relations(plan["relations"])
       @consistency_notes = Layout::Consistency.new(
         relations: raw_relations(plan["relations"]), titles: card_titles
-      ).notes + Array(isolation_note(boxes, relations))
+      ).notes + Array(isolation_note(boxes, relations, plan["readings"]))
 
       @layout_notes = result.notes
       @layout_score = result.score
@@ -755,17 +767,47 @@ module Views
     # 数えるのはこちらの仕事なので、こちらで数えて、そのまま言う。
     #
     # 線を引き直さない設定では触れない（今回の結果ではないので）
-    def isolation_note(boxes, relations)
+    def isolation_note(boxes, relations, readings)
       return nil unless %w[rebuild infer].include?(@edge_mode)
 
       connected = relations.flat_map { |relation| [ relation[:from], relation[:to] ] }.to_set
       alone = boxes.map(&:id).reject { |id| connected.include?(id) }
       return nil if alone.empty?
 
-      names = alone.filter_map { |id| card_titles[id] }.first(5)
-      listed = names.any? ? "（#{names.join('・')}#{'ほか' if alone.size > names.size}）" : ""
-      "#{alone.size}枚が線に繋がりませんでした#{listed}。関係があるはずなら、" \
-        "そのカードの説明を足すか、指示でどう結ぶかを伝えてください。"
+      gists = reading_gists(readings)
+      listed = alone.first(5).map { |id| describe_alone(id, gists) }.compact_blank
+      more = "ほか" if alone.size > listed.size
+      "#{alone.size}枚が線に繋がりませんでした（#{listed.join('・')}#{more}）。" \
+        "#{advice_for(alone, gists)}"
+    end
+
+    # AI が「何であるか」をどう読み取ったか。**繋がらなかった理由の手がかりになる。**
+    # 「不明」と読まれていたなら説明が足りない。読めているのに繋がらないなら、
+    # 関係の側を指示で伝えたほうが早い
+    def reading_gists(readings)
+      Array(readings).each_with_object({}) do |reading, gists|
+        next unless reading.is_a?(Hash)
+
+        gists[reading["id"].to_s] = sanitize(reading["gist"], limit: 40).presence
+      end
+    end
+
+    def describe_alone(id, gists)
+      title = card_titles[id]
+      return nil if title.blank?
+
+      gist = gists[id]
+      gist.present? ? "#{title}「#{gist}」" : title
+    end
+
+    # 読み取れていないカードが混ざっているかで、勧めることを変える
+    def advice_for(alone, gists)
+      unread = alone.count { |id| gists[id].blank? || gists[id].include?("不明") }
+      if unread.positive?
+        "意味が読み取れていないものがあります。そのカードに説明を足してください。"
+      else
+        "意味は読み取れています。どう結ぶかを指示で伝えると繋がります。"
+      end
     end
 
     # カードの名前。食い違いを伝えるときに使う（id では読めない）
@@ -1093,7 +1135,7 @@ module Views
       end
       routes = router(boxes).route_all(links)
       labels = relations.map { |relation| sanitize(relation[:label], limit: MAX_EDGE_LABEL_LENGTH).presence }
-      spots = Layout::LabelPlacement.call(routes:, labels:, links:)
+      spots = Layout::LabelPlacement.call(routes:, labels:, links:, boxes: boxes.values)
 
       relations.each_with_index do |relation, index|
         route = routes[index]
@@ -1212,7 +1254,13 @@ module Views
         { from: source_box, to: target_box, source_handle:, target_handle: }
       end
       routes = router(boxes).route_all(links)
-      spots = Layout::LabelPlacement.call(routes:, labels: edges.map(&:label), links:)
+      # 文字の大きさは利用者が変えられる。**その大きさで測らないと、
+      # 大きくした文字だけが隣に被る**
+      spots = Layout::LabelPlacement.call(
+        routes:, labels: edges.map(&:label), links:,
+        font_sizes: edges.map { |edge| edge.style.to_h["label_size"] },
+        boxes: boxes.values
+      )
 
       edges.each_with_index do |edge, index|
         edge.update!(
