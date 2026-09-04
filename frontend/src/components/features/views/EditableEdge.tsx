@@ -164,6 +164,43 @@ function EditableEdgeComponent(props: EdgeProps) {
     commitPoints(id, inserted)
   }
 
+  /**
+   * 線そのものを引く。
+   *
+   * 掴んだ場所に折れ点を作って、そのまま引きずる。
+   * **点を狙わなくても、線を掴めば曲げられる。**
+   *
+   * 引かずに離したときは、作った折れ点を捨てる。
+   * ちょっと触っただけで折れ点が増えるのは、掴んだつもりの人には邪魔にしかならない
+   */
+  const dragFromPath = (ev: ReactPointerEvent) => {
+    if (ev.button !== 0) return
+
+    const { index, inserted } = addPointAt(ev)
+    writeLocal(inserted)
+
+    const before = points
+    moved.current = false
+    const move = (e: PointerEvent) => {
+      moved.current = true
+      const fp = screenToFlowPosition({ x: e.clientX, y: e.clientY })
+      writeLocal(inserted.map((p, i) => (i === index ? { x: Math.round(fp.x), y: Math.round(fp.y) } : p)))
+    }
+    const up = () => {
+      window.removeEventListener('pointermove', move)
+      window.removeEventListener('pointerup', up)
+      if (moved.current) {
+        commitPoints(id, latest.current)
+      } else {
+        // 引かなかった＝掴んだだけ。**増やさずに戻す**
+        writeLocal(before)
+      }
+    }
+    ev.stopPropagation()
+    window.addEventListener('pointermove', move)
+    window.addEventListener('pointerup', up)
+  }
+
   // waypoint ダブルクリックで削除
   const removeAt = (idx: number) => (ev: ReactMouseEvent) => {
     ev.stopPropagation()
@@ -212,15 +249,26 @@ function EditableEdgeComponent(props: EdgeProps) {
         掴むための、見えない太い線。**線そのものは細いので、狙って当てにくい。**
         ダブルクリックでその場に折れ点を置ける（的を狙わなくてよい）
       */}
+      {/*
+        掴むための、見えない太い線。**線そのものは細いので、狙って当てにくい。**
+
+        **線を直接引けるようにする。** これまでは点を狙って掴むしかなく、
+        「この線をここまでずらしたい」と思っても、まず折れ点を作る手が要った。
+        線を引いた場所に折れ点ができて、そのまま付いてくる——
+        図を描く道具（draw.io / Lucidchart）が共通してそうしている。
+
+        ダブルクリックでも置ける（引かずに、その場に1つだけ足したいとき）
+      */}
       <path
         d={edgePath}
         fill="none"
         stroke="transparent"
         strokeWidth={Math.max(strokeWidth + 12, 16)}
+        onPointerDown={dragFromPath}
         onDoubleClick={insertOnPath}
         onMouseEnter={() => setHovered(true)}
         onMouseLeave={() => setHovered(false)}
-        style={{ cursor: 'crosshair', pointerEvents: 'stroke' }}
+        style={{ cursor: 'grab', pointerEvents: 'stroke' }}
       />
       {doubled && (
         // 真ん中を盤の色で抜いて2本に見せる。矢印は外側の線だけに付ける

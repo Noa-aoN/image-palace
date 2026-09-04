@@ -357,16 +357,20 @@ function Canvas({
    * 図形を置けない場所。**ここを押したら、置くのをやめる。**
    *
    * 構えている間はどこを押しても図形ができていたので、カードを掴もうとして
-   * 図形が生まれることがあった。**押した本人には「勝手に増えた」としか見えない。**
-   * 空いている場所を押したときだけ置く。
+   * 図形が生まれることがあった。押した本人には「勝手に増えた」としか見えない。
+   *
+   * **ただし線の上は止めない。** 止めていたので、混んだ盤では押した所がほぼ必ず
+   * 何かに当たり、**接合点が一度も置けなかった**（線の上に置くためのものなのに）。
+   * 掴み違えて困るのはカードと図形なので、そこだけを避ける。
    */
-  const NOT_A_PLACE = '.react-flow__node, .react-flow__edge, .react-flow__controls, .react-flow__minimap, .react-flow__panel'
+  const NOT_A_PLACE = '.react-flow__node, .react-flow__controls, .react-flow__minimap, .react-flow__panel'
 
   const handlePlacePointerDown = (event: React.PointerEvent<HTMLDivElement>) => {
     if (!placing || event.button !== 0) return
 
-    // カードや線の上なら、置かずにやめる（掴もうとしただけ、と読む）
-    if ((event.target as Element).closest?.(NOT_A_PLACE)) {
+    // カードや図形の上なら、置かずにやめる（掴もうとしただけ、と読む）。
+    // **接合点だけは例外**。線の上にも、カードの近くにも置けてよい
+    if (placing !== 'junction' && (event.target as Element).closest?.(NOT_A_PLACE)) {
       setPlacing(null)
       setBand(null)
       return
@@ -396,7 +400,8 @@ function Canvas({
 
     const from = screenToFlowPosition(band.start)
     const to = screenToFlowPosition(end)
-    if (isClick(band.start, end)) {
+    // **接合点は「点」。** 引いても大きさは決めない（大きくすると図形になる）
+    if (kind === 'junction' || isClick(band.start, end)) {
       void createShape(kind, { x: Math.round(from.x), y: Math.round(from.y) })
       return
     }
