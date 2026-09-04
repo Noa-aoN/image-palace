@@ -78,7 +78,7 @@ export function PropertyAddBlock({
 
   if (all.length === 0) {
     return (
-      <PropertyBlock title="出ていない項目" empty>
+      <PropertyBlock title="出ていない項目" empty category="admin">
         <p className="text-sm text-muted-foreground">書ける項目は、ぜんぶ書いてあります。</p>
       </PropertyBlock>
     )
@@ -121,22 +121,23 @@ export function PropertyAddBlock({
     <PropertyBlock
       title="出ていない項目"
       empty
-      actions={
-        // **畳める。** 項目が増えるほど縦に伸びるが、ここは書きに来たときだけ開く場所。
-        // 読みに来た人が毎回かき分けることにならないようにする
+      category="admin"
+    >
+      {/*
+        **開け閉めは、下に大きく置く。** 右上の小さな印にしていたが、
+        畳んでいるときは中身が無いので、どこを押せば開くのかを探すことになる。
+        札の幅いっぱいの帯にすれば、迷わない
+      */}
+      {!open ? (
         <button
           type="button"
-          onClick={() => setOpen((current) => !current)}
-          aria-expanded={open}
-          className="flex items-center gap-1 rounded px-1 text-xs text-muted-foreground transition-colors hover:text-foreground"
+          onClick={() => setOpen(true)}
+          aria-expanded={false}
+          className="flex w-full items-center justify-center gap-1.5 rounded-lg border border-dashed border-border py-2 text-xs text-muted-foreground transition-colors hover:border-[var(--palace)] hover:text-foreground"
         >
-          {all.length} 件
-          <ChevronDown size={13} className={`transition-transform ${open ? 'rotate-180' : ''}`} />
+          <Plus size={13} />
+          書ける項目を開く（{all.length} 件）
         </button>
-      }
-    >
-      {!open ? (
-        <p className="text-xs text-muted-foreground">押すと、その項目をこのカードに出します。</p>
       ) : (
     <div className="space-y-3">
       <p className="text-xs text-muted-foreground">
@@ -162,7 +163,15 @@ export function PropertyAddBlock({
                   title={candidate.description ?? undefined}
                   // **薄いまま置く。** 書いてあるものと同じ濃さで並べると、
                   // どれが書いてあるのか読み取れなくなる
-                  className="inline-flex items-center gap-1 rounded-full border border-dashed border-border px-2.5 py-1 text-xs text-muted-foreground transition hover:border-[var(--palace)] hover:text-foreground disabled:opacity-60"
+                  // **白抜きにする。** 灰の地に灰の文字で置いていたので、
+                  // 押せるものだと読み取りにくかった。地を起こして縁を実線にし、
+                  // 「まだ書いていない」ことは**破線ではなく薄い色**で示す
+                  className="inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-xs transition hover:border-[var(--palace)] hover:text-[var(--palace)] disabled:opacity-60"
+                  style={{
+                    background: 'var(--background)',
+                    borderColor: 'var(--border)',
+                    color: 'var(--ink-body)',
+                  }}
                 >
                   {busy === candidate.key ? <Spinner size={11} /> : <Plus size={11} />}
                   {candidate.label}
@@ -180,6 +189,16 @@ export function PropertyAddBlock({
         「新」が付いたものは、この種別（{item.item_type?.label ?? '種別なし'}）の項目として新しく作られ、
         同じ種別のカード全部に出ます。
       </p>
+
+      <button
+        type="button"
+        onClick={() => setOpen(false)}
+        aria-expanded
+        className="flex w-full items-center justify-center gap-1.5 rounded-lg border border-border py-2 text-xs text-muted-foreground transition-colors hover:text-foreground"
+      >
+        <ChevronDown size={13} className="rotate-180" />
+        閉じる
+      </button>
     </div>
       )}
     </PropertyBlock>
