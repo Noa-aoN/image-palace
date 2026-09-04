@@ -3,7 +3,9 @@
 import {
   createContext,
   memo,
+  useCallback,
   useContext,
+  useEffect,
   useRef,
   useState,
   type PointerEvent as ReactPointerEvent,
@@ -60,8 +62,28 @@ function EditableEdgeComponent(props: EdgeProps) {
   const s = d.edgeStyle ?? {}
   const label = d.label
   const points = d.points ?? []
-  // 近づいたときにも操作点を出す。選ぶ→出る、だと**まず選ぶ手間が要る**
-  const [hovered, setHovered] = useState(false)
+  /**
+   * 近づいたときにも操作点を出す。選ぶ→出る、だと**まず選ぶ手間が要る**。
+   *
+   * **消すのは少し待つ。** 線から離れた瞬間に消していたので、
+   * 線の脇に置いた三角へカーソルを移す途中で印が消え、掴めなかった。
+   * 途中の空白を渡りきるだけの猶予を置く（メニューと同じ作法）
+   */
+  const [hovered, setHoveredNow] = useState(false)
+  const leaveTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
+
+  const setHovered = useCallback((near: boolean) => {
+    if (leaveTimer.current) clearTimeout(leaveTimer.current)
+    if (near) {
+      setHoveredNow(true)
+      return
+    }
+    leaveTimer.current = setTimeout(() => setHoveredNow(false), HOVER_GRACE)
+  }, [])
+
+  useEffect(() => () => {
+    if (leaveTimer.current) clearTimeout(leaveTimer.current)
+  }, [])
 
   const { screenToFlowPosition, setEdges } = useReactFlow()
   // 盤の拡大率。**説明の大きさを打ち消す**のに使う（盤ごと縮めると読めなくなる）
@@ -539,12 +561,17 @@ const MIN_SEGMENT_FOR_BRANCH = 36
 const BRANCH_COLOR = '#3f9c62'
 
 /**
- * 三角を線から離す幅。**線の上の文字より上へ出す。**
+ * 三角を線から離す幅。
  *
- * 文字は高さ約31pxで道のりの真ん中に置かれるので、その半分（約16px）に
- * 印の大きさと隙間を足した高さへ逃がす
+ * 26px 離していたら、**線から三角へカーソルを移す途中が空白**になり、
+ * 届く前に印が消えていた（線から外れた時点でホバーが切れる）。
+ * 文字の半分（約16px）をわずかに越えるところまで下げて、
+ * 触れている間は消えないようにする（`keepVisible`）
  */
-const BRANCH_OFFSET = 26
+const BRANCH_OFFSET = 17
+
+/** 線から離れたあと、操作点を消すまでの猶予(ms)。途中の空白を渡りきる時間 */
+const HOVER_GRACE = 220
 
 const CONTROL_LOOKS: Record<ControlKind, React.CSSProperties> = {
   add: {
@@ -588,6 +615,7 @@ function ControlPoint({
   kind,
   hint,
   zoom,
+  onHover,
   onPointerDown,
   onDoubleClick,
 }: {
@@ -598,6 +626,8 @@ function ControlPoint({
   hint: string
   /** 盤の拡大率。**説明の大きさを打ち消す**のに使う */
   zoom: number
+  /** 触れている間は、線から離れていても印を出したままにする */
+  onHover?: (near: boolean) => void
   onPointerDown?: (event: ReactPointerEvent) => void
   onDoubleClick?: (event: ReactMouseEvent) => void
 }) {
@@ -618,8 +648,14 @@ function ControlPoint({
       <div
         onPointerDown={onPointerDown}
         onDoubleClick={onDoubleClick}
-        onMouseEnter={() => setNear(true)}
-        onMouseLeave={() => setNear(false)}
+        onMouseEnter={() => {
+          setNear(true)
+          onHover?.(true)
+        }}
+        onMouseLeave={() => {
+          setNear(false)
+          onHover?.(false)
+        }}
         style={{
           position: 'absolute',
           left: '50%',
