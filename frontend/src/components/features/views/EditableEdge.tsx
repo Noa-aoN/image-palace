@@ -296,7 +296,7 @@ function EditableEdgeComponent(props: EdgeProps) {
           y1={branch.from.y}
           x2={branch.to.x}
           y2={branch.to.y}
-          stroke="var(--palace)"
+          stroke={BRANCH_COLOR}
           strokeWidth={2}
           strokeDasharray="6 4"
           style={{ pointerEvents: 'none' }}
@@ -377,17 +377,19 @@ function EditableEdgeComponent(props: EdgeProps) {
             */}
             {verts.slice(0, -1).map((v, i) => {
               const n = verts[i + 1]
-              const mx = (v.x + n.x) / 2
-              const my = (v.y + n.y) / 2
+              const length = Math.hypot(n.x - v.x, n.y - v.y)
               // **短い区間には出さない。** カードから出る助走は 28px しかないので、
               // そこに候補を出しても、置けるのはカードの縁のすぐ横。
               // 狙う的だけが増えて、本当に曲げたい所が押しにくくなる
-              if (Math.hypot(n.x - v.x, n.y - v.y) < MIN_SEGMENT_FOR_GHOST) return null
+              if (length < MIN_SEGMENT_FOR_GHOST) return null
+
+              // **真ん中は三角に譲る。** 三角が出ない短い区間では、こちらが真ん中を使う
+              const at = pointOn(v, n, length >= MIN_SEGMENT_FOR_BRANCH ? GHOST_AT : 0.5)
               return (
                 <ControlPoint
                   key={`g${i}`}
-                  x={mx}
-                  y={my}
+                  x={at.x}
+                  y={at.y}
                   kind="add"
                   hint="押すとここに折れ点ができます（そのまま引くと位置も決まります）"
                   zoom={zoom}
@@ -418,8 +420,11 @@ function EditableEdgeComponent(props: EdgeProps) {
               const n = verts[i + 1]
               if (Math.hypot(n.x - v.x, n.y - v.y) < MIN_SEGMENT_FOR_BRANCH) return null
 
-              // 折れ点の候補（真ん中）と重ならないよう、少し先へ置く
-              const at = { x: v.x + (n.x - v.x) * 0.72, y: v.y + (n.y - v.y) * 0.72 }
+              // **真ん中に置く。** いちばん押しやすい場所を、いちばん使うものに充てる。
+              // ただし線の上には乗せず、**脇へ少しずらす**。
+              // 線の上の文字（ラベル）も道のりの真ん中に来るので、そのままだと重なる。
+              // ずらすと「ここから外へ引き出すもの」だと形でも伝わる
+              const at = besideSegment(pointOn(v, n, 0.5), v, n, BRANCH_OFFSET)
               return (
                 <ControlPoint
                   key={`b${i}`}
@@ -494,6 +499,29 @@ const CONTROL_HIT_SIZE = 22
 const MIN_SEGMENT_FOR_GHOST = 44
 
 /**
+ * 三角が出るとき、折れ点の候補をどこへ寄せるか（区間の割合）。
+ * **重ならない程度に離す。** 近すぎると、狙ったほうと違うものを掴む
+ */
+const GHOST_AT = 0.24
+
+/** 区間の上の点。a から b へ t だけ進んだ所 */
+function pointOn(a: EdgePoint, b: EdgePoint, t: number): EdgePoint {
+  return { x: a.x + (b.x - a.x) * t, y: a.y + (b.y - a.y) * t }
+}
+
+/**
+ * 区間の**脇**へずらした点。線と直角の向きへ離す。
+ * 線の上の文字と重ならず、「外へ引き出すもの」だと形でも伝わる
+ */
+function besideSegment(at: EdgePoint, a: EdgePoint, b: EdgePoint, distance: number): EdgePoint {
+  const length = Math.hypot(b.x - a.x, b.y - a.y)
+  if (length === 0) return at
+
+  // 直角の向き（右手側）。線が縦なら右へ、横なら下へ寄る
+  return { x: at.x - ((b.y - a.y) / length) * distance, y: at.y + ((b.x - a.x) / length) * distance }
+}
+
+/**
  * 点の名前。説明は「**名前：何ができるか**」の形で出す。
  * 説明文だけだと、いま触っているのが何なのかが分からないまま操作を読むことになる
  */
@@ -509,6 +537,12 @@ const CONTROL_NAMES: Record<ControlKind, string> = {
  * 折れ点の候補より長い区間にだけ出す（短い線に印が2つ並ぶと、どちらも押しにくい）
  */
 const MIN_SEGMENT_FOR_BRANCH = 96
+
+/** 枝分かれの色。**足す操作の色**として、線の色から離す */
+const BRANCH_COLOR = '#3f9c62'
+
+/** 三角を線から離す幅。**文字と重ならず、線から離れすぎない** */
+const BRANCH_OFFSET = 15
 
 const CONTROL_LOOKS: Record<ControlKind, React.CSSProperties> = {
   add: {
@@ -532,9 +566,15 @@ const CONTROL_LOOKS: Record<ControlKind, React.CSSProperties> = {
     // 終端は見た目だけ。つなぎ替えは React Flow の受け持ち
     pointerEvents: 'none',
   },
-  // **三角**。丸（端）とも四角（折れ点）とも違うことを、形だけで伝える
+  /**
+   * **三角、そして緑。** 丸（端）とも四角（折れ点）とも違うことを、形と色の両方で伝える。
+   *
+   * ほかの点は線と同じ色を使っている（線に関わるものだから）。
+   * こちらは**新しい線を生やす**もので、いまある線を触るものではない。
+   * 足す操作の色として、線の色から離す
+   */
   branch: {
-    background: 'var(--palace)',
+    background: BRANCH_COLOR,
     clipPath: 'polygon(50% 0%, 100% 100%, 0% 100%)',
     cursor: 'copy',
   },
