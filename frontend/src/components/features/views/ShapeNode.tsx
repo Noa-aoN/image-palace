@@ -46,8 +46,15 @@ export const ShapeNode = memo(function ShapeNode({ data, selected }: NodeProps<S
           lineClassName="!border-transparent"
         />
       )}
+      {/*
+        **掴む点は、この group の中に置く。**
+        外に出していたので `group-hover` が効かず、近づいても点が出てこなかった
+        （カード側は最初から中に置いてある）。
+        かこみの中身は素通しにするが、**点までは素通しにしない**ので層を分ける
+      */}
+      <div className="group relative h-full w-full">
       <div
-        className={`group h-full w-full ${isFrame ? 'pointer-events-none' : ''}`}
+        className={`h-full w-full ${isFrame ? 'pointer-events-none' : ''}`}
         style={{ opacity: style.opacity ?? 1 }}
       >
         <div className="relative h-full w-full" style={surfaceStyle(kind, style)}>
@@ -85,12 +92,15 @@ export const ShapeNode = memo(function ShapeNode({ data, selected }: NodeProps<S
           style={handle.style}
           /* 接合点は点そのものが端。掴む所を隠すと繋げられないので、常に見せる */
           className={
+            /* 接合点は小さいので、点そのものを狙わせない。
+               近づいたら4方向とも出して、そこから引けるようにする */
             isJunction
-              ? '!h-3 !w-3 !border-2 !border-background !bg-[var(--palace)] !opacity-0 hover:!opacity-100'
+              ? '!z-10 !h-3 !w-3 !border-2 !border-background !bg-[var(--palace)] !opacity-0 transition-opacity group-hover:!opacity-100'
               : '!pointer-events-none !z-10 !h-3 !w-3 !border-2 !border-background !bg-[var(--palace)] !opacity-0 transition-all group-hover:!pointer-events-auto group-hover:!opacity-100 hover:!h-4 hover:!w-4'
           }
         />
       ))}
+      </div>
       {selected && !isJunction && (
         <span className="pointer-events-none absolute -top-5 right-0 text-2xs text-muted-foreground">
           {KIND_LABELS[kind]}
