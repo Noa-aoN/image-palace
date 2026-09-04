@@ -357,11 +357,16 @@ module Views
       def measure_edge_length
         return 1.0 if polylines.empty?
 
-        # 長さも、重なっている線は1本ぶん（見えている線の長さを測る）
-        @counts[:total_edge_length] = distinct_polylines.sum do |polyline|
-          polyline.each_cons(2).sum { |a, b| (a[:x] - b[:x]).abs + (a[:y] - b[:y]).abs }
-        end.round
-        average = @counts[:total_edge_length].to_f / distinct_polylines.size
+        # **見えている線の長さを測る。**
+        #
+        # 1本ずつ足していた頃は、幹を共有する区間を本数ぶん重ねて数えていた
+        # （角のときと同じ間違い）。同じ道を3本が通っていても、
+        # 見ている人が目で追う長さは1本ぶん。
+        # 束ねるほど長さが増える、という逆さまな物差しになっていた
+        @counts[:total_edge_length] = unique_segments.sum do |segment|
+          (segment[:from][0] - segment[:to][0]).abs + (segment[:from][1] - segment[:to][1]).abs
+        end
+        average = @counts[:total_edge_length].to_f / polylines.size
         [ 1.0 - average / LENGTH_PER_EDGE_FOR_ZERO, 0.0 ].max
       end
 

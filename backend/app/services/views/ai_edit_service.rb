@@ -937,7 +937,7 @@ module Views
     end
 
     def apply_order!(ids)
-      on_board = @view.view_items.pluck(:item_id)
+      on_board = on_board_ids.to_a
       ordered = ids & on_board
       return 0 if ordered.empty?
 
@@ -1215,7 +1215,7 @@ module Views
     # 落とす前の一覧。**食い違いはここで見る。**
     # 1本にまとめてしまうと、「姉妹」と「娘」が両方付いていたことに気づけない
     def raw_relations(relations)
-      on_board = @view.view_items.pluck(:item_id).to_set
+      on_board = on_board_ids
       Array(relations).filter_map do |relation|
         next unless relation.is_a?(Hash)
 
@@ -1236,8 +1236,20 @@ module Views
       end
     end
 
+    # 盤にあるカードの id。**出どころを1つにし、毎回引き直す。**
+    #
+    # 3か所で `@view.view_items.pluck` を書いていた。関連が読み込み済みだと
+    # その時点の中身を見ることになり、控えを取った直後に足したカードが
+    # 無いものとして扱われる。
+    #
+    # **覚えてはいけない。** 整えている途中でカードは増えも減りもする
+    # （外したカードを「まだ盤にある」と読むと、消したはずの線が残る）
+    def on_board_ids
+      ViewItem.where(view_id: @view.id).pluck(:item_id).to_set
+    end
+
     def normalized_groups(groups)
-      on_board = @view.view_items.pluck(:item_id).to_set
+      on_board = on_board_ids
       Array(groups).filter_map do |group|
         next unless group.is_a?(Hash)
 
@@ -1480,11 +1492,11 @@ module Views
       @view.view_shapes.where(kind: "junction").select { |shape| shape.style["source"] == AUTO_JUNCTION }
            .each(&:destroy)
 
-      Layout::CoupleBus.new(boxes: boxes, relations: relations).couples.each do |couple|
+      Layout::Bus.new(boxes: boxes, relations: relations).groups.each do |group|
         half = ViewShape::JUNCTION_SIZE / 2.0
         @view.view_shapes.create!(
           kind: "junction",
-          x: (couple.trunk_x - half).round, y: (couple.bus_y - half).round,
+          x: (group.trunk_x - half).round, y: (group.bus_y - half).round,
           width: ViewShape::JUNCTION_SIZE, height: ViewShape::JUNCTION_SIZE,
           style: ViewShape.default_style_for("junction").merge("source" => AUTO_JUNCTION)
         )
