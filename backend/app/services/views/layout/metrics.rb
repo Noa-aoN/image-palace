@@ -54,7 +54,17 @@ module Views
         size = DEFAULT_CARD_FONT_SIZE unless size.positive?
         size = size.clamp(10, 32)
 
-        units = title.to_s.each_char.sum do |character|
+        (text_units(title) * size + CARD_TITLE_HORIZONTAL_PADDING)
+          .clamp(CARD_WIDTH, MAX_TITLE_FOOTPRINT_WIDTH)
+      end
+
+      # 文字が横に占める量を、文字の大きさ1に対する比で見積もる。
+      #
+      # ブラウザに測らせられないので、幅の違う3種で分ける。
+      # 全角は1、英数は0.58、空白は0.35。**線の上の文字もこれで測る**
+      # （見出しと同じ物差しでないと、片方だけずれる）
+      def text_units(text)
+        text.to_s.each_char.sum do |character|
           if character.match?(/\s/)
             0.35
           elsif character.ascii_only?
@@ -63,8 +73,6 @@ module Views
             1.0
           end
         end
-
-        (units * size + CARD_TITLE_HORIZONTAL_PADDING).clamp(CARD_WIDTH, MAX_TITLE_FOOTPRINT_WIDTH)
       end
 
       # 盤の設定から見出しの文字サイズを取り出す
