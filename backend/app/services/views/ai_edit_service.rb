@@ -825,7 +825,7 @@ module Views
       # **測った点数を捨てない。** 計算しておきながら誰も読まない状態だったので、
       # 利用者まで届ける（良くなったのか悪くなったのかを、目だけで判断させない）
       Result.new(summary:, notes: combined_notes(notes), added:, removed:,
-                 placed: placed_count, connected:, score: @layout_score&.to_h)
+                 placed: placed_count, connected:, score: score_report)
     end
 
     # 置き場所も大きさも線も触らず、カードも足さない＝やることが無い。
@@ -842,8 +842,35 @@ module Views
     #   図の崩れ      … 重なり・線の交差・文字の衝突
     def combined_notes(ai_notes)
       rescued = ("見落としていた関係を#{@rescued}本、追い足しました。" if @rescued.to_i.positive?)
-      [ ai_notes, rescued, *Array(@consistency_notes), *Array(@layout_notes) ]
+      [ ai_notes, rescued, improvement_note, *Array(@consistency_notes), *Array(@layout_notes) ]
         .compact_blank.uniq.first(8).join("\n").presence
+    end
+
+    # 利用者へ返す点数。**採点していないとき（デッキ・線だけ整えたとき）は返さない**
+    def score_report
+      return nil if @layout_score.nil?
+
+      @layout_score.to_h.merge(improvement: @improvement).compact
+    end
+
+    # 「念入り」が何をしたか。**分からないまま待たせない。**
+    #
+    # 動かして良くならなかったのなら、そう言う。置き場所ではもう上がらない、
+    # という報せは「効いていない」とは別のことなので、混同させない
+    def improvement_note
+      return nil unless @thorough
+      return nil if @improvement.blank?
+
+      rounds = @improvement[:rounds].to_i
+      return nil if rounds.zero?
+
+      gain = @improvement[:to].to_i - @improvement[:from].to_i
+      if gain.positive?
+        "念入りに整えました（#{rounds}通り試して #{@improvement[:from]}→#{@improvement[:to]}点）。"
+      else
+        "念入りに#{rounds}通り試しましたが、置き場所ではこれ以上、上がりませんでした" \
+          "（#{@improvement[:to]}点）。残りは線の引き方の問題です。"
+      end
     end
 
     def ids_from(value)
@@ -955,6 +982,7 @@ module Views
 
       @layout_notes = result.notes
       @layout_score = result.score
+      @improvement = result.improvement
       # **かこみは、中身を追いかける。**
       # 動かす前に「どのカードが入っていたか」を控え、動かした後に囲み直す
       enclosed = frame_contents(boxes)

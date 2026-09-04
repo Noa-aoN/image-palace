@@ -40,7 +40,7 @@ module Views
       # @param score_for [Proc] boxes を受け取って Score を返す
       # @param relations [Array<Hash>]
       # @param budget [Float] 使える秒数
-      def initialize(boxes:, relations:, score_for:, budget: STANDARD_BUDGET, score: nil)
+      def initialize(boxes:, relations:, score_for:, budget: STANDARD_BUDGET, score: nil, perturb: nil)
         @boxes = boxes
         @by_id = boxes.to_h { |box| [ box.id, box ] }
         @relations = relations
@@ -49,6 +49,10 @@ module Views
         # 出来上がった時点の点数。**もう分かっているものを測り直さない**
         # （58枚では1回の採点に0.4秒かかる。測り直すだけで予算の2割が消える）
         @score = score
+        # **わざと1手ずらしてから登り直す番号。**
+        # 同じ所から登ると毎回同じ頂へ着く。少し崩してから登り直すと、
+        # 別の頂へ着くことがある（「念入り」はこれを繰り返す）
+        @perturb = perturb
         @tried = 0
         @kept = 0
       end
@@ -60,6 +64,7 @@ module Views
 
         deadline = now + @budget
         slowest = 0.0
+        best = perturb!(best)
 
         moves.each do |move|
           # **入りきらない手は始めない。** 始めてから時間切れになると、
@@ -87,6 +92,20 @@ module Views
       private
 
       def finish(score) = { boxes: @boxes, score: score, tried: @tried, kept: @kept }
+
+      # 登り始める前に、わざと1手当てる。**点数が下がってもよい。**
+      # 下がった所から登り直すと、元の頂より高い所へ着くことがある
+      def perturb!(score)
+        return score if @perturb.nil?
+
+        list = moves
+        return score if list.empty?
+
+        undo = list[@perturb % list.size].call
+        return score if undo.nil?
+
+        @score_for.call(@boxes)
+      end
 
       def now = Process.clock_gettime(Process::CLOCK_MONOTONIC)
 

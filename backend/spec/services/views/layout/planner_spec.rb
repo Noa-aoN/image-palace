@@ -73,13 +73,15 @@ RSpec.describe Views::Layout::Planner do
       expect(%w[cluster grid]).to include(result.structure)
     end
 
-    it "木の形をしていれば階層か放射を選ぶ" do
+    # 木として読める形ならよい。**階層図とマインドマップは、どちらも木**
+    # （どちらを選ぶかは点数で決まる。名前で決め打ちにしない）
+    it "木の形をしていれば、木として読める形を選ぶ" do
       boxes = %w[根 a b c].map { |id| box(id) }
       result = described_class.new(
         boxes: boxes, relations: [ rel("根", "a"), rel("根", "b"), rel("根", "c") ]
       ).call
 
-      expect(%w[hierarchy radial]).to include(result.structure)
+      expect(%w[hierarchy mindmap radial]).to include(result.structure)
     end
   end
 
@@ -285,5 +287,71 @@ RSpec.describe "#{Views::Layout::Planner} 改善は下げない" do
 
   it "同じ入力なら同じ点数になる" do
     expect(plan.score.points).to eq(plan.score.points)
+  end
+end
+
+# 「念入り」が何をしたのか分かること。
+#
+# 効いているのかどうか分からないまま待たせない。終わる条件は3つで、
+# どれで終わったかを伝える。
+RSpec.describe "#{Views::Layout::Planner} 念入りの終わり方" do
+  def box(id, x:, y:, width: 144, height: 176)
+    Views::Layout::Box.new(id: id, title: id, x: x, y: y, width: width, height: height,
+                           footprint_width: width)
+  end
+
+  # 目標点に届かない形。**届いてしまうと、登り直す前に終わる**ので確かめられない
+  let(:names) { %w[親 配偶者 兄弟 姉妹 子1 子2 子3 子4 子5 子6] }
+  let(:boxes) { names.each_with_index.map { |id, i| box(id, x: (9 - i) * 190, y: (i % 3) * 300) } }
+  let(:relations) do
+    [ { from: "親", to: "配偶者", type: "peer", label: "妻", strength: 0.9 },
+      { from: "親", to: "兄弟", type: "peer", label: "兄", strength: 0.8 },
+      { from: "親", to: "姉妹", type: "peer", label: "妹", strength: 0.8 } ] +
+      %w[子1 子2 子3].map { |id| { from: "親", to: id, type: "parent", label: "子", strength: 0.9 } } +
+      %w[子4 子5 子6].map { |id| { from: "配偶者", to: id, type: "parent", label: "子", strength: 0.9 } } +
+      %w[子1 子2].map { |id| { from: "配偶者", to: id, type: "parent", label: "母", strength: 0.9 } }
+  end
+
+  def plan(**options)
+    Views::Layout::Planner.new(
+      boxes: boxes.map { |b| b.dup_at(b.x, b.y) }, relations: relations,
+      structure: "hierarchy", **options
+    ).call
+  end
+
+  it "何回試して、何点から何点になったかを返す" do
+    result = plan(thorough: true)
+
+    expect(result.improvement).to include(:rounds, :tried, :kept, :from, :to, :reason)
+    expect(result.improvement[:reason]).to be_present
+    expect(result.improvement[:to]).to eq(result.score.points)
+  end
+
+  it "念入りのほうが、多く試す" do
+    standard = plan.improvement
+    thorough = plan(thorough: true).improvement
+
+    expect(thorough[:tried]).to be >= standard[:tried]
+    expect(thorough[:rounds]).to be >= standard[:rounds]
+  end
+
+  # 満点を狙って動かし続けない（最後の数点は線の引き方の話）
+  it "目標点に届いたら、そこで終わる" do
+    tidy = [ box("親", x: 400, y: 0), box("子", x: 400, y: 400) ]
+    result = Views::Layout::Planner.new(
+      boxes: tidy, relations: [ { from: "親", to: "子", type: "parent", label: "子", strength: 0.9 } ],
+      structure: "hierarchy", thorough: true
+    ).call
+
+    expect(result.score.points).to be >= Views::Layout::Planner::TARGET_POINTS
+    expect(result.improvement[:reason]).to eq("reached_target")
+  end
+
+  it "念入りにしても、点数は下がらない" do
+    expect(plan(thorough: true).score.points).to be >= plan.score.points
+  end
+
+  it "同じ入力なら、同じ結果になる" do
+    expect(plan(thorough: true).score.points).to eq(plan(thorough: true).score.points)
   end
 end

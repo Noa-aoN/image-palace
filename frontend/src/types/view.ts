@@ -257,6 +257,18 @@ export interface BoardScore {
   }[]
   counts: Record<string, number>
   ratios: Record<string, number>
+  /**
+   * 「念入りに整える」が何をしたか。**効いているのか分からないまま待たせない。**
+   * reason は終わった理由（目標点に届いた／全部試した／時間切れ）
+   */
+  improvement?: {
+    rounds: number
+    tried: number
+    kept: number
+    from: number
+    to: number
+    reason: string
+  } | null
 }
 
 /**
