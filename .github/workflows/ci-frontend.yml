@@ -57,5 +57,29 @@ jobs:
         run: npm run test
 
       # 本番に載る依存のみ検査する（devDependencies のノイズを避ける）
+      #
+      # **npm の audit エンドポイントは落ちる。** 実際に 400 / 503 が続けて返り、
+      # コードと無関係に PR が止まった（"This endpoint is being retired" とも出る）。
+      #
+      # 落ちたことを「脆弱性なし」とは扱わない。**脆弱性が見つかったときは止め、
+      # 繋がらなかったときは警告として残す。** 区別せずに `|| true` を付けると、
+      # 本物の指摘まで黙って通ることになる。
       - name: Audit dependencies (npm audit)
-        run: npm audit --omit=dev --audit-level=high
+        run: |
+          set +e
+          for attempt in 1 2 3; do
+            output=$(npm audit --omit=dev --audit-level=high 2>&1)
+            status=$?
+            if [ $status -eq 0 ]; then
+              echo "$output"
+              exit 0
+            fi
+            if echo "$output" | grep -q "audit endpoint returned an error"; then
+              echo "npm の audit エンドポイントに繋がりません（${attempt}回目）"
+              sleep 20
+              continue
+            fi
+            echo "$output"
+            exit $status
+          done
+          echo "::warning::npm audit のエンドポイントに繋がらないため、今回は検査できませんでした"
