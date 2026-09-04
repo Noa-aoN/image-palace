@@ -24,6 +24,7 @@ import {
   buildEdgePath,
   orthogonalize,
   withStubs,
+  stubFor,
   dashArrayFor,
   resolveLineStyle,
   portedPoint,
@@ -65,6 +66,9 @@ function EditableEdgeComponent(props: EdgeProps) {
   const { screenToFlowPosition, setEdges } = useReactFlow()
   // 盤の拡大率。**説明の大きさを打ち消す**のに使う（盤ごと縮めると読めなくなる）
   const zoom = useStore((state) => state.transform[2])
+  // 端が「点」（接合点）か。**助走の長さがここで変わる**
+  const sourceIsJunction = useStore((state) => isJunctionNode(state.nodeLookup.get(props.source)))
+  const targetIsJunction = useStore((state) => isJunctionNode(state.nodeLookup.get(props.target)))
   const { commitPoints, branchFrom, boardBg } = useContext(EdgeActionsContext)
   const latest = useRef<EdgePoint[]>(points)
   const moved = useRef(false)
@@ -90,7 +94,12 @@ function EditableEdgeComponent(props: EdgeProps) {
   const start = portedPoint({ x: sourceX, y: sourceY }, sourceHandleSide, s.source_port)
   const end = portedPoint({ x: targetX, y: targetY }, targetHandleSide, s.target_port)
   const verts = orthogonalize(
-    withStubs([start, ...points, end], sourceHandleSide, targetHandleSide),
+    withStubs([start, ...points, end], sourceHandleSide, targetHandleSide, {
+      // **接合点は「点」なので、助走をほとんど取らない。**
+      // カードと同じ28pxを取ると、元の線から離れて生えたように見える
+      source: stubFor(sourceIsJunction),
+      target: stubFor(targetIsJunction),
+    }),
     axisForHandle(sourceHandleSide)
   )
   // 助走と手前止めを掛けたので、折れ点が無い線もここで組む。
@@ -383,8 +392,8 @@ function EditableEdgeComponent(props: EdgeProps) {
               // 狙う的だけが増えて、本当に曲げたい所が押しにくくなる
               if (length < MIN_SEGMENT_FOR_GHOST) return null
 
-              // **真ん中は三角に譲る。** 三角が出ない短い区間では、こちらが真ん中を使う
-              const at = pointOn(v, n, length >= MIN_SEGMENT_FOR_BRANCH ? GHOST_AT : 0.5)
+              // 三角は**文字の上**へ逃げるので、こちらは線の上の真ん中でよい
+              const at = pointOn(v, n, 0.5)
               return (
                 <ControlPoint
                   key={`g${i}`}
@@ -418,22 +427,25 @@ function EditableEdgeComponent(props: EdgeProps) {
             */}
             {verts.slice(0, -1).map((v, i) => {
               const n = verts[i + 1]
+              // **短い線でも出す。** 出ないと、そこからは枝分かれできないことになる。
+              // 出さないのは、印そのものが収まらない長さだけ
               if (Math.hypot(n.x - v.x, n.y - v.y) < MIN_SEGMENT_FOR_BRANCH) return null
 
-              // **真ん中に置く。** いちばん押しやすい場所を、いちばん使うものに充てる。
-              // ただし線の上には乗せず、**脇へ少しずらす**。
-              // 線の上の文字（ラベル）も道のりの真ん中に来るので、そのままだと重なる。
-              // ずらすと「ここから外へ引き出すもの」だと形でも伝わる
-              const at = besideSegment(pointOn(v, n, 0.5), v, n, BRANCH_OFFSET)
+              // **線の上の点**。ここに接合点ができる（印の見た目とは別）
+              const on = pointOn(v, n, 0.5)
+              // 印は**文字の上**へ逃がす。線の上の文字も道のりの真ん中に来るので、
+              // そのままだと重なる。上へ出すと「外へ引き出すもの」だと形でも伝わる
+              const mark = { x: on.x, y: on.y - BRANCH_OFFSET }
               return (
                 <ControlPoint
                   key={`b${i}`}
-                  x={at.x}
-                  y={at.y}
+                  x={mark.x}
+                  y={mark.y}
                   kind="branch"
                   hint="引くと、ここから新しい線が生えます（相手の上で離す）"
                   zoom={zoom}
-                  onPointerDown={startBranch(at)}
+                  // **接合点は線の上に作る。** 印の場所に作ると、線から外れた所に点が残る
+                  onPointerDown={startBranch(on)}
                 />
               )
             })}
@@ -498,28 +510,11 @@ const CONTROL_HIT_SIZE = 22
  */
 const MIN_SEGMENT_FOR_GHOST = 44
 
-/**
- * 三角が出るとき、折れ点の候補をどこへ寄せるか（区間の割合）。
- * **重ならない程度に離す。** 近すぎると、狙ったほうと違うものを掴む
- */
-const GHOST_AT = 0.24
-
 /** 区間の上の点。a から b へ t だけ進んだ所 */
 function pointOn(a: EdgePoint, b: EdgePoint, t: number): EdgePoint {
   return { x: a.x + (b.x - a.x) * t, y: a.y + (b.y - a.y) * t }
 }
 
-/**
- * 区間の**脇**へずらした点。線と直角の向きへ離す。
- * 線の上の文字と重ならず、「外へ引き出すもの」だと形でも伝わる
- */
-function besideSegment(at: EdgePoint, a: EdgePoint, b: EdgePoint, distance: number): EdgePoint {
-  const length = Math.hypot(b.x - a.x, b.y - a.y)
-  if (length === 0) return at
-
-  // 直角の向き（右手側）。線が縦なら右へ、横なら下へ寄る
-  return { x: at.x - ((b.y - a.y) / length) * distance, y: at.y + ((b.x - a.x) / length) * distance }
-}
 
 /**
  * 点の名前。説明は「**名前：何ができるか**」の形で出す。
@@ -534,15 +529,22 @@ const CONTROL_NAMES: Record<ControlKind, string> = {
 
 /**
  * 枝分かれの印を出す、区間の最短の長さ。
- * 折れ点の候補より長い区間にだけ出す（短い線に印が2つ並ぶと、どちらも押しにくい）
+ *
+ * 96px にしていたが、**短い線から枝分かれできないことになる**ので下げた。
+ * 印は線の上ではなく文字の上へ逃がすので、短い区間でも折れ点の候補と重ならない
  */
-const MIN_SEGMENT_FOR_BRANCH = 96
+const MIN_SEGMENT_FOR_BRANCH = 36
 
 /** 枝分かれの色。**足す操作の色**として、線の色から離す */
 const BRANCH_COLOR = '#3f9c62'
 
-/** 三角を線から離す幅。**文字と重ならず、線から離れすぎない** */
-const BRANCH_OFFSET = 15
+/**
+ * 三角を線から離す幅。**線の上の文字より上へ出す。**
+ *
+ * 文字は高さ約31pxで道のりの真ん中に置かれるので、その半分（約16px）に
+ * 印の大きさと隙間を足した高さへ逃がす
+ */
+const BRANCH_OFFSET = 26
 
 const CONTROL_LOOKS: Record<ControlKind, React.CSSProperties> = {
   add: {
@@ -667,6 +669,17 @@ function ControlPoint({
       )}
     </div>
   )
+}
+
+/**
+ * その節が「点」（接合点）か。
+ *
+ * 接合点は線の一部なので、そこから出る線に長い助走は要らない。
+ * カードと同じ扱いにすると、元の線から離れて生えたように見える
+ */
+function isJunctionNode(node: { data?: unknown } | undefined): boolean {
+  const shape = (node?.data as { shape?: { kind?: string } } | undefined)?.shape
+  return shape?.kind === 'junction'
 }
 
 export const EditableEdge = memo(EditableEdgeComponent)

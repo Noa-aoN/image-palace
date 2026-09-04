@@ -78,7 +78,7 @@ module Views
         same_level = dy.abs < apart
 
         # 同列の関係は、同じ段に居るかぎり横で結ぶ
-        return dx.positive? ? [ "right", "left" ] : [ "left", "right" ] if type.to_s == "peer" && same_level
+        return dx.positive? ? [ "right", "left" ] : [ "left", "right" ] if Relation.same_level?(type) && same_level
 
         if dy.abs >= apart || dy.abs >= dx.abs
           dy.positive? ? [ "bottom", "top" ] : [ "top", "bottom" ]

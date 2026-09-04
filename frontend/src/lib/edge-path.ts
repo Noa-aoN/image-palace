@@ -212,27 +212,42 @@ export function withStubs(
   vertices: EdgePoint[],
   sourceHandle: string | null | undefined,
   targetHandle: string | null | undefined,
-  stub = EDGE_STUB
+  stub: number | { source: number; target: number } = EDGE_STUB
 ): EdgePoint[] {
-  if (vertices.length < 2 || stub <= 0) return vertices
+  const lengths = typeof stub === 'number' ? { source: stub, target: stub } : stub
+  if (vertices.length < 2 || (lengths.source <= 0 && lengths.target <= 0)) return vertices
 
   const out = [...vertices]
 
   // 先に終点側から入れる（先頭へ入れると、末尾の位置がずれる）
   const to = OUTWARD[sideOfHandle(targetHandle)]
-  if (to) {
+  if (to && lengths.target > 0) {
     const end = out[out.length - 1]
-    const length = stubLength(end, out[out.length - 2], to, stub)
+    const length = stubLength(end, out[out.length - 2], to, lengths.target)
     if (length > 0) out.splice(out.length - 1, 0, { x: end.x + to.x * length, y: end.y + to.y * length })
   }
 
   const from = OUTWARD[sideOfHandle(sourceHandle)]
-  if (from) {
+  if (from && lengths.source > 0) {
     const start = out[0]
-    const length = stubLength(start, out[1], from, stub)
+    const length = stubLength(start, out[1], from, lengths.source)
     if (length > 0) out.splice(1, 0, { x: start.x + from.x * length, y: start.y + from.y * length })
   }
   return out
+}
+
+/**
+ * 接合点から出る線の助走。
+ *
+ * 助走はカードの縁に線が張り付かないようにするためのもので、
+ * **点から出る線には要らない**。28px も取ると、元の線から離れて生えたように見える。
+ * 点の大きさぶんだけ離れれば足りる
+ */
+export const JUNCTION_STUB = 6
+
+/** その端が「点」（接合点）なら、助走を短くする */
+export function stubFor(isJunction: boolean): number {
+  return isJunction ? JUNCTION_STUB : EDGE_STUB
 }
 
 /**

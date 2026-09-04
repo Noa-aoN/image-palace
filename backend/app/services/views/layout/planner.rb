@@ -260,7 +260,7 @@ module Views
 
       # 時系列。**順序の関係が大半で、枝分かれが少ない**
       def timeline?
-        directed = @relations.reject { |relation| relation[:type].to_s == "peer" }
+        directed = Relation.hierarchical(@relations)
         return false if directed.size < 2
 
         sequential = directed.count { |relation| relation[:type].to_s == "sequence" }

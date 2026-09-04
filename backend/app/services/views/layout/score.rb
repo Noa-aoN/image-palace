@@ -339,7 +339,7 @@ module Views
       # 同列で結ばれた2枚が、共通の子を持つ組
       def detect_couples
         children = hierarchy_children
-        peers = @edges.select { |edge| edge[:type].to_s == "peer" }
+        peers = Relation.same_level(@edges)
         peers.filter_map do |edge|
           shared = children[edge[:from]].to_a & children[edge[:to]].to_a
           next if shared.empty?
@@ -376,7 +376,7 @@ module Views
 
       # 同列の関係が同じ高さにあるか（世代の帯）
       def measure_level_alignment
-        peers = @edges.select { |edge| edge[:type].to_s == "peer" }
+        peers = Relation.same_level(@edges)
         return 1.0 if peers.empty?
 
         aligned = peers.count do |edge|
@@ -389,7 +389,7 @@ module Views
 
       # 向きの揃い。**同じ向きに読める図は、目で追える**
       def measure_flow
-        directed = @edges.reject { |edge| edge[:type].to_s == "peer" }
+        directed = Relation.hierarchical(@edges)
         return 1.0 if directed.empty?
 
         downward = directed.count { |edge| moved(edge, :center_y).positive? }
@@ -457,7 +457,7 @@ module Views
 
       # 段を作る関係（同列を除く）の親子表
       def hierarchy_children
-        @hierarchy_children ||= @edges.reject { |edge| edge[:type].to_s == "peer" }
+        @hierarchy_children ||= Relation.hierarchical(@edges)
                                       .group_by { |edge| edge[:from] }
                                       .transform_values { |list| list.map { |edge| edge[:to] } }
       end

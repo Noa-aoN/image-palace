@@ -168,7 +168,7 @@ module Views
       end
 
       def children_of
-        @children_of ||= @relations.reject { |relation| relation[:type].to_s == "peer" }
+        @children_of ||= Relation.hierarchical(@relations)
                                    .group_by { |relation| relation[:from] }
                                    .transform_values { |list| list.map { |relation| relation[:to] }.uniq.sort }
                                    .select { |_, children| children.size >= 2 }

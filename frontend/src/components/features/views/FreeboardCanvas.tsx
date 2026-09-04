@@ -74,6 +74,32 @@ const CARD_W = CARD_DEFAULT_W
 
 /** 接合点の大きさ。サーバーの ViewShape::DEFAULT_SIZES と揃える */
 const JUNCTION_SIZE = 14
+
+/**
+ * どの辺どうしを結ぶか。**位置関係だけで決まる。**
+ *
+ * サーバーの `Layout::Geometry.handles_for` と同じ考え方。
+ * 縦に離れているなら上下で、横に離れているなら左右で結ぶ。
+ * 決めずに作ると、相手が上にあっても下辺から出て、回り込んだ線になる
+ */
+function handlesBetween(
+  from: { x: number; y: number },
+  target: { position: { x: number; y: number }; measured?: { width?: number; height?: number } } | undefined
+): { source: string; target: string } {
+  if (!target) return { source: 'bottom', target: 'top' }
+
+  const center = {
+    x: target.position.x + (target.measured?.width ?? CARD_W) / 2,
+    y: target.position.y + (target.measured?.height ?? CARD_H) / 2,
+  }
+  const dx = center.x - from.x
+  const dy = center.y - from.y
+
+  if (Math.abs(dy) >= Math.abs(dx)) {
+    return dy > 0 ? { source: 'bottom', target: 'top' } : { source: 'top', target: 'bottom' }
+  }
+  return dx > 0 ? { source: 'right', target: 'left' } : { source: 'left', target: 'right' }
+}
 const CARD_H = CARD_DEFAULT_H
 // 全体表示でカードへ寄りすぎないよう、少し引いた倍率を上限にする。
 // サーバ側の外周余白と合わせて、AI 配置後にも盤面の文脈が見える状態を保つ。
@@ -1063,16 +1089,23 @@ function Canvas({
         })
         setNodes((current) => [ ...current, toShapeNode(junction) ])
 
+        // **どの辺から出るかを決めてから引く。**
+        // 決めずに作ると、相手が上にあっても下辺から出て、回り込んだ線になる
+        const target = getNodes().find((node) => node.id === targetNodeId)
+        const handles = handlesBetween(at, target)
+
         const saved = await addViewEdge(viewId, {
           source_node_id: junction.id,
           target_node_id: targetNodeId,
+          source_handle: handles.source,
+          target_handle: handles.target,
         })
         setEdges((current) => [ ...current, viewToEdge(saved) ])
       } catch {
         // 作れなかったときは何も起きない（宙に浮いた点を残さない）
       }
     },
-    [viewId, setNodes, setEdges]
+    [viewId, setNodes, setEdges, getNodes]
   )
 
   // 二重線は真ん中を盤の色で抜いて描くので、盤の色を線側にも渡す

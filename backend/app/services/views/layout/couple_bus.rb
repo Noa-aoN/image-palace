@@ -36,6 +36,8 @@ module Views
       # 親どうしがこれ以上離れていたら、幹にまとめない（横棒が長くなりすぎる）
       MAX_PARTNER_GAP = Metrics::CARD_WIDTH * 6
 
+      # 振る舞いは Relation が持つ。**ここで種類を数え上げない**
+
       Couple = Struct.new(:a, :b, :children, :trunk_x, :bus_y, keyword_init: true)
 
       # @param boxes [Hash<String, Box>]
@@ -88,7 +90,7 @@ module Views
       # 個別に引くと、どこまでが兄弟なのかは位置から推し量るしかない
       def detect
         children = hierarchical_children
-        pairs = @relations.select { |relation| relation[:type].to_s == "peer" }.filter_map do |relation|
+        pairs = @relations.select { |relation| Relation.couple?(relation[:type]) }.filter_map do |relation|
           a = @by_id[relation[:from]]
           b = @by_id[relation[:to]]
           next if a.nil? || b.nil?
@@ -117,12 +119,12 @@ module Views
       end
 
       def hierarchical_children
-        @hierarchical_children ||= @relations.reject { |relation| relation[:type].to_s == "peer" }
+        @hierarchical_children ||= Relation.hierarchical(@relations)
                                              .group_by { |relation| relation[:from] }
                                              .transform_values { |list| list.map { |relation| relation[:to] }.uniq }
       end
 
-      def hierarchical?(relation) = relation[:type].to_s != "peer"
+      def hierarchical?(relation) = !Relation.same_level?(relation[:type])
 
       # 幹と渡しの場所を決める。**決められない組は落とす**
       def with_geometry(couple)

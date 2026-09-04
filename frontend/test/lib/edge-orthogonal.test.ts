@@ -59,7 +59,7 @@ describe('axisForHandle', () => {
   })
 })
 
-import { EDGE_STUB, withStubs } from '@/lib/edge-path'
+import { EDGE_STUB, JUNCTION_STUB, stubFor, withStubs } from '@/lib/edge-path'
 
 // カードの縁を出てすぐ曲がると、線がそのカードの側面に張り付いて走る。
 describe('withStubs', () => {
@@ -135,5 +135,50 @@ describe('withStubs（折り返しを作らない）', () => {
     const points = [{ x: 100, y: 100 }, { x: 100, y: 100 }]
 
     expect(withStubs(points, 'bottom', null, 28)).toEqual(points)
+  })
+})
+
+/**
+ * 接合点から出る線の助走。
+ *
+ * 助走はカードの縁に線が張り付かないようにするためのもので、
+ * 点から出る線には要らない。28px も取ると、元の線から離れて生えたように見える。
+ */
+describe('stubFor', () => {
+  it('カードからは、これまでどおり離れる', () => {
+    expect(stubFor(false)).toBe(EDGE_STUB)
+  })
+
+  it('接合点からは、短く離れる', () => {
+    expect(stubFor(true)).toBe(JUNCTION_STUB)
+    expect(stubFor(true)).toBeLessThan(EDGE_STUB)
+  })
+})
+
+describe('withStubs（端ごとに長さを変える）', () => {
+  const line = [
+    { x: 100, y: 100 },
+    { x: 100, y: 500 },
+  ]
+
+  it('出る側と着く側で、別の長さを取れる', () => {
+    const out = withStubs(line, 'bottom', 'top', { source: 6, target: 28 })
+
+    expect(out[1]).toEqual({ x: 100, y: 106 })
+    expect(out[out.length - 2]).toEqual({ x: 100, y: 472 })
+  })
+
+  it('0 を渡した側には助走を足さない', () => {
+    const out = withStubs(line, 'bottom', 'top', { source: 0, target: 20 })
+
+    expect(out[1]).toEqual({ x: 100, y: 480 })
+    expect(out).toHaveLength(3)
+  })
+
+  it('数を1つ渡したときは、これまでどおり両端に同じ長さ', () => {
+    const out = withStubs(line, 'bottom', 'top', 20)
+
+    expect(out[1]).toEqual({ x: 100, y: 120 })
+    expect(out[out.length - 2]).toEqual({ x: 100, y: 480 })
   })
 })
