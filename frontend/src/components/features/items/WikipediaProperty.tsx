@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button'
 import { Spinner } from '@/components/ui/spinner'
 import {
   fetchWikipediaSummary,
+  fetchWikipediaEntries,
   searchWikipediaCandidates,
   type WikipediaCandidate,
 } from '@/lib/api/wikipedia'
@@ -74,6 +75,14 @@ export function WikipediaProperty({
   // 一番上を勝手に採ると、同名の別人・別作品が黙ってカードに入る
   const [candidates, setCandidates] = useState<WikipediaCandidate[] | null>(null)
   const [candidateLanguage, setCandidateLanguage] = useState<string | null>(null)
+  /**
+   * いま出している候補が、どの曖昧さ回避ページの中身か。
+   *
+   * 「もしかして、これですか？」（近い記事を探した結果）と
+   * 「どの意味ですか？」（多義語の行き先）は、利用者にとって別のことを訊いている。
+   * 同じ見出しで出すと、選んだ理由が変わってしまう
+   */
+  const [ambiguousTerm, setAmbiguousTerm] = useState<string | null>(null)
   // 続きがあるあいだだけ下端をぼかす（読み終わったら消す）
   const [more, setMore] = useState(false)
   // 中身が入った時点でも測る。開いた直後に判定できないと、
@@ -85,9 +94,31 @@ export function WikipediaProperty({
   // 近い記事を並べる。ここでは保存しない
   const offerCandidates = async (forTerm: string) => {
     const found = await searchWikipediaCandidates(forTerm, languageCode)
+    setAmbiguousTerm(null)
     setCandidates(found.candidates)
     setCandidateLanguage(found.language_code)
     setMessage(found.message)
+  }
+
+  /**
+   * 曖昧さ回避ページの中身を並べる。
+   *
+   * 曖昧さ回避ページは「どれですか」と訊いている一覧なので、
+   * そのまま次の選択肢にする。**行き止まりにしない。**
+   *
+   * 一覧が取れないページもある（記事へのリンクが無い等）。
+   * そのときは黙って諦めず、近い記事の検索へ回す
+   */
+  const offerEntries = async (title: string, language?: string) => {
+    const found = await fetchWikipediaEntries(title, language ?? languageCode)
+    if (!found.candidates.length) {
+      await offerCandidates(title)
+      return
+    }
+    setAmbiguousTerm(title)
+    setCandidates(found.candidates)
+    setCandidateLanguage(found.language_code)
+    setMessage(null)
   }
 
   // 一度きり。再描画のたびに走ると、候補を選んでいる最中に引き直してしまう
@@ -97,6 +128,7 @@ export function WikipediaProperty({
     setBusy(true)
     setMessage(null)
     setCandidates(null)
+    setAmbiguousTerm(null)
     try {
       const result = await fetchWikipediaSummary(forTerm, languageCode)
       if (!result.found) {
@@ -105,8 +137,8 @@ export function WikipediaProperty({
         return
       }
       if (result.disambiguation) {
-        // 曖昧さ回避のページは中身が一覧なので、そのまま出しても意味が取れない
-        await offerCandidates(forTerm)
+        // 曖昧さ回避のページは中身が一覧。**その一覧を選択肢として出す**
+        await offerEntries(result.summary.wikipedia_title || forTerm, result.language_code)
         return
       }
       onSaved(result.summary)
@@ -122,12 +154,20 @@ export function WikipediaProperty({
     setBusy(true)
     setMessage(null)
     try {
-      const result = await fetchWikipediaSummary(candidate.title, candidateLanguage ?? languageCode)
-      if (!result.found || result.disambiguation) {
+      const language = candidateLanguage ?? languageCode
+      const result = await fetchWikipediaSummary(candidate.title, language)
+      if (result.found && result.disambiguation) {
+        // 選んだ先がまた曖昧さ回避ページだった。**断らず、その中身を出す。**
+        // 出された選択肢を選んで断られるのは、利用者から見れば故障と変わらない
+        await offerEntries(result.summary.wikipedia_title || candidate.title, result.language_code)
+        return
+      }
+      if (!result.found) {
         setMessage('その記事は引けませんでした。別の候補を試してください。')
         return
       }
       setCandidates(null)
+      setAmbiguousTerm(null)
       onSaved(result.summary)
     } catch {
       setMessage('いま引けませんでした')
@@ -193,7 +233,9 @@ export function WikipediaProperty({
           本文まで見た検索（Wikipedia の検索窓と同じもの）の結果を並べる。
           ただし当てずっぽうを「近い記事」とは言わない（message が弱さを伝える） */}
       <p className="text-xs text-muted-foreground">
-        もしかして、これですか？（{candidateLanguage} 版）
+        {ambiguousTerm
+          ? `「${ambiguousTerm}」には複数の意味があります。どれですか？（${candidateLanguage} 版）`
+          : `もしかして、これですか？（${candidateLanguage} 版）`}
       </p>
       <ul className="space-y-1.5">
         {candidates.map((c) => (

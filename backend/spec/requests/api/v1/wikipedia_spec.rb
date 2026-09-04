@@ -158,4 +158,44 @@ RSpec.describe "Wikipedia の引き当て", type: :request do
       expect(response).to have_http_status(:unauthorized)
     end
   end
+  describe "GET /api/v1/wikipedia/entries" do
+    def stub_entries(candidates)
+      allow(Wikipedia::DisambiguationEntries).to receive(:call).and_return(
+        Wikipedia::DisambiguationEntries::Result.new(
+          candidates: candidates.map { |c| Wikipedia::CandidateSearch::Candidate.new(**c) },
+          language_code: "ja"
+        )
+      )
+    end
+
+    it "曖昧さ回避ページに並んでいる記事を返す" do
+      stub_entries([
+        { title: "アポローン", description: "ギリシア神話の神" },
+        { title: "アポロ計画", description: "アメリカの有人宇宙飛行計画" }
+      ])
+
+      get "/api/v1/wikipedia/entries", params: { title: "アポロン" }, headers: headers
+
+      expect(response).to have_http_status(:ok)
+      body = response.parsed_body
+      expect(body["candidates"].map { |c| c["title"] }).to eq([ "アポローン", "アポロ計画" ])
+      expect(body["message"]).to be_nil
+    end
+
+    # 一覧が取れないページもある。黙って空を返すと、画面が次の手を選べない
+    it "取れなかったことを隠さない" do
+      stub_entries([])
+
+      get "/api/v1/wikipedia/entries", params: { title: "アポロン" }, headers: headers
+
+      expect(response).to have_http_status(:ok)
+      expect(response.parsed_body["message"]).to include("選択肢を取れませんでした")
+    end
+
+    it "ログインが要る" do
+      get "/api/v1/wikipedia/entries", params: { title: "アポロン" }
+
+      expect(response).to have_http_status(:unauthorized)
+    end
+  end
 end

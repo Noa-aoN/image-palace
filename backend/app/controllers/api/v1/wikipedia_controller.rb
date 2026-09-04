@@ -42,6 +42,25 @@ module Api
         }, status: :ok
       end
 
+      # 曖昧さ回避ページに並んでいる記事を返す。
+      #
+      # **ここが無いと、多義語は行き止まりになる。** 「アポロン」を引くと
+      # 曖昧さ回避ページが返り、それを選ぶと「引けませんでした」と言われる。
+      # 出された選択肢を選んで断られるのは、利用者から見れば故障と変わらない。
+      #
+      # summary / search と同じく、**ここでは保存しない**。
+      def entries
+        result = ::Wikipedia::DisambiguationEntries.call(params[:title], language_code: language_code)
+
+        render json: {
+          candidates: result.candidates.map(&:to_h),
+          language_code: result.language_code,
+          # 一覧が取れないことはある（リンクが記事以外しか無いページなど）。
+          # そのときは画面が検索へ回せるように、隠さず伝える
+          message: result.candidates.empty? ? "この曖昧さ回避ページからは選択肢を取れませんでした。" : nil
+        }, status: :ok
+      end
+
       private
 
       # 「弱い」ことを隠さない。候補は出したうえで、言い直しを勧める
