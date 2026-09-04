@@ -265,7 +265,8 @@ export interface BoardScore {
  * カードの置き場所（view_items）は item_id が必須なので、図形はそこには入らない。
  * 線（view_edges）と同じく、ボードにぶら下がる別の実体として持つ
  */
-export type BoardShapeKind = 'rectangle' | 'ellipse' | 'sticky' | 'text' | 'frame'
+/** junction は「接合点」。線が分かれる場所を表す点で、図形というより線の一部 */
+export type BoardShapeKind = 'rectangle' | 'ellipse' | 'sticky' | 'text' | 'frame' | 'junction'
 
 export interface BoardShapeStyle {
   fill?: string

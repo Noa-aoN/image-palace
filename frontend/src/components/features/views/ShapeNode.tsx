@@ -1,7 +1,7 @@
 'use client'
 
 import { memo } from 'react'
-import { NodeResizer, type Node, type NodeProps } from '@xyflow/react'
+import { Handle, NodeResizer, Position, type Node, type NodeProps } from '@xyflow/react'
 import type { BoardShape, BoardShapeKind } from '@/types/view'
 
 export type ShapeNodeData = { shape: BoardShape }
@@ -28,19 +28,26 @@ export const SHAPE_MIN_H = 40
 export const ShapeNode = memo(function ShapeNode({ data, selected }: NodeProps<ShapeNodeType>) {
   const { kind, text, style } = data.shape
   const isFrame = kind === 'frame'
+  const isJunction = kind === 'junction'
+
   // 付箋は既定で折り目つき。**形だけで見分けられる**ようにする
   const folded = kind === 'sticky' && (style.folded ?? true)
+  // かこみは中身を囲うためのもので、線の端にはしない
+  const handles = isFrame ? [] : isJunction ? JUNCTION_HANDLES : SHAPE_HANDLES
 
   return (
     <>
-      <NodeResizer
-        isVisible
-        minWidth={SHAPE_MIN_W}
-        minHeight={SHAPE_MIN_H}
-        lineClassName="!border-transparent"
-      />
+      {/* 接合点は「点」なので、大きさを変えさせない（変えると図形になる） */}
+      {!isJunction && (
+        <NodeResizer
+          isVisible
+          minWidth={SHAPE_MIN_W}
+          minHeight={SHAPE_MIN_H}
+          lineClassName="!border-transparent"
+        />
+      )}
       <div
-        className={`h-full w-full ${isFrame ? 'pointer-events-none' : ''}`}
+        className={`group h-full w-full ${isFrame ? 'pointer-events-none' : ''}`}
         style={{ opacity: style.opacity ?? 1 }}
       >
         <div className="relative h-full w-full" style={surfaceStyle(kind, style)}>
@@ -69,7 +76,22 @@ export const ShapeNode = memo(function ShapeNode({ data, selected }: NodeProps<S
           )}
         </div>
       </div>
-      {selected && (
+      {handles.map((handle) => (
+        <Handle
+          key={handle.id}
+          id={handle.id}
+          type="source"
+          position={handle.position}
+          style={handle.style}
+          /* 接合点は点そのものが端。掴む所を隠すと繋げられないので、常に見せる */
+          className={
+            isJunction
+              ? '!h-3 !w-3 !border-2 !border-background !bg-[var(--palace)] !opacity-0 hover:!opacity-100'
+              : '!pointer-events-none !z-10 !h-3 !w-3 !border-2 !border-background !bg-[var(--palace)] !opacity-0 transition-all group-hover:!pointer-events-auto group-hover:!opacity-100 hover:!h-4 hover:!w-4'
+          }
+        />
+      ))}
+      {selected && !isJunction && (
         <span className="pointer-events-none absolute -top-5 right-0 text-2xs text-muted-foreground">
           {KIND_LABELS[kind]}
         </span>
@@ -84,7 +106,40 @@ const KIND_LABELS: Record<BoardShapeKind, string> = {
   sticky: '付箋',
   text: '文字',
   frame: 'かこみ',
+  junction: '接合点',
 }
+
+/**
+ * 線を掴める点。**図形にも線を繋げる。**
+ *
+ * 繋げられなかった頃は、両親から子への線を1本にまとめる方法が無かった。
+ * カードと同じく1辺3点にする（サーバーの Layout::Handles と揃える）。
+ *
+ * 接合点だけは**点そのものが端**なので、辺の真ん中1つで足りる。
+ */
+const POINTS_PER_SIDE = 3
+const CENTER_INDEX = 1
+
+const SIDES = [
+  { side: 'top', position: Position.Top },
+  { side: 'right', position: Position.Right },
+  { side: 'bottom', position: Position.Bottom },
+  { side: 'left', position: Position.Left },
+] as const
+
+const SHAPE_HANDLES = SIDES.flatMap(({ side, position }) =>
+  Array.from({ length: POINTS_PER_SIDE }, (_, index) => {
+    const along = `${((index + 1) / (POINTS_PER_SIDE + 1)) * 100}%`
+    const vertical = side === 'left' || side === 'right'
+    return {
+      id: index === CENTER_INDEX ? side : `${side}-${index}`,
+      position,
+      style: index === CENTER_INDEX ? undefined : vertical ? { top: along } : { left: along },
+    }
+  })
+)
+
+const JUNCTION_HANDLES = SIDES.map(({ side, position }) => ({ id: side, position, style: undefined }))
 
 /** 折り目の大きさ(px)。大きくすると付箋というより破れた紙に見える */
 const DOGEAR = 18
@@ -123,6 +178,17 @@ function Dogear({ style }: { style: BoardShape['style'] }) {
  */
 function surfaceStyle(kind: BoardShapeKind, style: BoardShape['style']): React.CSSProperties {
   if (kind === 'text') return {}
+
+  // 接合点は塗り丸ひとつ。**線と同じ濃さ**にして、線の一部に見せる
+  // （回路図・家系図の作法。交差しているだけの所と、つながっている所を見分ける印）
+  if (kind === 'junction') {
+    return {
+      backgroundColor: style.fill ?? '#4a4a4a',
+      borderRadius: '50%',
+      height: '100%',
+      width: '100%',
+    }
+  }
 
   const stroke = style.stroke
   const width = style.stroke_width ?? (kind === 'frame' ? 2 : 0)

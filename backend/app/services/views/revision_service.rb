@@ -124,6 +124,16 @@ module Views
             "points" => edge.points, "source_handle" => edge.source_handle,
             "target_handle" => edge.target_handle
           }
+        end,
+        # **図形も控える。**
+        # 控えていなかった頃は、図形を置いてから「戻る」を押しても図形が残り、
+        # 何が戻ったのか読めなかった（カードと線だけが戻る）
+        "shapes" => @view.view_shapes.map do |shape|
+          {
+            "kind" => shape.kind, "x" => shape.x, "y" => shape.y,
+            "width" => shape.width, "height" => shape.height,
+            "z_index" => shape.z_index, "text" => shape.text, "style" => shape.style
+          }
         end
       }
     end
@@ -160,6 +170,28 @@ module Views
             source_handle: edge["source_handle"], target_handle: edge["target_handle"]
           )
         end
+
+        restore_shapes!(state)
+      end
+    end
+
+    # 図形を戻す。
+    #
+    # **鍵が無い控えは、図形を触らない。** 図形を控えるようになる前の版へ
+    # 戻したときに図形を全部消してしまうと、控えていないものを消すことになる。
+    # 「控えていない」と「1つも無かった」は別のこと
+    def restore_shapes!(state)
+      return unless state.key?("shapes")
+
+      @view.view_shapes.destroy_all
+      Array(state["shapes"]).each do |shape|
+        next unless ViewShape::KINDS.include?(shape["kind"])
+
+        @view.view_shapes.create!(
+          kind: shape["kind"], x: shape["x"].to_f, y: shape["y"].to_f,
+          width: shape["width"].to_f, height: shape["height"].to_f,
+          z_index: shape["z_index"].to_i, text: shape["text"], style: shape["style"] || {}
+        )
       end
     end
   end

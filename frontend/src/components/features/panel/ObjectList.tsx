@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { Spline, GripVertical, Square, Circle, StickyNote, Type, Frame } from 'lucide-react'
+import { Spline, GripVertical, Square, Circle, StickyNote, Type, Frame, Dot } from 'lucide-react'
 import {
   DndContext,
   closestCenter,
@@ -45,6 +45,7 @@ const SHAPE_ICONS: Record<BoardShapeKind, typeof Square> = {
   sticky: StickyNote,
   text: Type,
   frame: Frame,
+  junction: Dot,
 }
 
 const SHAPE_LABELS: Record<BoardShapeKind, string> = {
@@ -53,6 +54,7 @@ const SHAPE_LABELS: Record<BoardShapeKind, string> = {
   sticky: '付箋',
   text: '文字',
   frame: 'かこみ',
+  junction: '接合点',
 }
 
 // 一覧の1行（ドラッグハンドル＋クリックで設定を開く）。
