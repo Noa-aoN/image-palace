@@ -51,10 +51,10 @@ RSpec.describe Views::Layout::CoupleBus do
       expect(described_class.new(boxes: boxes, relations: apart).couples).to be_empty
     end
 
-    it "同列で結ばれていなければ、まとめない" do
-      no_peer = relations.reject { |r| r[:type] == "peer" }
+    it "子が1枚しか居ない親は、まとめない（幹にする意味が無い）" do
+      one_child = [ { from: "父", to: "子1", type: "parent" } ]
 
-      expect(described_class.new(boxes: boxes, relations: no_peer).couples).to be_empty
+      expect(described_class.new(boxes: boxes, relations: one_child).couples).to be_empty
     end
 
     it "二人が同じ段に居なければ、まとめない" do
@@ -123,5 +123,57 @@ RSpec.describe Views::Layout::CoupleBus do
     it "共通の子への線は、幹を通る" do
       expect(bus.couple_for({ from: "父", to: "子1", type: "parent" })).not_to be_nil
     end
+  end
+end
+
+# ひとり親と、その兄弟。**作例集の階層図はこの形。**
+#
+# まとめる理由は線が減るからではなく、兄弟が「同じ親の子」だと形で読めるから。
+# 個別に引くと、どこまでが兄弟なのかは位置から推し量るしかない。
+RSpec.describe "#{Views::Layout::CoupleBus} ひとり親" do
+  def box(id, x:, y:, width: 144, height: 176)
+    Views::Layout::Box.new(id: id, title: id, x: x, y: y, width: width, height: height,
+                           footprint_width: width)
+  end
+
+  let(:boxes) do
+    { "親" => box("親", x: 400, y: 0),
+      "子1" => box("子1", x: 100, y: 500),
+      "子2" => box("子2", x: 400, y: 500),
+      "子3" => box("子3", x: 700, y: 500) }
+  end
+  let(:relations) do
+    %w[子1 子2 子3].map { |id| { from: "親", to: id, type: "parent" } }
+  end
+
+  subject(:bus) { Views::Layout::CoupleBus.new(boxes: boxes, relations: relations) }
+
+  it "子が2枚以上なら、幹にまとめる" do
+    expect(bus.couples.size).to eq(1)
+    expect(bus.couples.first.children.keys).to contain_exactly("子1", "子2", "子3")
+  end
+
+  it "幹は、親の真下に立つ" do
+    expect(bus.couples.first.trunk_x).to eq(boxes["親"].center_x)
+  end
+
+  it "どの子への線も、同じ渡しを通る" do
+    routes = %w[子1 子2 子3].map { |id| bus.route(bus.couples.first, { from: "親", to: id, type: "parent" }) }
+    bus_y = bus.couples.first.bus_y.round
+
+    expect(routes.map { |r| r.points.last["y"] }.uniq).to eq([ bus_y ])
+  end
+
+  # 幹が2本立つと、どちらの子か読めなくなる
+  it "夫婦の幹に入っている親は、ひとり親としては数えない" do
+    with_partner = boxes.merge("配偶者" => box("配偶者", x: 700, y: 0))
+    paired = relations + [ { from: "親", to: "配偶者", type: "peer" },
+                           { from: "配偶者", to: "子1", type: "parent" },
+                           { from: "配偶者", to: "子2", type: "parent" } ]
+
+    couples = Views::Layout::CoupleBus.new(boxes: with_partner, relations: paired).couples
+    expect(couples.size).to eq(1)
+    expect(couples.first.a.id).to eq("親")
+    expect(couples.first.b.id).to eq("配偶者")
   end
 end

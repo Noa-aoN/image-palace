@@ -78,10 +78,17 @@ module Views
 
       private
 
-      # 同列で結ばれた2枚が、共通の子を持つ組
+      # 幹にまとめる組。
+      #
+      #   夫婦 … 同列で結ばれた2枚が、共通の子を持つ
+      #   ひとり親 … 1枚が2枚以上の子を持つ（**作例集の階層図はこの形**）
+      #
+      # ひとり親も幹にまとめる理由は、線が減るからではなく、
+      # **兄弟が「同じ親の子」だと形で読める**から。
+      # 個別に引くと、どこまでが兄弟なのかは位置から推し量るしかない
       def detect
         children = hierarchical_children
-        @relations.select { |relation| relation[:type].to_s == "peer" }.filter_map do |relation|
+        pairs = @relations.select { |relation| relation[:type].to_s == "peer" }.filter_map do |relation|
           a = @by_id[relation[:from]]
           b = @by_id[relation[:to]]
           next if a.nil? || b.nil?
@@ -90,6 +97,22 @@ module Views
           next if shared.empty?
 
           { a:, b:, shared: }
+        end
+
+        pairs + single_parents(children, pairs)
+      end
+
+      # ひとり親。**夫婦の幹に既に入っている親は除く**（幹が2本立つ）
+      def single_parents(children, pairs)
+        paired = pairs.flat_map { |pair| [ pair[:a].id, pair[:b].id ] }.to_set
+        children.filter_map do |parent_id, child_ids|
+          next if paired.include?(parent_id)
+
+          parent = @by_id[parent_id]
+          kids = child_ids.uniq
+          next if parent.nil? || kids.size < 2
+
+          { a: parent, b: parent, shared: kids }
         end
       end
 

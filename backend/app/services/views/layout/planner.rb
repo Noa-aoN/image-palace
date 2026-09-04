@@ -21,8 +21,11 @@ module Views
       # 案を比べる上限の枚数。これを超えたら見立てどおりに1案だけ作る
       MAX_CANDIDATES_FOR_COMPARISON = 60
 
-      # ここまで来ていれば、手を当てない。**下げる危険のほうが大きい**
-      WELL_ENOUGH = 95
+      # ここまで来たら、そこで終わる。**満点を狙って動かし続けない**
+      # （最後の数点は線の引き方の話で、置き場所を動かしても届かない）
+      TARGET_POINTS = 92
+      # 「念入り」で登り直す回数。時間が尽きればその前に止まる
+      THOROUGH_ROUNDS = 12
 
       # 見立ての名前。知らない語は auto へ落とす
       # 図の種別。**同じ絵を別の名前で並べない。**
@@ -66,7 +69,7 @@ module Views
       DIRECTIONS = %w[auto down right].freeze
       DEFAULT_DIRECTION = "auto"
 
-      Result = Struct.new(:boxes, :structure, :score, :notes, keyword_init: true)
+      Result = Struct.new(:boxes, :structure, :score, :notes, :improvement, keyword_init: true)
 
       # @param boxes [Array<Box>]
       # @param relations [Array<Hash>] { from:, to:, strength: }
@@ -109,7 +112,7 @@ module Views
         apply!(best)
         Result.new(
           boxes: @boxes, structure: best[:structure],
-          score: best[:score], notes: best[:score].notes
+          score: best[:score], notes: best[:score].notes, improvement: @improvement
         )
       end
 
@@ -120,36 +123,60 @@ module Views
       # 案を作って比べるだけでは、案の中にしか答えが無い。
       # 出来上がった図に小さな手を当てて、上がったら残す。
       # 「いまの形を活かす」ときは動かさない（動かさないことが約束なので）
+      # **点数が上がる方へ動かす。**
+      #
+      # ## 終わり方を決めておく
+      #
+      # 「念入り」が何をしているのか分からない、という状態にしない。
+      # 終わる条件は3つで、**どれで終わったかを利用者に伝える**。
+      #
+      #   1. 目標点に届いた（TARGET_POINTS）
+      #   2. 決めた回数だけ登り直した
+      #   3. 時間が尽きた
+      #
+      # ## 登り直す
+      #
+      # 同じ所から登ると毎回同じ頂へ着く。1手だけわざと崩してから登り直すと、
+      # 別の頂へ着くことがある。**「念入り」はこれを繰り返す**のが中身
       def improve(candidate)
         return candidate if candidate[:structure] == "keep_shape"
         return candidate if @boxes.size > MAX_CANDIDATES_FOR_COMPARISON
-        # もう十分に良い。**動かして下げる危険のほうが大きい**
-        return candidate if candidate[:score].points >= WELL_ENOUGH
 
-        # 案を作るのに使った時間を差し引いた残り
         total = @thorough ? Improver::THOROUGH_BUDGET : Improver::STANDARD_BUDGET
-        budget = total - (now - @started_at)
-        return candidate if budget <= 0
+        rounds = @thorough ? THOROUGH_ROUNDS : 1
+        best = candidate
+        @improvement = { from: candidate[:score].points, rounds: 0, tried: 0, kept: 0, reason: "already_good" }
 
+        rounds.times do |round|
+          break @improvement[:reason] = "reached_target" if best[:score].points >= TARGET_POINTS
+
+          budget = total - (now - @started_at)
+          break @improvement[:reason] = "out_of_time" if budget <= 0
+
+          @improvement[:rounds] = round + 1
+          attempt = climb(best, budget: budget, perturb: round.zero? ? nil : round)
+          best = attempt if attempt && attempt[:score].points > best[:score].points
+          @improvement[:reason] = "tried_all" if round == rounds - 1
+        end
+
+        @improvement[:to] = best[:score].points
+        best
+      end
+
+      # 1回ぶん登る。**押しのけで崩れたら、その回は無かったことにする**
+      def climb(candidate, budget:, perturb:)
+        boxes = candidate[:boxes].map { |box| box.dup_at(box.x, box.y) }
         result = Improver.new(
-          boxes: candidate[:boxes], relations: @relations,
-          score_for: ->(boxes) { score_for(boxes) }, budget: budget,
-          score: candidate[:score]
+          boxes: boxes, relations: @relations,
+          score_for: ->(list) { score_for(list) }, budget: budget,
+          score: perturb.nil? ? candidate[:score] : nil, perturb: perturb
         ).call
-        # 1手も残らなかったなら、元のまま。**測り直さない**
-        return candidate if result[:kept].zero?
+        @improvement[:tried] += result[:tried]
+        @improvement[:kept] += result[:kept]
+        return nil if result[:kept].zero? && perturb.nil?
 
-        # 手を当てた結果、重なりが出ることがある。**最後に必ず解く**
-        before = candidate[:boxes].map { |box| [ box.id, box.x, box.y ] }
         Separator.new(boxes: result[:boxes], movable: @movable).call
-        improved = { structure: candidate[:structure], boxes: result[:boxes], score: score_for(result[:boxes]) }
-        return improved if improved[:score].points >= candidate[:score].points
-
-        # **押しのけが、積み上げた改善を崩すことがある。**
-        # 手を1つ当てるたびには良くなっていても、最後に重なりを解いた結果
-        # 段が崩れて、始める前より悪くなることがあった。そのときは元へ戻す
-        restore!(result[:boxes], before)
-        candidate
+        { structure: candidate[:structure], boxes: result[:boxes], score: score_for(result[:boxes]) }
       end
 
       def now = Process.clock_gettime(Process::CLOCK_MONOTONIC)
@@ -244,6 +271,9 @@ module Views
         structures_to_try.uniq.map do |structure|
           boxes = @boxes.map { |box| box.dup_at(@previous[box.id][:x], @previous[box.id][:y]) }
           run_layout(structure, boxes)
+          # **近いものを揃えてから、重なりを解く。**
+          # 揃えるのを後にすると、押しのけたばかりのものをまた動かすことになる
+          Align.new(boxes: boxes).call unless structure == "keep_shape"
           # どの形で組んでも、最後に重なりだけは必ず解く。
           # ただし「いまの形を活かす」ときは寄せ直さない（置いた場所が動く）
           Separator.new(boxes: boxes, movable: @movable,

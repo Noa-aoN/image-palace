@@ -726,6 +726,16 @@ function ScoreCard({ score }: { score: BoardScore }) {
           </li>
         ))}
       </ul>
+      {/* 「念入り」で何をしたか。**動かして良くならなかったなら、そう言う** */}
+      {score.improvement && score.improvement.rounds > 1 && (
+        <p className="mt-1.5 text-2xs leading-relaxed text-muted-foreground">
+          {score.improvement.rounds}通りの置き方を試しました（{score.improvement.tried}手のうち
+          {score.improvement.kept}手を採用）。
+          {score.improvement.to > score.improvement.from
+            ? `${score.improvement.from}→${score.improvement.to}点。`
+            : '置き場所ではこれ以上、上がりませんでした。残りは線の引き方の問題です。'}
+        </p>
+      )}
       <details className="mt-1.5">
         <summary className="cursor-pointer text-2xs text-muted-foreground">判断基準について</summary>
         <p className="mt-1 text-2xs leading-relaxed text-muted-foreground">
