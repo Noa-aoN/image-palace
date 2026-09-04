@@ -136,6 +136,8 @@ class Setting < ApplicationRecord
     shown = 0
     rows.map do |row|
       next row unless row["visible"]
+      # 置き場所が決まっている項目は、下へ積む枠を使わない
+      next row if FIXED_POSITION_LAYOUT_KEYS.include?(row["key"].to_s)
 
       shown += 1
       shown <= MAX_VISIBLE_CARD_LIST_FIELDS ? row : row.merge("visible" => false)
@@ -189,8 +191,15 @@ class Setting < ApplicationRecord
 
   # 出す指定が多すぎるときは、断る。**黙って落とさない**
   # （落とすと、6件目を入れたつもりの人には「入らなかった」ことが伝わらない）
+  #
+  # **置き場所が決まっている項目は数えない。** 種別の印は見出し語の右に添えるもので、
+  # 下へ積む枠を1つも使わない。数えていた頃は、画面が「5件」と数えている並びを
+  # サーバーが「6件」と断り、**種別の印を消そうとしても保存できなかった**
+  # （画面とサーバーで数え方が違っていた）
   def visible_card_list_fields_within_limit
-    visible = Array(card_list_layout).count { |row| row.is_a?(Hash) && row["visible"] }
+    visible = Array(card_list_layout).count do |row|
+      row.is_a?(Hash) && row["visible"] && !FIXED_POSITION_LAYOUT_KEYS.include?(row["key"].to_s)
+    end
     return if visible <= MAX_VISIBLE_CARD_LIST_FIELDS
 
     errors.add(:card_list_layout, "に出す項目は#{MAX_VISIBLE_CARD_LIST_FIELDS}件までです（いま#{visible}件）")

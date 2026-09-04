@@ -189,12 +189,15 @@ function Dogear({ style }: { style: BoardShape['style'] }) {
 function surfaceStyle(kind: BoardShapeKind, style: BoardShape['style']): React.CSSProperties {
   if (kind === 'text') return {}
 
-  // 接合点は塗り丸ひとつ。**線と同じ濃さ**にして、線の一部に見せる
+  // 接合点は塗り丸ひとつ。**線の終端と同じ色**にして、線の一部に見せる
   // （回路図・家系図の作法。交差しているだけの所と、つながっている所を見分ける印）
   if (kind === 'junction') {
     return {
-      backgroundColor: style.fill ?? '#4a4a4a',
+      backgroundColor: style.fill ?? 'var(--palace)',
       borderRadius: '50%',
+      // 盤の色で縁取ると、線の上に置いても点として読める（終端と同じ作り）
+      border: '2px solid var(--board-bg)',
+      boxSizing: 'border-box',
       height: '100%',
       width: '100%',
     }
