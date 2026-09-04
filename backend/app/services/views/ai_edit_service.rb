@@ -1489,7 +1489,9 @@ module Views
     # そのまま節の名前に使っているので、**接頭辞を付けると線の端が結び付かない**。
     # 図形とカードの id はどちらも UUID なので、ぶつからない
     def shape_obstacles
-      @shape_obstacles ||= @view.view_shapes.reject(&:frame?).to_h do |shape|
+      # **接合点はよけない。** 線が集まる点なので、よけると集まれない。
+      # かこみもよけない（中身を囲うためのもので、線は通り抜けてよい）
+      @shape_obstacles ||= @view.view_shapes.reject { |shape| shape.frame? || shape.junction? }.to_h do |shape|
         [ shape.id, Layout::Box.new(
           id: shape.id, title: nil,
           x: shape.x, y: shape.y, width: shape.width, height: shape.height,
@@ -1519,7 +1521,18 @@ module Views
     # カードしか返していなかった頃は、図形につないだ線が
     # 「端が盤に無い」とみなされて引き直しから外れ、古い道すじのまま残っていた
     def connectable_boxes
-      placement_boxes.merge(shape_obstacles)
+      placement_boxes.merge(shape_endpoints)
+    end
+
+    # 線の端になれる図形。**接合点も含む**（よける相手ではないが、端にはなる）
+    def shape_endpoints
+      @shape_endpoints ||= @view.view_shapes.connectable.to_h do |shape|
+        [ shape.id, Layout::Box.new(
+          id: shape.id, title: nil,
+          x: shape.x, y: shape.y, width: shape.width, height: shape.height,
+          footprint_width: shape.width
+        ) ]
+      end
     end
 
     # 配置だけを整えた後、既存線の意味と見た目は保って経路だけを引き直す。

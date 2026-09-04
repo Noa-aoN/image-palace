@@ -27,6 +27,9 @@ import {
   PROPERTY_TOOLS_KEY,
 } from '@/components/features/items/ItemPropertyBlocks'
 import { PropertyAddBlock } from '@/components/features/items/PropertyAddBlock'
+
+/** 出ていない項目の札。**必ずいちばん最後に置く**（読み終えた後に来るもの） */
+const ADD_BLOCK_KEY = 'property-add'
 import { splitByFilled } from '@/lib/items/property-value'
 import { builtInBlockEmptiness } from '@/lib/items/block-empty'
 import { omittedKeysForPreset } from '@/lib/block-visibility'
@@ -854,7 +857,7 @@ export function ItemProperties({
   }))
 
   const addBlock = {
-    key: 'property-add',
+    key: ADD_BLOCK_KEY,
     // **「未設定」と「まだ無い」を分けない。** 読む側にとっては同じ
     // 「まだ出ていない項目」で、どちらかは中の作りの話でしかない
     label: '出ていない項目',
@@ -916,7 +919,16 @@ export function ItemProperties({
     : new Set([ ...(item.block_view?.omitted ?? []), ...defaultOmitted ])
   const hiddenKeys = new Set(item.block_view?.hidden ?? [])
   const adopted = allBlocks.filter((b) => !omittedKeys.has(b.key))
-  const orderedBlocks = applyBlockOrder(adopted, item.block_view?.order)
+  // **「出ていない項目」は必ずいちばん最後。**
+  //
+  // 並べ替えの対象にすると、上へ動かせてしまう。だが読みに来た人にとっては
+  // 「書いてあるもの」を読み終えた後に来るものなので、前に置く理由が無い。
+  // 並びを保存している人の順も、ここでだけ後ろへ回す
+  const ordered = applyBlockOrder(adopted, item.block_view?.order)
+  const orderedBlocks = [
+    ...ordered.filter((block) => block.key !== ADD_BLOCK_KEY),
+    ...ordered.filter((block) => block.key === ADD_BLOCK_KEY),
+  ]
   const visibleBlocks = orderedBlocks.filter((b) => !hiddenKeys.has(b.key))
 
   // 4px 動かすまでは並べ替えを始めない。項目の中のボタンを押すだけのつもりが

@@ -1,7 +1,7 @@
 'use client'
 
 import { useState } from 'react'
-import { Plus } from 'lucide-react'
+import { ChevronDown, Plus } from 'lucide-react'
 import { Spinner } from '@/components/ui/spinner'
 import {
   PROPERTY_CATEGORIES,
@@ -13,6 +13,7 @@ import {
 } from '@/lib/api/properties'
 import { getItem } from '@/lib/api/items'
 import type { Item } from '@/types/item'
+import { PropertyBlock } from '@/components/features/items/PropertyBlock'
 
 /**
  * まだこのカードに出ていない項目。**押せば、その場で出る。**
@@ -49,6 +50,8 @@ export function PropertyAddBlock({
 }) {
   const [busy, setBusy] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
+  // 既定は畳んでおく。**書きに来たときだけ開く場所**なので、開いたまま置かない
+  const [open, setOpen] = useState(false)
   const itemTypeId = item.item_type?.id
 
   // 既に持っている鍵。作られていない項目の候補から外す
@@ -74,7 +77,11 @@ export function PropertyAddBlock({
   const all = [...existing, ...uncreated]
 
   if (all.length === 0) {
-    return <p className="text-sm text-muted-foreground">書ける項目は、ぜんぶ書いてあります。</p>
+    return (
+      <PropertyBlock title="出ていない項目" empty>
+        <p className="text-sm text-muted-foreground">書ける項目は、ぜんぶ書いてあります。</p>
+      </PropertyBlock>
+    )
   }
 
   const add = async (candidate: (typeof all)[number]) => {
@@ -111,6 +118,26 @@ export function PropertyAddBlock({
   }
 
   return (
+    <PropertyBlock
+      title="出ていない項目"
+      empty
+      actions={
+        // **畳める。** 項目が増えるほど縦に伸びるが、ここは書きに来たときだけ開く場所。
+        // 読みに来た人が毎回かき分けることにならないようにする
+        <button
+          type="button"
+          onClick={() => setOpen((current) => !current)}
+          aria-expanded={open}
+          className="flex items-center gap-1 rounded px-1 text-xs text-muted-foreground transition-colors hover:text-foreground"
+        >
+          {all.length} 件
+          <ChevronDown size={13} className={`transition-transform ${open ? 'rotate-180' : ''}`} />
+        </button>
+      }
+    >
+      {!open ? (
+        <p className="text-xs text-muted-foreground">押すと、その項目をこのカードに出します。</p>
+      ) : (
     <div className="space-y-3">
       <p className="text-xs text-muted-foreground">
         押すと、その項目をこのカードに出します（{all.length} 件）
@@ -154,5 +181,7 @@ export function PropertyAddBlock({
         同じ種別のカード全部に出ます。
       </p>
     </div>
+      )}
+    </PropertyBlock>
   )
 }

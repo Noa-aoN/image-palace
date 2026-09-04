@@ -9,6 +9,7 @@ import { CategorySections, type CategorySection } from '@/components/features/my
 import { ComingSoon } from '@/components/features/myroom/ComingSoon'
 import { CreditHistoryPanel } from '@/components/features/billing/CreditHistoryPanel'
 import { AiUsagePanel } from '@/components/features/billing/AiUsagePanel'
+import { PurchaseTermsNote } from '@/components/features/billing/PurchaseTermsNote'
 import {
   getPlans,
   getBillingSummary,
@@ -362,6 +363,7 @@ export default function BillingPage() {
                 )
               })}
             </div>
+            <PurchaseTermsNote kind="subscription" />
           </section>
 
           {summary?.subscription && (
@@ -428,6 +430,7 @@ export default function BillingPage() {
                   )
                 })}
               </div>
+              <PurchaseTermsNote kind="topup" />
             </section>
           )}
 
