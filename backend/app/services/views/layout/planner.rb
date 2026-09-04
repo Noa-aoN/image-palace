@@ -140,11 +140,31 @@ module Views
         return candidate if result[:kept].zero?
 
         # 手を当てた結果、重なりが出ることがある。**最後に必ず解く**
+        before = candidate[:boxes].map { |box| [ box.id, box.x, box.y ] }
         Separator.new(boxes: result[:boxes], movable: @movable).call
-        { structure: candidate[:structure], boxes: result[:boxes], score: score_for(result[:boxes]) }
+        improved = { structure: candidate[:structure], boxes: result[:boxes], score: score_for(result[:boxes]) }
+        return improved if improved[:score].points >= candidate[:score].points
+
+        # **押しのけが、積み上げた改善を崩すことがある。**
+        # 手を1つ当てるたびには良くなっていても、最後に重なりを解いた結果
+        # 段が崩れて、始める前より悪くなることがあった。そのときは元へ戻す
+        restore!(result[:boxes], before)
+        candidate
       end
 
       def now = Process.clock_gettime(Process::CLOCK_MONOTONIC)
+
+      # 控えた座標へ戻す。**同じ箱を書き換えている**ので、作り直さずに戻す
+      def restore!(boxes, snapshot)
+        by_id = boxes.to_h { |box| [ box.id, box ] }
+        snapshot.each do |id, x, y|
+          box = by_id[id]
+          next if box.nil?
+
+          box.x = x
+          box.y = y
+        end
+      end
 
       def empty_result
         Result.new(boxes: [], structure: @structure, notes: [],

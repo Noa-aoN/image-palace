@@ -29,7 +29,7 @@ const CARD_MIN_H = CARD_MIN_W + CARD_TITLE_H
 
 // 接続点（上下左右）。connectionMode=loose なので type は source 固定で双方向に使える。
 /**
- * 線を掴める点。**1辺につき5つ。**
+ * 線を掴める点。**1辺につき3つ。**
  *
  * 辺の真ん中に1点だけだった頃は、手で引く線がどれも同じ点から出るので、
  * つながりが増えるほど根元が束になって読めなくなっていた。
@@ -37,11 +37,11 @@ const CARD_MIN_H = CARD_MIN_W + CARD_TITLE_H
  * 真ん中（index 2）だけは、**昔からの名前 `top` のまま**にしてある。
  * 名前を変えると、いま引かれている線の端点が読めなくなる。
  *
- * 位置は (index + 1) / 6。端に寄せすぎると角から線が出て、
+ * 位置は (index + 1) / 4。端に寄せすぎると角から線が出て、
  * どちらの辺の線か読めなくなる（サーバーの Layout::Handles と揃えること）
  */
-const POINTS_PER_SIDE = 5
-const CENTER_INDEX = 2
+const POINTS_PER_SIDE = 3
+const CENTER_INDEX = 1
 
 const SIDES = [
   { side: 'top', position: Position.Top },
@@ -135,9 +135,9 @@ function CardNodeComponent({ id, data }: NodeProps<CardNodeType>) {
             type="source"
             position={h.position}
             style={h.style}
-            /* 5つ並ぶので、1つずつは小さくする。掴むのはホバー中だけなので、
+            /* 3つ並ぶので、少し小さくする。掴むのはホバー中だけなので、
                近づいたときに大きくして掴みやすさを戻す */
-            className="!pointer-events-none !z-10 !h-2.5 !w-2.5 !border-2 !border-background !bg-[var(--palace)] !opacity-0 transition-all group-hover:!pointer-events-auto group-hover:!opacity-100 hover:!h-4 hover:!w-4"
+            className="!pointer-events-none !z-10 !h-3 !w-3 !border-2 !border-background !bg-[var(--palace)] !opacity-0 transition-all group-hover:!pointer-events-auto group-hover:!opacity-100 hover:!h-4 hover:!w-4"
           />
         ))}
       </div>
