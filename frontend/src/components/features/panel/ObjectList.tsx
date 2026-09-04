@@ -12,7 +12,7 @@ import {
 } from '@dnd-kit/core'
 import { SortableContext, arrayMove, useSortable, verticalListSortingStrategy } from '@dnd-kit/sortable'
 import { CSS } from '@dnd-kit/utilities'
-import { getViewDetail, reorderViewEdges, reorderViewShapes } from '@/lib/api/views'
+import { getViewDetail, reorderViewObjects } from '@/lib/api/views'
 import { useRightPanelStore } from '@/stores/rightPanel'
 import type { BoardShape, BoardShapeKind, ViewEdge } from '@/types/view'
 import { persist } from '@/lib/api/persist'
@@ -20,15 +20,17 @@ import { persist } from '@/lib/api/persist'
 /**
  * 右パネル: ボードに置いてあるものの一覧。上ほど手前（レイヤー）。
  *
- * ## 図形と接続線を分けて並べる理由
+ * ## ひとつの並びにした理由
  *
- * ひとつの表にしたいところだが、**両者は別の層に描かれる**。
- * 図形はカードと同じ面に、接続線はその下の面に置かれるので、
- * 「図形を接続線の後ろへ」という並べ替えは、そもそも効かない。
+ * はじめは図形と接続線を分けて並べていた。別の層に描かれるものだと思っていたためだが、
+ * 調べると **React Flow はどちらも同じ重なりの空間に置いていた**
+ * （線は1本ずつ `<svg style="z-index">` として、カードと同じ入れ物の中に描かれる）。
  *
- * 混ぜて並べれば操作はできるが、**掴んで動かしても何も起きない**行ができる。
- * できないことを、できるように見せない。群ごとに分けて、
- * それぞれの中で並べ替えられるようにする。
+ * 分けている必要は無く、分けているせいで**「線の上に付箋を置く」ができなかった**。
+ * 描く道具として見れば、線も図形も同じ「盤に置いたもの」で、前後があるのが自然。
+ *
+ * かこみ（frame）だけは並びの外にいる。必ずいちばん後ろに敷く
+ * （前に出ると囲った中身が隠れる）。一覧には出すが、他より前へは行かない。
  */
 
 type ShapeRow = { kind: 'shape'; shape: BoardShape }
@@ -98,76 +100,32 @@ function SortableRow({ row, onSelect }: { row: Row; onSelect: (row: Row) => void
   )
 }
 
-// 群ひとつ（図形どうし・接続線どうし）。この中でだけ並べ替えられる
-function Group({
-  title,
-  rows,
-  onSelect,
-  onReorder,
-}: {
-  title: string
-  rows: Row[]
-  onSelect: (row: Row) => void
-  onReorder: (rows: Row[]) => void
-}) {
-  const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 4 } }))
-
-  const handleDragEnd = (event: DragEndEvent) => {
-    const { active, over } = event
-    if (!over || active.id === over.id) return
-    const oldIndex = rows.findIndex((r) => rowId(r) === active.id)
-    const newIndex = rows.findIndex((r) => rowId(r) === over.id)
-    if (oldIndex < 0 || newIndex < 0) return
-    onReorder(arrayMove(rows, oldIndex, newIndex))
-  }
-
-  if (rows.length === 0) return null
-
-  return (
-    <div className="space-y-1.5">
-      <p className="text-2xs font-medium text-muted-foreground">{title}</p>
-      <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
-        <SortableContext items={rows.map(rowId)} strategy={verticalListSortingStrategy}>
-          <ul className="space-y-1.5">
-            {rows.map((row) => (
-              <SortableRow key={rowId(row)} row={row} onSelect={onSelect} />
-            ))}
-          </ul>
-        </SortableContext>
-      </DndContext>
-    </div>
-  )
-}
-
 export function ObjectList({ viewId }: { viewId: string }) {
   const openEdge = useRightPanelStore((s) => s.openEdge)
   const openShape = useRightPanelStore((s) => s.openShape)
   const requestFocusEdge = useRightPanelStore((s) => s.requestFocusEdge)
   // 手前を先頭に表示する（取得は z_index 昇順＝奥→手前なので反転）
-  const [shapes, setShapes] = useState<ShapeRow[] | null>(null)
-  const [edges, setEdges] = useState<EdgeRow[] | null>(null)
+  const [rows, setRows] = useState<Row[] | null>(null)
+  const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 4 } }))
 
   useEffect(() => {
     let cancelled = false
     getViewDetail(viewId)
       .then((v) => {
         if (cancelled) return
-        setShapes([...(v.shapes ?? [])].reverse().map((shape) => ({ kind: 'shape', shape })))
-        setEdges([...(v.edges ?? [])].reverse().map((edge) => ({ kind: 'edge', edge })))
+        setRows(mergeRows(v.shapes ?? [], v.edges ?? []))
       })
       .catch(() => {
-        if (cancelled) return
-        setShapes([])
-        setEdges([])
+        if (!cancelled) setRows([])
       })
     return () => {
       cancelled = true
     }
   }, [viewId])
 
-  if (shapes === null || edges === null) return <p className="text-xs text-muted-foreground">読み込み中…</p>
+  if (rows === null) return <p className="text-xs text-muted-foreground">読み込み中…</p>
 
-  if (shapes.length === 0 && edges.length === 0) {
+  if (rows.length === 0) {
     return (
       <p className="text-xs text-muted-foreground">
         まだオブジェクトがありません。カード同士をつないで接続線を作るか、ツールバーの「図形」から置けます。
@@ -184,33 +142,60 @@ export function ObjectList({ viewId }: { viewId: string }) {
     requestFocusEdge(row.edge.id)
   }
 
+  const handleDragEnd = (event: DragEndEvent) => {
+    const { active, over } = event
+    if (!over || active.id === over.id) return
+    const oldIndex = rows.findIndex((r) => rowId(r) === active.id)
+    const newIndex = rows.findIndex((r) => rowId(r) === over.id)
+    if (oldIndex < 0 || newIndex < 0) return
+
+    const next = arrayMove(rows, oldIndex, newIndex)
+    setRows(next)
+    // 先頭＝手前。開いているボードには再読込時に反映される
+    persist(
+      () =>
+        reorderViewObjects(
+          viewId,
+          next.map((row) => ({ kind: row.kind, id: rowId(row) }))
+        ),
+      { key: `view:${viewId}:objectOrder` }
+    )
+  }
+
   return (
-    <div className="space-y-4">
-      <Group
-        title="図形"
-        rows={shapes}
-        onSelect={select}
-        onReorder={(rows) => {
-          const next = rows as ShapeRow[]
-          setShapes(next)
-          // 先頭＝手前。開いているボードには再読込時に反映される
-          persist(() => reorderViewShapes(viewId, next.map((r) => r.shape.id)), {
-            key: `view:${viewId}:shapeOrder`,
-          })
-        }}
-      />
-      <Group
-        title="接続線"
-        rows={edges}
-        onSelect={select}
-        onReorder={(rows) => {
-          const next = rows as EdgeRow[]
-          setEdges(next)
-          persist(() => reorderViewEdges(viewId, next.map((r) => r.edge.id)), {
-            key: `view:${viewId}:edgeOrder`,
-          })
-        }}
-      />
+    <div className="space-y-2">
+      <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
+        <SortableContext items={rows.map(rowId)} strategy={verticalListSortingStrategy}>
+          <ul className="space-y-1.5">
+            {rows.map((row) => (
+              <SortableRow key={rowId(row)} row={row} onSelect={select} />
+            ))}
+          </ul>
+        </SortableContext>
+      </DndContext>
+      <p className="text-2xs text-muted-foreground">
+        上ほど手前。掴んで入れ替えると、線と図形の前後が変わります。
+      </p>
     </div>
   )
 }
+
+/**
+ * 図形と接続線を、ひとつの並びにまとめる。
+ *
+ * どちらも `z_index` は同じ意味（大きいほど手前）なので、その数で並べられる。
+ * 同じ数のときは図形を手前に置く（**あとから置いたものが上**という感覚に合う）。
+ */
+function mergeRows(shapes: BoardShape[], edges: ViewEdge[]): Row[] {
+  const all: Row[] = [
+    ...shapes.map((shape): Row => ({ kind: 'shape', shape })),
+    ...edges.map((edge): Row => ({ kind: 'edge', edge })),
+  ]
+  return all.sort((a, b) => {
+    const gap = zOf(b) - zOf(a)
+    return gap !== 0 ? gap : rankOf(a) - rankOf(b)
+  })
+}
+
+const zOf = (row: Row) => (row.kind === 'shape' ? row.shape.z_index : (row.edge.z_index ?? 0))
+const rankOf = (row: Row) => (row.kind === 'shape' ? 0 : 1)
