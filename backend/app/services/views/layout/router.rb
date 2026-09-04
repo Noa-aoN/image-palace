@@ -115,24 +115,15 @@ module Views
 
       private
 
-      # 辺のどこから出るか。offset は辺の中心からのずれ
+      # 辺のどこから出るか。**手で選べる5点**と、AI が配るずれの両方が効く
       def anchor(box, handle, offset = 0)
-        case handle
-        when "top" then { x: box.center_x + offset, y: box.top }
-        when "bottom" then { x: box.center_x + offset, y: box.bottom }
-        when "right" then { x: box.right_edge, y: box.center_y + offset }
-        else { x: box.left_edge, y: box.center_y + offset }
-        end
+        Handles.point(box, handle, offset)
       end
 
       # 出た辺の向きへ、まっすぐ離れた点
       def step_out(point, handle)
-        case handle
-        when "top" then { x: point[:x], y: point[:y] - STUB }
-        when "bottom" then { x: point[:x], y: point[:y] + STUB }
-        when "right" then { x: point[:x] + STUB, y: point[:y] }
-        else { x: point[:x] - STUB, y: point[:y] }
-        end
+        outward = Handles.outward(handle)
+        { x: point[:x] + outward[:x] * STUB, y: point[:y] + outward[:y] * STUB }
       end
 
       # 通り道の候補。**良さそうな順に並べる。**
@@ -140,7 +131,7 @@ module Views
       # 最初に「まっすぐ」「L字」を試し、それで通らなければ
       # カードの隙間を通る道を、寄り道の少ない順に試す。
       def candidates(from, to, source_handle, obstacles)
-        vertical_first = %w[top bottom].include?(source_handle)
+        vertical_first = !Handles.horizontal_side?(source_handle)
         list = []
 
         # 既に軸に乗っているなら、折れ点は要らない
@@ -212,8 +203,8 @@ module Views
       end
 
       def offsets_for(entries, handle)
-        vertical_side = %w[top bottom].include?(handle)
-        span = vertical_side ? entries.first[:box].width : entries.first[:box].height
+        vertical_side = !Handles.horizontal_side?(handle)
+        span = Handles.span(entries.first[:box], handle)
         usable = [ span - PORT_MARGIN * 2, 0 ].max
         count = entries.size
         gap = count <= 1 ? 0 : [ PORT_GAP, usable / (count - 1).to_f ].min
@@ -329,13 +320,9 @@ module Views
       MIN_STUB = 8
 
       def outward?(point, anchor_point, handle)
-        case handle
-        when "top" then anchor_point[:y] - point["y"] >= MIN_STUB
-        when "bottom" then point["y"] - anchor_point[:y] >= MIN_STUB
-        when "right" then point["x"] - anchor_point[:x] >= MIN_STUB
-        when "left" then anchor_point[:x] - point["x"] >= MIN_STUB
-        else true
-        end
+        outward = Handles.outward(handle)
+        reach = (point["x"] - anchor_point[:x]) * outward[:x] + (point["y"] - anchor_point[:y]) * outward[:y]
+        reach >= MIN_STUB
       end
 
       def mid(a, b) = (a + b) / 2

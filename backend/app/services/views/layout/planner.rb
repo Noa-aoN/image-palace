@@ -38,7 +38,21 @@ module Views
       #
       # 「樹形図」を別立てにしていないのは、**向きが違うだけで同じ組み方**だから。
       # 種別を増やすと選ぶ手間だけ増えて、出てくる図は変わらない
-      STRUCTURES = %w[auto hierarchy flow mindmap radial network cluster grid keep_shape].freeze
+      # 作例集の8つに、置き方の受け皿を1つ足したもの。
+      #
+      #   hierarchy … 階層図・分類図。親から子へ枝分かれ。**向きは direction で決める**
+      #   flow      … 流れ図。手順やプロセスの連なり。戻り線があってもよい
+      #   timeline  … 時系列図。**時間の軸が1本**あり、出来事がその上に並ぶ
+      #   mindmap   … 関係マップ。中心の主題から左右へ振り分けて広げる
+      #   radial    … 相関図。中心から360度へ。中心からの遠さ自体に意味がある
+      #   network   … ネットワーク図。上下が無い網の目。多対多の影響
+      #   cluster   … 分類図（まとまり重視）。島ごとに分ける
+      #   comparison… 比較図。**群れを列にして、行を揃える**
+      #   grid      … 並べるだけ。関係で並べる理由が無いとき
+      #   keep_shape… いまの形を活かす
+      STRUCTURES = %w[
+        auto hierarchy flow timeline mindmap radial network cluster comparison grid keep_shape
+      ].freeze
 
       # 流れの向き。**種別とは別の軸にする。**
       #
@@ -162,6 +176,10 @@ module Views
       #   ・親が複数ある      … 網。段に割ると線が段をまたいで走る
       def detect_structures
         return [ "grid", "cluster" ] if @relations.empty?
+        # 群れが2つ以上あって、線がほとんど無い＝**比べたいものが並んでいる**
+        return [ "comparison", "cluster" ] if comparison?
+        # 順序の関係ばかり＝時間の軸が1本ある
+        return [ "timeline", "flow" ] if timeline?
 
         parents = Hash.new(0)
         children = Hash.new(0)
@@ -176,6 +194,30 @@ module Views
         roots = @boxes.map(&:id).reject { |id| parents[id].positive? }
         wide_single_root = roots.size == 1 && children[roots.first] >= 4
         wide_single_root ? [ "mindmap", "hierarchy" ] : [ "hierarchy", "mindmap" ]
+      end
+
+      # 比べる図。**群れが2つ以上あり、群れをまたぐ線が少ない。**
+      # 線で繋がっているなら、比べるより関係を見せたほうがよい
+      def comparison?
+        return false if @groups.size < 2
+
+        members = @groups.each_with_index.flat_map { |group, index| Array(group[:members]).map { |id| [ id, index ] } }
+        column_of = members.to_h
+        crossing = @relations.count do |relation|
+          from = column_of[relation[:from]]
+          to = column_of[relation[:to]]
+          from && to && from != to
+        end
+        crossing <= @relations.size / 3
+      end
+
+      # 時系列。**順序の関係が大半で、枝分かれが少ない**
+      def timeline?
+        directed = @relations.reject { |relation| relation[:type].to_s == "peer" }
+        return false if directed.size < 2
+
+        sequential = directed.count { |relation| relation[:type].to_s == "sequence" }
+        sequential >= directed.size * 0.6
       end
 
       def build_candidates
@@ -208,6 +250,8 @@ module Views
         when "mindmap"
           # 上下へ振り分けたいときもある（縦長の画面・縦書きの図）
           Mindmap.new(boxes: boxes, edges: edges, roots: @roots, vertical: @direction == "down").call
+        when "timeline" then Timeline.new(boxes: boxes, edges: edges).call
+        when "comparison" then Comparison.new(boxes: boxes, groups: @groups).call
         when "radial" then Radial.new(boxes: boxes, edges: edges, roots: @roots).call
         when "network" then Network.new(boxes: boxes, edges: @relations).call
         when "cluster" then Clustered.new(boxes: boxes, groups: @groups).call
@@ -222,7 +266,8 @@ module Views
       def horizontal?(structure)
         return @direction == "right" unless @direction == "auto"
 
-        structure == "flow"
+        # 流れ図と時系列図は、横に読むのが既定（時間は左から右へ流れる）
+        %w[flow timeline].include?(structure)
       end
 
       # 選んだ案の座標を、もとの箱へ書き戻す

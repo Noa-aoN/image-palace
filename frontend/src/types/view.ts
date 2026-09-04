@@ -164,14 +164,17 @@ export type AiEditDirection = 'auto' | 'down' | 'right'
 /** どれだけ動かしてよいか。「いまの形を活かす」をここへ吸収する */
 export type AiEditChangeScale = 'small' | 'medium' | 'large'
 
+/** 図の種別。作例集の8つ＋おまかせ＋格子（サーバーの Layout::Planner::STRUCTURES が正本） */
 export type AiEditLayout =
   | 'auto'
   | 'hierarchy'
   | 'flow'
+  | 'timeline'
   | 'mindmap'
   | 'radial'
   | 'network'
   | 'cluster'
+  | 'comparison'
   | 'grid'
 export type AiEditEdgeMode = 'rebuild' | 'keep' | 'infer' | 'restyle' | 'relabel'
 export type AiEditSizeMode = 'ai' | 'uniform' | 'keep'

@@ -29,15 +29,24 @@ import type {
  * 名前だけでは、階層と放射とマインドマップの違いが読み取れない。
  * どんな図になるのかが分からないまま選ばせると、押して確かめるしかなくなる。
  */
+/**
+ * 図の種別。**作例集の8つに揃えてある。**
+ *
+ * 以前は「関係図」「放射図」「マインドマップ」が別々に並んでいたが、
+ * 名前から中身が想像できず、どれを選べばよいか分からなかった。
+ * **何を整理したいか**で言い直し、代表的な例を添えた。
+ */
 const LAYOUTS: { value: AiEditLayout; label: string; hint: string }[] = [
   { value: 'auto', label: 'おまかせ', hint: '関係の張られ方から、合う形を選びます' },
-  { value: 'hierarchy', label: '階層図', hint: '根から枝分かれ。分類・系統・組織' },
-  { value: 'flow', label: '流れ図', hint: '順序のあるものを一列に。手順・時系列・因果' },
-  { value: 'mindmap', label: 'マインドマップ', hint: '中心から左右へ。発想を広げる' },
-  { value: 'radial', label: '放射図', hint: '中心から360度へ。中心からの遠さに意味がある' },
-  { value: 'network', label: '関係図', hint: '上下が無い網の目。人物の相関など' },
-  { value: 'cluster', label: 'グループ図', hint: 'まとまりごとに島を作る' },
-  { value: 'grid', label: '格子', hint: '並べるだけ' },
+  { value: 'radial', label: '相関図', hint: '複雑なつながりを整理する。中心を囲んで互いに影響し合う' },
+  { value: 'hierarchy', label: '階層図', hint: '親子・上位下位の構造。分類・系統・組織' },
+  { value: 'flow', label: '流れ図', hint: 'プロセスや手順の流れ。戻り線があってもよい' },
+  { value: 'mindmap', label: '関係マップ', hint: '中心テーマと関連要素を俯瞰する' },
+  { value: 'cluster', label: '分類図', hint: 'カテゴリーで分類し、まとまりを整理する' },
+  { value: 'timeline', label: '時系列図', hint: '時間の経過と出来事のつながりを示す' },
+  { value: 'comparison', label: '比較図', hint: '複数の対象を並べて違いや共通点を比較する' },
+  { value: 'network', label: 'ネットワーク図', hint: '多対多の関係や影響の広がりを表現する' },
+  { value: 'grid', label: '格子', hint: '関係で並べる理由が無いとき、並べるだけ' },
 ]
 
 /**

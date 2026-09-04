@@ -163,9 +163,21 @@ function dropRepeats(points: EdgePoint[]): EdgePoint[] {
   })
 }
 
+/**
+ * 取っ手の名前から、辺を読み取る。
+ *
+ * 1辺に5点あるので、名前は `top-0` … `top-4` の形になる。
+ * 真ん中だけは昔からの `top` のまま（名前を変えると既存の線の端点が読めなくなる）。
+ * サーバーの `Layout::Handles.side` と同じ読み方をする
+ */
+export function sideOfHandle(handle: string | null | undefined): string {
+  return handle?.split('-')[0] ?? ''
+}
+
 /** カードのどの辺から出るか → 最初に動く向き */
 export function axisForHandle(handle: string | null | undefined): EdgeAxis {
-  return handle === 'left' || handle === 'right' ? 'horizontal' : 'vertical'
+  const side = sideOfHandle(handle)
+  return side === 'left' || side === 'right' ? 'horizontal' : 'vertical'
 }
 
 /**
@@ -207,14 +219,14 @@ export function withStubs(
   const out = [...vertices]
 
   // 先に終点側から入れる（先頭へ入れると、末尾の位置がずれる）
-  const to = OUTWARD[targetHandle ?? '']
+  const to = OUTWARD[sideOfHandle(targetHandle)]
   if (to) {
     const end = out[out.length - 1]
     const length = stubLength(end, out[out.length - 2], to, stub)
     if (length > 0) out.splice(out.length - 1, 0, { x: end.x + to.x * length, y: end.y + to.y * length })
   }
 
-  const from = OUTWARD[sourceHandle ?? '']
+  const from = OUTWARD[sideOfHandle(sourceHandle)]
   if (from) {
     const start = out[0]
     const length = stubLength(start, out[1], from, stub)
@@ -255,7 +267,8 @@ function stubLength(end: EdgePoint, neighbour: EdgePoint, outward: EdgePoint, st
  */
 export function portedPoint(point: EdgePoint, handle: string | null | undefined, port?: number): EdgePoint {
   if (!port) return point
-  return handle === 'left' || handle === 'right'
+  const side = sideOfHandle(handle)
+  return side === 'left' || side === 'right'
     ? { x: point.x, y: point.y + port }
     : { x: point.x + port, y: point.y }
 }
@@ -287,4 +300,55 @@ export function pointAtFraction(points: EdgePoint[], fraction = 0.5): EdgePoint 
     walked += lengths[i]
   }
   return points[points.length - 1]
+}
+
+/**
+ * 点が、線のどのあたりにあるか（0..1）。
+ *
+ * **折れ点を「線のどこへ挿すか」を決めるのに使う。**
+ *
+ * これが無かった頃は、画面に描かれた頂点の番号を、そのまま
+ * 折れ点の配列の番号として使っていた。だが描かれる頂点には
+ * 助走（`withStubs`）と直角の角（`orthogonalize`）が混ざっているので、
+ * **番号が2つ以上ずれる**。掴んだ場所と違うところに折れ点ができていた。
+ *
+ * 位置そのもので測れば、頂点がいくつ足されていようと関係なくなる。
+ */
+export function fractionAlong(polyline: EdgePoint[], point: EdgePoint): number {
+  if (polyline.length < 2) return 0
+
+  const lengths = polyline.slice(1).map((p, i) => Math.hypot(p.x - polyline[i].x, p.y - polyline[i].y))
+  const total = lengths.reduce((a, b) => a + b, 0)
+  if (total === 0) return 0
+
+  let walked = 0
+  let best = { distance: Infinity, at: 0 }
+
+  for (let i = 0; i < lengths.length; i++) {
+    const a = polyline[i]
+    const b = polyline[i + 1]
+    const length = lengths[i]
+    // その線分の上へ落とす（線分からはみ出す分は端で止める）
+    const t = length === 0 ? 0 : clamp01(((point.x - a.x) * (b.x - a.x) + (point.y - a.y) * (b.y - a.y)) / (length * length))
+    const foot = { x: a.x + (b.x - a.x) * t, y: a.y + (b.y - a.y) * t }
+    const distance = Math.hypot(point.x - foot.x, point.y - foot.y)
+    if (distance < best.distance) best = { distance, at: (walked + length * t) / total }
+    walked += length
+  }
+  return best.at
+}
+
+function clamp01(value: number): number {
+  return Math.min(Math.max(value, 0), 1)
+}
+
+/**
+ * 新しい折れ点を、既存の折れ点の並びのどこへ挿すか。
+ *
+ * **線に沿った位置の順に並べる。** 番号で数えると、助走や角のぶんだけずれる。
+ */
+export function insertIndexFor(polyline: EdgePoint[], points: EdgePoint[], point: EdgePoint): number {
+  const at = fractionAlong(polyline, point)
+  const index = points.findIndex((existing) => fractionAlong(polyline, existing) > at)
+  return index === -1 ? points.length : index
 }

@@ -55,15 +55,9 @@ module Views
       #
       # `Geometry` からも同じものを使う。**2か所に書くと、片方だけ直して食い違う**
 
-      # カードの縁の、線が出入りする点。port は辺の中心からのずれ
+      # カードの縁の、線が出入りする点。port は辺に沿ったずれ
       def self.edge_point(box, handle, port)
-        offset = port.to_f
-        case handle
-        when "top" then { x: box.center_x + offset, y: box.top }
-        when "bottom" then { x: box.center_x + offset, y: box.bottom }
-        when "right" then { x: box.right_edge, y: box.center_y + offset }
-        else { x: box.left_edge, y: box.center_y + offset }
-        end
+        Handles.point(box, handle, port.to_f)
       end
 
       # 道のりを t (0..1) だけ進んだ点。頂点の数ではなく**長さ**で測る

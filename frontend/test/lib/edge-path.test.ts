@@ -5,6 +5,8 @@ import {
   resolveLineStyle,
   portedPoint,
   pointAtFraction,
+  fractionAlong,
+  insertIndexFor,
   DEFAULT_CURVE_RADIUS,
 } from '@/lib/edge-path'
 
@@ -139,5 +141,80 @@ describe('pointAtFraction', () => {
   it('長さが0の線でも落ちない', () => {
     expect(pointAtFraction([{ x: 7, y: 7 }, { x: 7, y: 7 }], 0.5)).toEqual({ x: 7, y: 7 })
     expect(pointAtFraction([])).toEqual({ x: 0, y: 0 })
+  })
+})
+
+/**
+ * 折れ点を、線のどこへ挿すか。
+ *
+ * 描かれる頂点には助走と直角の角が混ざるので、頂点の番号では数えられない。
+ */
+describe('fractionAlong', () => {
+  const line = [
+    { x: 0, y: 0 },
+    { x: 100, y: 0 },
+  ]
+
+  it('線の上の点は、その位置を返す', () => {
+    expect(fractionAlong(line, { x: 25, y: 0 })).toBeCloseTo(0.25)
+    expect(fractionAlong(line, { x: 75, y: 0 })).toBeCloseTo(0.75)
+  })
+
+  it('線から離れた点は、いちばん近いところへ落とす', () => {
+    expect(fractionAlong(line, { x: 50, y: 40 })).toBeCloseTo(0.5)
+  })
+
+  it('線の外へはみ出しても、端で止まる', () => {
+    expect(fractionAlong(line, { x: -50, y: 0 })).toBe(0)
+    expect(fractionAlong(line, { x: 500, y: 0 })).toBe(1)
+  })
+
+  it('折れた線でも、道のりで測る', () => {
+    const bent = [
+      { x: 0, y: 0 },
+      { x: 100, y: 0 },
+      { x: 100, y: 100 },
+    ]
+    expect(fractionAlong(bent, { x: 100, y: 0 })).toBeCloseTo(0.5)
+  })
+
+  it('長さが0の線でも落ちない', () => {
+    expect(fractionAlong([{ x: 5, y: 5 }, { x: 5, y: 5 }], { x: 9, y: 9 })).toBe(0)
+    expect(fractionAlong([], { x: 0, y: 0 })).toBe(0)
+  })
+})
+
+describe('insertIndexFor', () => {
+  // 助走と角が混ざった、実際に描かれる形
+  const drawn = [
+    { x: 0, y: 0 },
+    { x: 0, y: 28 },
+    { x: 50, y: 28 },
+    { x: 50, y: 72 },
+    { x: 100, y: 72 },
+    { x: 100, y: 100 },
+  ]
+
+  it('手で置いた折れ点は、線に沿った順に並ぶ', () => {
+    const points = [
+      { x: 50, y: 28 },
+      { x: 100, y: 72 },
+    ]
+    // 2つの折れ点の間を掴んだ
+    expect(insertIndexFor(drawn, points, { x: 50, y: 50 })).toBe(1)
+  })
+
+  it('いちばん手前を掴んだら先頭へ', () => {
+    const points = [{ x: 50, y: 28 }]
+    expect(insertIndexFor(drawn, points, { x: 0, y: 10 })).toBe(0)
+  })
+
+  it('いちばん奥を掴んだら末尾へ', () => {
+    const points = [{ x: 50, y: 28 }]
+    expect(insertIndexFor(drawn, points, { x: 100, y: 90 })).toBe(1)
+  })
+
+  it('折れ点がまだ無ければ、先頭に置く', () => {
+    expect(insertIndexFor(drawn, [], { x: 50, y: 50 })).toBe(0)
   })
 })
