@@ -1410,7 +1410,47 @@ module Views
           points: line.route.points
         )
       end
+
+      place_junctions!(boxes, relations)
       relations.size
+    end
+
+    # 幹の分かれ目に、接合点を置く。
+    #
+    # ## なぜ置くのか
+    #
+    # 夫婦から子へ・ひとり親から兄弟へ、線は既に1本の幹にまとめて描いている。
+    # だが**幹そのものは掴めなかった**。目には1本に見えるのに、触れるのは
+    # 個々の線だけで、「この幹をずらしたい」と思っても手がかりが無い。
+    #
+    # 分かれ目に点を置けば、そこが**掴める**。動かす・消す・戻すは
+    # 既にある仕組みでそのまま効く。
+    #
+    # ## 線の意味は変えない
+    #
+    # 線は「父→子」「母→子」のまま。**接合点を経由する形に組み替えない。**
+    # 組み替えると、どちらの親から見た関係かが図から消える。
+    # 点は幹の目印であって、線の端ではない。
+    #
+    # ## 作り直すたびに置き直す
+    #
+    # こちらが置いた点だけを消してから置く。手で置いた点は消さない
+    AUTO_JUNCTION = "auto"
+
+    def place_junctions!(boxes, relations)
+      # 前回こちらが置いたものだけを片づける（手で置いたものは残す）
+      @view.view_shapes.where(kind: "junction").select { |shape| shape.style["source"] == AUTO_JUNCTION }
+           .each(&:destroy)
+
+      Layout::CoupleBus.new(boxes: boxes, relations: relations).couples.each do |couple|
+        half = ViewShape::JUNCTION_SIZE / 2.0
+        @view.view_shapes.create!(
+          kind: "junction",
+          x: (couple.trunk_x - half).round, y: (couple.bus_y - half).round,
+          width: ViewShape::JUNCTION_SIZE, height: ViewShape::JUNCTION_SIZE,
+          style: ViewShape.default_style_for("junction").merge("source" => AUTO_JUNCTION)
+        )
+      end
     end
 
     # 線の見出しは、長すぎるものを切ってから測る。
