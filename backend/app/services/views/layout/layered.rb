@@ -34,14 +34,27 @@ module Views
       # 別の親を持つかたまり同士の間隔。兄弟より広く取って、群れの境目を見せる
       GROUP_GAP = Metrics::MIN_CARD_GAP * 1.5
 
+      # **同じ段に置く関係。** 兄弟・配偶者・同僚のように、上下の無いつながり。
+      #
+      # これを段の材料に混ぜていた頃は、ゼウスの「妻」であるヘラや、
+      # 「兄弟」であるポセイドンが、**子と同じ段へ落ちていた**。
+      # 落ちた先から子へ線が引かれるので、その線は子の段を横切ることになる。
+      # 家系図が家系図に見えないのは、ここが理由だった。
+      PEER_TYPES = %w[peer].freeze
+
       # @param boxes [Array<Box>] 置くカード
-      # @param edges [Array<Hash>] { from:, to: } の並び（向きがある）
+      # @param edges [Array<Hash>] { from:, to:, type: } の並び（向きがある）
       # @param roots [Array<String>] 先頭に置きたい id（無ければ自動で選ぶ）
       # @param horizontal [Boolean] true なら左から右へ流す
       def initialize(boxes:, edges:, roots: [], horizontal: false)
         @boxes = boxes
         @by_id = boxes.to_h { |box| [ box.id, box ] }
-        @edges = edges.select { |edge| @by_id.key?(edge[:from]) && @by_id.key?(edge[:to]) }
+        all = edges.select { |edge| @by_id.key?(edge[:from]) && @by_id.key?(edge[:to]) }
+        # 段を作るのは上下のある関係だけ。同列の関係は**並び順にだけ**効かせる
+        @edges = all.reject { |edge| peer?(edge) }
+        @peers = all.select { |edge| peer?(edge) }
+        # 並び順を決めるときは両方を見る（同列のものは隣どうしに寄せたい）
+        @ordering_edges = all
         @roots = roots.select { |id| @by_id.key?(id) }
         @horizontal = horizontal
       end
@@ -54,6 +67,8 @@ module Views
       end
 
       private
+
+      def peer?(edge) = PEER_TYPES.include?(edge[:type].to_s)
 
       # 深さを割り当てる。
       #
@@ -96,6 +111,12 @@ module Views
           end
         end
 
+        # 同列の相手が居るなら、その隣の段へ。
+        # **上下の関係を1本も持たないカードでも、兄弟が居れば居場所は決まる。**
+        # ここが無かった頃、ゼウスの兄弟であるポセイドンは
+        # 「どこからもたどり着けなかったもの」として最下段へ落ちていた
+        assign_peer_levels!(depth, parents)
+
         # どこからもたどり着けなかったものは、いちばん下へ置く（消さない）
         orphan_level = (depth.values.max || 0) + 1
         @boxes.each { |box| depth[box.id] ||= orphan_level }
@@ -103,6 +124,27 @@ module Views
         depth.group_by { |_, level| level }
              .sort_by(&:first)
              .map { |_, pairs| pairs.map { |id, _| @by_id[id] }.compact }
+      end
+
+      # 同列の相手と同じ段へ寄せる。
+      #
+      # **動かすのは「上下の親を持たないもの」だけ。** 親を持つカードを
+      # 兄弟に合わせて動かすと、その親との上下が壊れる。
+      # 兄弟の連なり（A—B—C）をたどれるように、決まらなくなるまで繰り返す
+      def assign_peer_levels!(depth, parents)
+        @boxes.size.times do
+          changed = false
+          @peers.each do |edge|
+            [ [ edge[:from], edge[:to] ], [ edge[:to], edge[:from] ] ].each do |target, source|
+              next if depth.key?(target) || !depth.key?(source)
+              next if parents[target].any?
+
+              depth[target] = depth[source]
+              changed = true
+            end
+          end
+          break unless changed
+        end
       end
 
       # 起点にするのは「親を持たず、子を持つ」もの。
@@ -135,7 +177,8 @@ module Views
       def sort_by_barycenter!(level, reference)
         position = reference.each_with_index.to_h { |box, index| [ box.id, index.to_f ] }
         neighbours = Hash.new { |hash, key| hash[key] = [] }
-        @edges.each do |edge|
+        # 同列の関係も見る。**兄弟は隣どうしに置きたい**
+        @ordering_edges.each do |edge|
           neighbours[edge[:to]] << edge[:from]
           neighbours[edge[:from]] << edge[:to]
         end

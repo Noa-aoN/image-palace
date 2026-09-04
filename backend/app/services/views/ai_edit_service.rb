@@ -27,7 +27,7 @@ module Views
     # これまでは種類が「太さ・色・破線」という見た目にだけ表れていて、
     # 機械では読めなかった。語で持てば、線の引き方も、距離の決め方も、
     # あとから見直すこともできる。知らない語は related へ落とす
-    RELATION_TYPES = %w[parent cause part example contrast sequence means related].freeze
+    RELATION_TYPES = %w[parent cause part example contrast sequence means peer related].freeze
     DEFAULT_RELATION_TYPE = "related"
 
     # 線の見出しの長さ。長い文は図の上で読めない
@@ -227,6 +227,126 @@ module Views
            .limit(MAX_CANDIDATES).to_a
     end
 
+    # 取りこぼした関係を、もう一度だけ訊く。
+    #
+    # ## なぜ必要か
+    #
+    # 規則を厚くしても、読み取り（readings）を先に書かせても、
+    # **見落としは残った**。ギリシャ神話の盤で、アテナ・デメテル・ヘルメス・
+    # アフロディーテがゼウスに繋がらないまま下へ落ちる、という形で。
+    #
+    # 全体を組み立てる仕事の中では、1枚ずつの確認は後回しになりやすい。
+    # だから**その仕事だけを切り出して、もう一度だけ訊く**。
+    # 材料は「浮いているカード」と「既に引けている線」だけなので、短く済む。
+    #
+    # ## 歯止め
+    #
+    # 訊き直すのは1回だけ。線を引き直す設定のときだけ。浮いた枚数が
+    # 多すぎるときは訊かない（図の作り直しであって、取りこぼしではない）。
+    # **答えが「繋がらない」でもよい。** 無理に繋げさせるための仕組みではない
+    MAX_RESCUE_CARDS = 30
+
+    def rescue_isolated!(plan)
+      return unless %w[rebuild infer].include?(@edge_mode)
+
+      alone = isolated_ids(normalized_relations(plan["relations"]))
+      return if alone.empty? || alone.size > MAX_RESCUE_CARDS
+      # 全部が浮いている＝そもそも関係が読み取れていない。訊き直しても同じ
+      return if alone.size >= placed.size
+
+      found = request_missing_relations(alone, plan)
+      return if found.empty?
+
+      plan["relations"] = Array(plan["relations"]) + found
+      @rescued = found.size
+    end
+
+    def isolated_ids(relations)
+      connected = relations.flat_map { |relation| [ relation[:from], relation[:to] ] }.to_set
+      placed.map(&:item_id).reject { |id| connected.include?(id) }
+    end
+
+    def request_missing_relations(alone, plan)
+      # 資料の組み立ては rescue の外。ここで転ぶのはこちらの不具合なので、握り潰さない
+      message = rescue_message(alone, plan)
+      ask_for_missing_relations(message)
+    end
+
+    def ask_for_missing_relations(message)
+      response = Ai::Chat.call(
+        kind: "canvas_edit",
+        user: @user,
+        model: model,
+        messages: [
+          { role: "system", content: rescue_rules },
+          { role: "user", content: message }
+        ],
+        temperature: 0.2,
+        max_tokens: MAX_RESCUE_TOKENS,
+        response_format: { type: "json_object" }
+      )
+      parsed = JSON.parse(response.dig("choices", 0, "message", "content").to_s)
+      Array(parsed["relations"]).select { |relation| relation.is_a?(Hash) }
+      # 何で失敗しても構わない。**図そのものは既にできている。**
+      # 残高切れ・通信の失敗・読めない返事——どれも、出来上がった図を
+      # 捨てる理由にはならない。何で落ちたかはログに残す
+    rescue StandardError => e
+      Rails.logger.warn "[AiEdit] RESCUE FAILED view_id=#{@view.id} #{e.class}: #{e.message}"
+      []
+    end
+
+    # 取りこぼしを訊くときの出力は短い。関係だけを返させる
+    MAX_RESCUE_TOKENS = 2_000
+
+    def rescue_rules
+      <<~PROMPT
+        図の中で、どの線にも繋がっていないカードがあります。
+        **そのカードだけについて**、繋がる先を答えてください。
+
+        次の JSON のみを返してください。
+        {"relations": [{"from": "id", "to": "id",
+                        "type": "#{RELATION_TYPES.join('|')}",
+                        "label": "線の見出し", "strength": 0.8}]}
+
+        - from か to のどちらかは、必ず<浮いているカード>の id にすること
+        - 相手は<図にあるカード>の id から選ぶ
+        - **無理に繋げない。** 意味のある関係が無いカードは、そのまま挙げないこと。
+          繋がるものが1つも無ければ relations は空配列で返す
+        - label は 8 文字程度までの短い語。「関係」「関連」のように何も説明しない語は使わない
+        - 上下があるか同列かを取り違えない。
+          親子・上位下位は parent（from が上、to が下）、
+          兄弟・姉妹・配偶者・同僚は peer
+        - **既にある線と食い違う関係を書かない**（同じ2枚に別の意味の線を足さない）
+      PROMPT
+    end
+
+    def rescue_message(alone, plan)
+      by_id = placed.index_by(&:item_id)
+      sections = [ "<浮いているカード>" ]
+      sections << alone.filter_map { |id| by_id[id] }.map { |vi| placed_line(vi) }.join("\n")
+      sections << "</浮いているカード>"
+      sections << ""
+      sections << "<図にあるカード>"
+      sections << placed.reject { |vi| alone.include?(vi.item_id) }.map { |vi| placed_line(vi) }.join("\n")
+      sections << "</図にあるカード>"
+      sections << ""
+      sections << "<既に引けている線>"
+      sections << (drawn_relation_lines(plan).presence || "（なし）")
+      sections << "</既に引けている線>"
+      sections.join("\n")
+    end
+
+    def drawn_relation_lines(plan)
+      titles = card_titles
+      normalized_relations(plan["relations"]).first(MAX_EDGES).filter_map do |relation|
+        from = titles[relation[:from]]
+        to = titles[relation[:to]]
+        next if from.blank? || to.blank?
+
+        "- #{from} → #{to}（#{relation[:type]}#{"・#{relation[:label]}" if relation[:label].present?}）"
+      end.join("\n")
+    end
+
     # --- AI に計画を立てさせる ----------------------------------------------
 
     def request_plan
@@ -352,7 +472,14 @@ module Views
         - type は次から選ぶ。当てはまるものが無ければ related
           parent（親子・上位下位） / cause（原因と結果） / part（部分と全体）
           / example（具体例） / contrast（対比・対立） / sequence（順序・時系列）
-          / means（手段と目的） / related（その他）
+          / means（手段と目的） / peer（同列） / related（その他）
+        - **上下があるか、同列かを取り違えない。ここが図の段を決めます。**
+          ・parent … 下に置きたいもの。親子・上位下位・分類と具体。
+            「息子」「娘」「子」「母」「父」はすべて parent（from が上、to が下）
+          ・peer  … 同じ段に置きたいもの。兄弟・姉妹・配偶者・同僚・同期・並列。
+            「妻」「夫」「兄」「弟」「姉」「妹」はすべて peer
+          ・related … どちらとも言えないもの。**迷ったときの逃げ道であって、
+            親子や兄弟を related にしない**
         - label は 8 文字程度までの短い語（「父」「原因」「例」など）。長い文は入れない
         - **「関係」「関連」「つながり」のように何も説明していない語は使わない**
         - strength は 0〜1。**強いほど近くに置かれます**。
@@ -594,6 +721,10 @@ module Views
       notes = plan["notes"].to_s.strip.presence
       added = removed = placed_count = connected = 0
 
+      # **取りこぼしを、書き込む前に拾う。** ここで足せば、線だけでなく
+      # 段の割り当てにも反映される（後から足すと、置き場所が古いまま残る）
+      rescue_isolated!(plan) if @view.freeboard?
+
       ViewItem.transaction do
         # 動かす前の座標。**「本当に動いたか」を後で見る**ために控える。
         # 「動かす設定か」ではなく「動いたか」で判断しないと、
@@ -650,7 +781,8 @@ module Views
     #   食い違い      … 図全体として辻褄が合わないところ
     #   図の崩れ      … 重なり・線の交差・文字の衝突
     def combined_notes(ai_notes)
-      [ ai_notes, *Array(@consistency_notes), *Array(@layout_notes) ]
+      rescued = ("見落としていた関係を#{@rescued}本、追い足しました。" if @rescued.to_i.positive?)
+      [ ai_notes, rescued, *Array(@consistency_notes), *Array(@layout_notes) ]
         .compact_blank.uniq.first(8).join("\n").presence
     end
 
@@ -1176,6 +1308,8 @@ module Views
       "part" => { color: "#777777", marker_end: "none" },
       "example" => { color: "#999999", marker_end: "none", dashed: true },
       "contrast" => { color: "#c0504d", marker_end: "arrow" },
+      # 同列は上下が無い。矢印を付けると、どちらかが上に見える
+      "peer" => { color: "#777777", marker_end: "none" },
       "related" => { color: "#999999", marker_end: "none", dashed: true }
     }.freeze
 
