@@ -21,6 +21,9 @@ module Views
       # 案を比べる上限の枚数。これを超えたら見立てどおりに1案だけ作る
       MAX_CANDIDATES_FOR_COMPARISON = 60
 
+      # ここまで来ていれば、手を当てない。**下げる危険のほうが大きい**
+      WELL_ENOUGH = 95
+
       # 見立ての名前。知らない語は auto へ落とす
       # 図の種別。**同じ絵を別の名前で並べない。**
       #
@@ -58,7 +61,8 @@ module Views
       # @param roots [Array<String>]
       # @param move_weight [Float] 大きいほど「いまの形」を尊ぶ
       def initialize(boxes:, relations: [], groups: [], structure: "auto", roots: [],
-                     move_weight: 1.0, movable: nil, direction: DEFAULT_DIRECTION)
+                     move_weight: 1.0, movable: nil, direction: DEFAULT_DIRECTION,
+                     obstacles: {}, issues: [], thorough: false)
         @boxes = boxes
         @relations = relations
         @groups = groups
@@ -69,13 +73,25 @@ module Views
         # 動かしてよい id。nil は全部。「置き場所を触らない」ときに使う
         @movable = movable
         @previous = boxes.to_h { |box| [ box.id, { x: box.x, y: box.y } ] }
+        # 線をよける相手（図形）。**測るときと引くときで同じものを見る**
+        @obstacles = obstacles
+        # 関係の食い違い。意味の正しさ（A群）はここから点になる
+        @issues = issues
+        # 念入りに整えるか。**時間をかけて良いか**を利用者が決める
+        @thorough = thorough
       end
 
       def call
         return empty_result if @boxes.empty?
 
+        # **待たせる時間は、整える全体で測る。**
+        # 改善の輪だけに予算を付けていた頃は、案を作る時間が予算の外にあり、
+        # 「標準は2秒」と言いながら2.5秒かかっていた
+        @started_at = now
         candidates = build_candidates
-        best = candidates.min_by { |candidate| candidate[:score].penalty }
+        # **点数が高いほうを採る。** 同点なら先に作ったほう（見立てどおりの形）
+        best = candidates.max_by.with_index { |candidate, index| [ candidate[:score].points, -index ] }
+        best = improve(best)
         apply!(best)
         Result.new(
           boxes: @boxes, structure: best[:structure],
@@ -85,9 +101,40 @@ module Views
 
       private
 
+      # **点数が上がる方へ動かす。**
+      #
+      # 案を作って比べるだけでは、案の中にしか答えが無い。
+      # 出来上がった図に小さな手を当てて、上がったら残す。
+      # 「いまの形を活かす」ときは動かさない（動かさないことが約束なので）
+      def improve(candidate)
+        return candidate if candidate[:structure] == "keep_shape"
+        return candidate if @boxes.size > MAX_CANDIDATES_FOR_COMPARISON
+        # もう十分に良い。**動かして下げる危険のほうが大きい**
+        return candidate if candidate[:score].points >= WELL_ENOUGH
+
+        # 案を作るのに使った時間を差し引いた残り
+        total = @thorough ? Improver::THOROUGH_BUDGET : Improver::STANDARD_BUDGET
+        budget = total - (now - @started_at)
+        return candidate if budget <= 0
+
+        result = Improver.new(
+          boxes: candidate[:boxes], relations: @relations,
+          score_for: ->(boxes) { score_for(boxes) }, budget: budget,
+          score: candidate[:score]
+        ).call
+        # 1手も残らなかったなら、元のまま。**測り直さない**
+        return candidate if result[:kept].zero?
+
+        # 手を当てた結果、重なりが出ることがある。**最後に必ず解く**
+        Separator.new(boxes: result[:boxes], movable: @movable).call
+        { structure: candidate[:structure], boxes: result[:boxes], score: score_for(result[:boxes]) }
+      end
+
+      def now = Process.clock_gettime(Process::CLOCK_MONOTONIC)
+
       def empty_result
         Result.new(boxes: [], structure: @structure, notes: [],
-                   score: Score.new(boxes: [], edges: []))
+                   score: Score.new(boxes: [], edges: [], issues: @issues))
       end
 
       # 試す形を決める。**見立てを最優先に置き、外れたときの受け皿を足す。**
@@ -139,12 +186,16 @@ module Views
           # ただし「いまの形を活かす」ときは寄せ直さない（置いた場所が動く）
           Separator.new(boxes: boxes, movable: @movable,
                         reorigin: structure != "keep_shape").call
-          {
-            structure: structure, boxes: boxes,
-            score: Score.new(boxes: boxes, edges: @relations, previous: @previous,
-                             move_weight: @move_weight, groups: @groups)
-          }
+          { structure: structure, boxes: boxes, score: score_for(boxes) }
         end
+      end
+
+      # **実物で測る。** 線の道すじと文字の場所を、書き込むときと同じ手で組んでから採点する。
+      # 両端を結ぶ直線で近似していた頃は、測っている図と目に見える図が別物だった
+      def score_for(boxes)
+        lines = Geometry.call(boxes: boxes, relations: @relations, obstacles: @obstacles)
+        Score.new(boxes: boxes, edges: @relations, previous: @previous,
+                  move_weight: @move_weight, groups: @groups, lines: lines, issues: @issues)
       end
 
       def run_layout(structure, boxes)

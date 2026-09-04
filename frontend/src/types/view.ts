@@ -186,6 +186,11 @@ export interface AiEditOptions {
   direction?: AiEditDirection
   /** どれだけ動かしてよいか */
   change_scale?: AiEditChangeScale
+  /**
+   * 時間をかけて良いか。**AI の呼び出しは増えない**（サーバー側の計算だけ伸びる）。
+   * 標準〜2秒、念入り〜8秒
+   */
+  thorough?: boolean
 }
 
 /** 「カードから作る」の提案（まだ作られていない） */
@@ -230,6 +235,25 @@ export interface AiEditSummary {
   removed: number
   placed: number
   connected: number
+  /**
+   * 図の点数と内訳。**良くなったのか悪くなったのかを、目だけで判断させない。**
+   * 判断基準は4群14項目・100点（サーバーの Views::Layout::Score::ITEMS が正本）
+   */
+  score?: BoardScore | null
+}
+
+export interface BoardScore {
+  points: number
+  breakdown: {
+    group: string
+    label: string
+    points: number
+    max: number
+    /** 満点でない項目だけ。読むべきものだけ残す */
+    weak: { label: string; note?: string | null }[]
+  }[]
+  counts: Record<string, number>
+  ratios: Record<string, number>
 }
 
 /**

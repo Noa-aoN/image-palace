@@ -104,6 +104,7 @@ export function ObjectList({ viewId }: { viewId: string }) {
   const openEdge = useRightPanelStore((s) => s.openEdge)
   const openShape = useRightPanelStore((s) => s.openShape)
   const requestFocusEdge = useRightPanelStore((s) => s.requestFocusEdge)
+  const requestLayerOrder = useRightPanelStore((s) => s.requestLayerOrder)
   // 手前を先頭に表示する（取得は z_index 昇順＝奥→手前なので反転）
   const [rows, setRows] = useState<Row[] | null>(null)
   const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 4 } }))
@@ -151,15 +152,12 @@ export function ObjectList({ viewId }: { viewId: string }) {
 
     const next = arrayMove(rows, oldIndex, newIndex)
     setRows(next)
-    // 先頭＝手前。開いているボードには再読込時に反映される
-    persist(
-      () =>
-        reorderViewObjects(
-          viewId,
-          next.map((row) => ({ kind: row.kind, id: rowId(row) }))
-        ),
-      { key: `view:${viewId}:objectOrder` }
-    )
+    const order = next.map((row) => ({ kind: row.kind, id: rowId(row) }))
+    // **開いている盤にも、すぐ伝える。**
+    // 保存するだけにしていた頃は、並べ替えても見た目が変わらず、
+    // 効いていないように見えた
+    requestLayerOrder(order)
+    persist(() => reorderViewObjects(viewId, order), { key: `view:${viewId}:objectOrder` })
   }
 
   return (

@@ -154,7 +154,8 @@ RSpec.describe Views::Layout::Planner do
       ).call
 
       expect(result.score.overlaps).to eq(0)
-      expect(result.score.to_h).to include(:edge_crossings, :total_length, :penalty)
+      expect(result.score.to_h).to include(:points, :breakdown, :counts, :ratios)
+      expect(result.score.points).to be_between(0, 100)
     end
 
     it "重なりが残ったら、そう伝える" do

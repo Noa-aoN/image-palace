@@ -203,7 +203,9 @@ module Api
           # 流れの向き。種別とは別の軸（同じ階層図を縦にも横にもできる）
           direction: params.dig(:edit, :direction),
           # どれだけ動かしてよいか（「いまの形を活かす」を吸収する）
-          change_scale: params.dig(:edit, :change_scale)
+          change_scale: params.dig(:edit, :change_scale),
+          # 時間をかけて良いか。AI の呼び出しは増えず、こちらの計算時間だけ伸びる
+          thorough: params.dig(:edit, :thorough)
         )
         Views::RevisionService.snapshot!(@view.reload, label: "AI調整の後")
         render json: serialize_view_detail(@view.reload).merge(
@@ -213,7 +215,9 @@ module Api
             added: result.added,
             removed: result.removed,
             placed: result.placed,
-            connected: result.connected
+            connected: result.connected,
+            # 図の点数と内訳。**良くなったのか悪くなったのかを、目だけで判断させない**
+            score: result.score
           }
         )
       rescue Ai::Chat::LimitExceeded => e

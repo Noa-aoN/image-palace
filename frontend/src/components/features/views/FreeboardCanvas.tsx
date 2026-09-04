@@ -233,6 +233,8 @@ function Canvas({
   const consumeShapePatch = useRightPanelStore((s) => s.consumeShapePatch)
   const shapeRemoveId = useRightPanelStore((s) => s.shapeRemoveId)
   const consumeShapeRemove = useRightPanelStore((s) => s.consumeShapeRemove)
+  const layerOrder = useRightPanelStore((s) => s.layerOrder)
+  const consumeLayerOrder = useRightPanelStore((s) => s.consumeLayerOrder)
   const closePanel = useRightPanelStore((s) => s.close)
   const openBoardCards = useRightPanelStore((s) => s.openBoardCards)
   const openAddCards = useRightPanelStore((s) => s.openAddCards)
@@ -625,6 +627,30 @@ function Canvas({
     setNodes((current) => current.filter((node) => node.id !== shapeRemoveId))
     consumeShapeRemove()
   }, [shapeRemoveId, consumeShapeRemove, setNodes])
+
+  /**
+   * 右パネルの一覧で並べ替えられた重なり順を、盤へ当てる。
+   *
+   * **保存するだけにしていた頃は、並べ替えても見た目が変わらなかった。**
+   * 再読込すれば直っていたが、操作した本人には効いていないようにしか見えない。
+   *
+   * 一覧は手前から並んでいるので、**末尾ほど小さい番号**を配る。
+   * かこみは一覧の外にいるので触らない（必ずいちばん後ろに敷く）
+   */
+  useEffect(() => {
+    if (!layerOrder) return
+
+    const z = new Map(layerOrder.map((entry, index) => [ entry.id, layerOrder.length - index ]))
+    setNodes((current) =>
+      current.map((node) =>
+        z.has(node.id) && isShapeNode(node) && node.data.shape.kind !== 'frame'
+          ? { ...node, zIndex: z.get(node.id) }
+          : node
+      )
+    )
+    setEdges((current) => current.map((edge) => (z.has(edge.id) ? { ...edge, zIndex: z.get(edge.id) } : edge)))
+    consumeLayerOrder()
+  }, [layerOrder, consumeLayerOrder, setNodes, setEdges])
 
   // ハンドルをドラッグして接続線を作る
   const handleConnect: OnConnect = useCallback(
