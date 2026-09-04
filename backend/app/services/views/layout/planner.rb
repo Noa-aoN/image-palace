@@ -148,7 +148,8 @@ module Views
       end
 
       def run_layout(structure, boxes)
-        edges = @relations.map { |relation| { from: relation[:from], to: relation[:to] } }
+        # 種類も渡す。**同列の関係（兄弟・配偶者）を段の材料にしない**ため
+        edges = @relations.map { |relation| { from: relation[:from], to: relation[:to], type: relation[:type] } }
         case structure
         when "hierarchy", "flow"
           Layered.new(boxes: boxes, edges: edges, roots: @roots,

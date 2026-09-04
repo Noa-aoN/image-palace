@@ -183,3 +183,90 @@ RSpec.describe Views::Layout::Layered do
     end
   end
 end
+
+# 同列の関係（兄弟・配偶者）は、段を作らない。
+#
+# ここを取り違えていた頃は、ゼウスの「妻」であるヘラや「兄弟」であるポセイドンが
+# 子と同じ段へ落ち、そこから子へ引かれた線が子の段を横切っていた。
+RSpec.describe "#{Views::Layout::Layered} 同列の関係" do
+  def box(id, width: 144, height: 176)
+    Views::Layout::Box.new(id: id, title: id, x: 0, y: 0, width: width, height: height, footprint_width: width)
+  end
+
+  def levels_of(boxes)
+    boxes.group_by(&:y).sort_by(&:first).map { |_, group| group.map(&:id).sort }
+  end
+
+  # ゼウス：妻ヘラ（同列）・兄弟ポセイドン（同列）・娘アルテミス（親子）
+  # ヘラ：子アレス（親子）
+  let(:boxes) { %w[ゼウス ヘラ ポセイドン アルテミス アレス].map { |id| box(id) } }
+  let(:edges) do
+    [
+      { from: "ゼウス", to: "ヘラ", type: "peer" },
+      { from: "ゼウス", to: "ポセイドン", type: "peer" },
+      { from: "ゼウス", to: "アルテミス", type: "parent" },
+      { from: "ヘラ", to: "アレス", type: "parent" }
+    ]
+  end
+
+  it "配偶者と兄弟は、同じ段に並ぶ" do
+    result = Views::Layout::Layered.new(boxes: boxes, edges: edges, roots: [ "ゼウス" ]).call
+
+    expect(levels_of(result).first).to eq(%w[ゼウス ヘラ ポセイドン])
+  end
+
+  it "子だけが下の段へ行く" do
+    result = Views::Layout::Layered.new(boxes: boxes, edges: edges, roots: [ "ゼウス" ]).call
+
+    expect(levels_of(result).last).to eq(%w[アルテミス アレス])
+  end
+
+  it "段は2つだけになる（同列が段を増やさない）" do
+    result = Views::Layout::Layered.new(boxes: boxes, edges: edges, roots: [ "ゼウス" ]).call
+
+    expect(levels_of(result).size).to eq(2)
+  end
+
+  # 上下の関係を1本も持たないカードでも、兄弟が居れば居場所は決まる
+  it "同列の関係しか持たないカードが、最下段へ落ちない" do
+    result = Views::Layout::Layered.new(boxes: boxes, edges: edges, roots: [ "ゼウス" ]).call
+    poseidon = result.find { |b| b.id == "ポセイドン" }
+    zeus = result.find { |b| b.id == "ゼウス" }
+
+    expect(poseidon.y).to eq(zeus.y)
+  end
+
+  # 親を持つカードを兄弟に合わせて動かすと、その親との上下が壊れる
+  it "親を持つカードは、同列の相手につられて上がらない" do
+    with_parent = boxes + [ box("ヘパイストス") ]
+    result = Views::Layout::Layered.new(
+      boxes: with_parent,
+      edges: edges + [
+        { from: "ヘラ", to: "ヘパイストス", type: "parent" },
+        { from: "ヘパイストス", to: "ゼウス", type: "peer" }
+      ],
+      roots: [ "ゼウス" ]
+    ).call
+
+    hephaestus = result.find { |b| b.id == "ヘパイストス" }
+    zeus = result.find { |b| b.id == "ゼウス" }
+    expect(hephaestus.y).to be > zeus.y
+  end
+
+  it "同列の相手は、並びの中で隣どうしに寄る" do
+    wide = %w[ゼウス ヘラ A B C].map { |id| box(id) }
+    result = Views::Layout::Layered.new(
+      boxes: wide,
+      edges: [
+        { from: "ゼウス", to: "A", type: "parent" },
+        { from: "ゼウス", to: "B", type: "parent" },
+        { from: "ゼウス", to: "C", type: "parent" },
+        { from: "ゼウス", to: "ヘラ", type: "peer" }
+      ],
+      roots: [ "ゼウス" ]
+    ).call
+
+    top = result.select { |b| b.y == result.min_by(&:y).y }.sort_by(&:x).map(&:id)
+    expect(top).to contain_exactly("ゼウス", "ヘラ")
+  end
+end
