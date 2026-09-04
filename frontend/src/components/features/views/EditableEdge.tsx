@@ -25,6 +25,7 @@ import {
   dashArrayFor,
   resolveLineStyle,
   portedPoint,
+  insertIndexFor,
   pointAtFraction,
   DEFAULT_CURVE_RADIUS,
 } from '@/lib/edge-path'
@@ -124,13 +125,37 @@ function EditableEdgeComponent(props: EdgeProps) {
     window.addEventListener('pointerup', up)
   }
 
-  // セグメント中点のゴースト → 新規 waypoint を挿入し、そのままドラッグに移行
-  const startInsert = (segIndex: number) => (ev: ReactPointerEvent) => {
-    const fp = screenToFlowPosition({ x: ev.clientX, y: ev.clientY })
+  /**
+   * 折れ点を足す。掴んだ場所に置いて、そのままドラッグへ移る。
+   *
+   * **どこへ挿すかは、線に沿った位置で決める。**
+   * 描かれている頂点の番号で数えていた頃は、助走と直角の角のぶんだけ
+   * 番号がずれて、掴んだ場所と違うところに折れ点ができていた。
+   */
+  const addPointAt = (client: { clientX: number; clientY: number }) => {
+    const fp = screenToFlowPosition({ x: client.clientX, y: client.clientY })
+    const at = { x: Math.round(fp.x), y: Math.round(fp.y) }
+    const index = insertIndexFor(verts, points, at)
     const inserted = [...points]
-    inserted.splice(segIndex, 0, { x: Math.round(fp.x), y: Math.round(fp.y) })
+    inserted.splice(index, 0, at)
+    return { index, inserted }
+  }
+
+  const startInsert = () => (ev: ReactPointerEvent) => {
+    const { index, inserted } = addPointAt(ev)
     writeLocal(inserted)
-    startMove(segIndex, inserted)(ev)
+    // **押しただけでも残す。** 動かさなければ保存されず、
+    // 離した瞬間に消えていた（置いたつもりのものが無くなる）
+    commitPoints(id, inserted)
+    startMove(index, inserted)(ev)
+  }
+
+  // 線をダブルクリックしても折れ点が置ける。**掴む的を狙わなくてよい**
+  const insertOnPath = (ev: ReactMouseEvent) => {
+    ev.stopPropagation()
+    const { inserted } = addPointAt(ev)
+    writeLocal(inserted)
+    commitPoints(id, inserted)
   }
 
   // waypoint ダブルクリックで削除
@@ -177,6 +202,18 @@ function EditableEdgeComponent(props: EdgeProps) {
         />
       )}
       <BaseEdge id={id} path={edgePath} markerStart={markerStart} markerEnd={markerEnd} style={baseStyle} />
+      {/*
+        掴むための、見えない太い線。**線そのものは細いので、狙って当てにくい。**
+        ダブルクリックでその場に折れ点を置ける（的を狙わなくてよい）
+      */}
+      <path
+        d={edgePath}
+        fill="none"
+        stroke="transparent"
+        strokeWidth={Math.max(strokeWidth + 12, 16)}
+        onDoubleClick={insertOnPath}
+        style={{ cursor: 'crosshair', pointerEvents: 'stroke' }}
+      />
       {doubled && (
         // 真ん中を盤の色で抜いて2本に見せる。矢印は外側の線だけに付ける
         <path
@@ -227,17 +264,18 @@ function EditableEdgeComponent(props: EdgeProps) {
               return (
                 <div
                   key={`g${i}`}
-                  className="nodrag nopan"
-                  onPointerDown={startInsert(i)}
-                  title="ドラッグで折れ点を追加"
+                  className="nodrag nopan edge-ghost"
+                  onPointerDown={startInsert()}
+                  title="ドラッグまたはクリックで折れ点を追加"
                   style={{
                     position: 'absolute',
                     transform: `translate(-50%, -50%) translate(${mx}px, ${my}px)`,
-                    width: 10,
-                    height: 10,
+                    width: 14,
+                    height: 14,
                     borderRadius: '50%',
+                    border: '2px solid var(--board-bg)',
                     background: 'var(--palace)',
-                    opacity: 0.4,
+                    opacity: 0.55,
                     cursor: 'crosshair',
                     pointerEvents: 'all',
                   }}

@@ -94,6 +94,15 @@ interface RightPanelState {
   consumeFocusEdge: () => void
   requestAdd: (item: Item) => void
   consumeAdd: () => void
+  /**
+   * まとめて置く合図。デッキ1つぶんのカードを一度に渡す。
+   *
+   * 1枚ずつ requestAdd を撃つと、**盤が1枚ごとに中央へ寄せ直す**ので
+   * 画面が跳ね回り、しかも置き場所が重なる。まとめて渡して、まとめて並べる
+   */
+  pendingAddItems: Item[] | null
+  requestAddMany: (items: Item[]) => void
+  consumeAddMany: () => void
   requestEdgePatch: (id: string, changes: Partial<ViewEdge>) => void
   consumeEdgePatch: () => void
   requestEdgeRemove: (id: string) => void
@@ -166,6 +175,9 @@ export const useRightPanelStore = create<RightPanelState>()((set) => ({
   consumeFocusEdge: () => set({ focusEdgeId: null }),
   requestAdd: (item) => set({ pendingAddItem: item }),
   consumeAdd: () => set({ pendingAddItem: null }),
+  pendingAddItems: null,
+  requestAddMany: (items) => set({ pendingAddItems: items }),
+  consumeAddMany: () => set({ pendingAddItems: null }),
   requestEdgePatch: (id, changes) => set({ edgePatch: { id, changes } }),
   consumeEdgePatch: () => set({ edgePatch: null }),
   requestEdgeRemove: (id) => set({ edgeRemoveId: id }),

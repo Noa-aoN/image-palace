@@ -187,8 +187,10 @@ module Views
       # **種別とタグも一緒に読む。** カードの意味を知る材料になるのに、
       # これまでは見出しと説明文しか渡していなかった。
       # includes に足すだけなので、問い合わせの本数は増えない
+      # 説明が空のカードは Wikipedia の冒頭で補うので、項目も一緒に引く。
+      # **1回で引く**（カードの枚数だけ問い合わせを増やさない）
       @placed ||= @view.view_items
-                       .includes(item: [ :item_type, :tags ])
+                       .includes(item: [ :item_type, :tags, { item_properties: :property_definition } ])
                        .order(:position, :created_at).to_a
     end
 
@@ -440,19 +442,30 @@ module Views
                         "label": "線の見出し", "strength": 0.8}]}
 
         ## 図全体の形（structure）
-        - hierarchy … 階層図・組織図・樹形図。**根から下へ枝分かれ**する。分類・系統・組織
-        - flow      … 流れ図。**左から右へ**進む。手順・時系列・因果の連なり
-        - mindmap   … マインドマップ。中心の主題から**左右へ振り分けて**広げる。
-                      発想を広げる図、1つの話題を多面から見る図
-        - radial    … 放射図。中心から**360度へ**。中心からの遠さ自体に意味がある図
-        - network   … 関係図・相関図。**上下が無い網の目**。
-                      人物どうしの関係のように、誰もが誰とでもつながるもの
-        - cluster   … グループ図。つながりより**まとまり**が大事なもの
+        - hierarchy … 階層図・分類図・組織図。**根から下へ枝分かれ**する。
+                      分類・系統・組織。「動物→哺乳類→ライオン」のような入れ子
+        - flow      … 流れ図。**手順やプロセスの連なり**。「調査→計画→実行→評価」。
+                      戻り線（見直し・反映）があってもよい
+        - timeline  … 時系列図。**時間の軸が1本**あり、出来事がその上に並ぶ。
+                      年表・歴史。流れ図との違いは、**時間の前後だけで並ぶ**こと
+        - mindmap   … 関係マップ。中心の主題から**左右へ振り分けて**広げる。
+                      1つの話題を多面から見る図
+        - radial    … 相関図。中心から**360度へ**。中心からの遠さ自体に意味がある。
+                      「地球」を囲んで太陽・海・風・生き物が互いに影響し合う図
+        - network   … ネットワーク図。**上下が無い網の目**。多対多の影響の広がり。
+                      誰もが誰とでもつながるもの
+        - cluster   … 分類図（まとまり重視）。つながりより**まとまり**が大事なもの
+        - comparison… 比較図。**複数の対象を列に並べて、観点ごとに横で比べる**。
+                      「ギリシャ／ローマ／エジプト」を建築・文字・政体で見比べる図。
+                      **groups が列になる**ので、比べる対象ごとに群れを作ること
         - grid      … 並べるだけ。関係で並べる理由が無いとき
 
         ### 選び方
         - 親がひとつずつに決まる → hierarchy（縦）か flow（横）
+        - 時間の前後だけで並ぶ（年・時代が付いている） → timeline
+        - 比べる対象が何組かあり、同じ観点で見比べたい → comparison
         - 中心が1つで、そこから多く広がる → mindmap
+        - 中心が1つで、周りが互いにも影響し合う → radial
         - 親が複数ある・双方向のつながりがある → network
         - 群れに分かれていて、群れの中の順序は問わない → cluster
 
@@ -540,8 +553,50 @@ module Views
     end
 
     # 関係を読み取るときは、意味をもう少し長く見せる。短すぎると関係が判断できない
+    # 資料に載せる説明の長さ。**枚数で変える。**
+    #
+    # 160字で切っていた頃は、「ギリシア神話の主神。天空を司る」までしか渡らず、
+    # 誰の子で誰と結ばれたのかが書いてあっても届いていなかった。
+    # **関係を読み取れという仕事に対して、材料が足りていなかった。**
+    #
+    # かといって常に長くすると、枚数の多い盤で入力が膨らむ。
+    # 枚数が少ないほど厚く渡す（20枚なら400字＝1枚あたり約200トークン）
+    MEANING_BUDGET = [
+      { up_to: 20, chars: 400 },
+      { up_to: 50, chars: 240 },
+      { up_to: 100, chars: 150 }
+    ].freeze
+    MEANING_MINIMUM = 90
+
     def meaning_limit
-      @edge_mode == "keep" ? MEANING_EXCERPT : MEANING_EXCERPT_FOR_INFER
+      # 線を触らないなら、関係を読み取る必要が無い。短くてよい
+      return MEANING_EXCERPT if @edge_mode == "keep"
+
+      count = placed.size
+      MEANING_BUDGET.find { |budget| count <= budget[:up_to] }&.fetch(:chars) || MEANING_MINIMUM
+    end
+
+    # カードの説明。**意味が空でも、諦めない。**
+    #
+    # 意味を書いていないカードは珍しくない。だが Wikipedia を引いていれば
+    # 冒頭が入っている。そこに「クロノスとレアの子」と書いてあるのに
+    # 読まないでいたので、そのカードだけ関係を挙げてもらえなかった
+    def card_text(item)
+      meaning = sanitize(item&.primary_meaning&.definition, limit: meaning_limit)
+      return meaning if meaning.present?
+
+      sanitize(wikipedia_extract(item), limit: meaning_limit)
+    end
+
+    def wikipedia_extract(item)
+      entry = item&.item_properties&.find { |property| property.property_definition&.value_type == "wikipedia" }
+      raw = entry&.typed_value
+      return nil if raw.blank?
+
+      parsed = JSON.parse(raw.to_s)
+      parsed.is_a?(Hash) ? parsed["wikipedia_extract"].presence : nil
+    rescue JSON::ParserError
+      nil
     end
 
     # 画面で選んだ方針を規則として足す。指示文に混ぜず、規則の側に置く。
@@ -672,7 +727,7 @@ module Views
       kind = item&.item_type&.label
       parts << "［#{sanitize(kind, limit: 20)}］" if kind.present?
 
-      meaning = sanitize(item&.primary_meaning&.definition, limit: meaning_limit)
+      meaning = card_text(item)
       parts << "／#{meaning}" if meaning.present?
 
       tags = Array(item&.tags).map(&:name).first(MAX_TAGS_PER_CARD)
@@ -1295,17 +1350,27 @@ module Views
     # 種類と強さを `style` へ残しておくと、あとから
     # 「対立の線だけ消す」「弱い関係を薄くする」といった見直しができる。
     # 見た目にだけ焼き付けていた頃は、機械では読み取れなかった
+    # 種類ごとの見た目。**目で種類が見分けられること**が要点。
+    #
+    # 以前は parent / cause / sequence / means が全部 同じ濃い灰＋矢印で、
+    # **見分けが付かなかった**。色と線の種類を配って、意味の違いを目に出す。
+    #
+    # 色は多用しない。**上下の骨組みは灰**のままにして、
+    # 因果・順序・手段・対立だけに色を当てる（全部に色を付けると、どれも目立たない）
     RELATION_LOOKS = {
-      "parent" => { color: "#555555", marker_end: "arrow" },
-      "cause" => { color: "#555555", marker_end: "arrow" },
-      "sequence" => { color: "#555555", marker_end: "arrow" },
-      "means" => { color: "#555555", marker_end: "arrow" },
-      "part" => { color: "#777777", marker_end: "none" },
-      "example" => { color: "#999999", marker_end: "none", dashed: true },
-      "contrast" => { color: "#c0504d", marker_end: "arrow" },
-      # 同列は上下が無い。矢印を付けると、どちらかが上に見える
-      "peer" => { color: "#777777", marker_end: "none" },
-      "related" => { color: "#999999", marker_end: "none", dashed: true }
+      # 図の骨組み。灰の実線で、矢印が向きを示す
+      "parent" => { color: "#4a4a4a", marker_end: "arrow", line_style: "solid" },
+      "part" => { color: "#777777", marker_end: "none", line_style: "solid" },
+      # **夫婦・兄弟は二重線。** 家系図では上下の線と区別が付くことが要る
+      "peer" => { color: "#4a4a4a", marker_end: "none", line_style: "double" },
+      # 話の筋。色で読み分ける
+      "cause" => { color: "#c07a2e", marker_end: "arrow", line_style: "solid" },
+      "sequence" => { color: "#3f6ea8", marker_end: "arrow", line_style: "solid" },
+      "means" => { color: "#4a8a5c", marker_end: "arrow", line_style: "solid" },
+      "contrast" => { color: "#c0504d", marker_end: "arrow", line_style: "dashed" },
+      # 添え物。薄く、点線・破線で背景へ下げる
+      "example" => { color: "#999999", marker_end: "none", line_style: "dotted" },
+      "related" => { color: "#999999", marker_end: "none", line_style: "dashed" }
     }.freeze
 
     def relation_style(relation)
@@ -1315,7 +1380,9 @@ module Views
         "width" => strength >= 0.7 ? 3 : (strength >= 0.4 ? 2 : 1),
         "color" => look[:color],
         "marker_end" => look[:marker_end],
-        "dashed" => look.fetch(:dashed, false),
+        "line_style" => look[:line_style],
+        # 古い画面のための控え。line_style を読めない版でも破線には見える
+        "dashed" => %w[dashed dotted].include?(look[:line_style]),
         # 機械が読むための控え。画面はいまのところ見ていないが、
         # 種類で絞る・強さで薄くするといった見直しの足場になる
         "relation" => relation[:type],

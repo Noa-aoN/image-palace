@@ -28,12 +28,40 @@ const CARD_MIN_W = 96
 const CARD_MIN_H = CARD_MIN_W + CARD_TITLE_H
 
 // 接続点（上下左右）。connectionMode=loose なので type は source 固定で双方向に使える。
-const HANDLES = [
-  { id: 'top', position: Position.Top },
-  { id: 'right', position: Position.Right },
-  { id: 'bottom', position: Position.Bottom },
-  { id: 'left', position: Position.Left },
+/**
+ * 線を掴める点。**1辺につき5つ。**
+ *
+ * 辺の真ん中に1点だけだった頃は、手で引く線がどれも同じ点から出るので、
+ * つながりが増えるほど根元が束になって読めなくなっていた。
+ *
+ * 真ん中（index 2）だけは、**昔からの名前 `top` のまま**にしてある。
+ * 名前を変えると、いま引かれている線の端点が読めなくなる。
+ *
+ * 位置は (index + 1) / 6。端に寄せすぎると角から線が出て、
+ * どちらの辺の線か読めなくなる（サーバーの Layout::Handles と揃えること）
+ */
+const POINTS_PER_SIDE = 5
+const CENTER_INDEX = 2
+
+const SIDES = [
+  { side: 'top', position: Position.Top },
+  { side: 'right', position: Position.Right },
+  { side: 'bottom', position: Position.Bottom },
+  { side: 'left', position: Position.Left },
 ] as const
+
+const HANDLES = SIDES.flatMap(({ side, position }) =>
+  Array.from({ length: POINTS_PER_SIDE }, (_, index) => {
+    const along = `${((index + 1) / (POINTS_PER_SIDE + 1)) * 100}%`
+    const vertical = side === 'left' || side === 'right'
+    return {
+      id: index === CENTER_INDEX ? side : `${side}-${index}`,
+      position,
+      // 真ん中は React Flow の既定位置に任せる（ずらすと1pxずれる）
+      style: index === CENTER_INDEX ? undefined : vertical ? { top: along } : { left: along },
+    }
+  })
+)
 
 export type CardNodeData = {
   item: ViewItemPlacement['item']
@@ -106,7 +134,10 @@ function CardNodeComponent({ id, data }: NodeProps<CardNodeType>) {
             id={h.id}
             type="source"
             position={h.position}
-            className="!pointer-events-none !z-10 !h-4 !w-4 !border-2 !border-background !bg-[var(--palace)] !opacity-0 transition-opacity group-hover:!pointer-events-auto group-hover:!opacity-100"
+            style={h.style}
+            /* 5つ並ぶので、1つずつは小さくする。掴むのはホバー中だけなので、
+               近づいたときに大きくして掴みやすさを戻す */
+            className="!pointer-events-none !z-10 !h-2.5 !w-2.5 !border-2 !border-background !bg-[var(--palace)] !opacity-0 transition-all group-hover:!pointer-events-auto group-hover:!opacity-100 hover:!h-4 hover:!w-4"
           />
         ))}
       </div>

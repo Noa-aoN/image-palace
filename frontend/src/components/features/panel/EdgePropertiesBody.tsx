@@ -1,7 +1,7 @@
 'use client'
 
 import { useState } from 'react'
-import { ArrowLeftRight, Trash2 } from 'lucide-react'
+import { ArrowLeftRight, Spline, Trash2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { updateViewEdge, removeViewEdge, type ViewEdgeInput } from '@/lib/api/views'
@@ -35,6 +35,9 @@ export function EdgePropertiesBody({ viewId }: { viewId: string }) {
   const [label, setLabel] = useState(edge?.label ?? '')
 
   if (!current) return null
+
+  // 手で曲げた形を捨てる。**次に整えたときは、こちらが引き直す**
+  const resetPoints = () => applyPatch({ points: [] })
 
   const applyPatch = (changes: Partial<ViewEdge>) => {
     setCurrent((c) => (c ? { ...c, ...changes } : c))
@@ -93,6 +96,26 @@ export function EdgePropertiesBody({ viewId }: { viewId: string }) {
         <Button variant="outline" size="sm" onClick={reverse} className="flex w-full items-center justify-center gap-1.5">
           <ArrowLeftRight size={14} />
           向きを反転
+        </Button>
+        {/*
+          手で曲げた形を捨てて、引き直させる。
+
+          **折れ点は掴んで消すしかなかった。** 何度も曲げたあとで
+          「元に戻したい」と思っても、点を1つずつ探して消すことになる。
+          折れ点が無ければ押せないようにして、押せるときは何が起きるかを言う
+        */}
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={resetPoints}
+          disabled={(current.points ?? []).length === 0}
+          className="flex w-full items-center justify-center gap-1.5"
+        >
+          <Spline size={14} />
+          曲げをリセット
+          {(current.points ?? []).length > 0 && (
+            <span className="text-2xs text-muted-foreground">（{(current.points ?? []).length}か所）</span>
+          )}
         </Button>
         <Button
           variant="ghost"

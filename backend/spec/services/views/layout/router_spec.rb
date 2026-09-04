@@ -253,3 +253,97 @@ RSpec.describe "#{Views::Layout::Router}#route_all" do
     end
   end
 end
+
+# カードの辺の、どこに線が付くか。
+#
+# 辺の真ん中に1点だけだった頃は、手で引く線がどれも同じ点から出て、
+# つながりが増えるほど根元が束になって読めなくなっていた。
+RSpec.describe Views::Layout::Handles do
+  def box(id = "a", x: 0, y: 0, width: 200, height: 100)
+    Views::Layout::Box.new(id: id, title: id, x: x, y: y, width: width, height: height,
+                           footprint_width: width)
+  end
+
+  describe "辺を読み取る" do
+    it "番号付きでも辺が分かる" do
+      expect(described_class.side("top-3")).to eq("top")
+      expect(described_class.side("left-0")).to eq("left")
+    end
+
+    # 昔からのデータはこの形。読めなくならないようにする
+    it "番号が無ければ、そのまま辺として読む" do
+      expect(described_class.side("bottom")).to eq("bottom")
+    end
+
+    it "知らない名前は下辺として扱う（線を失わない）" do
+      expect(described_class.side("なにか")).to eq("bottom")
+      expect(described_class.side(nil)).to eq("bottom")
+    end
+  end
+
+  describe "辺のどこか" do
+    it "番号が無ければ真ん中" do
+      expect(described_class.fraction("top")).to eq(0.5)
+    end
+
+    it "真ん中の番号は、番号無しと同じ位置になる" do
+      expect(described_class.fraction("top-2")).to eq(described_class.fraction("top"))
+    end
+
+    it "端に寄せすぎない（角から線が出ない）" do
+      expect(described_class.fraction("top-0")).to be > 0.1
+      expect(described_class.fraction("top-4")).to be < 0.9
+    end
+
+    it "範囲の外の番号でも、辺の中に収まる" do
+      expect(described_class.fraction("top-99")).to be_between(0.0, 1.0)
+    end
+  end
+
+  describe "線が出入りする点" do
+    it "上辺の点は、辺の上に乗る" do
+      point = described_class.point(box, "top-0")
+
+      expect(point[:y]).to eq(0)
+      expect(point[:x]).to be_between(0, 200)
+    end
+
+    it "番号が大きいほど、右（下）へ寄る" do
+      left = described_class.point(box, "top-0")[:x]
+      right = described_class.point(box, "top-4")[:x]
+
+      expect(right).to be > left
+    end
+
+    it "左右の辺では、縦に散る" do
+      top = described_class.point(box, "right-0")[:y]
+      bottom = described_class.point(box, "right-4")[:y]
+
+      expect(bottom).to be > top
+      expect(described_class.point(box, "right-0")[:x]).to eq(200)
+    end
+
+    # AI が配るずれと、手で選んだ点は、重ねて効く
+    it "ポートのずれは、選んだ点からの差になる" do
+      base = described_class.point(box, "top-1")[:x]
+
+      expect(described_class.point(box, "top-1", 30)[:x]).to eq(base + 30)
+    end
+  end
+
+  describe "線を引くときに使う" do
+    it "選んだ点から線が出る" do
+      a = box("a", x: 0, y: 0)
+      b = box("b", x: 0, y: 500)
+      by_id = { "a" => a, "b" => b }
+      links = [ { from: a, to: b, source_handle: "bottom-0", target_handle: "top-4" } ]
+
+      routes = Views::Layout::Router.new(boxes: by_id).route_all(links)
+      first = routes.first.points.first
+
+      # 下辺の左寄りから出るので、カードの中心より左から降りる
+      expect(first["x"]).to be < a.center_x
+      expect(first["y"]).to be > a.bottom
+    end
+  end
+end
