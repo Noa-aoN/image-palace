@@ -15,6 +15,7 @@ import type {
   AiEditChangeScale,
   AiEditMode,
   AiEditSummary,
+  BoardScore,
   CardEdge,
   CardProposal,
   CardReuse,
@@ -163,6 +164,8 @@ export function AiEditPanel({
   const [edgeMode, setEdgeMode] = useState<AiEditEdgeMode>('rebuild')
   const [direction, setDirection] = useState<AiEditDirection>('auto')
   const [changeScale, setChangeScale] = useState<AiEditChangeScale>('medium')
+  // 時間をかけて良いか。既定は標準（〜2秒）
+  const [thorough, setThorough] = useState(false)
   const [editScope, setEditScope] = useState<PanelScope>('all')
   const [createdCount, setCreatedCount] = useState<number | null>(null)
   const [arranged, setArranged] = useState(false)
@@ -254,6 +257,8 @@ export function AiEditPanel({
       placement: touchesLayout ? ('arrange' as const) : ('keep' as const),
       direction: touchesLayout ? direction : undefined,
       change_scale: touchesLayout ? changeScale : undefined,
+      // 置き方を触るときだけ効く（線だけ整えるなら、かける時間は変わらない）
+      thorough: touchesLayout && thorough ? true : undefined,
       edges: touchesEdges ? edgeMode : ('keep' as const),
       // 大きさは置き方の一部として扱う。別の軸にすると、
       // 「置き方だけ整える」で大きさが揃わない理由が読めない
@@ -452,6 +457,25 @@ export function AiEditPanel({
                     onChange={(value) => setChangeScale(value as AiEditChangeScale)}
                     disabled={busy !== null}
                   />
+                  {/*
+                    かける時間。**AI の呼び出しは増えない**ので、費用は変わらない。
+                    伸びるのはこちらの計算時間だけなので、待ってよいかを本人に決めてもらう
+                  */}
+                  <label className="flex items-start gap-2 text-xs">
+                    <input
+                      type="checkbox"
+                      checked={thorough}
+                      disabled={busy !== null}
+                      onChange={(e) => setThorough(e.target.checked)}
+                      className="mt-0.5"
+                    />
+                    <span>
+                      念入りに整える
+                      <span className="block text-2xs text-muted-foreground">
+                        置き方を何通りも試して、点数の高いものを選びます（数秒かかります・費用は変わりません）
+                      </span>
+                    </span>
+                  </label>
                 </>
               )}
 
@@ -620,6 +644,7 @@ export function AiEditPanel({
                 追加 {result.added} / 取り外し {result.removed} / 配置 {result.placed}
                 {viewType === 'freeboard' && <> / 線 {result.connected}</>}
               </p>
+              {result.score && <ScoreCard score={result.score} />}
               {/*
                 気づいたこと。**1行ずつ立てて出す。**
 
@@ -647,6 +672,62 @@ export function AiEditPanel({
         </div>
       </PanelSlotContent>
     </>
+  )
+}
+
+/**
+ * 図の点数と内訳。
+ *
+ * **良くなったのか悪くなったのかを、目だけで判断させない。**
+ * 整えるたびに点数が出れば、指示を出し直す手がかりになる。
+ *
+ * 内訳に並べるのは**満点でない項目だけ**。全部並べると、
+ * 読むべきところが埋もれる（満点の項目は読む必要が無い）。
+ */
+function ScoreCard({ score }: { score: BoardScore }) {
+  return (
+    <div className="mt-2 border-t border-border/60 pt-2">
+      <div className="mb-1.5 flex items-baseline gap-1.5">
+        <span className="text-lg font-semibold tabular-nums">{score.points}</span>
+        <span className="text-xs text-muted-foreground">/ 100点</span>
+      </div>
+      <ul className="space-y-1">
+        {score.breakdown.map((group) => (
+          <li key={group.group} className="text-xs">
+            <div className="flex items-center gap-2">
+              <span className="w-20 shrink-0 text-muted-foreground">{group.label}</span>
+              {/* 帯で出す。数字だけより、どこが足りないかが一目で分かる */}
+              <span className="h-1.5 flex-1 overflow-hidden rounded-full bg-border">
+                <span
+                  className="block h-full rounded-full bg-primary"
+                  style={{ width: `${group.max === 0 ? 0 : (group.points / group.max) * 100}%` }}
+                />
+              </span>
+              <span className="shrink-0 tabular-nums text-muted-foreground">
+                {group.points}/{group.max}
+              </span>
+            </div>
+            {group.weak.length > 0 && (
+              <p className="mt-0.5 pl-22 text-2xs leading-relaxed text-muted-foreground">
+                {group.weak
+                  .map((item) => (item.note ? `${item.label}（${item.note}）` : item.label))
+                  .join('・')}
+              </p>
+            )}
+          </li>
+        ))}
+      </ul>
+      <details className="mt-1.5">
+        <summary className="cursor-pointer text-2xs text-muted-foreground">判断基準について</summary>
+        <p className="mt-1 text-2xs leading-relaxed text-muted-foreground">
+          4つの群・14項目で100点。
+          <strong className="font-medium">意味の正しさ</strong>は関係そのもの（矛盾・向き・輪・孤立・種別）、
+          <strong className="font-medium">読みやすさ</strong>は実際に引かれた線と置かれた文字（重なり・横切り・交差・文字）、
+          <strong className="font-medium">図の作法</strong>は家系図や相関図が持つ作法（曲がり・親の位置・夫婦の並び・段・向き）、
+          <strong className="font-medium">手の入れ具合</strong>は元の図をどれだけ動かしたかを見ています。
+        </p>
+      </details>
+    </div>
   )
 }
 

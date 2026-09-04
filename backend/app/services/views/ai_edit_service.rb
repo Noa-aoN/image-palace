@@ -104,7 +104,8 @@ module Views
     # 線の色として受け付ける形（#rgb / #rrggbb のみ。式や関数は通さない）
     COLOR_FORMAT = /\A#(?:\h{3}|\h{6})\z/
 
-    Result = Struct.new(:summary, :notes, :added, :removed, :placed, :connected, keyword_init: true)
+    Result = Struct.new(:summary, :notes, :added, :removed, :placed, :connected, :score,
+                        keyword_init: true)
 
     # 並べ方の指定。おまかせ以外を選ぶと、その形になるよう指示を足す
     # 図の形。**Layout::Planner が組める種別と揃える。**
@@ -127,13 +128,13 @@ module Views
     MEANING_EXCERPT_FOR_INFER = 160
 
     def self.call(view:, instruction:, mode: DEFAULT_MODE, layout: nil, edges: nil, sizing: nil,
-                  placement: nil, change_scale: nil, direction: nil)
+                  placement: nil, change_scale: nil, direction: nil, thorough: false)
       new(view:, instruction:, mode:, layout:, edges:, sizing:, placement:, change_scale:,
-          direction:).call
+          direction:, thorough:).call
     end
 
     def initialize(view:, instruction:, mode:, layout: nil, edges: nil, sizing: nil,
-                   placement: nil, change_scale: nil, direction: nil)
+                   placement: nil, change_scale: nil, direction: nil, thorough: false)
       @view = view
       @user = view.user
       # 指示が空なら、**ボードの名前をそのまま指示にする。**
@@ -150,6 +151,8 @@ module Views
       @placement_mode = PLACEMENT_MODES.include?(placement.to_s) ? placement.to_s : "arrange"
       @change_scale = CHANGE_SCALES.include?(change_scale.to_s) ? change_scale.to_s : DEFAULT_CHANGE_SCALE
       @direction = DIRECTIONS.include?(direction.to_s) ? direction.to_s : Layout::Planner::DEFAULT_DIRECTION
+      # 時間をかけて良いか。**待たせ方は利用者が決める**（AI の呼び出しは増えない）
+      @thorough = ActiveModel::Type::Boolean.new.cast(thorough) || false
       @layout_notes = []
     end
 
@@ -764,8 +767,10 @@ module Views
 
       # AI の気づきに、こちらで見つけたことを足す。
       # **崩れていることは、崩れていると言う**（黙って妥協しない）
+      # **測った点数を捨てない。** 計算しておきながら誰も読まない状態だったので、
+      # 利用者まで届ける（良くなったのか悪くなったのかを、目だけで判断させない）
       Result.new(summary:, notes: combined_notes(notes), added:, removed:,
-                 placed: placed_count, connected:)
+                 placed: placed_count, connected:, score: @layout_score&.to_h)
     end
 
     # 置き場所も大きさも線も触らず、カードも足さない＝やることが無い。
@@ -867,24 +872,31 @@ module Views
         else
           plan["structure"].to_s
         end
+      relations = normalized_relations(plan["relations"])
+
+      # 図全体としての辻褄。**AI は線を1本ずつ考えるので、ここは見ていない。**
+      # 同じ2枚に「姉妹」と「娘」が付く、といった食い違いを突き合わせて見つける。
+      # **配置より先に出す。** 意味の正しさは点数の一部なので、採点に間に合わせる
+      consistency = Layout::Consistency.new(
+        relations: raw_relations(plan["relations"]), titles: card_titles
+      )
+      @consistency_notes = consistency.notes + Array(isolation_note(boxes, relations, plan["readings"]))
+
       result = Layout::Planner.new(
         boxes: boxes,
-        relations: normalized_relations(plan["relations"]),
+        relations: relations,
         groups: normalized_groups(plan["groups"]),
         structure: structure,
         roots: Array(plan["roots"]).map(&:to_s),
         move_weight: move_weight,
         direction: @direction,
         # 置き場所を触らない設定では、**今回足したカードだけ**を動かす
-        movable: @placement_mode == "keep" ? added_ids.to_set : nil
+        movable: @placement_mode == "keep" ? added_ids.to_set : nil,
+        # 線は図形もよける。**測るときと引くときで同じものを見る**
+        obstacles: shape_obstacles,
+        issues: consistency.issues,
+        thorough: @thorough
       ).call
-
-      # 図全体としての辻褄。**AI は線を1本ずつ考えるので、ここは見ていない。**
-      # 同じ2枚に「姉妹」と「娘」が付く、といった食い違いを突き合わせて見つける
-      relations = normalized_relations(plan["relations"])
-      @consistency_notes = Layout::Consistency.new(
-        relations: raw_relations(plan["relations"]), titles: card_titles
-      ).notes + Array(isolation_note(boxes, relations, plan["readings"]))
 
       @layout_notes = result.notes
       @layout_score = result.score
@@ -1230,56 +1242,39 @@ module Views
     end
 
 
-    # 線の出口と入口。
-    #
-    # **段が違うなら、必ず縦に出す。**
-    #
-    # 中心どうしの遠さで決めていた頃は、親から離れた子への線が横から出ていた。
-    # 家系図で親の横から線が出ると、その線は同じ段のカードの前を通ることになり、
-    # 兄弟の並びを横切る。段が違うなら上下に抜けるのが読み筋に合う。
-    def handles_for(source, target)
-      return [ nil, nil ] if source.nil? || target.nil?
-
-      dx = target.center_x - source.center_x
-      dy = target.center_y - source.center_y
-      # 段が違うとみなす縦の隔たり。カードの高さぶん離れていれば別の段
-      apart = (source.height + target.height) / 2
-
-      if dy.abs >= apart || dy.abs >= dx.abs
-        dy.positive? ? [ "bottom", "top" ] : [ "top", "bottom" ]
-      else
-        dx.positive? ? [ "right", "left" ] : [ "left", "right" ]
-      end
-    end
+    # 線の出口と入口の決め方は Layout::Geometry.handles_for にある。
+    # **2か所に置くと、片方だけ直して食い違う**（実際そうなっていた）
 
     def apply_edges!(relations)
       # 挙げられた線が編集後の全てになる。挙がらなかったものは消す
       @view.view_edges.destroy_all
       boxes = placement_boxes
 
-      # **線はまとめて引く。** 1本ずつ引くと、隣の線がどこを通るかを知らないまま
-      # 最短路を選ぶので、同じ辺から出る線が同じ点から出て同じ所に着く
-      links = relations.map do |relation|
-        source_box = boxes[relation[:from]]
-        target_box = boxes[relation[:to]]
-        source_handle, target_handle = handles_for(source_box, target_box)
-        { from: source_box, to: target_box, source_handle:, target_handle: }
-      end
-      routes = router(boxes).route_all(links)
-      labels = relations.map { |relation| sanitize(relation[:label], limit: MAX_EDGE_LABEL_LENGTH).presence }
-      spots = Layout::LabelPlacement.call(routes:, labels:, links:, boxes: boxes.values)
+      # **測ったものと、書き込むものを同じにする。**
+      # 質を測るときも Geometry で組むので、採点した図がそのまま盤に出る
+      lines = Layout::Geometry.call(
+        boxes: boxes,
+        relations: relations.map { |relation| labelled(relation) },
+        obstacles: shape_obstacles
+      )
 
-      relations.each_with_index do |relation, index|
-        route = routes[index]
+      lines.each do |line|
+        relation = line.relation
         @view.view_edges.create!(
           source_node_id: relation[:from], target_node_id: relation[:to],
-          source_handle: links[index][:source_handle], target_handle: links[index][:target_handle],
-          label: labels[index],
-          style: relation_style(relation).merge(edge_geometry(route, spots[index])),
-          points: route.points
+          source_handle: line.source_handle, target_handle: line.target_handle,
+          label: line.label,
+          style: relation_style(relation).merge(edge_geometry(line.route, line.label_spot)),
+          points: line.route.points
         )
       end
       relations.size
+    end
+
+    # 線の見出しは、長すぎるものを切ってから測る。
+    # **切る前の長さで測ると、実際より広い場所を取っているつもりになる**
+    def labelled(relation)
+      relation.merge(label: sanitize(relation[:label], limit: MAX_EDGE_LABEL_LENGTH).presence)
     end
 
     # 線の引き方のうち、**画面が同じ形を描くために要る値**。
@@ -1360,20 +1355,6 @@ module Views
       end
     end
 
-    # 線の出口と入口を、実際の位置関係から決める。
-    #
-    # AI に決めさせると、配置と食い違って線がカードを横切る。座標が決まったあとなら
-    # 幾何学的に一意に決まるので、こちらで計算する。
-    # 縦横どちらに離れているかで面を選び、必ず向かい合う面どうしを結ぶ。
-    # 線を引く道具。**盤ごとに1つだけ作る**（線の本数だけ作り直さない）
-    def router(boxes)
-      @router ||= {}
-      # 線は、カードと図形の両方をよける
-      @router[boxes.object_id] ||= Layout::Router.new(boxes: boxes.merge(shape_obstacles))
-    end
-
-
-
     # 配置だけを整えた後、既存線の意味と見た目は保って経路だけを引き直す。
     # 手動折れ点は移動前の座標なので、新しいカード配置ではそのまま使えない。
     def reroute_existing_edges!
@@ -1381,28 +1362,23 @@ module Views
       edges = @view.view_edges.select do |edge|
         boxes[edge.source_node_id] && boxes[edge.target_node_id]
       end
-      links = edges.map do |edge|
-        source_box = boxes[edge.source_node_id]
-        target_box = boxes[edge.target_node_id]
-        source_handle, target_handle = handles_for(source_box, target_box)
-        { from: source_box, to: target_box, source_handle:, target_handle: }
-      end
-      routes = router(boxes).route_all(links)
-      # 文字の大きさは利用者が変えられる。**その大きさで測らないと、
-      # 大きくした文字だけが隣に被る**
-      spots = Layout::LabelPlacement.call(
-        routes:, labels: edges.map(&:label), links:,
-        font_sizes: edges.map { |edge| edge.style.to_h["label_size"] },
-        boxes: boxes.values
+      lines = Layout::Geometry.call(
+        boxes: boxes,
+        relations: edges.map { |edge| { from: edge.source_node_id, to: edge.target_node_id, label: edge.label } },
+        obstacles: shape_obstacles,
+        # 文字の大きさは利用者が変えられる。**その大きさで測らないと、
+        # 大きくした文字だけが隣に被る**
+        font_sizes: edges.map { |edge| edge.style.to_h["label_size"] }
       )
 
       edges.each_with_index do |edge, index|
+        line = lines[index]
         edge.update!(
-          source_handle: links[index][:source_handle],
-          target_handle: links[index][:target_handle],
-          points: routes[index].points,
+          source_handle: line.source_handle,
+          target_handle: line.target_handle,
+          points: line.route.points,
           style: edge.style.to_h.except("source_port", "target_port", "label_t")
-                     .merge(edge_geometry(routes[index], spots[index]))
+                     .merge(edge_geometry(line.route, line.label_spot))
         )
       end
     end

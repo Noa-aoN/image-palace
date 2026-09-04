@@ -51,6 +51,52 @@ module Views
       PENALTY_EDGE = 12.0
       PENALTY_CARD = 40.0
 
+      # ── ここから下は、線の形だけで決まる算数 ──────────────────
+      #
+      # `Geometry` からも同じものを使う。**2か所に書くと、片方だけ直して食い違う**
+
+      # カードの縁の、線が出入りする点。port は辺の中心からのずれ
+      def self.edge_point(box, handle, port)
+        offset = port.to_f
+        case handle
+        when "top" then { x: box.center_x + offset, y: box.top }
+        when "bottom" then { x: box.center_x + offset, y: box.bottom }
+        when "right" then { x: box.right_edge, y: box.center_y + offset }
+        else { x: box.left_edge, y: box.center_y + offset }
+        end
+      end
+
+      # 道のりを t (0..1) だけ進んだ点。頂点の数ではなく**長さ**で測る
+      def self.point_at(polyline, fraction)
+        lengths = polyline.each_cons(2).map { |a, b| Math.hypot(b[:x] - a[:x], b[:y] - a[:y]) }
+        total = lengths.sum
+        return polyline.first if total.zero?
+
+        target = total * fraction
+        walked = 0.0
+        lengths.each_with_index do |length, index|
+          if walked + length >= target
+            t = length.zero? ? 0 : (target - walked) / length
+            a = polyline[index]
+            b = polyline[index + 1]
+            return { x: a[:x] + (b[:x] - a[:x]) * t, y: a[:y] + (b[:y] - a[:y]) * t }
+          end
+          walked += length
+        end
+        polyline.last
+      end
+
+      # 文字が占める面。見出しと同じ物差し（Metrics.text_units）で測る
+      def self.rect_on(polyline, fraction, label, size)
+        center = point_at(polyline, fraction)
+        half_width = (Metrics.text_units(label) * size + PADDING_X + BREATHING_ROOM) / 2
+        half_height = (size * LINE_HEIGHT + PADDING_Y + BREATHING_ROOM) / 2
+        {
+          left: center[:x] - half_width, right: center[:x] + half_width,
+          top: center[:y] - half_height, bottom: center[:y] + half_height
+        }
+      end
+
       def self.call(routes:, labels:, links:, font_sizes: nil, boxes: nil)
         new(routes:, labels:, links:, font_sizes:, boxes:).call
       end
@@ -156,15 +202,7 @@ module Views
       end
 
       # 文字が占める面。見出しと同じ物差し（Metrics.text_units）で測る
-      def rect_at(polyline, fraction, label, size)
-        center = point_at(polyline, fraction)
-        half_width = (Metrics.text_units(label) * size + PADDING_X + BREATHING_ROOM) / 2
-        half_height = (size * LINE_HEIGHT + PADDING_Y + BREATHING_ROOM) / 2
-        {
-          left: center[:x] - half_width, right: center[:x] + half_width,
-          top: center[:y] - half_height, bottom: center[:y] + half_height
-        }
-      end
+      def rect_at(polyline, fraction, label, size) = self.class.rect_on(polyline, fraction, label, size)
 
       # 避けるカード。**盤の全部**を見る。
       # 線の両端だけを見ていた頃は、端へ寄せた文字が別のカードの上に乗っていた
@@ -208,35 +246,9 @@ module Views
         ]
       end
 
-      def edge_point(box, handle, port)
-        offset = port.to_f
-        case handle
-        when "top" then { x: box.center_x + offset, y: box.top }
-        when "bottom" then { x: box.center_x + offset, y: box.bottom }
-        when "right" then { x: box.right_edge, y: box.center_y + offset }
-        else { x: box.left_edge, y: box.center_y + offset }
-        end
-      end
+      def edge_point(box, handle, port) = self.class.edge_point(box, handle, port)
 
-      # 道のりを t (0..1) だけ進んだ点。頂点の数ではなく**長さ**で測る
-      def point_at(polyline, fraction)
-        lengths = polyline.each_cons(2).map { |a, b| Math.hypot(b[:x] - a[:x], b[:y] - a[:y]) }
-        total = lengths.sum
-        return polyline.first if total.zero?
-
-        target = total * fraction
-        walked = 0.0
-        lengths.each_with_index do |length, index|
-          if walked + length >= target
-            t = length.zero? ? 0 : (target - walked) / length
-            a = polyline[index]
-            b = polyline[index + 1]
-            return { x: a[:x] + (b[:x] - a[:x]) * t, y: a[:y] + (b[:y] - a[:y]) * t }
-          end
-          walked += length
-        end
-        polyline.last
-      end
+      def point_at(polyline, fraction) = self.class.point_at(polyline, fraction)
     end
   end
 end

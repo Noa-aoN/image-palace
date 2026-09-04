@@ -75,6 +75,15 @@ interface RightPanelState {
   shapeRemoveId: string | null
   requestShapeRemove: (id: string) => void
   consumeShapeRemove: () => void
+  /**
+   * 重なり順を盤へ反映する合図。手前から順に並んだ一覧を渡す。
+   *
+   * **これが無かった頃は、一覧で並べ替えてもサーバーに書くだけで、
+   * 開いている盤は再読込するまで変わらなかった**（効いていないように見えた）
+   */
+  layerOrder: { kind: 'shape' | 'edge'; id: string }[] | null
+  requestLayerOrder: (order: { kind: 'shape' | 'edge'; id: string }[]) => void
+  consumeLayerOrder: () => void
   openBulk: (viewId: string, itemIds: string[], edgeIds: string[]) => void
   /** 汎用スロットを開く。中身はページ側が差し込む */
   openSection: (section: PanelSection) => void
@@ -132,6 +141,9 @@ export const useRightPanelStore = create<RightPanelState>()((set) => ({
   shapeRemoveId: null,
   requestShapeRemove: (id) => set({ shapeRemoveId: id }),
   consumeShapeRemove: () => set({ shapeRemoveId: null }),
+  layerOrder: null,
+  requestLayerOrder: (order) => set({ layerOrder: order }),
+  consumeLayerOrder: () => set({ layerOrder: null }),
   openBulk: (viewId, itemIds, edgeIds) => set({ mode: 'bulk', viewId, bulkItemIds: itemIds, bulkEdgeIds: edgeIds }),
   openSection: (section) => set({ mode: 'section', section }),
   close: () =>

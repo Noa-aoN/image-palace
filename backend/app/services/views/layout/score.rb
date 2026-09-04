@@ -2,118 +2,208 @@
 
 module Views
   module Layout
-    # 出来上がった図の質を数える。
+    # 出来上がった図の質を、**判断基準に沿って点数にする**。
     #
-    # **良し悪しを言葉ではなく数で持つ。** そうすると
+    # ## なぜ点数で持つのか
+    #
+    # 良し悪しを言葉で持っていると、案を比べられない。数で持てば
     #   ・案を何通りか作って比べられる
+    #   ・良くなる方へ動かせる（Improver）
     #   ・良くなったのか悪くなったのかをテストで固定できる
     #   ・「線の交差が3か所残りました」と利用者に言える
-    #   ・あとから重みを変えて、図の好みを調整できる
     #
-    # ## 何を測るか
+    # ## 判断基準（100点・4群14項目）
     #
-    # 図の良さを完全に測る式は無い。ここでは**目で見て分かる崩れ**を数える。
+    #   A 意味の正しさ 30 … 関係そのものを見る（幾何は見ない）
+    #   B 読みやすさ   30 … **実際に引かれる経路と、実際に置かれる文字**で測る
+    #   C 図の作法     25 … 参考図（家系図・相関図）が持っている作法
+    #   D 手の入れ具合 15 … 元の図をどれだけ動かしたか
     #
-    #   邪魔になるもの … 重なり / 線がカードを横切る / 線どうしの交差 / 文字の衝突
-    #   締まりのなさ   … 線が長い / 余白が偏る
-    #   読み筋         … 軸が揃っているか / 関係の強さと距離が合っているか
-    #                     / 群れがまとまっているか / 向きが揃っているか
+    # ## 実物で測る
     #
-    # 測るために配置より時間をかけては本末転倒なので、**安いものだけ**にする。
+    # 以前は線を「両端を結ぶ直線」として見ていた。だが実際に描かれるのは
+    # `Router` が引く直交の折れ線で、文字は `LabelPlacement` が置く。
+    # **測っている図と目に見える図が別物**だったので、交差の数を減らしても
+    # 実際の交差は減らなかった。いまは `Geometry` が組んだ実物を測る。
     class Score
-      # 重み。**重なりだけは桁を変える**（1つでもあれば失格に近い）
-      WEIGHT_OVERLAP = 1000.0
-      WEIGHT_EDGE_CARD = 60.0
-      WEIGHT_LABEL_CLASH = 40.0
-      WEIGHT_EDGE_CROSS = 12.0
-      WEIGHT_LENGTH = 0.002
-      WEIGHT_MOVE = 0.004
-      # 加点側。**減点より軽くする。** 崩れを直すほうが、整えるより先
-      BONUS_ALIGNMENT = 30.0
-      BONUS_STRENGTH_FIT = 25.0
-      BONUS_GROUP_COHESION = 25.0
-      BONUS_FLOW = 20.0
+      # 配点。**ここが判断基準の本体**。重みを変えたければここだけを見る
+      ITEMS = [
+        { key: :no_contradiction, group: :semantics, points: 10, label: "矛盾が無い" },
+        { key: :direction, group: :semantics, points: 6, label: "向きが正しい" },
+        { key: :acyclic, group: :semantics, points: 4, label: "輪になっていない" },
+        { key: :connectedness, group: :semantics, points: 6, label: "孤立が少ない" },
+        { key: :specific_types, group: :semantics, points: 4, label: "種別が具体的" },
 
-      # 線の上に載る文字が占めるおおよその大きさ。衝突を数えるのに使う
-      LABEL_WIDTH = 80.0
-      LABEL_HEIGHT = 24.0
-      # 軸に乗っているとみなす誤差
+        { key: :no_overlap, group: :legibility, points: 10, label: "カードが重ならない" },
+        { key: :edge_card_clear, group: :legibility, points: 8, label: "線がカードを横切らない" },
+        { key: :few_crossings, group: :legibility, points: 6, label: "線どうしの交差が少ない" },
+        { key: :label_readable, group: :legibility, points: 6, label: "線の文字が読める" },
+
+        { key: :few_bends, group: :convention, points: 6, label: "線の曲がりが少ない" },
+        { key: :parent_centered, group: :convention, points: 6, label: "親が子の中央に来る" },
+        { key: :couple_bus, group: :convention, points: 5, label: "夫婦が隣り合い、子が間から降りる" },
+        { key: :level_aligned, group: :convention, points: 4, label: "同列が同じ高さにある" },
+        { key: :flow_consistent, group: :convention, points: 4, label: "流れの向きが揃う" },
+
+        { key: :stability, group: :stability, points: 8, label: "元の位置から動かしすぎない" },
+        { key: :group_cohesion, group: :stability, points: 7, label: "群れがまとまっている" }
+      ].freeze
+
+      GROUPS = {
+        semantics: "意味の正しさ",
+        legibility: "読みやすさ",
+        convention: "図の作法",
+        stability: "手の入れ具合"
+      }.freeze
+
+      # 交差はゼロを求めない。**ある程度は避けられない**ので、
+      # 線の本数に対する割合で見る（1本あたり0.5回で0点）
+      CROSSINGS_PER_EDGE_FOR_ZERO = 0.5
+      # 曲がりは1本あたり3回で0点。参考図はどれも0〜2回
+      BENDS_PER_EDGE_FOR_ZERO = 3.0
+      # 親の中心と子の中点のずれ。カード1枚ぶんずれたら0点
+      CENTERING_TOLERANCE = Metrics::CARD_WIDTH.to_f
+      # 同じ高さとみなす差
+      LEVEL_EPSILON = 8.0
+      # 向きが揃っているとみなす差
       AXIS_EPSILON = 8.0
+      # 動いた量。盤の対角線ぶん動いたら0点
+      MOVEMENT_SCALE = 2000.0
 
-      attr_reader :overlaps, :edge_card_crossings, :edge_crossings, :label_clashes,
-                  :total_length, :movement, :alignment_ratio, :strength_fit,
-                  :group_cohesion, :flow_consistency
+      attr_reader :ratios, :counts
 
-      # @param relations [Array<Hash>] { from:, to:, strength: }
-      # @param groups [Array<Hash>] { members: [id] }
-      def initialize(boxes:, edges:, previous: {}, move_weight: 1.0, groups: [])
+      # @param boxes [Array<Box>] 置き終わったカード
+      # @param edges [Array<Hash>] { from:, to:, type:, label:, strength: }
+      # @param lines [Array<Geometry::Line>, nil] 実際に引かれる線。無ければ B 群は直線で近似
+      # @param issues [Array<Consistency::Issue>] 見つかっている食い違い
+      def initialize(boxes:, edges:, previous: {}, move_weight: 1.0, groups: [], lines: nil, issues: [])
         @boxes = boxes
         @by_id = boxes.to_h { |box| [ box.id, box ] }
         @edges = edges.select { |edge| @by_id.key?(edge[:from]) && @by_id.key?(edge[:to]) }
         @previous = previous
         @move_weight = move_weight
         @groups = groups
+        @lines = lines
+        @issues = issues
         measure!
       end
 
-      # 小さいほど良い
-      def penalty
-        penalties - bonuses
+      # 100点満点。**大きいほど良い**
+      def points
+        ITEMS.sum { |item| item[:points] * ratios.fetch(item[:key], 0.0) }.round
       end
 
-      def penalties
-        WEIGHT_OVERLAP * overlaps +
-          WEIGHT_EDGE_CARD * edge_card_crossings +
-          WEIGHT_LABEL_CLASH * label_clashes +
-          WEIGHT_EDGE_CROSS * edge_crossings +
-          WEIGHT_LENGTH * total_length +
-          WEIGHT_MOVE * @move_weight * movement
+      # 群ごとの点数。利用者に見せる内訳
+      def breakdown
+        GROUPS.map do |group, label|
+          items = ITEMS.select { |item| item[:group] == group }
+          {
+            group: group, label: label,
+            points: items.sum { |item| item[:points] * ratios.fetch(item[:key], 0.0) }.round,
+            max: items.sum { |item| item[:points] },
+            # **満点でない項目だけ**並べる（読むべきものだけ残す）
+            weak: items.reject { |item| ratios.fetch(item[:key], 0.0) >= 0.999 }
+                       .sort_by { |item| ratios.fetch(item[:key], 0.0) }
+                       .map { |item| { label: item[:label], note: note_for(item[:key]) } }
+          }
+        end
       end
 
-      def bonuses
-        BONUS_ALIGNMENT * alignment_ratio * @edges.size +
-          BONUS_STRENGTH_FIT * strength_fit * @edges.size +
-          BONUS_GROUP_COHESION * group_cohesion * @groups.size +
-          BONUS_FLOW * flow_consistency * @edges.size
-      end
+      # 候補を比べるための値。**小さいほど良い**（既存の呼び出しと向きを揃える）
+      def penalty = 100 - points
 
-      # 利用者に伝える一言。**良かったことは言わない**（読むべきものだけ残す）
+      # 利用者に伝える一言。**良かったことは言わない**
       def notes
         remarks = []
-        remarks << "カードが#{overlaps}か所で重なっています" if overlaps.positive?
-        remarks << "線が#{edge_card_crossings}か所でカードを横切っています" if edge_card_crossings.positive?
-        remarks << "線の文字が#{label_clashes}か所で重なっています" if label_clashes.positive?
-        remarks << "線が#{edge_crossings}か所で交わっています" if edge_crossings > 2
+        remarks << "カードが#{counts[:overlaps]}か所で重なっています" if counts[:overlaps].positive?
+        if counts[:edge_card_crossings].positive?
+          remarks << "線が#{counts[:edge_card_crossings]}か所でカードを横切っています"
+        end
+        remarks << "線の文字が#{counts[:label_clashes]}か所で重なっています" if counts[:label_clashes].positive?
+        remarks << "線が#{counts[:edge_crossings]}か所で交わっています" if counts[:edge_crossings] > 2
         remarks
       end
 
       def to_h
-        {
-          overlaps:, edge_card_crossings:, edge_crossings:, label_clashes:,
-          total_length: total_length.round, movement: movement.round,
-          alignment_ratio: alignment_ratio.round(3), strength_fit: strength_fit.round(3),
-          group_cohesion: group_cohesion.round(3), flow_consistency: flow_consistency.round(3),
-          penalty: penalty.round(2)
-        }
+        { points: points, breakdown: breakdown, counts: counts,
+          ratios: ratios.transform_values { |value| value.round(3) } }
+      end
+
+      # 既存の呼び出しが見ている数（spec と notes で使う）
+      def overlaps = counts[:overlaps]
+      def edge_card_crossings = counts[:edge_card_crossings]
+      def edge_crossings = counts[:edge_crossings]
+      def label_clashes = counts[:label_clashes]
+
+      # 項目ごとの、崩れているところの一言。**数が言えるものだけ言う**
+      def note_for(key)
+        case key
+        when :no_contradiction then count_note(:contradictions, "件の食い違い")
+        when :direction then count_note(:direction_conflicts, "件の向きの矛盾")
+        when :acyclic then count_note(:cycles, "件の輪")
+        when :connectedness then count_note(:isolated, "枚が線に繋がっていない")
+        when :specific_types then count_note(:vague_types, "本が「その他」のまま")
+        when :no_overlap then count_note(:overlaps, "か所でカードが重なる")
+        when :edge_card_clear then count_note(:edge_card_crossings, "か所で線がカードを横切る")
+        when :few_crossings then count_note(:edge_crossings, "か所で線が交わる")
+        when :label_readable then count_note(:label_clashes, "か所で文字が読みにくい")
+        when :few_bends then count_note(:bends, "回の曲がり")
+        end
       end
 
       private
 
-      def measure!
-        @overlaps = count_overlaps
-        segments = edge_segments
-        @edge_card_crossings = count_edge_card_crossings(segments)
-        @edge_crossings = count_edge_crossings(segments)
-        @label_clashes = count_label_clashes(segments)
-        @total_length = segments.sum { |a, b| (a[0] - b[0]).abs + (a[1] - b[1]).abs }
-        @movement = count_movement
-        @alignment_ratio = measure_alignment(segments)
-        @strength_fit = measure_strength_fit
-        @group_cohesion = measure_group_cohesion
-        @flow_consistency = measure_flow(segments)
+      def count_note(key, suffix)
+        count = counts[key].to_i
+        count.positive? ? "#{count}#{suffix}" : nil
       end
 
-      # ---- 邪魔になるもの ----------------------------------------------------
+      def measure!
+        @counts = {}
+        @ratios = {}
+        measure_semantics!
+        measure_legibility!
+        measure_convention!
+        measure_stability!
+      end
+
+      # ---- A 意味の正しさ ----------------------------------------------------
+
+      def measure_semantics!
+        by_kind = @issues.group_by(&:kind)
+        @counts[:contradictions] = (by_kind["label_conflict"].to_a + by_kind["duplicate_pair"].to_a).size
+        @counts[:direction_conflicts] = by_kind["directed_conflict"].to_a.size
+        @counts[:cycles] = by_kind["cycle"].to_a.size
+        @counts[:isolated] = isolated_count
+        @counts[:vague_types] = @edges.count { |edge| edge[:type].to_s == "related" }
+
+        # 食い違いは**1件でも重い**。線の本数に対する割合ではなく、件数で減らす
+        @ratios[:no_contradiction] = decay(@counts[:contradictions], 2.0)
+        @ratios[:direction] = decay(@counts[:direction_conflicts], 2.0)
+        @ratios[:acyclic] = decay(@counts[:cycles], 1.0)
+        @ratios[:connectedness] = @boxes.empty? ? 1.0 : 1.0 - @counts[:isolated].to_f / @boxes.size
+        @ratios[:specific_types] = @edges.empty? ? 1.0 : 1.0 - @counts[:vague_types].to_f / @edges.size
+      end
+
+      def isolated_count
+        connected = @edges.flat_map { |edge| [ edge[:from], edge[:to] ] }.to_set
+        @boxes.count { |box| !connected.include?(box.id) }
+      end
+
+      # ---- B 読みやすさ ------------------------------------------------------
+
+      def measure_legibility!
+        @counts[:overlaps] = count_overlaps
+        @counts[:edge_card_crossings] = count_edge_card_crossings
+        @counts[:edge_crossings] = count_edge_crossings
+        @counts[:label_clashes] = count_label_clashes
+
+        # 重なりは1つでもあれば大きく落とす（0でなければほぼ失格）
+        @ratios[:no_overlap] = @counts[:overlaps].zero? ? 1.0 : 0.0
+        @ratios[:edge_card_clear] = decay(@counts[:edge_card_crossings], 3.0)
+        @ratios[:few_crossings] = per_edge_ratio(@counts[:edge_crossings], CROSSINGS_PER_EDGE_FOR_ZERO)
+        @ratios[:label_readable] = decay(@counts[:label_clashes], 3.0)
+      end
 
       def count_overlaps
         @boxes.combination(2).count do |a, b|
@@ -122,94 +212,217 @@ module Views
         end
       end
 
-      # 線を「両端を結ぶ直線」として見る。折れ点は経路を組んだ後に決まるので、
-      # ここでは配置の良し悪しだけを見る
-      def edge_segments
-        @edges.map do |edge|
-          from = @by_id[edge[:from]]
-          to = @by_id[edge[:to]]
-          [ [ from.center_x, from.center_y ], [ to.center_x, to.center_y ] ]
-        end
-      end
-
-      def count_edge_card_crossings(segments)
-        segments.each_with_index.sum do |(a, b), index|
+      # 実際に引かれる折れ線の各区間を、全カードに当てる
+      def count_edge_card_crossings
+        polylines.each_with_index.sum do |polyline, index|
           edge = @edges[index]
+          next 0 if polyline.size < 2
+
           @boxes.count do |box|
             next false if [ edge[:from], edge[:to] ].include?(box.id)
 
-            segment_hits_box?(a, b, box)
+            polyline.each_cons(2).any? { |a, b| segment_hits_box?(a, b, box) }
           end
         end
       end
 
       def segment_hits_box?(a, b, box)
-        steps = 12
-        (1...steps).any? do |step|
-          t = step.to_f / steps
-          x = a[0] + (b[0] - a[0]) * t
-          y = a[1] + (b[1] - a[1]) * t
-          x > box.left && x < box.right && y > box.top && y < box.bottom
+        return false unless overlaps?(a[:x], b[:x], box.left_edge, box.right_edge)
+
+        overlaps?(a[:y], b[:y], box.top, box.bottom)
+      end
+
+      def overlaps?(a1, a2, b1, b2)
+        [ a1, a2 ].min < b2 && [ a1, a2 ].max > b1
+      end
+
+      # 線どうしの交わり。**同じカードから出ている線は数えない**（必ず寄るため）
+      def count_edge_crossings
+        indexed = polylines.each_with_index.to_a
+        indexed.combination(2).count do |(a, i), (b, j)|
+          next false if shares_end?(@edges[i], @edges[j])
+
+          crossing_points(a, b).any?
         end
       end
 
-      # 線どうしの交わり。**端を共有するものは数えない**（必ず交わるため）
-      def count_edge_crossings(segments)
-        segments.combination(2).count do |(a1, a2), (b1, b2)|
-          next false if [ a1, a2 ].intersect?([ b1, b2 ])
+      # 直交で組んであるので、縦と横の区間の交わりだけを見る
+      def crossing_points(a, b)
+        found = []
+        a.each_cons(2) do |a1, a2|
+          b.each_cons(2) do |b1, b2|
+            point = orthogonal_crossing(a1, a2, b1, b2)
+            found << point if point
+          end
+        end
+        found
+      end
 
-          crosses?(a1, a2, b1, b2)
+      def orthogonal_crossing(a1, a2, b1, b2)
+        a_horizontal = (a1[:y] - a2[:y]).abs < 1
+        b_horizontal = (b1[:y] - b2[:y]).abs < 1
+        return nil if a_horizontal == b_horizontal
+
+        horizontal, vertical = a_horizontal ? [ [ a1, a2 ], [ b1, b2 ] ] : [ [ b1, b2 ], [ a1, a2 ] ]
+        x = vertical.first[:x]
+        y = horizontal.first[:y]
+        return nil unless between?(x, horizontal[0][:x], horizontal[1][:x])
+        return nil unless between?(y, vertical[0][:y], vertical[1][:y])
+
+        { x: x, y: y }
+      end
+
+      def between?(value, a, b) = value > [ a, b ].min && value < [ a, b ].max
+
+      def shares_end?(a, b)
+        [ a[:from], a[:to] ].intersect?([ b[:from], b[:to] ])
+      end
+
+      # 文字が読めるか。**他の文字・他の線・カードに被っていないか**
+      def count_label_clashes
+        rects = label_rects
+        clashes = rects.combination(2).count { |a, b| rects_overlap?(a, b) }
+        clashes + rects.count { |rect| @boxes.any? { |box| rect_hits_box?(rect, box) } }
+      end
+
+      def rects_overlap?(a, b)
+        [ a[:right], b[:right] ].min > [ a[:left], b[:left] ].max &&
+          [ a[:bottom], b[:bottom] ].min > [ a[:top], b[:top] ].max
+      end
+
+      def rect_hits_box?(rect, box)
+        rects_overlap?(rect, { left: box.left_edge, right: box.right_edge, top: box.top, bottom: box.bottom })
+      end
+
+      # ---- C 図の作法 --------------------------------------------------------
+
+      def measure_convention!
+        @counts[:bends] = polylines.sum { |polyline| [ polyline.size - 2, 0 ].max }
+        @ratios[:few_bends] = per_edge_ratio(@counts[:bends], BENDS_PER_EDGE_FOR_ZERO)
+        @ratios[:parent_centered] = measure_centering
+        @ratios[:couple_bus] = measure_couple_bus
+        @ratios[:level_aligned] = measure_level_alignment
+        @ratios[:flow_consistent] = measure_flow
+      end
+
+      # 親が子たちの真ん中の上に来ているか
+      def measure_centering
+        parents = hierarchy_children
+        return 1.0 if parents.empty?
+
+        fits = parents.map do |parent_id, child_ids|
+          parent = @by_id[parent_id]
+          children = child_ids.filter_map { |id| @by_id[id] }
+          next 1.0 if children.size < 2
+
+          middle = children.map(&:center_x).minmax.sum / 2.0
+          [ 1.0 - (parent.center_x - middle).abs / CENTERING_TOLERANCE, 0.0 ].max
+        end
+        fits.sum / fits.size
+      end
+
+      # 夫婦が隣り合い、子が二人の間から降りているか。
+      # **バスの経路は Router がまだ組まない**ので、いまは隣り合いだけが取れる
+      def measure_couple_bus
+        couples = detect_couples
+        return 1.0 if couples.empty?
+
+        halves = couples.map do |(a_id, b_id), _children|
+          a = @by_id[a_id]
+          b = @by_id[b_id]
+          adjacent = adjacent?(a, b) ? 1.0 : 0.0
+          (adjacent + bus_ratio(a, b)) / 2
+        end
+        halves.sum / halves.size
+      end
+
+      # 同列で結ばれた2枚が、共通の子を持つ組
+      def detect_couples
+        children = hierarchy_children
+        peers = @edges.select { |edge| edge[:type].to_s == "peer" }
+        peers.filter_map do |edge|
+          shared = children[edge[:from]].to_a & children[edge[:to]].to_a
+          next if shared.empty?
+
+          [ [ edge[:from], edge[:to] ], shared ]
         end
       end
 
-      # 線の上の文字どうしの衝突と、文字がカードに乗ってしまう分。
-      # **文字が読めない図は、線が正しくても伝わらない**
-      def count_label_clashes(segments)
-        labelled = segments.each_with_index.filter_map do |(a, b), index|
-          next if @edges[index][:label].blank?
+      # 隣り合っている＝同じ高さで、間に他のカードが挟まっていない
+      def adjacent?(a, b)
+        return false if a.nil? || b.nil?
+        return false if (a.center_y - b.center_y).abs > LEVEL_EPSILON
 
-          [ (a[0] + b[0]) / 2, (a[1] + b[1]) / 2 ]
-        end
+        low, high = [ a.center_x, b.center_x ].minmax
+        @boxes.none? do |box|
+          next false if [ a.id, b.id ].include?(box.id)
 
-        clashes = labelled.combination(2).count do |p, q|
-          (p[0] - q[0]).abs < LABEL_WIDTH && (p[1] - q[1]).abs < LABEL_HEIGHT
+          box.center_x > low && box.center_x < high && (box.center_y - a.center_y).abs <= LEVEL_EPSILON
         end
-        clashes + labelled.count { |p| @boxes.any? { |box| point_in_box?(p, box) } }
       end
 
-      def point_in_box?(point, box)
-        point[0] > box.left && point[0] < box.right && point[1] > box.top && point[1] < box.bottom
+      # 二人の間から降りているか。子への線が、二人の中点の近くを通っているかで見る
+      def bus_ratio(a, b)
+        return 0.0 if a.nil? || b.nil?
+
+        middle = (a.center_x + b.center_x) / 2
+        trunk = polylines.count do |polyline|
+          polyline.each_cons(2).any? do |p, q|
+            (p[:x] - q[:x]).abs < 1 && (p[:x] - middle).abs <= LEVEL_EPSILON
+          end
+        end
+        trunk.positive? ? 1.0 : 0.0
       end
 
-      # ---- 読み筋 ------------------------------------------------------------
+      # 同列の関係が同じ高さにあるか（世代の帯）
+      def measure_level_alignment
+        peers = @edges.select { |edge| edge[:type].to_s == "peer" }
+        return 1.0 if peers.empty?
 
-      # 軸の揃い。**線は水平・垂直だけで描かれる**ので、
-      # つなぐ2枚が軸に乗っていないと線が階段状に折れる
-      def measure_alignment(segments)
-        return 0.0 if segments.empty?
-
-        aligned = segments.count do |a, b|
-          (a[0] - b[0]).abs < AXIS_EPSILON || (a[1] - b[1]).abs < AXIS_EPSILON
+        aligned = peers.count do |edge|
+          a = @by_id[edge[:from]]
+          b = @by_id[edge[:to]]
+          a && b && (a.center_y - b.center_y).abs <= LEVEL_EPSILON
         end
-        aligned.to_f / segments.size
+        aligned.to_f / peers.size
       end
 
-      # 関係の強さと距離が合っているか。**強い関係は近くにあってほしい。**
-      # 強さを持たない線ばかりなら 0（加点しない）
-      def measure_strength_fit
-        scored = @edges.select { |edge| edge[:strength].to_f.positive? }
-        return 0.0 if scored.empty?
+      # 向きの揃い。**同じ向きに読める図は、目で追える**
+      def measure_flow
+        directed = @edges.reject { |edge| edge[:type].to_s == "peer" }
+        return 1.0 if directed.empty?
 
-        distances = scored.map do |edge|
-          from = @by_id[edge[:from]]
-          to = @by_id[edge[:to]]
-          [ edge[:strength].to_f, Math.hypot(from.center_x - to.center_x, from.center_y - to.center_y) ]
+        downward = directed.count { |edge| moved(edge, :center_y).positive? }
+        rightward = directed.count { |edge| moved(edge, :center_x).positive? }
+        [ downward, rightward ].max.to_f / directed.size
+      end
+
+      def moved(edge, axis)
+        from = @by_id[edge[:from]]
+        to = @by_id[edge[:to]]
+        return 0.0 if from.nil? || to.nil?
+
+        delta = to.public_send(axis) - from.public_send(axis)
+        delta.abs < AXIS_EPSILON ? 0.0 : delta
+      end
+
+      # ---- D 手の入れ具合 ----------------------------------------------------
+
+      def measure_stability!
+        @counts[:movement] = count_movement.round
+        scale = MOVEMENT_SCALE * [ @move_weight, 0.1 ].max
+        average = @boxes.empty? ? 0.0 : @counts[:movement].to_f / @boxes.size
+        @ratios[:stability] = [ 1.0 - average / scale, 0.0 ].max
+        @ratios[:group_cohesion] = measure_group_cohesion
+      end
+
+      def count_movement
+        @boxes.sum do |box|
+          before = @previous[box.id]
+          next 0.0 unless before
+
+          Math.hypot(box.x - before[:x], box.y - before[:y])
         end
-        longest = distances.map(&:last).max
-        return 0.0 unless longest&.positive?
-
-        # 強い(1.0)ほど近い(0.0)のが良い。1件ずつの当てはまりを平均する
-        distances.sum { |strength, distance| strength * (1.0 - distance / longest) } / distances.size
       end
 
       # 群れのまとまり。**同じ群れは近く、別の群れとは離れていてほしい**
@@ -218,12 +431,12 @@ module Views
           boxes = Array(group[:members]).filter_map { |id| @by_id[id] }
           boxes if boxes.size >= 2
         end
-        return 0.0 if members.empty?
+        return 1.0 if members.empty?
 
         board = board_diagonal
-        return 0.0 unless board.positive?
+        return 1.0 unless board.positive?
 
-        members.sum { |boxes| 1.0 - (spread(boxes) / board) } / members.size
+        members.sum { |boxes| [ 1.0 - (spread(boxes) / board), 0.0 ].max } / members.size
       end
 
       def spread(boxes)
@@ -240,37 +453,47 @@ module Views
         Math.hypot(width, height)
       end
 
-      # 向きの揃い。**同じ向きに読める図は、目で追える。**
-      # 親から子へ下る線ばかり／左から右へ進む線ばかり、という状態を良しとする
-      def measure_flow(segments)
-        return 0.0 if segments.empty?
+      # ---- 下ごしらえ --------------------------------------------------------
 
-        downward = segments.count { |a, b| b[1] > a[1] + AXIS_EPSILON }
-        rightward = segments.count { |a, b| b[0] > a[0] + AXIS_EPSILON }
-        [ downward, rightward ].max.to_f / segments.size
+      # 段を作る関係（同列を除く）の親子表
+      def hierarchy_children
+        @hierarchy_children ||= @edges.reject { |edge| edge[:type].to_s == "peer" }
+                                      .group_by { |edge| edge[:from] }
+                                      .transform_values { |list| list.map { |edge| edge[:to] } }
       end
 
-      # ---- 変化の大きさ ------------------------------------------------------
-
-      def count_movement
-        @boxes.sum do |box|
-          before = @previous[box.id]
-          next 0.0 unless before
-
-          Math.hypot(box.x - before[:x], box.y - before[:y])
+      # 実際に引かれる折れ線。無ければ両端を結ぶ直線で近似する
+      def polylines
+        @polylines ||= if @lines
+          @lines.map { |line| line.polyline }
+        else
+          @edges.map do |edge|
+            from = @by_id[edge[:from]]
+            to = @by_id[edge[:to]]
+            [ { x: from.center_x, y: from.center_y }, { x: to.center_x, y: to.center_y } ]
+          end
         end
       end
 
-      def crosses?(p1, p2, p3, p4)
-        d1 = cross(p3, p4, p1)
-        d2 = cross(p3, p4, p2)
-        d3 = cross(p1, p2, p3)
-        d4 = cross(p1, p2, p4)
-        ((d1 > 0 && d2 < 0) || (d1 < 0 && d2 > 0)) && ((d3 > 0 && d4 < 0) || (d3 < 0 && d4 > 0))
+      def label_rects
+        @label_rects ||= @lines ? @lines.filter_map(&:label_rect) : []
       end
 
-      def cross(a, b, c)
-        (b[0] - a[0]) * (c[1] - a[1]) - (b[1] - a[1]) * (c[0] - a[0])
+      # 件数から割合へ。**1件でも重いもの**に使う（半減する件数を渡す）
+      def decay(count, half_life)
+        return 1.0 if count.zero?
+
+        0.5**(count / half_life.to_f)
+      end
+
+      # 線の本数あたりの件数から割合へ
+      def per_edge_ratio(count, per_edge_for_zero)
+        return 1.0 if @edges.empty? || count.zero?
+
+        limit = @edges.size * per_edge_for_zero
+        return 0.0 unless limit.positive?
+
+        [ 1.0 - count / limit, 0.0 ].max
       end
     end
   end
