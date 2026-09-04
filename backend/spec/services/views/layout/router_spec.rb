@@ -287,12 +287,14 @@ RSpec.describe Views::Layout::Handles do
     end
 
     it "真ん中の番号は、番号無しと同じ位置になる" do
-      expect(described_class.fraction("top-2")).to eq(described_class.fraction("top"))
+      middle = "top-#{described_class::CENTER}"
+      expect(described_class.fraction(middle)).to eq(described_class.fraction("top"))
+      expect(described_class.name("top", described_class::CENTER)).to eq("top")
     end
 
     it "端に寄せすぎない（角から線が出ない）" do
       expect(described_class.fraction("top-0")).to be > 0.1
-      expect(described_class.fraction("top-4")).to be < 0.9
+      expect(described_class.fraction("top-#{described_class::POINTS - 1}")).to be < 0.9
     end
 
     it "範囲の外の番号でも、辺の中に収まる" do
@@ -310,14 +312,14 @@ RSpec.describe Views::Layout::Handles do
 
     it "番号が大きいほど、右（下）へ寄る" do
       left = described_class.point(box, "top-0")[:x]
-      right = described_class.point(box, "top-4")[:x]
+      right = described_class.point(box, "top-#{described_class::POINTS - 1}")[:x]
 
       expect(right).to be > left
     end
 
     it "左右の辺では、縦に散る" do
       top = described_class.point(box, "right-0")[:y]
-      bottom = described_class.point(box, "right-4")[:y]
+      bottom = described_class.point(box, "right-#{described_class::POINTS - 1}")[:y]
 
       expect(bottom).to be > top
       expect(described_class.point(box, "right-0")[:x]).to eq(200)
@@ -336,7 +338,7 @@ RSpec.describe Views::Layout::Handles do
       a = box("a", x: 0, y: 0)
       b = box("b", x: 0, y: 500)
       by_id = { "a" => a, "b" => b }
-      links = [ { from: a, to: b, source_handle: "bottom-0", target_handle: "top-4" } ]
+      links = [ { from: a, to: b, source_handle: "bottom-0", target_handle: "top-2" } ]
 
       routes = Views::Layout::Router.new(boxes: by_id).route_all(links)
       first = routes.first.points.first

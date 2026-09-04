@@ -256,7 +256,16 @@ function EditableEdgeComponent(props: EdgeProps) {
 
         {selected && (
           <>
-            {/* セグメント中点のゴースト（ドラッグで折れ点を追加） */}
+            {/*
+              線の上の点を、**役割ごとに違う形**にする。
+
+              同じ丸で描いていた頃は、押してみるまで何が起きるか分からなかった。
+              図を描く道具（Figma / draw.io / yEd）が共通して使い分けている形に合わせる。
+
+                足せる場所 … 破線の縁・半透明。**まだ何も無い**ことを形で示す
+                折り曲げ点 … 白抜き（中が盤の色）。**掴んで動かせる**
+                終端       … 塗りつぶし。**相手に刺さっている**
+            */}
             {verts.slice(0, -1).map((v, i) => {
               const n = verts[i + 1]
               const mx = (v.x + n.x) / 2
@@ -264,42 +273,56 @@ function EditableEdgeComponent(props: EdgeProps) {
               return (
                 <div
                   key={`g${i}`}
-                  className="nodrag nopan edge-ghost"
+                  className="nodrag nopan"
                   onPointerDown={startInsert()}
-                  title="ドラッグまたはクリックで折れ点を追加"
+                  title="押すと折れ点ができます（そのまま引くと位置も決まります）"
                   style={{
-                    position: 'absolute',
+                    ...DOT,
                     transform: `translate(-50%, -50%) translate(${mx}px, ${my}px)`,
-                    width: 14,
-                    height: 14,
-                    borderRadius: '50%',
-                    border: '2px solid var(--board-bg)',
-                    background: 'var(--palace)',
-                    opacity: 0.55,
+                    width: 12,
+                    height: 12,
+                    border: '1.5px dashed var(--palace)',
+                    background: 'var(--board-bg)',
+                    opacity: 0.7,
                     cursor: 'crosshair',
-                    pointerEvents: 'all',
                   }}
                 />
               )
             })}
-            {/* 既存 waypoint（ドラッグで移動 / ダブルクリックで削除） */}
+
+            {/* 折り曲げ点。白抜きにして「掴める・動かせる」ことを示す */}
             {points.map((p, i) => (
               <div
                 key={`w${i}`}
                 className="nodrag nopan"
                 onPointerDown={startMove(i, points)}
                 onDoubleClick={removeAt(i)}
-                title="ドラッグで移動 / ダブルクリックで削除"
+                title="引いて動かす／2回押すと消えます"
                 style={{
-                  position: 'absolute',
+                  ...DOT,
                   transform: `translate(-50%, -50%) translate(${p.x}px, ${p.y}px)`,
-                  width: 12,
-                  height: 12,
-                  borderRadius: '50%',
-                  background: 'var(--on-accent)',
-                  border: '2px solid var(--palace)',
+                  width: 13,
+                  height: 13,
+                  background: 'var(--board-bg)',
+                  border: '2.5px solid var(--palace)',
                   cursor: 'grab',
-                  pointerEvents: 'all',
+                }}
+              />
+            ))}
+
+            {/* 終端。塗りつぶして「相手に刺さっている」ことを示す。
+                掴んでつなぎ替えるのは React Flow の受け持ちなので、ここは見た目だけ */}
+            {[ verts[0], verts[verts.length - 1] ].map((p, i) => (
+              <div
+                key={`e${i}`}
+                className="nodrag nopan pointer-events-none"
+                style={{
+                  ...DOT,
+                  transform: `translate(-50%, -50%) translate(${p.x}px, ${p.y}px)`,
+                  width: 10,
+                  height: 10,
+                  background: 'var(--palace)',
+                  border: '2px solid var(--board-bg)',
                 }}
               />
             ))}
@@ -309,6 +332,14 @@ function EditableEdgeComponent(props: EdgeProps) {
     </>
   )
 }
+
+/** 線の上の点に共通する形。**大きさと役割の色だけを、それぞれで変える** */
+const DOT = {
+  position: 'absolute',
+  borderRadius: '50%',
+  pointerEvents: 'all',
+  boxSizing: 'border-box',
+} as const
 
 export const EditableEdge = memo(EditableEdgeComponent)
 

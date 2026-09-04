@@ -43,12 +43,7 @@ module Views
 
       # @return [Array<Line>] relations と同じ並び。端が盤に無い線も nil にせず返す
       def call
-        links = @relations.map do |relation|
-          source = @by_id[relation[:from]]
-          target = @by_id[relation[:to]]
-          source_handle, target_handle = self.class.handles_for(source, target)
-          { from: source, to: target, source_handle:, target_handle: }
-        end
+        links = assign_handles
 
         routes = router.route_all(links)
         labels = @relations.map { |relation| relation[:label].presence }
@@ -61,18 +56,26 @@ module Views
         end
       end
 
-      # **段が違うなら、必ず縦に出す。**
+      # どの辺から出すか。
       #
+      # **段が違うなら、必ず縦に出す。**
       # 中心どうしの遠さで決めていた頃は、親から離れた子への線が横から出ていた。
       # 家系図で親の横から線が出ると、その線は同じ段のカードの前を通ることになり、
       # 兄弟の並びを横切る。段が違うなら上下に抜けるのが読み筋に合う。
-      def self.handles_for(source, target)
+      #
+      # **意味も見る。** 同列（夫婦・兄弟）は横につながるもので、
+      # 上下に出すと親子の線と見分けが付かなくなる。同じ段に居るなら必ず横へ出す。
+      def self.handles_for(source, target, type: nil)
         return [ nil, nil ] if source.nil? || target.nil?
 
         dx = target.center_x - source.center_x
         dy = target.center_y - source.center_y
         # 段が違うとみなす縦の隔たり。カードの高さぶん離れていれば別の段
         apart = (source.height + target.height) / 2
+        same_level = dy.abs < apart
+
+        # 同列の関係は、同じ段に居るかぎり横で結ぶ
+        return dx.positive? ? [ "right", "left" ] : [ "left", "right" ] if type.to_s == "peer" && same_level
 
         if dy.abs >= apart || dy.abs >= dx.abs
           dy.positive? ? [ "bottom", "top" ] : [ "top", "bottom" ]
@@ -82,6 +85,70 @@ module Views
       end
 
       private
+
+      # 辺と、辺のどの点に付けるかを決める。
+      #
+      # ## なぜ点まで決めるのか
+      #
+      # 辺だけ決めて真ん中から出していた頃は、同じ辺を使う線が1点に集まった。
+      # ずれ（ポート）で散らしてはいたが、**手で引く線とは別の仕組み**だったので、
+      # 手で引いた線と AI が引いた線が同じ辺で噛み合わなかった。
+      #
+      # いまは**手で選べるのと同じ3点**に割り当てる。3本までは点がそのまま分かれ、
+      # 4本以上になったときだけ、点の周りへさらに散らす（Router のポート）。
+      #
+      # ## 並べる順
+      #
+      # 相手の位置で並べる。左の相手には左の点、右の相手には右の点。
+      # **こうすると扇の中で線どうしが交差しない。**
+      def assign_handles
+        links = @relations.map do |relation|
+          source = @by_id[relation[:from]]
+          target = @by_id[relation[:to]]
+          source_handle, target_handle = self.class.handles_for(source, target, type: relation[:type])
+          { from: source, to: target, source_handle:, target_handle: }
+        end
+        spread_across_points!(links)
+        links
+      end
+
+      # 同じ辺を使う線を、その辺の3点へ配る
+      def spread_across_points!(links)
+        groups = Hash.new { |hash, key| hash[key] = [] }
+        links.each_with_index do |link, index|
+          next if link[:from].nil? || link[:to].nil?
+
+          groups[[ link[:from].id, Handles.side(link[:source_handle]) ]] << [ index, :source_handle, link[:to] ]
+          groups[[ link[:to].id, Handles.side(link[:target_handle]) ]] << [ index, :target_handle, link[:from] ]
+        end
+
+        groups.each do |(_id, side), entries|
+          # 3本より多いなら、点で分けきれない。Router のポートに任せて真ん中から出す
+          next if entries.size > Handles::POINTS
+
+          vertical_side = !Handles.horizontal_side?(side)
+          sorted = entries.sort_by do |index, _key, other|
+            [ vertical_side ? other.center_x : other.center_y, index ]
+          end
+          # 真ん中から外へ配る。**本数が少ないときに端へ寄せない**
+          slots = slots_for(sorted.size)
+          sorted.each_with_index do |(index, key, _other), position|
+            links[index][key] = Handles.name(side, slots[position])
+          end
+        end
+      end
+
+      # 本数に対して、どの点を使うか。
+      #   1本 … 真ん中
+      #   2本 … 両端（真ん中を空けると、2本が離れて読みやすい）
+      #   3本 … 全部
+      def slots_for(count)
+        case count
+        when 1 then [ Handles::CENTER ]
+        when 2 then [ 0, Handles::POINTS - 1 ]
+        else (0...Handles::POINTS).to_a
+        end
+      end
 
       def router
         @router ||= Router.new(boxes: @by_id.merge(@obstacles))

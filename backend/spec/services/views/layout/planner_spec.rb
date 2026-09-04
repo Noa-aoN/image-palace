@@ -232,3 +232,58 @@ RSpec.describe Views::Layout::Planner do
     end
   end
 end
+
+# 整えた結果が、始める前より悪くならないこと。
+#
+# 手を1つ当てるたびには良くなっていても、最後に重なりを解いた結果
+# 段が崩れて、始める前より悪くなることがあった。
+RSpec.describe "#{Views::Layout::Planner} 改善は下げない" do
+  def box(id, x:, y:, width: 144, height: 176)
+    Views::Layout::Box.new(id: id, title: id, x: x, y: y, width: width, height: height,
+                           footprint_width: width)
+  end
+
+  def rel(from, to, type: "parent")
+    { from: from, to: to, type: type, label: "子", strength: 0.8 }
+  end
+
+  # 夫婦と子。同列が同じ高さに並ぶことが要る形
+  let(:boxes) do
+    [ box("父", x: 0, y: 0), box("母", x: 400, y: 0),
+      box("子1", x: 0, y: 400), box("子2", x: 400, y: 400), box("子3", x: 800, y: 400) ]
+  end
+  let(:relations) do
+    [ { from: "父", to: "母", type: "peer", label: "妻", strength: 0.9 },
+      rel("父", "子1"), rel("父", "子2"), rel("父", "子3"),
+      rel("母", "子1"), rel("母", "子2") ]
+  end
+
+  def plan(**options)
+    Views::Layout::Planner.new(
+      boxes: boxes.map { |b| b.dup_at(b.x, b.y) }, relations: relations,
+      structure: "hierarchy", roots: [ "父" ], **options
+    ).call
+  end
+
+  it "整えた図に、重なりが残らない" do
+    expect(plan.score.overlaps).to eq(0)
+  end
+
+  it "同列の関係は、同じ高さのまま残る" do
+    result = plan
+    by_id = result.boxes.to_h { |b| [ b.id, b ] }
+
+    expect(by_id["父"].center_y).to eq(by_id["母"].center_y)
+  end
+
+  it "念入りにしても、点数が下がらない" do
+    standard = plan.score.points
+    thorough = plan(thorough: true).score.points
+
+    expect(thorough).to be >= standard
+  end
+
+  it "同じ入力なら同じ点数になる" do
+    expect(plan.score.points).to eq(plan.score.points)
+  end
+end
