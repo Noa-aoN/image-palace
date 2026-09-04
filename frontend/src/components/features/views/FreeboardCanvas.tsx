@@ -47,7 +47,6 @@ import {
   updateViewEdge,
   removeViewEdge,
   reorderBoardLayers,
-  reorderViewEdges,
 } from '@/lib/api/views'
 import { useRightPanelStore } from '@/stores/rightPanel'
 import { useBoardSettingsStore } from '@/stores/boardSettings'
@@ -62,7 +61,7 @@ import { isClick, rectFromDrag, centeredAt, bandStyle } from '@/lib/shape-placem
 import {
   createViewShape,
   removeViewShape,
-  reorderViewShapes,
+  reorderViewObjects,
   updateViewShape,
 } from '@/lib/api/views'
 import type { BoardShape, BoardShapeKind } from '@/types/view'
@@ -553,15 +552,25 @@ function Canvas({
     (op: LayerOp) => {
       if (!ctxMenu) return
       const targets = new Set(ctxMenu.targetIds)
-      if (ctxMenu.kind === 'shape') {
-        // 図形は図形どうしで前後を決める。**かこみは奥のまま**（前に出ると中身が隠れる）
-        const shapes = nodes.filter(isShapeNode).filter((n) => n.data.shape.kind !== 'frame')
-        const ordered = computeLayerOrder(shapes, (n) => n.zIndex ?? 0, op, targets)
-        const map = new Map(ordered.map((n, i) => [ n.id, i + 1 ]))
-        setNodes((ns) => ns.map((n) => (map.has(n.id) ? { ...n, zIndex: map.get(n.id) } : n)))
-        persist(() => reorderViewShapes(viewId, [ ...ordered ].reverse().map((n) => n.id)), {
-          key: `view:${viewId}:shapeOrder`,
-        })
+      if (ctxMenu.kind === 'shape' || ctxMenu.kind === 'edge') {
+        // **図形と線は同じ土俵で前後を決める。** 分けていた頃は、
+        // 線の上に付箋を置くことができなかった（右パネルの一覧と同じ扱い）。
+        // かこみだけは奥のまま（前に出ると囲った中身が隠れる）
+        const pool = [
+          ...nodes
+            .filter(isShapeNode)
+            .filter((n) => n.data.shape.kind !== 'frame')
+            .map((n) => ({ id: n.id, kind: 'shape' as const, z: n.zIndex ?? 0 })),
+          ...edges.map((e) => ({ id: e.id, kind: 'edge' as const, z: typeof e.zIndex === 'number' ? e.zIndex : 0 })),
+        ]
+        const ordered = computeLayerOrder(pool, (x) => x.z, op, targets)
+        const map = new Map(ordered.map((x, i) => [ x.id, i + 1 ]))
+        setNodes((ns) => ns.map((n) => (map.has(n.id) && isShapeNode(n) ? { ...n, zIndex: map.get(n.id) } : n)))
+        setEdges((es) => es.map((e) => (map.has(e.id) ? { ...e, zIndex: map.get(e.id) } : e)))
+        persist(
+          () => reorderViewObjects(viewId, [ ...ordered ].reverse().map((x) => ({ kind: x.kind, id: x.id }))),
+          { key: `view:${viewId}:objectOrder` }
+        )
       } else if (ctxMenu.kind === 'card') {
         const cards = nodes.filter(isCardNode)
         const ordered = computeLayerOrder(cards, (n) => n.zIndex ?? 0, op, targets)
@@ -569,13 +578,6 @@ function Canvas({
         setNodes((ns) => ns.map((n) => (map.has(n.id) ? { ...n, zIndex: map.get(n.id) } : n)))
         persist(() => reorderBoardLayers(viewId, [...ordered].reverse().map((n) => n.id)), {
           key: `view:${viewId}:layers`,
-        })
-      } else {
-        const ordered = computeLayerOrder(edges, (e) => (typeof e.zIndex === 'number' ? e.zIndex : 0), op, targets)
-        const map = new Map(ordered.map((e, i) => [e.id, i + 1]))
-        setEdges((es) => es.map((e) => ({ ...e, zIndex: map.get(e.id) ?? e.zIndex })))
-        persist(() => reorderViewEdges(viewId, [...ordered].reverse().map((e) => e.id)), {
-          key: `view:${viewId}:edgeOrder`,
         })
       }
       setCtxMenu(null)

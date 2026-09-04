@@ -269,6 +269,8 @@ Rails.application.routes.draw do
           # ボードに置く図形（四角・丸・付箋・見出し・かこみ）
           post "shapes", to: "view_shapes#create"
           patch "shapes/reorder", to: "view_shapes#reorder"
+          # 図形と線をまとめた重なり順（線の上に付箋を置けるようにするため）
+          patch "objects/reorder", to: "view_objects#reorder"
           patch "shapes/:shape_id", to: "view_shapes#update"
           delete "shapes/:shape_id", to: "view_shapes#destroy"
           post "edges", to: "view_edges#create"

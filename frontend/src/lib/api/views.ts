@@ -318,3 +318,17 @@ export async function removeViewShape(viewId: string, shapeId: string): Promise<
 export async function reorderViewShapes(viewId: string, frontToBackIds: string[]): Promise<void> {
   await apiClient.patch(`/api/v1/views/${viewId}/shapes/reorder`, { ordered_ids: frontToBackIds })
 }
+
+/**
+ * 図形と接続線の重なり順を、ひとまとめに保存する。
+ *
+ * 種類ごとに分けていた頃は、**「線の上に付箋を置く」ができなかった**。
+ * 描く道具として見れば、線も図形も同じ「盤に置いたもの」で、前後があるのが自然。
+ * 手前から順に渡す。
+ */
+export async function reorderViewObjects(
+  viewId: string,
+  frontToBack: { kind: 'shape' | 'edge'; id: string }[]
+): Promise<void> {
+  await apiClient.patch(`/api/v1/views/${viewId}/objects/reorder`, { ordered: frontToBack })
+}
