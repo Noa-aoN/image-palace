@@ -740,11 +740,32 @@ module Views
       relations = normalized_relations(plan["relations"])
       @consistency_notes = Layout::Consistency.new(
         relations: raw_relations(plan["relations"]), titles: card_titles
-      ).notes
+      ).notes + Array(isolation_note(boxes, relations))
 
       @layout_notes = result.notes
       @layout_score = result.score
       persist_boxes!(result.boxes)
+    end
+
+    # 線に繋がらなかったカードを、名前で伝える。
+    #
+    # 規則には「孤立を見落とさない」と書いてあるが、**書いてあることと
+    # 実際にそうなったことは別**。挙げ忘れは黙って通ると、
+    # 利用者からは「関係のあるカードを見つけてくれなかった」としか見えない。
+    # 数えるのはこちらの仕事なので、こちらで数えて、そのまま言う。
+    #
+    # 線を引き直さない設定では触れない（今回の結果ではないので）
+    def isolation_note(boxes, relations)
+      return nil unless %w[rebuild infer].include?(@edge_mode)
+
+      connected = relations.flat_map { |relation| [ relation[:from], relation[:to] ] }.to_set
+      alone = boxes.map(&:id).reject { |id| connected.include?(id) }
+      return nil if alone.empty?
+
+      names = alone.filter_map { |id| card_titles[id] }.first(5)
+      listed = names.any? ? "（#{names.join('・')}#{'ほか' if alone.size > names.size}）" : ""
+      "#{alone.size}枚が線に繋がりませんでした#{listed}。関係があるはずなら、" \
+        "そのカードの説明を足すか、指示でどう結ぶかを伝えてください。"
     end
 
     # カードの名前。食い違いを伝えるときに使う（id では読めない）
@@ -1062,19 +1083,42 @@ module Views
       @view.view_edges.destroy_all
       boxes = placement_boxes
 
-      relations.each do |relation|
+      # **線はまとめて引く。** 1本ずつ引くと、隣の線がどこを通るかを知らないまま
+      # 最短路を選ぶので、同じ辺から出る線が同じ点から出て同じ所に着く
+      links = relations.map do |relation|
         source_box = boxes[relation[:from]]
         target_box = boxes[relation[:to]]
         source_handle, target_handle = handles_for(source_box, target_box)
+        { from: source_box, to: target_box, source_handle:, target_handle: }
+      end
+      routes = router(boxes).route_all(links)
+      labels = relations.map { |relation| sanitize(relation[:label], limit: MAX_EDGE_LABEL_LENGTH).presence }
+      spots = Layout::LabelPlacement.call(routes:, labels:, links:)
+
+      relations.each_with_index do |relation, index|
+        route = routes[index]
         @view.view_edges.create!(
           source_node_id: relation[:from], target_node_id: relation[:to],
-          source_handle: source_handle, target_handle: target_handle,
-          label: sanitize(relation[:label], limit: MAX_EDGE_LABEL_LENGTH).presence,
-          style: relation_style(relation),
-          points: router(boxes).route(source_box, target_box, source_handle, target_handle)
+          source_handle: links[index][:source_handle], target_handle: links[index][:target_handle],
+          label: labels[index],
+          style: relation_style(relation).merge(edge_geometry(route, spots[index])),
+          points: route.points
         )
       end
       relations.size
+    end
+
+    # 線の引き方のうち、**画面が同じ形を描くために要る値**。
+    #
+    # 辺のどこから出たか（port）を渡さないと、画面は辺の中心から描いてしまい、
+    # せっかく散らしたポートが根元で1点に戻る。
+    # 文字の位置（label_t）も、こちらで重なりを解いた結果なので渡す
+    def edge_geometry(route, label_spot)
+      geometry = {}
+      geometry["source_port"] = route.source_port unless route.source_port.zero?
+      geometry["target_port"] = route.target_port unless route.target_port.zero?
+      geometry["label_t"] = label_spot if label_spot && label_spot != Layout::LabelPlacement::CENTER
+      geometry
     end
 
     # 関係の種類ごとの見た目。**強さは太さに出す。**
@@ -1158,16 +1202,25 @@ module Views
     # 手動折れ点は移動前の座標なので、新しいカード配置ではそのまま使えない。
     def reroute_existing_edges!
       boxes = placement_boxes
-      @view.view_edges.find_each do |edge|
+      edges = @view.view_edges.select do |edge|
+        boxes[edge.source_node_id] && boxes[edge.target_node_id]
+      end
+      links = edges.map do |edge|
         source_box = boxes[edge.source_node_id]
         target_box = boxes[edge.target_node_id]
-        next if source_box.nil? || target_box.nil?
-
         source_handle, target_handle = handles_for(source_box, target_box)
+        { from: source_box, to: target_box, source_handle:, target_handle: }
+      end
+      routes = router(boxes).route_all(links)
+      spots = Layout::LabelPlacement.call(routes:, labels: edges.map(&:label), links:)
+
+      edges.each_with_index do |edge, index|
         edge.update!(
-          source_handle: source_handle,
-          target_handle: target_handle,
-          points: router(boxes).route(source_box, target_box, source_handle, target_handle)
+          source_handle: links[index][:source_handle],
+          target_handle: links[index][:target_handle],
+          points: routes[index].points,
+          style: edge.style.to_h.except("source_port", "target_port", "label_t")
+                     .merge(edge_geometry(routes[index], spots[index]))
         )
       end
     end

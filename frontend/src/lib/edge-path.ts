@@ -245,3 +245,46 @@ function stubLength(end: EdgePoint, neighbour: EdgePoint, outward: EdgePoint, st
   return Math.min(stub, reach)
 }
 
+
+/**
+ * 辺のどこから出るか（ポート）を効かせた端点。
+ *
+ * React Flow の取っ手は辺の中心に1つしかない。そこから全部の線を出すと、
+ * 扇の根元が1本に見えて、どれがどこへ向かう線か読めない。
+ * サーバーが割り振ったずれを、**辺に沿って**足す（辺から浮かせない）。
+ */
+export function portedPoint(point: EdgePoint, handle: string | null | undefined, port?: number): EdgePoint {
+  if (!port) return point
+  return handle === 'left' || handle === 'right'
+    ? { x: point.x, y: point.y + port }
+    : { x: point.x + port, y: point.y }
+}
+
+/**
+ * 道のりを t (0..1) だけ進んだ点。
+ *
+ * 頂点の真ん中ではなく**長さ**で測る。折れ方が偏っていると、
+ * 頂点の真ん中は線の端へ寄ってしまう。
+ */
+export function pointAtFraction(points: EdgePoint[], fraction = 0.5): EdgePoint {
+  if (points.length === 0) return { x: 0, y: 0 }
+  if (points.length === 1) return points[0]
+
+  const lengths = points.slice(1).map((p, i) => Math.hypot(p.x - points[i].x, p.y - points[i].y))
+  const total = lengths.reduce((a, b) => a + b, 0)
+  if (total === 0) return points[0]
+
+  const target = total * Math.min(Math.max(fraction, 0), 1)
+  let walked = 0
+  for (let i = 0; i < lengths.length; i++) {
+    if (walked + lengths[i] >= target) {
+      const t = lengths[i] === 0 ? 0 : (target - walked) / lengths[i]
+      return {
+        x: points[i].x + (points[i + 1].x - points[i].x) * t,
+        y: points[i].y + (points[i + 1].y - points[i].y) * t,
+      }
+    }
+    walked += lengths[i]
+  }
+  return points[points.length - 1]
+}

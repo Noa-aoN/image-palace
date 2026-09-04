@@ -131,3 +131,125 @@ RSpec.describe Views::Layout::Router do
     expect(first).to eq(second)
   end
 end
+
+# ここから: まとめて引く（route_all）。
+# 1本ずつ引いていた頃は、隣の線がどこを通るかを知らないまま最短路を選んでいた。
+RSpec.describe "#{Views::Layout::Router}#route_all" do
+  def box(id, x:, y:, width: 144, height: 176)
+    Views::Layout::Box.new(id: id, title: id, x: x, y: y, width: width, height: height, footprint_width: width)
+  end
+
+  # 親1枚と、その下に並ぶ子。家系図でいちばん多い形
+  def fan(child_count)
+    parent = box("親", x: 600, y: 0)
+    children = child_count.times.map { |i| box("子#{i}", x: i * 320, y: 500) }
+    by_id = ([ parent ] + children).to_h { |b| [ b.id, b ] }
+    links = children.map do |child|
+      { from: parent, to: child, source_handle: "bottom", target_handle: "top" }
+    end
+    [ Views::Layout::Router.new(boxes: by_id).route_all(links), links ]
+  end
+
+  describe "同じ辺から出る線を散らす" do
+    it "3本の線が、それぞれ違うポートから出る" do
+      routes, = fan(3)
+
+      ports = routes.map(&:source_port)
+      expect(ports.uniq.size).to eq(3)
+    end
+
+    it "ポートはカードの幅に収まる（角からはみ出さない）" do
+      routes, = fan(4)
+
+      # 幅144・端の余白14 → 中心から ±58 まで
+      expect(routes.map { |r| r.source_port.abs }.max).to be <= 58
+    end
+
+    it "相手が左にある線ほど、左のポートから出る（扇の中で交差しない）" do
+      routes, links = fan(4)
+
+      by_target_x = links.each_with_index.sort_by { |link, _| link[:to].center_x }
+      ports = by_target_x.map { |_, index| routes[index].source_port }
+      expect(ports).to eq(ports.sort)
+    end
+
+    it "1本だけなら真ん中から出る（散らす理由が無い）" do
+      routes, = fan(1)
+
+      expect(routes.first.source_port).to eq(0)
+    end
+  end
+
+  describe "道すじが重ならない" do
+    it "扇の線は、どれも同じ道すじにならない" do
+      routes, links = fan(3)
+
+      paths = routes.each_with_index.map do |route, index|
+        start = links[index][:from]
+        [ [ start.center_x + route.source_port, start.bottom ], *route.points.map { |p| [ p["x"], p["y"] ] } ]
+      end
+      expect(paths.uniq.size).to eq(3)
+    end
+
+    it "同じ2枚を2本で結んでも、線が完全に重ならない" do
+      a = box("A", x: 0, y: 0)
+      b = box("B", x: 0, y: 500)
+      by_id = { "A" => a, "B" => b }
+      links = 2.times.map { { from: a, to: b, source_handle: "bottom", target_handle: "top" } }
+
+      routes = Views::Layout::Router.new(boxes: by_id).route_all(links)
+
+      expect(routes[0].source_port).not_to eq(routes[1].source_port)
+    end
+  end
+
+  describe "ずらしても壊さない" do
+    it "助走が裏返らない（端で折り返して見えない）" do
+      routes, links = fan(5)
+
+      routes.each_with_index do |route, index|
+        next if route.points.empty?
+
+        # 下辺から出た線の最初の点は、必ずカードより下にある
+        expect(route.points.first["y"]).to be > links[index][:from].bottom
+      end
+    end
+
+    it "よけるべきカードを、ずらした線が突っ切らない" do
+      parent = box("親", x: 600, y: 0)
+      wall = box("壁", x: 560, y: 300)
+      children = 3.times.map { |i| box("子#{i}", x: i * 400, y: 700) }
+      by_id = ([ parent, wall ] + children).to_h { |b| [ b.id, b ] }
+      links = children.map { |c| { from: parent, to: c, source_handle: "bottom", target_handle: "top" } }
+
+      routes = Views::Layout::Router.new(boxes: by_id).route_all(links)
+
+      routes.each_with_index do |route, index|
+        path = [
+          { "x" => parent.center_x + route.source_port, "y" => parent.bottom },
+          *route.points,
+          { "x" => children[index].center_x + route.target_port, "y" => children[index].top }
+        ]
+        crossings = path.each_cons(2).count do |a, b|
+          horizontal = (a["y"] - b["y"]).abs < 1
+          if horizontal
+            a["y"] > wall.top && a["y"] < wall.bottom &&
+              [ a["x"], b["x"] ].min < wall.right && [ a["x"], b["x"] ].max > wall.left
+          else
+            a["x"] > wall.left && a["x"] < wall.right &&
+              [ a["y"], b["y"] ].min < wall.bottom && [ a["y"], b["y"] ].max > wall.top
+          end
+        end
+        expect(crossings).to eq(0), "子#{index} の線が壁を突っ切っている"
+      end
+    end
+
+    it "同じ入力なら同じ結果になる" do
+      first, = fan(4)
+      second, = fan(4)
+
+      expect(first.map(&:points)).to eq(second.map(&:points))
+      expect(first.map(&:source_port)).to eq(second.map(&:source_port))
+    end
+  end
+end

@@ -116,6 +116,20 @@ export interface ViewEdgeStyle {
   label_bg?: string // ラベルの背景色（空=なし）
   label_opacity?: number // ラベルの不透明度(0-100)
   label_vertical?: boolean // ラベルを縦書きにする
+  /**
+   * 辺のどこから出入りするか。辺の中心からのずれ(px)。
+   * 同じ辺を使う線が1点から出ると、扇の根元が1本に見えて行き先が読めない
+   */
+  source_port?: number
+  target_port?: number
+  /**
+   * 線の上の文字を置く場所。道のりの何割の位置か（0..1、既定 0.5）。
+   * 道すじの近い線どうしで文字が重なったとき、サーバー側が前後へずらした結果
+   */
+  label_t?: number
+  /** AI が読み取った関係の種類と確からしさ。見た目ではなく控えとして残す */
+  relation?: string
+  strength?: number
 }
 
 // freeboard: カード間の接続線。source/target は文字列ノード id（カードは item_id）。

@@ -53,7 +53,10 @@ module Api
                    :label_color, :label_size, :label_bg, :label_opacity, :label_vertical,
                    :line_style, :curve, :curve_radius,
                    # AI が付ける関係の種類と強さ。あとから見直すための控え
-                   :relation, :strength ],
+                   :relation, :strength,
+                   # 線の引き方。**落とすと画面が別の形を描く**
+                   # （辺の中心から出てしまい、散らしたポートが根元で1点に戻る）
+                   :source_port, :target_port, :label_t ],
           points: [ :x, :y ]
         )
       end
