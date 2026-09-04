@@ -37,6 +37,25 @@ class ViewShape < ApplicationRecord
 
   MAX_TEXT_LENGTH = 2_000
 
+  # 置いた直後の見た目。
+  #
+  # **何も塗らずに置くと、見えない図形が盤に増える。**
+  # 四角も丸も、既定は盤とほとんど同じ色だったので、置いた本人にも
+  # どこに出たのか分からなかった（掴めるのに見えない、がいちばん困る）。
+  #
+  # 主張しすぎない薄い色に、輪郭を添える。色は**あとから変えられる**ので、
+  # ここでの役目は「置いたものが見えること」だけ。
+  #
+  # かこみ（frame）だけは塗らない。**中身が透けないと囲えない**
+  DEFAULT_STYLES = {
+    "rectangle" => { "fill" => "#eef2f7", "stroke" => "#94a3b8", "stroke_width" => 2 },
+    "ellipse" => { "fill" => "#eef2f7", "stroke" => "#94a3b8", "stroke_width" => 2 },
+    "sticky" => { "fill" => "#fff3b0", "stroke" => "#e5c76b", "stroke_width" => 1, "folded" => true },
+    # 文字だけは塗りも枠も持たない。持たせると、見出しを置くたびに消す手間が要る
+    "text" => {},
+    "frame" => { "stroke" => "#94a3b8", "stroke_width" => 2, "dashed" => true }
+  }.freeze
+
   belongs_to :view
 
   validates :kind, inclusion: { in: KINDS }
@@ -51,5 +70,9 @@ class ViewShape < ApplicationRecord
 
   def self.default_size_for(kind)
     DEFAULT_SIZES.fetch(kind, DEFAULT_SIZES["rectangle"])
+  end
+
+  def self.default_style_for(kind)
+    DEFAULT_STYLES.fetch(kind, DEFAULT_STYLES["rectangle"]).dup
   end
 end

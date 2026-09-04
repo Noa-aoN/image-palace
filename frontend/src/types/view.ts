@@ -251,6 +251,8 @@ export interface BoardShapeStyle {
   align?: 'left' | 'center' | 'right'
   bold?: boolean
   dashed?: boolean
+  /** 付箋の角の折り目。形だけで他の図形と見分けられるようにする */
+  folded?: boolean
 }
 
 export interface BoardShape {

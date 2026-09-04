@@ -28,6 +28,8 @@ export const SHAPE_MIN_H = 40
 export const ShapeNode = memo(function ShapeNode({ data, selected }: NodeProps<ShapeNodeType>) {
   const { kind, text, style } = data.shape
   const isFrame = kind === 'frame'
+  // 付箋は既定で折り目つき。**形だけで見分けられる**ようにする
+  const folded = kind === 'sticky' && (style.folded ?? true)
 
   return (
     <>
@@ -42,6 +44,7 @@ export const ShapeNode = memo(function ShapeNode({ data, selected }: NodeProps<S
         style={{ opacity: style.opacity ?? 1 }}
       >
         <div className="relative h-full w-full" style={surfaceStyle(kind, style)}>
+          {folded && <Dogear style={style} />}
           {/* かこみの見出しは**枠の外**（上）に置く。中に置くとカードと重なる */}
           {isFrame && text && (
             <span className="pointer-events-auto absolute -top-6 left-0 max-w-full truncate text-sm font-medium"
@@ -83,6 +86,35 @@ const KIND_LABELS: Record<BoardShapeKind, string> = {
   frame: 'かこみ',
 }
 
+/** 折り目の大きさ(px)。大きくすると付箋というより破れた紙に見える */
+const DOGEAR = 18
+
+/**
+ * 付箋の右上の折り目。
+ *
+ * 四角・丸・付箋は、色を変えると見分けが付かなくなる。
+ * **形で差を付けておけば、色を自由に選んでも役割が読める。**
+ *
+ * 折った紙のように、めくれた側は塗りより少し濃く、
+ * 下に見える面は少し暗くする。影は付けない（付箋自体が影を持っている）。
+ */
+function Dogear({ style }: { style: BoardShape['style'] }) {
+  const radius = style.radius ?? 4
+  return (
+    <span
+      aria-hidden
+      className="pointer-events-none absolute right-0 top-0"
+      style={{
+        width: DOGEAR,
+        height: DOGEAR,
+        borderTopRightRadius: radius,
+        // 上半分を盤の色で抜き、下半分をめくれた紙にする
+        background: `linear-gradient(225deg, var(--board-bg) 0 50%, rgba(0,0,0,0.16) 50% 54%, rgba(0,0,0,0.06) 54% 100%)`,
+      }}
+    />
+  )
+}
+
 /**
  * 種類ごとの見た目。
  *
@@ -106,11 +138,19 @@ function surfaceStyle(kind: BoardShapeKind, style: BoardShape['style']): React.C
   }
 }
 
-/** 塗りの既定。**かこみは中身が透けないと囲えない** */
+/**
+ * 塗りの既定。**置いたものが見えること**だけが役目。
+ *
+ * 四角と丸は盤とほとんど同じ色だったので、置いた本人にも
+ * どこに出たのか分からなかった（掴めるのに見えない、がいちばん困る）。
+ * いまは作るときにサーバーが色を入れるので、ここは古い図形のための備え。
+ *
+ * かこみは塗らない。**中身が透けないと囲えない**
+ */
 function defaultFill(kind: BoardShapeKind): string | undefined {
   if (kind === 'frame') return undefined
   if (kind === 'sticky') return '#FFF3B0'
-  return 'var(--card)'
+  return '#EEF2F7'
 }
 
 function alignmentOf(align: BoardShape['style']['align']): string {

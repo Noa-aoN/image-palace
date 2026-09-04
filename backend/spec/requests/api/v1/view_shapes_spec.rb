@@ -72,7 +72,9 @@ RSpec.describe "Api::V1::Views shapes", type: :request do
            params: { kind: "rectangle", style: { fill: "url(javascript:alert(1))" } },
            headers: headers, as: :json
 
-      expect(json_response["style"]).not_to have_key("fill")
+      # 捨てたあとは種類ごとの既定で埋まる。**渡した文字列が残っていないこと**が要点
+      expect(json_response["style"]["fill"]).to eq(ViewShape::DEFAULT_STYLES["rectangle"]["fill"])
+      expect(json_response["style"].values.map(&:to_s)).not_to include(/javascript/)
     end
 
     it "大きすぎる枠や文字は、扱える範囲へ収める" do
@@ -181,6 +183,70 @@ RSpec.describe "Api::V1::Views shapes", type: :request do
       post "/api/v1/views/#{view.id}/shapes", params: { kind: "rectangle" }, as: :json
 
       expect(response).to have_http_status(:unauthorized)
+    end
+  end
+  # 置いたものが見えること。塗りも枠も無いと、盤にあることが分からない
+  describe "置いた直後の見た目" do
+    it "四角は塗りと枠を持って出る" do
+      post "/api/v1/views/#{view.id}/shapes", params: { kind: "rectangle" }, headers: headers, as: :json
+
+      style = json_response["style"]
+      expect(style["fill"]).to be_present
+      expect(style["stroke"]).to be_present
+      expect(style["stroke_width"]).to be_positive
+    end
+
+    it "付箋は折り目つきで出る（形だけで見分けられる）" do
+      post "/api/v1/views/#{view.id}/shapes", params: { kind: "sticky" }, headers: headers, as: :json
+
+      expect(json_response["style"]["folded"]).to be(true)
+    end
+
+    # 中身が透けないと囲えない
+    it "かこみは塗らない" do
+      post "/api/v1/views/#{view.id}/shapes", params: { kind: "frame" }, headers: headers, as: :json
+
+      expect(json_response["style"]["fill"]).to be_nil
+      expect(json_response["style"]["stroke"]).to be_present
+    end
+
+    it "文字は塗りも枠も持たない" do
+      post "/api/v1/views/#{view.id}/shapes", params: { kind: "text" }, headers: headers, as: :json
+
+      expect(json_response["style"]).to eq({})
+    end
+
+    it "指定した見た目は既定より優先される" do
+      post "/api/v1/views/#{view.id}/shapes",
+           params: { kind: "rectangle", style: { fill: "#ff0000" } }, headers: headers, as: :json
+
+      expect(json_response["style"]["fill"]).to eq("#ff0000")
+      # 指定しなかったところは既定のまま残る
+      expect(json_response["style"]["stroke"]).to be_present
+    end
+  end
+
+  describe "折り目の付け外し" do
+    it "外せる（色を揃えたい図では邪魔になる）" do
+      post "/api/v1/views/#{view.id}/shapes", params: { kind: "sticky" }, headers: headers, as: :json
+      id = json_response["id"]
+
+      patch "/api/v1/views/#{view.id}/shapes/#{id}",
+            params: { style: { folded: false } }, headers: headers, as: :json
+
+      expect(response).to have_http_status(:no_content)
+      expect(ViewShape.find(id).style["folded"]).to be(false)
+    end
+
+    it "外しても、他の見た目は消えない" do
+      post "/api/v1/views/#{view.id}/shapes", params: { kind: "sticky" }, headers: headers, as: :json
+      id = json_response["id"]
+      fill = json_response["style"]["fill"]
+
+      patch "/api/v1/views/#{view.id}/shapes/#{id}",
+            params: { style: { folded: false } }, headers: headers, as: :json
+
+      expect(ViewShape.find(id).style["fill"]).to eq(fill)
     end
   end
 end

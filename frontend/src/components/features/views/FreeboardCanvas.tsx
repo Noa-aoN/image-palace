@@ -57,7 +57,8 @@ import { BoardActionsContext, CardNode, CARD_DEFAULT_W, CARD_DEFAULT_H, type Car
 import { EditableEdge, EdgeActionsContext } from './EditableEdge'
 import { DraggableMiniMap } from './DraggableMiniMap'
 import { persist } from '@/lib/api/persist'
-import { ShapeNode, type ShapeNodeType } from '@/components/features/views/ShapeNode'
+import { ShapeNode, SHAPE_MIN_W, type ShapeNodeType } from '@/components/features/views/ShapeNode'
+import { isClick, rectFromDrag, centeredAt, bandStyle } from '@/lib/shape-placement'
 import {
   createViewShape,
   removeViewShape,
@@ -289,25 +290,85 @@ function Canvas({
    * 原点に置くと、盤の端まで移動して探すことになる。
    * 見えている場所に出れば、置いた直後に掴んで動かせる。
    */
-  const addShape = async (kind: BoardShapeKind) => {
-    const board = boardRef.current?.getBoundingClientRect()
-    const center = board
-      ? screenToFlowPosition({ x: board.left + board.width / 2, y: board.top + board.height / 2 })
-      : { x: 0, y: 0 }
-
+  /**
+   * 図形を作る。**引いた範囲があればその大きさで、無ければ既定の大きさで。**
+   *
+   * 既定の大きさで作るときだけ、大きさをサーバーに決めさせてから
+   * 押した点が中心に来るように置き直す（種類ごとの既定はサーバーが正本）。
+   */
+  const createShape = async (kind: BoardShapeKind, at: { x: number; y: number }, size?: { width: number; height: number }) => {
     try {
       const shape = await createViewShape(viewId, {
         kind,
-        x: Math.round(center.x),
-        y: Math.round(center.y),
+        x: at.x,
+        y: at.y,
+        ...(size ?? {}),
       })
-      // 置いた図形の左上が中央に来ると、掴む場所が画面の端に寄る。中心を合わせる
-      const centred = { ...shape, x: shape.x - shape.width / 2, y: shape.y - shape.height / 2 }
-      await updateViewShape(viewId, shape.id, { x: Math.round(centred.x), y: Math.round(centred.y) })
+      if (size) {
+        setNodes((current) => [ ...current, toShapeNode(shape) ])
+        return
+      }
+      // 押した点を左上にすると、指の右下へ伸びて出る。中心を合わせる
+      const centred = { ...shape, ...centeredAt(at, shape.width, shape.height) }
+      await updateViewShape(viewId, shape.id, { x: centred.x, y: centred.y })
       setNodes((current) => [ ...current, toShapeNode(centred) ])
     } catch {
       // 置けなかったときは何も起きない（盤は元のまま）
     }
+  }
+
+  /**
+   * 図形の置き方。
+   *
+   * 種類を選ぶと**構える**（placing）。盤の上で引けばその大きさ、
+   * ちょんと押せば既定の大きさで出る。Esc でやめられる。
+   */
+  const [placing, setPlacing] = useState<BoardShapeKind | null>(null)
+  const [band, setBand] = useState<{ start: { x: number; y: number }; end: { x: number; y: number } } | null>(null)
+
+  useEffect(() => {
+    if (!placing) return
+    const cancel = (event: KeyboardEvent) => {
+      if (event.key !== 'Escape') return
+      setPlacing(null)
+      setBand(null)
+    }
+    window.addEventListener('keydown', cancel)
+    return () => window.removeEventListener('keydown', cancel)
+  }, [placing])
+
+  const handlePlacePointerDown = (event: React.PointerEvent<HTMLDivElement>) => {
+    if (!placing || event.button !== 0) return
+    // 構えている間は、盤の掴み（パン）も範囲選択も起きないようにする
+    event.preventDefault()
+    event.stopPropagation()
+    ;(event.target as Element).setPointerCapture?.(event.pointerId)
+    const point = { x: event.clientX, y: event.clientY }
+    setBand({ start: point, end: point })
+  }
+
+  const handlePlacePointerMove = (event: React.PointerEvent<HTMLDivElement>) => {
+    if (!band) return
+    setBand({ ...band, end: { x: event.clientX, y: event.clientY } })
+  }
+
+  const handlePlacePointerUp = (event: React.PointerEvent<HTMLDivElement>) => {
+    if (!placing || !band) return
+    event.preventDefault()
+    event.stopPropagation()
+    const end = { x: event.clientX, y: event.clientY }
+    const kind = placing
+    setPlacing(null)
+    setBand(null)
+
+    const from = screenToFlowPosition(band.start)
+    const to = screenToFlowPosition(end)
+    if (isClick(band.start, end)) {
+      void createShape(kind, { x: Math.round(from.x), y: Math.round(from.y) })
+      return
+    }
+    const rect = rectFromDrag(from, to, SHAPE_MIN_W)
+    void createShape(kind, { x: rect.x, y: rect.y }, { width: rect.width, height: rect.height })
   }
 
   /** 図形の置き場所と大きさを保存する。カードと同じ key の付け方 */
@@ -885,7 +946,7 @@ function Canvas({
           {aiEditAction}
           {/* 図形を置く。**1つのドロップダウンに畳む。**
               5つを並べると、よく使う「カードを配置」と「AIで整える」が押しのけられる */}
-          <ShapeMenu onAdd={addShape} />
+          <ShapeMenu onAdd={setPlacing} />
           <Button size="sm" variant="outline" onClick={() => openBoardCards(viewId)} className="flex items-center gap-1">
             <List size={15} />
             配置カード一覧
@@ -914,7 +975,12 @@ function Canvas({
 
         <div
           ref={boardRef}
-          className="relative h-[72vh] w-full overflow-hidden rounded-xl border border-border bg-center bg-cover"
+          onPointerDown={handlePlacePointerDown}
+          onPointerMove={handlePlacePointerMove}
+          onPointerUp={handlePlacePointerUp}
+          className={`relative h-[72vh] w-full overflow-hidden rounded-xl border bg-center bg-cover ${
+            placing ? 'cursor-crosshair border-primary' : 'border-border'
+          }`}
           style={{
             backgroundColor: boardSettings.bg_color || 'var(--board-bg)',
             ...(backgroundImageUrl ? { backgroundImage: `url("${backgroundImageUrl}")` } : {}),
@@ -943,6 +1009,10 @@ function Canvas({
             onEdgesDelete={handleEdgesDelete}
             onSelectionChange={handleSelectionChange}
             multiSelectionKeyCode="Shift"
+            panOnDrag={!placing}
+            nodesDraggable={!placing}
+            elementsSelectable={!placing}
+            /* 構えている間は盤を掴めないようにする。掴めると、引いた範囲ではなく盤が動く */
             connectionMode={ConnectionMode.Loose}
             defaultEdgeOptions={{ type: 'editable' }}
             fitView
@@ -965,6 +1035,28 @@ function Canvas({
             {/* 既定は非表示。盤を広く使いたい場面が多く、必要な人だけ出せばよい */}
             {boardSettings.minimap === true && <DraggableMiniMap boardRef={boardRef} />}
           </ReactFlow>
+
+          {/* 引いている最中の帯。**離す前に、何がどこへ出るかを見せる** */}
+          {band && boardRef.current && (
+            <div
+              className="pointer-events-none absolute rounded-md border-2 border-dashed border-primary bg-primary/10"
+              style={(() => {
+                const box = boardRef.current.getBoundingClientRect()
+                const style = bandStyle(band.start, band.end)
+                return { left: style.left - box.left, top: style.top - box.top, width: style.width, height: style.height }
+              })()}
+            />
+          )}
+
+          {/* 構えていることを言葉でも出す。カーソルの形だけでは、
+              なぜ盤が掴めないのか分からない */}
+          {placing && (
+            <div className="pointer-events-none absolute inset-x-0 top-2 flex justify-center">
+              <span className="rounded-full bg-foreground/85 px-3 py-1 text-xs text-background">
+                {SHAPE_LABELS[placing]}を置きます — ドラッグで大きさを決める／クリックで既定の大きさ／Esc でやめる
+              </span>
+            </div>
+          )}
 
           {nodes.length === 0 && (
             <div className="pointer-events-none absolute inset-0 flex items-center justify-center">
@@ -1039,6 +1131,15 @@ export function FreeboardCanvas(props: FreeboardCanvasProps) {
  * 図を描く道具（Figma / Miro / FigJam）が共通して持っているものだけにした。
  * 種類を増やすと選ぶ手間が増えるわりに、できる図はほとんど変わらない。
  */
+/** 構えているときの案内に使う。SHAPE_CHOICES から引くと、並び順に依存してしまう */
+const SHAPE_LABELS: Record<BoardShapeKind, string> = {
+  rectangle: '四角',
+  ellipse: '丸',
+  sticky: '付箋',
+  text: '文字',
+  frame: 'かこみ',
+}
+
 const SHAPE_CHOICES: { kind: BoardShapeKind; label: string; hint: string }[] = [
   { kind: 'frame', label: 'かこみ', hint: 'カードの後ろに敷いて、群れを囲みます' },
   { kind: 'sticky', label: '付箋', hint: '思いつきを貼ります' },
@@ -1060,6 +1161,7 @@ function ShapeMenu({ onAdd }: { onAdd: (kind: BoardShapeKind) => void }) {
         {/* 見出しは群の中でしか使えない。包まないと Base UI が落ちる */}
         <DropdownMenuGroup>
           <DropdownMenuLabel>置くもの</DropdownMenuLabel>
+          {/* 選んだ時点では出さない。**盤の上で引いた範囲がそのまま図形になる** */}
           {SHAPE_CHOICES.map((choice) => (
             <DropdownMenuItem
               key={choice.kind}
