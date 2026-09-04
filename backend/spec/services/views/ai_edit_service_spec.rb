@@ -914,14 +914,24 @@ RSpec.describe Views::AiEditService do
       expect(style["relation"]).to eq("cause")
     end
 
-    it "弱い関係は細く、点線で引く" do
-      stub_plan("relations" => [ { "from" => a.id, "to" => b.id, "type" => "related", "strength" => 0.2 } ])
+    # 0.4 未満は線にならなくなったので、細い線は「弱いが描く範囲」に当たる
+    it "確からしさが低めの関係は、細く点線で引く" do
+      stub_plan("relations" => [ { "from" => a.id, "to" => b.id, "type" => "related", "strength" => 0.45 } ])
 
       described_class.call(view: view, instruction: "つないで")
 
       style = view.view_edges.first.style
       expect(style["width"]).to eq(1)
       expect(style["dashed"]).to be(true)
+    end
+
+    # 図は「そう読める」と言い切るもの。推測を線にすると嘘になる
+    it "確からしさが下限に届かない関係は、そもそも引かない" do
+      stub_plan("relations" => [ { "from" => a.id, "to" => b.id, "type" => "related", "strength" => 0.2 } ])
+
+      described_class.call(view: view, instruction: "つないで")
+
+      expect(view.view_edges.count).to eq(0)
     end
 
     it "同じ関係を2回書かれても、線は1本だけ引く" do

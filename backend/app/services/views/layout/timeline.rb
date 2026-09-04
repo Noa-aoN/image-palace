@@ -31,7 +31,7 @@ module Views
         @by_id = boxes.to_h { |box| [ box.id, box ] }
         # 同列の関係は時間を進めない（兄弟は同じ時点にいる）
         @edges = edges.select do |edge|
-          @by_id.key?(edge[:from]) && @by_id.key?(edge[:to]) && edge[:type].to_s != "peer"
+          @by_id.key?(edge[:from]) && @by_id.key?(edge[:to]) && !Relation.same_level?(edge[:type])
         end
       end
 

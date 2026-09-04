@@ -27,7 +27,11 @@ module Views
     # これまでは種類が「太さ・色・破線」という見た目にだけ表れていて、
     # 機械では読めなかった。語で持てば、線の引き方も、距離の決め方も、
     # あとから見直すこともできる。知らない語は related へ落とす
-    RELATION_TYPES = %w[parent cause part example contrast sequence means peer related].freeze
+    RELATION_TYPES = %w[
+      parent spouse sibling equivalent belongs_to
+      cause part example contrast sequence means related
+      peer
+    ].freeze.freeze
     DEFAULT_RELATION_TYPE = "related"
 
     # 線の見出しの長さ。長い文は図の上で読めない
@@ -486,20 +490,32 @@ module Views
         ## 関係（relations）
         - **from から to へ読む向き**で書く。「A の子が B」なら from=A, to=B
         - type は次から選ぶ。当てはまるものが無ければ related
-          parent（親子・上位下位） / cause（原因と結果） / part（部分と全体）
-          / example（具体例） / contrast（対比・対立） / sequence（順序・時系列）
-          / means（手段と目的） / peer（同列） / related（その他）
-        - **上下があるか、同列かを取り違えない。ここが図の段を決めます。**
-          ・parent … 下に置きたいもの。親子・上位下位・分類と具体。
-            「息子」「娘」「子」「母」「父」はすべて parent（from が上、to が下）
-          ・peer  … 同じ段に置きたいもの。兄弟・姉妹・配偶者・同僚・同期・並列。
-            「妻」「夫」「兄」「弟」「姉」「妹」はすべて peer
-          ・related … どちらとも言えないもの。**迷ったときの逃げ道であって、
-            親子や兄弟を related にしない**
+          【上下がある】parent（親子・上位下位） / belongs_to（所属・祀られる場所）
+            / cause（原因と結果） / part（部分と全体） / example（具体例）
+            / sequence（順序・時系列） / means（手段と目的）
+          【同じ段】spouse（夫婦） / sibling（兄弟姉妹） / equivalent（同じものの別名）
+            / contrast（対比・対立）
+          【その他】related
+        - **上下があるか、同じ段かを取り違えない。ここが図の段を決めます。**
+          ・parent     … 「息子」「娘」「子」「母」「父」（from が上、to が下）
+          ・spouse     … 「妻」「夫」「配偶者」。**子はこの二人の間から降ろします**
+          ・sibling    … 「兄」「弟」「姉」「妹」「兄弟」。夫婦とは分けること
+          ・equivalent … 同じものの別の呼び名（アテナとミネルヴァ、水星とマーキュリー）
+          ・belongs_to … 「祀られる」「所属する」「置かれている」。場所や組織へのつながり
+          ・related    … どちらとも言えないもの。**迷ったときの逃げ道であって、
+            親子・夫婦・兄弟・同一視を related にしない**
         - label は 8 文字程度までの短い語（「父」「原因」「例」など）。長い文は入れない
         - **「関係」「関連」「つながり」のように何も説明していない語は使わない**
-        - strength は 0〜1。**強いほど近くに置かれます**。
-          迷ったら 0.5。確かな関係なら 0.9、思いつきなら 0.3
+        - strength は 0〜1。**その関係がどれだけ確かか**を表します。
+          ・資料にはっきり書いてある … 0.9
+          ・書かれてはいないが、まず間違いない … 0.7
+          ・そうかもしれない … 0.4
+          ・思いついただけ … 0.2
+        - **強いほど近くに置かれます。** そして
+          **確かでない関係は線になりません**（親子・夫婦・兄弟・同一視は 0.6 以上、
+          その他は 0.4〜0.5 以上が要ります）。
+          図は「そう読める」と言い切るものなので、**推測を線にすると嘘になります**。
+          自信が無いなら低い数を書いてください。落とされたことは利用者に伝えます
         - **資料の材料を使う。**
           ・種別［人物］［出来事］［場所］は、成り立つ関係を絞る手がかりになる
             （人物どうしなら親子・師弟、出来事どうしなら前後・因果）
@@ -842,7 +858,12 @@ module Views
     #   図の崩れ      … 重なり・線の交差・文字の衝突
     def combined_notes(ai_notes)
       rescued = ("見落としていた関係を#{@rescued}本、追い足しました。" if @rescued.to_i.positive?)
-      [ ai_notes, rescued, improvement_note, *Array(@consistency_notes), *Array(@layout_notes) ]
+      unconfident = if @unconfident.to_i.positive?
+        "確かでない関係を#{@unconfident}本、線にしませんでした（推測を線にすると、" \
+          "図がそう言い切ってしまうため）。"
+      end
+      [ ai_notes, rescued, unconfident, improvement_note,
+        *Array(@consistency_notes), *Array(@layout_notes) ]
         .compact_blank.uniq.first(8).join("\n").presence
     end
 
@@ -1173,8 +1194,22 @@ module Views
     # **同じ組は1本にする**（2本引くと、どちらが正しいのか読めない）
     def normalized_relations(relations)
       seen = Set.new
-      raw_relations(relations).select { |relation| seen.add?([ relation[:from], relation[:to] ]) }
-             .first(MAX_EDGES)
+      confident(raw_relations(relations))
+        .select { |relation| seen.add?([ relation[:from], relation[:to] ]) }
+        .first(MAX_EDGES)
+    end
+
+    # 確からしさが足りない関係は、線にしない。
+    #
+    # **図は「そう読める」と言い切るもの**なので、弱い推測を線にすると嘘になる。
+    # 見せないほうが、間違ったことを見せるよりよい。
+    # どれだけ落としたかは黙らずに伝える（材料が足りないのかもしれないので）
+    def confident(relations)
+      kept, dropped = relations.partition do |relation|
+        Layout::Confidence.enough?(relation[:type], relation[:strength])
+      end
+      @unconfident = dropped.size
+      kept
     end
 
     # 落とす前の一覧。**食い違いはここで見る。**
@@ -1193,7 +1228,10 @@ module Views
           from: from, to: to,
           type: RELATION_TYPES.include?(relation["type"].to_s) ? relation["type"].to_s : DEFAULT_RELATION_TYPE,
           label: relation["label"].to_s.strip.first(MAX_EDGE_LABEL_LENGTH).presence,
-          strength: relation["strength"].to_f.clamp(0.0, 1.0)
+          # **書かれていないことを「弱い」と読まない。**
+          # to_f にすると、確からしさを書かない応答が全部 0 になり、
+          # 線が1本も残らなくなる（「分からない」と「弱い」は別のこと）
+          strength: relation.key?("strength") ? relation["strength"].to_f.clamp(0.0, 1.0) : nil
         }
       end
     end
@@ -1488,7 +1526,15 @@ module Views
       # 図の骨組み。灰の実線で、矢印が向きを示す
       "parent" => { color: "#4a4a4a", marker_end: "arrow", line_style: "solid" },
       "part" => { color: "#777777", marker_end: "none", line_style: "solid" },
-      # **夫婦・兄弟は二重線。** 家系図では上下の線と区別が付くことが要る
+      # **夫婦は二重線。** 家系図では上下の線と区別が付くことが要る
+      "spouse" => { color: "#4a4a4a", marker_end: "none", line_style: "double" },
+      # 兄弟は横に並ぶだけ。二重線にすると夫婦と見分けが付かない
+      "sibling" => { color: "#777777", marker_end: "none", line_style: "solid" },
+      # 同じものの別の呼び名。**両向きの矢印**で「行き来できる」ことを示す
+      "equivalent" => { color: "#7a6fb0", marker_start: "arrow", marker_end: "arrow", line_style: "dashed" },
+      # どこに属するか。親子ほど強い上下ではないので、細い実線
+      "belongs_to" => { color: "#777777", marker_end: "arrow", line_style: "solid" },
+      # 旧データの同列。夫婦として描く（そう書かれていたものが多い）
       "peer" => { color: "#4a4a4a", marker_end: "none", line_style: "double" },
       # 話の筋。色で読み分ける
       "cause" => { color: "#c07a2e", marker_end: "arrow", line_style: "solid" },
@@ -1502,18 +1548,23 @@ module Views
 
     def relation_style(relation)
       look = RELATION_LOOKS.fetch(relation[:type], RELATION_LOOKS["related"])
-      strength = relation[:strength]
+      # 確からしさが分からないものは、真ん中の太さで引く
+      strength = relation[:strength] || 0.65
       {
-        "width" => strength >= 0.7 ? 3 : (strength >= 0.4 ? 2 : 1),
+        # **描かれる範囲に合わせて刻む。**
+        # 0.4 未満は線にならなくなったので、0.4/0.7 で刻むと
+        # いちばん細い線が誰にも当たらない目盛りになる
+        "width" => strength >= 0.8 ? 3 : (strength >= 0.6 ? 2 : 1),
         "color" => look[:color],
         "marker_end" => look[:marker_end],
+        "marker_start" => look[:marker_start],
         "line_style" => look[:line_style],
         # 古い画面のための控え。line_style を読めない版でも破線には見える
         "dashed" => %w[dashed dotted].include?(look[:line_style]),
         # 機械が読むための控え。画面はいまのところ見ていないが、
         # 種類で絞る・強さで薄くするといった見直しの足場になる
         "relation" => relation[:type],
-        "strength" => strength.round(2)
+        "strength" => relation[:strength]&.round(2)
       }
     end
 

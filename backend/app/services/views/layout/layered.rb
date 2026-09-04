@@ -34,13 +34,14 @@ module Views
       # 別の親を持つかたまり同士の間隔。兄弟より広く取って、群れの境目を見せる
       GROUP_GAP = Metrics::MIN_CARD_GAP * 1.5
 
-      # **同じ段に置く関係。** 兄弟・配偶者・同僚のように、上下の無いつながり。
+      # **同じ段に置く関係。** 上下の無いつながり。
       #
       # これを段の材料に混ぜていた頃は、ゼウスの「妻」であるヘラや、
       # 「兄弟」であるポセイドンが、**子と同じ段へ落ちていた**。
       # 落ちた先から子へ線が引かれるので、その線は子の段を横切ることになる。
       # 家系図が家系図に見えないのは、ここが理由だった。
-      PEER_TYPES = %w[peer].freeze
+      #
+      # どの種類が同列かは Relation が持つ。**ここで種類を数え上げない**
 
       # @param boxes [Array<Box>] 置くカード
       # @param edges [Array<Hash>] { from:, to:, type: } の並び（向きがある）
@@ -69,7 +70,7 @@ module Views
 
       private
 
-      def peer?(edge) = PEER_TYPES.include?(edge[:type].to_s)
+      def peer?(edge) = Relation.same_level?(edge[:type])
 
       # 深さを割り当てる。
       #
@@ -226,17 +227,21 @@ module Views
         end
       end
 
-      # 隣にしたいのは、**共通の子を持つ組だけ**。
+      # 隣にしたいのは、**離れていると読めなくなる組だけ**。
       #
-      # 兄弟も同列だが、隣り合っていなくても図は読める。
-      # 子へ幹を降ろす組だけは、間に何か挟まると幹がどちらのものか読めなくなる
+      #   夫婦（共通の子を持つ）… 間に何か挟まると、幹がどちらのものか読めない
+      #   同一視              … 「同じもの」なのに離れていたら、同じだと読めない
+      #
+      # 兄弟は入れない。隣り合っていなくても図は読めるし、
+      # 兄弟まで寄せると夫婦と押し合って、どちらも隣り合わなくなる
       def couple_pairs
         @couple_pairs ||= begin
           children = @edges.group_by { |edge| edge[:from] }
                            .transform_values { |list| list.map { |edge| edge[:to] } }
-          @peers.filter_map do |edge|
-            shared = children[edge[:from]].to_a & children[edge[:to]].to_a
-            next if shared.empty?
+          @peers.select { |edge| Relation.adjacent?(edge[:type]) }.filter_map do |edge|
+            # 夫婦は、共通の子を持つときだけ（子が居なければ隣にする理由が弱い）
+            next if Relation.couple?(edge[:type]) &&
+                    (children[edge[:from]].to_a & children[edge[:to]].to_a).empty?
 
             [ edge[:from], edge[:to] ]
           end
@@ -280,17 +285,48 @@ module Views
         centers = children_level ? child_centers(children_level) : {}
         cursor = 0.0
         previous_parent = nil
+        previous_box = nil
 
         level.each do |box|
           wanted = centers[box.id]
           half = main_extent(box) / 2
           # 別の親のかたまりとは広めにあける
           gap = previous_parent && previous_parent != parent_key(box) ? GROUP_GAP : SIBLING_GAP
+          # **強い関係どうしは近づける。** 距離にも意味を持たせる
+          gap = tighten(gap, previous_box, box)
           lower_bound = cursor.zero? ? half : cursor + gap + half
           set_main_axis(box, [ wanted || lower_bound, lower_bound ].max)
           cursor = main_axis(box) + half
           previous_parent = parent_key(box)
+          previous_box = box
         end
+      end
+
+      # 隣り合う2枚が強く結ばれているなら、間隔を詰める。
+      #
+      # **距離に意味を持たせる。** 同じ間隔で並べると、
+      # 「たまたま隣にある」のか「強く結ばれている」のかが読めない。
+      # 縮めるのは半分まで（詰めすぎると、まとまりではなく重なりに見える）
+      MIN_GAP_RATIO = 0.5
+
+      def tighten(gap, previous, box)
+        return gap if previous.nil?
+
+        strength = strength_between(previous.id, box.id)
+        return gap if strength.nil?
+
+        gap * (1.0 - (1.0 - MIN_GAP_RATIO) * strength)
+      end
+
+      def strength_between(a, b)
+        @strengths ||= @ordering_edges.each_with_object({}) do |edge, map|
+          value = edge[:strength].to_f
+          next unless value.positive?
+
+          key = [ edge[:from], edge[:to] ].sort
+          map[key] = [ map[key].to_f, value ].max
+        end
+        @strengths[[ a, b ].sort]
       end
 
       # 子たちの中間。**ここが家系図の要。**
