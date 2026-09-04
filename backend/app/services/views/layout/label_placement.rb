@@ -55,7 +55,8 @@ module Views
       #
       # `Geometry` からも同じものを使う。**2か所に書くと、片方だけ直して食い違う**
 
-      # カードの縁の、線が出入りする点。port は辺に沿ったずれ
+      # カードの縁の、線が出入りする点。port は辺に沿ったずれ。
+      # **1辺に5点あるので、どの点かは Handles が決める**
       def self.edge_point(box, handle, port)
         Handles.point(box, handle, port.to_f)
       end
