@@ -25,7 +25,7 @@ RSpec.describe Views::Layout::Score do
   let(:tidy_edges) { [ rel("親", "子1", label: "子"), rel("親", "子2", label: "子") ] }
 
   describe "判断基準" do
-    it "4群14項目で、合計100点になる" do
+    it "4群19項目で、合計100点になる" do
       expect(described_class::ITEMS.sum { |item| item[:points] }).to eq(100)
       expect(described_class::ITEMS.map { |item| item[:group] }.uniq)
         .to match_array(described_class::GROUPS.keys)
@@ -209,6 +209,115 @@ RSpec.describe Views::Layout::Score do
 
     it "カードが1枚も無くても落ちない" do
       expect(described_class.new(boxes: [], edges: []).points).to be_between(0, 100)
+    end
+  end
+end
+
+# PR2 で足した3項目。**幾何の崩れに罰を与える。**
+RSpec.describe "#{Views::Layout::Score} 幾何の崩れ" do
+  def box(id, x:, y:, width: 144, height: 176)
+    Views::Layout::Box.new(id: id, title: id, x: x, y: y, width: width, height: height,
+                           footprint_width: width)
+  end
+
+  def rel(from, to, type: "parent", strength: 0.9)
+    { from: from, to: to, type: type, label: "子", strength: strength }
+  end
+
+  def score(boxes, edges)
+    lines = Views::Layout::Geometry.call(boxes: boxes, relations: edges)
+    Views::Layout::Score.new(boxes: boxes, edges: edges, lines: lines)
+  end
+
+  describe "線が長すぎない" do
+    it "近ければ満点に近い" do
+      near = [ box("親", x: 400, y: 0), box("子", x: 400, y: 400) ]
+
+      expect(score(near, [ rel("親", "子") ]).ratios[:short_edges]).to be > 0.8
+    end
+
+    # 罰が無かったので、盤の端から端まで走る線が放置されていた
+    it "遠いほど下がる" do
+      near = [ box("親", x: 400, y: 0), box("子", x: 400, y: 400) ]
+      far = [ box("親", x: 0, y: 0), box("子", x: 3000, y: 2000) ]
+
+      expect(score(far, [ rel("親", "子") ]).ratios[:short_edges])
+        .to be < score(near, [ rel("親", "子") ]).ratios[:short_edges]
+    end
+
+    # 1本あたりで見るので、同じ長さの線が増えても評価は変わらない
+    it "同じ長さの線が増えても、下がらない" do
+      one = [ box("親", x: 400, y: 0), box("子", x: 400, y: 400) ]
+      two = [ box("親", x: 400, y: 0), box("子", x: 400, y: 400),
+              box("親2", x: 1200, y: 0), box("子2", x: 1200, y: 400) ]
+
+      expect(score(two, [ rel("親", "子"), rel("親2", "子2") ]).ratios[:short_edges])
+        .to be_within(0.05).of(score(one, [ rel("親", "子") ]).ratios[:short_edges])
+    end
+  end
+
+  describe "子が親より下にある" do
+    it "下にあれば満点" do
+      right = [ box("親", x: 400, y: 0), box("子", x: 400, y: 400) ]
+
+      expect(score(right, [ rel("親", "子") ]).ratios[:hierarchy_kept]).to eq(1.0)
+    end
+
+    # 段の意味そのものが壊れる
+    it "子が親より上なら0点" do
+      upside_down = [ box("親", x: 400, y: 400), box("子", x: 400, y: 0) ]
+
+      expect(score(upside_down, [ rel("親", "子") ]).ratios[:hierarchy_kept]).to eq(0.0)
+    end
+
+    it "同列の関係は数えない（上下が無い）" do
+      same = [ box("夫", x: 200, y: 0), box("妻", x: 500, y: 0) ]
+
+      expect(score(same, [ rel("夫", "妻", type: "spouse") ]).ratios[:hierarchy_kept]).to eq(1.0)
+    end
+
+    it "崩れていたら、そう伝える" do
+      upside_down = [ box("親", x: 400, y: 400), box("子", x: 400, y: 0) ]
+
+      expect(score(upside_down, [ rel("親", "子") ]).notes.join).to include("子が親より上")
+    end
+  end
+
+  describe "強い関係のカードが繋がっている" do
+    # 「関係が無いから浮いている」のと「関係があるのに浮いている」のは別のこと
+    it "関係の無いカードが浮いていても、この項目は下がらない" do
+      boxes = [ box("親", x: 400, y: 0), box("子", x: 400, y: 400), box("無関係", x: 1200, y: 0) ]
+
+      expect(score(boxes, [ rel("親", "子") ]).ratios[:strong_connected]).to eq(1.0)
+    end
+
+    it "弱い関係しか無いカードは数えない" do
+      boxes = [ box("親", x: 400, y: 0), box("子", x: 400, y: 400), box("薄い縁", x: 1200, y: 0) ]
+      edges = [ rel("親", "子"), { from: "親", to: "薄い縁", type: "related", strength: 0.3 } ]
+
+      expect(score(boxes, edges).ratios[:strong_connected]).to eq(1.0)
+    end
+
+    # 盤に無いカードを指す関係が混ざっても、並びがずれない
+    it "盤に無いカードを指す関係が混ざっても落ちない" do
+      boxes = [ box("親", x: 400, y: 0), box("子", x: 400, y: 400) ]
+      edges = [ { from: "親", to: "居ない", type: "parent", strength: 0.9 }, rel("親", "子") ]
+
+      expect { score(boxes, edges).points }.not_to raise_error
+    end
+  end
+
+  describe "曲がりの数え方" do
+    # 幹を共有する線の角を、本数ぶん重ねて数えていた
+    it "同じ場所の角は、何本集まっていても1つ" do
+      parent = box("親", x: 400, y: 0)
+      children = [ box("子1", x: 100, y: 500), box("子2", x: 700, y: 500) ]
+      edges = children.map { |c| rel("親", c.id) }
+
+      corners = score([ parent ] + children, edges).counts[:bends]
+      raw = Views::Layout::Geometry.call(boxes: [ parent ] + children, relations: edges)
+                                   .sum { |line| [ line.polyline.size - 2, 0 ].max }
+      expect(corners).to be <= raw
     end
   end
 end

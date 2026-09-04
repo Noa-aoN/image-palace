@@ -72,7 +72,9 @@ module GoldenBoard
     puts "edge_crossings             #{counts[:edge_crossings]}"
     puts "total_edge_length          #{total_length(lines).round}"
     puts "hierarchy_violations       #{hierarchy_violations(placed, relations)}"
-    puts "unnecessary_bends          #{counts[:bends]}"
+    puts "visible_corners            #{counts[:bends]}"
+    # 数え方を変えたので、前と比べられるよう旧来の数え方も出す
+    puts "bends_per_edge_old         #{lines.sum { |l| [ l.polyline.size - 2, 0 ].max }}"
     puts "junctions_used             #{Views::Layout::CoupleBus.new(boxes: placed, relations: relations).couples.size}"
     puts "node_overlap               #{counts[:overlaps]}"
     puts "label_collision            #{counts[:label_clashes]}"
