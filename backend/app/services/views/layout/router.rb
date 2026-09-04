@@ -99,8 +99,8 @@ module Views
         obstacles = @boxes.values.reject { |box| [ source.id, target.id ].include?(box.id) }
 
         # 助走の先。ここから先が通り道になる
-        from = step_out(start_point, source_handle)
-        to = step_out(end_point, target_handle)
+        from = step_out(start_point, source_handle, source)
+        to = step_out(end_point, target_handle, target)
 
         candidates(from, to, source_handle, obstacles).each do |points|
           route_points = [ from, *points, to ]
@@ -120,10 +120,25 @@ module Views
         Handles.point(box, handle, offset)
       end
 
-      # 出た辺の向きへ、まっすぐ離れた点
-      def step_out(point, handle)
+      # 出た辺の向きへ、まっすぐ離れた点。
+      #
+      # **小さい相手からは、短く離れる。** 助走はカードの縁に線が張り付かない
+      # ようにするためのもので、接合点のような「点」には要らない。
+      # 28px も取ると、元の線から離れて生えたように見える
+      def step_out(point, handle, box = nil)
         outward = Handles.outward(handle)
-        { x: point[:x] + outward[:x] * STUB, y: point[:y] + outward[:y] * STUB }
+        length = stub_for(box)
+        { x: point[:x] + outward[:x] * length, y: point[:y] + outward[:y] * length }
+      end
+
+      # 点とみなす大きさ。これより小さい相手からは、短く離れる
+      TINY_BOX = 40
+      JUNCTION_STUB = 6
+
+      def stub_for(box)
+        return STUB if box.nil?
+
+        [ box.width, box.height ].max <= TINY_BOX ? JUNCTION_STUB : STUB
       end
 
       # 通り道の候補。**良さそうな順に並べる。**

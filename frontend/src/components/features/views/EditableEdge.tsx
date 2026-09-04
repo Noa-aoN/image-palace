@@ -24,6 +24,7 @@ import {
   buildEdgePath,
   orthogonalize,
   withStubs,
+  stubFor,
   dashArrayFor,
   resolveLineStyle,
   portedPoint,
@@ -65,6 +66,9 @@ function EditableEdgeComponent(props: EdgeProps) {
   const { screenToFlowPosition, setEdges } = useReactFlow()
   // 盤の拡大率。**説明の大きさを打ち消す**のに使う（盤ごと縮めると読めなくなる）
   const zoom = useStore((state) => state.transform[2])
+  // 端が「点」（接合点）か。**助走の長さがここで変わる**
+  const sourceIsJunction = useStore((state) => isJunctionNode(state.nodeLookup.get(props.source)))
+  const targetIsJunction = useStore((state) => isJunctionNode(state.nodeLookup.get(props.target)))
   const { commitPoints, branchFrom, boardBg } = useContext(EdgeActionsContext)
   const latest = useRef<EdgePoint[]>(points)
   const moved = useRef(false)
@@ -90,7 +94,12 @@ function EditableEdgeComponent(props: EdgeProps) {
   const start = portedPoint({ x: sourceX, y: sourceY }, sourceHandleSide, s.source_port)
   const end = portedPoint({ x: targetX, y: targetY }, targetHandleSide, s.target_port)
   const verts = orthogonalize(
-    withStubs([start, ...points, end], sourceHandleSide, targetHandleSide),
+    withStubs([start, ...points, end], sourceHandleSide, targetHandleSide, {
+      // **接合点は「点」なので、助走をほとんど取らない。**
+      // カードと同じ28pxを取ると、元の線から離れて生えたように見える
+      source: stubFor(sourceIsJunction),
+      target: stubFor(targetIsJunction),
+    }),
     axisForHandle(sourceHandleSide)
   )
   // 助走と手前止めを掛けたので、折れ点が無い線もここで組む。
@@ -660,6 +669,17 @@ function ControlPoint({
       )}
     </div>
   )
+}
+
+/**
+ * その節が「点」（接合点）か。
+ *
+ * 接合点は線の一部なので、そこから出る線に長い助走は要らない。
+ * カードと同じ扱いにすると、元の線から離れて生えたように見える
+ */
+function isJunctionNode(node: { data?: unknown } | undefined): boolean {
+  const shape = (node?.data as { shape?: { kind?: string } } | undefined)?.shape
+  return shape?.kind === 'junction'
 }
 
 export const EditableEdge = memo(EditableEdgeComponent)

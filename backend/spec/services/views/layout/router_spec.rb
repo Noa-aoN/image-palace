@@ -349,3 +349,40 @@ RSpec.describe Views::Layout::Handles do
     end
   end
 end
+
+# 助走はカードの縁に線が張り付かないようにするもの。
+# **接合点のような「点」には要らない。**
+RSpec.describe "#{Views::Layout::Router} 小さい相手からの助走" do
+  def box(id, width:, height:)
+    Views::Layout::Box.new(id: id, title: id, x: 0, y: 0, width: width, height: height,
+                           footprint_width: width)
+  end
+
+  def router = Views::Layout::Router.new(boxes: {})
+
+  it "カードからは、これまでどおり離れる" do
+    card = box("カード", width: 144, height: 176)
+
+    expect(router.send(:stub_for, card)).to eq(Views::Layout::Router::STUB)
+  end
+
+  # 28px も取ると、元の線から離れて生えたように見える
+  it "接合点からは、短く離れる" do
+    junction = box("接合点", width: 14, height: 14)
+
+    expect(router.send(:stub_for, junction)).to eq(Views::Layout::Router::JUNCTION_STUB)
+    expect(router.send(:stub_for, junction)).to be < Views::Layout::Router::STUB
+  end
+
+  it "相手が分からないときは、これまでどおり" do
+    expect(router.send(:stub_for, nil)).to eq(Views::Layout::Router::STUB)
+  end
+
+  it "助走の先は、その長さだけ離れる" do
+    junction = box("接合点", width: 14, height: 14)
+    point = { x: 100, y: 100 }
+
+    out = router.send(:step_out, point, "bottom", junction)
+    expect(out[:y] - point[:y]).to eq(Views::Layout::Router::JUNCTION_STUB)
+  end
+end
