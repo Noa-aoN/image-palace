@@ -331,3 +331,36 @@ RSpec.describe "Api::V1::Views 接合点と線", type: :request do
     expect(boxes_from(service, :shape_endpoints).keys).to eq([ junction.id ])
   end
 end
+
+# こちらが置いた印を、保存で消さない。
+#
+# style から source を落としていた頃、AI が置いた接合点が保存のたびに
+# 「手で置いたもの」に化けていた。次に整えるとき片づけの対象から外れ、
+# 新しい接合点だけが増える——**整えるたびに点が増えていた**。
+RSpec.describe "Api::V1::Views shapes こちらが置いた印", type: :request do
+  let(:user) { create(:user, :confirmed) }
+  let(:headers) { auth_headers_for(user) }
+  let(:view) { user.views.create!(name: "板", view_type: "freeboard") }
+
+  it "接合点の印は、置き直しても残る" do
+    shape = view.view_shapes.create!(
+      kind: "junction", x: 0, y: 0, width: 14, height: 14,
+      style: { "fill" => "#4a4a4a", "source" => "auto" }
+    )
+
+    patch "/api/v1/views/#{view.id}/shapes/#{shape.id}",
+          params: { x: 50, style: { fill: "#4a4a4a", source: "auto" } }, headers: headers, as: :json
+
+    expect(response).to have_http_status(:success)
+    expect(shape.reload.style["source"]).to eq("auto")
+  end
+
+  it "知らない印は受け取らない" do
+    shape = view.view_shapes.create!(kind: "junction", x: 0, y: 0, width: 14, height: 14)
+
+    patch "/api/v1/views/#{view.id}/shapes/#{shape.id}",
+          params: { style: { source: "だれか" } }, headers: headers, as: :json
+
+    expect(shape.reload.style["source"]).to be_nil
+  end
+end

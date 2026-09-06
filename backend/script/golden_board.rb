@@ -51,15 +51,125 @@ module GoldenBoard
     [ names.each_with_index.map { |n, i| box(n, i) }, relations ]
   end
 
+  # 意味の正解。**盤にどのカードがあるかで変わる。**
+  #
+  # 兄弟どうしの線は、共通の親が盤にあれば引かなくてよい——
+  # 親を通して繋がるので、引くと同じことを二度言うことになる。
+  # だが親が盤にいなければ、兄弟の線が無いとカードが浮く。
+  # 「正しい図」は盤の顔ぶれで変わるので、正解もそれに合わせる。
+  #
+  # names に nil を渡すと、17枚そろった元の盤の正解を返す
+  def self.expected_relations(names = nil)
+    drawn = drawn_relations + orphaned_siblings(names) + extra_truth
+    return drawn if names.nil?
+
+    drawn.select { |r| names.include?(r[:from]) && names.include?(r[:to]) }
+  end
+
+  # 親が盤にいないきょうだい。
+  #
+  # **輪（全組み合わせ）にはしない。** 5人いれば10本になり、図として読めない。
+  # 1人を軸にした星形を正解とする。別の組み方でも図としては正しいので、
+  # そのときは false_relations に出る——数だけで断じないこと
+  def self.orphaned_siblings(names)
+    return [] if names.nil? || (names.include?("クロノス") && names.include?("レア"))
+
+    %w[デメテル ヘスティア].map do |sibling|
+      { from: "ゼウス", to: sibling, type: "sibling", label: "兄弟", strength: 0.8 }
+    end
+  end
+
+  # definition（配置回帰用の入力）には入れていないが、事実として確かな関係。
+  # 入力を変えると Layout Score の比べる先が動くので、正解の側だけに足す
+  def self.extra_truth
+    [ { from: "ヘパイストス", to: "アフロディーテ", type: "spouse", label: "妻", strength: 0.7 },
+      # 資料に「アポロンの双子の妹」と書いてある。共通の親を通しても繋がるが、
+      # **書いてあることを引かないのは間違い**なので、正解に入れる
+      { from: "アルテミス", to: "アポロン", type: "sibling", label: "双子", strength: 0.9 } ]
+  end
+
+  # 配置回帰に入れる線。**確からしさの足りない関係は線にしない**（本番と同じ道）
+  def self.drawn_relations
+    _, all = definition
+    all.select { |r| Views::Layout::Confidence.enough?(r[:type], r[:strength]) }
+  end
+
   def self.run
     boxes, all = definition
-    # **確からしさの足りない関係は線にしない。** 本番と同じ道を通す
-    relations = all.select { |r| Views::Layout::Confidence.enough?(r[:type], r[:strength]) }
+    relations = drawn_relations
     puts "dropped_unconfident        #{all.size - relations.size}"
     result = Views::Layout::Planner.new(
       boxes: boxes, relations: relations, structure: "hierarchy", roots: [ "クロノス" ]
     ).call
+    puts "== Layout Score =="
     report(result, relations)
+    puts
+    puts "== Semantic Score =="
+    semantic
+  end
+
+  # 意味の当たり具合。**配置の点数とは別に出す。**
+  #
+  # 既定では正解をそのまま入れて測る（台そのものの検算になる）。
+  # 実際の盤を測るときは、その盤の id を渡す:
+  #
+  #   GOLDEN_BOARD_VIEW_ID=<view の id> bundle exec rails runner script/golden_board.rb
+  #
+  # 盤とはカードの見出し語で突き合わせる。**正解はここにしか無い**
+  # （プロダクト側にギリシャ神話の知識は入れない）
+  def self.semantic
+    detected, names = detected_relations
+    # 盤に無いカードの関係は、そもそも引きようがない。数に入れない
+    expected = expected_relations(names)
+
+    result = Views::Layout::SemanticScore.call(expected: expected, detected: detected)
+    puts "expected_relations         #{result.expected}"
+    puts "detected_relations         #{result.detected}"
+    puts "matched_relations          #{result.matched_count}"
+    puts "missing_relations          #{result.missing_count}"
+    puts "false_relations            #{result.extra_count}"
+    puts "wrong_type                 #{result.wrong_type.size}"
+    puts "wrong_direction            #{result.wrong_direction.size}"
+    puts "semantic_recall            #{result.recall}"
+    puts "semantic_precision         #{result.precision}"
+    puts "semantic_f1                #{result.f1}"
+    puts "pair_recall                #{result.pair_recall}"
+    puts "isolated_cards             #{isolated_cards(detected, names)}" if names
+    detail("missing", result.missing)
+    detail("false", result.extra)
+    detail("wrong_type", result.wrong_type.map { |want, got| "#{want} → #{got.type}" })
+    detail("wrong_direction", result.wrong_direction.map { |want, _| want })
+  end
+
+  def self.detail(label, entries)
+    return if entries.empty?
+
+    puts "  #{label}:"
+    entries.each { |entry| puts "    - #{entry}" }
+  end
+
+  # 測る相手。盤の id が渡されていればその盤の線、無ければ正解そのもの
+  def self.detected_relations
+    id = ENV["GOLDEN_BOARD_VIEW_ID"].presence
+    return [ expected_relations(nil), nil ] if id.nil?
+
+    view = View.find(id)
+    titles = Item.where(id: view.view_items.select(:item_id)).pluck(:id, :title).to_h
+    relations = view.view_edges.filter_map do |edge|
+      from = titles[edge.source_node_id]
+      to = titles[edge.target_node_id]
+      next unless from && to
+
+      { from: from, to: to, type: edge.style.to_h["relation"].to_s,
+        label: edge.label, strength: edge.style.to_h["strength"] }
+    end
+    [ relations, titles.values.to_set ]
+  end
+
+  # 線が1本も無いカード
+  def self.isolated_cards(relations, names)
+    connected = relations.flat_map { |r| [ r[:from], r[:to] ] }.to_set
+    names.count { |name| !connected.include?(name) }
   end
 
   def self.report(result, relations)

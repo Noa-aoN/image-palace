@@ -52,8 +52,15 @@ module Views
         @by_id = boxes.to_h { |box| [ box.id, box ] }
         all = edges.select { |edge| @by_id.key?(edge[:from]) && @by_id.key?(edge[:to]) }
         # 段を作るのは上下のある関係だけ。同列の関係は**並び順にだけ**効かせる
-        @edges = all.reject { |edge| peer?(edge) }
+        # **段を作るのは骨格だけ。**
+        #
+        # 以前は「同列でないもの全部」が段を作っていた。つまり
+        # related（迷ったときの逃げ道）が親子と同じ強さで効いていて、
+        # アルテミス -[related]-> アポロン だけでアポロンが子の段へ落ちた。
+        @edges = Relation.spine(all)
         @peers = all.select { |edge| peer?(edge) }
+        # 骨格に重ねるもの。**段は作らないが、行き場の無いカードは引き受ける**
+        @extras = Relation.secondary(all).reject { |edge| peer?(edge) }
         # 並び順を決めるときは両方を見る（同列のものは隣どうしに寄せたい）
         @ordering_edges = all
         @roots = roots.select { |id| @by_id.key?(id) }
@@ -63,6 +70,7 @@ module Views
       def call
         levels = assign_levels
         order_within_levels!(levels)
+        centre_peer_hubs!(levels)
         pair_partners!(levels)
         place!(levels)
         @boxes
@@ -83,6 +91,8 @@ module Views
           children[edge[:from]] << edge[:to]
           parents[edge[:to]] << edge[:from]
         end
+        # 骨格で置かれたカードは、あとから動かさない（並べ替えの判断に使う）
+        @spine_parents = parents
 
         depth = {}
         # **親を持たないものは、全部を起点にする。**
@@ -93,7 +103,12 @@ module Views
         # AI の挙げる根は「いちばん上に置きたいもの」の助言であって、
         # 親を持たないものの全部ではない。
         starts = (@roots + natural_roots(parents)).uniq
-        # 親を持たないものが1つも無い＝全部が輪の中。並びの先頭を起点にする
+        # 骨格が1本も無い図（所属や具体例だけで繋がっている）では、
+        # **重ねる関係の上側を起点にする。**
+        # ここを飛ばして「並びの先頭」に落ちると、たまたま先頭にあったカードが
+        # 根になり、本当の上側と同じ段に並んでしまう
+        starts = extra_root_ids(parents) if starts.empty?
+        # それでも決まらない＝全部が輪の中。並びの先頭を起点にする
         starts = [ @boxes.first&.id ].compact if starts.empty?
 
         queue = starts.map { |id| [ id, 0 ] }
@@ -117,6 +132,12 @@ module Views
         # **上下の関係を1本も持たないカードでも、兄弟が居れば居場所は決まる。**
         # ここが無かった頃、ゼウスの兄弟であるポセイドンは
         # 「どこからもたどり着けなかったもの」として最下段へ落ちていた
+        assign_peer_levels!(depth, parents)
+        # 骨格がまったく無い組（所属だけで繋がった2枚など）に、起点を1つ与える
+        seed_extra_roots!(depth, parents)
+        # 骨格でも同列でも決まらなかったカードを、重ねる関係で引き受ける。
+        # **既に置かれたカードは動かさない**（骨格を崩さないため）
+        attach_extras!(depth, parents)
         assign_peer_levels!(depth, parents)
 
         # どこからもたどり着けなかったものは、いちばん下へ置く（消さない）
@@ -147,6 +168,55 @@ module Views
           end
           break unless changed
         end
+      end
+
+      # 重ねる関係のうち、**下へ降ろす**もの。
+      # 所属や具体例は「その下にある」と読めるが、related にその意味は無い
+      BELOW = %w[belongs_to example part].freeze
+
+      # 骨格に重ねる関係で、行き場の無いカードだけを引き受ける。
+      #
+      # パルテノン神殿は belongs_to しか持たない。骨格から外した以上、
+      # ここで拾わないと「たどり着けなかったもの」として最下段の
+      # 吹き溜まりへ落ちる。**拾うが、骨格は動かさない。**
+      def attach_extras!(depth, parents)
+        @boxes.size.times do
+          changed = false
+          @extras.each do |edge|
+            step = BELOW.include?(edge[:type].to_s) ? 1 : 0
+            if place_extra(depth, parents, edge[:to], edge[:from], step)
+              changed = true
+            elsif place_extra(depth, parents, edge[:from], edge[:to], -step)
+              changed = true
+            end
+          end
+          break unless changed
+        end
+      end
+
+      # 骨格から完全に切り離された組にも、起点を与える。
+      #
+      # 所属（belongs_to）だけで繋がった2枚は、骨格から外した以上
+      # どちらにも深さが付かず、そろって最下段の吹き溜まりへ落ちる。
+      # **上下があると言っている線なら、上側を起点にする**
+      def seed_extra_roots!(depth, parents)
+        extra_root_ids(parents).each { |id| depth[id] ||= 0 }
+      end
+
+      # 重ねる関係のうち、上下があると言っている線の**上側**。
+      # 下側にも上側にも見えるもの（自分へ入ってくる線がある）は根にしない
+      def extra_root_ids(parents)
+        below = @extras.select { |edge| BELOW.include?(edge[:type].to_s) }
+        incoming = below.map { |edge| edge[:to] }.to_set
+        below.map { |edge| edge[:from] }.uniq
+             .reject { |id| parents[id].any? || incoming.include?(id) }
+      end
+
+      def place_extra(depth, parents, target, source, step)
+        return false if depth.key?(target) || !depth.key?(source) || parents[target].any?
+
+        depth[target] = [ depth[source] + step, 0 ].max
+        true
       end
 
       # 起点にするのは「親を持たず、子を持つ」もの。
@@ -201,6 +271,106 @@ module Views
       #
       # 動かすのは相手のほうだけ。並び全体をやり直さないので、
       # 重心法で減らした交差を壊さない
+      # 同列の相手を3枚以上持つカードは、**その真ん中に置く。**
+      #
+      # 隣にできるのは1枚だけ（1枚を2度動かすと押し合いになる）。
+      # ゼウスに兄弟が4枚いると、残りは段の端まで飛ばされ、
+      # 段を横断する長い線になった（ゼウス—アルテミスで1506px）。
+      # 親が子の真ん中に来るのと同じことを、同列でもする。
+      #
+      # **ただし動かすのは、骨格が置いていないカードだけ。**
+      # 親から降りて並んだ子を兄弟の都合で並べ替えると、
+      # せっかく揃えた親子の縦が崩れる（実測で交差が0→2に増えた）
+      PEER_HUB_MIN = 3
+
+      def centre_peer_hubs!(levels)
+        levels.each do |level|
+          ids = level.map(&:id).to_set
+          hub = level.max_by { |box| movable_partners(box, ids).size }
+          next if hub.nil? || movable_partners(hub, ids).size < PEER_HUB_MIN
+
+          members = peer_component(level, hub, ids)
+          gather!(level, members, hub)
+        end
+      end
+
+      # 同列の相手のうち、骨格が置いていないもの
+      def movable_partners(box, ids)
+        (peer_partners[box.id] & ids).reject { |id| @spine_parents[id].any? }.to_set
+      end
+
+      # 中心からたどれる、同列でつながった一群。**骨格が置いたカードは入れない**
+      def peer_component(level, hub, ids)
+        found = Set.new([ hub.id ])
+        queue = [ hub.id ]
+        until queue.empty?
+          movable_partners(@by_id[queue.shift], ids).each do |id|
+            queue << id if found.add?(id)
+          end
+        end
+        level.select { |box| found.include?(box.id) }
+      end
+
+      # 群れを、いまの並びの中で**いちばん先に出てくる位置**へ寄せ、
+      # 真ん中に中心のカードを置く。群れ以外の並びは変えない
+      def gather!(level, members, hub)
+        arranged = arrange_around(hub, members)
+        rebuilt = []
+        placed = false
+        level.each do |box|
+          if members.include?(box)
+            next if placed
+
+            rebuilt.concat(arranged)
+            placed = true
+          else
+            rebuilt << box
+          end
+        end
+        level.replace(rebuilt)
+      end
+
+      # 中心から枝をたどって並べる。**枝は途中で切らない。**
+      #
+      # 中心の相手だけを隣に集めていた頃、その相手にぶら下がるカード
+      # （ポセイドンの兄弟であるアポロン）が段の反対の端に取り残され、
+      # 盤を1514px横断する線になった。枝ごと動かせば、枝の中は隣どうしになる
+      def arrange_around(hub, members)
+        pool = members.to_h { |box| [ box.id, box ] }
+        pool.delete(hub.id)
+        branches = peer_partners[hub.id].sort.filter_map { |id| walk_branch(pool, id) }
+        # 中心からたどれなかったものは、そのまま右へ
+        branches += pool.values.map { |box| [ box ] }
+        half = branches.size / 2
+        # 左側は枝の先が外、根が中心の隣に来るよう裏返す
+        branches.first(half).flat_map(&:reverse) + [ hub ] + branches.drop(half).flatten
+      end
+
+      def walk_branch(pool, id)
+        return nil unless pool.key?(id)
+
+        chain = []
+        queue = [ id ]
+        until queue.empty?
+          current = queue.shift
+          box = pool.delete(current)
+          next if box.nil?
+
+          chain << box
+          peer_partners[current].sort.each { |other| queue << other if pool.key?(other) }
+        end
+        chain
+      end
+
+      def peer_partners
+        @peer_partners ||= Hash.new { |hash, key| hash[key] = Set.new }.tap do |map|
+          @peers.each do |edge|
+            map[edge[:from]] << edge[:to]
+            map[edge[:to]] << edge[:from]
+          end
+        end
+      end
+
       def pair_partners!(levels)
         pairs = couple_pairs
         return if pairs.empty?
@@ -238,13 +408,20 @@ module Views
         @couple_pairs ||= begin
           children = @edges.group_by { |edge| edge[:from] }
                            .transform_values { |list| list.map { |edge| edge[:to] } }
-          @peers.select { |edge| Relation.adjacent?(edge[:type]) }.filter_map do |edge|
+          close = @peers.select { |edge| Relation.adjacent?(edge[:type]) }.filter_map do |edge|
             # 夫婦は、共通の子を持つときだけ（子が居なければ隣にする理由が弱い）
             next if Relation.couple?(edge[:type]) &&
                     (children[edge[:from]].to_a & children[edge[:to]].to_a).empty?
 
             [ edge[:from], edge[:to] ]
           end
+          # **兄弟も隣にする。ただし夫婦・同一視を寄せたあとで。**
+          #
+          # 段だけ同じにして位置を決めずにいると、段の端と端に離れて置かれ、
+          # 段を横断する長い線になる（ゼウス—アルテミスで1559px になった）。
+          # 押し合いは pair_partners! の「1枚を2度動かさない」で止まる
+          close + @peers.select { |edge| edge[:type].to_s == "sibling" }
+                        .map { |edge| [ edge[:from], edge[:to] ] }
         end
       end
 

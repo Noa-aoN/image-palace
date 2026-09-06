@@ -34,6 +34,36 @@ module Views
     ].freeze.freeze
     DEFAULT_RELATION_TYPE = "related"
 
+    # 関係の**根拠**。確からしさ（strength）とは別の軸で持つ。
+    #   explicit … 資料の説明文に書いてある
+    #   inferred … 説明文から読み取れる
+    #   world    … 説明文には無いが、その分野の常識
+    # 利用者のカードを世界知識で黙って上書きしないための手がかり
+    RELATION_BASES = %w[explicit inferred world].freeze
+
+    # 語彙に無い種類の言い換え。**黙って related へ落とすと、親子が「関係」になる。**
+    #
+    # 実際 "child" が返ってきて、家系図の親子が全部 related になっていた。
+    # related は段を作らないので、家系がそこで途切れる。
+    # :swap は「向きが逆に書かれている」もの——「Aの子はB」ではなく
+    # 「AはBの子」と書かれているので、from と to を入れ替える
+    RELATION_ALIASES = {
+      "child" => [ "parent", :swap ], "child_of" => [ "parent", :swap ],
+      "son" => [ "parent", :swap ], "daughter" => [ "parent", :swap ],
+      "parent_of" => [ "parent", :keep ],
+      "mother" => [ "parent", :keep ], "father" => [ "parent", :keep ],
+      "twin" => [ "sibling", :keep ],
+      "brother" => [ "sibling", :keep ], "sister" => [ "sibling", :keep ],
+      "wife" => [ "spouse", :keep ], "husband" => [ "spouse", :keep ],
+      "married_to" => [ "spouse", :keep ],
+      "same_as" => [ "equivalent", :keep ], "identical" => [ "equivalent", :keep ],
+      "located_in" => [ "belongs_to", :keep ], "part_of" => [ "part", :swap ]
+    }.freeze
+
+    # 確からしさが書かれていない関係を、組の中で比べるときの値。
+    # **「分からない」を「弱い」に読み替えない**ための中庸な数
+    DEFAULT_STRENGTH = 0.6
+
     # 線の見出しの長さ。長い文は図の上で読めない
     MAX_EDGE_LABEL_LENGTH = 40
 
@@ -236,6 +266,23 @@ module Views
            .limit(MAX_CANDIDATES).to_a
     end
 
+    # 調べるための控え。**環境変数を置いたときだけ書く。**
+    #
+    # 「なぜこの図になったのか」は、返ってきた JSON を見ないと分からない。
+    # 落とした関係・読み取り・確度は、盤には残らないので後から辿れない。
+    # 本番では何もしない（変数が無ければ書かない）
+    def capture_exchange(content)
+      dir = ENV["AI_EDIT_DEBUG_DIR"]
+      return if dir.blank?
+
+      FileUtils.mkdir_p(dir)
+      stamp = Time.current.strftime("%Y%m%d-%H%M%S")
+      File.write(File.join(dir, "#{stamp}-request.txt"), "#{system_prompt}\n\n===== 資料 =====\n#{user_message}")
+      File.write(File.join(dir, "#{stamp}-response.json"), content)
+    rescue StandardError => e
+      Rails.logger.warn "[AiEdit] CAPTURE FAILED #{e.class}: #{e.message}"
+    end
+
     # 取りこぼした関係を、もう一度だけ訊く。
     #
     # ## なぜ必要か
@@ -319,12 +366,28 @@ module Views
 
         - from か to のどちらかは、必ず<浮いているカード>の id にすること
         - 相手は<図にあるカード>の id から選ぶ
-        - **無理に繋げない。** 意味のある関係が無いカードは、そのまま挙げないこと。
+        - **向きは意味で決める。浮いているカードが from とは限らない。**
+          「ヘルメスはゼウスの子」なら from=ゼウス, to=ヘルメス（親が from）
+        - **浮いているカードを1枚ずつ、上から順に見ること。** まとめて片付けない
+        - **説明文に書かれていないことも書いてよい。**
+          ここは資料の書き写しではありません。
+          「ゼウスとアポロンは親子」「ゼウスとヘスティアは兄弟」のように、
+          **その分野の入門書に載っている水準のこと**は、推測ではなく知識です。
+          資料が短いのは、利用者がまだ書いていないだけで、
+          関係が無いという意味ではありません
+        - **「資料に記載が無い」は、挙げない理由になりません。**
+          浮いたまま残ったカードは、図の上では「どこにも属さないもの」に見えます
+        - ただし**思いつきは書かない。** 定説になっていないこと、
+          言い伝えによって食い違うことは挙げないか、strength を 0.4 以下にする
+        - 本当に関係が無いカードは、そのまま挙げなくてよい。
           繋がるものが1つも無ければ relations は空配列で返す
         - label は 8 文字程度までの短い語。「関係」「関連」のように何も説明しない語は使わない
         - 上下があるか同列かを取り違えない。
-          親子・上位下位は parent（from が上、to が下）、
-          兄弟・姉妹・配偶者・同僚は peer
+          ・上下がある … parent（親子・上位下位。from が上、to が下）/
+            belongs_to（祀られる・所属する）/ cause / part / example / sequence / means
+          ・同じ段 … spouse（夫婦）/ sibling（兄弟姉妹）/
+            equivalent（同じものの別名）/ contrast（対比）
+        - strength は 0〜1。**その分野の定説なら 0.7**、資料に書いてあるなら 0.9
         - **既にある線と食い違う関係を書かない**（同じ2枚に別の意味の線を足さない）
       PROMPT
     end
@@ -373,6 +436,7 @@ module Views
       )
 
       content = response.dig("choices", 0, "message", "content").to_s
+      capture_exchange(content)
       # **切れたことを、切れたと言う。**
       # 打ち切られた JSON は解析に失敗するので、これまでは「解釈できませんでした」と
       # だけ返っていた。枚数が多いのが理由なら、そう言わないと打つ手が分からない
@@ -380,9 +444,49 @@ module Views
         raise EditError, "カードが多すぎて、AI が最後まで答えられませんでした。枚数を減らすか、範囲を絞ってお試しください。"
       end
 
-      JSON.parse(content)
+      absorb_reading_links(JSON.parse(content))
     rescue JSON::ParserError => e
       raise EditError, "AI の応答を解釈できませんでした: #{e.message}"
+    end
+
+    # カード1枚ずつに書かせた links を、平らな relations へ畳む。
+    #
+    # 同じ組が両側から出てくる（A の links に B、B の links に A）。
+    # **それでよい。** 「相手が書いたはず」と省かせるほうが見落としになる。
+    # 1本にまとめるのは normalized_relations の仕事で、ここでは落とさずに集める
+    def absorb_reading_links(plan)
+      return plan unless plan.is_a?(Hash)
+
+      links = Array(plan["readings"]).flat_map do |reading|
+        next [] unless reading.is_a?(Hash)
+
+        card = reading["id"].to_s
+        Array(reading["links"]).filter_map { |link| directed(link, card) }
+      end
+      return plan if links.empty?
+
+      plan["relations"] = Array(plan["relations"]).select { |relation| relation.is_a?(Hash) } + links
+      plan
+    end
+
+    # links の向きを決める。
+    #
+    # **1枚ずつ読ませると、向きが読んだ順に引きずられる。**
+    # ヘルメスのカードを読みながら「ゼウスの子」と書くと、
+    # 素直に from=ヘルメス, to=ゼウス, type=parent としてしまい、
+    # 家系図の親子が上下さかさまになる（実際そうなった）。
+    #
+    # だから links にも from を書かせる。書かれていなければ、
+    # これまでどおり「そのカードから相手へ」と読む
+    def directed(link, card)
+      return nil unless link.is_a?(Hash)
+
+      from = link["from"].to_s
+      to = link["to"].to_s
+      # 片方はこのカード自身でなければならない。そうでなければ向きを信用しない
+      return link.merge("from" => from, "to" => to) if [ from, to ].include?(card) && from.present? && to.present?
+
+      { "from" => card, "to" => (to.presence || from) }.merge(link.except("from", "to"))
     end
 
     def system_prompt
@@ -435,15 +539,13 @@ module Views
         次の JSON のみを返してください。
         {"summary": "何をしたかの日本語の短い説明",
          "notes": "気づいたこと（誤りや不足の指摘など。無ければ空文字）",
-         "readings": [{"id": "カードのid", "gist": "そのカードが何であるかを20字程度で"}],
+#{readings_schema}
          "add": ["追加するカードのid"],
          "remove": ["ボードから外すカードのid"],
          "structure": "hierarchy|flow|mindmap|radial|network|cluster|grid",
          "roots": ["いちばん上（中心）に来るカードのid"],
          "emphasis": ["話の中心になるカードのid（少数）"],
-         "groups": [{"name": "群れの名前", "members": ["id"]}],
-         "relations": [{"from": "id", "to": "id", "type": "#{RELATION_TYPES.join('|')}",
-                        "label": "線の見出し", "strength": 0.8}]}
+         "groups": [{"name": "群れの名前", "members": ["id"]}]#{relations_schema}}
 
         ## 図全体の形（structure）
         - hierarchy … 階層図・分類図・組織図。**根から下へ枝分かれ**する。
@@ -473,14 +575,7 @@ module Views
         - 親が複数ある・双方向のつながりがある → network
         - 群れに分かれていて、群れの中の順序は問わない → cluster
 
-        ## 読み取り（readings）— **いちばん先に書くこと**
-        - <資料> のカードを**1枚残らず**、上から順に1行ずつ書く。飛ばさない
-        - gist は「そのカードが何であるか」。説明が資料に無いカードほど、ここが効く。
-          見出し語と種別とタグから読み取れることを書く（「ギリシア神話の主神」など）
-        - **分からないものは「不明」と書く。** 埋めるために作り話をしない
-        - ここを書いてから relations を書くこと。**先に全部を読んでおくと、
-          関係のあるカードを挙げ忘れにくい**（挙げ忘れは、そのカードが
-          図の中で浮いたまま残るということ）
+#{readings_rules}
 
         ## 群れ（groups）
         - 意味のまとまりごとに分ける。**名前を付けること**（「オリュンポスの神々」など）
@@ -507,15 +602,20 @@ module Views
         - label は 8 文字程度までの短い語（「父」「原因」「例」など）。長い文は入れない
         - **「関係」「関連」「つながり」のように何も説明していない語は使わない**
         - strength は 0〜1。**その関係がどれだけ確かか**を表します。
-          ・資料にはっきり書いてある … 0.9
-          ・書かれてはいないが、まず間違いない … 0.7
+          ・資料にはっきり書いてある（basis=explicit） … 0.9
+          ・資料の説明から読み取れる（basis=inferred） … 0.7〜0.8
+          ・資料には無いが、この分野の常識として確か（basis=world） … 0.7
           ・そうかもしれない … 0.4
           ・思いついただけ … 0.2
+        - **資料と、あなたの知っていることが食い違うときは、資料を立てる。**
+          黙って書き換えない。食い違いは notes に書き、その関係の strength を下げる
+          （利用者のカードが正本で、直すかどうかは利用者が決めます）
         - **強いほど近くに置かれます。** そして
           **確かでない関係は線になりません**（親子・夫婦・兄弟・同一視は 0.6 以上、
           その他は 0.4〜0.5 以上が要ります）。
-          図は「そう読める」と言い切るものなので、**推測を線にすると嘘になります**。
-          自信が無いなら低い数を書いてください。落とされたことは利用者に伝えます
+          図は「そう読める」と言い切るものなので、**思いつきを線にすると嘘になります**。
+          自信が無いなら低い数を書いてください。落とされたことは利用者に伝えます。
+          ただし、**その分野で定説になっていることは思いつきではありません**（0.7 で書く）
         - **資料の材料を使う。**
           ・種別［人物］［出来事］［場所］は、成り立つ関係を絞る手がかりになる
             （人物どうしなら親子・師弟、出来事どうしなら前後・因果）
@@ -526,16 +626,16 @@ module Views
         - **関係があるものは全て挙げる。** ある分類に下位が5つあるなら5本とも書く。
           見た目の混雑を理由に落とさない（重ならないように置くのはこちらの仕事）
         - 無い関係を作ってはいけない（落とさない／作らない、の両方）
+        - **同じ組を両側から書いてよい。** A の links に B を、B の links に A を
+          書いても構いません（こちらで1本にまとめます）。
+          「相手の側で書いたはず」と考えて省くほうが、見落としになります
         - **同じ2枚に、意味の違う線を2本引かない。**
           「姉妹」と「娘」の両方を付けると、どちらが正しいのか読めなくなる。
           迷ったら、確かなほうだけを1本残し、迷った理由を notes に書く。
         - **向きのある関係を、逆向きにも引かない。**
           A の親が B なら、B の親は A ではない。
         - **たどると元へ戻る親子を作らない。** 誰かが自分の先祖になる図は成り立たない。
-        - **孤立を見落とさない。** readings に書いた行を上から順に見直し、
-          **一度も from にも to にも出ていないカード**を探すこと。
-          そのカードに意味のある関係があるなら、いまここで書き足す。
-          本当に判断できないカードだけは無理に結ばず、そのカード名と理由を notes に書く
+#{isolation_rule}
 
         ## roots
         - hierarchy / radial のとき、いちばん上（中心）に来るものを挙げる
@@ -551,9 +651,131 @@ module Views
         ## その他
         - add / remove / groups / relations には、<資料> に載っている id だけを使うこと
         - remove はボードから外すだけで、カードそのものは消えません
+        - **頼まれていないカードを remove に入れない。**
+          説明が間違っているカード・浮いてしまうカードも、外さずに残すこと。
+          気づいたことは notes に書き、外すかどうかは利用者が決めます
         #{no_extra_rule}
         - 内容に事実として疑わしい点や、図にする上で明らかに欠けている観点があれば notes に日本語で書くこと。
           ただし推測で断定しない。確証が持てないことは「確認できない」と書く。
+      PROMPT
+    end
+
+    # 線を引き直す仕事のときだけ、**カード1枚ずつに関係を書かせる**。
+    #
+    # 平らな relations 配列で頼んでいた頃は、14枚の盤に6本しか返ってこなかった。
+    # 資料に「ゼウスの兄弟です」「アポロンの双子の妹」「アテナに相当します」と
+    # 書いてあるのに、その4本すら出てこない。
+    #
+    # 一方 readings（1枚ずつ書かせる欄）は**14枚すべて**返ってきていた。
+    # 差は「1枚ずつ数え上げさせているか」だけだったので、関係も同じ欄へ移す。
+    # 線を触らない設定（keep / restyle / relabel）では、いまある線を
+    # 挙げ直させるだけなので、これまでどおり平らな relations で受け取る
+    def per_card_links?
+      %w[rebuild infer].include?(@edge_mode)
+    end
+
+    def readings_schema
+      return '         "readings": [{"id": "カードのid", "gist": "そのカードが何であるかを20字程度で"}],' unless per_card_links?
+
+      <<~SCHEMA.chomp
+                 "readings": [{"id": "カードのid", "gist": "そのカードが何であるかを20字程度で",
+                               "links": [{"from": "上（親・原因・全体）のカードのid",
+                                          "to": "下（子・結果・部分）のカードのid",
+                                          "type": "#{RELATION_TYPES.join('|')}",
+                                          "label": "線の見出し", "strength": 0.9,
+                                          "basis": "explicit|inferred|world"}],
+                               "no_link": "links が空のときだけ、繋がらないと判断した理由"}],
+      SCHEMA
+    end
+
+    def relations_schema
+      return "" if per_card_links?
+
+      <<~SCHEMA.chomp
+        ,
+                 "relations": [{"from": "id", "to": "id", "type": "#{RELATION_TYPES.join('|')}",
+                                "label": "線の見出し", "strength": 0.8}]
+      SCHEMA
+    end
+
+    def readings_rules
+      return <<~PLAIN.chomp unless per_card_links?
+        ## 読み取り（readings）— **いちばん先に書くこと**
+        - <資料> のカードを**1枚残らず**、上から順に1行ずつ書く。飛ばさない
+        - gist は「そのカードが何であるか」。説明が資料に無いカードほど、ここが効く。
+          見出し語と種別とタグから読み取れることを書く（「ギリシア神話の主神」など）
+        - **分からないものは「不明」と書く。** 埋めるために作り話をしない
+      PLAIN
+
+      <<~PROMPT.chomp
+        ## 読み取りと関係（readings）— **ここが本体。いちばん先に書くこと**
+        - <資料> のカードを**1枚残らず**、上から順に1行ずつ書く。飛ばさない
+        - **1枚について次の3つを決めてから、次のカードへ進むこと。**
+
+        ### 1. gist
+        - 「そのカードが何であるか」を20字程度で。
+          説明が資料に無いカードほどここが効く。見出し語・種別・タグから読み取れることを書く
+        - **分からないものは「不明」と書く。** 埋めるために作り話をしない
+
+        ### 2. links — そのカードから出る関係を**全て**
+        - **まず、説明文の中に他のカードの見出し語が出てこないかを見る。**
+          出てきたら、その一文がそのまま1本の線です → basis="explicit"
+          ・「ポセイドンは……ゼウスの兄弟です」
+          ・「アルテミスは……アポロンの双子の妹で」
+          ・「ミネルヴァは……ギリシャ神話のアテナに相当し」
+          ・「パルテノン神殿は……女神アテナを祀っています」
+          **書いてあるのに挙げない**のが、いちばん多い見落としです
+        - 説明文に無い関係も、次の順で探して足す:
+          ・説明文から**読み取れる**もの → basis="inferred"、strength 0.7〜0.8
+          ・説明文には無いが、**その分野で定説になっている**もの
+            → basis="world"、strength 0.7
+        - **「資料に書かれていない」は、線を引かない理由になりません。**
+          「ゼウスとアポロンは親子」「ゼウスとヘスティアは兄弟」のように、
+          その分野の入門書に載っている水準のことは、**推測ではなく知識**です。
+          資料が短いのは、利用者がまだ書いていないだけで、
+          関係が無いという意味ではありません
+        - **書かないほうが安全、ではありません。**
+          繋がるべきものが繋がっていない図は、それ自体が間違った図です
+        - basis="explicit" と書けるのは、**説明文に元の一文があるものだけ**
+        - from / to は、**必ずどちらか一方がこのカード自身の id**。もう一方が相手。
+          相手は**盤にある他のカードの id**（資料に無い名前は書かない）
+        - **from が上、to が下。** 読んでいるカードが下側なら、from に相手を書くこと。
+          ここを取り違えると、家系図の親子が上下さかさまになります
+          ・ヘルメスのカードを読んでいて「ゼウスの子」だと分かったとき
+            → {"from": "ゼウスのid", "to": "ヘルメスのid", "type": "parent", "label": "子"}
+              （**このカード（ヘルメス）は to の側**）
+          ・ゼウスのカードを読んでいて「ヘルメスの父」だと分かったとき
+            → 同じ1本を書く（from=ゼウス, to=ヘルメス）
+        - 同じ段の関係（spouse / sibling / equivalent / contrast）は、どちら向きでもよい
+
+        ### 3. no_link — links が空のときだけ
+        - **次の書き方は理由になりません。** どれも「調べていない」と同じです
+          ・「他の神々との関係が不明」「他のカードとの関係が記載されていない」
+          ・「資料に書かれていない」
+        - 盤にあるカードの見出し語を上から順に当たり、どれとも結べないことを
+          確かめた上で、**相手の名前を挙げて**書くこと
+          （「◯◯とは同じ分野だが、線にするほど確かな関係ではない」など）
+        - 確かめた上で本当に無いなら、無理に繋がなくてよい
+      PROMPT
+    end
+
+    def isolation_rule
+      return <<~PLAIN.chomp unless per_card_links?
+        - **孤立を見落とさない。** readings に書いた行を上から順に見直し、
+          **一度も from にも to にも出ていないカード**を探すこと。
+          そのカードに意味のある関係があるなら、いまここで書き足す。
+          本当に判断できないカードだけは無理に結ばず、そのカード名と理由を notes に書く
+      PLAIN
+
+      <<~PROMPT.chomp
+        - **書き終えたら readings をもう一度上から見る。**
+          ・行そのものが無いカード → **数え上げの漏れです。資料の順に全部書くこと**
+          ・gist で他のカードに触れているのに links が空の行 → 見落としです
+          ・links が空で no_link も書いていない行 → 埋め忘れです
+        - **同じ群れ（groups）に入れたカードどうしは、たいてい何かで繋がっています。**
+          群れに入れておいて links が空なら、見直しの合図です
+        - 本当に判断できないカードは、無理に結ばなくてよい。
+          そのカード名と理由を notes に書く
       PROMPT
     end
 
@@ -856,13 +1078,20 @@ module Views
     #   AI の気づき   … 内容の誤りや不足
     #   食い違い      … 図全体として辻褄が合わないところ
     #   図の崩れ      … 重なり・線の交差・文字の衝突
+    def redundant_note
+      return unless @redundant_siblings.to_i.positive?
+
+      "兄弟の線を#{@redundant_siblings}本、省きました（共通の親が図にいるので、" \
+        "親子の線をたどれば読めます）。"
+    end
+
     def combined_notes(ai_notes)
       rescued = ("見落としていた関係を#{@rescued}本、追い足しました。" if @rescued.to_i.positive?)
       unconfident = if @unconfident.to_i.positive?
         "確かでない関係を#{@unconfident}本、線にしませんでした（推測を線にすると、" \
           "図がそう言い切ってしまうため）。"
       end
-      [ ai_notes, rescued, unconfident, improvement_note,
+      [ ai_notes, rescued, unconfident, redundant_note, improvement_note,
         *Array(@consistency_notes), *Array(@layout_notes) ]
         .compact_blank.uniq.first(8).join("\n").presence
     end
@@ -1192,11 +1421,59 @@ module Views
 
     # AI が挙げた関係を、通せるものだけに絞る。
     # **同じ組は1本にする**（2本引くと、どちらが正しいのか読めない）
+    #
+    # 組は**向きを問わず**同じものとして扱う。カード1枚ずつに書かせるように
+    # したので、A→B と B→A が両側から出てくるのが普通になった。
+    # 残す1本は「先に出てきたもの」ではなく**いちばん確かなもの**を選ぶ
+    # （先勝ちだと、資料に書いてある関係を、思いつきの related が押しのける）
     def normalized_relations(relations)
+      kept = confident(raw_relations(relations))
+      best = kept.group_by { |relation| pair_key(relation) }
+                 .transform_values { |group| best_relation(group) }
       seen = Set.new
-      confident(raw_relations(relations))
-        .select { |relation| seen.add?([ relation[:from], relation[:to] ]) }
-        .first(MAX_EDGES)
+      chosen = kept.filter_map { |relation| best[pair_key(relation)] if seen.add?(pair_key(relation)) }
+      without_redundant_siblings(chosen).first(MAX_EDGES)
+    end
+
+    # 共通の親が図の中にいる兄弟の線は、引かない。
+    #
+    # 親子の線をたどれば兄弟だと読めるので、引くと同じことを二度言うことになる。
+    # しかも兄弟の線は段を横切るので、図の上ではいちばん邪魔な1本になる。
+    # **親が図にいないときは残す**（そのときは兄弟の線が唯一の手がかり）。
+    # 線を引き直すときだけの話で、いまある線を指し直しているときは触らない
+    def without_redundant_siblings(relations)
+      return relations unless per_card_links?
+
+      drop = Layout::Relation.redundant_siblings(relations)
+      # 網になった兄弟は、鎖1本ぶんまで減らす（輪を閉じる線だけ落とす）
+      drop |= Layout::Relation.surplus_siblings(relations - drop)
+      return relations if drop.empty?
+
+      @redundant_siblings = drop.size
+      relations - drop
+    end
+
+    # 「同じ組」の数え方。
+    #
+    # 線を引き直すときは**向きを問わない**（A→B と B→A が両側から出てくる）。
+    # 線を触らない3つ（restyle / relabel / keep）は、いまある線を指し直して
+    # いるだけなので、**向きが線の身元**になる。ここで丸めてはいけない
+    def pair_key(relation)
+      return [ relation[:from], relation[:to] ] unless per_card_links?
+
+      [ relation[:from], relation[:to] ].sort
+    end
+
+    # 同じ組に複数の候補があるときに残す1本。
+    # 確からしさ → 具体的な種別（related は最後）→ id 順。**乱数は使わない**
+    def best_relation(group)
+      return group.first if group.size == 1
+
+      group.min_by do |relation|
+        [ -(relation[:strength] || DEFAULT_STRENGTH),
+          relation[:type] == DEFAULT_RELATION_TYPE ? 1 : 0,
+          relation[:from], relation[:to] ]
+      end
     end
 
     # 確からしさが足りない関係は、線にしない。
@@ -1224,16 +1501,29 @@ module Views
         # 自分自身へは引かない
         next if from == to || !on_board.include?(from) || !on_board.include?(to)
 
+        type, from, to = resolved_type(relation["type"], from, to)
         {
-          from: from, to: to,
-          type: RELATION_TYPES.include?(relation["type"].to_s) ? relation["type"].to_s : DEFAULT_RELATION_TYPE,
+          from: from, to: to, type: type,
           label: relation["label"].to_s.strip.first(MAX_EDGE_LABEL_LENGTH).presence,
           # **書かれていないことを「弱い」と読まない。**
           # to_f にすると、確からしさを書かない応答が全部 0 になり、
           # 線が1本も残らなくなる（「分からない」と「弱い」は別のこと）
-          strength: relation.key?("strength") ? relation["strength"].to_f.clamp(0.0, 1.0) : nil
+          strength: relation.key?("strength") ? relation["strength"].to_f.clamp(0.0, 1.0) : nil,
+          # 根拠。書かれていなければ nil（推測で埋めない）
+          basis: RELATION_BASES.include?(relation["basis"].to_s) ? relation["basis"].to_s : nil
         }
       end
+    end
+
+    # 種類の語を、こちらの語彙へ寄せる。向きが逆に書かれていれば入れ替える
+    def resolved_type(raw, from, to)
+      name = raw.to_s
+      return [ name, from, to ] if RELATION_TYPES.include?(name)
+
+      type, direction = RELATION_ALIASES[name]
+      return [ DEFAULT_RELATION_TYPE, from, to ] if type.nil?
+
+      direction == :swap ? [ type, to, from ] : [ type, from, to ]
     end
 
     # 盤にあるカードの id。**出どころを1つにし、毎回引き直す。**
@@ -1576,7 +1866,9 @@ module Views
         # 機械が読むための控え。画面はいまのところ見ていないが、
         # 種類で絞る・強さで薄くするといった見直しの足場になる
         "relation" => relation[:type],
-        "strength" => relation[:strength]&.round(2)
+        "strength" => relation[:strength]&.round(2),
+        # 何を根拠に引いた線か。資料に書いてあったのか、常識で補ったのか
+        "basis" => relation[:basis]
       }
     end
 
