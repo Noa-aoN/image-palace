@@ -1137,19 +1137,24 @@ function Canvas({
             表示
           </Button>
           {/* 使う回数はいちばん少ない。**主役の色を持たせない**
-              （前は盤でいちばん目立つ塗りだった）。何をするかは説明で補う */}
-          <Button
-            size="sm"
-            variant="outline"
-            onClick={handleDownloadImage}
-            disabled={nodes.length === 0 || exporting}
-            className="flex items-center gap-1"
-            aria-label="画像を保存"
-            title="ボード全体を画像（PNG）で保存"
-          >
-            <Download size={15} />
-            {exporting ? '書き出し中…' : ''}
-          </Button>
+              （前は盤でいちばん目立つ塗りだった）。何をするかは説明で補う。
+              説明は**外側に付ける**。盤が空のときボタンは disabled で
+              pointer-events が切れ、中に付けるとカードを1枚置くまで読めない */}
+          <span title="ボード全体を画像（PNG）で保存" className="inline-flex">
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={handleDownloadImage}
+              disabled={nodes.length === 0 || exporting}
+              className="flex items-center gap-1"
+              aria-label="画像を保存"
+              // 読み上げでは aria-label が子の文字に勝つので、状態として伝える
+              aria-busy={exporting}
+            >
+              <Download size={15} />
+              {exporting && '書き出し中…'}
+            </Button>
+          </span>
           {/* 戻る／進むは**右端**。真ん中に置くと、並びのどこで区切れるか読めない */}
           <div className="ml-auto flex items-center gap-2">{aiEditHistoryActions}</div>
         </div>

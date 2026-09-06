@@ -67,17 +67,20 @@ export function RightPanel() {
   if (mode === 'closed') return null
 
   // 詳細/編集モードは戻るラベルで文脈が分かるためタイトルは省略する。
+  //
+  // 見出しは**押したボタンと同じ言葉**にする。「表示」を押して
+  // 「ボード設定」が開くと、同じものだと読み直すことになる
   const title =
     mode === 'board-cards'
-      ? '配置カード一覧'
+      ? '配置カード'
       : mode === 'add-cards'
-        ? 'カードを配置'
+        ? 'カードを追加'
         : mode === 'shape'
           ? '図形'
         : mode === 'board-objects'
-          ? 'オブジェクト一覧'
+          ? 'オブジェクト'
           : mode === 'board-settings'
-            ? 'ボード設定'
+            ? '表示'
             : mode === 'bulk'
               ? `複数選択中（${[
                   bulkItemIds.length > 0 ? `カード${bulkItemIds.length}` : null,

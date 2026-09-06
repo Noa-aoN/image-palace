@@ -173,8 +173,7 @@ export function DeckBoard({
         </Button>
         {aiEditAction}
 
-        {/* 掴む場所は見れば分かるものではないので、一言添える
-            （ボードが操作の要点を右端に置いているのと同じ形） */}
+        {/* 掴む場所は見れば分かるものではないので、一言添える */}
         <span className="ml-auto hidden text-xs text-muted-foreground sm:inline">
           つまみを掴んで並び替えられます
         </span>
