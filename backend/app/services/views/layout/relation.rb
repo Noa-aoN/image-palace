@@ -40,9 +40,33 @@ module Views
       #   spouse     … 間に何か挟まると、子へ降ろす幹がどちらのものか読めない
       #   equivalent … 「同じもの」なのに離れていたら、同じだと読めない
       #
-      # 兄弟は入れない。隣り合っていなくても図は読めるし、
-      # 兄弟まで寄せると夫婦と押し合って、どちらも隣り合わなくなる
+      # 兄弟はここに入れない。**夫婦と押し合うと、どちらも隣り合わなくなる。**
+      # ただし兄弟も「段は同じなのに位置は決めない」状態にしてはいけない
+      # （それが段を横断する長い線を作った）。夫婦を寄せたあとの余りで
+      # 隣にする——順序の話なので Layered が持つ
       ADJACENT = %w[peer spouse equivalent].freeze
+
+      # **図の骨格を作る関係。** 段はこれだけで決める
+      #
+      # 骨格と装飾を分ける前は「同列でないもの全部」が段を作っていた。
+      # つまり **related（迷ったときの逃げ道）が親子と同じ強さで効いていた**。
+      # 実際、アルテミス -[related]-> アポロン のせいで、
+      # アポロンがアルテミスの子の段へ落ちた。
+      #
+      # spouse は段を作らないが、骨格の一部（夫婦は幹の起点になる）。
+      # 「段を作るか」と「骨格か」は別の問いなので、別の名前で持つ
+      PRIMARY = %w[parent spouse peer sequence cause means part].freeze
+
+      # **骨格に後から重ねる関係。** 置き場所を決められていないカードを
+      # 引き寄せることはあるが、**既に置かれたカードを動かさない**
+      SECONDARY = %w[sibling equivalent belongs_to contrast example related].freeze
+
+      # 骨格ではないが、**下に置くつもり**の関係。
+      #
+      # 所属や具体例は「そのカードの下にあるもの」と読めるので、
+      # 段こそ作らないが、上下が逆なら誤りになる。
+      # related にその意味は無い（同じ段に並べる）
+      DOWNWARD_EXTRA = %w[belongs_to example].freeze
 
       module_function
 
@@ -51,9 +75,87 @@ module Views
       def couple?(type) = COUPLE.include?(type.to_s)
       def bundleable?(type) = !NEVER_BUNDLED.include?(type.to_s)
       def directed?(type) = DIRECTED.include?(type.to_s)
+      # 種類の無い線は骨格として扱う。**「分からない」を「弱い」に読み替えない。**
+      # 古い盤の線や、種類を持たない入力は、これまでどおり段を作る
+      def primary?(type) = type.to_s.empty? || PRIMARY.include?(type.to_s)
+      def secondary?(type) = !primary?(type)
 
       # 段を作る関係だけを残す
       def hierarchical(relations) = relations.reject { |relation| same_level?(relation[:type]) }
+
+      # 骨格を作る関係だけを残す（段を作るもの＝上下がある PRIMARY）
+      def spine(relations)
+        relations.select { |relation| primary?(relation[:type]) && !same_level?(relation[:type]) }
+      end
+
+      # 骨格に重ねる関係だけを残す
+      def secondary(relations) = relations.select { |relation| secondary?(relation[:type]) }
+
+      # **上下に置くつもりの関係。採点と改善はここを見る。**
+      #
+      # 段を作る集合（spine）で採点すると、所属や具体例の上下が崩れても
+      # 見逃す。逆に「同列でないもの全部」で採点すると、同じ段に置くと
+      # 決めた related が**必ず違反として数えられる**（配置が意図どおりでも
+      # 点が下がる）。置くつもりと、測るつもりを合わせる
+      def downward?(type)
+        (primary?(type) && !same_level?(type)) || DOWNWARD_EXTRA.include?(type.to_s)
+      end
+
+      def downward(relations) = relations.select { |relation| downward?(relation[:type]) }
+
+      # **共通の親が図の中にいる兄弟の線。**
+      #
+      # 親子の線をたどれば兄弟だと読めるので、引くと同じことを二度言うことになる。
+      # しかも兄弟の線は段を横切るので、図の上ではいちばん邪魔な1本になる。
+      # 親が図にいないときは話が別で、そのときは兄弟の線が唯一の手がかりになる
+      # **同列の網を、鎖1本ぶんまで減らす。**
+      #
+      # 兄弟は互いに兄弟なので、6枚いれば線は最大15本引ける。
+      # だが図の上では「つながっている」ことが読めれば足りる。
+      # 網のまま描くと、段の端から端まで走る線が何本もできる
+      # （実測でポセイドン—アポロンが盤を1300px横断した）。
+      #
+      # **落とすのは輪を閉じる線だけ**なので、読める情報は減らない。
+      # 相手の多いカードを先につないで、そこを幹にする
+      # （幹は centre_peer_hubs! が段の真ん中へ置く）
+      def surplus_siblings(relations)
+        siblings = relations.select { |relation| relation[:type].to_s == "sibling" }
+        return [] if siblings.size < 2
+
+        degree = Hash.new(0)
+        siblings.each { |relation| degree[relation[:from]] += 1; degree[relation[:to]] += 1 }
+        groups = {}
+        siblings
+          .sort_by { |relation| [ -(degree[relation[:from]] + degree[relation[:to]]), relation[:from].to_s, relation[:to].to_s ] }
+          .reject { |relation| join(groups, relation[:from], relation[:to]) }
+      end
+
+      # 2つを同じ群れにまとめる。既に同じ群れなら false（＝その線は輪を閉じる）
+      def join(groups, one, other)
+        left = root_of(groups, one)
+        right = root_of(groups, other)
+        return false if left == right
+
+        groups[left] = right
+        true
+      end
+
+      def root_of(groups, id)
+        id = groups[id] while groups.key?(id) && groups[id] != id
+        id
+      end
+
+      def redundant_siblings(relations)
+        parents_of = Hash.new { |hash, key| hash[key] = Set.new }
+        relations.each do |relation|
+          parents_of[relation[:to]] << relation[:from] if relation[:type].to_s == "parent"
+        end
+        relations.select do |relation|
+          next false unless relation[:type].to_s == "sibling"
+
+          parents_of[relation[:from]].intersect?(parents_of[relation[:to]])
+        end
+      end
 
       # 同列の関係だけを残す
       def same_level(relations) = relations.select { |relation| same_level?(relation[:type]) }

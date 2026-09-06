@@ -171,7 +171,7 @@ module Views
       end
 
       def children_of
-        @children_of ||= Relation.hierarchical(@relations)
+        @children_of ||= Relation.downward(@relations)
                                    .group_by { |relation| relation[:from] }
                                    .transform_values { |list| list.map { |relation| relation[:to] }.uniq.sort }
                                    .select { |_, children| children.size >= 2 }

@@ -372,7 +372,7 @@ module Views
 
       # 子が親より下にあるか。**段の意味そのもの**なので、崩れたら大きく落とす
       def measure_hierarchy
-        directed = Relation.hierarchical(@edges)
+        directed = Relation.downward(@edges)
         return 1.0 if directed.empty?
 
         @counts[:hierarchy_violations] = directed.count do |edge|
@@ -471,7 +471,7 @@ module Views
 
       # 向きの揃い。**同じ向きに読める図は、目で追える**
       def measure_flow
-        directed = Relation.hierarchical(@edges)
+        directed = Relation.downward(@edges)
         return 1.0 if directed.empty?
 
         downward = directed.count { |edge| moved(edge, :center_y).positive? }
@@ -537,9 +537,9 @@ module Views
 
       # ---- 下ごしらえ --------------------------------------------------------
 
-      # 段を作る関係（同列を除く）の親子表
+      # 上下に置くつもりの関係の親子表
       def hierarchy_children
-        @hierarchy_children ||= Relation.hierarchical(@edges)
+        @hierarchy_children ||= Relation.downward(@edges)
                                       .group_by { |edge| edge[:from] }
                                       .transform_values { |list| list.map { |edge| edge[:to] } }
       end
