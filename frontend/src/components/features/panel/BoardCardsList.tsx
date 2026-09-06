@@ -80,7 +80,7 @@ export function BoardCardsList({ viewId }: { viewId: string }) {
   if (items.length === 0) {
     return (
       <p className="text-xs text-muted-foreground">
-        まだカードがありません。「カードを配置」から、この板に置くカードを選べます。
+        まだカードがありません。上の「追加」→「カードを追加」から、この板に置くカードを選べます。
       </p>
     )
   }

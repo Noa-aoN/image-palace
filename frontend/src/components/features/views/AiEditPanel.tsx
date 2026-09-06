@@ -331,25 +331,24 @@ export function AiEditPanel({
   )
   const historyActions = (
     <>
+      {/* 高さは他のボタンと揃える。**手で h-8 と書くと、ここだけ背が高くなる** */}
       <Button
         variant="ghost"
-        size="sm"
+        size="icon-sm"
         onClick={() => step('undo')}
         disabled={!canUndo || busy !== null}
         aria-label="戻る"
         title="戻る"
-        className="h-8 w-8 p-0"
       >
         {busy === 'undo' ? <Spinner size={14} /> : <Undo2 size={15} />}
       </Button>
       <Button
         variant="ghost"
-        size="sm"
+        size="icon-sm"
         onClick={() => step('redo')}
         disabled={!canRedo || busy !== null}
         aria-label="進む"
         title="進む"
-        className="h-8 w-8 p-0"
       >
         {busy === 'redo' ? <Spinner size={14} /> : <Redo2 size={15} />}
       </Button>
