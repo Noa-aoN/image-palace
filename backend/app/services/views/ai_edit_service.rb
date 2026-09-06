@@ -273,7 +273,10 @@ module Views
     # 本番では何もしない（変数が無ければ書かない）
     def capture_exchange(content)
       dir = ENV["AI_EDIT_DEBUG_DIR"]
-      return if dir.blank?
+      # **本番では、変数が置かれていても書かない。**
+      # 利用者のカードの中身が出ていくので、環境変数の置き忘れで
+      # 保存が始まらないようにする
+      return if dir.blank? || !Rails.env.local?
 
       FileUtils.mkdir_p(dir)
       stamp = Time.current.strftime("%Y%m%d-%H%M%S")
@@ -455,7 +458,9 @@ module Views
     # **それでよい。** 「相手が書いたはず」と省かせるほうが見落としになる。
     # 1本にまとめるのは normalized_relations の仕事で、ここでは落とさずに集める
     def absorb_reading_links(plan)
-      return plan unless plan.is_a?(Hash)
+      # 線を触らない設定（keep / restyle / relabel）では、いまある線を
+      # 指し直しているだけ。**組の向きが線の身元**なので、ここで畳まない
+      return plan unless plan.is_a?(Hash) && per_card_links?
 
       links = Array(plan["readings"]).flat_map do |reading|
         next [] unless reading.is_a?(Hash)
@@ -483,9 +488,13 @@ module Views
 
       from = link["from"].to_s
       to = link["to"].to_s
-      # 片方はこのカード自身でなければならない。そうでなければ向きを信用しない
-      return link.merge("from" => from, "to" => to) if [ from, to ].include?(card) && from.present? && to.present?
+      # 両端が書かれていれば、**そのまま受け取る。**
+      # 「片方はこのカード自身のはず」と決めて片端を書き換えていた頃は、
+      # 読んでいるカードと関係のない2枚の関係を、こちらが別の関係に
+      # すり替えていた（確からしさと根拠はそのままで）
+      return link.merge("from" => from, "to" => to) if from.present? && to.present?
 
+      # 片側しか書かれていなければ、読んでいるカードをもう一方の端にする
       { "from" => card, "to" => (to.presence || from) }.merge(link.except("from", "to"))
     end
 
@@ -1079,10 +1088,16 @@ module Views
     #   食い違い      … 図全体として辻褄が合わないところ
     #   図の崩れ      … 重なり・線の交差・文字の衝突
     def redundant_note
-      return unless @redundant_siblings.to_i.positive?
-
-      "兄弟の線を#{@redundant_siblings}本、省きました（共通の親が図にいるので、" \
-        "親子の線をたどれば読めます）。"
+      notes = []
+      if @redundant_siblings.to_i.positive?
+        notes << "兄弟の線を#{@redundant_siblings}本、省きました（共通の親が図にいるので、" \
+                 "親子の線をたどれば読めます）。"
+      end
+      if @surplus_siblings.to_i.positive?
+        notes << "兄弟の線を#{@surplus_siblings}本、省きました（同じ組み合わせを" \
+                 "たどり直すだけの線なので、残りをたどれば読めます）。"
+      end
+      notes.presence&.join
     end
 
     def combined_notes(ai_notes)
@@ -1444,12 +1459,15 @@ module Views
     def without_redundant_siblings(relations)
       return relations unless per_card_links?
 
-      drop = Layout::Relation.redundant_siblings(relations)
+      shared_parent = Layout::Relation.redundant_siblings(relations)
       # 網になった兄弟は、鎖1本ぶんまで減らす（輪を閉じる線だけ落とす）
-      drop |= Layout::Relation.surplus_siblings(relations - drop)
+      surplus = Layout::Relation.surplus_siblings(relations - shared_parent)
+      drop = shared_parent | surplus
       return relations if drop.empty?
 
-      @redundant_siblings = drop.size
+      # **理由ごとに数える。** まとめて数えると、片方の理由で全部を説明してしまう
+      @redundant_siblings = shared_parent.size
+      @surplus_siblings = surplus.size
       relations - drop
     end
 
@@ -1464,13 +1482,20 @@ module Views
       [ relation[:from], relation[:to] ].sort
     end
 
+    # 根拠の強い順。資料に書いてあるものが、常識で補ったものに勝つ
+    BASIS_RANK = { "explicit" => 0, "inferred" => 1, "world" => 2 }.freeze
+
     # 同じ組に複数の候補があるときに残す1本。
-    # 確からしさ → 具体的な種別（related は最後）→ id 順。**乱数は使わない**
+    #
+    # 確からしさ → 根拠 → 具体的な種別（related は最後）→ id 順。**乱数は使わない。**
+    # 根拠を見ないと、両側から同じ強さで書かれた親子の**向きが id 順で決まる**
+    # （どちらが親かが盤ごとに変わってしまう）
     def best_relation(group)
       return group.first if group.size == 1
 
       group.min_by do |relation|
         [ -(relation[:strength] || DEFAULT_STRENGTH),
+          BASIS_RANK.fetch(relation[:basis], BASIS_RANK.size),
           relation[:type] == DEFAULT_RELATION_TYPE ? 1 : 0,
           relation[:from], relation[:to] ]
       end
@@ -1517,7 +1542,7 @@ module Views
 
     # 種類の語を、こちらの語彙へ寄せる。向きが逆に書かれていれば入れ替える
     def resolved_type(raw, from, to)
-      name = raw.to_s
+      name = raw.to_s.strip.downcase
       return [ name, from, to ] if RELATION_TYPES.include?(name)
 
       type, direction = RELATION_ALIASES[name]

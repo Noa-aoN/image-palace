@@ -119,6 +119,23 @@ RSpec.describe "Views::AiEditService カード単位の関係" do
       expect(edges).to eq([ [ b.id, a.id, "spouse" ] ])
     end
 
+    # 根拠を見ないと、両側から同じ強さで書かれた親子の向きが id 順で決まり、
+    # どちらが親かが盤ごとに変わってしまう
+    it "確からしさが同じなら、資料に書いてあるほうを残す" do
+      stub_plan("readings" => [
+        { "id" => a.id, "links" => [
+          { "to" => b.id, "type" => "parent", "strength" => 0.9, "basis" => "world" }
+        ] },
+        { "id" => b.id, "links" => [
+          { "from" => b.id, "to" => a.id, "type" => "parent", "strength" => 0.9, "basis" => "explicit" }
+        ] }
+      ])
+
+      Views::AiEditService.call(view: view, instruction: "家系図に")
+
+      expect(edges).to eq([ [ b.id, a.id, "parent" ] ])
+    end
+
     it "確からしさが同じなら、具体的な種類のほうを残す" do
       stub_plan("readings" => [
         { "id" => a.id, "links" => [ { "to" => b.id, "type" => "related", "strength" => 0.9 } ] },
@@ -202,8 +219,9 @@ RSpec.describe "Views::AiEditService links の向き" do
     expect([ edge.source_node_id, edge.target_node_id ]).to eq([ parent.id, child.id ])
   end
 
-  # どちらの端も自分でない向きは、読み違えている見込みが高い
-  it "どちらの端もこのカードでなければ、向きを信用しない" do
+  # 「片方はこのカード自身のはず」と決めて片端を書き換えていた頃は、
+  # 読んでいるカードと関係のない2枚の関係を、別の関係にすり替えていた
+  it "どちらの端もこのカードでなくても、書かれたまま引く（すり替えない）" do
     other = card("よそ")
     stub_plan("readings" => [
       { "id" => parent.id, "links" => [
@@ -214,7 +232,7 @@ RSpec.describe "Views::AiEditService links の向き" do
     Views::AiEditService.call(view: view, instruction: "家系図に")
 
     edge = view.reload.view_edges.first
-    expect([ edge.source_node_id, edge.target_node_id ]).to eq([ parent.id, child.id ])
+    expect([ edge.source_node_id, edge.target_node_id ]).to eq([ other.id, child.id ])
   end
 end
 
@@ -264,6 +282,38 @@ RSpec.describe "Views::AiEditService 関係の整え方" do
       Views::AiEditService.call(view: view, instruction: "家系図に")
 
       expect(edges.first.last).to eq("sibling")
+    end
+
+    # 向きは「from が上」。言い換えごとに、入れ替えるかどうかが違う
+    it "part_of は全体を上にする（入れ替える）" do
+      stub_plan("relations" => [
+        { "from" => hermes.id, "to" => ares.id, "type" => "part_of", "strength" => 0.9 }
+      ])
+
+      Views::AiEditService.call(view: view, instruction: "整えて")
+
+      expect(edges).to eq([ [ ares.id, hermes.id, "part" ] ])
+    end
+
+    # 「アテナは神殿に祀られる」＝ from が神、to が場所。入れ替えない
+    it "located_in は書かれた向きのまま所属にする" do
+      stub_plan("relations" => [
+        { "from" => hermes.id, "to" => ares.id, "type" => "located_in", "strength" => 0.9 }
+      ])
+
+      Views::AiEditService.call(view: view, instruction: "整えて")
+
+      expect(edges).to eq([ [ hermes.id, ares.id, "belongs_to" ] ])
+    end
+
+    it "大文字や前後の空白があっても読む" do
+      stub_plan("relations" => [
+        { "from" => hermes.id, "to" => zeus.id, "type" => " Child ", "strength" => 0.9 }
+      ])
+
+      Views::AiEditService.call(view: view, instruction: "家系図に")
+
+      expect(edges).to eq([ [ zeus.id, hermes.id, "parent" ] ])
     end
 
     it "見当のつかない語は、これまでどおり「その他」へ落とす" do

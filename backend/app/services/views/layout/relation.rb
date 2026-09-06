@@ -61,6 +61,13 @@ module Views
       # 引き寄せることはあるが、**既に置かれたカードを動かさない**
       SECONDARY = %w[sibling equivalent belongs_to contrast example related].freeze
 
+      # 骨格ではないが、**下に置くつもり**の関係。
+      #
+      # 所属や具体例は「そのカードの下にあるもの」と読めるので、
+      # 段こそ作らないが、上下が逆なら誤りになる。
+      # related にその意味は無い（同じ段に並べる）
+      DOWNWARD_EXTRA = %w[belongs_to example].freeze
+
       module_function
 
       def adjacent?(type) = ADJACENT.include?(type.to_s)
@@ -83,6 +90,18 @@ module Views
 
       # 骨格に重ねる関係だけを残す
       def secondary(relations) = relations.select { |relation| secondary?(relation[:type]) }
+
+      # **上下に置くつもりの関係。採点と改善はここを見る。**
+      #
+      # 段を作る集合（spine）で採点すると、所属や具体例の上下が崩れても
+      # 見逃す。逆に「同列でないもの全部」で採点すると、同じ段に置くと
+      # 決めた related が**必ず違反として数えられる**（配置が意図どおりでも
+      # 点が下がる）。置くつもりと、測るつもりを合わせる
+      def downward?(type)
+        (primary?(type) && !same_level?(type)) || DOWNWARD_EXTRA.include?(type.to_s)
+      end
+
+      def downward(relations) = relations.select { |relation| downward?(relation[:type]) }
 
       # **共通の親が図の中にいる兄弟の線。**
       #

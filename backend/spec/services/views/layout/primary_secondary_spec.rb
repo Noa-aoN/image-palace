@@ -6,10 +6,10 @@ require "rails_helper"
 # 逃げ道）が親子と同じ強さで効いていて、アルテミス -[related]-> アポロン
 # だけでアポロンが子の段へ落ちた。骨格は骨格の関係だけで組む。
 RSpec.describe "Views::Layout 骨格と重ねる関係" do
-  B = Views::Layout::Box
-
   def box(id, index = 0)
-    B.new(id: id, title: id, x: index * 200, y: 0, width: 144, height: 176, footprint_width: 144)
+    Views::Layout::Box.new(
+      id: id, title: id, x: index * 200, y: 0, width: 144, height: 176, footprint_width: 144
+    )
   end
 
   def rel(from, to, type, strength = 0.9)
@@ -79,6 +79,17 @@ RSpec.describe "Views::Layout 骨格と重ねる関係" do
     it "同列の相手が3枚以上あるカードは、その真ん中に来る" do
       boxes = %w[中心 兄 弟 姉 妹].each_with_index.map { |id, i| box(id, i) }
       at = lay(boxes, %w[兄 弟 姉 妹].map { |m| rel("中心", m, "sibling") })
+      row = boxes.sort_by(&:x).map(&:id)
+
+      expect(row.index("中心")).to be_between(1, row.size - 2)
+    end
+
+    # 互いに兄弟の網だと、先頭の枝が一群を飲み込んで中心が段の端へ寄っていた
+    it "互いに兄弟の網でも、中心が真ん中に来る" do
+      boxes = %w[中心 A B C D].each_with_index.map { |id, i| box(id, i) }
+      mesh = %w[A B C D].map { |m| rel("中心", m, "sibling") } +
+             [ rel("A", "B", "sibling"), rel("C", "D", "sibling") ]
+      lay(boxes, mesh)
       row = boxes.sort_by(&:x).map(&:id)
 
       expect(row.index("中心")).to be_between(1, row.size - 2)

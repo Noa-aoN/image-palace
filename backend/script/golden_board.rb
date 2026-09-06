@@ -61,9 +61,10 @@ module GoldenBoard
   # names に nil を渡すと、17枚そろった元の盤の正解を返す
   def self.expected_relations(names = nil)
     drawn = drawn_relations + orphaned_siblings(names) + extra_truth
-    return drawn if names.nil?
-
-    drawn.select { |r| names.include?(r[:from]) && names.include?(r[:to]) }
+    drawn = drawn.select { |r| names.include?(r[:from]) && names.include?(r[:to]) } if names
+    # **描かない線は、正解にも入れない。** 共通の親が図にいる兄弟は
+    # 本番で省くので、期待し続けると再現率が上がりきらない
+    drawn - Views::Layout::Relation.redundant_siblings(drawn)
   end
 
   # 親が盤にいないきょうだい。

@@ -82,8 +82,6 @@ module Api
       MAX_STROKE_WIDTH = 12
       MAX_FONT_SIZE = 96
       MAX_RADIUS = 200
-      # 「こちらが置いた」印。Views::AiEditService の AUTO_JUNCTION と揃える
-      AUTO_SOURCE = "auto"
 
       def sanitized_style(raw)
         return {} unless raw.is_a?(ActionController::Parameters) || raw.is_a?(Hash)
@@ -101,13 +99,7 @@ module Api
           "bold" => (source["bold"].present? ? ActiveModel::Type::Boolean.new.cast(source["bold"]) : nil),
           "dashed" => (source["dashed"].present? ? ActiveModel::Type::Boolean.new.cast(source["dashed"]) : nil),
           # 付箋の角の折り目。形だけで他の図形と見分けられるようにする
-          "folded" => (source["folded"].nil? ? nil : ActiveModel::Type::Boolean.new.cast(source["folded"])),
-          # **こちらが置いた印を消さない。**
-          #
-          # ここで落としていたせいで、AI が置いた接合点が保存のたびに
-          # 「手で置いたもの」に化けていた。次に整えるとき片づけの対象から
-          # 外れ、新しい接合点だけが増える——整えるたびに点が増えていた
-          "source" => (source["source"].to_s == AUTO_SOURCE ? AUTO_SOURCE : nil)
+          "folded" => (source["folded"].nil? ? nil : ActiveModel::Type::Boolean.new.cast(source["folded"]))
         }.compact
       end
 

@@ -171,8 +171,8 @@ module Views
       end
 
       # 重ねる関係のうち、**下へ降ろす**もの。
-      # 所属や具体例は「その下にある」と読めるが、related にその意味は無い
-      BELOW = %w[belongs_to example part].freeze
+      # 採点と同じ表を使う（別々に持つと、置く向きと測る向きがずれる）
+      BELOW = Relation::DOWNWARD_EXTRA
 
       # 骨格に重ねる関係で、行き場の無いカードだけを引き受ける。
       #
@@ -338,7 +338,10 @@ module Views
       def arrange_around(hub, members)
         pool = members.to_h { |box| [ box.id, box ] }
         pool.delete(hub.id)
-        branches = peer_partners[hub.id].sort.filter_map { |id| walk_branch(pool, id) }
+        # **枝は中心の相手ごとに切る。** 網（互いに兄弟）だと、
+        # 先頭の枝が一群を飲み込んで枝が1本になり、中心が段の端へ寄る
+        roots = peer_partners[hub.id]
+        branches = roots.sort.filter_map { |id| walk_branch(pool, id, roots) }
         # 中心からたどれなかったものは、そのまま右へ
         branches += pool.values.map { |box| [ box ] }
         half = branches.size / 2
@@ -346,7 +349,7 @@ module Views
         branches.first(half).flat_map(&:reverse) + [ hub ] + branches.drop(half).flatten
       end
 
-      def walk_branch(pool, id)
+      def walk_branch(pool, id, roots)
         return nil unless pool.key?(id)
 
         chain = []
@@ -357,7 +360,9 @@ module Views
           next if box.nil?
 
           chain << box
-          peer_partners[current].sort.each { |other| queue << other if pool.key?(other) }
+          peer_partners[current].sort.each do |other|
+            queue << other if pool.key?(other) && !roots.include?(other)
+          end
         end
         chain
       end
@@ -419,9 +424,14 @@ module Views
           #
           # 段だけ同じにして位置を決めずにいると、段の端と端に離れて置かれ、
           # 段を横断する長い線になる（ゼウス—アルテミスで1559px になった）。
-          # 押し合いは pair_partners! の「1枚を2度動かさない」で止まる
-          close + @peers.select { |edge| edge[:type].to_s == "sibling" }
-                        .map { |edge| [ edge[:from], edge[:to] ] }
+          # 押し合いは pair_partners! の「1枚を2度動かさない」で止まる。
+          #
+          # **どちらも骨格が置いたカードなら動かさない。** 親から降りて
+          # 並んだ子を兄弟の都合で入れ替えると、親子の縦が崩れる
+          close + @peers.select { |edge|
+            edge[:type].to_s == "sibling" &&
+              !(@spine_parents[edge[:from]].any? && @spine_parents[edge[:to]].any?)
+          }.map { |edge| [ edge[:from], edge[:to] ] }
         end
       end
 
