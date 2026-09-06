@@ -172,7 +172,6 @@ export function DeckBoard({
           カードを追加
         </Button>
         {aiEditAction}
-        {aiEditHistoryActions}
 
         {/* 掴む場所は見れば分かるものではないので、一言添える
             （ボードが操作の要点を右端に置いているのと同じ形） */}
@@ -195,7 +194,9 @@ export function DeckBoard({
         {/* **並びを直すのと、中身を読むのは別の用事。**
             リストは順番・つまみ・外すが1行に収まる。カードは一覧と同じ札で読める。
             見せ方は操作ではないので、右端へ寄せる（一覧の「表示」と同じ位置） */}
-        <div className="flex shrink-0 rounded-lg border border-border p-0.5">
+        {/* 高さは隣のボタン（size="sm" ＝ h-7）に合わせる。
+            中の2つは入れ物いっぱいに広げて、押せる範囲を狭めない */}
+        <div className="flex h-7 shrink-0 items-center rounded-lg border border-border p-0.5">
           <LayoutToggle active={layout === 'list'} onClick={() => changeLayout('list')} label="リストで見る">
             <List size={15} />
           </LayoutToggle>
@@ -203,6 +204,10 @@ export function DeckBoard({
             <LayoutGrid size={15} />
           </LayoutToggle>
         </div>
+
+        {/* 戻る／進むは**右端**。ボードと同じ位置に置く
+            （同じキャンバスなのに、種別で場所が変わると探し直しになる） */}
+        {aiEditHistoryActions}
       </div>
 
       {items.length === 0 ? (
@@ -371,7 +376,7 @@ function LayoutToggle({
       aria-pressed={active}
       aria-label={label}
       title={label}
-      className={`rounded-md px-2 py-1 transition-colors ${
+      className={`flex h-full items-center rounded-md px-2 transition-colors ${
         active ? 'bg-muted text-foreground' : 'text-muted-foreground hover:text-foreground'
       }`}
     >

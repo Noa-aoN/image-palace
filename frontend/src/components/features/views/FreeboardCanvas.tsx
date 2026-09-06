@@ -25,7 +25,7 @@ import {
 import '@xyflow/react/dist/style.css'
 import {
   Plus, List, Spline, Settings, ArrowUpToLine, ArrowDownToLine,
-  ArrowUp, ArrowDown, Trash2, Download, Square, ChevronDown,
+  ArrowUp, ArrowDown, Trash2, Download, ChevronDown,
 } from 'lucide-react'
 import {
   DropdownMenu,
@@ -36,7 +36,7 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
 import { toPng } from 'html-to-image'
-import { Button } from '@/components/ui/button'
+import { Button, buttonVariants } from '@/components/ui/button'
 import { proxiedDataUrl, nextFrame } from '@/lib/boardExport'
 import { safeFileName } from '@/lib/download'
 import {
@@ -1118,40 +1118,40 @@ function Canvas({
     <BoardActionsContext.Provider value={boardActions}>
       <EdgeActionsContext.Provider value={edgeActions}>
       <div className="flex flex-col gap-2">
-        {/* 上部ツールバー（ボード面を遮らない操作系） */}
+        {/* 上部ツールバー（ボード面を遮らない操作系）。
+            **並べる数ではなく、押す回数で決める。**
+            8つ並んでいた頃は、いちばん押す「カードを配置」と、
+            いちばん押さない「画像を保存」が同じ大きさで並んでいた。
+            よく使う2つは1クリックのまま残し、残りを3つに畳む */}
         <div className="flex flex-wrap items-center gap-2">
-          <Button size="sm" onClick={() => openAddCards(viewId)} className="flex items-center gap-1">
-            <Plus size={15} />
-            カードを配置
-          </Button>
+          <AddMenu onAddCards={() => openAddCards(viewId)} onAddShape={setPlacing} />
           {aiEditAction}
-          {/* 図形を置く。**1つのドロップダウンに畳む。**
-              5つを並べると、よく使う「カードを配置」と「AIで整える」が押しのけられる */}
-          <ShapeMenu onAdd={setPlacing} />
-          <Button size="sm" variant="outline" onClick={() => openBoardCards(viewId)} className="flex items-center gap-1">
-            <List size={15} />
-            配置カード一覧
-          </Button>
-          <Button size="sm" variant="outline" onClick={() => openBoardObjects(viewId)} className="flex items-center gap-1">
-            <Spline size={15} />
-            オブジェクト一覧
-          </Button>
+          <ListMenu
+            onCards={() => openBoardCards(viewId)}
+            onObjects={() => openBoardObjects(viewId)}
+          />
+          {/* 中身は背景・模様・カードの見せ方・表示項目——**全部が見た目**。
+              「設定」だと何が入っているか読めないので、中身の名前で呼ぶ */}
           <Button size="sm" variant="outline" onClick={() => openBoardSettings(viewId)} className="flex items-center gap-1">
             <Settings size={15} />
-            ボード設定
+            表示
           </Button>
+          {/* 使う回数はいちばん少ない。**主役の色を持たせない**
+              （前は盤でいちばん目立つ塗りだった）。何をするかは説明で補う */}
           <Button
             size="sm"
+            variant="outline"
             onClick={handleDownloadImage}
             disabled={nodes.length === 0 || exporting}
-            className="flex items-center gap-1 border-transparent bg-[var(--palace)] text-white hover:bg-[var(--palace)]/85"
+            className="flex items-center gap-1"
+            aria-label="画像を保存"
             title="ボード全体を画像（PNG）で保存"
           >
             <Download size={15} />
-            {exporting ? '書き出し中…' : '画像を保存'}
+            {exporting ? '書き出し中…' : ''}
           </Button>
-          {aiEditHistoryActions}
-          <span className="ml-auto text-xs text-muted-foreground">Shift＋クリックで追加選択 / Shift＋ドラッグで範囲選択</span>
+          {/* 戻る／進むは**右端**。真ん中に置くと、並びのどこで区切れるか読めない */}
+          <div className="ml-auto flex items-center gap-2">{aiEditHistoryActions}</div>
         </div>
 
         <div
@@ -1241,7 +1241,7 @@ function Canvas({
 
           {nodes.length === 0 && (
             <div className="pointer-events-none absolute inset-0 flex items-center justify-center">
-              <p className="text-sm text-muted-foreground">上の「カードを配置」からカードを置いてみましょう。</p>
+              <p className="text-sm text-muted-foreground">上の「追加」からカードを置いてみましょう。</p>
             </div>
           )}
 
@@ -1292,6 +1292,10 @@ function Canvas({
             </>
           )}
         </div>
+        {/* ツールバーに置くと、幅が狭いときに折り返して操作の行が2段になる */}
+        <p className="text-xs text-muted-foreground">
+          Shift＋クリックで追加選択 / Shift＋ドラッグで範囲選択
+        </p>
       </div>
       </EdgeActionsContext.Provider>
     </BoardActionsContext.Provider>
@@ -1306,12 +1310,6 @@ export function FreeboardCanvas(props: FreeboardCanvasProps) {
   )
 }
 
-/**
- * 図形を置くボタン。
- *
- * 図を描く道具（Figma / Miro / FigJam）が共通して持っているものだけにした。
- * 種類を増やすと選ぶ手間が増えるわりに、できる図はほとんど変わらない。
- */
 /** 構えているときの案内に使う。SHAPE_CHOICES から引くと、並び順に依存してしまう */
 const SHAPE_LABELS: Record<BoardShapeKind, string> = {
   rectangle: '四角',
@@ -1336,30 +1334,80 @@ const SHAPE_CHOICES: { kind: BoardShapeKind; label: string; hint: string }[] = [
   { kind: 'ellipse', label: '丸', hint: '強調する' },
 ]
 
-function ShapeMenu({ onAdd }: { onAdd: (kind: BoardShapeKind) => void }) {
+/**
+ * 盤に足すもの。**カードも図形も、ここから。**
+ *
+ * 「追加」という1つの用事に対して口を1つにする。
+ * カードは選ぶ枚数が多いので右パネルへ、図形は盤の上で範囲を引かせる——
+ * 出す先は違うが、**利用者にとっては同じ「足す」**なので分けない。
+ *
+ * 図形の種類は、図を描く道具（Figma / Miro / FigJam）が共通して持つものだけ。
+ * 増やすと選ぶ手間が増えるわりに、できる図はほとんど変わらない
+ */
+function AddMenu({
+  onAddCards,
+  onAddShape,
+}: {
+  onAddCards: () => void
+  onAddShape: (kind: BoardShapeKind) => void
+}) {
   return (
     <DropdownMenu>
-      {/* Base UI の Trigger は自前で要素を描くので、隣のボタンと同じ見た目を直接あてる */}
-      <DropdownMenuTrigger className="inline-flex h-8 shrink-0 items-center gap-1 rounded-[min(var(--radius-md),12px)] border border-border bg-background px-2.5 text-sm font-medium whitespace-nowrap transition-colors hover:bg-muted">
-        <Square size={15} />
-        図形
+      {/* Base UI の Trigger は自前で要素を描く。**見た目は Button から借りる。**
+          高さや文字の大きさを手で写していた頃は、Button 側だけが変わって
+          ドロップダウンのボタンだけ背が高いまま残った */}
+      <DropdownMenuTrigger className={buttonVariants({ variant: 'outline', size: 'sm' })}>
+        <Plus size={15} />
+        追加
         <ChevronDown size={13} className="text-muted-foreground" />
       </DropdownMenuTrigger>
       <DropdownMenuContent align="start" className="w-60">
         {/* 見出しは群の中でしか使えない。包まないと Base UI が落ちる */}
         <DropdownMenuGroup>
-          <DropdownMenuLabel>置くもの</DropdownMenuLabel>
+          <DropdownMenuLabel>カード</DropdownMenuLabel>
+          <DropdownMenuItem onClick={onAddCards} className="flex-col items-start gap-0.5">
+            <span className="flex items-center gap-1.5"><Plus size={14} />カードを追加</span>
+            <span className="text-2xs text-muted-foreground">右のパネルで、置くカードを選びます</span>
+          </DropdownMenuItem>
+        </DropdownMenuGroup>
+        <DropdownMenuGroup>
+          <DropdownMenuLabel>図形</DropdownMenuLabel>
           {/* 選んだ時点では出さない。**盤の上で引いた範囲がそのまま図形になる** */}
           {SHAPE_CHOICES.map((choice) => (
             <DropdownMenuItem
               key={choice.kind}
-              onClick={() => onAdd(choice.kind)}
+              onClick={() => onAddShape(choice.kind)}
               className="flex-col items-start gap-0.5"
             >
               <span>{choice.label}</span>
               <span className="text-2xs text-muted-foreground">{choice.hint}</span>
             </DropdownMenuItem>
           ))}
+        </DropdownMenuGroup>
+      </DropdownMenuContent>
+    </DropdownMenu>
+  )
+}
+
+/** 盤に載っているものを見る2つ。どちらも右パネルを開くだけなので、同じ口にまとめる */
+function ListMenu({ onCards, onObjects }: { onCards: () => void; onObjects: () => void }) {
+  return (
+    <DropdownMenu>
+      <DropdownMenuTrigger className={buttonVariants({ variant: 'outline', size: 'sm' })}>
+        <List size={15} />
+        一覧
+        <ChevronDown size={13} className="text-muted-foreground" />
+      </DropdownMenuTrigger>
+      <DropdownMenuContent align="start" className="w-60">
+        <DropdownMenuGroup>
+          <DropdownMenuItem onClick={onCards} className="flex-col items-start gap-0.5">
+            <span className="flex items-center gap-1.5"><List size={14} />配置カード</span>
+            <span className="text-2xs text-muted-foreground">盤に置いたカードを探す・外す</span>
+          </DropdownMenuItem>
+          <DropdownMenuItem onClick={onObjects} className="flex-col items-start gap-0.5">
+            <span className="flex items-center gap-1.5"><Spline size={14} />オブジェクト</span>
+            <span className="text-2xs text-muted-foreground">線と図形の重なり順を決める</span>
+          </DropdownMenuItem>
         </DropdownMenuGroup>
       </DropdownMenuContent>
     </DropdownMenu>
